@@ -83,7 +83,7 @@ impl ProductRunService {
         let payload = owner.authorization_payload(&patch)?;
         let authority = runtime.commit_folder_patch_authority(plan, payload)?;
         #[cfg(test)]
-        super::checkpoints::obstruct_folder_patch(command, owner.transaction_namespace(), &patch)?;
+        self.obstruct_folder_patch(command, owner.transaction_namespace(), &patch)?;
         owner.apply_patch(&authority.request(), patch).map_err(Into::into)
     }
 

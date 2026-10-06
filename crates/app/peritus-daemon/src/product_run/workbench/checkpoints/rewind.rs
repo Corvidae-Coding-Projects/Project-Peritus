@@ -18,13 +18,11 @@ pub(super) use plan::selected_coverage_matches;
 #[cfg(test)]
 mod faults;
 #[cfg(test)]
-use faults::check_rewind_fault;
-#[cfg(test)]
 #[allow(
     clippy::redundant_pub_crate,
     reason = "crate-level tests inject exact crash boundaries"
 )]
-pub(crate) use faults::{RewindFaultPoint, inject_rewind_fault, obstruct_folder_patch};
+pub(crate) use faults::RewindFaultPoint;
 
 impl ProductRunService {
     pub(crate) async fn apply_workbench_rewind(
@@ -193,7 +191,7 @@ impl ProductRunService {
                 }
                 let preparation = store.accept_restore_snapshots(&prepare, &recovery_bodies)?;
                 #[cfg(test)]
-                check_rewind_fault(command, RewindFaultPoint::AfterPrepare)?;
+                self.check_rewind_fault(command, RewindFaultPoint::AfterPrepare)?;
                 let (status, terminal_conflicts, transaction_manifest) = if !conflicts.is_empty() {
                     (RestoreStatus::Conflict, conflicts, None)
                 } else if let Some(plan) = plan {
@@ -227,7 +225,7 @@ impl ProductRunService {
                     )
                 };
                 #[cfg(test)]
-                check_rewind_fault(command, RewindFaultPoint::AfterFolderPatch)?;
+                self.check_rewind_fault(command, RewindFaultPoint::AfterFolderPatch)?;
                 let manifest_digest = transaction_manifest
                     .as_ref()
                     .map(|bytes| peritus_codec::sha256(bytes).into_bytes());

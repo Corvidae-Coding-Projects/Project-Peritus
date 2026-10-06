@@ -20,7 +20,7 @@ mod conversation;
     clippy::redundant_pub_crate,
     reason = "crate-level tests inject exact crash boundaries"
 )]
-pub(crate) use checkpoints::{RewindFaultPoint, inject_rewind_fault};
+pub(crate) use checkpoints::RewindFaultPoint;
 mod execution;
 mod files;
 mod folder_mutation;

@@ -187,7 +187,7 @@ fn directory_scenario(interrupted: bool, owned_node: OwnedNode) {
             WorkbenchIntent::ApplyRewind(preview),
         );
         if interrupted {
-            crate::product_run::workbench::inject_rewind_fault(
+            service.inject_rewind_fault(
                 command.operation().into_bytes(),
                 crate::product_run::workbench::RewindFaultPoint::AfterFolderPatch,
             );

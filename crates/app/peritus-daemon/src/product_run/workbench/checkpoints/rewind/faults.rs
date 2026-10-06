@@ -1,8 +1,7 @@
-//! Operation-bound deterministic crash injection for recovery tests.
+//! Service-owned deterministic crash injection for recovery tests.
 
-use super::{Error, WorkbenchCommand};
+use super::{Error, ProductRunService, WorkbenchCommand};
 
-#[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(clippy::redundant_pub_crate, reason = "crate-level tests inject exact crash boundaries")]
 pub(crate) enum RewindFaultPoint {
@@ -11,54 +10,58 @@ pub(crate) enum RewindFaultPoint {
     InsideFolderPatch,
 }
 
-#[allow(clippy::redundant_pub_crate, reason = "sibling C1 caller injects exact test boundary")]
-pub(crate) fn obstruct_folder_patch(
-    command: &WorkbenchCommand,
-    namespace: &std::path::Path,
-    patch: &peritus_patch::PatchSet,
-) -> Result<(), Error> {
-    let mut faults = REWIND_FAULTS.lock().map_err(|_| Error::Corrupt("rewind fault lock"))?;
-    if let Some(index) = faults.iter().position(|candidate| {
-        candidate == &(command.operation().into_bytes(), RewindFaultPoint::InsideFolderPatch)
-    }) {
-        faults.remove(index);
-        // Real C1 will consume its action and hit this incomplete transaction in its patch
-        // adapter, returning Reconcile. No synthetic WorkspaceError replaces that execution.
-        std::fs::create_dir(namespace.join(format!("txn-{}", patch.identity().to_hex())))?;
-    }
-    Ok(())
-}
-
-#[cfg(test)]
-static REWIND_FAULTS: std::sync::Mutex<Vec<([u8; 16], RewindFaultPoint)>> =
-    std::sync::Mutex::new(Vec::new());
-
-#[cfg(test)]
-#[allow(clippy::redundant_pub_crate, reason = "crate-level tests inject exact crash boundaries")]
-pub(crate) fn inject_rewind_fault(operation: [u8; 16], point: RewindFaultPoint) {
-    REWIND_FAULTS.lock().expect("rewind fault lock").push((operation, point));
-}
-
-#[cfg(test)]
-pub(super) fn check_rewind_fault(
-    command: &WorkbenchCommand,
-    point: RewindFaultPoint,
-) -> Result<(), Error> {
-    let mut faults = REWIND_FAULTS.lock().map_err(|_| Error::Corrupt("rewind fault lock"))?;
-    if let Some(index) =
-        faults.iter().position(|candidate| candidate == &(command.operation().into_bytes(), point))
-    {
-        faults.remove(index);
-        Err(Error::Corrupt("injected rewind crash boundary"))
-    } else {
+impl ProductRunService {
+    pub(in crate::product_run) fn obstruct_folder_patch(
+        &self,
+        command: &WorkbenchCommand,
+        namespace: &std::path::Path,
+        patch: &peritus_patch::PatchSet,
+    ) -> Result<(), Error> {
+        if self.take_rewind_fault(command, RewindFaultPoint::InsideFolderPatch)? {
+            // Real C1 consumes its action and hits this incomplete transaction in its patch
+            // adapter, returning Reconcile. No synthetic WorkspaceError replaces that execution.
+            std::fs::create_dir(namespace.join(format!("txn-{}", patch.identity().to_hex())))?;
+        }
         Ok(())
     }
+
+    pub(in crate::product_run) fn inject_rewind_fault(
+        &self,
+        operation: [u8; 16],
+        point: RewindFaultPoint,
+    ) {
+        self.inner.rewind_faults.lock().expect("rewind fault lock").push((operation, point));
+    }
+
+    pub(in crate::product_run) fn check_rewind_fault(
+        &self,
+        command: &WorkbenchCommand,
+        point: RewindFaultPoint,
+    ) -> Result<(), Error> {
+        if self.take_rewind_fault(command, point)? {
+            Err(Error::Corrupt("injected rewind crash boundary"))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn take_rewind_fault(
+        &self,
+        command: &WorkbenchCommand,
+        point: RewindFaultPoint,
+    ) -> Result<bool, Error> {
+        let mut faults =
+            self.inner.rewind_faults.lock().map_err(|_| Error::Corrupt("rewind fault lock"))?;
+        if let Some(index) = faults
+            .iter()
+            .position(|candidate| candidate == &(command.operation().into_bytes(), point))
+        {
+            faults.remove(index);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
 }
 
-#[cfg(not(test))]
-pub(super) const fn check_rewind_fault(
-    _command: &WorkbenchCommand,
-    _point: (),
-) -> Result<(), Error> {
-    Ok(())
-}
+mod tests;

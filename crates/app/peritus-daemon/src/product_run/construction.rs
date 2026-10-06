@@ -81,6 +81,8 @@ impl ProductRunService {
                 image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
                 preview_processes: std::sync::Mutex::new(BTreeMap::new()),
                 preview_capture: PreviewCaptureHost::discover(),
+                #[cfg(test)]
+                rewind_faults: std::sync::Mutex::new(Vec::new()),
                 host_permissions: permissions::HostPermissionCatalog::new(components, workspaces),
             }),
         })

@@ -246,7 +246,7 @@ pub(super) async fn checkpoint_scenario_with_selection(
         })
         .expect("checkpoint count before rewind");
     if let Some(point) = crash {
-        crate::product_run::workbench::inject_rewind_fault(apply.operation().into_bytes(), point);
+        service.inject_rewind_fault(apply.operation().into_bytes(), point);
         assert!(matches!(
             service
                 .workbench_folder_command(actor(), SessionId::new([0xd1; 16]).unwrap(), &apply)

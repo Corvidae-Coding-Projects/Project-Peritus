@@ -174,6 +174,7 @@ fn service(
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
             preview_capture: super::PreviewCaptureHost::discover(),
+            rewind_faults: std::sync::Mutex::new(Vec::new()),
             host_permissions: super::permissions::HostPermissionCatalog::managed(
                 [workspace_id],
                 network,

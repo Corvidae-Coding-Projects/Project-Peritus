@@ -101,7 +101,7 @@ fn partial_restore_cold_reopens_before_and_after_c1_and_replays_the_same_receipt
                 3,
                 WorkbenchIntent::ApplyRewind(preview),
             );
-            crate::product_run::workbench::inject_rewind_fault(
+            service.inject_rewind_fault(
                 command.operation().into_bytes(),
                 if applied {
                     crate::product_run::workbench::RewindFaultPoint::AfterFolderPatch

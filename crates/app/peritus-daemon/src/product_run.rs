@@ -82,6 +82,8 @@ struct Inner {
     host_permissions: permissions::HostPermissionCatalog,
     preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
     preview_capture: PreviewCaptureHost,
+    #[cfg(test)]
+    rewind_faults: std::sync::Mutex<Vec<([u8; 16], workbench::RewindFaultPoint)>>,
 }
 
 #[derive(Clone)]
