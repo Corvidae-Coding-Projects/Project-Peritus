@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3636,
-        "tip_oid": "cdb9efff24f472604d1696c711efc9031834e0d0",
-        "prefix_sha256": "2fb748b20b09d8387cf74e075002fe8735466a5b53606e58f24717a9fbc4b491"
+        "sequence": 3637,
+        "tip_oid": "2b92288624b53aaf2c944329644f5477fa61a3a3",
+        "prefix_sha256": "b7d0785591b145192271dd011810a9337dd36f74f2fd35d1a12a03828202b43b"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2965,
+  "next_comment_id": 2966,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:55:44.555474541Z",
+      "updated_at": "2026-10-06T22:58:14.273866079Z",
       "labels": [
         "ci"
       ],
@@ -22262,6 +22262,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB4iNMFHuJzpCQW26Z77HYiUp+6VWk4bS4fRo6FFGBZuidrEiC5IE0Sh2bnuVrYUSas+ODqy1SRqU1wzcUv6cDA=="
+        },
+        "36f0dcdd-d82d-48c8-b858-5877cba556a6": {
+          "display_id": 2965,
+          "author": "6ME5",
+          "content": "Commit d2eb633326654d9d629beb26efa0120c8bdf1677: fix(provider): retain failure causes and immutable fixtures (#825). Exact19-file implementation repairs the reproduced copied-executable ETXTBSY ownership race with private immutable same-filesystem aliases, preserves failed-exercise provenance and explicit cleanup, and adds redacted process_spawn OS cause metadata without changing stable categories/display/wire formats or production deadlines. Deterministic legacy-writer/new-alias regression and information-loss/redaction regressions pass. Exact selected-tree qualification:288 tests passed,2 existing authenticated-live ignores;100 separately retained repaired seven-test process exercises passed; strict complete-workspace Clippy zero diagnostics; formatting; native and Windows GNU workspace compilation; strict affected Verus ordinary effect roots0verified0errors; rebuilt cargo xtask all3 passed. Original failed exercises remain retained and historical discarded authentication predicate cannot be recovered retroactively. Hooks and signing stayed enabled, unrelated user usage/audit hashes unchanged. Issue825 remains OPEN pending exact-commit native Windows/macOS/Linux acceptance; PR112 push and runner monitoring next.",
+          "created_at": "2026-10-06T22:58:14.269806659Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArhGYc9i7dhhCWx2eS1DPMaBI5kDQjg1ONpOmRQQgyXGldlJR5Hmw+hzwE8bJYEUIgOeSgbLmFSnJ8/8jkB8BDw=="
         },
         "3841d0a3-9adb-46ce-a284-bd6dc8302352": {
           "display_id": 2959,
