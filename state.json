@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3645,
-        "tip_oid": "02a0d770a89f81ed56a2a984ae2e5ab7b3ee2455",
-        "prefix_sha256": "ddb088b029860a1c8c7c647fcce9f1fe379c9a044888743ffe6c6df395e25817"
+        "sequence": 3646,
+        "tip_oid": "109149ae612647cb5128e64e6e4891e23f22d2ac",
+        "prefix_sha256": "edc3b4496a9635788fe2a8c1e862afbbe80157e35394c56a22e3a2fa6057207a"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2974,
+  "next_comment_id": 2975,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:20:28.447295390Z",
+      "updated_at": "2026-10-06T23:26:29.876669466Z",
       "labels": [
         "ci"
       ],
@@ -22397,6 +22397,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS7JSuuq45ie343i1Rdzu4s2/bgsinKB7EnA1aUBCavNJQpG/MeYnP7UzBq4cG6tptRShwgn4rY8K4Mq6G0WgDg=="
+        },
+        "e4fabbd5-75b1-482b-ba2d-327210a14030": {
+          "display_id": 2974,
+          "author": "6ME5",
+          "content": "Native macOS shared conformance acceptance verified on exact head d2eb633326654d9d629beb26efa0120c8bdf1677: Foundation testing job112543533469 SUCCESS. API metadata and actual log confirm failed_provider_exercises_retain_evidence_and_teardown_without_retrying and existing unavailable-provider classification ran and passed, retaining ordered facts with14 single exercises and14 teardowns. URL: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37543905215/job/112543533469 . Metadata/log retained at /tmp/peritus-issue825-macos-conformance-success.{json,log}. Five of six required native shards accepted; only macOS model-orchestration112543533581 remains pending, so825 staysOPEN. Linux and Windows immutable alias process/cleanup/OS-cause tests and allthree shared-conformance platform tests accepted without CI rerun. Latest fullPR343SUCCESS59running161queued6skippedzeroFAILURE; observer71117/fullPRwatch23820 live. Next inspect final macOS provider process regressions before finalresult/closure.",
+          "created_at": "2026-10-06T23:26:29.872547105Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB2hpaWKbq1rhdhHyyynIXvxbtH1DM+DwMZPItAhLdFWWrEHhxypPagMqP6k5En6WMq4v9W74HvxQ1FCOx4buDg=="
         },
         "fca6850f-bdbe-4049-b490-bd7f0f2005f7": {
           "display_id": 2956,
