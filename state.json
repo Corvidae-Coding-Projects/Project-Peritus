@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3545,
-        "tip_oid": "4108166d4b3edadc471149d364ff8070869133e8",
-        "prefix_sha256": "843744a1cbef9763d064ab22ce29e6438bfabdc0d5dfcf207d0b3fb6cdf7c488"
+        "sequence": 3546,
+        "tip_oid": "e590a50a9952d83f3d567449aa3c8790a1ac82ea",
+        "prefix_sha256": "d7b25b1cffe7f3a638b70a22a2f4e0a2c3d9364e0f9a6f0e3f1af47fb1a5183e"
       },
       "NWAR": {
         "sequence": 39,
@@ -31613,12 +31613,13 @@
       "display_id": 105,
       "title": "[L004] Checkpoint coverage omits partial selections and empty directories",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L004.\n\n- `capture.rs:30-50` excludes deselected files, external imports without a workspace path, partial file ranges, folder-identity mismatches, and duplicate references from selected restore coverage.\n- Lines 190-226 record an empty-directory exclusion because an automatic checkpoint cannot restore the directory; the directory must be empty when observed.\n- Daily-driving effect: whole-file capture and directory restoration are distinct capabilities. A selected range cannot become a whole-file restore point under this implementation, and removed empty directories lack restoration coverage. Callers and recovery behavior remain pending.\n- `checkpoints.rs:42-45` explicitly excludes credentials, approvals, process state, and external side effects while preserving conversation/goal/accounting history. Lines 65-69 allow a read-only fork without captured-path validation but reject a writable fork with no checkpoint paths.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T18:07:18.667284560Z",
+      "updated_at": "2026-10-06T18:08:13.542916783Z",
+      "closed_at": "2026-10-06T18:08:13.541433656Z",
       "labels": [
         "daily-driving-limiter"
       ],
