@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3617,
-        "tip_oid": "46180327ab4d1d01be9e79f94880968c05390fe1",
-        "prefix_sha256": "548b4d6ece460445d22c724d7f84cb9f94f84dddd96ad311b742f270a58f7abe"
+        "sequence": 3618,
+        "tip_oid": "ae5f145ea16512a8b20775dec96372e5545b38c9",
+        "prefix_sha256": "873e831b09b77f8ea16281bd68092c64ad3c20951fb7d846e57cea09068b0840"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 825,
+  "next_display_id": 826,
   "next_comment_id": 2951,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
@@ -473,6 +473,7 @@
     "7cf6ea42-13ec-5d34-94fc-0cbad6727013": 686,
     "7d145c05-237b-5625-990d-b4c29c05ac76": 770,
     "7da24304-19de-5779-a45e-680ca82a3733": 752,
+    "7dba4e90-7fcd-4daa-b57b-1d3085aa762a": 825,
     "7dd507bb-eab4-5ec6-bc61-49787abc5ad5": 805,
     "7e126ca5-efde-5572-9f6e-74869d8b6253": 505,
     "7f54e62c-3c08-44f0-99bc-570d189eadb1": 64,
@@ -22182,6 +22183,18 @@
           "kind": "decision"
         }
       }
+    },
+    "7dba4e90-7fcd-4daa-b57b-1d3085aa762a": {
+      "uuid": "7dba4e90-7fcd-4daa-b57b-1d3085aa762a",
+      "display_id": 825,
+      "title": "[CI] Diagnose intermittent Codex authentication conformance failure",
+      "description": "During #824 qualification, the untouched OpenAI authentication conformance scenario intermittently reported PERITUS-PROVIDER-INFRASTRUCTURE in codex_runtime_passes_all_cases_through_real_owned_processes. Evidence: /tmp/peritus-issue824-adapter-tests3.log, original branch head 42236bb697be2469a8ce5710f582088cb0bf4ab9 plus the selected #824 transport changes in /home/doll/.cache/peritus-issue824.bIV21R. The same full suites passed before and after without an authentication change; the focused suite passed 20 instrumented runs on both the changed transport and untouched HEAD transport. Those passes do not diagnose or repair the original failing predicate. Fully read conformance support/runner/observations, test-only fake behavior/trace and authentication caller. No native account or network was involved. Systemic repair: make fixture infrastructure failures retain the exact failing stage, redacted transport error, observed terminal category, request trace counts and cleanup result; preserve the individual failed exercise evidence instead of replacing all causes with one generic Infrastructure value. Reproduce with that provenance, determine whether the fake-process lifecycle or production nonzero-exit/authentication classification violated its contract, then fix that owner or classification and add a deterministic regression. Do not increase fixture deadlines, retry a failing exercise into a passing result, weaken assertions or claim that this is proven unrelated to the transport. Keep this investigation separate from #824's journal/pipe progress repair; no production root cause has yet been established.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
+      "created_by": "6ME5",
+      "created_at": "2026-10-06T22:11:51.674351471Z",
+      "updated_at": "2026-10-06T22:11:51.674351471Z"
     },
     "7dd507bb-eab4-5ec6-bc61-49787abc5ad5": {
       "uuid": "7dd507bb-eab4-5ec6-bc61-49787abc5ad5",
