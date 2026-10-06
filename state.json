@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3591,
-        "tip_oid": "beb3c776c8341c259f78600870e2bccb61d792be",
-        "prefix_sha256": "12c2247db27182cd5272b250fc26e994bcfd9f2d51b6b8a60c6a68bc28ff28a8"
+        "sequence": 3592,
+        "tip_oid": "6a350e7ac281c29115a49c3fc84c694c1069ab11",
+        "prefix_sha256": "bcaa68746c26f4e3f46f1b6802957878611c435776da8302063b5bdde17b62f7"
       },
       "NWAR": {
         "sequence": 39,
@@ -20561,7 +20561,10 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T20:34:09.843493907Z"
+      "updated_at": "2026-10-06T20:34:33.220825636Z",
+      "labels": [
+        "daily-driving-limiter"
+      ]
     },
     "6b7f5853-34a6-589e-8dda-4001f2dccfc1": {
       "uuid": "6b7f5853-34a6-589e-8dda-4001f2dccfc1",
