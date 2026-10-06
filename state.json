@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3651,
-        "tip_oid": "35941241d66d6997545368eebde669035d64cc2d",
-        "prefix_sha256": "49957c8321f73c3d66cca453c55effc848e8e3c32aadbfc2cf401365a34ba2c9"
+        "sequence": 3652,
+        "tip_oid": "ed4981f4fb280d92d72825c84a5f7ac18106c570",
+        "prefix_sha256": "5898de1f2104543409816ab9142018b0c049e926bc62683dd63be6b8497d898e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2980,
+  "next_comment_id": 2981,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:52:36.825994112Z",
+      "updated_at": "2026-10-06T23:54:54.813060913Z",
       "labels": [
         "ci"
       ],
@@ -22235,6 +22235,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7eMBlq5STd+Ja/6dE+RcHYUVU+ycq/7xEX3HSdwovlEOEpK6+UGsCaPllxSlAI8B9R5dw4RyJmNGh+Vgij6rAQ=="
+        },
+        "08a82ccc-5807-485f-a88d-efcf256671f3": {
+          "display_id": 2980,
+          "author": "6ME5",
+          "content": "Committed scoped followup a26a324558bd592356af9b19fda4458ce54d881a (fix(provider): preserve multi-probe failure receipts). Explicit foreign finish records cleanup after configuration/trace faults and on never-started success; capability series retain completed earlier probes and recovery retains both observed attempt terminals across all later errors. Ten selected development-only bridge/document files; immutable executable aliases, public shared interfaces and production behavior unchanged. Two baseline real-process regressions failed before repair with retained red1/red2 logs; final25 affected suites298passed0failed2existing authenticated-live ignores,17 Codex process tests. Complete-workspace all-target/all-feature strict Clippy and format pass; Windows GNU workspace/all-target/all-feature check passes; relevant Verus command and rebuilt cargo xtask all pass (86 packages4949 source/trust files273 docs147 pinned actions). Full1138-line staged diff reviewed, generated assets not changed, no unfinished branches or sensitive report facts; main/isolated selected hashes match and unrelated usage/audit hashes remain unchanged. Baseline d2 native6/6accepted includes actual macOS provider log, but followup needs fresh exact-head native acceptance before825 closure. No failed exercise replaced by a rerun, no new deadline/retry/global recorder.",
+          "created_at": "2026-10-06T23:54:54.808650281Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2JBQOUl4W0xmG9mo18S6ACGehyYF987lIsXqwTrKAMUtWdSjjrToOW2TcLtODaoaFeSto9zn0hS0XJ3+BqtcCA=="
         },
         "1afd5d50-20c8-4ddf-8d47-2276ff0815e8": {
           "display_id": 2973,
