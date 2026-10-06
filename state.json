@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3589,
-        "tip_oid": "097598e1c9c6103d9817669ce74b106f9c34d926",
-        "prefix_sha256": "a6cf2c9fc01c7e7d43b218427205b5a09bff7e522f9a7222cb9b51ee27db2699"
+        "sequence": 3590,
+        "tip_oid": "b7f0d156e153e25e4b62da19625c6f47fa74c29a",
+        "prefix_sha256": "ed616520b05f4a9821b37b55f41fb6b94ff362d042de62c83be480b7ae926a80"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2931,
+  "next_comment_id": 2932,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25956,7 +25956,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T20:32:50.576260444Z",
+      "updated_at": "2026-10-06T20:33:19.529208583Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26012,6 +26012,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAW7BE8kWDG79dXifOxtoJAsc0g5cyYGH8/LFfpRTz2Njc/jO7TrYoCN72a1RePO0gRrEzXOrSE1JqzREzP6ZcAw=="
+        },
+        "6a070473-6c6a-45cb-9eac-0239b156fb27": {
+          "display_id": 2931,
+          "author": "6ME5",
+          "content": "Reopened after current-head Windows runtime-tools CI failed: membership_changes_during_scan_never_publish_an_accepted_listing returned Ok on a deterministic child insertion. Job 112481503206, run 37523913739, head eb24bc344cee4d77a86545ea6fcaf49954ac8e40. Fully read listing.rs and listing/tests.rs: acceptance currently compares directory handle metadata before/after/reopen; the Windows result demonstrates that this is insufficient membership-change evidence. This is an unfinished cross-platform acceptance contract, not a passing check or a reason to weaken the test. The repair must compare exact native membership evidence across capture while retaining protected-entry policy, per-child exclusions, retained cursor identity and recovery roots. #109 is still the active coordinated codec migration; return to this reopened issue before claiming PR runners green.",
+          "created_at": "2026-10-06T20:33:19.525198899Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA12WyKxpnJO+nrVYETRLYo7dlJCzSGaUcb/QeoGyWIb/QCG331KkIg5H8dBdM++MUbK4zs+QmTg7XbjI4A+h0Dg=="
         },
         "779d4821-d82e-4068-8e7c-e2b9da902ae0": {
           "display_id": 2924,
