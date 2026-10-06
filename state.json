@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3556,
-        "tip_oid": "432f65afd21d8b0ec27cf166550a63c0e435a64a",
-        "prefix_sha256": "4955de4739a1185143841dd44ad59d6209a3153ce8630812094474865ca528d4"
+        "sequence": 3557,
+        "tip_oid": "cbf458558d13af610aa779f9d04de131f184338f",
+        "prefix_sha256": "0259b382ee000f2f8123b20db038a8bf2a2d6d0a716744ef9140d0abd70fc018"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2910,
+  "next_comment_id": 2911,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -38938,10 +38938,21 @@
       "parent_uuid": "d1db310b-7731-5d58-9369-497f32b29bef",
       "created_by": "6ME5",
       "created_at": "2026-10-06T18:36:52.454916274Z",
-      "updated_at": "2026-10-06T18:37:15.474301570Z",
+      "updated_at": "2026-10-06T18:41:13.660294421Z",
       "labels": [
         "bug"
-      ]
+      ],
+      "comments": {
+        "085568c0-47f3-42fb-9357-1cfa3c91a7c3": {
+          "display_id": 2910,
+          "author": "6ME5",
+          "content": "Root-cause repair: move injected rewind failures into the test-only ProductRunService::Inner owner, shared by Arc clones and discarded when the owner closes. Route every prepare/C1 boundary and every crash fixture through service methods. This prevents cross-service command-ID collisions without serializing tests, altering operation IDs, using thread-local state (which would fail spawn_blocking delivery), or changing production lifecycle/recovery behavior. The ownership regression confirms three boundaries are isolated, consumed once by cross-thread clones, and absent after reopen. Exact selected-tree local xtask all and formatting pass; default parallel checkpoint suite and strict all-target lint are in progress.",
+          "created_at": "2026-10-06T18:41:13.645070412Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALINFsMD75FG4TSbsSzWbbVuif1sDtAQsjOyfpwW2r5fdaqiX1JD+cZhJgWKRRXJjVJ/LGZqwNENufpVJ93q0Bg=="
+        }
+      }
     },
     "f9a7c46e-3b1a-5a19-ad32-99036ad13b32": {
       "uuid": "f9a7c46e-3b1a-5a19-ad32-99036ad13b32",
