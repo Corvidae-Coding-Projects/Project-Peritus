@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3615,
-        "tip_oid": "4637f05d9adc38a98b31c9a15fa3caed3af1a9e3",
-        "prefix_sha256": "d32341d08982c26dbb51100f1de3c73b8812a93e9bbb66db8afcaf7802ca5288"
+        "sequence": 3616,
+        "tip_oid": "ef702725f934b54f9abc22870f166b87b9e9c24f",
+        "prefix_sha256": "b75f834f0b8ea1c25a1dab0529ed9bfabc22b21b7eccc42f0e781264de7ed1bb"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2949,
+  "next_comment_id": 2950,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20616,11 +20616,20 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T22:03:31.429525551Z",
+      "updated_at": "2026-10-06T22:07:34.328831611Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "f4023ec9-8e31-489e-a468-e73ef2e4c6fa": {
+          "display_id": 2949,
+          "author": "6ME5",
+          "content": "[action] Issue 108 closed after exact-head native Windows and macOS acceptance. Issue 824 owns current session and branch fix/persistent-execution. Transport repair separates ordered journal persistence from pipe draining with physical backpressure and cancellation settlement, no production deadline or watchdog increase. First core suite and core/OpenAI/Anthropic 155 tests passed, 2 existing ignored. Strengthened in-flight cancellation regression is being requalified. Strict workspace lint, provider-core Verus, Windows compilation, xtask and native runner proof remain before closure. Preserve all pre-existing OpenAI usage/audit edits.",
+          "created_at": "2026-10-06T22:07:34.321626879Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe2v6PGylWO9kELesFB7WXBOYU6vNXmZdzb4m15kLqaCt4xJTjRFDY0qxoT4HPif2zFw7hxbHZ8PuLdbYgiWaBQ=="
+        },
         "fda5d9c5-fcbf-49fb-b1d7-e250076b85e1": {
           "display_id": 2948,
           "author": "6ME5",
