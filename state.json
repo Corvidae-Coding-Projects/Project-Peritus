@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3646,
-        "tip_oid": "109149ae612647cb5128e64e6e4891e23f22d2ac",
-        "prefix_sha256": "edc3b4496a9635788fe2a8c1e862afbbe80157e35394c56a22e3a2fa6057207a"
+        "sequence": 3647,
+        "tip_oid": "8bb6d6ab3d44c7d479415ecab8e6114bfbc297bf",
+        "prefix_sha256": "462c9dc377dad9199e4fdd0b894abf776b3a84d50e58622f47d77698d7f1cbba"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2975,
+  "next_comment_id": 2976,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:26:29.876669466Z",
+      "updated_at": "2026-10-06T23:29:51.200552092Z",
       "labels": [
         "ci"
       ],
@@ -22388,6 +22388,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB7gW1UAhGyZOg9wM661ksEVKHZuBxD8ybPHXtI40kUe36oprAbcCVbcY9x/kVemhOIIJsufKnFl2a6EDoz47BA=="
+        },
+        "ce35fc10-bbe9-4684-901d-1ce26cef6b17": {
+          "display_id": 2975,
+          "author": "6ME5",
+          "content": "[action] Issue825 d2eb633326654d9d629beb26efa0120c8bdf1677 committed/pushed PR112/develop; native acceptance5/6 complete. Linux provider112543532853/conformance112543532886,Windows provider112543536752/conformance112543536649,macOS conformance112543533469 all SUCCESS exactHEAD with actual named logs inspected. Observations2969,2970,2972,2974 record evidence; commit result2965. Local final19-file288tests2liveignores,100separate repaired7test processes, strict workspaceClippy/fmt/WindowsGNU/Verus/xtask all passed. All original usage/audit hashes preserved. Only macOS provider112543533581 remainsqueued pendingrunner in Foundation37543905215; keep825OPEN lock6ME5. Native observer71117 and fullPRwatch23820 live; state /tmp/peritus-issue825-native-acceptance.json and native-watch2.log. Five metadata/log pairs at /tmp/peritus-issue825-{linux-provider,linux-conformance,windows-provider,windows-conformance,macos-conformance}-success.{json,log}; Mac conformance completed23:25:08Z sharedsingle-exercise14/teardown14 regressed successfully. Latest PRbody /tmp/peritus-pr112-body-issue825-pending.md published with Mac shared evidence and only Mac provider acceptance pending; older PRbody files stale. Next poll same handles; when Mac provider completes collect metadata/log via jobs112543533581 API, verify6Codex process tests plus coreOS-cause/cleanup/redaction regressions, record final result and close825 --no-changelog, verify lockrelease and update PRbody; then110 next(no blockers, onlyissue/decision read,no source implementation begun).824CLOSED2954. Historicalauthpredicate discarded/unrecoverable; reproduced copied-authfixtureETXTBSY ownership and lost evidence repaired without CI reruns or product deadlines/retry change. Full PR CI incomplete, nofailure in latest343success snapshot.",
+          "created_at": "2026-10-06T23:29:51.196273420Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKdmDnTFHxMrG60ZhZ7dTNRucMOwimku+gtiURIwQ9bt5JbVce6vs//Ecaj0kvMTexIjfAIMWXCpcvMNCdxnwCA=="
         },
         "d7f5731d-65de-4c36-9571-9da1b2cfc172": {
           "display_id": 2967,
