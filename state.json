@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3599,
-        "tip_oid": "ccd1358c667b0cb52f7a68628f15592814a54ea1",
-        "prefix_sha256": "d959236d3052d90e25ec91a538220a53478f3e51d5b888652c49211486787830"
+        "sequence": 3600,
+        "tip_oid": "7eed62c5e452b206fe25e58f39e3900265608b27",
+        "prefix_sha256": "a6768143d7e3e83252d243b91eaa40df05d2775aae69108e5d5a3033d485a13b"
       },
       "NWAR": {
         "sequence": 39,
@@ -6877,12 +6877,13 @@
       "display_id": 109,
       "title": "[L009] Canonical codec production ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L009.\n\n- `crates/foundation/peritus-codec/src/limits.rs:20-29,52-55` makes production limits the default: **16 MiB complete frame**, payload **16 MiB minus frame header**, **65,535 collection items**, **1 MiB per UTF-8 string**, **8 MiB per opaque field**, and **64 nested aggregates**.\n- `writer.rs:87-125,128-150` rejects opaque/string/collection/depth/total-payload excess before writing. `reader.rs:106-157` independently rejects opaque/string/collection/depth excess on decode. Length prefixes use `u32` representation; these structural representation bounds differ from the configured smaller ceilings.\n- Daily-driving effect depends on each caller's chosen limits and whether a representation contains a whole file, growing conversation, or transient message. Patch identity already uses these production limits (L006). Frame/message enforcement and remaining callers are pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T21:05:26.627699382Z",
+      "updated_at": "2026-10-06T21:06:00.210610414Z",
+      "closed_at": "2026-10-06T21:06:00.209166940Z",
       "labels": [
         "daily-driving-limiter"
       ],
