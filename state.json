@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3647,
-        "tip_oid": "8bb6d6ab3d44c7d479415ecab8e6114bfbc297bf",
-        "prefix_sha256": "462c9dc377dad9199e4fdd0b894abf776b3a84d50e58622f47d77698d7f1cbba"
+        "sequence": 3648,
+        "tip_oid": "09921fff704f7c3ed1428f4d5b373a47f7b6627f",
+        "prefix_sha256": "28b35b5c03be87510613bb5b9591bbaaba167b86d84188ce2bd8285659567004"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2976,
+  "next_comment_id": 2977,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:29:51.200552092Z",
+      "updated_at": "2026-10-06T23:39:11.354942574Z",
       "labels": [
         "ci"
       ],
@@ -22307,6 +22307,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxCGc6giNWdNlW7qE3YGF8LYi7lUyvVtnkRMHQmoO/6QDcizpsqd+vYZEletSJuZ09anw9gxt2+5posyUO+CBDw=="
+        },
+        "6803bbb6-6199-4497-942c-d6a3dfb1e707": {
+          "display_id": 2976,
+          "author": "6ME5",
+          "content": "Final source-path review before closure found remaining information-loss within the same825 contract. support::ForeignProbe::untouched allocates its fixture before fallible profile/provider setup, requests only borrows the owner, and isolation never explicitly closes it; failed trace observation and drop cleanup have no cleanup receipt. observations::capabilities evaluates three Probe::run calls with early question-mark returns, discarding already completed earlier probes if a later one fails. recovery_attempts retains first events only for trace/action failures; classification/policy/backoff/second-start failures can lose that completed first attempt, and successful-recovery final trace/cleanup errors retain only second events. recovery validation similarly reports only one of two observed attempts. Fully read current support.rs, observations.rs and diagnostics.rs; these are source-established gaps, not a claim about the discarded historical auth predicate. Keep825OPEN and fix the owned per-exercise receipt contract: scoped receipts for prior completed probes/attempts, explicit consuming foreign-owner finish on success/error/setup failure, and all observed owners preserved through later failure. Deterministic real-process fault regressions must fail against the current incomplete receipt path before repair; no global recorder, hidden retry, assertion weakening or deadline change. Currentd2 native5/6accepted is baseline evidence, not acceptance of the upcoming followup. Keep the immutable alias root repair and unrelated usage/audit files intact.",
+          "created_at": "2026-10-06T23:39:11.350717179Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8DcD2u3pr/eETlOV+PQhYsxz9Jf/HpxlCPIaiRUMZby8YArnWovoyaW7ONoA4L5ekwa68xCsNdTPVopBwXN+BQ=="
         },
         "7b71a5cb-12e5-4ee4-aa4d-9190ba6471b9": {
           "display_id": 2962,
