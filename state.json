@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3635,
-        "tip_oid": "ca07ca9e21b817b1e0ea206df0c0879fc647043d",
-        "prefix_sha256": "c957fa7ddb79d28f777c545a5ee7323cea9cd7a06fe1a5199e5d127937f26e21"
+        "sequence": 3636,
+        "tip_oid": "cdb9efff24f472604d1696c711efc9031834e0d0",
+        "prefix_sha256": "2fb748b20b09d8387cf74e075002fe8735466a5b53606e58f24717a9fbc4b491"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2964,
+  "next_comment_id": 2965,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:53:13.829834597Z",
+      "updated_at": "2026-10-06T22:55:44.555474541Z",
       "labels": [
         "ci"
       ],
@@ -22298,6 +22298,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJKy3qRhB8ws4Mtw+v06omwF3ZAj7fs7Ga376X+9ngit7+OJV36SPKCp2ECr0iNirUTJ5tv9WTedHr2HjXj/0CA=="
+        },
+        "9a0c8393-0b49-4dc1-a8e3-60d323e536c6": {
+          "display_id": 2964,
+          "author": "6ME5",
+          "content": "Final local qualification passed on the exact19-file selected tree /home/doll/.cache/peritus-issue825.5YK8nN: six affected provider/conformance packages288 tests passed,2 existing authenticated-live ignores (/tmp/peritus-issue825-tests6.log); all100 separate repaired seven-test process exercises passed after isolating the injected writer (/tmp/peritus-issue825-repaired-isolated-summary.log). The prior failed exercises57,33 and repaired-regression5 remain retained and are not replaced by this acceptance. Strict complete-workspace all-target/all-feature Clippy6 passed with zero diagnostics; Windows GNU complete-workspace all-target/all-feature check2 passed; format passed; strict OpenAI Verus3 --no-cheating --rlimit20 passed with effect roots0verified0errors; rebuilt cargo xtask all3 passed86packages4944sources3907formalboundary15122ordinary-safe4944trust273docs147pinnedactions. New metadata APIs preserve stable display/code/category and std-only A2 dependency policy; no stored/wire-format or production deadline/retry change. Full diffs and new files reviewed, actual redaction/ownership tests pass; selected main/isolated hashes match and every original unrelated usage/audit hash remains unchanged. Architecture verdict ready for commit and native qualification;825 remains OPEN pending exact-head native OS acceptance. Native artifact-directory/hardlink semantics are explicitly the remaining platform check. The original discarded authentication predicate cannot be retroactively recovered; the reproducible copy/exec failure mechanism and information-loss defects are repaired without claiming otherwise.",
+          "created_at": "2026-10-06T22:55:44.551324337Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9owFG7NGmpIH6U+Sbxz9kf4mKUvK1DFH/Tf0h0ouPHkkzhNAJQqgz/g9ebWg8GUjCwPsoMtYavqth8MSa/dhDg=="
         },
         "b8b99062-4539-408b-95d2-5374e3753d34": {
           "display_id": 2955,
