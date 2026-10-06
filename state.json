@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3592,
-        "tip_oid": "6a350e7ac281c29115a49c3fc84c694c1069ab11",
-        "prefix_sha256": "bcaa68746c26f4e3f46f1b6802957878611c435776da8302063b5bdde17b62f7"
+        "sequence": 3593,
+        "tip_oid": "97cec396411ef6377dc5ee11762d307d33842bf7",
+        "prefix_sha256": "5115aa501c232a8c1b9c8a31f64fc93c9ec04a3f61b45200eb696f37ced6517d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2932,
+  "next_comment_id": 2933,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25972,11 +25972,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T20:33:19.529208583Z",
+      "updated_at": "2026-10-06T20:39:19.845632617Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "135af922-8ac0-4c80-bea1-18e8432c96f5": {
+          "display_id": 2932,
+          "author": "6ME5",
+          "content": "Additional native macOS failure at HEAD eb24bc3: Foundation runtime-tools job 112476214756 fails before discovery assertions because filesystem_tools.rs creates a non-UTF-8 filename and macOS rejects it with EILSEQ (Illegal byte sequence). Keep this repair open along with the Windows membership invalidation failure. The fixture must reflect platform native namespace support while retaining real unsupported-name coverage on platforms that can create it; do not weaken production exact-name handling.",
+          "created_at": "2026-10-06T20:39:19.840522700Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWvV92EC1UMPQ2PidNgwaQtXjdYW1q01H7ssgpwy2b1tPSo4EiXZ9AvbQTr4AjtBW7Avkm5WS5m8ZlEt/vL6/AA=="
+        },
         "3eb9e5c2-27e2-4ee0-bac5-e57c1801bb89": {
           "display_id": 2927,
           "author": "6ME5",
