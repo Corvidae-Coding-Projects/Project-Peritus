@@ -1,5 +1,7 @@
 use super::*;
 use std::fs;
+mod retained;
+mod streaming;
 
 #[cfg(unix)]
 mod races;
@@ -77,15 +79,11 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
             .bytes(),
         &[0]
     );
-    file.set_len(MAX_INSPECTION_SOURCE_BYTES + 1).expect("excessive");
-    assert!(reader.read_file(&target, FileReadSelection::bytes(0, 1).expect("range"), 1).is_err());
-    for bound in [0, crate::MAX_INSPECTION_FILE_BYTES + 1] {
-        assert!(reader.read_file(&target, FileReadSelection::all(), bound).is_err());
-    }
-    for (start, end) in [(0, 0), (2, 1), (0, MAX_INSPECTION_SOURCE_BYTES + 1)] {
+    assert!(reader.read_file(&target, FileReadSelection::all(), 0).is_err());
+    for (start, end) in [(0, 0), (2, 1)] {
         assert!(FileReadSelection::bytes(start, end).is_err());
     }
-    for (first, last) in [(0, 1), (2, 1), (1, u32::MAX)] {
+    for (first, last) in [(0, 1), (2, 1)] {
         assert!(FileReadSelection::lines(first, last).is_err());
     }
 }

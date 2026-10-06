@@ -26,6 +26,7 @@ async fn scenario(refresh: bool) {
     );
     let path = repository.path().join("reference.txt");
     fs::write(&path, "UNSELECTED_FIRST\nORIGINAL_REFERENCE\nUNSELECTED_LAST\n").expect("source");
+    pad_source_above_former_inspection_ceiling(&path);
     let writer = scripted(0x61, "chat", vec![support::text_response(b"Reference received.")]);
     let reviewer = scripted(0x62, "review", Vec::new());
     let fixer = scripted(0x63, "fix", Vec::new());
@@ -53,6 +54,7 @@ async fn scenario(refresh: bool) {
         panic!("preview")
     };
     assert!(writer.requests.lock().expect("requests").is_empty());
+    assert_eq!(preview.file().source_bytes(), 64 * 1024 * 1024 + 1);
     let attach = command(
         workspace,
         8,
@@ -69,6 +71,7 @@ async fn scenario(refresh: bool) {
     ));
     fs::write(&path, "UNSELECTED_FIRST\nREFRESHED_REFERENCE\nUNSELECTED_LAST\n")
         .expect("edit source");
+    pad_source_above_former_inspection_ceiling(&path);
     let settings = start(workspace, run, [&writer, &reviewer, &fixer]);
     let start = command(workspace, 7, 4, settings.intent().clone());
     assert!(matches!(
@@ -108,4 +111,13 @@ async fn scenario(refresh: bool) {
     assert_eq!(record.files().entries()[0].refreshes().len(), usize::from(refresh));
     assert_eq!(record.inputs().invocations().len(), 1);
     service.shutdown(Duration::from_secs(5)).await;
+}
+
+fn pad_source_above_former_inspection_ceiling(path: &std::path::Path) {
+    fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .expect("source handle")
+        .set_len(64 * 1024 * 1024 + 1)
+        .expect("large source with a small selected reference");
 }

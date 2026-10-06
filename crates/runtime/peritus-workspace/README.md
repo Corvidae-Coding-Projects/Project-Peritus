@@ -32,6 +32,27 @@ Restart reconciliation supplies the current workspace tuple to patch recovery th
 dirty, fenced, or indeterminate. The durable action ledger is target metadata, not a patch
 transaction, and is excluded from transaction recovery scans.
 
+## Streaming inspection
+
+File inspection hashes the complete source as a stream and resolves exact byte or line
+selections without a source-size ceiling. `read_file` collects bytes using the capacity
+explicitly supplied by its caller; C1 imposes no additional inclusion ceiling.
+`copy_selection` writes any selection to caller-owned storage with fixed working memory.
+`capture_file` seals a reader over a distinct caller-owned regular file. Its pages carry
+the actual original-source interval, complete observation metadata, and a continuation
+cursor whenever content remains. Physical 64 KiB pages do not limit total content or
+page count. Line selections also accept full-width counters through `lines_u64`.
+
+The owner persists retained content, `InspectedSelection::encode()` metadata, and
+`InspectionCursor::encode()` continuation under its own durable publication transaction.
+After restart, decode both records, verify content with `RetainedInspection::open`, and
+continue from the same offset. Reopening checks the complete selected digest once;
+page reads check the opened storage version and never substitute current source bytes.
+Inspection metadata conveys observation only, not consent or mutation authority.
+Failed capture produces no accepted observation; partial storage remains owned by the
+caller. Existing attachment, transport, and filesystem-tool policies remain separate
+from this C1 streaming contract.
+
 ## Focused checks
 
 From the repository root:

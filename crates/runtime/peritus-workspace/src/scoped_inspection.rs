@@ -1,4 +1,4 @@
-//! Handle-relative, bounded reads for explicit live-folder references, not mutation authority.
+//! Handle-relative streaming observations of explicit files, not mutation authority.
 
 use crate::{ErrorCode, FolderIdentity, RecoveryClass, WorkspaceError, WorkspaceOperation};
 use cap_fs_ext::{DirExt as _, FollowSymlinks, OpenOptionsFollowExt as _, OpenOptionsSyncExt as _};
@@ -8,13 +8,17 @@ use peritus_types::Sha256Digest;
 use std::io;
 
 mod directory;
+mod observation;
 mod read;
+mod retained;
 mod selection;
 #[cfg(test)]
 mod tests;
+pub use observation::{InspectedSelection, InspectionCursor};
+pub use retained::{InspectionPage, RetainedInspection};
 pub use selection::FileReadSelection;
 
-/// Maximum source file scanned to establish a complete digest for an explicit range.
+/// Historical source ceiling retained for source compatibility; inspection does not enforce it.
 pub const MAX_INSPECTION_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
 
 /// A root-bound read-only capability for explicitly selected relative files.
@@ -27,7 +31,7 @@ pub struct FolderInspection {
     root: Dir,
 }
 
-/// Exact selected bytes and complete source digest from one bounded, checked read.
+/// Exact selected bytes and complete source digest from one caller-sized, checked read.
 ///
 /// This is an observation, not a lock against subsequent edits or proof that an arbitrarily
 /// concurrent writer supplied an atomic version. The host publishes these bytes as immutable

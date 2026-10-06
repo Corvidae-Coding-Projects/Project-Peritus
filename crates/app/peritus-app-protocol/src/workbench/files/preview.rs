@@ -23,8 +23,7 @@ impl WorkbenchFileMetadata {
         range: (u64, u64),
         digest: Sha256Digest,
     ) -> Result<Self, AppProtocolError> {
-        if source_bytes > 64 * 1024 * 1024
-            || range.0 > range.1
+        if range.0 > range.1
             || range.1 > source_bytes
             || range.1 - range.0 > MAX_WORKBENCH_FILE_BYTES
         {

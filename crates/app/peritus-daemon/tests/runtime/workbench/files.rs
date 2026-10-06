@@ -13,7 +13,7 @@ fn file_confirmation_restart_replay_and_deselection_remain_local() {
     run_async_test(async {
         let temporary = support::temporary_root();
         let source = temporary.path().join("reference.txt");
-        std::fs::write(&source, "first\nsecond\nthird\n").expect("source");
+        write_large_reference(&source);
         let runtime =
             DaemonRuntime::start(images::configuration(temporary.path(), 1)).await.expect("start");
         let mut client = connect(runtime.endpoint_address().clone(), true).await;
@@ -35,6 +35,7 @@ fn file_confirmation_restart_replay_and_deselection_remain_local() {
             panic!("{response:?}")
         };
         assert_eq!(preview.file().digest(), peritus_codec::sha256(b"second\n"));
+        assert_eq!(preview.file().source_bytes(), 64 * 1024 * 1024 + 1);
         assert_eq!(preview.file().range(), (6, 13));
         let confirm = images::command(
             93,
@@ -108,6 +109,16 @@ fn file_confirmation_restart_replay_and_deselection_remain_local() {
         runtime.shutdown().await.expect("shutdown");
         assert!(!temporary.path().join("never-execute-provider.invoked").exists());
     });
+}
+
+fn write_large_reference(path: &std::path::Path) {
+    std::fs::write(path, "first\nsecond\nthird\n").expect("source");
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .expect("source handle")
+        .set_len(64 * 1024 * 1024 + 1)
+        .expect("large source with a small selected reference");
 }
 
 async fn upload_external_text(

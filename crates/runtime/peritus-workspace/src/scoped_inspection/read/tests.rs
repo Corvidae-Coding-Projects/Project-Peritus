@@ -4,24 +4,27 @@ use super::*;
 fn range_scanning_is_chunk_independent_and_preserves_original_line_terminators() {
     let source = b"first\r\n\nlast";
     for width in 1..=source.len() {
-        let mut scan = Scan::new(Selection::Lines { first: 2, last: 3 }, 32, source.len() as u64)
-            .expect("scan");
+        let mut scan =
+            Scan::new(Selection::Lines { first: 2, last: 3 }, Some(32), source.len() as u64)
+                .expect("scan");
+        let mut output = Vec::new();
         for chunk in source.chunks(width) {
-            scan.accept(chunk).expect("chunk");
+            scan.accept(chunk, &mut output).expect("chunk");
         }
-        assert_eq!(scan.finish().expect("range"), ((7, 12), b"\nlast".to_vec()));
+        assert_eq!(scan.finish().expect("range"), ((7, 12), peritus_codec::sha256(b"\nlast")));
+        assert_eq!(output, b"\nlast");
     }
 }
 
 #[test]
 fn nonexistent_last_line_and_oversized_selected_lines_reject_without_partial_result() {
-    let mut scan = Scan::new(Selection::Lines { first: 2, last: 2 }, 32, 2).expect("scan");
-    scan.accept(b"a\n").expect("first line");
+    let mut scan = Scan::new(Selection::Lines { first: 2, last: 2 }, Some(32), 2).expect("scan");
+    scan.accept(b"a\n", &mut Vec::new()).expect("first line");
     assert!(scan.finish().is_err(), "trailing newline is not an extra line");
-    let mut scan = Scan::new(Selection::Lines { first: 1, last: 1 }, 2, 4).expect("scan");
-    assert!(scan.accept(b"long").is_err());
-    let mut scan = Scan::new(Selection::All, 32, 2).expect("scan");
-    assert!(scan.accept(b"grew").is_err());
+    let mut scan = Scan::new(Selection::Lines { first: 1, last: 1 }, Some(2), 4).expect("scan");
+    assert!(scan.accept(b"long", &mut Vec::new()).is_err());
+    let mut scan = Scan::new(Selection::All, Some(32), 2).expect("scan");
+    assert!(scan.accept(b"grew", &mut Vec::new()).is_err());
 }
 
 #[test]

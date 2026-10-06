@@ -6,6 +6,65 @@ use crate::{
 use peritus_patch::WorkspacePath;
 use peritus_types::{ActorId, ArtifactId, WorkspaceId};
 
+#[test]
+fn large_source_small_selection_keeps_canonical_replay_and_stale_revision_fencing() {
+    let (record, _) = attach(FileMode::Snapshot);
+    let text = ValidatedFileText::new(b"retained".to_vec()).unwrap();
+    let start = 64 * 1024 * 1024;
+    let end = start + text.bytes();
+    let source = FileSource::workspace(
+        peritus_codec::sha256(b"folder"),
+        &WorkspacePath::new("large").unwrap(),
+        FileRange::Bytes { start, end },
+        FileMode::Snapshot,
+    )
+    .unwrap();
+    let observation = FileObservation::new(
+        peritus_codec::sha256(b"complete large source identity"),
+        u64::MAX,
+        (start, end),
+        text.digest(),
+    )
+    .unwrap();
+    assert!(observation.matches(&text));
+    let file = FileAttachment::new(
+        source,
+        FileVersion::new(
+            OperationId::new([3; 16]).unwrap(),
+            ArtifactId::new([3; 16]).unwrap(),
+            observation,
+            peritus_codec::sha256(b"exact consent"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let change = operation(
+        3,
+        2,
+        ControlIntent::AttachFile {
+            file,
+            text: ControlText::new("large source selection".to_owned()).unwrap(),
+        },
+    );
+    let predecessor = record.canonical_bytes().unwrap();
+    let (next, _) = ConversationRecord::apply(Some(&record), &change).unwrap();
+    assert_eq!(record.canonical_bytes().unwrap(), predecessor);
+    let bytes = next.canonical_bytes().unwrap();
+    let reopened = ConversationRecord::parse(&bytes).unwrap();
+    assert_eq!(reopened, next);
+    assert_eq!(reopened.canonical_bytes().unwrap(), bytes);
+    assert_eq!(
+        ConversationRecord::apply(Some(&reopened), &change),
+        Err(ControlError::StaleRevision)
+    );
+    assert!(FileRange::Lines { first: 67_108_865, last: u32::MAX }.validate().is_ok());
+    assert!(FileObservation::new(observation.source_digest(), 1, (1, 2), text.digest()).is_err());
+    assert!(
+        FileObservation::new(observation.source_digest(), u64::MAX, (2, 1), text.digest()).is_err()
+    );
+    assert!(FileObservation::new(observation.source_digest(), 1, (0, 1), text.digest()).is_err());
+}
+
 fn operation(index: u8, revision: u64, intent: ControlIntent) -> ControlOperation {
     ControlOperation::new(
         OperationId::new([index; 16]).expect("operation"),

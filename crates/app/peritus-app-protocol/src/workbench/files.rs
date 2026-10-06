@@ -43,16 +43,12 @@ impl WorkbenchFileRange {
     /// Validates structural bounds, not source existence or authorization.
     ///
     /// # Errors
-    /// Rejects empty/reversed or out-of-ceiling ranges.
+    /// Rejects empty/reversed byte ranges or zero/reversed line ranges.
     pub const fn validate(self) -> Result<(), AppProtocolError> {
         match self {
             Self::All => Ok(()),
-            Self::Bytes { start, end } if start < end && end <= 64 * 1024 * 1024 => Ok(()),
-            Self::Lines { first, last }
-                if first > 0 && first <= last && last <= 64 * 1024 * 1024 =>
-            {
-                Ok(())
-            }
+            Self::Bytes { start, end } if start < end => Ok(()),
+            Self::Lines { first, last } if first > 0 && first <= last => Ok(()),
             _ => Err(invalid()),
         }
     }

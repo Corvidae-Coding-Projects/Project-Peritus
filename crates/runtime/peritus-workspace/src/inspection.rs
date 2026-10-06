@@ -6,7 +6,7 @@ use peritus_patch::WorkspacePath;
 
 use crate::{ErrorCode, ReadOnlyWorkspace, RecoveryClass, WorkspaceError, WorkspaceOperation};
 
-/// Hard maximum returned by one immutable file read.
+/// Historical buffer ceiling retained for source compatibility; reads use caller-owned capacity.
 pub const MAX_INSPECTION_FILE_BYTES: u64 = 8 * 1_024 * 1_024;
 
 /// Closed filesystem entry vocabulary returned by C1 inspection.
@@ -66,6 +66,32 @@ impl DirectoryEntry {
 }
 
 impl ReadOnlyWorkspace {
+    /// Streams an exact selection from this immutable snapshot into caller-owned storage.
+    ///
+    /// # Errors
+    /// Rejects unsafe paths, absent selections, observed changes, and original I/O errors.
+    pub fn copy_selection(
+        &self,
+        path: &WorkspacePath,
+        selection: crate::FileReadSelection,
+        output: &mut impl std::io::Write,
+    ) -> Result<crate::InspectedSelection, WorkspaceError> {
+        self.file_inspection().copy_selection(path, selection, output)
+    }
+
+    /// Captures selected snapshot bytes in owner-retained storage for resumable page reads.
+    ///
+    /// # Errors
+    /// Rejects invalid/aliased storage, unsafe paths, absent ranges, changes, and I/O failures.
+    pub fn capture_file(
+        &self,
+        path: &WorkspacePath,
+        selection: crate::FileReadSelection,
+        storage: fs::File,
+    ) -> Result<crate::RetainedInspection, WorkspaceError> {
+        self.file_inspection().capture_file(path, selection, storage)
+    }
+
     /// Inspects one exact regular file or directory without following symlinks.
     ///
     /// # Errors
