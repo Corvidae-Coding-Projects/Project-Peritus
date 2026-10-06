@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3622,
-        "tip_oid": "ce705887807a336a66cd1ad3abda304e5493680f",
-        "prefix_sha256": "14c3afba1e9d6f7461a6e0ec112996ff1bf120d83021f99ffbfd475518a9fbd8"
+        "sequence": 3623,
+        "tip_oid": "06c5097ef8562688a7778f501fd00e315ba7df25",
+        "prefix_sha256": "c8145081a13ef2c7aef0006b760bcdcc1479c62d3c6a3d62680e5d8781e8499c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2954,
+  "next_comment_id": 2955,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20617,7 +20617,7 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T22:14:30.447337714Z",
+      "updated_at": "2026-10-06T22:25:43.140553902Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20630,6 +20630,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYW5iQiMMijDqhmItoJr7wiUyfNUL2GIcZn0iAIk+98QQJ0IKVHMKSl1FD9GRYNM/mvambK+RAbVqlvDIUa5dDg=="
+        },
+        "4c4017b2-a598-466b-b8dd-b35f91ce95b6": {
+          "display_id": 2954,
+          "author": "6ME5",
+          "content": "Native acceptance verified for committed/pushed head 4ee46822d24da14cc16e809fc6563780631284f4. Windows Foundation model-orchestration job 112527719298 completed SUCCESS at 2026-10-06T22:24:10Z: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37539128541/job/112527719298 . Actual log shows the original ten-second duplex fixture, large stdin/stdout/stderr, quiet native thread retention with child ownership release, and all four held-persistence/order/cancellation/failure unit regressions executed and passed. The nine real process tests passed; the existing watchdog stayed unchanged. Codex conformance also passed, without claiming a repair to the separately observed authentication failure. Native macOS job112527714784 and Linux job112527714373 passed on the exact same head, with the same named regressions confirmed in their logs: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37539128541/job/112527714784 and https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37539128541/job/112527714373 . Local final tests/lint/format/Windows compile/Verus/xtask evidence is in result2951. Root repair is the shared separation of pipe receipt, retained ownership and durability progress, including settlement of accepted work on cancellation; native bytes/API remain unchanged and no production elapsed limiter is restored. Closing #824 and releasing its lock. Full PR CI remains pending with no failure in the current snapshot (146 success,55 running,47 queued,5 skipped); #825 remains OPEN and unresolved.",
+          "created_at": "2026-10-06T22:25:43.127516827Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ+EP6xqj9LD0DUH+d1s9B4o6ZFubKSdKiRsZjhSAwV1kq0KKv0hLoriv0z9214kre1Sjtz2vuotelIBSj2m9Dg=="
         },
         "99718da9-8027-4163-859a-b53a753992b1": {
           "display_id": 2953,
