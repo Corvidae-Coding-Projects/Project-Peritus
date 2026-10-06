@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3535,
-        "tip_oid": "fdaa2dfbb7ff3889c301b38001fcd2b70768396e",
-        "prefix_sha256": "ac88b541d1f70a126a8db1123bcabf046e1967752a4ad9f86acdb36d40fe0a3a"
+        "sequence": 3536,
+        "tip_oid": "1d1f76067310f8c50ba292bb67672b0cfc7198d5",
+        "prefix_sha256": "e148eb9a225d49d738119391e564d913f33f3c159d15d939f6ef601a0df41582"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2901,
+  "next_comment_id": 2902,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31581,7 +31581,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T17:32:57.982167512Z",
+      "updated_at": "2026-10-06T17:41:36.491350994Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31594,6 +31594,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAm66MSe+aRQ7h/PaQJK5W3foRirGGEEw+0yIGSAV74cnyiHUcP90S8+A642+8myuU530Ft7UEHrqkDepMsIAYDA=="
+        },
+        "7e1e2fc9-5b9a-4252-bd3d-63bf503f8d05": {
+          "display_id": 2901,
+          "author": "6ME5",
+          "content": "Final issue #105 implementation and affected checks are complete. Exactly 83 issue paths are staged; unrelated provider/document edits and audit artifacts remain unstaged.\n\nPassed: final 43 daemon checkpoint tests, both affected daemon integration tests, 9 TUI checkpoint tests, full affected core suites, strict Clippy for all nine affected packages, full workspace all-target/all-feature compilation, final Windows GNU all-target cross-compilation, formatting, staged diff check, generated schema/fixture comparison, architecture, ordinary API and documentation checks. Strict Verus verification for all nine affected packages completed successfully with --no-cheating; no claim is made that ordinary filesystem effects are fully formally proved.\n\nAn additional verify-trust register check cannot finish: it tries to read crates/app/peritus-app-protocol/src/product/conversation.rs, which does not exist. The same exact missing-path failure reproduces on a fresh archive of unchanged HEAD 1e872d134cd6ab9a3937069ef8eec264736fe0c5, on HEAD plus the 83 issue files, and with a freshly rebuilt xtask on the current checkout. No verification registry or checker file belongs to this issue diff. This is an existing register/checker failure, distinct from an issue #105 regression.\n\nThe pre-commit skill says a failed check blocks committing until fixed or explicitly accepted. Issue #105 remains open and staged, with no commit/push yet, while that qualification is resolved. Do not claim verify-trust passed and do not close this issue before its delivery commit is pushed.",
+          "created_at": "2026-10-06T17:41:36.487188180Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiNjuXu33R0ymizGqfMVeS0I9CsgZuBhuJnX0FiU1rS7Ang3pz8EDi2Yi9X0/SgIB/1YrXuag0Pg8FP2UA64/BQ=="
         },
         "b75714c0-60fa-45fd-8e81-478193ece6e6": {
           "display_id": 2177,
