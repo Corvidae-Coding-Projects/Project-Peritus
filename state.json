@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3530,
-        "tip_oid": "238dc7bfd64eed7c010639a80c0f4a7a79326f69",
-        "prefix_sha256": "adf09bba85f375c05c12948991e90f15a6ea2ef89ee0a235e8e405e7aa18b825"
+        "sequence": 3531,
+        "tip_oid": "b51e9d7e21acd721093bf4512817d1a238700540",
+        "prefix_sha256": "a048d3c19fd2c3a1a43ad6f40622a864c30d52bd887aaca10bea39b45a6e7c51"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2896,
+  "next_comment_id": 2897,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31581,11 +31581,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T13:16:26.279569900Z",
+      "updated_at": "2026-10-06T15:53:21.633931516Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0f174a9f-9951-46ce-a5f2-a3c9d404fbaa": {
+          "display_id": 2896,
+          "author": "6ME5",
+          "content": "[action] Inspecting issue #105 typed checkpoint coverage and range/directory restore paths; #104 committed and pushed; monitoring PR 112 CI.",
+          "created_at": "2026-10-06T15:53:21.629615058Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAm66MSe+aRQ7h/PaQJK5W3foRirGGEEw+0yIGSAV74cnyiHUcP90S8+A642+8myuU530Ft7UEHrqkDepMsIAYDA=="
+        },
         "b75714c0-60fa-45fd-8e81-478193ece6e6": {
           "display_id": 2177,
           "author": "6ME5",
