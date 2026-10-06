@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3544,
-        "tip_oid": "0db647c14204968481ed6000257eb6d3831cfa37",
-        "prefix_sha256": "5a55aa0e2b1bd6a1f122a320972d0ce9dd5c86ecdfc67b296ec0a49c8f144fed"
+        "sequence": 3545,
+        "tip_oid": "4108166d4b3edadc471149d364ff8070869133e8",
+        "prefix_sha256": "843744a1cbef9763d064ab22ce29e6438bfabdc0d5dfcf207d0b3fb6cdf7c488"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 823,
-  "next_comment_id": 2905,
+  "next_comment_id": 2906,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31618,7 +31618,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:16:26.276169548Z",
-      "updated_at": "2026-10-06T17:44:56.498107814Z",
+      "updated_at": "2026-10-06T18:07:18.667284560Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31683,6 +31683,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqah1y6Yi1LZIdNHQ6eD/L2BoQXaVgG/Vw97wx/++frzt3qaKcsZjPNEPphO9mhCN0vjN9wM0cSbcsREeE135CA=="
+        },
+        "ed79c8a7-0053-483d-a6c4-69e561ed771f": {
+          "display_id": 2905,
+          "author": "6ME5",
+          "content": "Delivered commit 1ad514009354a29471ef0cb83ba1a5c56a4ee571, fix(checkpoints): restore ranges and empty directories (#105), pushed to existing PR 112 against develop. The commit includes exactly the 83 reviewed checkpoint/protocol/transaction files; unrelated provider/document edits and audit artifacts remain untouched.\n\nCheckpoint coverage now explicitly distinguishes whole files, selected byte/line intervals, absent paths and empty directories. Saved selected intervals stream over the checked current preimage and preserve surrounding current bytes and mode. Directory types/permissions and owned file-directory replacements share the same authorized C1 transaction, conflict rules, rollback and restart reconciliation. Durable prepared restores retain actual materialized postimages before effects; cold restart checks the same plan/preview identity and exact idempotent receipts, with recovery sealing and undo based on those actual targets. Optional feature negotiation protects legacy clients; old wire formats, checkpoint capture bytes, accepted directory exclusions and prepared v1 recovery identities remain usable. No new total-size, range-count, retry or elapsed-work allowance was introduced.\n\nFinal acceptance passes: full core suites across patch/workspace/product-runner/app-protocol/app-client/tools-fs/harness; 43 daemon checkpoint unit + both affected integration + 9 TUI checkpoint tests; large/many inputs, source above 64 MiB, 2048 disjoint ranges, type/mode replacement, external children, divergent preimages, interrupted publication/restore and cold receipt replay. Strict all-target/all-feature Clippy for all nine packages, full workspace compile, Windows GNU all-target compile, generated schema/fixtures, format and diff checks pass. Final strict Verus --no-cheating verification passes across all nine affected packages; ordinary filesystem effects are not claimed fully formally proved and native Windows runtime qualification was not performed.\n\nThe previous commit hold is resolved: the normal complete local xtask all gate passes against the exact selected tree (86 packages, 4907 source/trust files, 3871 formal-boundary files, 15006 executable entries, 273 docs, 147 pinned actions). The old hold incorrectly invoked protected proof approval as local implementation validation. Child #822 is separately committed, pushed and closed; it fixes the stale-declaration IO abort without approving stale hashes or changing protected workflows. The rebuilt checker reports aggregated trust violations for obsolete historical records instead of the old missing-file crash. Protected approval history remains stale and requires separate independent review; it is not claimed green.\n\nPR body now reflects this implementation, its validation and qualification limits. Monitor CI on exact head 1ad514009354a29471ef0cb83ba1a5c56a4ee571; older-head results are not acceptance evidence for this commit.",
+          "created_at": "2026-10-06T18:07:18.662757805Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASV6ClvFSsbKvt/Fqa2lAboG2wgygHHgNDvG6lbtOwGa8KgayYeZn/bcppBoyTsIRw6Xaabyb7rVSz6LHj1XGCw=="
         },
         "f03926be-a918-4c11-ad7f-ea9532bedbef": {
           "display_id": 2898,
