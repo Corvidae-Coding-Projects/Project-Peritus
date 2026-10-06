@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3640,
-        "tip_oid": "0e4c16fd4c6d6b1e314b6cc5592d3de6a3a3bdd3",
-        "prefix_sha256": "5c8a4ce208927d144321306489f5d7a69151410903daed4138f0c3c1f7b3bbd1"
+        "sequence": 3641,
+        "tip_oid": "9090148709474dad8e7fccfa6b2fb540eda23e65",
+        "prefix_sha256": "3e7b9ee0b4caabf91d9aadf06084cc933513bd23af522174c936def2d38b34d5"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2969,
+  "next_comment_id": 2970,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:02:24.249124147Z",
+      "updated_at": "2026-10-06T23:08:49.417790063Z",
       "labels": [
         "ci"
       ],
@@ -22307,6 +22307,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAokCPr8S7QxV1zsRDZpm6nZVklOyt089gsFrGNZaoqRgzNZpL6c6XyCPq1CSdRC/GXGBp1HtNf8nHD2fv2/Z4CA=="
+        },
+        "814e314b-8167-427d-a2b2-e906456c8f01": {
+          "display_id": 2969,
+          "author": "6ME5",
+          "content": "Native Linux acceptance confirmed on exact pushed head d2eb633326654d9d629beb26efa0120c8bdf1677: Foundation model-orchestration job112543532853 and testing job112543532886 both SUCCESS. Their actual logs confirm all seven real Codex process tests including isolated immutable-alias/live-writer regression, obstructed trace cleanup and unknown-count preservation, wrong-category receipts, distinct redacted fixture I/O failure, core redacted OS spawn cause, and shared failed-exercise evidence with exactly one invocation and teardown. URLs: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37543905215/job/112543532853 and https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37543905215/job/112543532886 . Preserved API metadata and logs in /tmp/peritus-issue825-linux-{provider,conformance}-success.{json,log}. Windows testing and provider shards are running; both macOS shards queued. Issue825 remains OPEN until remaining native acceptance. Latest fullPR snapshot121SUCCESS58running262queued5skippedzeroFAILURE.",
+          "created_at": "2026-10-06T23:08:49.405852226Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMZS8vtDCUSL8AUpm/0ebqCDIwLn+TUrMsa5PX4g9JvO9BNcOvpcbIEx9PKA4DIqHeuy2g4yrM1drNhsGNDHzDw=="
         },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
