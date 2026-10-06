@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3607,
-        "tip_oid": "f94db0e9e35f51cbdd53687d911f0c962bc0a935",
-        "prefix_sha256": "e81bdfbdf4d783886d24987c7801895fcbf20df5ea032e7b4d4ed04d4fb673a0"
+        "sequence": 3608,
+        "tip_oid": "612ded97128339d30ece4b877a6f64d40be8c86d",
+        "prefix_sha256": "9ecc8db819f29dedb2b61095e1f96b7fca11fd9bd13e085d57db54238159a085"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2944,
+  "next_comment_id": 2945,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:23:53.901147532Z",
+      "updated_at": "2026-10-06T21:29:08.984958944Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26040,6 +26040,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA4lVyJ1ZPkpoRH7Y/vHTUswZum7Y7Q7irBrgGcMMRjl/+sD8Ov/Hp+A5cuCXPAznDTZ6V0qtRU3JhZDL86UxFDQ=="
+        },
+        "0bbbb7ec-328c-4482-a5a8-d5dfe2e530e2": {
+          "display_id": 2944,
+          "author": "6ME5",
+          "content": "[action] Verified #108 result2942 is recorded for pushed commit42236bb697be2469a8ce5710f582088cb0bf4ab9 on PR112/develop. Final local qualification:902 top-level tests including doctests,11 existing ignored fixtures; strict workspace lint, Windows GNU workspace check, fmt, strict two-root Verus and rebuilt xtask all pass. Scope six files only; unrelated files preserved. #109 closure reverified. Latest observed new-head CI:30 successful,60 running,156 queued,5 skipped,zero failures. Native runtime-tools Foundation jobs macOS112508938363 and Windows112508942507 are still queued (run37533431757); shard jobs have not yet materialized. #108 remains active/claimed/open pending native confirmation; #824 remains open. Persistent new-head watch58934 is running. Next: watch and inspect native CI, close #108 with native result evidence after acceptance regressions pass, then claim the next tracker issue. Do not mark the overall goal complete or expand scope.",
+          "created_at": "2026-10-06T21:29:08.973644619Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzHWS63arUxvgwoDwNpOzMJka98WcJcFfZnaO76rh8e0lWI6HJUiV/riPsxSst2WoBJIfW+RcP7YKb+O/KM1KAg=="
         },
         "135af922-8ac0-4c80-bea1-18e8432c96f5": {
           "display_id": 2932,
