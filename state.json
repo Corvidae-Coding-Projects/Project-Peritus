@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3537,
-        "tip_oid": "f11f8602296e15120552af194afc51cd1fc9083d",
-        "prefix_sha256": "ace92d0389173aa704eb614682afdd1c4ab331f926a8013dce28bf94396a3cb4"
+        "sequence": 3538,
+        "tip_oid": "9d27b14bff66bfc214f3b6bf3cfd5b7bdfcd8f55",
+        "prefix_sha256": "c2c481cb99342068417f2063593c7e7cd516dce507b21aff955645c8975890d7"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 822,
+  "next_display_id": 823,
   "next_comment_id": 2903,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
@@ -609,6 +609,7 @@
     "a64e058b-295a-594e-9ebf-31df9aca04ef": 787,
     "a685b204-d03b-5d99-9d5f-7e21a61a3e85": 662,
     "a6fde681-2598-4b91-b824-d011ade3c601": 83,
+    "a72bbfc0-4346-4483-b751-6f47934ee18e": 822,
     "a8700e44-572b-5dfa-9d32-953167b3a6e8": 610,
     "a8734b0f-cd23-5344-8182-4468b78a322c": 329,
     "a8cc5bd2-3a32-5c95-9e97-9f4962e40355": 254,
@@ -27973,6 +27974,18 @@
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg2zCwVJa26tPdtw6lye1ZowacgFhO4NNWx7G/HOCl7C8AAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbS0+BTX6ezw7WTiPtn70he3h5ZekeBDf8bfzUvgXeLWprjZQ+BRVBiemJna8C0n1+kH89NPMnG4DxBspDOmRBg=="
         }
       }
+    },
+    "a72bbfc0-4346-4483-b751-6f47934ee18e": {
+      "uuid": "a72bbfc0-4346-4483-b751-6f47934ee18e",
+      "display_id": 822,
+      "title": "Report stale proof-impact sources without aborting local development",
+      "description": "Authorized by the user after #105 was incorrectly held on an unrelated protected proof-approval check. Root cause: manifest_impact::validate_source reads every declared historical current source before inventory reconciliation, so a removed source aborts as PERITUS-XTASK-IO-001 and hides stale/missing fingerprint diagnostics. The existing xtask all local gate passes the exact #105 overlay (86 packages, 4906 source/trust files, 3871 formal-boundary files, 15006 executable entries, 273 docs, 147 action pins). Correct the checker to hash only compiler/policy-discovered current inputs and report stale declarations through normal fail-closed inventory diagnostics. Add regressions for removed/out-of-scope paths and prove local validation remains distinct from protected approval. Preserve approval records, hashes, review requirements and protected CI. Deliver separately on the existing PR branch, then return to #105.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "d1db310b-7731-5d58-9369-497f32b29bef",
+      "created_by": "6ME5",
+      "created_at": "2026-10-06T18:00:46.696804989Z",
+      "updated_at": "2026-10-06T18:00:46.696804989Z"
     },
     "a8700e44-572b-5dfa-9d32-953167b3a6e8": {
       "uuid": "a8700e44-572b-5dfa-9d32-953167b3a6e8",
