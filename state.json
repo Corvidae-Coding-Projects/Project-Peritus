@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3602,
-        "tip_oid": "7608ceb322b3315bf97c255e5836542c3f949b2a",
-        "prefix_sha256": "98c4ad540e3f79d14b98d92d0447ab1c6b27bbbfb40c47eb8868b3d2cf21a8e1"
+        "sequence": 3603,
+        "tip_oid": "eb96c5a741ea9584811c09b75fbcaadfd567f1a1",
+        "prefix_sha256": "c130f34e9584d28dd79abb1850bef3250b951f1b43204eba42f3a58ef381f13c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2939,
+  "next_comment_id": 2940,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T20:39:19.845632617Z",
+      "updated_at": "2026-10-06T21:11:26.249988655Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26040,6 +26040,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAWvV92EC1UMPQ2PidNgwaQtXjdYW1q01H7ssgpwy2b1tPSo4EiXZ9AvbQTr4AjtBW7Avkm5WS5m8ZlEt/vL6/AA=="
+        },
+        "2bedc98c-e973-4c79-a680-f387a01da1a2": {
+          "display_id": 2939,
+          "author": "6ME5",
+          "content": "[action] Closed #109 after delivering commit 01df76afdd3a05a161d287cae64ec290b0333b80 to PR 112/develop and recording result 2938. All 19 affected package suites passed (993 tests); final patch recheck, strict workspace lint, native/Windows compile, strict affected Verus, formatting and rebuilt xtask all passed. Claimed reopened #108 and verified active session/lock. Fully read scoped_inspection/listing.rs, listing/tests.rs, listing/storage.rs and filesystem_tools.rs. Windows membership acceptance relies on directory metadata, which does not detect the deterministic persisted child insertion in native CI; the macOS fixture fails while creating an unsupported non-UTF-8 name before inspection. Continue reading native entry identity, retained publication and callers before an exact membership repair that preserves protected entries, typed exclusions and scalable retained observations; correct the platform fixture without weakening production handling. No new #108 edits yet. #824 stays open. New-head PR watch 35337 is active; unrelated provider/document and untracked artifacts remain preserved.",
+          "created_at": "2026-10-06T21:11:26.245621769Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJjAzqs/y0OBfpL+SM+eUD9ArbcMZzNogkMYG/X5FsyH1omWWO8y1J/TVdTKNuamIYNSnyHm7JR0r9+uGXKYUCA=="
         },
         "3eb9e5c2-27e2-4ee0-bac5-e57c1801bb89": {
           "display_id": 2927,
