@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3561,
-        "tip_oid": "a6269cc56ccb1b727891c5da7592ac5623c7a190",
-        "prefix_sha256": "026e21b8eb7a68fc5136046c2aeca2130c362311eb549af7320a72cb6015ca59"
+        "sequence": 3562,
+        "tip_oid": "f749a203991bd858e9d25177567128c28908fd61",
+        "prefix_sha256": "5b55b3c8a6b452b6b7b2386795d6ce12defa911ed5a73fc750a220a7b999747c"
       },
       "NWAR": {
         "sequence": 39,
@@ -15288,12 +15288,13 @@
       "display_id": 106,
       "title": "[L006] Patch creation, replacement, deletion, and encoding admission limits",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L006.\n\n- `crates/runtime/peritus-patch/src/set.rs:11-16,40-60` declares **8 MiB per file**, **8 MiB aggregate final payload**, and **1,024 operations**. Any present preimage above 8 MiB is rejected, including a delete operation with no final bytes. `content.rs:31-39` rejects transformed final bytes above 8 MiB.\n- `verified.rs:19-32` requires a nonempty patch and enforces both operation count and final-byte totals. `set.rs:158-196` canonicalizes through `CodecLimits::PRODUCTION`; encoder errors collapse to a generic patch-bounds error. `set.rs:88` additionally requires transaction-manifest capacity.\n- Daily-driving effect: ordinary large files cannot be edited or deleted through this patch representation; a sufficiently large multi-file change cannot be admitted as one patch. The production codec and transaction-manifest bounds may further restrict payloads; those definitions/callers are pending complete reads.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.850887080Z",
-      "updated_at": "2026-10-06T18:45:20.162416255Z",
+      "updated_at": "2026-10-06T18:45:52.634477686Z",
+      "closed_at": "2026-10-06T18:45:52.633015007Z",
       "labels": [
         "daily-driving-limiter"
       ],
