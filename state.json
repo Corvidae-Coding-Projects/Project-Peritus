@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3569,
-        "tip_oid": "4bbf62e05aac8bcb250db64d8f204760e633512a",
-        "prefix_sha256": "85ea940fa3b07a81581fa6321618a451df0b35c2b17482f1d6249fd25ebdad31"
+        "sequence": 3570,
+        "tip_oid": "9ab3c5100d20c9e1731d23b014bceccb01665eee",
+        "prefix_sha256": "339d377e6dfe651b6273f572bb19d25c8e48e3d59dd316f070fd46107607a253"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2918,
+  "next_comment_id": 2919,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37278,7 +37278,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.855919839Z",
-      "updated_at": "2026-10-06T19:13:55.585910890Z",
+      "updated_at": "2026-10-06T19:14:32.558295722Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -37291,6 +37291,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcVhOZy46wUBLBn86jRRcm74BuSiuZc6LIP/s6NIh/2DjoAv77R/Xz/d+w8p+MuvqxxHj/MW/mQjC/2MQ7j1VDw=="
+        },
+        "3167cc46-1cd9-471a-ab99-bcbf4eabdffe": {
+          "display_id": 2918,
+          "author": "6ME5",
+          "content": "Delivered and pushed to PR #112 in commit 7a881d23096b38dc6d1de0a78c00c14c61658d2b. Removed the C1 complete-source/included-buffer/range ceilings and identical A3/C0 mirror guards across preview, confirmation, refresh, canonical replay and restart. A shared fixed-memory scanner preserves complete stable-source SHA, exact selected intervals and bytes, no-follow/root/file checks and original I/O errors. Owner-backed retained storage plus version-one observation/cursor records resumes accepted selections after reader drop/reopen without rereading changed ambient sources; 64KiB physical pages have no total page/byte allowance. Full body verification on reopen and storage-version checks around reads reject corruption; foreign/out-of-range cursors and source/output aliasing reject. Caller owns durable publication and namespace; no ephemeral session/expiry introduced. Existing wire encodings, consent and exact receipts remain unchanged. Three regressions failed on the old code and pass beyond the former 64MiB source, 8MiB inclusion and structural-range limits. Verified 1025 pages, persisted cursor/metadata reopen with changed source, wide line counters, exact CRLF/digests, empty reads, source races, storage failures/corruption, alias rejection and real read-only workspace. Large-source actual daemon snapshot/refresh reaches the governed provider with the correct selected bytes; authenticated native runtime shutdown/restart preserves references and exact receipts. Final affected workspace/tools-FS/app-protocol/runner suites, both file runtime tests, seven relevant daemon unit tests, 44 default-parallel checkpoint tests, strict five-package all-target/all-feature Clippy, formatting, full native and Windows GNU workspace compilation, strict root-scoped C1 Verus (10 verified/0 errors), and local xtask all pass against the selected tree. Complete 23-path staged diff reviewed and byte-matched to the isolated archive; unrelated provider/document edits excluded. Windows runtime execution and ordinary filesystem proof completeness are not claimed. Independent selected attachment policies #227, FS inline schemas #685, JSON transport #202 and context retention #111 remain open. Protected proof-approval inventory remains unapproved and unchanged. Closing this issue after verified commit and successful push; fresh PR CI is being monitored.",
+          "created_at": "2026-10-06T19:14:32.554247825Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9AFsEYp0i8T1ND2T8LTTgEo/JbRXZA3Y4ov9195AZU7vMtIQ187iIAYTlRB2EHr+HOJncSko7kMMyrqRPIDkBw=="
         },
         "4e770c46-5a38-49ce-9a96-21263eb14eff": {
           "display_id": 2917,
