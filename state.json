@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3560,
-        "tip_oid": "29e3d8c6101e853743dffae67da28c85ba018b4b",
-        "prefix_sha256": "4672d391f9a9199aa74260e7cbb9fa9394b6768c3147865317e8b463964c7a5d"
+        "sequence": 3561,
+        "tip_oid": "a6269cc56ccb1b727891c5da7592ac5623c7a190",
+        "prefix_sha256": "026e21b8eb7a68fc5136046c2aeca2130c362311eb549af7320a72cb6015ca59"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2912,
+  "next_comment_id": 2913,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15293,7 +15293,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.850887080Z",
-      "updated_at": "2026-10-06T18:37:45.629120515Z",
+      "updated_at": "2026-10-06T18:45:20.162416255Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15343,6 +15343,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7ciJoNnusqclUCBVcF9xa6x94+nrR3FRE8OMvF7B0YX58e/+KJhU3lwyfnMmP2YEBFtevgc1qAuMFlVukoxuBg=="
+        },
+        "f50ff784-b9bc-41b8-bdb2-287a0c3ad00a": {
+          "display_id": 2912,
+          "author": "6ME5",
+          "content": "Delivered 3f6449e57f4f17d38391ab586668134d908bc318 — fix(patch): remove synthetic mutation admission ceilings (#106), pushed to the existing PR #112. FinalFile, PatchSet and FS typed/schema mutation inputs no longer reject work at 8MiB per-file/preimage/aggregate, 1024 operations, 16MiB canonical messages or 65535 implicit-directory metadata. Owned SnapshotFile sources can join ordinary patches. New oversized ordinary patches use v4 metadata authority and deterministic 64KiB physical manifest pages, with wide counts, per-page and full checksums, no page-count/work allowance, and one synchronized atomic publication and exact transaction receipt. All bodies are verified before target effects; complete preimages/backups, authority, scope/path/type checks and rollback remain enforced. Previously accepted inline and snapshot file/directory identities and receipts match four fixtures captured from unchanged HEAD 1ad514009; schemas 1/2/3 remain readable.\n\nVerification: large replacement/deletion, mixed inline/streamed finals, typed 1025-edit fully authorized C1 action, complete C4-router large-delete dispatch; v4 authority binds complete intent; 65536 entries/directories and >16MiB manifests round-trip; forged counts/hash/tails reject; storage pressure and streamed drift leave no effects and retry the same authority; interrupted 1026-operation apply reopens, rolls back all preimages, retries the same identity and reopens the exact installed receipt; incomplete next-root publication preserves its predecessor. Final complete changed-crate suites pass (patch 42 unit, 1 compatibility, 4 model, 6 transaction, 2 doc tests; FS 1 unit, 5 filesystem, 5 dispatch; protocol 1 unit, 12 integration). Six consumer suites, strict all-target/all-feature Clippy for changed crates and consumers, native whole-workspace and Windows GNU compilation, 9 TUI checkpoint tests, strict affected Verus, formatting and final exact-selected-tree xtask all pass. Combined final tree also passes 44 default parallel daemon checkpoint tests and both affected integrations after separately delivered/closed dependency #823. Final local all validates 86 packages/4913 sources/3877 formal-boundary files/15010 ordinary-safe entries/273 docs/147 pinned actions.\n\nQualification: #202 JSON member/content transport and #394 HarnessLimits remain independently open; no substitute cap was added or separate issue silently widened. Historical public MAX_* names remain source-compatible legacy encoding values, not PatchSet guards. Full operation metadata and exact receipt bytes remain memory-owned; there is no bounded-total-memory claim. Native Windows runtime was not run, and strict Verus is not a full formal proof of ordinary filesystem effects. Preexisting unrelated provider/document edits were excluded; local all used the exact selected tree because an unrelated provider macro is unsupported by its scanner. Protected proof-approval inventory remains a separate unchanged gate.",
+          "created_at": "2026-10-06T18:45:20.157975388Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA03HVDCketWjtrsglIZHTYG3Rsp2OM1M1wy3FtPNEldy/nR74cEtBdpbADd4CRZ16JtrW6huagxXFZ0FvPiONBg=="
         }
       }
     },
