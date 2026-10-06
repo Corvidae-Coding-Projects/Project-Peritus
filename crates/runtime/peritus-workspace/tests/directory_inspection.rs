@@ -67,32 +67,19 @@ fn retained_listing_resumes_exact_names_after_source_and_reader_are_gone() {
 fn unsupported_children_have_exact_native_identity_without_blocking_usable_names() {
     use peritus_patch::WorkspacePath;
     use peritus_workspace::DirectoryExclusionReason;
-    use std::{
-        ffi::OsString,
-        os::unix::{ffi::OsStringExt as _, fs::symlink, net::UnixListener},
-    };
+    use std::os::unix::{fs::symlink, net::UnixListener};
     let source = tempfile::tempdir().unwrap();
     for name in ["good", "a:b", "a\\b", "name.", "NUL", "line\nbreak"] {
         std::fs::write(source.path().join(name), b"accepted").unwrap();
     }
-    std::fs::write(source.path().join(OsString::from_vec(b"bad-\xff".to_vec())), b"raw").unwrap();
-    std::fs::write(
-        source.path().join(OsString::from_vec(b".peritus-txn-\xff".to_vec())),
-        b"hidden",
-    )
-    .unwrap();
+    std::fs::write(source.path().join(".peritus-txn-hidden"), b"hidden").unwrap();
     std::fs::create_dir(source.path().join(".git")).unwrap();
     symlink("good", source.path().join("linked")).unwrap();
     let _socket = UnixListener::bind(source.path().join("socket")).unwrap();
     let inspection = open(source.path());
     let listing = inspection.inspect_directory(None).unwrap();
-    assert_eq!(listing.items().len(), 9);
+    assert_eq!(listing.items().len(), 8);
     assert_eq!(listing.items().iter().filter(|item| item.metadata().is_some()).count(), 6);
-    let raw =
-        listing.items().iter().find(|item| item.name().encoded_bytes() == b"bad-\xff").unwrap();
-    assert_eq!(raw.exclusion(), Some(DirectoryExclusionReason::UnrepresentableName));
-    assert_eq!(raw.name().native_name().unwrap(), OsString::from_vec(b"bad-\xff".to_vec()));
-    assert_eq!(raw.name().display_name(), "unix:6261642dff");
     assert!(
         listing
             .items()
@@ -137,6 +124,39 @@ fn unsupported_children_have_exact_native_identity_without_blocking_usable_names
     let escaped =
         listing.items().iter().find(|item| item.name().encoded_bytes() == b"line\nbreak").unwrap();
     assert_eq!(escaped.name().display_name(), "line\\nbreak");
+}
+
+// The macOS native namespace rejects these names at creation. The general Unix
+// unsupported-child, protected-name and durable-page checks above still run there.
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn raw_native_identities_and_protected_names_survive_retained_capture_exactly() {
+    use peritus_workspace::DirectoryExclusionReason;
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt as _};
+    let source = tempfile::tempdir().unwrap();
+    std::fs::write(source.path().join("good"), b"accepted").unwrap();
+    let name = OsString::from_vec(b"bad-\xff".to_vec());
+    std::fs::write(source.path().join(&name), b"raw").unwrap();
+    std::fs::write(
+        source.path().join(OsString::from_vec(b".peritus-txn-\xff".to_vec())),
+        b"hidden",
+    )
+    .unwrap();
+    let inspection = open(source.path());
+    let listing = inspection.inspect_directory(None).unwrap();
+    assert_eq!(listing.items().len(), 2);
+    let raw =
+        listing.items().iter().find(|item| item.name().native_name().unwrap() == name).unwrap();
+    assert_eq!(raw.exclusion(), Some(DirectoryExclusionReason::UnrepresentableName));
+    assert_eq!(raw.name().encoded_bytes(), b"bad-\xff");
+    assert_eq!(raw.name().display_name(), "unix:6261642dff");
+    let mut retained = inspection.capture_directory(None, tempfile::tempfile().unwrap()).unwrap();
+    let mut items =
+        retained.read_page(retained.cursor().unwrap(), u64::MAX).unwrap().items().to_vec();
+    items.sort_unstable_by(|left, right| {
+        left.name().encoded_bytes().cmp(right.name().encoded_bytes())
+    });
+    assert_eq!(items, listing.items());
 }
 
 #[test]

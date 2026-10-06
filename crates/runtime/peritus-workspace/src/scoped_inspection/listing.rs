@@ -10,6 +10,7 @@ use cap_fs_ext::MetadataExt as _;
 use cap_std::fs::{Dir, Metadata};
 use peritus_patch::WorkspacePath;
 
+mod membership;
 mod record;
 mod retained;
 mod storage;
@@ -170,12 +171,14 @@ impl FolderInspection {
         let directory = self.listing_directory(path)?;
         let before = directory.dir_metadata().map_err(snapshot_io)?;
         reject_cap_reparse(&before)?;
+        let mut membership = membership::DirectoryMembership::observe(&directory)?;
         for entry in directory.entries().map_err(snapshot_io)? {
             let entry = entry.map_err(snapshot_io)?;
             let name = NativeEntryName::observed(&entry.file_name())?;
             if name.protected() {
                 continue;
             }
+            membership.visit(&name)?;
             let native = name.native_name()?;
             let observed = directory.symlink_metadata(&native);
             let observed = if let Some(storage) = storage {
@@ -193,8 +196,12 @@ impl FolderInspection {
                 });
             accept(DirectoryItem { name, observation })?;
         }
+        membership.finish_pass()?;
+        membership.verify(&directory)?;
+        let reopened_directory = self.listing_directory(path)?;
+        membership.verify(&reopened_directory)?;
         let after = directory.dir_metadata().map_err(snapshot_io)?;
-        let reopened = self.listing_directory(path)?.dir_metadata().map_err(snapshot_io)?;
+        let reopened = reopened_directory.dir_metadata().map_err(snapshot_io)?;
         if !same_directory(&before, &after)?
             || !same_directory(&before, &reopened)?
             || FolderIdentity::observe(self.identity.root()).map_err(snapshot_io)? != self.identity

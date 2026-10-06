@@ -18,18 +18,15 @@ impl FolderInspection {
     ) -> Result<DirectoryMode, WorkspaceError> {
         let directory = self.open_directory(path)?;
         let before = directory.dir_metadata().map_err(snapshot_io)?;
-        if directory
-            .entries()
-            .map_err(snapshot_io)?
-            .next()
-            .transpose()
-            .map_err(snapshot_io)?
-            .is_some()
-        {
+        if !directory_empty(&directory)? {
+            return Err(changed());
+        }
+        let reopened_directory = self.open_directory(path)?;
+        if !directory_empty(&directory)? || !directory_empty(&reopened_directory)? {
             return Err(changed());
         }
         let after = directory.dir_metadata().map_err(snapshot_io)?;
-        let reopened = self.open_directory(path)?.dir_metadata().map_err(snapshot_io)?;
+        let reopened = reopened_directory.dir_metadata().map_err(snapshot_io)?;
         if !same_directory(&before, &after)?
             || !same_directory(&before, &reopened)?
             || FolderIdentity::observe(self.identity.root()).map_err(snapshot_io)? != self.identity
@@ -47,6 +44,10 @@ impl FolderInspection {
         }
         Ok(directory)
     }
+}
+
+fn directory_empty(directory: &Dir) -> Result<bool, WorkspaceError> {
+    Ok(directory.entries().map_err(snapshot_io)?.next().transpose().map_err(snapshot_io)?.is_none())
 }
 
 pub(super) fn same_directory(before: &Metadata, after: &Metadata) -> Result<bool, WorkspaceError> {

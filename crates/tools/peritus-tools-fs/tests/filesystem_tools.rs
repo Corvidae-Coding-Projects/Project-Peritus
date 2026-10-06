@@ -114,20 +114,50 @@ fn every_mutation_form_compiles_to_one_canonical_patch_set() {
 #[cfg(unix)]
 #[test]
 fn unsupported_native_children_do_not_block_usable_discovery_and_search() {
-    use std::{
-        ffi::OsString,
-        os::unix::{ffi::OsStringExt as _, fs::symlink},
-    };
-    let fixture = support::read_fixture("fs-native-children");
+    use std::{ffi::OsStr, os::unix::net::UnixListener};
+    let fixture = support::read_fixture("fs-node");
+    let _socket = UnixListener::bind(fixture.root.join("node")).unwrap();
+    assert_native_exclusions(
+        &fixture,
+        OsStr::new("node"),
+        OsStr::new("other-node"),
+        peritus_workspace::DirectoryExclusionReason::SpecialNode,
+    );
+}
+
+// Darwin's native namespace rejects non-UTF-8 creation before inspection is reached.
+// Special-node/link coverage above still runs there; raw-byte identity stays exercised here.
+#[cfg(all(unix, not(target_os = "macos")))]
+#[test]
+fn raw_native_names_remain_exact_in_discovery_search_and_exclusion_digests() {
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt as _};
+    let fixture = support::read_fixture("fs-raw");
+    let name = OsString::from_vec(b"native-\xff".to_vec());
+    std::fs::write(fixture.root.join(&name), b"opaque").unwrap();
+    assert_native_exclusions(
+        &fixture,
+        &name,
+        &OsString::from_vec(b"other-\xff".to_vec()),
+        peritus_workspace::DirectoryExclusionReason::UnrepresentableName,
+    );
+}
+
+#[cfg(unix)]
+fn assert_native_exclusions(
+    fixture: &support::ReadFixture,
+    name: &std::ffi::OsStr,
+    renamed_name: &std::ffi::OsStr,
+    reason: peritus_workspace::DirectoryExclusionReason,
+) {
+    use std::os::unix::{ffi::OsStrExt as _, fs::symlink};
     symlink("README.md", fixture.root.join("linked.txt")).unwrap();
-    std::fs::write(fixture.root.join(OsString::from_vec(b"native-\xff".to_vec())), b"opaque")
-        .unwrap();
     let service = FsReadService::new(&fixture.workspace);
     let discovered = service.discover(&DiscoverInput::new(None, 8, 100).unwrap()).unwrap();
     assert_eq!(discovered.exclusions().len(), 2);
     assert!(
-        discovered.exclusions().iter().any(|value| value.name().encoded_bytes() == b"native-\xff"
-            && value.reason() == peritus_workspace::DirectoryExclusionReason::UnrepresentableName)
+        discovered.exclusions().iter().any(
+            |value| value.name().encoded_bytes() == name.as_bytes() && value.reason() == reason
+        )
     );
     let rendered = RenderedOutput::discover(&discovered).unwrap();
     assert_eq!(rendered.structured().property("excluded_count").unwrap().as_i64(), Some(2));
@@ -154,11 +184,7 @@ fn unsupported_native_children_do_not_block_usable_discovery_and_search() {
             .as_i64(),
         Some(2)
     );
-    std::fs::rename(
-        fixture.root.join(OsString::from_vec(b"native-\xff".to_vec())),
-        fixture.root.join(OsString::from_vec(b"other-\xff".to_vec())),
-    )
-    .unwrap();
+    std::fs::rename(fixture.root.join(name), fixture.root.join(renamed_name)).unwrap();
     let renamed = service.discover(&DiscoverInput::new(None, 8, 100).unwrap()).unwrap();
     assert_eq!(renamed.entries(), discovered.entries());
     assert_eq!(renamed.exclusions().len(), discovered.exclusions().len());
