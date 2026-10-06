@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3603,
-        "tip_oid": "eb96c5a741ea9584811c09b75fbcaadfd567f1a1",
-        "prefix_sha256": "c130f34e9584d28dd79abb1850bef3250b951f1b43204eba42f3a58ef381f13c"
+        "sequence": 3604,
+        "tip_oid": "6234e81a3c207d61cc776263a2881138be3837bc",
+        "prefix_sha256": "619e722ba0a187a88f459d58ddb94ada276c7a1fa7c456e3cbee9b3936d0437e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2940,
+  "next_comment_id": 2941,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:11:26.249988655Z",
+      "updated_at": "2026-10-06T21:15:30.487602196Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26137,6 +26137,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPa8SYG9wSsguPPsOazR9UX9ZqYP/NFEwHJd/ffgf1LOkc9Uo5fcWwK7+JkuWcFCjBlea31+NCyhnYIE80+SoDA=="
+        },
+        "c8b6f0ab-8120-4f9d-8f25-c247968e1eea": {
+          "display_id": 2940,
+          "author": "6ME5",
+          "content": "Reopened #108 repair after complete reads of native names, handle-relative directory checks, listing/capture/storage/reopen, directory and FS integration tests, and discovery/search callers. Use one exact native-name membership witness captured before callbacks, with order-independent matching and explicit rejection of unknown, repeated or missing children during both capture and final revalidation of opened/reopened handles. Directory timestamps remain an additional check, never the sole membership witness. A name-only sorted witness has no count/time allowance or new persistence format; fallible growth reports real capacity pressure through the original I/O recovery contract. This uses memory proportional to native names, while retained bodies and resumed pages keep their existing streaming format and source-independent authority. A metadata-only alternative is disproven by native Windows CI; probabilistic XOR/count-only summaries can miss replacement/duplicate patterns and are rejected. Preserve protected-name hiding, per-child exclusions, alias refusal, exact old bodies/cursors and no-follow/root checks. Add deterministic insertion, deletion and same-count rename coverage plus exact duplicate/missing-pass checks. Native macOS also rejects the non-UTF-8 fixture in workspace directory tests: separate universal Unix special-node/link coverage from raw-byte fixtures on hosts whose namespace accepts them. Keep raw-byte identity/hidden-name/discovery/digest coverage on supported hosts rather than skipping whole inspection tests. No production path/name handling is weakened. Issue remains open through scoped delivery and native CI.",
+          "created_at": "2026-10-06T21:15:30.475575588Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIZDrZVP/OHr3j0iooeBHCRwQzc1WXmVI3+Dc2m4GJZJeM4adbYYFhSxbaY2juGQGjCIXnByi78C3V8hquFOIDg=="
         },
         "f5232af9-3db0-4dbd-92e1-a0cef9ac3f34": {
           "display_id": 2926,
