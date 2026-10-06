@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3614,
-        "tip_oid": "d7b4b6fa1fd044aff0769874c654fce915844b8d",
-        "prefix_sha256": "754e58d64d7c3e2fc55bce9f1050ef3bd53821a0c39d24994968b0aac6097ac8"
+        "sequence": 3615,
+        "tip_oid": "4637f05d9adc38a98b31c9a15fa3caed3af1a9e3",
+        "prefix_sha256": "d32341d08982c26dbb51100f1de3c73b8812a93e9bbb66db8afcaf7802ca5288"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2948,
+  "next_comment_id": 2949,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20616,10 +20616,21 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T20:34:33.220825636Z",
+      "updated_at": "2026-10-06T22:03:31.429525551Z",
       "labels": [
         "daily-driving-limiter"
-      ]
+      ],
+      "comments": {
+        "fda5d9c5-fcbf-49fb-b1d7-e250076b85e1": {
+          "display_id": 2948,
+          "author": "6ME5",
+          "content": "Source-grounded diagnosis: the old stdout reader awaits write_all plus sync_data after every <=8 KiB pipe read. This couples child pipe progress to every storage durability barrier even though stdin/stdout/stderr/wait are polled concurrently. The failing Windows log only proves the ten-second fixture watchdog expired; it does not distinguish a permanent deadlock from slow persistence. The identical transport now passed native Windows jobs 112508942336 and 112512922614 (first fixture about 1.70 s), so this is intermittent, not an always-reproducible pipe deadlock. Repair the shared progress invariant: an owned journal writer receives ordered chunks, coalesces immediately available chunks, and syncs independently of pipe drainage. Keep a finite physical backlog with backpressure, never a total-output or elapsed quota. Reserve backlog ownership before reading so cancellation cannot discard a received chunk waiting to enqueue. Cancellation/error drops pipe ownership, kills and reaps the child, and settles already accepted journal work before returning. No detached tasks, schema change, global-session fallback, increased fixture watchdog, or restored production deadline. Compare alternative EOF-only batching: rejected because quiet thread-start prefixes must remain recoverable while inference is still running. Verify deterministic delayed persistence, exact ordered bytes, persistence failures, quiet prefixes, cancellation/reaping, large concurrent stdin/stdout/stderr, adapter suites, strict lint, Windows compilation and native runner evidence. Actual storage latency in the original failing runner remains unmeasured.",
+          "created_at": "2026-10-06T22:03:31.425244281Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAx4FxudVByd+eelqT92G5UmizGpS1rlb9d1dgEGbASYajSr0oXWL8qYUfiNXG4L0p4jBG2iyUCN6atpTm1b9fAQ=="
+        }
+      }
     },
     "6b7f5853-34a6-589e-8dda-4001f2dccfc1": {
       "uuid": "6b7f5853-34a6-589e-8dda-4001f2dccfc1",
