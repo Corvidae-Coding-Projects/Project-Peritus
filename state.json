@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3629,
-        "tip_oid": "344dc89659d0a0412e4f82273bcff3d52be126c2",
-        "prefix_sha256": "9f70a97689704822a551ccb12b14f45e865eb5123049a8086536cd691e40123d"
+        "sequence": 3630,
+        "tip_oid": "46ebd63bfb69f91399e9e41f93c1651714874477",
+        "prefix_sha256": "402f8dff0e9f0cc6d4017ba12b113667f5fc9ea0a5026f64166cd39cf29655a8"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2958,
+  "next_comment_id": 2959,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:37:35.652038901Z",
+      "updated_at": "2026-10-06T22:43:00.096385368Z",
       "labels": [
         "ci"
       ],
@@ -22235,6 +22235,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXquaGQ6xSdsfSutkWeuTqhtE2W+4qIqBUWj+H8p83v04YjbzJYa1YwK4rAZ8T7QEzbNEnAYuKw6Tp0pRZexKCw=="
+        },
+        "1c7b7a48-0510-4950-8387-9611d2e885de": {
+          "display_id": 2958,
+          "author": "6ME5",
+          "content": "Deterministic before/after reproduction: a private copied authentication fake with its trace path replaced by a directory exited1 with zero stderr bytes before repair (/tmp/peritus-issue825-obstructed-trace-before.*), concealing a fixture I/O fault as the scripted auth rejection. New real-process regressions verify distinct fixture exit91 with redacted trace.read I/O diagnostics, failed trace observation retaining actual Authentication terminal and successful cleanup, wrong completed terminal retaining exact predicate/counts, and I/O/cleanup canary exclusion. Shared catalog regression verifies ordered failed-exercise evidence survives into infrastructure reports, each subject is exercised once and torn down once, and no contract violation or passing qualification is invented. Initial isolated two-package suites passed105 tests,1 existing authenticated-live ignore; format passed. Strict Clippy correctly rejected redundant must_use on Result-bearing into_parts and that attribute was removed, not suppressed. Further final-state lint/build/Verus/xtask and provenance runs in progress. These deterministic defects are established; the historical intermittent auth predicate is still unknown, so825 remains OPEN.",
+          "created_at": "2026-10-06T22:43:00.091735550Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg2hSCLF91kuCWEUTsKV0TFJqbIJx+64b5dzluu0Uk1xCeDc3zF67fHEBX3vCXNgm3zyqM2hgsGjAQ3nG8SR+Dw=="
         },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
