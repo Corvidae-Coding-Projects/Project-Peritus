@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3552,
-        "tip_oid": "ce8b0f5c6026a0adea7fbcd9341d2b2ab2e57d9d",
-        "prefix_sha256": "3a382f56931c02ecc68292c3f87c5b549436662f791da0d4e64bc761730441f3"
+        "sequence": 3553,
+        "tip_oid": "06540a6979a2126f455fa1cf1f9e654eebe7d02d",
+        "prefix_sha256": "902228468e5fa2ae9e4fc1cea7c49e0782677a6323c051c31b719202b85bcda9"
       },
       "NWAR": {
         "sequence": 39,
@@ -54,7 +54,7 @@
       }
     }
   },
-  "next_display_id": 823,
+  "next_display_id": 824,
   "next_comment_id": 2910,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
@@ -859,6 +859,7 @@
     "f89861db-18b8-4237-83e6-344f4e472dd4": 103,
     "f8b350ca-faa5-51ac-9bae-6b0127f25026": 488,
     "f8e53bb0-2946-5fac-81ca-1386c5e2fd7d": 512,
+    "f8ff2986-bd41-4afc-b854-4d8c3e3943d2": 823,
     "f9a7c46e-3b1a-5a19-ad32-99036ad13b32": 625,
     "fa1da797-ba30-5a36-aed1-ee134e9d6d0d": 217,
     "fa7f6d03-3abb-5e95-8072-c334bf9eb9a4": 814,
@@ -38919,6 +38920,18 @@
           "kind": "decision"
         }
       }
+    },
+    "f8ff2986-bd41-4afc-b854-4d8c3e3943d2": {
+      "uuid": "f8ff2986-bd41-4afc-b854-4d8c3e3943d2",
+      "display_id": 823,
+      "title": "Isolate checkpoint crash injection by service ownership",
+      "description": "Verification of #106 exposed a preexisting #105 checkpoint test isolation failure. `cargo test -q --locked -p peritus-daemon checkpoint` failed four directory restore/reopen scenarios under the default parallel harness (39 passed); all 43 unit scenarios passed serially. Independent ProductRunService instances use identical command IDs, while rewind/faults.rs stores crash injections in a process-global REWIND_FAULTS mutex. Another service can consume the intended fault, causing a false crash or missing crash. The injector and automatic tests are unchanged from HEAD 1ad514009. Repair injection ownership at the service instance: clones share the owning Inner state, independent services and reopened instances cannot consume each other's injected events. Preserve fixed command IDs, replay semantics, production behavior and concurrent test execution. Do not serialize the suite, randomize IDs or add synthetic waits. Verify owner isolation, clone delivery, the default parallel checkpoint suite, strict linting and repository checks; deliver separately before completing #106.",
+      "status": "open",
+      "priority": "high",
+      "parent_uuid": "d1db310b-7731-5d58-9369-497f32b29bef",
+      "created_by": "6ME5",
+      "created_at": "2026-10-06T18:36:52.454916274Z",
+      "updated_at": "2026-10-06T18:36:52.454916274Z"
     },
     "f9a7c46e-3b1a-5a19-ad32-99036ad13b32": {
       "uuid": "f9a7c46e-3b1a-5a19-ad32-99036ad13b32",
