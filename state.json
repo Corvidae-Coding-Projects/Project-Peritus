@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3581,
-        "tip_oid": "e37a34d5f087c2bcc30476e0aa8a34a242313dc0",
-        "prefix_sha256": "b89a4c5d340d5e6d92ced47d507e6438ce824be152c08bb5ad8df1490a9566d6"
+        "sequence": 3582,
+        "tip_oid": "a9e6c2c8fe91d69f650bbc8934dcdd9b97a1314c",
+        "prefix_sha256": "74f7cbbbba8b062adbfff0bc1e3c42d30cfae545c9de8a1bf0f10fb530bd936c"
       },
       "NWAR": {
         "sequence": 39,
@@ -25923,12 +25923,13 @@
       "display_id": 108,
       "title": "[L008] Path representation and all-or-nothing directory inspection",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L008.\n\n- `crates/runtime/peritus-patch/src/path.rs:7-12,27-49,84-105` limits components to **255 UTF-8 bytes**, paths to **4,096 bytes**, and depth to **256 components**. The actual path/depth predicate repeats literal values in `verified.rs:9-15`.\n- The path schema also rejects noncanonical/traversal paths, control characters, backslashes, colons, trailing dots/spaces, Windows device names on every platform, and protected Git/Peritus metadata. Traversal/protected-path checks are authority boundaries; portability and representational ceilings have separate daily-driving consequences.\n- `peritus-workspace/src/inspection.rs:109-124,161-171` rejects an entire directory listing when one child name is non-UTF-8/nonrepresentable or one child is a symlink/special node. This file skips protected metadata, but does not skip or report individual unsupported ordinary entries.\n- Daily-driving effect: an otherwise usable Unix folder can become unlistable because a single child is outside this portable schema. More directory/tool callers and error presentation remain pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T20:06:42.202926726Z",
+      "updated_at": "2026-10-06T20:07:35.151088006Z",
+      "closed_at": "2026-10-06T20:07:35.149755918Z",
       "labels": [
         "daily-driving-limiter"
       ],
