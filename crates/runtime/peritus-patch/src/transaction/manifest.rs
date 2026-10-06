@@ -6,8 +6,14 @@ use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_types::{Generation, RevisionNumber, Sha256Digest, WorkspaceId};
 
 use crate::{
-    ErrorCode, FileMode, PatchError, PatchIdentity, PatchOperation, PatchOperationContext,
-    PatchOperationKind, Preimage, RecoveryClass, RollbackStatus, WorkspacePath,
+    DirectoryMode, ErrorCode, FileMode, PatchError, PatchIdentity, PatchOperation,
+    PatchOperationContext, PatchOperationKind, Preimage, RecoveryClass, RollbackStatus,
+    WorkspacePath,
+};
+
+mod codec;
+use codec::{
+    kind_from_tag, kind_tag, read_count, read_identity, shape_valid, write_count, write_identity,
 };
 
 const MAGIC: &[u8; 20] = b"peritus-patch-txn-v1";
@@ -56,17 +62,17 @@ impl TransactionPhase {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(super) struct FileIdentity {
-    pub(super) digest: Sha256Digest,
-    pub(super) size: u64,
-    pub(super) mode: FileMode,
+pub(super) enum TargetIdentity {
+    File { digest: Sha256Digest, size: u64, mode: FileMode },
+    EmptyDirectory { mode: DirectoryMode },
 }
 
-impl FileIdentity {
+impl TargetIdentity {
     pub(super) const fn from_preimage(preimage: Preimage) -> Option<Self> {
         match preimage {
             Preimage::Absent => None,
-            Preimage::Present { digest, size, mode } => Some(Self { digest, size, mode }),
+            Preimage::Present { digest, size, mode } => Some(Self::File { digest, size, mode }),
+            Preimage::EmptyDirectory { mode } => Some(Self::EmptyDirectory { mode }),
         }
     }
 }
@@ -75,17 +81,17 @@ impl FileIdentity {
 pub(super) struct ManifestEntry {
     pub(super) kind: PatchOperationKind,
     pub(super) path: WorkspacePath,
-    pub(super) preimage: Option<FileIdentity>,
-    pub(super) postimage: Option<FileIdentity>,
+    pub(super) preimage: Option<TargetIdentity>,
+    pub(super) postimage: Option<TargetIdentity>,
 }
 
 impl ManifestEntry {
     fn from_operation(operation: &PatchOperation) -> Self {
-        let postimage = FileIdentity::from_preimage(operation.postimage());
+        let postimage = TargetIdentity::from_preimage(operation.postimage());
         Self {
             kind: operation.kind(),
             path: operation.path().clone(),
-            preimage: FileIdentity::from_preimage(operation.preimage()),
+            preimage: TargetIdentity::from_preimage(operation.preimage()),
             postimage,
         }
     }
@@ -117,7 +123,13 @@ impl Manifest {
 
     fn from_patch(patch: &crate::PatchSet, created_directories: Vec<WorkspacePath>) -> Self {
         Self {
-            schema: if patch.is_snapshot() { 2 } else { SCHEMA_VERSION },
+            schema: if patch.operations().iter().any(PatchOperation::covers_directory) {
+                3
+            } else if patch.is_snapshot() {
+                2
+            } else {
+                SCHEMA_VERSION
+            },
             phase: TransactionPhase::Prepared,
             workspace_id: patch.workspace_id(),
             generation: patch.expected_generation(),
@@ -175,7 +187,7 @@ impl Manifest {
                 return None;
             }
             let schema = reader.read_u16().ok()?;
-            if schema != 1 && schema != 2 {
+            if schema != 1 && schema != 2 && schema != 3 {
                 return None;
             }
             if schema == 1 && bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes {
@@ -193,6 +205,14 @@ impl Manifest {
             let mut entries = Vec::with_capacity(entry_count);
             for _ in 0..entry_count {
                 let kind = kind_from_tag(reader.read_u8().ok()?)?;
+                if schema < 3
+                    && matches!(
+                        kind,
+                        PatchOperationKind::CreateDirectory | PatchOperationKind::DeleteDirectory
+                    )
+                {
+                    return None;
+                }
                 let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
                 let preimage = read_identity(&mut reader, schema).ok()?;
                 let postimage = read_identity(&mut reader, schema).ok()?;
@@ -244,29 +264,6 @@ impl Manifest {
     }
 }
 
-fn write_count(
-    writer: &mut CanonicalWriter,
-    count: usize,
-    schema: u16,
-) -> Result<(), peritus_codec::CodecError> {
-    if schema == 1 { writer.write_collection_len(count) } else { writer.write_u64(count as u64) }
-}
-
-fn read_count(
-    reader: &mut CanonicalReader<'_>,
-    schema: u16,
-    minimum_bytes: usize,
-) -> Option<usize> {
-    let count = if schema == 1 {
-        reader.read_collection_len().ok()?
-    } else {
-        usize::try_from(reader.read_u64().ok()?).ok()?
-    };
-    (count <= reader.remaining() / minimum_bytes
-        && (schema != 1 || count <= CodecLimits::PRODUCTION.max_collection_items))
-        .then_some(count)
-}
-
 pub(super) fn validate_patch_capacity(patch: &crate::PatchSet) -> Result<(), PatchError> {
     let mut directories = BTreeSet::new();
     for operation in patch.operations() {
@@ -285,65 +282,6 @@ pub(super) fn validate_patch_capacity(patch: &crate::PatchSet) -> Result<(), Pat
         left.components().count().cmp(&right.components().count()).then_with(|| left.cmp(right))
     });
     Manifest::from_patch(patch, directories).encode().map(|_| ())
-}
-
-fn write_identity(
-    writer: &mut CanonicalWriter,
-    identity: Option<FileIdentity>,
-) -> Result<(), peritus_codec::CodecError> {
-    writer.write_option_tag(identity.is_some())?;
-    if let Some(identity) = identity {
-        writer.write_fixed(identity.digest.as_bytes())?;
-        writer.write_u64(identity.size)?;
-        writer.write_u8(identity.mode.tag())?;
-    }
-    Ok(())
-}
-
-fn read_identity(
-    reader: &mut CanonicalReader<'_>,
-    schema: u16,
-) -> Result<Option<FileIdentity>, ()> {
-    if !reader.read_option_tag().map_err(|_| ())? {
-        return Ok(None);
-    }
-    let digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(|_| ())?);
-    let size = reader.read_u64().map_err(|_| ())?;
-    if schema == 1 && size > crate::set::MAX_FILE_BYTES as u64 {
-        return Err(());
-    }
-    let mode = FileMode::from_tag(reader.read_u8().map_err(|_| ())?).ok_or(())?;
-    Ok(Some(FileIdentity { digest, size, mode }))
-}
-
-const fn kind_tag(kind: PatchOperationKind) -> u8 {
-    match kind {
-        PatchOperationKind::Create => 1,
-        PatchOperationKind::Replace => 2,
-        PatchOperationKind::Delete => 3,
-    }
-}
-
-const fn kind_from_tag(tag: u8) -> Option<PatchOperationKind> {
-    match tag {
-        1 => Some(PatchOperationKind::Create),
-        2 => Some(PatchOperationKind::Replace),
-        3 => Some(PatchOperationKind::Delete),
-        _ => None,
-    }
-}
-
-const fn shape_valid(
-    kind: PatchOperationKind,
-    preimage: Option<FileIdentity>,
-    postimage: Option<FileIdentity>,
-) -> bool {
-    matches!(
-        (kind, preimage.is_some(), postimage.is_some()),
-        (PatchOperationKind::Create, false, true)
-            | (PatchOperationKind::Replace, true, true)
-            | (PatchOperationKind::Delete, true, false)
-    )
 }
 
 const fn corrupt_manifest() -> PatchError {

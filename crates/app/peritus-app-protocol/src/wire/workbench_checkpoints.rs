@@ -2,17 +2,18 @@
 
 use super::primitive::{invalid, read_digest, read_id, unknown, write_digest, write_id};
 use crate::{
-    ControlOperationId, WorkbenchCheckpointFileMode as FileMode, WorkbenchCheckpointName,
-    WorkbenchCheckpointPath, WorkbenchCheckpointReceipt, WorkbenchCheckpointReferences,
-    WorkbenchCheckpointVersion as Version, WorkbenchRestoreReceipt, WorkbenchRestoreStatus,
-    WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath, WorkbenchRewindPreview,
-    WorkbenchRewindRequest,
+    ControlOperationId, WorkbenchCheckpointName, WorkbenchCheckpointPath,
+    WorkbenchCheckpointReceipt, WorkbenchCheckpointReferences, WorkbenchRestoreReceipt,
+    WorkbenchRestoreStatus, WorkbenchRewindDisposition, WorkbenchRewindMode, WorkbenchRewindPath,
+    WorkbenchRewindPreview, WorkbenchRewindRequest,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 use peritus_types::Sha256Digest;
 
+mod coverage;
 #[cfg(test)]
 mod tests;
+use coverage::{read_captured, read_version, write_captured, write_version};
 
 pub(super) fn write_checkpoint_receipt(
     w: &mut CanonicalWriter,
@@ -217,7 +218,7 @@ fn write_checkpoint_paths(
     write_count(w, paths.len())?;
     for path in paths {
         w.write_str(path.path())?;
-        write_version(w, path.checkpoint())?;
+        write_captured(w, path.checkpoint(), path.ranges())?;
         w.write_bool(path.expected_current().is_some())?;
         if let Some(version) = path.expected_current() {
             write_version(w, version)?;
@@ -234,9 +235,10 @@ fn read_checkpoint_paths(
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
         let path = r.read_str()?.to_owned();
-        let checkpoint = read_version(r)?;
+        let (checkpoint, ranges) = read_captured(r)?;
         let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
-        values.push(invalid(offset, WorkbenchCheckpointPath::new(path, checkpoint, expected))?);
+        let value = invalid(offset, WorkbenchCheckpointPath::new(path, checkpoint, expected))?;
+        values.push(invalid(offset, value.with_ranges(ranges))?);
     }
     Ok(values)
 }
@@ -248,7 +250,7 @@ fn write_rewind_paths(
     write_count(w, paths.len())?;
     for path in paths {
         w.write_str(path.path())?;
-        write_version(w, path.checkpoint())?;
+        write_captured(w, path.checkpoint(), path.ranges())?;
         w.write_bool(path.expected_current().is_some())?;
         if let Some(version) = path.expected_current() {
             write_version(w, version)?;
@@ -259,6 +261,7 @@ fn write_rewind_paths(
             WorkbenchRewindDisposition::Unchanged => 2,
             WorkbenchRewindDisposition::Conflict => 3,
             WorkbenchRewindDisposition::Unsealed => 4,
+            WorkbenchRewindDisposition::Unavailable => 5,
         })?;
     }
     Ok(())
@@ -270,7 +273,7 @@ fn read_rewind_paths(r: &mut CanonicalReader<'_>) -> Result<Vec<WorkbenchRewindP
     let mut values = Vec::with_capacity(count);
     for _ in 0..count {
         let path = r.read_str()?.to_owned();
-        let checkpoint = read_version(r)?;
+        let (checkpoint, ranges) = read_captured(r)?;
         let expected = if r.read_bool()? { Some(read_version(r)?) } else { None };
         let observed = read_version(r)?;
         let disposition = match r.read_u16()? {
@@ -278,47 +281,22 @@ fn read_rewind_paths(r: &mut CanonicalReader<'_>) -> Result<Vec<WorkbenchRewindP
             2 => WorkbenchRewindDisposition::Unchanged,
             3 => WorkbenchRewindDisposition::Conflict,
             4 => WorkbenchRewindDisposition::Unsealed,
+            5 => WorkbenchRewindDisposition::Unavailable,
             _ => return unknown(offset),
         };
         values.push(invalid(
             offset,
-            WorkbenchRewindPath::new(path, checkpoint, expected, observed, disposition),
+            WorkbenchRewindPath::new_with_ranges(
+                path,
+                checkpoint,
+                expected,
+                observed,
+                disposition,
+                ranges,
+            ),
         )?);
     }
     Ok(values)
-}
-
-fn write_version(w: &mut CanonicalWriter, value: Version) -> Result<(), CodecError> {
-    match value {
-        Version::Absent => w.write_u16(0),
-        Version::Present { digest, bytes, mode } => {
-            w.write_u16(1)?;
-            write_digest(w, digest)?;
-            w.write_u64(bytes)?;
-            w.write_u16(match mode {
-                FileMode::Regular => 1,
-                FileMode::Executable => 2,
-            })
-        }
-    }
-}
-
-fn read_version(r: &mut CanonicalReader<'_>) -> Result<Version, CodecError> {
-    let offset = r.offset();
-    match r.read_u16()? {
-        0 => Ok(Version::Absent),
-        1 => {
-            let digest = read_digest(r)?;
-            let bytes = r.read_u64()?;
-            let mode = match r.read_u16()? {
-                1 => FileMode::Regular,
-                2 => FileMode::Executable,
-                _ => return unknown(offset),
-            };
-            Ok(Version::Present { digest, bytes, mode })
-        }
-        _ => unknown(offset),
-    }
 }
 
 fn write_strings(w: &mut CanonicalWriter, values: &[String]) -> Result<(), CodecError> {

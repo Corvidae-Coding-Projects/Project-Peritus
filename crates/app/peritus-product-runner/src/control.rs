@@ -37,8 +37,8 @@ mod text;
 pub use branch::{ConversationBranch, ConversationBranchMode};
 pub use brief::{BriefBinding, BriefField, TaskBrief};
 pub use checkpoint::{
-    CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointReferences,
-    RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointCoverage, CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointRange,
+    CheckpointReferences, CheckpointVersion, RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};

@@ -52,7 +52,8 @@ pub(super) fn public_checkpoint(
                     path.path().to_owned(),
                     public_version(path.checkpoint()),
                     path.owned_postchange().map(public_version),
-                )
+                )?
+                .with_ranges(public_ranges(path).map_err(|_| app_error(AppErrorCode::Internal))?)
             })
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| ControlError::InvalidInput)?,
@@ -96,6 +97,9 @@ pub(super) fn public_restore(
 pub(super) const fn public_version(value: CheckpointFileVersion) -> WorkbenchCheckpointVersion {
     match value {
         CheckpointFileVersion::Absent => WorkbenchCheckpointVersion::Absent,
+        CheckpointFileVersion::EmptyDirectory { permissions } => {
+            WorkbenchCheckpointVersion::EmptyDirectory { permissions }
+        }
         CheckpointFileVersion::Present { digest, bytes, mode } => {
             WorkbenchCheckpointVersion::Present {
                 digest: Sha256Digest::new(digest),
@@ -109,13 +113,45 @@ pub(super) const fn public_version(value: CheckpointFileVersion) -> WorkbenchChe
     }
 }
 
-pub(super) const fn patch_preimage(value: CheckpointFileVersion) -> Preimage {
-    match value {
+pub(super) fn patch_preimage(value: CheckpointFileVersion) -> Result<Preimage, Error> {
+    Ok(match value {
         CheckpointFileVersion::Absent => Preimage::Absent,
+        CheckpointFileVersion::EmptyDirectory { permissions } => Preimage::EmptyDirectory {
+            mode: patch_input(peritus_patch::DirectoryMode::new(permissions))?,
+        },
         CheckpointFileVersion::Present { digest, bytes, mode } => {
             Preimage::present(Sha256Digest::new(digest), bytes, patch_mode(mode))
         }
-    }
+    })
+}
+
+pub(super) fn public_ranges(
+    path: &super::CheckpointPath,
+) -> Result<Vec<peritus_app_protocol::WorkbenchCheckpointRange>, Error> {
+    let peritus_product_runner::control::CheckpointCoverage::SelectedRanges(ranges) =
+        path.coverage()
+    else {
+        return Ok(Vec::new());
+    };
+    ranges
+        .iter()
+        .map(|range| {
+            let selection = match range.selection() {
+                peritus_product_runner::control::FileRange::All => {
+                    peritus_app_protocol::WorkbenchFileRange::All
+                }
+                peritus_product_runner::control::FileRange::Bytes { start, end } => {
+                    peritus_app_protocol::WorkbenchFileRange::Bytes { start, end }
+                }
+                peritus_product_runner::control::FileRange::Lines { first, last } => {
+                    peritus_app_protocol::WorkbenchFileRange::Lines { first, last }
+                }
+            };
+            let (start, end) = range.captured_interval();
+            peritus_app_protocol::WorkbenchCheckpointRange::new(selection, start, end)
+                .map_err(|_| ControlError::InvalidInput.into())
+        })
+        .collect()
 }
 
 pub(super) const fn patch_mode(value: CheckpointFileMode) -> FileMode {

@@ -31,6 +31,7 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         lines.push(format!("Exact preview SHA256 {}", hex(preview.preview_digest().as_bytes())));
         for path in preview.paths() {
             lines.push(format!("[{}] {}", disposition(path.disposition()), path.path()));
+            append_coverage(&mut lines, path.coverage());
             lines.push(format!(
                 "  checkpoint {} · expected current {} · observed {}",
                 version(path.checkpoint()),
@@ -100,10 +101,11 @@ fn append_checkpoint(
     ]);
     if receipt.paths().is_empty() {
         lines.push(String::from(
-            "No files are covered. To save file contents, attach whole files with /files <path>, then create another checkpoint before editing.",
+            "No workspace targets are covered. Attach a file or selected range with /files <path>, then create another checkpoint before editing.",
         ));
     }
     for path in receipt.paths() {
+        append_coverage(lines, path.coverage());
         lines.push(format!(
             "Covered {} · checkpoint {} · owned current {}",
             path.path(),
@@ -141,6 +143,7 @@ const fn disposition(value: WorkbenchRewindDisposition) -> &'static str {
         WorkbenchRewindDisposition::Unchanged => "UNCHANGED",
         WorkbenchRewindDisposition::Conflict => "CONFLICT — KEEP CURRENT",
         WorkbenchRewindDisposition::Unsealed => "UNSEALED — KEEP CURRENT",
+        WorkbenchRewindDisposition::Unavailable => "SELECTED RANGE UNAVAILABLE — KEEP CURRENT",
     }
 }
 
@@ -155,6 +158,9 @@ const fn restore_status(value: WorkbenchRestoreStatus) -> &'static str {
 fn version(value: WorkbenchCheckpointVersion) -> String {
     match value {
         WorkbenchCheckpointVersion::Absent => "absent".to_owned(),
+        WorkbenchCheckpointVersion::EmptyDirectory { permissions } => {
+            format!("empty directory · permissions {permissions:04o}")
+        }
         WorkbenchCheckpointVersion::Present { digest, bytes, mode } => format!(
             "{} bytes · {} · SHA256 {}",
             bytes,
@@ -164,6 +170,37 @@ fn version(value: WorkbenchCheckpointVersion) -> String {
             },
             hex(digest.as_bytes())
         ),
+    }
+}
+
+fn append_coverage(
+    lines: &mut Vec<String>,
+    coverage: peritus_app_protocol::WorkbenchCheckpointCoverage<'_>,
+) {
+    use peritus_app_protocol::{WorkbenchCheckpointCoverage, WorkbenchFileRange};
+    match coverage {
+        WorkbenchCheckpointCoverage::WholeFile => {
+            lines.push("  Scope: complete file and mode".to_owned());
+        }
+        WorkbenchCheckpointCoverage::AbsentPath => lines.push("  Scope: absent target".to_owned()),
+        WorkbenchCheckpointCoverage::EmptyDirectory => {
+            lines.push("  Scope: empty directory and permissions".to_owned());
+        }
+        WorkbenchCheckpointCoverage::SelectedRanges(ranges) => {
+            lines.push(
+                "  Scope: selected ranges; surrounding current bytes and mode are preserved"
+                    .to_owned(),
+            );
+            for range in ranges {
+                let (start, end) = range.captured_interval();
+                let selection = match range.selection() {
+                    WorkbenchFileRange::All => "complete file".to_owned(),
+                    WorkbenchFileRange::Bytes { start, end } => format!("bytes {start}..{end}"),
+                    WorkbenchFileRange::Lines { first, last } => format!("lines {first}..={last}"),
+                };
+                lines.push(format!("    {selection} · captured bytes {start}..{end}"));
+            }
+        }
     }
 }
 

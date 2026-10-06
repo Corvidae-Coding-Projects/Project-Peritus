@@ -45,7 +45,11 @@ impl SnapshotFile {
         self.identity
     }
 
-    pub(crate) fn write_to(&self, output: &mut dyn Write) -> Result<(), PatchError> {
+    /// Streams and verifies the complete immutable snapshot into caller-owned storage.
+    ///
+    /// # Errors
+    /// Rejects changed, truncated or excess content and storage/read failures.
+    pub fn write_to(&self, output: &mut dyn Write) -> Result<(), PatchError> {
         let mut copy = || -> std::io::Result<()> {
             let mut file = self.source.open()?;
             let Preimage::Present { digest: expected, size, .. } = self.identity else {

@@ -10,7 +10,7 @@ use super::{
     RecoveryBinding, RecoveryOutcome, RecoveryState,
     filesystem::{
         Observation, checked_target_path, observation_matches, observe_absolute, observe_target,
-        remove_created_directories, sync_directory,
+        remove_created_directories, remove_observed, sync_directory,
     },
     manifest::{Manifest, ManifestEntry, TransactionPhase},
     recovery_observation::observe_manifest,
@@ -212,9 +212,9 @@ fn rollback_entry(
     let target_is_pre = observation_matches(observed, entry.preimage);
     let target_is_post = observation_matches(observed, entry.postimage);
 
-    if entry.kind == PatchOperationKind::Create {
+    if matches!(entry.kind, PatchOperationKind::Create | PatchOperationKind::CreateDirectory) {
         if target_is_post {
-            fs::remove_file(&target).map_err(rollback_io)?;
+            remove_observed(&target, observed).map_err(rollback_io)?;
             sync_directory(parent, RollbackStatus::Indeterminate)?;
         } else if !target_is_pre {
             return Err(PatchError::indeterminate(PatchOperationContext::Rollback));
@@ -233,7 +233,7 @@ fn rollback_entry(
 
     if target_is_post && !target_is_pre {
         if observed != Observation::Absent {
-            fs::remove_file(&target).map_err(rollback_io)?;
+            remove_observed(&target, observed).map_err(rollback_io)?;
             sync_directory(parent, RollbackStatus::Indeterminate)?;
         }
     } else if !(target_is_pre
@@ -257,7 +257,7 @@ fn rollback_entry(
             if !backup_is_pre {
                 return Err(PatchError::indeterminate(PatchOperationContext::Rollback));
             }
-            fs::remove_file(&backup).map_err(rollback_io)?;
+            remove_observed(&backup, backup_observed).map_err(rollback_io)?;
             sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
         }
     } else if current == Observation::Absent && backup_is_pre {

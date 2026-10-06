@@ -2,9 +2,8 @@
 
 use super::{
     ActorId, ControlError, ControlIntent, ControlOperation, ConversationId, Error, OperationId,
-    ProductRunService, RestoreId, RestoreOperation, RestoreStatus, Sha256Digest, WorkbenchCommand,
-    WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRewindDisposition, check_record, derived_id,
-    public_restore,
+    ProductRunService, RestoreId, RestoreStatus, Sha256Digest, WorkbenchCommand, WorkbenchIntent,
+    WorkbenchRestoreReceipt, WorkbenchRewindDisposition, check_record, derived_id, public_restore,
 };
 
 impl ProductRunService {
@@ -66,21 +65,13 @@ impl ProductRunService {
                 .ok_or(Error::Corrupt("restore source checkpoint missing"))?;
             let replay_only =
                 !record.checkpoints().iter().any(|value| value.id() == restore.checkpoint());
-            let checkpoint_versions = checkpoint
-                .paths()
+            let checkpoint_versions = restore
+                .targets()
+                .unwrap_or_else(|| checkpoint.paths())
                 .iter()
                 .map(|path| (path.path().to_owned(), path.checkpoint()))
                 .collect::<Vec<_>>();
-            let mut prepared = RestoreOperation::prepared(
-                restore.id(),
-                restore.checkpoint(),
-                restore.preview_digest(),
-                restore.patch_digest(),
-                restore.recovery_checkpoint(),
-            )?;
-            if let Some(branch) = restore.branch() {
-                prepared = prepared.with_branch(branch.clone())?;
-            }
+            let prepared = restore.prepared_manifest();
             let prepare_intent = if replay_only {
                 ControlIntent::PrepareAutomaticRestore {
                     restore: prepared,

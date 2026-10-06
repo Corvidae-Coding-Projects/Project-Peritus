@@ -174,7 +174,7 @@ impl ControlStore {
         }
         for (index, path) in checkpoint.paths().iter().enumerate() {
             match path.checkpoint() {
-                CheckpointFileVersion::Absent => {
+                CheckpointFileVersion::Absent | CheckpointFileVersion::EmptyDirectory { .. } => {
                     if self
                         .journal
                         .state_record(
@@ -183,7 +183,7 @@ impl ControlStore {
                         )?
                         .is_some()
                     {
-                        return Err(Error::Corrupt("absent checkpoint path has retained bytes"));
+                        return Err(Error::Corrupt("non-file checkpoint path has retained bytes"));
                     }
                 }
                 version @ CheckpointFileVersion::Present { .. } => {
@@ -227,7 +227,10 @@ fn checkpoint_installs(
     let mut installs = Vec::new();
     for (index, (path, body)) in checkpoint.paths().iter().zip(bodies).enumerate() {
         match (path.checkpoint(), body) {
-            (CheckpointFileVersion::Absent, None) => {}
+            (
+                CheckpointFileVersion::Absent | CheckpointFileVersion::EmptyDirectory { .. },
+                None,
+            ) => {}
             (version, Some(bytes))
                 if version.bytes() == Some(bytes.len() as u64)
                     && version.digest() == Some(peritus_codec::sha256(bytes)) =>

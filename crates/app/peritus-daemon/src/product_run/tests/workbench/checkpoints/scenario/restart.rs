@@ -1,6 +1,33 @@
 //! Durable checkpoint and branch assertions after the live service closes.
 use super::*;
 
+pub(super) async fn create_checkpoint_compatible(
+    service: &ProductRunService,
+    command: &WorkbenchCommand,
+    selection: WorkbenchFileRange,
+) -> AppResponsePayload {
+    let legacy = service.workbench_command_negotiated(actor(), command, false).await;
+    if selection == WorkbenchFileRange::All {
+        return legacy;
+    }
+    let AppResponsePayload::Error(error) = legacy else {
+        panic!("legacy peer accepted new schema");
+    };
+    assert_eq!(error.code(), peritus_app_protocol::AppErrorCode::UnsupportedSchema);
+    service
+        .with_controls(false, |store| {
+            let record = store.load(DomainConversationId::new([2; 16])?)?.unwrap();
+            assert_eq!(record.revision(), command.expected_revision());
+            assert!(
+                record.checkpoints().is_empty(),
+                "unsupported schema must not publish a checkpoint"
+            );
+            Ok(())
+        })
+        .unwrap();
+    service.workbench_command_negotiated(actor(), command, true).await
+}
+
 pub(super) fn verify(
     state: &std::path::Path,
     child: ConversationId,

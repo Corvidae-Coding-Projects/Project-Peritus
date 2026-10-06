@@ -1,4 +1,4 @@
-//! Atomic multi-file application using staged finals and durable backups.
+//! Atomic file and empty-directory application using staged finals and durable backups.
 
 use std::{fs, io, path::Path};
 
@@ -13,13 +13,16 @@ use super::{
         Observation, checked_target_path, create_directory, discover_missing_directories,
         observation_matches, observe_target, preserve_replacement_permissions, sync_directory,
     },
-    manifest::{FileIdentity, Manifest, TransactionPhase},
+    manifest::{Manifest, TargetIdentity, TransactionPhase},
     recover::rollback_workspace,
     roots::prepare_roots,
     storage::{
         backup_path, cleanup_transaction, persist_manifest, prepare_transaction, staged_path,
     },
 };
+
+#[cfg(not(unix))]
+mod platform;
 
 /// Applies a checked plan as one recoverable multi-file filesystem transaction.
 ///
@@ -58,7 +61,7 @@ pub(super) fn apply_with_faults(
         RollbackStatus::NotRequired,
     )?;
     #[cfg(not(unix))]
-    validate_platform_modes(plan)?;
+    platform::validate_platform_modes(plan)?;
     let roots = prepare_roots(workspace_root, transaction_root)?;
     verify_plan_preimages(&roots.workspace, plan)?;
     let created_directories = discover_missing_directories(
@@ -147,31 +150,6 @@ pub(super) fn apply_with_faults(
     Ok(AppliedPatch::new(plan.identity(), installed_manifest, cleanup_pending))
 }
 
-#[cfg(not(unix))]
-fn validate_platform_modes(plan: &PatchPlan) -> Result<(), PatchError> {
-    for operation in plan.operations() {
-        let executable_preimage = matches!(
-            operation.preimage(),
-            Preimage::Present { mode: crate::FileMode::Executable, .. }
-        );
-        let executable_final = matches!(
-            operation.postimage(),
-            Preimage::Present { mode: crate::FileMode::Executable, .. }
-        );
-        if executable_preimage || executable_final {
-            return Err(PatchError::message(
-                ErrorCode::InvalidContent,
-                RecoveryClass::CorrectPatch,
-                PatchOperationContext::Plan,
-                RollbackStatus::NotRequired,
-                "executable file mode is unsupported on this platform",
-            )
-            .at(operation.path().clone()));
-        }
-    }
-    Ok(())
-}
-
 fn install_all(
     workspace: &Path,
     transaction_directory: &Path,
@@ -225,7 +203,7 @@ fn install_operation(
         PatchOperationContext::InspectPreimage,
         RollbackStatus::Indeterminate,
     )?;
-    if !observation_matches(observed, FileIdentity::from_preimage(operation.preimage())) {
+    if !observation_matches(observed, TargetIdentity::from_preimage(operation.preimage())) {
         return Err(PatchError::message(
             ErrorCode::PreimageMismatch,
             RecoveryClass::ReinspectWorkspace,
@@ -246,7 +224,9 @@ fn install_operation(
         .ok_or_else(|| PatchError::indeterminate(PatchOperationContext::InstallFinal))?;
     if matches!(
         operation.kind(),
-        crate::PatchOperationKind::Replace | crate::PatchOperationKind::Delete
+        crate::PatchOperationKind::Replace
+            | crate::PatchOperationKind::Delete
+            | crate::PatchOperationKind::DeleteDirectory
     ) {
         let backup = backup_path(transaction_directory, index);
         fs::rename(&target, &backup).map_err(|error| {
@@ -266,9 +246,20 @@ fn install_operation(
         )?;
         sync_with_fault(faults, parent, RollbackStatus::Indeterminate)?;
         sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
+        let backed_up = super::filesystem::observe_absolute(
+            &backup,
+            PatchOperationContext::BackupOriginal,
+            RollbackStatus::Indeterminate,
+        )?;
+        if !observation_matches(backed_up, TargetIdentity::from_preimage(operation.preimage())) {
+            return Err(PatchError::indeterminate(PatchOperationContext::BackupOriginal));
+        }
     }
-    if let Preimage::Present { mode, .. } = operation.postimage() {
-        if operation.kind() == crate::PatchOperationKind::Replace {
+    if operation.postimage() != Preimage::Absent {
+        if let Preimage::Present { mode, .. } = operation.postimage()
+            && operation.kind() == crate::PatchOperationKind::Replace
+            && matches!(operation.preimage(), Preimage::Present { .. })
+        {
             preserve_replacement_permissions(
                 &staged_path(transaction_directory, index),
                 &backup_path(transaction_directory, index),
@@ -304,18 +295,20 @@ fn verify_plan_preimages(workspace: &Path, plan: &PatchPlan) -> Result<(), Patch
             PatchOperationContext::InspectPreimage,
             RollbackStatus::NotRequired,
         )?;
-        let expected = FileIdentity::from_preimage(operation.preimage());
+        let expected = TargetIdentity::from_preimage(operation.preimage());
         if !observation_matches(observed, expected) {
             let (code, detail) = match (observed, operation.preimage()) {
-                (Observation::Absent, Preimage::Present { .. }) => {
-                    (ErrorCode::PreimageMissing, "required preimage file is absent")
-                }
+                (
+                    Observation::Absent,
+                    Preimage::Present { .. } | Preimage::EmptyDirectory { .. },
+                ) => (ErrorCode::PreimageMissing, "required preimage target is absent"),
                 (Observation::Present(_), Preimage::Absent) => {
                     (ErrorCode::PreimageUnexpected, "create target already exists")
                 }
-                _ => {
-                    (ErrorCode::PreimageMismatch, "file bytes, size, or mode do not match preimage")
-                }
+                _ => (
+                    ErrorCode::PreimageMismatch,
+                    "target type, contents, or permissions do not match preimage",
+                ),
             };
             return Err(PatchError::message(
                 code,

@@ -61,12 +61,15 @@ impl Client {
             .copied()
             .map(ProtocolFeatureName::well_known)
             .collect::<Result<Vec<_>, _>>()?;
-        let optional =
-            [WellKnownProtocolFeature::TerminalFailure, WellKnownProtocolFeature::TerminalPipes]
-                .into_iter()
-                .filter(|feature| !required.contains(feature))
-                .map(ProtocolFeatureName::well_known)
-                .collect::<Result<Vec<_>, _>>()?;
+        let optional = [
+            WellKnownProtocolFeature::TerminalFailure,
+            WellKnownProtocolFeature::TerminalPipes,
+            WellKnownProtocolFeature::WorkbenchCheckpointCoverage,
+        ]
+        .into_iter()
+        .filter(|feature| !required.contains(feature))
+        .map(ProtocolFeatureName::well_known)
+        .collect::<Result<Vec<_>, _>>()?;
         let hello = ClientHello::new_with_session(
             protocol_id,
             requested_session,

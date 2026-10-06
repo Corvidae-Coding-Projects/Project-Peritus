@@ -78,3 +78,38 @@ mod storage_wait;
 
 mod support;
 use support::pipeline_responses;
+
+#[test]
+fn partial_checkpoint_restores_selected_bytes_and_retains_owned_surrounding_bytes() {
+    partial_scenario(false, None);
+}
+
+#[test]
+fn partial_checkpoint_divergent_preimage_is_preserved_without_overwrite() {
+    partial_scenario(true, None);
+}
+
+#[test]
+fn partial_checkpoint_applied_before_settlement_recovers_the_exact_merged_postimage() {
+    partial_scenario(
+        false,
+        Some(crate::product_run::workbench::RewindFaultPoint::AfterFolderPatch),
+    );
+}
+
+#[test]
+fn partial_checkpoint_prepared_before_effect_recovers_without_writing() {
+    partial_scenario(false, Some(crate::product_run::workbench::RewindFaultPoint::AfterPrepare));
+}
+
+fn partial_scenario(
+    conflict: bool,
+    crash: Option<crate::product_run::workbench::RewindFaultPoint>,
+) {
+    interaction::block_on(scenario::checkpoint_scenario_with_selection(
+        conflict,
+        crash,
+        WorkbenchRewindMode::FilesOnly,
+        WorkbenchFileRange::Bytes { start: 0, end: 10 },
+    ));
+}

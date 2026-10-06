@@ -206,7 +206,12 @@ fn canonical_identity(
     }
     let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
     let encoded = (|| {
-        writer.write_fixed(b"peritus-patch-set-v1")?;
+        let directories = operations.iter().any(PatchOperation::covers_directory);
+        writer.write_fixed(if directories {
+            b"peritus-patch-set-v3"
+        } else {
+            b"peritus-patch-set-v1"
+        })?;
         writer.write_fixed(workspace_id.as_bytes())?;
         writer.write_u64(generation.get())?;
         writer.write_u64(revision.get())?;
@@ -216,10 +221,16 @@ fn canonical_identity(
                 crate::PatchOperationKind::Create => 1,
                 crate::PatchOperationKind::Replace => 2,
                 crate::PatchOperationKind::Delete => 3,
+                crate::PatchOperationKind::CreateDirectory => 4,
+                crate::PatchOperationKind::DeleteDirectory => 5,
             })?;
             writer.write_str(operation.path().as_str())?;
             match operation.preimage() {
                 Preimage::Absent => writer.write_u8(0)?,
+                Preimage::EmptyDirectory { mode } => {
+                    writer.write_u8(2)?;
+                    writer.write_u16(mode.bits())?;
+                }
                 Preimage::Present { digest, size, mode } => {
                     writer.write_u8(1)?;
                     writer.write_fixed(digest.as_bytes())?;
@@ -228,7 +239,13 @@ fn canonical_identity(
                 }
             }
             match operation.final_file() {
-                None => writer.write_u8(0)?,
+                None => match operation.postimage() {
+                    Preimage::EmptyDirectory { mode } => {
+                        writer.write_u8(2)?;
+                        writer.write_u16(mode.bits())?;
+                    }
+                    _ => writer.write_u8(0)?,
+                },
                 Some(file) => {
                     writer.write_u8(1)?;
                     writer.write_fixed(file.digest().as_bytes())?;
@@ -254,7 +271,8 @@ fn snapshot_identity(
     use sha2::{Digest as _, Sha256};
 
     let mut digest = Sha256::new();
-    digest.update(b"peritus-snapshot-v2\0");
+    let directories = operations.iter().any(PatchOperation::covers_directory);
+    digest.update(if directories { b"peritus-snapshot-v3\0" } else { b"peritus-snapshot-v2\0" });
     digest.update(workspace_id.as_bytes());
     digest.update(generation.get().to_be_bytes());
     digest.update(revision.get().to_be_bytes());
@@ -264,12 +282,18 @@ fn snapshot_identity(
             crate::PatchOperationKind::Create => 1,
             crate::PatchOperationKind::Replace => 2,
             crate::PatchOperationKind::Delete => 3,
+            crate::PatchOperationKind::CreateDirectory => 4,
+            crate::PatchOperationKind::DeleteDirectory => 5,
         }]);
         digest.update((operation.path().as_str().len() as u64).to_be_bytes());
         digest.update(operation.path().as_str().as_bytes());
         for identity in [operation.preimage(), operation.postimage()] {
             match identity {
                 Preimage::Absent => digest.update([0]),
+                Preimage::EmptyDirectory { mode } => {
+                    digest.update([2]);
+                    digest.update(mode.bits().to_be_bytes());
+                }
                 Preimage::Present { digest: content, size, mode } => {
                     digest.update([1]);
                     digest.update(content.as_bytes());
@@ -326,5 +350,25 @@ mod tests {
                 .expect("patch")
         };
         assert_eq!(make(vec![a.clone(), b.clone()]).identity(), make(vec![b, a]).identity());
+    }
+
+    #[test]
+    fn directory_permissions_are_bound_into_inline_and_snapshot_authority() {
+        for constructor in [PatchSet::new, PatchSet::from_snapshot] {
+            let patch = |bits| {
+                constructor(
+                    workspace(),
+                    Generation::first(),
+                    RevisionNumber::first(),
+                    vec![PatchOperation::create_directory(
+                        WorkspacePath::new("empty").expect("path"),
+                        crate::DirectoryMode::new(bits).expect("mode"),
+                    )],
+                )
+                .expect("directory patch")
+            };
+            assert_ne!(patch(0o750).identity(), patch(0o700).identity());
+        }
+        assert!(crate::DirectoryMode::new(0o10000).is_err());
     }
 }

@@ -60,11 +60,11 @@ fn postclassification_requires_unchanged_covered_paths_to_remain_at_checkpoint_b
     .expect("recovery checkpoint");
 
     assert_eq!(
-        classify_restore_paths(&preview, &recovery, Some(&[restore_target, unchanged])),
+        classify_restore_paths(&preview, &recovery, Some(&[restore_target, unchanged]), None),
         (false, true)
     );
     assert_eq!(
-        classify_restore_paths(&preview, &recovery, Some(&[restore_target, drifted])),
+        classify_restore_paths(&preview, &recovery, Some(&[restore_target, drifted]), None),
         (false, false),
         "a covered path shown unchanged cannot drift while recovery claims all-post"
     );

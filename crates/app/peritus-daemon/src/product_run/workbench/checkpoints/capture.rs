@@ -1,19 +1,24 @@
 //! Streaming selected-path capture and no-follow folder observations.
 
 use super::{
-    BTreeSet, CapturedCoverage, CapturedPath, CheckpointFileMode, CheckpointFileVersion,
-    CheckpointId, CheckpointPath, ControlError, ControlIntent, ControlOperation, ConversationId,
+    CapturedCoverage, CapturedPath, CheckpointFileMode, CheckpointFileVersion, CheckpointId,
+    CheckpointPath, ControlError, ControlIntent, ControlOperation, ConversationId,
     ConversationRecord, Error, FolderIdentity, FolderInspection, OperationId, Path,
     ProductRunService, UserCheckpoint, WorkspacePath, checkpoint_references, external_effects, fs,
     io, patch_input,
 };
 use peritus_product_runner::WorkspaceMutationKind;
+use peritus_product_runner::control::{CheckpointRange, FileRange};
 use peritus_types::{ActorId, RunId, WorkspaceId};
+use std::collections::BTreeMap;
 
 const AUTOMATIC_CHECKPOINT_NAME: &str = "Automatic checkpoint before owned mutation";
 const EMPTY_DIRECTORY_EXCLUSION: &str = "empty directory removal cannot restore the directory";
 
 mod automatic;
+mod observation;
+use observation::{observe_empty_directory, observe_file};
+pub(super) use observation::{observe_path, observe_version};
 
 impl ProductRunService {
     pub(super) fn capture_selected_coverage(
@@ -25,7 +30,7 @@ impl ProductRunService {
         let identity = self.checked_folder_identity(query, root)?;
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
-        let mut selected = BTreeSet::new();
+        let mut selected: BTreeMap<String, Vec<FileRange>> = BTreeMap::new();
         let mut exclusions = Vec::new();
         for entry in record.files().entries() {
             let source = entry.file().source();
@@ -33,8 +38,6 @@ impl ProductRunService {
                 Some("deselected")
             } else if source.path().is_none() {
                 Some("external import has no workspace target")
-            } else if source.range() != peritus_product_runner::control::FileRange::All {
-                Some("partial selection is not a whole-file restore target")
             } else if source.folder() != Some(identity.digest()) {
                 Some("folder identity differs from the current workspace")
             } else {
@@ -45,14 +48,33 @@ impl ProductRunService {
                 continue;
             }
             let path = source.path().ok_or(ControlError::InvalidInput)?.to_owned();
-            if !selected.insert(path.clone()) {
-                push_exclusion(&mut exclusions, &path, "duplicate reference already covered")?;
-            }
+            selected.entry(path).or_default().push(source.range());
         }
         let mut paths = Vec::with_capacity(selected.len());
-        for path in &selected {
+        for (path, selections) in &selected {
             check_protected(root, path, &contract, &protected)?;
-            let captured = observe_path(&identity, path)?;
+            let mut captured = observe_path(&identity, path)?;
+            if !selections.contains(&FileRange::All) {
+                let body = captured.body.as_ref().ok_or(ControlError::InvalidInput)?;
+                let intervals = super::ranges::resolve_ranges(
+                    &mut fs::File::open(body)?,
+                    selections,
+                    captured.version.bytes().ok_or(ControlError::InvalidInput)?,
+                )?;
+                captured.ranges = selections
+                    .iter()
+                    .zip(intervals)
+                    .map(|(selection, (start, end))| CheckpointRange::new(*selection, start, end))
+                    .collect::<Result<_, _>>()?;
+                // The checked constructor canonicalizes overlapping/duplicate descriptors
+                // without discarding distinct selected ranges on the same workspace path.
+                let manifest = captured.manifest()?;
+                if let peritus_product_runner::control::CheckpointCoverage::SelectedRanges(ranges) =
+                    manifest.coverage()
+                {
+                    captured.ranges = ranges.to_vec();
+                }
+            }
             paths.push(captured);
         }
         Ok(CapturedCoverage { paths, exclusions })
@@ -199,146 +221,39 @@ fn validate_automatic_checkpoint(
     kind: WorkspaceMutationKind,
 ) -> Result<(), Error> {
     let expected_id = automatic_checkpoint_id(run, path, kind)?;
-    let expected_exclusions = match kind {
-        WorkspaceMutationKind::File => Vec::new(),
-        WorkspaceMutationKind::EmptyDirectory => vec![empty_directory_exclusion(path)],
-    };
-    let expected_path = match kind {
-        WorkspaceMutationKind::File => Some(path),
-        WorkspaceMutationKind::EmptyDirectory => None,
-    };
+    // Previously accepted directory checkpoints retained only this explicit exclusion. Keep
+    // their exact manifest usable on replay; all new captures retain a typed directory target.
+    let legacy_directory = kind == WorkspaceMutationKind::EmptyDirectory
+        && checkpoint.paths().is_empty()
+        && checkpoint.exclusions().eq([empty_directory_exclusion(path).as_str()]);
+    let expected_exclusions =
+        if legacy_directory { vec![empty_directory_exclusion(path)] } else { Vec::new() };
+    let expected_path = if legacy_directory { None } else { Some(path) };
     let exact = checkpoint.id() == expected_id
         && checkpoint.name() == AUTOMATIC_CHECKPOINT_NAME
         && checkpoint.automatic_run() == Some(run.into_bytes())
         && checkpoint.paths().len() == usize::from(expected_path.is_some())
         && checkpoint.paths().first().map(CheckpointPath::path) == expected_path
+        && checkpoint.paths().iter().all(|target| {
+            !matches!(
+                target.coverage(),
+                peritus_product_runner::control::CheckpointCoverage::SelectedRanges(_)
+            ) && match kind {
+                WorkspaceMutationKind::File => matches!(
+                    target.checkpoint(),
+                    CheckpointFileVersion::Absent | CheckpointFileVersion::Present { .. }
+                ),
+                WorkspaceMutationKind::EmptyDirectory => {
+                    matches!(target.checkpoint(), CheckpointFileVersion::EmptyDirectory { .. })
+                }
+            }
+        })
         && checkpoint.exclusions().eq(expected_exclusions.iter().map(String::as_str));
     if exact { Ok(()) } else { Err(ControlError::IdempotencyConflict.into()) }
 }
 
 fn empty_directory_exclusion(path: &str) -> String {
     format!("{path}: {EMPTY_DIRECTORY_EXCLUSION}")
-}
-
-fn observe_empty_directory(identity: &FolderIdentity, path: &str) -> Result<(), Error> {
-    let relative = patch_input(WorkspacePath::new(path))?;
-    let metadata = safe_metadata(identity.root(), &relative)?.ok_or(Error::StalePreimage)?;
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err(ControlError::InvalidInput.into());
-    }
-    if fs::read_dir(identity.root().join(path))?.next().transpose()?.is_some() {
-        return Err(Error::StalePreimage);
-    }
-    Ok(())
-}
-
-pub(super) fn observe_path(identity: &FolderIdentity, path: &str) -> Result<CapturedPath, Error> {
-    observe_file(identity, path, true)
-}
-
-pub(super) fn observe_version(
-    identity: &FolderIdentity,
-    path: &str,
-) -> Result<CheckpointFileVersion, Error> {
-    observe_file(identity, path, false).map(|captured| captured.version)
-}
-
-fn observe_file(
-    identity: &FolderIdentity,
-    path: &str,
-    retain: bool,
-) -> Result<CapturedPath, Error> {
-    let relative = patch_input(WorkspacePath::new(path))?;
-    let target = identity.root().join(path);
-    let before = match safe_metadata(identity.root(), &relative)? {
-        Some(metadata) => metadata,
-        None => {
-            return Ok(CapturedPath {
-                path: path.to_owned(),
-                version: CheckpointFileVersion::Absent,
-                body: None,
-            });
-        }
-    };
-    if !before.is_file() || before.file_type().is_symlink() {
-        return Err(ControlError::InvalidInput.into());
-    }
-    let mut body = retain.then(tempfile::NamedTempFile::new).transpose()?;
-    let inspection = FolderInspection::open(identity)?;
-    let (digest, bytes) = match body.as_mut() {
-        Some(body) => inspection.copy_snapshot(&relative, body)?,
-        None => inspection.copy_snapshot(&relative, &mut io::sink())?,
-    };
-    let after = fs::symlink_metadata(&target)?;
-    if !after.is_file()
-        || after.file_type().is_symlink()
-        || !same_metadata(&before, &after)
-        || bytes != after.len()
-    {
-        return Err(Error::StalePreimage);
-    }
-    let mode = file_mode(&after);
-    let version = CheckpointFileVersion::present(digest, after.len(), mode);
-    Ok(CapturedPath {
-        path: path.to_owned(),
-        version,
-        body: body.map(tempfile::NamedTempFile::into_temp_path),
-    })
-}
-
-fn safe_metadata(root: &Path, path: &WorkspacePath) -> Result<Option<fs::Metadata>, Error> {
-    let mut current = root.to_path_buf();
-    let components = path.as_str().split('/').collect::<Vec<_>>();
-    for (index, component) in components.iter().enumerate() {
-        current.push(component);
-        match fs::symlink_metadata(&current) {
-            Ok(metadata) => {
-                if metadata.file_type().is_symlink()
-                    || (index + 1 < components.len() && !metadata.is_dir())
-                {
-                    return Err(ControlError::InvalidInput.into());
-                }
-                if index + 1 == components.len() {
-                    return Ok(Some(metadata));
-                }
-            }
-            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-            Err(error) => return Err(error.into()),
-        }
-    }
-    Err(ControlError::InvalidInput.into())
-}
-
-fn same_metadata(left: &fs::Metadata, right: &fs::Metadata) -> bool {
-    let same = left.len() == right.len() && left.modified().ok() == right.modified().ok();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::MetadataExt as _;
-        same && left.dev() == right.dev()
-            && left.ino() == right.ino()
-            && left.ctime() == right.ctime()
-            && left.ctime_nsec() == right.ctime_nsec()
-            && left.mode() == right.mode()
-    }
-    #[cfg(not(unix))]
-    {
-        same && left.permissions().readonly() == right.permissions().readonly()
-    }
-}
-
-#[cfg(unix)]
-fn file_mode(metadata: &fs::Metadata) -> CheckpointFileMode {
-    use std::os::unix::fs::PermissionsExt as _;
-    if metadata.permissions().mode() & 0o111 == 0 {
-        CheckpointFileMode::Regular
-    } else {
-        CheckpointFileMode::Executable
-    }
-}
-
-#[cfg(not(unix))]
-const fn file_mode(_metadata: &fs::Metadata) -> CheckpointFileMode {
-    CheckpointFileMode::Regular
 }
 
 pub(super) fn check_protected(

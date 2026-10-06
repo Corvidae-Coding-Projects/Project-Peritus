@@ -6,7 +6,7 @@ use crate::{ErrorCode, PatchError, PatchOperationContext, PatchOperationKind, Ro
 
 use super::{
     filesystem::{Observation, observation_matches, observe_absolute, observe_target},
-    manifest::Manifest,
+    manifest::{Manifest, TargetIdentity},
     storage::backup_path,
 };
 
@@ -38,6 +38,19 @@ pub(super) fn observe_manifest(
         };
         let matches_pre = observation_matches(observed, entry.preimage);
         let matches_post = observation_matches(observed, entry.postimage);
+        if matches!(entry.preimage, Some(TargetIdentity::EmptyDirectory { .. })) {
+            match observe_absolute(
+                &backup_path(transaction_directory, index),
+                PatchOperationContext::Recover,
+                RollbackStatus::Indeterminate,
+            ) {
+                Ok(Observation::Absent) => {}
+                Ok(backup) if observation_matches(backup, entry.preimage) => {}
+                Ok(_) => return Ok(None),
+                Err(error) if error.code() == ErrorCode::UnsafeFilesystemTarget => return Ok(None),
+                Err(error) => return Err(error),
+            }
+        }
         let backup_restores_replace =
             if observed == Observation::Absent && entry.kind == PatchOperationKind::Replace {
                 let backup = backup_path(transaction_directory, index);

@@ -5,8 +5,12 @@ use super::super::{
     field,
 };
 
-const VERSION_TYPES: &[&str] =
-    &["WorkbenchCheckpointAbsentVersion", "WorkbenchCheckpointPresentVersion"];
+mod coverage;
+const VERSION_TYPES: &[&str] = &[
+    "WorkbenchCheckpointAbsentVersion",
+    "WorkbenchCheckpointPresentVersion",
+    "WorkbenchCheckpointDirectoryVersion",
+];
 
 const fn nested(name: &'static str, ty: &'static str) -> AppFieldDescriptor {
     field(name, W::Struct, &[], ty, ty, J::Ref(ty), true)
@@ -31,7 +35,7 @@ const fn version(name: &'static str, required: bool) -> AppFieldDescriptor {
         W::Struct,
         &[],
         "WorkbenchCheckpointVersion",
-        "WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion",
+        "WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion",
         J::OneOfRef(VERSION_TYPES),
         required,
     )
@@ -59,6 +63,8 @@ const fn kind(value: &'static str, values: &'static [&'static str]) -> AppFieldD
 }
 
 pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
+    coverage::DIRECTORY,
+    coverage::RANGE,
     AppTypeDescriptor {
         name: "WorkbenchCheckpointAbsentVersion",
         rust_type: "WorkbenchCheckpointVersion",
@@ -117,6 +123,7 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             version("checkpoint", true),
             field("hasExpectedCurrent", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
             version("expectedCurrent", false),
+            coverage::ranges(),
         ],
     },
     AppTypeDescriptor {
@@ -185,13 +192,14 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             field("hasExpectedCurrent", W::Boolean, &[], "bool", "boolean", J::Boolean, true),
             version("expectedCurrent", false),
             version("observedCurrent", true),
+            coverage::ranges(),
             field(
                 "disposition",
                 W::U16,
                 &[],
                 "WorkbenchRewindDisposition",
-                "\"restore\" | \"unchanged\" | \"conflict\" | \"unsealed\"",
-                J::Enum(&["restore", "unchanged", "conflict", "unsealed"]),
+                "\"restore\" | \"unchanged\" | \"conflict\" | \"unsealed\" | \"unavailable\"",
+                J::Enum(&["restore", "unchanged", "conflict", "unsealed", "unavailable"]),
                 true,
             ),
         ],

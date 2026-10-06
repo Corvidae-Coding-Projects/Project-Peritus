@@ -96,7 +96,10 @@ impl ControlStore {
         }
         for (path, root) in checkpoint.paths().iter().zip(roots.bodies) {
             match (path.checkpoint(), root) {
-                (CheckpointFileVersion::Absent, None) => {}
+                (
+                    CheckpointFileVersion::Absent | CheckpointFileVersion::EmptyDirectory { .. },
+                    None,
+                ) => {}
                 (version @ CheckpointFileVersion::Present { .. }, Some(root)) => {
                     self.verify_stream(root, version)?;
                 }

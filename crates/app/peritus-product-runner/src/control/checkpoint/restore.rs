@@ -1,6 +1,9 @@
 //! Durable restore outcome and exact transaction bindings.
 
-use super::{CheckpointId, ControlError, ControlText, RestoreId, Sha256Digest};
+use super::{
+    CheckpointFileVersion, CheckpointId, CheckpointPath, ControlError, ControlText, RestoreId,
+    Sha256Digest,
+};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -32,6 +35,10 @@ pub struct RestoreOperation {
     transaction_manifest_digest: Option<[u8; 32]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     branch: Option<Box<crate::control::ConversationBranch>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    materialization_schema: Option<u16>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    targets: Option<Vec<CheckpointPath>>,
 }
 impl RestoreOperation {
     /// Constructs a prepared exact restore journal record.
@@ -55,7 +62,81 @@ impl RestoreOperation {
             conflicts: Vec::new(),
             transaction_manifest_digest: None,
             branch: None,
+            materialization_schema: None,
+            targets: None,
         })
+    }
+    /// Retains every exact planned postimage before filesystem effects, including unchanged paths.
+    ///
+    /// # Errors
+    /// Rejects terminal operations, malformed versions, or duplicate targets.
+    pub fn with_targets(
+        mut self,
+        targets: Vec<(String, CheckpointFileVersion)>,
+    ) -> Result<Self, ControlError> {
+        if self.status != RestoreStatus::Prepared {
+            return Err(ControlError::InvalidInput);
+        }
+        let mut targets = targets
+            .into_iter()
+            .map(|(path, version)| CheckpointPath::new(path, version))
+            .collect::<Result<Vec<_>, _>>()?;
+        targets.sort_by(|left, right| left.path().cmp(right.path()));
+        if targets.windows(2).any(|pair| pair[0].path() == pair[1].path()) {
+            return Err(ControlError::InvalidInput);
+        }
+        self.materialization_schema = Some(1);
+        self.targets = Some(targets);
+        Ok(self)
+    }
+    /// Returns exact materialized postimages; absent only for previously accepted legacy restores.
+    #[must_use]
+    pub fn targets(&self) -> Option<&[CheckpointPath]> {
+        self.targets.as_deref()
+    }
+    /// Reproduces the original preparation bytes without dropping materialized or branch bindings.
+    #[must_use]
+    pub fn prepared_manifest(&self) -> Self {
+        let mut prepared = self.clone();
+        prepared.status = RestoreStatus::Prepared;
+        prepared.conflicts.clear();
+        prepared.transaction_manifest_digest = None;
+        prepared
+    }
+    pub(in crate::control) fn validate_targets(
+        &self,
+        source: &super::UserCheckpoint,
+        recovery: &super::UserCheckpoint,
+    ) -> Result<(), ControlError> {
+        match (&self.targets, self.materialization_schema) {
+            (None, None)
+                if !source.paths().iter().chain(recovery.paths()).any(|path| {
+                    matches!(
+                        path.coverage(),
+                        super::CheckpointCoverage::SelectedRanges(_)
+                            | super::CheckpointCoverage::EmptyDirectory
+                    )
+                }) =>
+            {
+                Ok(())
+            }
+            (Some(targets), Some(1)) if targets.len() == recovery.paths().len() => {
+                for (target, before) in targets.iter().zip(recovery.paths()) {
+                    target.validate()?;
+                    if target.path() != before.path()
+                        || target.owned_postchange().is_some()
+                        || matches!(target.coverage(), super::CheckpointCoverage::SelectedRanges(_))
+                    {
+                        return Err(ControlError::InvalidInput);
+                    }
+                }
+                if targets.windows(2).any(|pair| pair[0].path() >= pair[1].path()) {
+                    return Err(ControlError::InvalidInput);
+                }
+                Ok(())
+            }
+            _ => Err(ControlError::UnsupportedSchema),
+        }
     }
     /// Retains the exact logical branch to publish only after successful file settlement.
     ///

@@ -52,6 +52,11 @@ pub enum WorkbenchCheckpointFileMode {
 pub enum WorkbenchCheckpointVersion {
     /// Path was absent.
     Absent,
+    /// Empty-directory identity and exact permission intent; no file bytes are implied.
+    EmptyDirectory {
+        /// Permission and special bits, excluding filesystem node-type bits.
+        permissions: u16,
+    },
     /// Path had exact bytes and portable mode.
     Present {
         /// Complete content digest.
@@ -62,6 +67,22 @@ pub enum WorkbenchCheckpointVersion {
         mode: WorkbenchCheckpointFileMode,
     },
 }
+
+impl WorkbenchCheckpointVersion {
+    pub(super) const fn validate(self) -> Result<(), AppProtocolError> {
+        if let Self::EmptyDirectory { permissions } = self
+            && permissions > 0o7777
+        {
+            return Err(invalid());
+        }
+        Ok(())
+    }
+}
+
+mod coverage;
+pub use coverage::{
+    WorkbenchCheckpointCoverage, WorkbenchCheckpointPath, WorkbenchCheckpointRange,
+};
 
 /// Stable source references retained for a later conversation fork without restoring them.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -101,45 +122,6 @@ impl WorkbenchCheckpointReferences {
     #[must_use]
     pub const fn goal_revision(self) -> Option<u64> {
         self.goal_revision
-    }
-}
-
-/// One exact covered target.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct WorkbenchCheckpointPath {
-    path: String,
-    checkpoint: WorkbenchCheckpointVersion,
-    expected_current: Option<WorkbenchCheckpointVersion>,
-}
-impl WorkbenchCheckpointPath {
-    /// Validates one canonical relative target.
-    ///
-    /// # Errors
-    /// Rejects malformed paths.
-    pub fn new(
-        path: String,
-        checkpoint: WorkbenchCheckpointVersion,
-        expected_current: Option<WorkbenchCheckpointVersion>,
-    ) -> Result<Self, AppProtocolError> {
-        if !valid_path(&path) {
-            return Err(invalid());
-        }
-        Ok(Self { path, checkpoint, expected_current })
-    }
-    /// Borrows canonical relative path.
-    #[must_use]
-    pub fn path(&self) -> &str {
-        &self.path
-    }
-    /// Returns version captured for restore.
-    #[must_use]
-    pub const fn checkpoint(&self) -> WorkbenchCheckpointVersion {
-        self.checkpoint
-    }
-    /// Returns completed owned post-change version when sealed.
-    #[must_use]
-    pub const fn expected_current(&self) -> Option<WorkbenchCheckpointVersion> {
-        self.expected_current
     }
 }
 

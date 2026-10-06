@@ -1,8 +1,7 @@
 //! Prepared rewind reconciliation against exact C1 and retained checkpoint evidence.
 
 use peritus_app_protocol::{
-    WorkbenchCheckpointFileMode, WorkbenchCheckpointVersion, WorkbenchCommand, WorkbenchIntent,
-    WorkbenchRewindDisposition, WorkbenchRewindMode,
+    WorkbenchCommand, WorkbenchIntent, WorkbenchRewindDisposition, WorkbenchRewindMode,
 };
 use peritus_product_runner::control::{
     CheckpointFileVersion, ConversationRecord, RestoreOperation, RestoreStatus, UserCheckpoint,
@@ -14,8 +13,6 @@ use peritus_workspace::{
 };
 
 use super::{ControlError, ControlStore, Error, ProductRunService, public_version};
-
-const RECOVERY_MAGIC: &[u8] = b"PERITUS-WORKBENCH-REWIND-RECOVERY-V1\0";
 
 pub(super) struct RecoveredRestore {
     pub(super) status: RestoreStatus,
@@ -53,7 +50,9 @@ impl ProductRunService {
             .filter(|path| {
                 matches!(
                     path.disposition(),
-                    WorkbenchRewindDisposition::Conflict | WorkbenchRewindDisposition::Unsealed
+                    WorkbenchRewindDisposition::Conflict
+                        | WorkbenchRewindDisposition::Unsealed
+                        | WorkbenchRewindDisposition::Unavailable
                 )
             })
             .map(|path| path.path().to_owned())
@@ -66,12 +65,13 @@ impl ProductRunService {
             .collect::<Vec<_>>();
 
         let (plan_reconstructed, plan) = if structurally_exact && original_conflicts.is_empty() {
-            match self.restore_plan_with_store(
+            match self.restore_plan_materialized(
                 store,
                 command.query(),
                 checkpoint,
                 confirmed,
                 Some(restore.patch_digest()),
+                Some((recovery, None)),
             ) {
                 Ok(plan) => (true, plan),
                 Err(_) => (false, None),
@@ -79,7 +79,14 @@ impl ProductRunService {
         } else {
             (false, None)
         };
-        let plan_exact = if !structurally_exact {
+        let targets_exact = restore.targets().is_none_or(|targets| {
+            let versions = super::rewind::planned_versions(recovery, plan.as_ref());
+            versions.len() == targets.len()
+                && targets.iter().zip(versions).all(|(target, (path, version))| {
+                    target.path() == path && target.checkpoint() == version
+                })
+        });
+        let plan_exact = if !structurally_exact || !targets_exact {
             false
         } else if !original_conflicts.is_empty() {
             restore.patch_digest() == confirmed.preview_digest()
@@ -128,7 +135,8 @@ impl ProductRunService {
             paths.iter().map(|path| path.version).collect::<Vec<CheckpointFileVersion>>()
         });
 
-        let (all_pre, all_post) = classify_restore_paths(confirmed, recovery, versions.as_deref());
+        let (all_pre, all_post) =
+            classify_restore_paths(confirmed, recovery, versions.as_deref(), restore.targets());
         let (status, conflicts) = if !structurally_exact || !plan_exact {
             (RestoreStatus::RecoveryRequired, Vec::new())
         } else if !original_conflicts.is_empty() {
@@ -175,6 +183,8 @@ fn exact_restore_inputs(
                     && public_version(target.checkpoint()) == shown.checkpoint()
                     && target.owned_postchange().map(public_version) == shown.expected_current()
                     && public_version(before.checkpoint()) == shown.observed_current()
+                    && super::projection::public_ranges(target)
+                        .is_ok_and(|ranges| ranges == shown.ranges())
             },
         )
 }
@@ -183,13 +193,21 @@ fn classify_restore_paths(
     preview: &peritus_app_protocol::WorkbenchRewindPreview,
     recovery: &UserCheckpoint,
     observed: Option<&[CheckpointFileVersion]>,
+    targets: Option<&[peritus_product_runner::control::CheckpointPath]>,
 ) -> (bool, bool) {
     let Some(observed) = observed else { return (false, false) };
     let mut all_pre = true;
     let mut all_post = true;
-    for ((shown, before), current) in preview.paths().iter().zip(recovery.paths()).zip(observed) {
+    for (index, ((shown, before), current)) in
+        preview.paths().iter().zip(recovery.paths()).zip(observed).enumerate()
+    {
         all_pre &= *current == before.checkpoint();
-        all_post &= public_version(*current) == shown.checkpoint();
+        all_post &= match targets {
+            Some(targets) => targets.get(index).is_some_and(|target| {
+                target.path() == shown.path() && target.checkpoint() == *current
+            }),
+            None => public_version(*current) == shown.checkpoint(),
+        };
     }
     (all_pre, all_post)
 }
@@ -235,148 +253,7 @@ fn classify_c1(
     (RestoreStatus::RecoveryRequired, Vec::new())
 }
 
-#[allow(
-    clippy::too_many_arguments,
-    reason = "recovery evidence binds every independently checked journal and C1 fact"
-)]
-fn encode_evidence(
-    command: &WorkbenchCommand,
-    restore: &RestoreOperation,
-    recovery: &UserCheckpoint,
-    status: RestoreStatus,
-    structurally_exact: bool,
-    plan_exact: bool,
-    observed: Option<&[CheckpointFileVersion]>,
-    c1: Option<&FolderMutationRecoveryOutcome>,
-) -> Vec<u8> {
-    let WorkbenchIntent::ApplyRewind(preview) = command.intent() else {
-        return RECOVERY_MAGIC.to_vec();
-    };
-    let mut bytes = RECOVERY_MAGIC.to_vec();
-    bytes.extend_from_slice(command.operation().as_bytes());
-    bytes.extend_from_slice(command.query().workspace().as_bytes());
-    bytes.extend_from_slice(restore.id().as_bytes());
-    bytes.extend_from_slice(restore.checkpoint().as_bytes());
-    bytes.extend_from_slice(recovery.id().as_bytes());
-    bytes.extend_from_slice(restore.preview_digest().as_bytes());
-    bytes.extend_from_slice(restore.patch_digest().as_bytes());
-    bytes.push(status_tag(status));
-    bytes.push(u8::from(structurally_exact));
-    bytes.push(u8::from(plan_exact));
-    put_u64(&mut bytes, preview.paths().len() as u64);
-    for (index, path) in preview.paths().iter().enumerate() {
-        put_bytes(&mut bytes, path.path().as_bytes());
-        bytes.push(disposition_tag(path.disposition()));
-        put_public_version(&mut bytes, path.observed_current());
-        put_public_version(&mut bytes, path.checkpoint());
-        match observed.and_then(|versions| versions.get(index)).copied() {
-            Some(version) => {
-                bytes.push(1);
-                put_checkpoint_version(&mut bytes, version);
-            }
-            None => bytes.push(0),
-        }
-    }
-    match c1 {
-        None => bytes.push(0),
-        Some(outcome) => {
-            bytes.push(1);
-            bytes.push(c1_state_tag(outcome.state()));
-            bytes.push(marker_tag(outcome.marker()));
-            bytes.extend_from_slice(outcome.action_id().as_bytes());
-            bytes.extend_from_slice(outcome.action_digest().as_bytes());
-            bytes.extend_from_slice(outcome.workspace_id().as_bytes());
-            bytes.extend_from_slice(outcome.resource_id().as_bytes());
-            put_u64(&mut bytes, outcome.generation().get());
-            put_u64(&mut bytes, outcome.revision().get());
-            bytes.extend_from_slice(outcome.patch_identity().as_bytes());
-            match outcome.observed_binding() {
-                None => bytes.push(0),
-                Some(binding) => {
-                    bytes.push(1);
-                    bytes.extend_from_slice(binding.workspace_id().as_bytes());
-                    put_u64(&mut bytes, binding.generation().get());
-                    put_u64(&mut bytes, binding.revision().get());
-                }
-            }
-            match outcome.observed_identity() {
-                None => bytes.push(0),
-                Some(identity) => {
-                    bytes.push(1);
-                    bytes.extend_from_slice(identity.as_bytes());
-                }
-            }
-            bytes.push(u8::from(outcome.quarantined()));
-            bytes.push(u8::from(outcome.cleanup_pending()));
-        }
-    }
-    bytes
-}
-
-const fn status_tag(value: RestoreStatus) -> u8 {
-    match value {
-        RestoreStatus::Prepared => 0,
-        RestoreStatus::Applied => 1,
-        RestoreStatus::Conflict => 2,
-        RestoreStatus::RecoveryRequired => 3,
-    }
-}
-
-const fn disposition_tag(value: WorkbenchRewindDisposition) -> u8 {
-    match value {
-        WorkbenchRewindDisposition::Restore => 1,
-        WorkbenchRewindDisposition::Unchanged => 2,
-        WorkbenchRewindDisposition::Conflict => 3,
-        WorkbenchRewindDisposition::Unsealed => 4,
-    }
-}
-
-const fn c1_state_tag(value: FolderMutationRecoveryState) -> u8 {
-    match value {
-        FolderMutationRecoveryState::NoAttempt => 1,
-        FolderMutationRecoveryState::ConsumedWithoutTransaction => 2,
-        FolderMutationRecoveryState::AlreadyApplied => 3,
-        FolderMutationRecoveryState::RolledBackCleanly => 4,
-        FolderMutationRecoveryState::Dirty => 5,
-        FolderMutationRecoveryState::Indeterminate => 6,
-    }
-}
-
-const fn marker_tag(value: FolderMutationActionMarker) -> u8 {
-    match value {
-        FolderMutationActionMarker::Missing => 1,
-        FolderMutationActionMarker::Exact => 2,
-        FolderMutationActionMarker::DigestMismatch => 3,
-    }
-}
-
-fn put_checkpoint_version(bytes: &mut Vec<u8>, value: CheckpointFileVersion) {
-    put_public_version(bytes, public_version(value));
-}
-
-fn put_public_version(bytes: &mut Vec<u8>, value: WorkbenchCheckpointVersion) {
-    match value {
-        WorkbenchCheckpointVersion::Absent => bytes.push(0),
-        WorkbenchCheckpointVersion::Present { digest, bytes: size, mode } => {
-            bytes.push(1);
-            bytes.extend_from_slice(digest.as_bytes());
-            put_u64(bytes, size);
-            bytes.push(match mode {
-                WorkbenchCheckpointFileMode::Regular => 1,
-                WorkbenchCheckpointFileMode::Executable => 2,
-            });
-        }
-    }
-}
-
-fn put_bytes(output: &mut Vec<u8>, value: &[u8]) {
-    put_u64(output, value.len() as u64);
-    output.extend_from_slice(value);
-}
-
-fn put_u64(output: &mut Vec<u8>, value: u64) {
-    output.extend_from_slice(&value.to_be_bytes());
-}
-
+mod evidence;
+use evidence::encode_evidence;
 #[cfg(test)]
 mod tests;

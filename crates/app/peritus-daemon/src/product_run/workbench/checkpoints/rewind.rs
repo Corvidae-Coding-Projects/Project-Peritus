@@ -6,13 +6,14 @@ use super::{
     Generation, LineEndingPolicy, OperationId, PatchOperation, PatchSet, Preimage,
     ProductRunService, RestoreId, RestoreOperation, RestoreStatus, RevisionNumber, UserCheckpoint,
     WorkbenchCommand, WorkbenchIntent, WorkbenchRestoreReceipt, WorkbenchRewindDisposition,
-    WorkbenchRewindPath, WorkbenchRewindPreview, WorkbenchRewindRequest, WorkspacePath, app_error,
-    check_protected, check_record, checkpoint_references, derived_id, error_response,
-    external_effects, noop_manifest, observe_version, patch_input, patch_mode, patch_preimage,
-    public_restore, public_version,
+    WorkbenchRewindPreview, WorkspacePath, app_error, check_record, checkpoint_references,
+    derived_id, error_response, external_effects, noop_manifest, patch_input, patch_mode,
+    patch_preimage, public_restore, public_version,
 };
 
 mod plan;
+mod preview;
+pub(super) use plan::selected_coverage_matches;
 
 #[cfg(test)]
 mod faults;
@@ -26,87 +27,6 @@ use faults::check_rewind_fault;
 pub(crate) use faults::{RewindFaultPoint, inject_rewind_fault, obstruct_folder_patch};
 
 impl ProductRunService {
-    pub(crate) async fn preview_workbench_rewind(
-        &self,
-        actor: ActorId,
-        request: &WorkbenchRewindRequest,
-    ) -> AppResponsePayload {
-        let service = self.clone();
-        let request = *request;
-        match tokio::task::spawn_blocking(move || service.rewind_preview(actor, request)).await {
-            Ok(result) => {
-                result.map_or_else(error_response, AppResponsePayload::WorkbenchRewindPreview)
-            }
-            Err(_) => AppResponsePayload::Error(app_error(AppErrorCode::Internal)),
-        }
-    }
-
-    pub(super) fn rewind_preview(
-        &self,
-        actor: ActorId,
-        request: WorkbenchRewindRequest,
-    ) -> Result<WorkbenchRewindPreview, Error> {
-        self.control_workspace(request.query())?;
-        let conversation = ConversationId::new(request.query().conversation().into_bytes())?;
-        let checkpoint_id = CheckpointId::new(request.checkpoint().into_bytes())?;
-        let (record, checkpoint) = self.with_controls(false, |store| {
-            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
-            let checkpoint = store
-                .load_checkpoint(conversation, checkpoint_id)?
-                .ok_or(ControlError::NotFound)?;
-            Ok((record, checkpoint))
-        })?;
-        check_record(&record, actor, request.query(), Some(request.revision()))?;
-        if record.restores().iter().any(|restore| {
-            matches!(restore.status(), RestoreStatus::Prepared | RestoreStatus::RecoveryRequired)
-        }) {
-            return Err(Error::Corrupt(
-                "a prepared rewind requires recovery before another preview",
-            ));
-        }
-        if request.mode() == peritus_app_protocol::WorkbenchRewindMode::ConversationOnly {
-            return WorkbenchRewindPreview::new(request, Vec::new(),
-                vec!["Current files are unchanged; this branch is not a historical filesystem snapshot.".to_owned()],
-                checkpoint.external_effects().map(str::to_owned).collect())
-                .map_err(|_| ControlError::InvalidInput.into());
-        }
-        let root = self.workspace_root(request.query())?;
-        let identity = self.checked_folder_identity(request.query(), root)?;
-        let protected = self.protected_paths(request.query())?;
-        let contract = record.inputs().capture()?.conversation().to_owned();
-        let mut paths = Vec::with_capacity(checkpoint.paths().len());
-        for checkpoint_path in checkpoint.paths() {
-            check_protected(root, checkpoint_path.path(), &contract, &protected)?;
-            let observed = observe_version(&identity, checkpoint_path.path())?;
-            let disposition = if observed == checkpoint_path.checkpoint() {
-                WorkbenchRewindDisposition::Unchanged
-            } else if checkpoint_path.owned_postchange().is_none() {
-                WorkbenchRewindDisposition::Unsealed
-            } else if checkpoint_path.owned_postchange() == Some(observed) {
-                WorkbenchRewindDisposition::Restore
-            } else {
-                WorkbenchRewindDisposition::Conflict
-            };
-            paths.push(
-                WorkbenchRewindPath::new(
-                    checkpoint_path.path().to_owned(),
-                    public_version(checkpoint_path.checkpoint()),
-                    checkpoint_path.owned_postchange().map(public_version),
-                    public_version(observed),
-                    disposition,
-                )
-                .map_err(|_| ControlError::InvalidInput)?,
-            );
-        }
-        WorkbenchRewindPreview::new(
-            request,
-            paths,
-            checkpoint.exclusions().map(str::to_owned).collect(),
-            checkpoint.external_effects().map(str::to_owned).collect(),
-        )
-        .map_err(|_| ControlError::InvalidInput.into())
-    }
-
     pub(crate) async fn apply_workbench_rewind(
         &self,
         actor: ActorId,
@@ -163,12 +83,6 @@ impl ProductRunService {
             .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
             .ok_or(ControlError::NotFound)?;
         let replay_only = !record.checkpoints().iter().any(|value| value.id() == checkpoint_id);
-        let checkpoint_versions = checkpoint
-            .paths()
-            .iter()
-            .map(|path| (path.path().to_owned(), path.checkpoint()))
-            .collect::<Vec<_>>();
-
         let conversation_only =
             request.mode() == peritus_app_protocol::WorkbenchRewindMode::ConversationOnly;
         let observed = if conversation_only {
@@ -203,7 +117,9 @@ impl ProductRunService {
             .filter(|path| {
                 matches!(
                     path.disposition(),
-                    WorkbenchRewindDisposition::Conflict | WorkbenchRewindDisposition::Unsealed
+                    WorkbenchRewindDisposition::Conflict
+                        | WorkbenchRewindDisposition::Unsealed
+                        | WorkbenchRewindDisposition::Unavailable
                 )
             })
             .map(|path| path.path().to_owned())
@@ -214,20 +130,31 @@ impl ProductRunService {
             None
         };
         let plan = if conflicts.is_empty() && !conversation_only {
-            self.restore_plan(command.query(), &checkpoint, confirmed)?
+            self.with_controls(false, |store| {
+                self.restore_plan_materialized(
+                    store,
+                    command.query(),
+                    &checkpoint,
+                    confirmed,
+                    None,
+                    Some((&recovery, Some(&recovery_bodies))),
+                )
+            })?
         } else {
             None
         };
         let patch_digest = plan
             .as_ref()
             .map_or_else(|| confirmed.preview_digest(), |patch| patch.identity().digest());
+        let checkpoint_versions = planned_versions(&recovery, plan.as_ref());
         let mut restore = RestoreOperation::prepared(
             restore_id,
             checkpoint_id,
             confirmed.preview_digest(),
             patch_digest,
             recovery_id,
-        )?;
+        )?
+        .with_targets(checkpoint_versions.clone())?;
         if let Some(branch) = branch {
             restore = restore.with_branch(branch)?;
         }
@@ -343,5 +270,42 @@ impl ProductRunService {
             restored,
             terminal_conflicts,
         )
+    }
+}
+
+pub(super) fn planned_versions(
+    recovery: &UserCheckpoint,
+    plan: Option<&PatchSet>,
+) -> Vec<(String, CheckpointFileVersion)> {
+    let mut operations = plan.map_or(&[][..], PatchSet::operations).iter().peekable();
+    recovery
+        .paths()
+        .iter()
+        .map(|path| {
+            let version = if operations
+                .peek()
+                .is_some_and(|operation| operation.path().as_str() == path.path())
+            {
+                checkpoint_version(operations.next().expect("checked operation").postimage())
+            } else {
+                path.checkpoint()
+            };
+            (path.path().to_owned(), version)
+        })
+        .collect()
+}
+
+const fn checkpoint_version(preimage: Preimage) -> CheckpointFileVersion {
+    match preimage {
+        Preimage::Absent => CheckpointFileVersion::Absent,
+        Preimage::EmptyDirectory { mode } => CheckpointFileVersion::empty_directory(mode),
+        Preimage::Present { digest, size, mode } => CheckpointFileVersion::present(
+            digest,
+            size,
+            match mode {
+                peritus_patch::FileMode::Regular => super::CheckpointFileMode::Regular,
+                peritus_patch::FileMode::Executable => super::CheckpointFileMode::Executable,
+            },
+        ),
     }
 }

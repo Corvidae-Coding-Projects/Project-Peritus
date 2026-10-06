@@ -1,69 +1,14 @@
 //! Bounded checkpoint lineage and restore-journal records without retained file bodies.
 
 use super::{CheckpointId, ControlError, ControlText, RestoreId};
-use peritus_patch::WorkspacePath;
 use peritus_types::Sha256Digest;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Portable file mode bound into checkpoint preconditions.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CheckpointFileMode {
-    /// Regular non-executable file.
-    Regular,
-    /// Regular executable file.
-    Executable,
-}
-
-/// Exact expected file state. Absence is represented explicitly.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[serde(deny_unknown_fields)]
-pub enum CheckpointFileVersion {
-    /// The covered path did not exist.
-    Absent,
-    /// The covered path was a regular file with exact bytes and portable mode.
-    Present {
-        /// SHA-256 of the complete file.
-        digest: [u8; 32],
-        /// Complete byte length.
-        bytes: u64,
-        /// Portable mode checked by the restore backend.
-        mode: CheckpointFileMode,
-    },
-}
-impl CheckpointFileVersion {
-    /// Constructs a present-file version from exact content facts.
-    #[must_use]
-    pub const fn present(digest: Sha256Digest, bytes: u64, mode: CheckpointFileMode) -> Self {
-        Self::Present { digest: digest.into_bytes(), bytes, mode }
-    }
-    /// Returns the content digest when this version is present.
-    #[must_use]
-    pub const fn digest(self) -> Option<Sha256Digest> {
-        match self {
-            Self::Absent => None,
-            Self::Present { digest, .. } => Some(Sha256Digest::new(digest)),
-        }
-    }
-    /// Returns the complete byte length when present.
-    #[must_use]
-    pub const fn bytes(self) -> Option<u64> {
-        match self {
-            Self::Absent => None,
-            Self::Present { bytes, .. } => Some(bytes),
-        }
-    }
-    /// Returns the portable mode when present.
-    #[must_use]
-    pub const fn mode(self) -> Option<CheckpointFileMode> {
-        match self {
-            Self::Absent => None,
-            Self::Present { mode, .. } => Some(mode),
-        }
-    }
-}
+mod path;
+mod version;
+pub use path::{CheckpointCoverage, CheckpointPath, CheckpointRange};
+pub use version::{CheckpointFileMode, CheckpointFileVersion, CheckpointVersion};
 
 /// Stable historical references consumed by later conversation branching.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -104,47 +49,6 @@ impl CheckpointReferences {
     #[must_use]
     pub const fn goal_revision(&self) -> Option<u64> {
         self.goal_revision
-    }
-}
-
-/// One exact covered path and its immutable checkpoint and owned-postchange versions.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct CheckpointPath {
-    path: ControlText<4096>,
-    checkpoint: CheckpointFileVersion,
-    owned_postchange: Option<CheckpointFileVersion>,
-}
-impl CheckpointPath {
-    /// Constructs one captured path. A later owned mutation seals its expected current version.
-    ///
-    /// # Errors
-    /// Rejects non-canonical workspace-relative paths.
-    pub fn new(path: String, checkpoint: CheckpointFileVersion) -> Result<Self, ControlError> {
-        WorkspacePath::new(&path).map_err(|_| ControlError::InvalidInput)?;
-        Ok(Self { path: ControlText::new(path)?, checkpoint, owned_postchange: None })
-    }
-    /// Borrows the canonical workspace-relative path.
-    #[must_use]
-    pub fn path(&self) -> &str {
-        self.path.as_str()
-    }
-    /// Returns the version restored by rewind.
-    #[must_use]
-    pub const fn checkpoint(&self) -> CheckpointFileVersion {
-        self.checkpoint
-    }
-    /// Returns the last version observed at a completed owned execution boundary.
-    #[must_use]
-    pub const fn owned_postchange(&self) -> Option<CheckpointFileVersion> {
-        self.owned_postchange
-    }
-    pub(super) const fn seal(&mut self, version: CheckpointFileVersion) {
-        self.owned_postchange = Some(version);
-    }
-    fn validate(&self) -> Result<(), ControlError> {
-        WorkspacePath::new(self.path()).map_err(|_| ControlError::InvalidInput)?;
-        Ok(())
     }
 }
 
@@ -268,7 +172,7 @@ impl UserCheckpoint {
         let mut captured = self.clone();
         captured.sealed_by_run = None;
         for path in &mut captured.paths {
-            path.owned_postchange = None;
+            path.unseal();
         }
         captured
     }
@@ -287,7 +191,7 @@ impl UserCheckpoint {
             if path.path() != name {
                 return Err(ControlError::InvalidInput);
             }
-            path.seal(*version);
+            path.seal(*version)?;
         }
         self.sealed_by_run = Some(run);
         Ok(())
@@ -306,7 +210,7 @@ impl UserCheckpoint {
             if path.path() != name {
                 return Err(ControlError::InvalidInput);
             }
-            path.seal(*version);
+            path.seal(*version)?;
         }
         Ok(())
     }

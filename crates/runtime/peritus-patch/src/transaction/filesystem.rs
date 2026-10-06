@@ -12,14 +12,18 @@ use crate::{
     WorkspacePath,
 };
 
-use super::manifest::FileIdentity;
+use super::manifest::TargetIdentity;
+
+mod directory;
+use directory::observe_empty_directory;
+pub(super) use directory::{remove_observed, set_directory_mode};
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum Observation {
     Absent,
-    Present(FileIdentity),
+    Present(TargetIdentity),
 }
 
 pub(super) fn observe_target(
@@ -42,7 +46,13 @@ pub(super) fn observe_absolute(
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Observation::Absent),
         Err(error) => return Err(PatchError::io(operation, rollback, error)),
     };
-    if metadata.file_type().is_symlink() || !metadata.is_file() {
+    if metadata.file_type().is_symlink() {
+        return Err(unsafe_target(operation, rollback));
+    }
+    if metadata.is_dir() {
+        return observe_empty_directory(path, &metadata, operation, rollback);
+    }
+    if !metadata.is_file() {
         return Err(unsafe_target(operation, rollback));
     }
     let mut file = File::open(path).map_err(|error| PatchError::io(operation, rollback, error))?;
@@ -77,7 +87,7 @@ pub(super) fn observe_absolute(
     {
         return Err(unsafe_target(operation, rollback));
     }
-    Ok(Observation::Present(FileIdentity {
+    Ok(Observation::Present(TargetIdentity::File {
         digest: Sha256Digest::new(hasher.finalize().into()),
         size,
         mode: mode_from_metadata(&after),
@@ -102,16 +112,27 @@ fn same_version(left: &Metadata, right: &Metadata) -> bool {
     }
 }
 
-pub(super) fn observation_matches(observed: Observation, expected: Option<FileIdentity>) -> bool {
+pub(super) fn observation_matches(observed: Observation, expected: Option<TargetIdentity>) -> bool {
     match (observed, expected) {
         (Observation::Absent, None) => true,
-        (Observation::Present(observed), Some(expected)) => crate::verified::file_identity_matches(
-            expected.size,
-            observed.size,
-            expected.digest == observed.digest,
-            expected.mode.tag(),
-            observed.mode.tag(),
+        (
+            Observation::Present(TargetIdentity::File { digest, size, mode }),
+            Some(TargetIdentity::File {
+                digest: expected_digest,
+                size: expected_size,
+                mode: expected_mode,
+            }),
+        ) => crate::verified::file_identity_matches(
+            expected_size,
+            size,
+            expected_digest == digest,
+            expected_mode.tag(),
+            mode.tag(),
         ),
+        (
+            Observation::Present(TargetIdentity::EmptyDirectory { mode }),
+            Some(TargetIdentity::EmptyDirectory { mode: expected_mode }),
+        ) => mode == expected_mode,
         _ => false,
     }
 }

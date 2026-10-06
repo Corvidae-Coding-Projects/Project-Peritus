@@ -107,6 +107,7 @@ impl ConversationRecord {
         if let Some(branch) = restore.branch() {
             self.validate_fork(branch, replayed)?;
         }
+        restore.validate_targets(retained.or(replayed).ok_or(ControlError::NotFound)?, recovery)?;
         self.checkpoints.push(recovery.clone());
         self.restores.push(restore.clone());
         Ok(())
@@ -140,7 +141,16 @@ impl ConversationRecord {
         if seal_recovery && status == crate::control::RestoreStatus::Applied {
             let recovery_id = restore.recovery_checkpoint();
             let retained_versions;
-            let versions = if let Some((_, versions)) = replayed {
+            let versions = if let Some(targets) = restore.targets() {
+                retained_versions = targets
+                    .iter()
+                    .map(|target| (target.path().to_owned(), target.checkpoint()))
+                    .collect::<Vec<_>>();
+                if replayed.is_some_and(|(_, versions)| versions != retained_versions.as_slice()) {
+                    return Err(ControlError::InvalidInput);
+                }
+                &retained_versions
+            } else if let Some((_, versions)) = replayed {
                 versions
             } else {
                 let source = self

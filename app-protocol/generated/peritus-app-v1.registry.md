@@ -1601,6 +1601,25 @@ Rust type: `WorkbenchContextPage`
 | `seal` | no | `ordered-fields` | `WorkbenchContextSeal` | `WorkbenchContextSeal` | — |
 | `rows` | yes | `len+items` | `Vec<WorkbenchContextRow>` | `readonly WorkbenchContextRow[]` | `workbench.max-context-page (32)` |
 
+### `WorkbenchCheckpointDirectoryVersion`
+
+Rust type: `WorkbenchCheckpointVersion`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `kind` | yes | `u16-be` | `WorkbenchCheckpointVersion` | `"emptyDirectory"` | — |
+| `permissions` | yes | `u16-be` | `u16` | `number` | — |
+
+### `WorkbenchCheckpointRange`
+
+Rust type: `WorkbenchCheckpointRange`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `selection` | yes | `ordered-fields` | `WorkbenchFileRange` | `WorkbenchFileRangeBytes | WorkbenchFileRangeLines` | — |
+| `start` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `end` | yes | `u64-be` | `u64` | `UInt64` | — |
+
 ### `WorkbenchCheckpointAbsentVersion`
 
 Rust type: `WorkbenchCheckpointVersion`
@@ -1639,9 +1658,10 @@ Rust type: `WorkbenchCheckpointPath`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
-| `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion` | — |
+| `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
 | `hasExpectedCurrent` | yes | `bool/u8` | `bool` | `boolean` | — |
-| `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion` | — |
+| `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
+| `ranges` | no | `len+items` | `Vec<WorkbenchCheckpointRange>` | `readonly WorkbenchCheckpointRange[]` | `strictly-sorted-unique` |
 
 ### `WorkbenchCheckpointReceipt`
 
@@ -1677,11 +1697,12 @@ Rust type: `WorkbenchRewindPath`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
-| `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion` | — |
+| `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
 | `hasExpectedCurrent` | yes | `bool/u8` | `bool` | `boolean` | — |
-| `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion` | — |
-| `observedCurrent` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion` | — |
-| `disposition` | yes | `u16-be` | `WorkbenchRewindDisposition` | `"restore" | "unchanged" | "conflict" | "unsealed"` | — |
+| `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
+| `observedCurrent` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
+| `ranges` | no | `len+items` | `Vec<WorkbenchCheckpointRange>` | `readonly WorkbenchCheckpointRange[]` | `strictly-sorted-unique` |
+| `disposition` | yes | `u16-be` | `WorkbenchRewindDisposition` | `"restore" | "unchanged" | "conflict" | "unsealed" | "unavailable"` | — |
 
 ### `WorkbenchRewindPreview`
 

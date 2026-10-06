@@ -5,9 +5,12 @@ use super::{
     ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord, Error,
     OperationId, Path, ProductRunService, RunId, UserCheckpoint, WorkspaceId,
     WorkspaceMutationKind, automatic_checkpoint_id, check_automatic_record, check_protected,
-    checkpoint_references, empty_directory_exclusion, external_effects, observe_empty_directory,
-    observe_path, public_query, validate_automatic_checkpoint, validate_run_binding,
+    checkpoint_references, external_effects, observe_empty_directory, observe_path, public_query,
+    validate_automatic_checkpoint, validate_run_binding,
 };
+
+#[cfg(test)]
+mod tests;
 
 impl ProductRunService {
     pub(crate) fn capture_automatic_checkpoint(
@@ -75,8 +78,8 @@ impl ProductRunService {
                 (vec![checkpoint_path], Vec::new(), vec![captured.body])
             }
             WorkspaceMutationKind::EmptyDirectory => {
-                observe_empty_directory(&identity, path)?;
-                (Vec::new(), vec![empty_directory_exclusion(path)], Vec::new())
+                let version = observe_empty_directory(&identity, path)?;
+                (vec![CheckpointPath::new(path.to_owned(), version)?], Vec::new(), vec![None])
             }
         };
         let value = UserCheckpoint::automatic(
@@ -123,9 +126,10 @@ impl ProductRunService {
             .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
             .ok_or(ControlError::NotFound)?;
         validate_automatic_checkpoint(&checkpoint, run, path, kind)?;
-        let versions = match kind {
-            WorkspaceMutationKind::File => vec![(path.to_owned(), owned_postchange)],
-            WorkspaceMutationKind::EmptyDirectory => Vec::new(),
+        let versions = if checkpoint.paths().is_empty() {
+            Vec::new()
+        } else {
+            vec![(path.to_owned(), owned_postchange)]
         };
         self.seal_checkpoint_versions(start, run, &checkpoint, versions)
     }
@@ -244,6 +248,10 @@ fn seal_operation_id(
         bytes.extend_from_slice(path.as_bytes());
         match version {
             CheckpointFileVersion::Absent => bytes.push(0),
+            CheckpointFileVersion::EmptyDirectory { permissions } => {
+                bytes.push(2);
+                bytes.extend_from_slice(&permissions.to_le_bytes());
+            }
             CheckpointFileVersion::Present { digest, bytes: size, mode } => {
                 bytes.push(1);
                 bytes.extend_from_slice(digest);

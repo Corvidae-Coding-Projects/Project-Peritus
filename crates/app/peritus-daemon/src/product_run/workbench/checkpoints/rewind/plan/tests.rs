@@ -11,6 +11,7 @@ use peritus_product_runner::control::{
     RestoreOperation,
 };
 use peritus_types::{ActorId, SessionId, WorkspaceId};
+mod partial;
 
 #[test]
 fn prepared_legacy_restore_recovers_the_same_identity_before_and_after_c1_apply() {

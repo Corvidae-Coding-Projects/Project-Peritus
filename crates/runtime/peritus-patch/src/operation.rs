@@ -1,8 +1,8 @@
 //! Closed patch operation vocabulary.
 
 use crate::{
-    ErrorCode, FinalFile, PatchError, PatchOperationContext, Preimage, RecoveryClass,
-    RollbackStatus, SnapshotFile, WorkspacePath,
+    DirectoryMode, ErrorCode, FinalFile, PatchError, PatchOperationContext, Preimage,
+    RecoveryClass, RollbackStatus, SnapshotFile, WorkspacePath,
 };
 
 /// Kind of one canonical patch operation.
@@ -10,13 +10,17 @@ use crate::{
 pub enum PatchOperationKind {
     /// Create a previously absent regular file.
     Create,
-    /// Replace an exactly identified regular file.
+    /// Replace an exactly identified regular file or empty directory.
     Replace,
     /// Delete an exactly identified regular file.
     Delete,
+    /// Create a previously absent empty directory.
+    CreateDirectory,
+    /// Remove an exactly identified empty directory without recursive deletion.
+    DeleteDirectory,
 }
 
-/// One checked create, replace, or delete operation.
+/// One checked regular-file or empty-directory operation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PatchOperation {
     path: WorkspacePath,
@@ -24,6 +28,7 @@ pub struct PatchOperation {
     final_file: Option<FinalFile>,
     snapshot: Option<SnapshotFile>,
     kind: PatchOperationKind,
+    directory: Option<DirectoryMode>,
 }
 
 impl PatchOperation {
@@ -36,10 +41,11 @@ impl PatchOperation {
             final_file: Some(final_file),
             snapshot: None,
             kind: PatchOperationKind::Create,
+            directory: None,
         }
     }
 
-    /// Constructs a replacement with an exact present-file preimage.
+    /// Constructs a regular-file replacement with an exact existing-node preimage.
     ///
     /// # Errors
     ///
@@ -49,13 +55,14 @@ impl PatchOperation {
         preimage: Preimage,
         final_file: FinalFile,
     ) -> Result<Self, PatchError> {
-        require_present(preimage)?;
+        require_existing(preimage)?;
         Ok(Self {
             path,
             preimage,
             final_file: Some(final_file),
             snapshot: None,
             kind: PatchOperationKind::Replace,
+            directory: None,
         })
     }
 
@@ -72,6 +79,7 @@ impl PatchOperation {
             final_file: None,
             snapshot: None,
             kind: PatchOperationKind::Delete,
+            directory: None,
         })
     }
 
@@ -84,6 +92,7 @@ impl PatchOperation {
             final_file: None,
             snapshot: Some(snapshot),
             kind: PatchOperationKind::Create,
+            directory: None,
         }
     }
 
@@ -96,19 +105,69 @@ impl PatchOperation {
         preimage: Preimage,
         snapshot: SnapshotFile,
     ) -> Result<Self, PatchError> {
-        require_present(preimage)?;
+        require_existing(preimage)?;
         Ok(Self {
             path,
             preimage,
             final_file: None,
             snapshot: Some(snapshot),
             kind: PatchOperationKind::Replace,
+            directory: None,
         })
+    }
+
+    /// Creates an empty directory whose target must be absent.
+    #[must_use]
+    pub const fn create_directory(path: WorkspacePath, mode: DirectoryMode) -> Self {
+        Self {
+            path,
+            preimage: Preimage::Absent,
+            final_file: None,
+            snapshot: None,
+            kind: PatchOperationKind::CreateDirectory,
+            directory: Some(mode),
+        }
+    }
+
+    /// Restores empty-directory type and permissions over an exactly identified existing node.
+    ///
+    /// # Errors
+    /// Rejects an absent preimage; creation has its own explicit operation.
+    pub fn replace_directory(
+        path: WorkspacePath,
+        preimage: Preimage,
+        mode: DirectoryMode,
+    ) -> Result<Self, PatchError> {
+        require_existing(preimage)?;
+        Ok(Self {
+            path,
+            preimage,
+            final_file: None,
+            snapshot: None,
+            kind: PatchOperationKind::Replace,
+            directory: Some(mode),
+        })
+    }
+
+    /// Removes an empty directory with an exact permission preimage.
+    #[must_use]
+    pub const fn delete_directory(path: WorkspacePath, mode: DirectoryMode) -> Self {
+        Self {
+            path,
+            preimage: Preimage::EmptyDirectory { mode },
+            final_file: None,
+            snapshot: None,
+            kind: PatchOperationKind::DeleteDirectory,
+            directory: None,
+        }
     }
 
     /// Returns the exact postimage, regardless of whether content is inline or streamed.
     #[must_use]
     pub fn postimage(&self) -> Preimage {
+        if let Some(mode) = self.directory {
+            return Preimage::EmptyDirectory { mode };
+        }
         if let Some(snapshot) = &self.snapshot {
             return snapshot.identity();
         }
@@ -119,6 +178,10 @@ impl PatchOperation {
 
     pub(crate) const fn is_snapshot(&self) -> bool {
         self.snapshot.is_some()
+    }
+
+    pub(crate) const fn covers_directory(&self) -> bool {
+        matches!(self.preimage, Preimage::EmptyDirectory { .. }) || self.directory.is_some()
     }
 
     pub(crate) fn write_final_to(&self, output: &mut dyn std::io::Write) -> Result<(), PatchError> {
@@ -174,4 +237,8 @@ const fn require_present(preimage: Preimage) -> Result<(), PatchError> {
             "replace and delete operations require a present preimage",
         ))
     }
+}
+
+const fn require_existing(preimage: Preimage) -> Result<(), PatchError> {
+    if matches!(preimage, Preimage::Absent) { require_present(preimage) } else { Ok(()) }
 }

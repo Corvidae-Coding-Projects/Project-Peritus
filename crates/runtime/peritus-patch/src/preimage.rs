@@ -2,6 +2,38 @@
 
 use peritus_types::Sha256Digest;
 
+use crate::{ErrorCode, PatchError, PatchOperationContext, RecoveryClass, RollbackStatus};
+
+/// Exact directory permission intent, separate from regular-file executable mode.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct DirectoryMode(u16);
+
+impl DirectoryMode {
+    /// Checks Unix permission and special bits without admitting a filesystem node type.
+    /// Non-Unix adapters support only their explicitly representable permission intents.
+    ///
+    /// # Errors
+    /// Rejects bits outside the directory permission vocabulary.
+    pub const fn new(bits: u16) -> Result<Self, PatchError> {
+        if bits & !0o7777 != 0 {
+            return Err(PatchError::message(
+                ErrorCode::InvalidContent,
+                RecoveryClass::CorrectPatch,
+                PatchOperationContext::Plan,
+                RollbackStatus::NotRequired,
+                "directory permission intent contains unsupported bits",
+            ));
+        }
+        Ok(Self(bits))
+    }
+
+    /// Returns exact permission bits.
+    #[must_use]
+    pub const fn bits(self) -> u16 {
+        self.0
+    }
+}
+
 /// Portable regular-file mode represented by patches.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum FileMode {
@@ -28,11 +60,16 @@ impl FileMode {
     }
 }
 
-/// Exact expected state of a patch target before mutation.
+/// Exact expected object type and state of a patch target before mutation.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Preimage {
     /// The target must not exist.
     Absent,
+    /// The target must be an empty directory with exact permission intent.
+    EmptyDirectory {
+        /// Directory permissions; this is never a regular-file executable mode.
+        mode: DirectoryMode,
+    },
     /// The target must be a regular file with exact content identity and mode.
     Present {
         /// SHA-256 of the exact file bytes.

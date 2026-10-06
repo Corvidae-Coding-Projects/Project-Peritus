@@ -115,7 +115,10 @@ impl ControlStore {
         let mut roots = Vec::with_capacity(bodies.len());
         for (path, body) in checkpoint.paths().iter().zip(bodies) {
             roots.push(match (path.checkpoint(), body) {
-                (CheckpointFileVersion::Absent, None) => None,
+                (
+                    CheckpointFileVersion::Absent | CheckpointFileVersion::EmptyDirectory { .. },
+                    None,
+                ) => None,
                 (version @ CheckpointFileVersion::Present { .. }, Some(body)) => {
                     Some(self.publish_snapshot(operation, owner, &mut pending, body, version)?)
                 }
@@ -312,6 +315,13 @@ impl ControlStore {
             let workspace_path =
                 WorkspacePath::new(path.path()).map_err(|_| ControlError::InvalidInput)?;
             let operation = match (path.checkpoint(), root) {
+                (CheckpointFileVersion::EmptyDirectory { permissions }, None) => {
+                    Ok(PatchOperation::create_directory(
+                        workspace_path,
+                        peritus_patch::DirectoryMode::new(permissions)
+                            .map_err(|_| ControlError::InvalidInput)?,
+                    ))
+                }
                 (CheckpointFileVersion::Absent, None) => PatchOperation::delete(
                     workspace_path,
                     Preimage::from_bytes(&[], FileMode::Regular),

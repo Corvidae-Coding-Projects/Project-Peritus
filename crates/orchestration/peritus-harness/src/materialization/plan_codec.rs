@@ -196,6 +196,9 @@ fn encode_preimage(
 ) -> Result<(), MaterializationError> {
     match preimage {
         Preimage::Absent => writer.write_u8(0).map_err(codec),
+        Preimage::EmptyDirectory { .. } => {
+            Err(invalid("file materialization cannot overwrite a directory"))
+        }
         Preimage::Present { digest, size, mode } => {
             writer.write_u8(1).map_err(codec)?;
             writer.write_fixed(digest.as_bytes()).map_err(codec)?;

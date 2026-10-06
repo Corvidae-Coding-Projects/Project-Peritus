@@ -10,7 +10,7 @@ use crate::{PatchError, PatchOperationContext, PatchPlan, RollbackStatus};
 
 use super::{
     FaultInjector, TransactionFaultPoint,
-    filesystem::{set_mode, sync_directory},
+    filesystem::{set_directory_mode, set_mode, sync_directory},
     manifest::Manifest,
 };
 
@@ -25,8 +25,30 @@ pub(super) fn prepare_transaction(
     faults: &dyn FaultInjector,
 ) -> Result<(), PatchError> {
     for (index, operation) in plan.operations().iter().enumerate() {
-        if let crate::Preimage::Present { mode, .. } = operation.postimage() {
-            stage_final(workspace, transaction_directory, index, operation, mode, faults)?;
+        match operation.postimage() {
+            crate::Preimage::Present { mode, .. } => {
+                stage_final(workspace, transaction_directory, index, operation, mode, faults)?;
+            }
+            crate::Preimage::EmptyDirectory { mode } => {
+                let staged = staged_path(transaction_directory, index);
+                fs::create_dir(&staged).map_err(|error| {
+                    PatchError::io(
+                        PatchOperationContext::StageFinal,
+                        RollbackStatus::NotRequired,
+                        error,
+                    )
+                })?;
+                set_directory_mode(&staged, mode)?;
+                sync_directory(&staged, RollbackStatus::NotRequired)?;
+                faults.check(TransactionFaultPoint::AfterStageFinal).map_err(|error| {
+                    PatchError::io(
+                        PatchOperationContext::StageFinal,
+                        RollbackStatus::NotRequired,
+                        error,
+                    )
+                })?;
+            }
+            crate::Preimage::Absent => {}
         }
     }
     sync_directory(transaction_directory, RollbackStatus::NotRequired)?;
@@ -48,7 +70,9 @@ fn stage_final(
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
-    if operation.kind() == crate::PatchOperationKind::Replace {
+    if operation.kind() == crate::PatchOperationKind::Replace
+        && matches!(operation.preimage(), crate::Preimage::Present { .. })
+    {
         use std::os::unix::fs::{OpenOptionsExt as _, PermissionsExt as _};
         let target = super::filesystem::checked_target_path(
             workspace,
@@ -112,10 +136,34 @@ pub(super) fn cleanup_transaction(
     transaction_directory: &Path,
     transaction_root: &Path,
 ) -> Result<(), PatchError> {
-    fs::remove_dir_all(transaction_directory).map_err(|error| {
+    cleanup_entries(transaction_directory).map_err(|error| {
         PatchError::io(PatchOperationContext::Cleanup, RollbackStatus::NotRequired, error)
     })?;
     sync_directory(transaction_root, RollbackStatus::NotRequired)
+}
+
+fn cleanup_entries(transaction_directory: &Path) -> std::io::Result<()> {
+    // A directory backup can acquire a child through an already-open external handle.
+    // Never recursively delete it; retain the manifest if any target cannot be removed safely.
+    for entry in fs::read_dir(transaction_directory)? {
+        let entry = entry?;
+        if entry.file_name() == MANIFEST_FILE || entry.file_name() == NEXT_MANIFEST_FILE {
+            continue;
+        }
+        if entry.file_type()?.is_dir() {
+            fs::remove_dir(entry.path())?;
+        } else {
+            fs::remove_file(entry.path())?;
+        }
+    }
+    for name in [NEXT_MANIFEST_FILE, MANIFEST_FILE] {
+        match fs::remove_file(transaction_directory.join(name)) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
+        }
+    }
+    fs::remove_dir(transaction_directory)
 }
 
 pub(super) fn staged_path(transaction_directory: &Path, index: usize) -> PathBuf {

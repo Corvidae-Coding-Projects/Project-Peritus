@@ -58,6 +58,8 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_PREVIEW: &'static str = "app.workbench-preview";
     /// Covered-path checkpoints, preview-bound rewind and durable restore receipts.
     pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
+    /// Typed directory and selected-range checkpoint coverage and confirmation.
+    pub const WORKBENCH_CHECKPOINT_COVERAGE: &'static str = "app.workbench-checkpoint-coverage";
     /// Local literal search and durable conversation navigation.
     pub const CONVERSATION_LIBRARY: &'static str = "app.conversation-library";
     /// Non-running forks with explicit workspace and budget bindings.
@@ -157,6 +159,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchPreviewOutput,
     /// Covered-path checkpoints and safe preview-bound rewind.
     WorkbenchCheckpoints,
+    /// Typed directory and selected-range restore scope.
+    WorkbenchCheckpointCoverage,
     /// Local searchable conversation library.
     ConversationLibrary,
     /// Checked conversation fork creation.
@@ -201,6 +205,7 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
+            Self::WorkbenchCheckpointCoverage => ProtocolFeatureName::WORKBENCH_CHECKPOINT_COVERAGE,
             Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,
             Self::ConversationForks => ProtocolFeatureName::CONVERSATION_FORKS,
             Self::WorkbenchPermissions => ProtocolFeatureName::WORKBENCH_PERMISSIONS,

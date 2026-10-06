@@ -4,6 +4,7 @@ use super::{
     AppProtocolError, CheckpointPathName, ControlOperationId, Sha256Digest,
     WorkbenchCheckpointVersion, WorkbenchQuery, invalid, valid_path, validate_lists,
 };
+use super::{WorkbenchCheckpointCoverage, WorkbenchCheckpointRange, coverage};
 
 /// Explicit rewind scope; logical branches never reuse live execution authority.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -101,6 +102,8 @@ pub enum WorkbenchRewindDisposition {
     Conflict,
     /// No completed owned boundary supplied an enforceable expected current version.
     Unsealed,
+    /// The owned current node cannot supply the selected range's surrounding bytes.
+    Unavailable,
 }
 
 /// One exact target in a rewind preview.
@@ -111,6 +114,7 @@ pub struct WorkbenchRewindPath {
     expected_current: Option<WorkbenchCheckpointVersion>,
     observed_current: WorkbenchCheckpointVersion,
     disposition: WorkbenchRewindDisposition,
+    ranges: Vec<WorkbenchCheckpointRange>,
 }
 impl WorkbenchRewindPath {
     /// Constructs a validated exact target decision.
@@ -124,9 +128,36 @@ impl WorkbenchRewindPath {
         observed_current: WorkbenchCheckpointVersion,
         disposition: WorkbenchRewindDisposition,
     ) -> Result<Self, AppProtocolError> {
+        Self::new_with_ranges(
+            path,
+            checkpoint,
+            expected_current,
+            observed_current,
+            disposition,
+            Vec::new(),
+        )
+    }
+    /// Constructs a decision bound to the exact selected restoration scope.
+    ///
+    /// # Errors
+    /// Rejects malformed scope, versions, or inconsistent dispositions.
+    pub fn new_with_ranges(
+        path: String,
+        checkpoint: WorkbenchCheckpointVersion,
+        expected_current: Option<WorkbenchCheckpointVersion>,
+        observed_current: WorkbenchCheckpointVersion,
+        disposition: WorkbenchRewindDisposition,
+        ranges: Vec<WorkbenchCheckpointRange>,
+    ) -> Result<Self, AppProtocolError> {
         if !valid_path(&path) {
             return Err(invalid());
         }
+        checkpoint.validate()?;
+        observed_current.validate()?;
+        if let Some(expected) = expected_current {
+            expected.validate()?;
+        }
+        coverage::validate_ranges(checkpoint, &ranges)?;
         let consistent = match disposition {
             WorkbenchRewindDisposition::Unchanged => observed_current == checkpoint,
             WorkbenchRewindDisposition::Restore => {
@@ -136,11 +167,26 @@ impl WorkbenchRewindPath {
                 observed_current != expected && observed_current != checkpoint
             }),
             WorkbenchRewindDisposition::Unsealed => expected_current.is_none(),
+            WorkbenchRewindDisposition::Unavailable => {
+                !ranges.is_empty()
+                    && observed_current != checkpoint
+                    && expected_current == Some(observed_current)
+            }
         };
         if !consistent {
             return Err(invalid());
         }
-        Ok(Self { path, checkpoint, expected_current, observed_current, disposition })
+        Ok(Self { path, checkpoint, expected_current, observed_current, disposition, ranges })
+    }
+    /// Borrows the selected ranges bound into the confirmation fingerprint.
+    #[must_use]
+    pub fn ranges(&self) -> &[WorkbenchCheckpointRange] {
+        &self.ranges
+    }
+    /// Returns exact restoration authority independent of complete-source digests.
+    #[must_use]
+    pub fn coverage(&self) -> WorkbenchCheckpointCoverage<'_> {
+        coverage::coverage(self.checkpoint, &self.ranges)
     }
     /// Borrows path.
     #[must_use]

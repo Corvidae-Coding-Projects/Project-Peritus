@@ -9,6 +9,15 @@ pub(super) async fn checkpoint_scenario(
     crash: Option<crate::product_run::workbench::RewindFaultPoint>,
     mode: WorkbenchRewindMode,
 ) {
+    checkpoint_scenario_with_selection(user_conflict, crash, mode, WorkbenchFileRange::All).await;
+}
+
+pub(super) async fn checkpoint_scenario_with_selection(
+    user_conflict: bool,
+    crash: Option<crate::product_run::workbench::RewindFaultPoint>,
+    mode: WorkbenchRewindMode,
+    selection: WorkbenchFileRange,
+) {
     let container = tempfile::tempdir().expect("container");
     let folder = container.path().join("folder");
     let state = container.path().join("state");
@@ -54,7 +63,7 @@ pub(super) async fn checkpoint_scenario(
         query(workspace),
         3,
         "note.txt".to_owned(),
-        WorkbenchFileRange::All,
+        selection,
         WorkbenchFileMode::Snapshot,
         writer.profile.profile_id(),
         ProductModelChoice::default(),
@@ -89,13 +98,17 @@ pub(super) async fn checkpoint_scenario(
         ),
     );
     let AppResponsePayload::WorkbenchCheckpoint(checkpoint_receipt) =
-        service.workbench_command(actor(), &checkpoint_command).await
+        restart::create_checkpoint_compatible(&service, &checkpoint_command, selection).await
     else {
         panic!("checkpoint receipt was not returned")
     };
     assert_eq!(checkpoint_receipt.accepted_revision(), 5);
     assert_eq!(checkpoint_receipt.paths().len(), 1);
     assert_eq!(checkpoint_receipt.paths()[0].path(), "note.txt");
+    assert_eq!(
+        checkpoint_receipt.paths()[0].ranges().is_empty(),
+        selection == WorkbenchFileRange::All
+    );
     assert!(!checkpoint_receipt.external_effects().is_empty());
 
     let start = command(
@@ -279,6 +292,10 @@ pub(super) async fn checkpoint_scenario(
         WorkbenchRestoreStatus::Applied
     };
     assert_eq!(restore.status(), expected_status);
+    let restored_expected = match selection {
+        WorkbenchFileRange::Bytes { .. } => b"checkpointned edit\n".as_slice(),
+        _ => b"checkpoint baseline\n".as_slice(),
+    };
     let expected = if user_conflict {
         b"independent user edit\n".as_slice()
     } else if mode == WorkbenchRewindMode::ConversationOnly
@@ -292,7 +309,7 @@ pub(super) async fn checkpoint_scenario(
     {
         b"Peritus owned edit\n".as_slice()
     } else {
-        b"checkpoint baseline\n".as_slice()
+        restored_expected
     };
     assert_eq!(fs::read(folder.join("note.txt")).expect("terminal covered bytes"), expected);
     assert_eq!(

@@ -38,6 +38,8 @@ where
 {
     let actor_id = context.actor_id();
     let limits = context.limits();
+    let checkpoint_coverage = context
+        .supports(peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointCoverage);
     let payload = if let Err(error) =
         product_runs.authorize_workbench_request(actor_id, request.payload())
     {
@@ -94,8 +96,16 @@ where
                 product_runs.workbench_queue(actor_id, *query)
             }
             AppRequestPayload::WorkbenchCommand(command) => {
-                workbench::respond(authority, product_runs, actor_id, limits, &request, command)
-                    .await?
+                workbench::respond(
+                    authority,
+                    product_runs,
+                    actor_id,
+                    limits,
+                    &request,
+                    command,
+                    checkpoint_coverage,
+                )
+                .await?
             }
             AppRequestPayload::ContinueWorkbenchExecution(query) => {
                 product_runs.continue_workbench_execution(actor_id, *query).await
@@ -327,6 +337,7 @@ where
         }
         _ => (None, None),
     };
+    let payload = checkpoint_coverage::response(payload, checkpoint_coverage);
     let payload = constrain_error_diagnostic(payload, limits.max_diagnostic_bytes());
     let response = AppResponseEnvelope::new(
         request.context(),
@@ -350,6 +361,7 @@ where
 }
 
 mod attachment;
+mod checkpoint_coverage;
 mod media;
 mod response;
 mod workbench;

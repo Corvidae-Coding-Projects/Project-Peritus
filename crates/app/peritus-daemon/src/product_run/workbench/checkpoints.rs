@@ -13,18 +13,19 @@ use peritus_patch::{
     FileMode, FinalFile, LineEndingPolicy, PatchOperation, PatchSet, Preimage, WorkspacePath,
 };
 use peritus_product_runner::control::{
-    CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointReferences,
-    ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord, OperationId,
-    RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointRange,
+    CheckpointReferences, ControlError, ControlIntent, ControlOperation, ConversationId,
+    ConversationRecord, OperationId, RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 use peritus_types::{ActorId, Generation, RevisionNumber, Sha256Digest};
 use peritus_workspace::{FolderIdentity, FolderInspection};
-use std::{collections::BTreeSet, fs, io, path::Path};
+use std::{fs, io, path::Path};
 
 mod capture;
 mod logical;
 mod lookup;
 mod projection;
+mod ranges;
 mod recovery;
 mod rewind;
 use capture::{check_protected, observe_version};
@@ -48,6 +49,17 @@ struct CapturedPath {
     path: String,
     version: CheckpointFileVersion,
     body: Option<tempfile::TempPath>,
+    ranges: Vec<CheckpointRange>,
+}
+
+impl CapturedPath {
+    fn manifest(&self) -> Result<CheckpointPath, ControlError> {
+        if self.ranges.is_empty() {
+            CheckpointPath::new(self.path.clone(), self.version)
+        } else {
+            CheckpointPath::selected_ranges(self.path.clone(), self.version, self.ranges.clone())
+        }
+    }
 }
 
 struct CapturedCoverage {
@@ -68,13 +80,24 @@ impl ProductRunService {
         if checkpoint.paths().is_empty() {
             return Err(ControlError::InvalidInput.into());
         }
-        let observed = self.observe_checkpoint_paths(source, request.child(), checkpoint)?;
-        if observed
-            .iter()
-            .zip(checkpoint.paths())
-            .any(|(current, expected)| current.version != expected.checkpoint())
-        {
-            return Err(Error::StalePreimage);
+        let observed = self.capture_checkpoint_paths(source, request.child(), checkpoint)?;
+        for (index, (current, expected)) in observed.iter().zip(checkpoint.paths()).enumerate() {
+            if matches!(
+                expected.coverage(),
+                peritus_product_runner::control::CheckpointCoverage::SelectedRanges(_)
+            ) {
+                self.with_controls(false, |store| {
+                    rewind::selected_coverage_matches(
+                        store,
+                        checkpoint.id(),
+                        index,
+                        expected,
+                        current,
+                    )
+                })?;
+            } else if current.version != expected.checkpoint() {
+                return Err(Error::StalePreimage);
+            }
         }
         Ok(())
     }
@@ -109,10 +132,14 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
+        checkpoint_coverage: bool,
     ) -> AppResponsePayload {
         let service = self.clone();
         let command = command.clone();
-        match tokio::task::spawn_blocking(move || service.create_checkpoint(actor, &command)).await
+        match tokio::task::spawn_blocking(move || {
+            service.create_checkpoint(actor, &command, checkpoint_coverage)
+        })
+        .await
         {
             Ok(result) => {
                 result.map_or_else(error_response, AppResponsePayload::WorkbenchCheckpoint)
@@ -125,6 +152,7 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         command: &WorkbenchCommand,
+        checkpoint_coverage: bool,
     ) -> Result<WorkbenchCheckpointReceipt, Error> {
         let WorkbenchIntent::CreateCheckpoint(name) = command.intent() else {
             return Err(ControlError::InvalidInput.into());
@@ -138,6 +166,7 @@ impl ProductRunService {
         check_record(&record, actor, command.query(), None)?;
 
         if let Some(existing) = record.checkpoints().iter().find(|value| value.id() == checkpoint) {
+            require_checkpoint_schema(existing.paths(), checkpoint_coverage)?;
             if existing.name() != name.as_str() {
                 return Err(ControlError::IdempotencyConflict.into());
             }
@@ -147,11 +176,11 @@ impl ProductRunService {
 
         let coverage = self.capture_selected_coverage(&record, command.query())?;
         let references = checkpoint_references(&record);
-        let paths = coverage
-            .paths
-            .iter()
-            .map(|captured| CheckpointPath::new(captured.path.clone(), captured.version))
-            .collect::<Result<Vec<_>, _>>()?;
+        let paths =
+            coverage.paths.iter().map(CapturedPath::manifest).collect::<Result<Vec<_>, _>>()?;
+        // Check the actual captured manifest before durable publication, not a racy
+        // separate preview or an already-committed response that the peer cannot decode.
+        require_checkpoint_schema(&paths, checkpoint_coverage)?;
         let checkpoint_value = UserCheckpoint::new(
             checkpoint,
             name.as_str().to_owned(),
@@ -211,6 +240,21 @@ impl ProductRunService {
             )
         })
     }
+}
+
+fn require_checkpoint_schema(paths: &[CheckpointPath], supported: bool) -> Result<(), Error> {
+    use peritus_product_runner::control::CheckpointCoverage;
+    if !supported
+        && paths.iter().any(|path| {
+            matches!(
+                path.coverage(),
+                CheckpointCoverage::SelectedRanges(_) | CheckpointCoverage::EmptyDirectory
+            )
+        })
+    {
+        return Err(ControlError::UnsupportedSchema.into());
+    }
+    Ok(())
 }
 
 fn check_record(

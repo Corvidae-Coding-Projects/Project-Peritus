@@ -53,6 +53,7 @@ impl CompiledMutation {
         let final_file = final_file(FsToolOperation::Write, &fields.final_input)?;
         let operation = match fields.preimage {
             Preimage::Absent => PatchOperation::create(fields.final_input.path, final_file),
+            Preimage::EmptyDirectory { .. } => return Err(patch_error(FsToolOperation::Write)),
             present @ Preimage::Present { .. } => {
                 PatchOperation::replace(fields.final_input.path, present, final_file)
                     .map_err(|_| patch_error(FsToolOperation::Write))?

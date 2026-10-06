@@ -7,6 +7,7 @@ use peritus_patch::WorkspacePath;
 use peritus_types::Sha256Digest;
 use std::io;
 
+mod directory;
 mod read;
 mod selection;
 #[cfg(test)]

@@ -61,7 +61,7 @@ impl AppModel {
         self.chat.workbench.rewind_request = None;
         self.chat.workbench.rewind_preview = None;
         self.chat.workbench.restore_receipt = None;
-        "Capturing selected whole workspace files and explicit exclusions at this boundary."
+        "Capturing selected workspace targets and exact restore coverage at this boundary."
             .clone_into(&mut self.chat.workbench.message);
         self.submit_workbench(WorkbenchIntent::CreateCheckpoint(name), workspace)
     }

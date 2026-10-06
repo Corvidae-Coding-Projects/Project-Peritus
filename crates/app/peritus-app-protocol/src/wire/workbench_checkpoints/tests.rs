@@ -1,4 +1,5 @@
 use super::*;
+use crate::WorkbenchCheckpointFileMode as FileMode;
 use crate::{
     AppMessage, AppProtocolLimits, AppRequestEnvelope, AppRequestPayload, ConversationId,
     CorrelationId, ProtocolContext, ProtocolId, ProtocolVersion, RequestId,
@@ -6,6 +7,88 @@ use crate::{
 };
 use peritus_codec::{CanonicalEncode, CodecLimits};
 use peritus_types::SessionId;
+
+#[test]
+fn directory_and_selected_range_encodings_round_trip_and_bind_scope_into_confirmation() {
+    use crate::{WorkbenchCheckpointRange, WorkbenchFileRange};
+    let baseline = preview();
+    let directory = WorkbenchCheckpointVersion::EmptyDirectory { permissions: 0o750 };
+    let source = WorkbenchCheckpointVersion::Present {
+        digest: Sha256Digest::new([4; 32]),
+        bytes: 20,
+        mode: FileMode::Regular,
+    };
+    let current = WorkbenchCheckpointVersion::Present {
+        digest: Sha256Digest::new([5; 32]),
+        bytes: 30,
+        mode: FileMode::Executable,
+    };
+    let selected =
+        WorkbenchCheckpointRange::new(WorkbenchFileRange::Lines { first: 2, last: 2 }, 4, 10)
+            .unwrap();
+    let make = |ranges| {
+        WorkbenchRewindPreview::new(
+            baseline.request(),
+            vec![
+                WorkbenchRewindPath::new(
+                    "empty".to_owned(),
+                    directory,
+                    Some(WorkbenchCheckpointVersion::Absent),
+                    WorkbenchCheckpointVersion::Absent,
+                    WorkbenchRewindDisposition::Restore,
+                )
+                .unwrap(),
+                WorkbenchRewindPath::new_with_ranges(
+                    "note.txt".to_owned(),
+                    source,
+                    Some(current),
+                    current,
+                    WorkbenchRewindDisposition::Restore,
+                    ranges,
+                )
+                .unwrap(),
+            ],
+            Vec::new(),
+            Vec::new(),
+        )
+        .unwrap()
+    };
+    let whole = make(Vec::new());
+    let ranged = make(vec![selected]);
+    assert_ne!(whole.preview_digest(), ranged.preview_digest());
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    write_preview(&mut writer, &ranged).unwrap();
+    let encoded = writer.into_bytes();
+    let mut reader = CanonicalReader::new(&encoded, CodecLimits::PRODUCTION);
+    assert_eq!(read_preview(&mut reader).unwrap(), ranged);
+    reader.finish().unwrap();
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    write_version(&mut writer, directory).unwrap();
+    assert_eq!(writer.into_bytes(), [0, 2, 1, 232]);
+}
+
+#[test]
+fn old_whole_file_encoding_is_retained_exactly_and_empty_range_envelopes_are_rejected() {
+    let version = WorkbenchCheckpointVersion::Present {
+        digest: Sha256Digest::new([4; 32]),
+        bytes: 5,
+        mode: FileMode::Regular,
+    };
+    let mut legacy = vec![0, 1];
+    legacy.extend_from_slice(&[4; 32]);
+    legacy.extend_from_slice(&5_u64.to_be_bytes());
+    legacy.extend_from_slice(&[0, 1]);
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    write_captured(&mut writer, version, &[]).unwrap();
+    assert_eq!(writer.into_bytes(), legacy);
+    let mut malformed = vec![0, 3];
+    malformed.extend_from_slice(&legacy);
+    malformed.extend_from_slice(&0_u64.to_be_bytes());
+    assert!(read_captured(&mut CanonicalReader::new(&malformed, CodecLimits::PRODUCTION)).is_err());
+    malformed.truncate(malformed.len() - 8);
+    malformed.extend_from_slice(&u64::MAX.to_be_bytes());
+    assert!(read_captured(&mut CanonicalReader::new(&malformed, CodecLimits::PRODUCTION)).is_err());
+}
 
 fn preview() -> WorkbenchRewindPreview {
     let query = WorkbenchQuery::new(

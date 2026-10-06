@@ -12,9 +12,16 @@ pub(super) async fn respond(
     limits: AppProtocolLimits,
     request: &AppRequestEnvelope,
     command: &peritus_app_protocol::WorkbenchCommand,
+    checkpoint_coverage: bool,
 ) -> Result<AppResponsePayload, DaemonError> {
     if !authority.status().await?.mutation_ready() {
         return Ok(AppResponsePayload::Error(AppProtocolError::new(AppErrorCode::ReadOnly, None)));
+    }
+    if !super::checkpoint_coverage::command_supported(command, checkpoint_coverage) {
+        return Ok(AppResponsePayload::Error(AppProtocolError::new(
+            AppErrorCode::MissingRequiredFeature,
+            None,
+        )));
     }
     let response = if matches!(
         command.intent(),
@@ -54,7 +61,7 @@ pub(super) async fn respond(
             )
             .await
     } else {
-        product_runs.workbench_command(actor_id, command).await
+        product_runs.workbench_command_negotiated(actor_id, command, checkpoint_coverage).await
     };
     Ok(response)
 }

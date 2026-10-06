@@ -19,6 +19,7 @@ use super::{
     storage::prepare_transaction,
 };
 
+mod directories;
 mod snapshots;
 
 struct FailAt {
@@ -260,7 +261,7 @@ fn oversized_observation_never_matches_a_forged_empty_digest() {
     )
     .expect("observation");
     assert!(matches!(observed, Observation::Present(_)));
-    let forged = super::manifest::FileIdentity {
+    let forged = super::manifest::TargetIdentity::File {
         digest: peritus_codec::sha256(&[]),
         size: (crate::set::MAX_FILE_BYTES + 1) as u64,
         mode: FileMode::Regular,

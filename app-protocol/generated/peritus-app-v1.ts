@@ -1180,6 +1180,17 @@ export interface WorkbenchContextPage {
   readonly rows: readonly WorkbenchContextRow[];
 }
 
+export interface WorkbenchCheckpointDirectoryVersion {
+  readonly kind: "emptyDirectory";
+  readonly permissions: number;
+}
+
+export interface WorkbenchCheckpointRange {
+  readonly selection: WorkbenchFileRangeBytes | WorkbenchFileRangeLines;
+  readonly start: UInt64;
+  readonly end: UInt64;
+}
+
 export interface WorkbenchCheckpointAbsentVersion {
   readonly kind: "absent";
 }
@@ -1201,9 +1212,10 @@ export interface WorkbenchCheckpointReferences {
 
 export interface WorkbenchCheckpointPath {
   readonly path: string;
-  readonly checkpoint: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion;
+  readonly checkpoint: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion;
   readonly hasExpectedCurrent: boolean;
-  readonly expectedCurrent?: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion;
+  readonly expectedCurrent?: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion;
+  readonly ranges?: readonly WorkbenchCheckpointRange[];
 }
 
 export interface WorkbenchCheckpointReceipt {
@@ -1227,11 +1239,12 @@ export interface WorkbenchRewindRequest {
 
 export interface WorkbenchRewindPath {
   readonly path: string;
-  readonly checkpoint: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion;
+  readonly checkpoint: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion;
   readonly hasExpectedCurrent: boolean;
-  readonly expectedCurrent?: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion;
-  readonly observedCurrent: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion;
-  readonly disposition: "restore" | "unchanged" | "conflict" | "unsealed";
+  readonly expectedCurrent?: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion;
+  readonly observedCurrent: WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion;
+  readonly ranges?: readonly WorkbenchCheckpointRange[];
+  readonly disposition: "restore" | "unchanged" | "conflict" | "unsealed" | "unavailable";
 }
 
 export interface WorkbenchRewindPreview {
