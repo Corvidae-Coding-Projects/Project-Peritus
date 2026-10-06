@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3574,
-        "tip_oid": "7fd81075b3afa43ca88cd383d86a741330894147",
-        "prefix_sha256": "522f7eb68ab7b901963e472ccc27a97d1f8d8ce675f4b78a141e07af26be5ac3"
+        "sequence": 3575,
+        "tip_oid": "39dc264bbb2ead91e959189ee087e707a559e0e8",
+        "prefix_sha256": "3ca5161f293346bbc1077f75f7b39564cf8c0f55922edb5beced94c3e09b2db1"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2920,
+  "next_comment_id": 2921,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25928,7 +25928,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T19:17:18.618129941Z",
+      "updated_at": "2026-10-06T19:20:32.114850811Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -25939,6 +25939,15 @@
           "content": "Systemic repair plan for L008: Path representation and all-or-nothing directory inspection.\n\nOwning contract and implementation boundary: crates/runtime/peritus-patch/src/path.rs:7-12,27-49,84-105; verified.rs:9-15; peritus-workspace/src/inspection.rs:109-124,161-171. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate native filesystem identity, portable display text and authority-safe relative paths. Return supported entries together with typed per-entry exclusions and a continuation cursor rather than rejecting the whole folder. Use platform-aware representations for native names while preserving traversal, protected-root and ancestor checks; never authorize effects from lossy display strings.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "64362b27-07ed-4bce-b631-f6d9cf9301fe": {
+          "display_id": 2920,
+          "author": "6ME5",
+          "content": "Grounded #108 design: remove component/path/depth admission ceilings and their repeated predicate. Keep historical constants only for legacy encoding classification, with platform-aware validation of new UTF-8 relative paths; Unix-native punctuation/control/trailing-dot/device-style names must not inherit Windows alias rules. Traversal, NUL, rooted paths, protected metadata and no-follow/reparse boundaries remain authority checks. Separate lossless tagged native child names from escaped display text and effect-authorizing WorkspacePath; non-UTF-8 names, links/special nodes and unavailable child metadata become typed per-entry exclusions instead of aborting usable siblings. Keep protected entries hidden. Introduce owner-backed retained directory observations and checksum-bound cursors with physical pages, full storage verification and validated resume boundaries; no total entry/page budget, session expiration or ambient rescan on resume. Migrate FS discovery/search to carry and render exclusions and bind them into versioned digests while preserving old exclusion-free digests. Remove the duplicate path schema cap through an optional string maximum API, preserving existing bounded schema bytes. Extended/native path authority and transaction storage need a new version because legacy readers reject these paths and schema-four pages require each record to fit: keep schemas one through four and their identities/receipts exact, stream version-five logical metadata across deterministic byte pages under one synchronized publication root, and reject malformed partitions/unsupported platform encodings before effects. Simply skipping bad names would hide incomplete results; removing constants alone would leave consumer/schema/recovery rejections. Independent traversal/search/render/JSON policies (#685/#109/#202) remain separate, without adding a replacement cumulative blocker. Verify old-boundary failures, host-native and raw names, unsupported siblings, durable cursor reopen, stale/corrupt/foreign state, native path transaction interruption/recovery, legacy fixtures, actual FS dispatch, platform compilation, strict lint and affected formal/local policy checks.",
+          "created_at": "2026-10-06T19:20:32.110171757Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAW7BE8kWDG79dXifOxtoJAsc0g5cyYGH8/LFfpRTz2Njc/jO7TrYoCN72a1RePO0gRrEzXOrSE1JqzREzP6ZcAw=="
         },
         "8ffad840-d22b-40e5-ac8b-4f9cd99e3ca3": {
           "display_id": 2919,
