@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3621,
-        "tip_oid": "56b073c8cc08b97c8ea4d4d3e0c1cccde3301f52",
-        "prefix_sha256": "de1e61bc22e34a58c254061152c08f1ec1dda46d80d08a9a49cdc2657ae3c9c3"
+        "sequence": 3622,
+        "tip_oid": "ce705887807a336a66cd1ad3abda304e5493680f",
+        "prefix_sha256": "14c3afba1e9d6f7461a6e0ec112996ff1bf120d83021f99ffbfd475518a9fbd8"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2953,
+  "next_comment_id": 2954,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20617,7 +20617,7 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T22:13:09.898330439Z",
+      "updated_at": "2026-10-06T22:14:30.447337714Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20630,6 +20630,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYW5iQiMMijDqhmItoJr7wiUyfNUL2GIcZn0iAIk+98QQJ0IKVHMKSl1FD9GRYNM/mvambK+RAbVqlvDIUa5dDg=="
+        },
+        "99718da9-8027-4163-859a-b53a753992b1": {
+          "display_id": 2953,
+          "author": "6ME5",
+          "content": "[action] Committed and pushed #824 six-file transport repair as 4ee46822d24da14cc16e809fc6563780631284f4 to existing PR112/develop; verified remote head and updated PR body. Final isolated tree hashes match commit:155 adapter tests passed,2 existing live ignores,strict workspace Clippy,fmt,Windows GNU workspace check,strict provider-core Verus and rebuilt xtask all passed. 108 closed with native Windows/Mac proof. 824 remains OPEN and locked by6ME5 awaiting exact-head native Windows model-orchestration tests; new live watch66704 logs /tmp/peritus-pr112-issue824-ci-watch.log. Initial current-head CI:10 in progress,3 skipped,no failures, native matrices not yet materialized. Earlier intermittent auth fixture failure tracked OPEN as825, no repair or unrelatedness claimed. Preserve pre-existing OpenAI usage/audit changes:all original hashes verified unchanged. Continue824 until native acceptance; then close it and release lock before next issue.",
+          "created_at": "2026-10-06T22:14:30.442796912Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyh4r37HAWmLJr8jXubQrR7NpxDhZ/7Soaockuj0L8EJJc82hetewd+EWFS6Tmf8oiZtk1LYMYos5cnZYhAaoCg=="
         },
         "e7d5b2b5-0ba6-4752-b100-39177acfb13a": {
           "display_id": 2951,
