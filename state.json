@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3548,
-        "tip_oid": "96a2f0009ee2a095a689fcdaf6a628a8a924a988",
-        "prefix_sha256": "966a11088d2c6bde94570f5f97e893f65f15ec43bb2f873972d8e0a17c3e19f8"
+        "sequence": 3549,
+        "tip_oid": "2071290a618b78f7e3634863e224d71bf740dd11",
+        "prefix_sha256": "7ca47a37798a04126c725b8af9eddc2de7e3e70d1bb902600c5c58048af26a2e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 823,
-  "next_comment_id": 2906,
+  "next_comment_id": 2907,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15292,11 +15292,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.850887080Z",
-      "updated_at": "2026-10-06T13:19:07.853673444Z",
+      "updated_at": "2026-10-06T18:18:11.406735337Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "05e30a2e-a381-4a67-8d3a-90da145ba511": {
+          "display_id": 2906,
+          "author": "6ME5",
+          "content": "Grounded L006 design: preserve exact legacy inline and snapshot identities/receipts for previously accepted inputs. Ordinary patches outside the old inline codec use a domain-separated metadata identity and schema-4 manifest with bounded physical pages, wide counts, page checksums and one atomic whole-transaction publication. Reuse owned streaming snapshot sources and full staged-body verification; preimages remain full streamed identities and durable backups. Remove byte/count admission from FinalFile, PatchSet and FS typed inputs plus inherited FS schema ceilings. The schema array maximum becomes optional without changing existing bounded schema bytes. Alternative: raising constants or splitting effects would retain the same blocker or lose atomic authority, so neither is selected. Independent JSON transport/search/artifact-plan limit findings remain separately tracked. Baseline tests reproduced rejection of >8MiB preimages and excessive parent-directory metadata. Planned verification includes former boundaries, legacy fixtures, corrupt/partial manifest publication, staging failure, divergent preimages, interrupted apply/reopen and exact receipt recovery, consumer tests, strict Clippy, workspace and Windows compilation, strict affected Verus and local xtask all.",
+          "created_at": "2026-10-06T18:18:11.403388554Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8GwjLezCAeelhI3JRCm6zPzX06KazV/KxajBmH0bq0nM5ArquBzs3r7I2gyv40+ItRfZec+EhEFWbVtGo2CKBw=="
+        },
         "2b84b21a-5df1-4fea-aa92-6630befc6619": {
           "display_id": 2178,
           "author": "6ME5",
