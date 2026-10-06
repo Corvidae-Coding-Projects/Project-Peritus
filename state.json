@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3648,
-        "tip_oid": "09921fff704f7c3ed1428f4d5b373a47f7b6627f",
-        "prefix_sha256": "28b35b5c03be87510613bb5b9591bbaaba167b86d84188ce2bd8285659567004"
+        "sequence": 3649,
+        "tip_oid": "6777393f7a5b37f7a2053000ee353dc52402efe8",
+        "prefix_sha256": "8632ec6d8cf10a8ad53248ce716f25e06d85d73461cc26f82e7f63af6e70e470"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2977,
+  "next_comment_id": 2978,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:39:11.354942574Z",
+      "updated_at": "2026-10-06T23:47:16.595389679Z",
       "labels": [
         "ci"
       ],
@@ -22388,6 +22388,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXXR6JpFzrKEJoLcQpNSw/To5r+tTips4hZO6tKo/WuX0nIjqs6BP2rsbhbuKUSsXXQZFsDqUJNr8xQyAJIopBw=="
+        },
+        "c057ed99-deeb-45bc-b86c-c9063177ac59": {
+          "display_id": 2977,
+          "author": "6ME5",
+          "content": "[action] 825 followup remains active after closure review exposed lost completed-probe evidence and silent foreign cleanup. Decision recorded. No main-worktree source edits yet; unrelated hashes OK. In isolated /home/doll/.cache/peritus-issue825.5YK8nN added only canonical-fixture capture helper and two regression tests. Red test57570 exit101: both tests failed due absent cleanup/first-attempt facts; original log /tmp/peritus-issue825-followup-red-receipts.log retained. Red2 runs after improving only the missing-fact assertion diagnostic. Currentd2 native5/6accepted is baseline only; do not close825 even if oldMac job succeeds. Next implement scoped per-probe/attempt receipts and consuming ForeignProbe finish, preserving original failure and explicit cleanup without global recorder/retries/deadline change. Read complete support/observations/diagnostics/request/runner/hardening/fakebehavior/trace/contract/scenario/sharedFixture/text/outcome/manifests and skills; rules0, knowledge searchnone. Scope remains825 development-only bridge and docs, sharedstd API/production/immutablealiases unchanged. New source modules will separate recovery, foreign and capability ownership rather than override layout rules. All earlier failed experiments retained; originalauthpredicate unrecoverable. Native baseline observer71117/fullPRwatch23820 stilllive.110notstarted.",
+          "created_at": "2026-10-06T23:47:16.590880231Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVjHrPk+MV7TdaYtwX4Gb56/g2o/myfHhlnMJSjgvyDOsw0eeWuFT1oSILRmyUVXZz0wD/vV71ith1ILhDZVCBA=="
         },
         "c84700f9-b3e1-454e-881d-5629980f1b52": {
           "display_id": 2970,
