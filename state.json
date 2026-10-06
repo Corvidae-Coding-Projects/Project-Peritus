@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3526,
-        "tip_oid": "91868e2f01faf77d4f49d8b74a658b78c2d2f3c5",
-        "prefix_sha256": "3c9f49f9fa065bca5cb2d277a3233f79938ee5f07bce16688fd5cbbf7388ab95"
+        "sequence": 3527,
+        "tip_oid": "743a7e51beaaeb6af8da0b1d5223af85ebab7a48",
+        "prefix_sha256": "ad6a8cfc1f2197f42b60cbbae3925a90ba9b898d6e71ce9e2f80ba41f5fe7cef"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 822,
-  "next_comment_id": 2895,
+  "next_comment_id": 2896,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -4249,7 +4249,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:08:34.108185360Z",
-      "updated_at": "2026-10-06T14:43:18.812668893Z",
+      "updated_at": "2026-10-06T15:46:13.147944105Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -4262,6 +4262,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAm1BJirKso82mA6F/Fz5dyaBFRcYWqy/BDBvon5SimVqUn29kUx3q8nHVWZWJEIZmtT8LwLoUu79bCuilpvoaDg=="
+        },
+        "81fa2146-d7f1-4b73-a5f2-82ec9ed15397": {
+          "display_id": 2895,
+          "author": "6ME5",
+          "content": "Delivered commit 1e872d134cd6ab9a3937069ef8eec264736fe0c5: fix(checkpoints): decouple durable snapshots from patch limits. Pushed to the existing fix/persistent-execution branch and PR 112 targeting develop: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/112\n\nRoot-cause repair: checkpoint evidence now has an immutable streaming representation independent of inline patch admission. Capture and completed command postimages no longer inherit the 8 MiB patch or 2 MiB tool ceilings. An atomic C0 root owns the artifact references; a single authorized C1 transaction restores snapshots with wide version-two metadata counts. Large restore evidence also streams into artifacts, avoiding the downstream whole-value settlement cliff. Old checkpoint bodies and prepared v1 transactions retain readable evidence and their original identities.\n\nStorage exhaustion remains in the same admitted asynchronous tool and provider-session binding, with visible waiting, resource polling, and public cancellation; there is no deadline or attempt ceiling. Exact preimages, workspace identity, proposed scope, and live permissions are revalidated before effects. A reproduced external edit during waiting is now preserved and rejects the stale proposal. SQLite FULL remains recognizable through nested I/O wrappers; file drift and integrity failures no longer masquerade as control revision changes.\n\nVerified: real command execution with a file remaining above 8 MiB, exact rewind and receipt recovery after reopen; native manual-store capture/one-transaction restore across 1,025 paths and aggregate content above 8 MiB; recovery metadata above the old 16 MiB and collection-count ceilings; chunk/root/restore fault injection; original prepared-v1 authority before and after C1 application; actual SQLite FULL wait/resume and cancellation; permission revocation and preimage drift during waiting.\n\nFinal validation: all five affected crate suites passed with cargo test --locked --all-features --no-fail-fast -- --test-threads=1; strict all-target/all-feature Clippy, scoped formatting, Windows GNU cross-compilation, and strict Verus verification for the five packages passed. Architecture, ordinary API, and documentation checks passed on an isolated copy of the exact staged tree. An earlier parallel daemon test run encountered a control-owner contention failure in the abrupt-termination fixture; the isolated regression and complete prescribed sequential suites passed. Existing unrelated provider/document changes were excluded from the commit.\n\nQualification boundaries: wait/session tests use scripted providers and verify retained request/session binding; no new authenticated provider outage or release qualification is claimed. Older binaries require matching pre-upgrade state to roll back after new chunk roots are written. The remaining limiter issues remain open and are not claimed fixed by this commit.",
+          "created_at": "2026-10-06T15:46:13.140457446Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARfxr4FtO2YYJnWJFCYubjIP74MBwcIrpbmArHlZVoEsLkZqvGB/SCDjyOiooJd5CegaV/3tj5NvFHcwWJzTCAw=="
         },
         "9fc4cbf2-47ff-4444-9ecd-a5c6082fb90e": {
           "display_id": 2894,
