@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3609,
-        "tip_oid": "133d5671ab196041ca19d1aba56bc135f38f04fa",
-        "prefix_sha256": "482f758cddaca37feffb91663267df08eb6b9c1a4bafc95144ffd848c8e4d2db"
+        "sequence": 3610,
+        "tip_oid": "00aaa56ae797f186ff3c8b854000291f9f51eb6e",
+        "prefix_sha256": "636d5067d7798e6d39e7a2be840104f6addf9a36335edeb0191a2be3f59a7568"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2946,
+  "next_comment_id": 2947,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:43:01.083577943Z",
+      "updated_at": "2026-10-06T21:52:17.117056072Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26182,6 +26182,15 @@
           "kind": "action",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPa8SYG9wSsguPPsOazR9UX9ZqYP/NFEwHJd/ffgf1LOkc9Uo5fcWwK7+JkuWcFCjBlea31+NCyhnYIE80+SoDA=="
+        },
+        "c67d243b-991d-4655-aeb8-7d29c5e88661": {
+          "display_id": 2946,
+          "author": "6ME5",
+          "content": "[action] This goal turn made progress: verified native Windows runtime-tools success on exact pushed head42236bb697be2469a8ce5710f582088cb0bf4ab9 and recorded observation2945; updated PR112 qualification accordingly. Job112508942507 (run37533431757) succeeded at21:41:07UTC. Completed log proves the original membership insertion test, new removal/same-count rename and duplicate/missing/order tests, deep native paths, retained reopen, corrupt cursors and storage aliases passed. No new code or commits this turn. Current head remains42236bb69; unrelated worktree state preserved. Latest observed CI:305 successes,57 running,87 queued,6 skipped,no failures. macOS Foundation test112508938363 and shard test112512916523 remain queued; Windows shard test112512922650 is running. Persistent watch58934 was polled and confirmed live. #108 remains active/claimed/open until native macOS acceptance; #824 stays open. Continue the same live watch and exact jobs, inspect completed logs, close #108 with native evidence once acceptance is verified, then take the next tracker issue. Goal remains active; ordinary progressing CI wait is not an impasse.",
+          "created_at": "2026-10-06T21:52:17.112708200Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsMIxEqYOZEaOs+oskohftwSWO+UDV2cq6iYWC8iZXTsSXz2x8TxlgAYVpBwJZcry5fE1ypcVV9VdiQAyKaQlAA=="
         },
         "c8b6f0ab-8120-4f9d-8f25-c247968e1eea": {
           "display_id": 2940,
