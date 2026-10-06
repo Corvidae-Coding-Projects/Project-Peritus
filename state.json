@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3583,
-        "tip_oid": "3758455a378be3dd30a5f39bba6f1d0ba2804e67",
-        "prefix_sha256": "3e88796648aa054f3da790dd139a88ff8d486cdca781fb70fd17db4bcf786b84"
+        "sequence": 3584,
+        "tip_oid": "454a3e398fbb1cf8b67c946a1b60e91acf39fdc7",
+        "prefix_sha256": "a71517ff8c6d5d0a54f33f0fdcbcdfebd0cfd54c85ccf4876d2b61700868ff49"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 824,
-  "next_comment_id": 2927,
+  "next_comment_id": 2928,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25924,12 +25924,21 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T20:07:35.151088006Z",
+      "updated_at": "2026-10-06T20:08:48.455794838Z",
       "closed_at": "2026-10-06T20:07:35.149755918Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "3eb9e5c2-27e2-4ee0-bac5-e57c1801bb89": {
+          "display_id": 2927,
+          "author": "6ME5",
+          "content": "Tracker mapping correction to the result: #109 owns canonical codec production ceilings, including the remaining independent string/frame contract; it does not own the FS rendering policy. Existing FS/search/rendering policies remain separately tracked. #108's delivered path/directory repair and its completion evidence are unchanged.",
+          "created_at": "2026-10-06T20:08:48.450886073Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABApzOwTc7nLlG+GboBo3yGikFIAl5P6hs38feoR+9ddNx2Ebxzd/5CnFShpGIcXo4HVyDVDQr/iABo55TFlsJHDg=="
+        },
         "52c409ef-f6b9-47c9-9556-61b387f2b7ea": {
           "display_id": 2922,
           "author": "6ME5",
