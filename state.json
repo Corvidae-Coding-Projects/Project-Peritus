@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3605,
-        "tip_oid": "26c69beda82b0be4eb36fd25c8114870cd6760b4",
-        "prefix_sha256": "c86363f74080e6fe243d701e45e15196fd48bc00a1705add5295cf33cf835fa2"
+        "sequence": 3606,
+        "tip_oid": "80d69b9fc38f5a0ca6605c06ab557e2be6b1f7f1",
+        "prefix_sha256": "48030035016c714ddb3f28bab63b7ceeb899df397bcff6480f95b870a83d6232"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2942,
+  "next_comment_id": 2943,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:19:07.636954136Z",
+      "updated_at": "2026-10-06T21:23:09.877550522Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26058,6 +26058,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJjAzqs/y0OBfpL+SM+eUD9ArbcMZzNogkMYG/X5FsyH1omWWO8y1J/TVdTKNuamIYNSnyHm7JR0r9+uGXKYUCA=="
+        },
+        "2ed7056e-f1a3-4785-a79d-d3bd83a9c99b": {
+          "display_id": 2942,
+          "author": "6ME5",
+          "content": "Delivered the reopened #108 follow-up in commit 42236bb697be2469a8ce5710f582088cb0bf4ab9 (fix(workspace): validate exact directory membership (#108)) and pushed successfully to fix/persistent-execution / PR112 to develop (https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/112). Root cause: directory-handle timestamps do not establish unchanged Windows membership; native CI accepted a deterministic inserted child. Exact native-name evidence is now captured before callbacks and matched once per name during capture and final opened/reopened directory passes, rejecting additions, removals, same-count renames and duplicate/incomplete enumeration without depending on order or lossy display. Existing timestamp, root, no-follow/reparse and storage alias checks remain; empty-directory mode observations recheck emptiness too. The name-only witness has fallible growth, memory proportional to actual names and no entry/time allowance or persisted format change. Existing retained bodies/cursors resume identically. Native macOS fixtures previously failed before inspection with EILSEQ; both FS and workspace fixtures now exercise real links/special nodes there and retain exact raw-name, protected-name, retained-body and digest coverage on supported Unix hosts. Production name handling is unchanged. Full four-package all-feature suites pass: 902 top-level tests including doctests, 11 existing ignored fixtures (two nested subprocess receipts excluded from the aggregate). Strict full-workspace all-target/all-feature Clippy (-D warnings), fmt check, Windows GNU workspace all-target/all-feature check, strict two-root Verus (--no-cheating, rlimit20), and rebuilt cargo xtask all pass on the exact six-file selected tree (86 packages, 4937 source files, 3901 formal-boundary files). Reviewed full staged diff/new source and byte-matched the isolated tree; unrelated provider/document files remain excluded and hash-verified unchanged this turn. PR description updated; fresh-head native CI watch58934 is running. Native Windows/macOS execution is pending, so #108 remains open rather than repeating the earlier premature closure. #824 stays separately open; no other issue is claimed complete.",
+          "created_at": "2026-10-06T21:23:09.872741643Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcrfAEv9Jkv4BXDaI+0sv/+UBCTbVyIxPWJ1XvUUxtuEwfe3y4r+zlyRS39eWfy8lmibOLMGdopvvkxKEFBCJCw=="
         },
         "3eb9e5c2-27e2-4ee0-bac5-e57c1801bb89": {
           "display_id": 2927,
