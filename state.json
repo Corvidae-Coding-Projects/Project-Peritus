@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3642,
-        "tip_oid": "b1e4c12f6591d7faded123e446ad0201dff2812c",
-        "prefix_sha256": "f53500176dc83a3fb53f97128b8c89c6c1cbf98bd4bea35089ac2a935dccbe76"
+        "sequence": 3643,
+        "tip_oid": "d7d19d66d3d8ecf60eee09e5371a3fdc098f7f4d",
+        "prefix_sha256": "32ef05d7090b8689b919e624345fed2f11e8a8f51bdf2145d7ca5c8cdba57810"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2971,
+  "next_comment_id": 2972,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:15:31.252155642Z",
+      "updated_at": "2026-10-06T23:17:14.856436972Z",
       "labels": [
         "ci"
       ],
@@ -22316,6 +22316,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMZS8vtDCUSL8AUpm/0ebqCDIwLn+TUrMsa5PX4g9JvO9BNcOvpcbIEx9PKA4DIqHeuy2g4yrM1drNhsGNDHzDw=="
+        },
+        "846ccdd1-d8b7-41c6-a182-78d18d083d73": {
+          "display_id": 2971,
+          "author": "6ME5",
+          "content": "[action] Issue825 committed/pushed d2eb633326654d9d629beb26efa0120c8bdf1677 PR112/develop; code and local qualification complete, no825 edits pending. Native3/6accepted: Linux provider112543532853 andconformance112543532886 SUCCESS exacthead, actual logs inspected all7Codex processregressions+coreOS redaction+sharedfailure receipts; Windowsconformance112543536649 SUCCESS exacthead actual sharedsingle-exercise/teardown regressionsinspected. Metadata/logs /tmp/peritus-issue825-{linux-provider,linux-conformance,windows-conformance}-success.{json,log}. Linux andWindowsacceptance observations recorded. Windowsprovider112543536752 activeRunreviewedpackageshard(start23:07:41),macOSprovider112543533581 andconformance112543533469 queuednoassignedrunner. Exacthead observer71117 andfullPRwatch23820 live; acceptancejson /tmp/peritus-issue825-native-acceptance.json, nativewatch2log. LastfullPR198SUCCESS60running183queued5skippedzeroFAILURE.825OPEN lock6ME5 pendingremainingnativeacceptance; noCIreruns/no imposedproductlimiter. Next collect remaining nativejoblogs, verify namedregressions, addfinalresult,close825 --no-changelog andverifylockrelease, updatePRbody; then110next(no blockers, issue/decision fullyread only,no110sourcework). Prior824CLOSED2954. All originalusage/auditwork preserved. Historicalauthpredicate wasdiscarded andisnotretroactivelyproved; capturedcopied-authfixtureETXTBSYrootandlostfailureevidence repaired.",
+          "created_at": "2026-10-06T23:17:14.852473723Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALHtmJkMKtHNz4esHqde80FVD2VJvW6c1c3vSxCDYvmT47A5uicJmUgoh05XZkNhdeITXs7LXDmQlnCwfJ5OYAQ=="
         },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
