@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3630,
-        "tip_oid": "46ebd63bfb69f91399e9e41f93c1651714874477",
-        "prefix_sha256": "402f8dff0e9f0cc6d4017ba12b113667f5fc9ea0a5026f64166cd39cf29655a8"
+        "sequence": 3631,
+        "tip_oid": "98c7d39760de60a14a8c64f19c363e63917a7e40",
+        "prefix_sha256": "54c7edb3dcc3b8670a93adad742b804d47ea5d8635209515dacd7b2a53463f60"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2959,
+  "next_comment_id": 2960,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:43:00.096385368Z",
+      "updated_at": "2026-10-06T22:44:12.624939117Z",
       "labels": [
         "ci"
       ],
@@ -22244,6 +22244,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg2hSCLF91kuCWEUTsKV0TFJqbIJx+64b5dzluu0Uk1xCeDc3zF67fHEBX3vCXNgm3zyqM2hgsGjAQ3nG8SR+Dw=="
+        },
+        "3841d0a3-9adb-46ce-a284-bd6dc8302352": {
+          "display_id": 2959,
+          "author": "6ME5",
+          "content": "New failed exercise retained, not rerun into acceptance: provenance run57 exited101 (/tmp/peritus-issue825-provenance-57.log; loop stopped). This time ambiguous-submission failed during provider.start with PERITUS-PROVIDER-CORE-011 / process_spawn / owned subprocess could not be started, trace absent (NotFound, OS code2), cleanup successful; authentication and the other13 cases passed. This demonstrates an intermittent pre-auth child spawn failure common to fixture scenarios, rather than journal timeout or failed cleanup in this observed run. It does not retroactively prove the discarded original authentication predicate. Tokio spawn currently maps away the actual I/O error, so trace execve syscalls next to identify the OS failure without changing assertions, retrying failed work or adding a timeout. Strict Verus for isolated OpenAI targets passed (effect shells0 verified0errors, dependencies210+13 verified); no production proof claim for ordinary Rust. Clippy2 accidentally ran from main instead of isolated tree and is discarded as qualification evidence; it found two map_unwrap_or warnings in the new fake trace code, now corrected with explicit let-else errors, with no blanket allows.",
+          "created_at": "2026-10-06T22:44:12.621196235Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJLwOelQxi/V3XPIoaAT2TeDj50ppoDe7xsAMVgJ8l0Vv68l7/RJ+GnIRLVmyWHnXP9h6oP40AqDCYPItOor5DQ=="
         },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
