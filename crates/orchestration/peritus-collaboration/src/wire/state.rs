@@ -88,11 +88,15 @@ impl CanonicalDecode for CollaborationStateFrame {
             .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
         let last_event_id = super::read_event_id(reader)?;
         let state_digest = super::read_digest(reader)?;
-        let task_count = super::bounded_len(reader, binding.limits().tasks() as usize)?;
+        let task_count = super::bounded_len(
+            reader,
+            binding.limits().tasks() as usize,
+            5 * 16 + 1 + 2 + 1 + 32 + 1 + 1 + 1 + 1 + 1,
+        )?;
         if task_count == 0 {
             return Err(super::invalid(reader));
         }
-        let mut tasks = Vec::with_capacity(task_count);
+        let mut tasks = reader.reserve_collection(task_count)?;
         for _ in 0..task_count {
             tasks.push(read_task(reader)?);
         }
@@ -102,8 +106,12 @@ impl CanonicalDecode for CollaborationStateFrame {
         {
             return Err(super::invalid(reader));
         }
-        let message_count = super::bounded_len(reader, binding.limits().messages() as usize)?;
-        let mut messages = Vec::with_capacity(message_count);
+        let message_count = super::bounded_len(
+            reader,
+            binding.limits().messages() as usize,
+            5 * 16 + 4 + 1 + 4 + 4 + 32 + 1 + 96 + 1,
+        )?;
+        let mut messages = reader.reserve_collection(message_count)?;
         for _ in 0..message_count {
             messages.push(MessageDelivery::from_wire(
                 super::read_message(reader)?,
@@ -120,8 +128,9 @@ impl CanonicalDecode for CollaborationStateFrame {
                 .tasks()
                 .saturating_add(binding.limits().messages().saturating_mul(2))
                 .saturating_add(65_535) as usize,
+            16,
         )?;
-        let mut used_commands = Vec::with_capacity(command_count);
+        let mut used_commands = reader.reserve_collection(command_count)?;
         for _ in 0..command_count {
             used_commands.push(super::read_command_id(reader)?);
         }
@@ -196,8 +205,8 @@ fn read_terminal(reader: &mut CanonicalReader<'_>) -> Result<CollaborationTermin
         5 => CollaborationTerminalKind::UnsatisfiedJoin,
         _ => return Err(super::unknown(offset)),
     };
-    let count = super::bounded_len(reader, crate::CollaborationLimits::MAX_TASKS as usize)?;
-    let mut blocking = Vec::with_capacity(count);
+    let count = super::bounded_len(reader, crate::CollaborationLimits::MAX_TASKS as usize, 16)?;
+    let mut blocking = reader.reserve_collection(count)?;
     for _ in 0..count {
         blocking.push(super::read_task_id(reader)?);
     }

@@ -134,11 +134,12 @@ pub(super) fn encode_model_attempts(
 pub(super) fn decode_model_attempts(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<ModelAttemptObservation>, DebuggerError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count =
+        reader.read_collection_len(16 + 2 + 1 + 16 + 2 + 1 + 1 + 32 + 2 * 8).map_err(codec)?;
     if count > 32 {
         return Err(corrupt("model attempt history exceeds compiled bound"));
     }
-    let mut attempts = Vec::with_capacity(count);
+    let mut attempts = reader.reserve_collection(count).map_err(codec)?;
     for index in 0..count {
         let model_id = ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?;
         let attempt = nonzero_attempt(reader.read_u16().map_err(codec)?)?;

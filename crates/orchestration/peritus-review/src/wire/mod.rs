@@ -316,13 +316,15 @@ fn read_binding(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, Codec
     };
     let candidate = read_digest(reader)?;
     let tree = read_digest(reader)?;
-    let producer_count = bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES))?;
-    let mut producers = Vec::with_capacity(producer_count);
+    let producer_count =
+        bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES), 16)?;
+    let mut producers = reader.reserve_collection(producer_count)?;
     for _ in 0..producer_count {
         producers.push(read_actor_id(reader)?);
     }
-    let ancestry_count = bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES))?;
-    let mut ancestries = Vec::with_capacity(ancestry_count);
+    let ancestry_count =
+        bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES), 32)?;
+    let mut ancestries = reader.reserve_collection(ancestry_count)?;
     for _ in 0..ancestry_count {
         ancestries.push(read_digest(reader)?);
     }
@@ -346,8 +348,12 @@ fn read_binding(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, Codec
     Ok(value)
 }
 
-fn bounded_len(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+fn bounded_len(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum { Err(invalid(reader)) } else { Ok(count) }
 }
 
@@ -356,8 +362,8 @@ fn read_digests<T>(
     maximum: u16,
     construct: impl Fn(Sha256Digest) -> T,
 ) -> Result<Vec<T>, CodecError> {
-    let count = bounded_len(reader, usize::from(maximum))?;
-    let mut values = Vec::with_capacity(count);
+    let count = bounded_len(reader, usize::from(maximum), 32)?;
+    let mut values = reader.reserve_collection(count)?;
     for _ in 0..count {
         values.push(construct(read_digest(reader)?));
     }

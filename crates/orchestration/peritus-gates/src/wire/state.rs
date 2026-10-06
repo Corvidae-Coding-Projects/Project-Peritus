@@ -208,35 +208,35 @@ impl CanonicalDecode for GateStateFrame {
             EventSequence::new(reader.read_u64()?).map_err(|_| invalid(sequence_offset))?;
         let last_event_id = super::read_event_id(reader)?;
         let state_digest = super::read_digest(reader)?;
-        let slot_count = reader.read_collection_len()?;
+        let slot_count = reader.read_collection_len(16 + 1 + 2 + 5)?;
         if slot_count > crate::descriptor::MAX_GATES_PER_RUN {
             return Err(invalid(reader.offset()));
         }
-        let mut slots = Vec::with_capacity(slot_count);
+        let mut slots = reader.reserve_collection(slot_count)?;
         for _ in 0..slot_count {
             slots.push(read_slot(reader)?);
         }
         if slots.windows(2).any(|pair| pair[0].gate_id >= pair[1].gate_id) {
             return Err(invalid(reader.offset()));
         }
-        let execution_count = reader.read_collection_len()?;
+        let execution_count = reader.read_collection_len(16)?;
         if execution_count > crate::descriptor::MAX_TOTAL_GATE_ATTEMPTS {
             return Err(invalid(reader.offset()));
         }
-        let mut used_executions = Vec::with_capacity(execution_count);
+        let mut used_executions = reader.reserve_collection(execution_count)?;
         for _ in 0..execution_count {
             used_executions.push(super::read_execution_id(reader)?);
         }
         if used_executions.iter().copied().collect::<BTreeSet<_>>().len() != used_executions.len() {
             return Err(invalid(reader.offset()));
         }
-        let action_count = reader.read_collection_len()?;
+        let action_count = reader.read_collection_len(16)?;
         if action_count > crate::descriptor::MAX_TOTAL_GATE_ATTEMPTS
             || action_count != execution_count
         {
             return Err(invalid(reader.offset()));
         }
-        let mut used_actions = Vec::with_capacity(action_count);
+        let mut used_actions = reader.reserve_collection(action_count)?;
         for _ in 0..action_count {
             used_actions.push(super::read_action_id(reader)?);
         }
@@ -322,11 +322,11 @@ fn read_slot(reader: &mut CanonicalReader<'_>) -> Result<CheckpointSlot, CodecEr
 
 fn read_terminal(reader: &mut CanonicalReader<'_>) -> Result<CheckpointTerminal, CodecError> {
     let kind = read_terminal_kind(reader)?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(16)?;
     if count > crate::descriptor::MAX_GATES_PER_RUN {
         return Err(invalid(reader.offset()));
     }
-    let mut non_passing = Vec::with_capacity(count);
+    let mut non_passing = reader.reserve_collection(count)?;
     for _ in 0..count {
         non_passing.push(super::read_gate_id(reader)?);
     }

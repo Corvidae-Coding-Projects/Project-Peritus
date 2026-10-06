@@ -95,8 +95,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let executable = reader.read_str().map_err(codec_error)?.to_owned();
     let arguments = read_strings(&mut reader)?;
     let working_directory = WindowsPath::new(reader.read_str().map_err(codec_error)?)?;
-    let environment_count = reader.read_collection_len().map_err(codec_error)?;
-    let mut environment = Vec::with_capacity(environment_count);
+    let environment_count = reader.read_collection_len(2 * 4).map_err(codec_error)?;
+    let mut environment = reader.reserve_collection(environment_count).map_err(codec_error)?;
     for _ in 0..environment_count {
         environment.push(EnvironmentEntry::new(
             reader.read_str().map_err(codec_error)?,
@@ -109,8 +109,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let resources = decode_resources(&mut reader)?;
     let network = decode_network(&mut reader)?;
     let secret_handles = decode_secrets(&mut reader)?;
-    let handle_count = reader.read_collection_len().map_err(codec_error)?;
-    let mut handles = Vec::with_capacity(handle_count);
+    let handle_count = reader.read_collection_len(8).map_err(codec_error)?;
+    let mut handles = reader.reserve_collection(handle_count).map_err(codec_error)?;
     for _ in 0..handle_count {
         handles.push(reader.read_u64().map_err(codec_error)?);
     }
@@ -258,7 +258,7 @@ fn encode_resources(
 }
 
 fn decode_resources(reader: &mut CanonicalReader<'_>) -> Result<ResourceControlPlan, WindowsError> {
-    if reader.read_collection_len().map_err(codec_error)? != RESOURCE_KINDS.len() {
+    if reader.read_collection_len(1 + 8 + 1).map_err(codec_error)? != RESOURCE_KINDS.len() {
         return Err(protocol("manifest resource mapping is not complete"));
     }
     let mut controls =
@@ -339,8 +339,8 @@ fn encode_secrets(
 fn decode_secrets(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<ProtectedSecretHandle>, WindowsError> {
-    let count = reader.read_collection_len().map_err(codec_error)?;
-    let mut values = Vec::with_capacity(count);
+    let count = reader.read_collection_len(8 + 32 + 1 + 4).map_err(codec_error)?;
+    let mut values = reader.reserve_collection(count).map_err(codec_error)?;
     for _ in 0..count {
         let handle = reader.read_u64().map_err(codec_error)?;
         let reference = read_digest(reader)?;

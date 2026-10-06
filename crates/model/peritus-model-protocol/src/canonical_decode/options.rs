@@ -26,8 +26,8 @@ pub(super) fn request_options(
         reader.read_bool().map_err(codec)?,
     )?;
     let continuation = continuation(reader)?;
-    let count = read_collection_len(reader, 128, "extensions")?;
-    let mut extensions = Vec::with_capacity(count);
+    let count = read_collection_len(reader, 128, 4 + 4, "extensions")?;
+    let mut extensions = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         extensions.push(extension(reader, limits)?);
     }
@@ -98,8 +98,8 @@ fn generation(
     limits: ProtocolLimits,
 ) -> Result<GenerationConfig, ProtocolError> {
     let max_output_tokens = reader.read_u64().map_err(codec)?;
-    let count = read_collection_len(reader, 64, "generation.stop_sequences")?;
-    let mut stop_sequences = Vec::with_capacity(count);
+    let count = read_collection_len(reader, 64, 4, "generation.stop_sequences")?;
+    let mut stop_sequences = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         stop_sequences.push(bounded_text(reader, limits)?);
     }

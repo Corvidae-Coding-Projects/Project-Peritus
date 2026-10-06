@@ -25,8 +25,8 @@ pub(super) fn message(
         5 => Role::Tool,
         _ => return Err(unknown_tag("message.role")),
     };
-    let count = read_collection_len(reader, limits.max_content_blocks(), "message.content")?;
-    let mut blocks = Vec::with_capacity(count);
+    let count = read_collection_len(reader, limits.max_content_blocks(), 1 + 4, "message.content")?;
+    let mut blocks = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         blocks.push(block(reader, limits)?);
     }

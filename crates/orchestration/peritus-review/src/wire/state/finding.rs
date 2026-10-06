@@ -6,6 +6,10 @@ use peritus_types::FindingId;
 
 use crate::{Confidence, Finding, FindingLocation, FindingSource, ReviewLimits};
 
+// Fixed fields, collection/string prefixes, and option tags in the schema below.
+pub(super) const MINIMUM_FINDING_BYTES: usize =
+    16 + 32 + 4 + 32 + 1 + 1 + 2 + 3 * 4 + 4 * 4 + 96 + 32 + 4 + 1;
+
 pub(super) fn write_finding(
     writer: &mut CanonicalWriter,
     value: &Finding,
@@ -49,8 +53,8 @@ pub(super) fn read_finding(reader: &mut CanonicalReader<'_>) -> Result<Finding, 
     let id = super::super::read_finding_id(reader)?;
     let origin = read_source(reader)?;
     let source_count =
-        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES))?;
-    let mut sources = Vec::with_capacity(source_count);
+        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_PROVENANCE_SOURCES), 32)?;
+    let mut sources = reader.reserve_collection(source_count)?;
     for _ in 0..source_count {
         sources.push(read_source(reader)?);
     }
@@ -65,8 +69,8 @@ pub(super) fn read_finding(reader: &mut CanonicalReader<'_>) -> Result<Finding, 
     let requirements =
         super::super::read_digests(reader, ReviewLimits::MAX_REQUIREMENTS, RequirementId::new)?;
     let location_count =
-        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_LOCATIONS))?;
-    let mut locations = Vec::with_capacity(location_count);
+        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_LOCATIONS), 4 + 4 * 4)?;
+    let mut locations = reader.reserve_collection(location_count)?;
     for _ in 0..location_count {
         locations.push(read_location(reader)?);
     }
@@ -77,9 +81,12 @@ pub(super) fn read_finding(reader: &mut CanonicalReader<'_>) -> Result<Finding, 
     let remediation = super::super::read_text(reader, ReviewLimits::MAX_TEXT_BYTES)?;
     let revision = super::super::read_revision(reader)?;
     let normalized = super::super::read_digest(reader)?;
-    let disposition_count =
-        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_DISPOSITION_RECORDS))?;
-    let mut dispositions = Vec::with_capacity(disposition_count);
+    let disposition_count = super::super::bounded_len(
+        reader,
+        usize::from(ReviewLimits::MAX_DISPOSITION_RECORDS),
+        16 + 1 + 2 + 96 + 4 + 4 + 32,
+    )?;
+    let mut dispositions = reader.reserve_collection(disposition_count)?;
     for _ in 0..disposition_count {
         dispositions.push(super::disposition::read_disposition(reader)?);
     }

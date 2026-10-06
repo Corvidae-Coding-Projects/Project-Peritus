@@ -106,21 +106,27 @@ async fn backpressured_attachment_preserves_live_process_and_healthy_sibling() {
     assert_eq!(bindings, vec![healthy]);
     assert_eq!(registry.counts(), (1, 1));
     assert!(control.terminal_result().is_none(), "output failure must not kill the process");
+    // Attachment failures have no ordering fence over a healthy sibling's output. Close the
+    // writer after pumping and verify the entire delivered stream instead of stopping early.
+    drop(frames);
     let mut output = Vec::new();
-    loop {
-        let AppMessage::Event(event) = peer.read().await.unwrap() else { panic!("terminal event") };
+    let mut attachment_unavailable = false;
+    while let Some(message) = peer.read_or_eof().await.unwrap() {
+        let AppMessage::Event(event) = message else { panic!("terminal event") };
         match event.payload() {
             AppEventPayload::TerminalOutput(chunk) if chunk.binding() == healthy => {
                 output.extend_from_slice(chunk.bytes());
             }
             AppEventPayload::TerminalUnavailable(failed) => {
                 assert_eq!(*failed, slow);
-                break;
+                assert!(!attachment_unavailable, "attachment failure is delivered once");
+                attachment_unavailable = true;
             }
             AppEventPayload::TerminalExited(_) => panic!("live process cannot be reported exited"),
             _ => {}
         }
     }
+    assert!(attachment_unavailable, "the failed attachment must be reported");
     assert!(String::from_utf8_lossy(&output).contains("BURST DONE"));
     control.write_stdin(b"finish\n".to_vec()).unwrap();
     registry.shutdown().unwrap();

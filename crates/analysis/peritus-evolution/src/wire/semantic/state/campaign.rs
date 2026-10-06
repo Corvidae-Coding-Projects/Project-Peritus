@@ -77,25 +77,38 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
     let maximum_manifests = usize::from(limits.manifests());
     let maximum_variants = usize::from(limits.variants());
 
-    let baseline_evidence = read_vec(&mut reader, maximum_manifests, |reader| {
+    let baseline_evidence = read_vec(&mut reader, maximum_manifests, 2 * 32, |reader| {
         Ok(BaselineEvidence::new(scalar::digest(reader)?, scalar::digest(reader)?))
     })?;
-    let diagnoses =
-        read_vec(&mut reader, maximum_manifests, |reader| binding::diagnosis(reader, limits))?;
+    let diagnoses = read_vec(
+        &mut reader,
+        maximum_manifests,
+        96 + 2 * 16 + 32 + 16 + 3 * 32 + 8 + 16 + 8 + 4,
+        |reader| binding::diagnosis(reader, limits),
+    )?;
     let manifests =
-        read_vec(&mut reader, maximum_manifests, |reader| change::manifest(reader, limits))?;
-    let variants =
-        read_vec(&mut reader, maximum_variants, |reader| change::variant(reader, limits))?;
-    let evaluations = read_vec(&mut reader, maximum_variants, |reader| {
+        read_vec(&mut reader, maximum_manifests, 3 * (16 + 8 + 32) + 6 * 4, |reader| {
+            change::manifest(reader, limits)
+        })?;
+    let variants = read_vec(
+        &mut reader,
+        maximum_variants,
+        2 * (96 + 56 + 32 + 32 + 2 * 33) + 3 * 4 + 3,
+        |reader| change::variant(reader, limits),
+    )?;
+    // The fixed outer variant identity is a schema lower bound; evaluation validates its body.
+    let evaluations = read_vec(&mut reader, maximum_variants, 16, |reader| {
         Ok(VariantEvaluation::new(
             VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?,
             evaluation::read(reader)?,
         ))
     })?;
-    let attributions =
-        read_vec(&mut reader, maximum_variants, |reader| attribution::read(reader, limits))?;
-    let assessments =
-        read_vec(&mut reader, maximum_variants, |reader| selection::assessment(reader, limits))?;
+    let attributions = read_vec(&mut reader, maximum_variants, 16 + 32 + 1 + 4, |reader| {
+        attribution::read(reader, limits)
+    })?;
+    let assessments = read_vec(&mut reader, maximum_variants, 2 * 16 + 2 * 32 + 4, |reader| {
+        selection::assessment(reader, limits)
+    })?;
     let selected = read_option(&mut reader, selection::selection)?;
     let promotion = read_option(&mut reader, proposal::promotion)?;
     let publication = read_option(&mut reader, proposal::publication)?;

@@ -79,13 +79,13 @@ pub fn write_gate(
 pub fn read_gate(reader: &mut CanonicalReader<'_>) -> Result<GateDefinitionDto, CodecError> {
     let id = read_id(reader, GateId::new)?;
     let plan = read_gate_plan(reader)?;
-    let dependency_count = reader.read_collection_len()?;
-    let mut dependencies = Vec::with_capacity(dependency_count);
+    let dependency_count = reader.read_collection_len(16)?;
+    let mut dependencies = reader.reserve_collection(dependency_count)?;
     for _ in 0..dependency_count {
         dependencies.push(read_id(reader, GateId::new)?);
     }
-    let evidence_count = reader.read_collection_len()?;
-    let mut required_evidence = Vec::with_capacity(evidence_count);
+    let evidence_count = reader.read_collection_len(32)?;
+    let mut required_evidence = reader.reserve_collection(evidence_count)?;
     for _ in 0..evidence_count {
         required_evidence.push(EvidenceRequirementId::new(read_digest(reader)?));
     }
@@ -176,8 +176,8 @@ pub fn write_review(
 }
 
 pub fn read_review(reader: &mut CanonicalReader<'_>) -> Result<ReviewPolicyDto, CodecError> {
-    let count = reader.read_collection_len()?;
-    let mut required_categories = Vec::with_capacity(count);
+    let count = reader.read_collection_len(32)?;
+    let mut required_categories = reader.reserve_collection(count)?;
     for _ in 0..count {
         required_categories.push(ReviewCategory::new(read_digest(reader)?));
     }

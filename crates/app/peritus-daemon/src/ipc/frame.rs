@@ -1,19 +1,23 @@
 //! Allocation-bounded asynchronous PRTS frame transport.
 
-use peritus_app_protocol::{AppMessage, AppProtocolLimits, decode_app_message, encode_app_message};
-use peritus_codec::{HEADER_LEN, MAGIC};
+use peritus_app_protocol::{
+    AppErrorCode, AppMessage, AppProtocolError, AppProtocolLimits, decode_app_message,
+    encode_app_message,
+};
+use peritus_codec::{CodecError, CodecErrorKind, FrameReceiver};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+
+// This is a retry cadence, never an expiry or a bound on attempts or received bytes.
+const ALLOCATION_RETRY_INTERVAL: std::time::Duration = std::time::Duration::from_millis(100);
 
 /// One bidirectional stream of complete canonical A3 PRTS frames.
 pub struct AppFrameStream<S> {
     stream: S,
     limits: AppProtocolLimits,
-    header: [u8; HEADER_LEN],
-    header_read: usize,
-    frame: Vec<u8>,
-    frame_read: usize,
+    receiver: FrameReceiver,
+    allocation_retry_at: Option<tokio::time::Instant>,
 }
 
 impl<S> AppFrameStream<S> {
@@ -23,10 +27,8 @@ impl<S> AppFrameStream<S> {
         Self {
             stream,
             limits,
-            header: [0; HEADER_LEN],
-            header_read: 0,
-            frame: Vec::new(),
-            frame_read: 0,
+            receiver: FrameReceiver::new(limits.codec()),
+            allocation_retry_at: None,
         }
     }
     /// Returns the underlying authenticated transport.
@@ -55,82 +57,54 @@ where
     }
 
     /// Reads one frame, treating an EOF exactly on a frame boundary as a clean disconnect.
-    /// Partial bytes remain owned by this stream if the read future is cancelled.
+    /// Partial bytes remain owned by this stream if the read future is cancelled. Temporary
+    /// allocation pressure waits and retries with the same receiver instead of dropping the
+    /// connection. The caller can still cancel the wait for shutdown or other connection work.
     ///
     /// # Errors
     ///
     /// Returns a transport error for a partial frame or I/O failure and invalid input for
     /// malformed A3. A connection that closes between frames returns `Ok(None)`.
     pub async fn read_or_eof(&mut self) -> Result<Option<AppMessage>, DaemonError> {
-        while self.header_read < HEADER_LEN {
-            let count = self
-                .stream
-                .read(&mut self.header[self.header_read..])
-                .await
-                .map_err(transport_read)?;
+        loop {
+            if let Some(retry_at) = self.allocation_retry_at {
+                tokio::time::sleep_until(retry_at).await;
+                self.allocation_retry_at = None;
+            }
+            match self.read_once().await {
+                Err(error) => self.defer_allocation_retry(error)?,
+                result => return result,
+            }
+        }
+    }
+
+    fn defer_allocation_retry(&mut self, error: DaemonError) -> Result<(), DaemonError> {
+        if error.code_kind() != DaemonErrorCode::ResourceLimit
+            || error.recovery() != DaemonRecovery::Retry
+        {
+            return Err(error);
+        }
+        self.allocation_retry_at = Some(tokio::time::Instant::now() + ALLOCATION_RETRY_INTERVAL);
+        Ok(())
+    }
+
+    async fn read_once(&mut self) -> Result<Option<AppMessage>, DaemonError> {
+        while let Some(buffer) = self.receiver.prepare_read().map_err(receive_codec_error)? {
+            let count = self.stream.read(buffer).await.map_err(transport_read)?;
             if count == 0 {
-                if self.header_read == 0 {
+                if self.receiver.is_empty() {
                     return Ok(None);
                 }
                 return Err(truncated());
             }
-            self.header_read += count;
+            self.receiver.accept_read(count).map_err(receive_codec_error)?;
         }
-        self.prepare_frame()?;
-        while self.frame_read < self.frame.len() {
-            let count = self
-                .stream
-                .read(&mut self.frame[self.frame_read..])
-                .await
-                .map_err(transport_read)?;
-            if count == 0 {
-                return Err(truncated());
-            }
-            self.frame_read += count;
-        }
-        let result = decode_app_message(&self.frame, self.limits).map(Some).map_err(|error| {
-            DaemonError::with_source(
-                DaemonErrorCode::InvalidInput,
-                DaemonRecovery::CorrectRequest,
-                "decode application frame",
-                "application frame violates the negotiated protocol",
-                error,
-            )
-        });
-        self.header_read = 0;
-        self.frame_read = 0;
-        self.frame.clear();
-        result
-    }
-
-    fn prepare_frame(&mut self) -> Result<(), DaemonError> {
-        if !self.frame.is_empty() {
-            return Ok(());
-        }
-        if self.header[..4] != MAGIC {
-            return Err(protocol("PRTS frame magic is invalid"));
-        }
-        let payload_len = usize::try_from(u32::from_be_bytes(
-            self.header[12..16].try_into().expect("fixed PRTS header"),
-        ))
-        .map_err(|_| protocol("PRTS payload length cannot be represented"))?;
-        let codec = self.limits.codec();
-        if payload_len > codec.max_payload_bytes
-            || HEADER_LEN
-                .checked_add(payload_len)
-                .is_none_or(|length| length > codec.max_frame_bytes)
-        {
-            return Err(DaemonError::new(
-                DaemonErrorCode::ResourceLimit,
-                DaemonRecovery::CorrectRequest,
-                "read application frame",
-                "declared PRTS payload exceeds the pre-allocation bound",
-            ));
-        }
-        self.frame.extend_from_slice(&self.header);
-        self.frame.resize(HEADER_LEN + payload_len, 0);
-        self.frame_read = HEADER_LEN;
-        Ok(())
+        let frame = self.receiver.complete_frame().ok_or_else(truncated)?;
+        let message = decode_app_message(frame, self.limits)
+            .map_err(|error| protocol_error(error, "decode application frame"))?;
+        // Do not discard received bytes if owned domain decoding encounters allocator pressure.
+        self.receiver.take_frame(self.limits.codec()).map_err(receive_codec_error)?;
+        Ok(Some(message))
     }
 
     /// Encodes and writes one complete canonical A3 frame.
@@ -139,18 +113,26 @@ where
     ///
     /// Returns a protocol or transport error without writing a partial second frame.
     pub async fn write(&mut self, message: &AppMessage) -> Result<(), DaemonError> {
-        let frame = encode_app_message(message, self.limits).map_err(|error| {
-            DaemonError::with_source(
-                DaemonErrorCode::InvalidInput,
-                DaemonRecovery::CorrectRequest,
-                "encode application frame",
-                "application message violates the negotiated protocol",
-                error,
-            )
-        })?;
+        let frame = encode_app_message(message, self.limits)
+            .map_err(|error| protocol_error(error, "encode application frame"))?;
         self.stream.write_all(&frame).await.map_err(transport_write)?;
         self.stream.flush().await.map_err(transport_write)
     }
+}
+
+fn protocol_error(error: AppProtocolError, operation: &'static str) -> DaemonError {
+    let (code, recovery) = if error.code() == AppErrorCode::Backpressure {
+        (DaemonErrorCode::ResourceLimit, DaemonRecovery::Retry)
+    } else {
+        (DaemonErrorCode::InvalidInput, DaemonRecovery::CorrectRequest)
+    };
+    DaemonError::with_source(
+        code,
+        recovery,
+        operation,
+        "application message could not complete under the selected codec contract",
+        error,
+    )
 }
 
 fn truncated() -> DaemonError {
@@ -180,18 +162,29 @@ fn transport_write(error: std::io::Error) -> DaemonError {
     )
 }
 
-fn protocol(detail: &'static str) -> DaemonError {
-    DaemonError::new(
-        DaemonErrorCode::InvalidInput,
-        DaemonRecovery::CorrectRequest,
+fn receive_codec_error(error: CodecError) -> DaemonError {
+    let (code, recovery) = match error.kind() {
+        CodecErrorKind::AllocationUnavailable => {
+            (DaemonErrorCode::ResourceLimit, DaemonRecovery::Retry)
+        }
+        CodecErrorKind::LimitExceeded => {
+            (DaemonErrorCode::ResourceLimit, DaemonRecovery::CorrectRequest)
+        }
+        _ => (DaemonErrorCode::InvalidInput, DaemonRecovery::CorrectRequest),
+    };
+    DaemonError::with_source(
+        code,
+        recovery,
         "read application frame",
-        detail,
+        "canonical frame receipt could not advance",
+        error,
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use peritus_codec::{HEADER_LEN, MAGIC};
 
     #[tokio::test]
     async fn frame_boundary_eof_is_a_clean_disconnect() {
@@ -210,6 +203,77 @@ mod tests {
         let error = frames.read_or_eof().await.unwrap_err();
         assert_eq!(error.code_kind(), DaemonErrorCode::Transport);
         assert_eq!(error.operation(), "read application frame");
+    }
+
+    #[tokio::test]
+    async fn allocation_retry_preserves_partial_frame_and_the_next_message() {
+        use std::{future::poll_fn, task::Poll};
+
+        let message = AppMessage::ClientHello(
+            peritus_app_protocol::ClientHello::new(
+                peritus_app_protocol::ProtocolId::new([7; 16]).unwrap(),
+                vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
+                Vec::new(),
+                Vec::new(),
+                AppProtocolLimits::PRODUCTION,
+                "capacity-retry-test".to_owned(),
+            )
+            .unwrap(),
+        );
+        let encoded = encode_app_message(&message, AppProtocolLimits::PRODUCTION).unwrap();
+        let split = HEADER_LEN + 1;
+        let (mut peer, stream) = tokio::io::duplex(4096);
+        let mut frames = AppFrameStream::new(stream, AppProtocolLimits::PRODUCTION);
+        peer.write_all(&encoded[..split]).await.unwrap();
+        {
+            let mut pending = Box::pin(frames.read_or_eof());
+            poll_fn(|context| {
+                assert!(pending.as_mut().poll(context).is_pending());
+                Poll::Ready(())
+            })
+            .await;
+        }
+        peer.write_all(&encoded[split..]).await.unwrap();
+        peer.write_all(&encoded).await.unwrap();
+        drop(peer);
+        frames
+            .defer_allocation_retry(receive_codec_error(CodecError::at(
+                CodecErrorKind::AllocationUnavailable,
+                split,
+            )))
+            .unwrap();
+        let scheduled_retry = frames.allocation_retry_at;
+        {
+            let mut waiting = Box::pin(frames.read_or_eof());
+            poll_fn(|context| {
+                assert!(waiting.as_mut().poll(context).is_pending());
+                Poll::Ready(())
+            })
+            .await;
+        }
+        assert_eq!(
+            frames.allocation_retry_at, scheduled_retry,
+            "cancellation keeps retry progress"
+        );
+        assert_eq!(frames.read_or_eof().await.unwrap(), Some(message.clone()));
+        assert_eq!(frames.read_or_eof().await.unwrap(), Some(message));
+        assert!(frames.read_or_eof().await.unwrap().is_none());
+    }
+
+    #[test]
+    fn capacity_retry_does_not_retry_malformed_input_or_transport_failure() {
+        let (_, stream) = tokio::io::duplex(64);
+        let mut frames = AppFrameStream::new(stream, AppProtocolLimits::PRODUCTION);
+        for kind in [CodecErrorKind::LimitExceeded, CodecErrorKind::InvalidMagic] {
+            let error = frames
+                .defer_allocation_retry(receive_codec_error(CodecError::at(kind, 0)))
+                .unwrap_err();
+            assert_eq!(error.recovery(), DaemonRecovery::CorrectRequest);
+            assert_eq!(frames.allocation_retry_at, None);
+        }
+        let error = frames.defer_allocation_retry(truncated()).unwrap_err();
+        assert_eq!(error.code_kind(), DaemonErrorCode::Transport);
+        assert_eq!(frames.allocation_retry_at, None);
     }
 
     #[tokio::test]

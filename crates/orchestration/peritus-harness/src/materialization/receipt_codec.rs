@@ -140,8 +140,8 @@ impl MaterializationReceipt {
         let snapshot_id = SnapshotId::new(reader.read_fixed().map_err(codec)?)
             .map_err(|_| invalid("receipt snapshot identity is zero"))?;
         let workspace_manifest_artifact = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
-        let count = reader.read_collection_len().map_err(codec)?;
-        let mut files = Vec::with_capacity(count);
+        let count = reader.read_collection_len(4 + 32 + 8 + 1).map_err(codec)?;
+        let mut files = reader.reserve_collection(count).map_err(codec)?;
         for _ in 0..count {
             let file = ReceiptFile::decode(reader)?;
             if files.last().is_some_and(|prior: &ReceiptFile| prior.path >= file.path) {

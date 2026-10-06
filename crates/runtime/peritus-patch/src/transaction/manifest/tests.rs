@@ -32,7 +32,7 @@ fn snapshot_manifest_above_the_old_payload_limit_decodes_exactly() {
     let patch = patch((0..5_000).map(|index| format!("{prefix}/saved-{index:05}")));
     let manifest = Manifest::from_patch(&patch, Vec::new());
     let encoded = manifest.encode().expect("encode");
-    assert!(encoded.len() > CodecLimits::PRODUCTION.max_payload_bytes);
+    assert!(encoded.len() > CodecLimits::LEGACY_V1.max_payload_bytes);
     assert_eq!(Manifest::decode(&encoded).expect("decode"), manifest);
 }
 

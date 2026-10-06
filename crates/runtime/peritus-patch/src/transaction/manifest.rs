@@ -158,7 +158,7 @@ impl Manifest {
             return Ok(bytes);
         }
         let mut writer = CanonicalWriter::new(if self.schema == 1 {
-            CodecLimits::PRODUCTION
+            CodecLimits::LEGACY_V1
         } else {
             SNAPSHOT_METADATA_LIMITS
         });
@@ -183,9 +183,9 @@ impl Manifest {
             }
             Ok::<(), peritus_codec::CodecError>(())
         })();
-        result.map_err(|_| corrupt_manifest())?;
+        result.map_err(encoding_error)?;
         let checksum = peritus_codec::sha256(writer.as_slice());
-        writer.write_fixed(checksum.as_bytes()).map_err(|_| corrupt_manifest())?;
+        writer.write_fixed(checksum.as_bytes()).map_err(encoding_error)?;
         Ok(writer.into_bytes())
     }
 
@@ -209,7 +209,7 @@ impl Manifest {
             if schema == 5 && reader.read_u8().ok()? != crate::path::native_platform_tag() {
                 return None;
             }
-            if schema == 1 && bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes {
+            if schema == 1 && bytes.len() > CodecLimits::LEGACY_V1.max_payload_bytes {
                 return None;
             }
             let phase = TransactionPhase::from_tag(reader.read_u8().ok()?)?;
@@ -347,7 +347,19 @@ pub(super) fn legacy_manifest_fits(patch: &crate::PatchSet) -> Result<bool, Patc
     directories.sort_by(|left, right| {
         left.components().count().cmp(&right.components().count()).then_with(|| left.cmp(right))
     });
-    Ok(Manifest::from_patch(patch, directories).encode().is_ok())
+    match Manifest::from_patch(patch, directories).encode() {
+        Ok(_) => Ok(true),
+        Err(error) if error.recovery_class() == RecoveryClass::Retry => Err(error),
+        Err(_) => Ok(false),
+    }
+}
+
+fn encoding_error(error: peritus_codec::CodecError) -> PatchError {
+    if error.kind() == peritus_codec::CodecErrorKind::AllocationUnavailable {
+        PatchError::codec_allocation(PatchOperationContext::PersistManifest, error)
+    } else {
+        corrupt_manifest()
+    }
 }
 
 const fn corrupt_manifest() -> PatchError {

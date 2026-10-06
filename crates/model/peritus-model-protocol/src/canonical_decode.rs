@@ -123,8 +123,8 @@ pub fn decode_messages(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<Vec<Message>, ProtocolError> {
-    let count = read_collection_len(reader, limits.max_messages(), "messages")?;
-    let mut messages = Vec::with_capacity(count);
+    let count = read_collection_len(reader, limits.max_messages(), 1 + 4, "messages")?;
+    let mut messages = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         messages.push(content::message(reader, limits)?);
     }
@@ -135,8 +135,9 @@ fn decode_tools(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<Vec<ToolDefinition>, ProtocolError> {
-    let count = read_collection_len(reader, limits.max_tools(), "tools")?;
-    let mut tools = Vec::with_capacity(count);
+    // Name prefix, optional description tag, schema dialect/prefix, and strictness flag.
+    let count = read_collection_len(reader, limits.max_tools(), 4 + 1 + 1 + 4 + 1, "tools")?;
+    let mut tools = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         let name = ToolName::new(reader.read_str().map_err(codec)?.to_owned())?;
         let description = primitive::optional_text(reader, limits)?;

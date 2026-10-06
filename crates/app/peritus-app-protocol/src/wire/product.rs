@@ -231,14 +231,16 @@ fn read_deliverable(
 ) -> Result<ProductDeliverable, CodecError> {
     let offset = reader.offset();
     let workspace_path = reader.read_str()?.to_owned();
-    let path_count = reader.read_collection_len()?;
-    let changed_paths = (0..path_count)
-        .map(|_| reader.read_str().map(str::to_owned))
-        .collect::<Result<Vec<_>, _>>()?;
-    let command_count = reader.read_collection_len()?;
-    let successful_commands = (0..command_count)
-        .map(|_| reader.read_str().map(str::to_owned))
-        .collect::<Result<Vec<_>, _>>()?;
+    let path_count = reader.read_collection_len(4)?;
+    let mut changed_paths = reader.reserve_collection(path_count)?;
+    for _ in 0..path_count {
+        changed_paths.push(reader.read_str()?.to_owned());
+    }
+    let command_count = reader.read_collection_len(4)?;
+    let mut successful_commands = reader.reserve_collection(command_count)?;
+    for _ in 0..command_count {
+        successful_commands.push(reader.read_str()?.to_owned());
+    }
     let run_instructions = reader.read_str()?.to_owned();
     let accepted = reader.read_bool()?;
     let commit_revision = reader.read_str()?.to_owned();

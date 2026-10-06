@@ -274,11 +274,11 @@ fn write_loss(writer: &mut CanonicalWriter, value: &LossOutcome) -> Result<(), C
 }
 fn read_worker_loss(reader: &mut CanonicalReader<'_>) -> Result<SchedulerEventKind, CodecError> {
     let worker_id = super::read_worker_id(reader)?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(1 + 16 + 16)?;
     if count > usize::from(crate::SchedulerLimits::MAX_ACTIVE_RESERVATIONS) {
         return Err(super::invalid(reader));
     }
-    let mut outcomes = Vec::with_capacity(count);
+    let mut outcomes = reader.reserve_collection(count)?;
     for _ in 0..count {
         let offset = reader.offset();
         let tag = reader.read_u8()?;
@@ -298,11 +298,11 @@ fn read_worker_loss(reader: &mut CanonicalReader<'_>) -> Result<SchedulerEventKi
 fn read_cancelled(reader: &mut CanonicalReader<'_>) -> Result<SchedulerEventKind, CodecError> {
     let work_id = super::read_work_id(reader)?;
     let descendants = reader.read_bool()?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(16)?;
     if count > crate::SchedulerLimits::MAX_RETAINED_WORK as usize {
         return Err(super::invalid(reader));
     }
-    let mut affected = Vec::with_capacity(count);
+    let mut affected = reader.reserve_collection(count)?;
     for _ in 0..count {
         affected.push(super::read_work_id(reader)?);
     }

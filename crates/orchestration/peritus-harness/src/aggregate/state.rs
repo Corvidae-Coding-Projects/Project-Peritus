@@ -269,7 +269,7 @@ fn decode_pending(
     reader: &mut CanonicalReader<'_>,
     limits: HarnessLimits,
 ) -> Result<BTreeMap<MaterializationPlanId, PendingMaterialization>, AggregateError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count = reader.read_collection_len(4 + 1).map_err(codec)?;
     if u64::try_from(count).unwrap_or(u64::MAX) > limits.max_receipt_history() {
         return Err(limit_error("pending materializations exceed receipt-history limit"));
     }
@@ -295,7 +295,7 @@ fn decode_receipts(
     reader: &mut CanonicalReader<'_>,
     limits: HarnessLimits,
 ) -> Result<BTreeMap<MaterializationReceiptId, MaterializationReceipt>, AggregateError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count = reader.read_collection_len(4).map_err(codec)?;
     if u64::try_from(count).unwrap_or(u64::MAX) > limits.max_receipt_history() {
         return Err(limit_error("hot receipts exceed receipt-history limit"));
     }
@@ -314,22 +314,24 @@ fn decode_failures(
     reader: &mut CanonicalReader<'_>,
     limits: HarnessLimits,
 ) -> Result<Vec<MaterializationFailure>, AggregateError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count = reader.read_collection_len(4).map_err(codec)?;
     if u64::try_from(count).unwrap_or(u64::MAX) > limits.max_retained_diagnostics() {
         return Err(limit_error("failures exceed retained-diagnostics limit"));
     }
-    (0..count)
-        .map(|_| {
+    let mut failures = reader.reserve_collection(count).map_err(codec)?;
+    for _ in 0..count {
+        failures.push(
             MaterializationFailure::decode_canonical(reader.read_bytes().map_err(codec)?)
-                .map_err(nested)
-        })
-        .collect()
+                .map_err(nested)?,
+        );
+    }
+    Ok(failures)
 }
 
 fn decode_retired(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<BTreeSet<MaterializationReceiptId>, AggregateError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count = reader.read_collection_len(32).map_err(codec)?;
     let mut values = BTreeSet::new();
     for _ in 0..count {
         let id = MaterializationReceiptId::decode(reader.read_fixed().map_err(codec)?)

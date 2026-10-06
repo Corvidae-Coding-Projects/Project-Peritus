@@ -16,11 +16,11 @@ pub(super) fn write_protocol(w: &mut CanonicalWriter, protocol: &WorkingProtocol
     Ok(())
 }
 pub(super) fn read_protocol(r: &mut CanonicalReader<'_>, limits: WorkingLimits) -> Result<WorkingProtocol, WorkingCodecError> {
-    let length = count(r, limits.entries())?;
-    let mut requirements = Vec::with_capacity(length);
+    let length = count(r, limits.entries(), 8)?;
+    let mut requirements = r.reserve_collection(length)?;
     for _ in 0..length { requirements.push(ObservationId::new(r.read_u64()?)?); }
-    let length = count(r, limits.entries())?;
-    let mut pending = Vec::with_capacity(length);
+    let length = count(r, limits.entries(), 16 + 8 + 1)?;
+    let mut pending = r.reserve_collection(length)?;
     for _ in 0..length {
         let id = fields::read_id(r)?;
         let source = ObservationId::new(r.read_u64()?)?;

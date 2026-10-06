@@ -56,8 +56,8 @@ impl CanonicalDecode for Observation {
         let span_id = read_span_id(reader)?;
         let span_sequence = reader.read_u64()?;
         let parent_span_id = read_option_span(reader)?;
-        let causal_len = reader.read_collection_len()?;
-        let mut causal_events = Vec::with_capacity(causal_len);
+        let causal_len = reader.read_collection_len(16)?;
+        let mut causal_events = reader.reserve_collection(causal_len)?;
         for _ in 0..causal_len {
             causal_events.push(read_domain_id(reader, EventId::new)?);
         }
@@ -67,13 +67,13 @@ impl CanonicalDecode for Observation {
         let time = ObservedTime::new(unix_nanos, monotonic_tick)
             .map_err(|_| invalid_domain(reader.offset()))?;
         let kind = read_kind(reader)?;
-        let attribute_len = reader.read_collection_len()?;
-        let mut attributes = Vec::with_capacity(attribute_len);
+        let attribute_len = reader.read_collection_len(2 + 1 + 1)?;
+        let mut attributes = reader.reserve_collection(attribute_len)?;
         for _ in 0..attribute_len {
             attributes.push(read_attribute(reader)?);
         }
-        let redaction_len = reader.read_collection_len()?;
-        let mut redactions = Vec::with_capacity(redaction_len);
+        let redaction_len = reader.read_collection_len(1 + 1 + 8)?;
+        let mut redactions = reader.reserve_collection(redaction_len)?;
         for _ in 0..redaction_len {
             redactions.push(read_redaction(reader)?);
         }

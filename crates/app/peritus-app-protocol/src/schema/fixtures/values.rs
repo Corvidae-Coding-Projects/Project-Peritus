@@ -1,5 +1,7 @@
 //! Checked source values for valid compatibility frames.
 
+mod legacy;
+
 use super::{FixtureClass, GeneratedFixtureCase};
 use crate::{
     AppDiagnostic, AppEventEnvelope, AppEventPayload, AppProtocolLimits, AppRequestEnvelope,
@@ -27,7 +29,7 @@ use peritus_types::{
 pub(super) fn generated_valid_cases(
     codec_limits: CodecLimits,
 ) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
-    let limits = AppProtocolLimits::PRODUCTION;
+    let limits = legacy::limits();
     let mut cases = vec![
         encoded(
             "minimal-client-hello",

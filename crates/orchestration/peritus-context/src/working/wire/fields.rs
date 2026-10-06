@@ -50,8 +50,8 @@ pub(super) fn write_files(w: &mut CanonicalWriter, files: &[WorkingFileDigest]) 
     Ok(())
 }
 pub(super) fn read_files(r: &mut CanonicalReader<'_>, maximum: usize) -> Result<Vec<WorkingFileDigest>, WorkingCodecError> {
-    let length = count(r, maximum)?;
-    let mut files = Vec::with_capacity(length);
+    let length = count(r, maximum, 16 + 32)?;
+    let mut files = r.reserve_collection(length)?;
     for _ in 0..length { files.push(WorkingFileDigest::new(read_id(r)?, Sha256Digest::new(r.read_fixed()?))); }
     Ok(files)
 }

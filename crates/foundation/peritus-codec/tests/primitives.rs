@@ -34,7 +34,7 @@ fn primitive_encoding_is_fixed_width_big_endian_and_round_trips() {
     assert!(!reader.read_option_tag().unwrap());
     assert_eq!(reader.read_bytes().unwrap(), [1, 2, 3]);
     assert_eq!(reader.read_str().unwrap(), "rust");
-    assert_eq!(reader.read_collection_len().unwrap(), 3);
+    assert_eq!(reader.read_collection_len(0).unwrap(), 3);
     reader.finish().unwrap();
 }
 

@@ -15,11 +15,11 @@ pub struct CanonicalReader<'a> {
     offset: usize,
     base_offset: usize,
     limits: CodecLimits,
-    depth: u16,
+    depth: usize,
 }
 
 impl<'a> CanonicalReader<'a> {
-    /// Creates a reader over one already bounded payload.
+    /// Creates a reader over one payload under an explicit shared codec contract.
     #[must_use]
     pub const fn new(input: &'a [u8], limits: CodecLimits) -> Self {
         Self { input, offset: 0, base_offset: 0, limits, depth: 0 }
@@ -47,6 +47,9 @@ impl<'a> CanonicalReader<'a> {
 
     /// Requires complete consumption of the declared value.
     pub const fn finish(self) -> Result<(), CodecError> {
+        if self.input.len() > self.limits.max_payload_bytes {
+            return Err(CodecError::limited(self.base_offset, CodecLimit::PayloadBytes));
+        }
         if self.offset == self.input.len() {
             Ok(())
         } else {
@@ -115,7 +118,14 @@ impl<'a> CanonicalReader<'a> {
 
     /// Reads a length-prefixed owned opaque byte value.
     pub fn read_bytes_owned(&mut self) -> Result<Vec<u8>, CodecError> {
-        self.read_bytes().map(<[u8]>::to_vec)
+        let offset = self.offset();
+        let bytes = self.read_bytes()?;
+        let mut owned = Vec::new();
+        owned
+            .try_reserve_exact(bytes.len())
+            .map_err(|_| CodecError::new(CodecErrorKind::AllocationUnavailable, offset))?;
+        owned.extend_from_slice(bytes);
+        Ok(owned)
     }
 
     /// Reads a length-prefixed borrowed UTF-8 string.
@@ -131,16 +141,38 @@ impl<'a> CanonicalReader<'a> {
             .map_err(|_| CodecError::new(CodecErrorKind::InvalidUtf8, length_offset + 4))
     }
 
-    /// Reads a bounded collection count.
-    pub fn read_collection_len(&mut self) -> Result<usize, CodecError> {
+    /// Reads a collection count and checks its minimum encoded extent before allocation.
+    ///
+    /// `minimum_item_bytes` is a schema fact, not a work allowance. Use zero only for a
+    /// stand-alone count or a schema whose elements consume no wire bytes. Owned collection
+    /// decoders must supply their elements' positive minimum width before reserving storage.
+    pub fn read_collection_len(&mut self, minimum_item_bytes: usize) -> Result<usize, CodecError> {
         let offset = self.offset();
         let value = usize::try_from(self.read_u32()?)
             .map_err(|_| CodecError::new(CodecErrorKind::LengthOverflow, offset))?;
         if value > self.limits.max_collection_items {
             Err(CodecError::limited(offset, CodecLimit::CollectionItems))
         } else {
+            let minimum = value
+                .checked_mul(minimum_item_bytes)
+                .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, offset))?;
+            if minimum > self.remaining() {
+                return Err(CodecError::new(CodecErrorKind::Truncated, self.offset()));
+            }
             Ok(value)
         }
+    }
+
+    /// Prepares owned collection storage after checking its count and encoded minimum extent.
+    ///
+    /// Use the count returned by [`Self::read_collection_len`]. Allocator pressure is a typed
+    /// capacity failure, distinct from malformed declarations and caller-selected work limits.
+    pub fn reserve_collection<T>(&self, count: usize) -> Result<Vec<T>, CodecError> {
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(count)
+            .map_err(|_| CodecError::new(CodecErrorKind::AllocationUnavailable, self.offset()))?;
+        Ok(values)
     }
 
     /// Executes one nested aggregate decode under the depth limit.
@@ -148,16 +180,24 @@ impl<'a> CanonicalReader<'a> {
         &mut self,
         decode: impl FnOnce(&mut Self) -> Result<T, CodecError>,
     ) -> Result<T, CodecError> {
-        if self.depth >= self.limits.max_nesting_depth {
+        if self.limits.max_nesting_depth != CodecLimits::UNLIMITED_NESTING
+            && self.depth >= usize::from(self.limits.max_nesting_depth)
+        {
             return Err(CodecError::limited(self.offset(), CodecLimit::NestingDepth));
         }
-        self.depth += 1;
+        self.depth = self
+            .depth
+            .checked_add(1)
+            .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, self.offset()))?;
         let result = decode(self);
         self.depth -= 1;
         result
     }
 
     fn take(&mut self, length: usize) -> Result<&'a [u8], CodecError> {
+        if self.input.len() > self.limits.max_payload_bytes {
+            return Err(CodecError::limited(self.base_offset, CodecLimit::PayloadBytes));
+        }
         let end = self
             .offset
             .checked_add(length)

@@ -42,8 +42,12 @@ pub(super) fn strings(writer: &mut CanonicalWriter, values: &[String]) -> Result
 }
 
 pub(super) fn read_strings(reader: &mut CanonicalReader<'_>) -> Result<Vec<String>, WindowsError> {
-    let count = reader.read_collection_len().map_err(codec_error)?;
-    (0..count).map(|_| reader.read_str().map(str::to_owned).map_err(codec_error)).collect()
+    let count = reader.read_collection_len(4).map_err(codec_error)?;
+    let mut strings = reader.reserve_collection(count).map_err(codec_error)?;
+    for _ in 0..count {
+        strings.push(reader.read_str().map_err(codec_error)?.to_owned());
+    }
+    Ok(strings)
 }
 
 pub(super) fn read_digest(reader: &mut CanonicalReader<'_>) -> Result<Sha256Digest, WindowsError> {

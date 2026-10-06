@@ -183,8 +183,8 @@ pub(in crate::wire) fn read_evidence(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<peritus_types::EvidenceId>, CodecError> {
     let count =
-        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_EVIDENCE_REFERENCES))?;
-    let mut values = Vec::with_capacity(count);
+        super::super::bounded_len(reader, usize::from(ReviewLimits::MAX_EVIDENCE_REFERENCES), 16)?;
+    let mut values = reader.reserve_collection(count)?;
     for _ in 0..count {
         values.push(super::super::read_evidence_id(reader)?);
     }

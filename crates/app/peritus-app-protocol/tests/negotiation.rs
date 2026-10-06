@@ -19,6 +19,63 @@ fn feature(value: WellKnownProtocolFeature) -> ProtocolFeatureName {
     ProtocolFeatureName::well_known(value).expect("well-known feature is canonical")
 }
 
+#[test]
+fn expanded_codec_contract_negotiates_with_legacy_peers_without_changing_wire_bytes() {
+    use peritus_app_protocol::{AppMessage, decode_app_message, encode_app_message};
+    use peritus_codec::CodecLimits;
+
+    let production = AppProtocolLimits::PRODUCTION;
+    let legacy = AppProtocolLimits::new(
+        CodecLimits::LEGACY_V1,
+        production.max_versions(),
+        production.max_features(),
+        production.max_idempotency_entries(),
+        production.max_topics(),
+        production.max_in_flight_events(),
+        production.max_artifact_chunk_bytes(),
+        production.max_prompt_choices(),
+        production.max_terminal_chunk_bytes(),
+        production.max_diagnostic_bytes(),
+        production.max_remaining_work_items(),
+    )
+    .unwrap();
+    for (client_limits, server_limits) in [(legacy, production), (production, legacy)] {
+        let client = ClientHello::new(
+            protocol_id(),
+            vec![VersionRange::new(1, 0, 0).unwrap()],
+            Vec::new(),
+            Vec::new(),
+            client_limits,
+            "compatibility-client".to_owned(),
+        )
+        .unwrap();
+        let message = AppMessage::ClientHello(client.clone());
+        let bytes = encode_app_message(&message, legacy).unwrap();
+        assert_eq!(encode_app_message(&message, production).unwrap(), bytes);
+        assert_eq!(decode_app_message(&bytes, production).unwrap(), message);
+        assert_eq!(decode_app_message(&bytes, legacy).unwrap(), message);
+        let server = ServerCapabilities::new(
+            vec![VersionRange::new(1, 0, 0).unwrap()],
+            Vec::new(),
+            server_limits,
+            "compatibility-server".to_owned(),
+        )
+        .unwrap();
+        let selected = negotiate(&client, &server, session_id()).unwrap();
+        match selected.outcome() {
+            NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol) => {
+                assert_eq!(protocol.limits(), legacy);
+            }
+            NegotiationOutcome::Incompatible(reason) => {
+                panic!("legacy peer must remain usable: {reason:?}")
+            }
+        }
+        let response = AppMessage::ServerHello(selected);
+        let bytes = encode_app_message(&response, legacy).unwrap();
+        assert_eq!(decode_app_message(&bytes, production).unwrap(), response);
+    }
+}
+
 #[allow(
     clippy::too_many_lines,
     reason = "the single negotiation matrix keeps all version, feature, and limit outcomes comparable"

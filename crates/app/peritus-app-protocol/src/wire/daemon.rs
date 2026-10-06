@@ -164,11 +164,11 @@ fn read_remaining(
     limits: AppProtocolLimits,
 ) -> Result<Vec<RemainingWork>, CodecError> {
     let offset = reader.offset();
-    let length = reader.read_collection_len()?;
+    let length = reader.read_collection_len(1 + 4)?;
     if length > limits.max_remaining_work_items() {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
-    let mut values = Vec::with_capacity(length);
+    let mut values = reader.reserve_collection(length)?;
     for _ in 0..length {
         let item_offset = reader.offset();
         let kind = match reader.read_u8()? {

@@ -47,6 +47,7 @@ impl AppProtocolError {
     #[must_use]
     pub const fn from_codec(source: CodecError) -> Self {
         let code = match source.kind() {
+            CodecErrorKind::AllocationUnavailable => AppErrorCode::Backpressure,
             CodecErrorKind::LimitExceeded | CodecErrorKind::LengthOverflow => {
                 AppErrorCode::LimitExceeded
             }
@@ -267,6 +268,16 @@ impl std::error::Error for AppProtocolError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codec_allocation_failure_retains_capacity_classification_and_source() {
+        let source = CodecError::at(CodecErrorKind::AllocationUnavailable, 19);
+        let error = AppProtocolError::from_codec(source);
+        assert_eq!(error.code(), AppErrorCode::Backpressure);
+        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
+        assert_eq!(error.subsystem(), ResponsibleSubsystem::Codec);
+        assert_eq!(error.codec_source(), Some(source));
+    }
 
     #[test]
     fn actionable_message_prefers_diagnostic_and_keeps_machine_fields() {

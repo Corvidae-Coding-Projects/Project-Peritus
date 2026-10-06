@@ -383,9 +383,13 @@ fn read_message(reader: &mut CanonicalReader<'_>) -> Result<CollaborationMessage
     .map_err(|_| invalid(reader))
 }
 
-fn bounded_len(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
+fn bounded_len(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
     let offset = reader.offset();
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum {
         Err(CodecError::at(CodecErrorKind::LimitExceeded, offset))
     } else {

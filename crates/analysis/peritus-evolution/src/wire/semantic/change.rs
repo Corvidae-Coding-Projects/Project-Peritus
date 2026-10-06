@@ -140,23 +140,27 @@ pub(super) fn manifest(
     let baseline = scalar::harness_revision(reader)?;
     let candidate = scalar::harness_revision(reader)?;
     let hypothesis = text(reader, limits)?;
-    let alternative_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut alternatives = Vec::with_capacity(alternative_len);
+    let alternative_len = reader.read_collection_len(4).map_err(scalar::codec)?;
+    let mut alternatives = reader.reserve_collection(alternative_len).map_err(scalar::codec)?;
     for _ in 0..alternative_len {
         alternatives.push(text(reader, limits)?);
     }
-    let diagnosis_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut diagnoses = Vec::with_capacity(diagnosis_len);
+    let diagnosis_len = reader
+        .read_collection_len(96 + 2 * 16 + 32 + 16 + 3 * 32 + 8 + 16 + 8 + 4)
+        .map_err(scalar::codec)?;
+    let mut diagnoses = reader.reserve_collection(diagnosis_len).map_err(scalar::codec)?;
     for _ in 0..diagnosis_len {
         diagnoses.push(binding::diagnosis(reader, limits)?);
     }
-    let delta_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut deltas = Vec::with_capacity(delta_len);
+    let delta_len =
+        reader.read_collection_len(4 + 1 + 2 * 32 + 2 + 32 + 1 + 1).map_err(scalar::codec)?;
+    let mut deltas = reader.reserve_collection(delta_len).map_err(scalar::codec)?;
     for _ in 0..delta_len {
         deltas.push(delta(reader)?);
     }
-    let prediction_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut predictions = Vec::with_capacity(prediction_len);
+    let prediction_len =
+        reader.read_collection_len(1 + 1 + 1 + 1 + 4 + 4 + 2).map_err(scalar::codec)?;
+    let mut predictions = reader.reserve_collection(prediction_len).map_err(scalar::codec)?;
     for _ in 0..prediction_len {
         predictions.push(prediction(reader, limits)?);
     }
@@ -210,20 +214,20 @@ pub(super) fn variant(
 ) -> Result<VariantDefinition, EvolutionError> {
     let baseline = binding::production(reader)?;
     let candidate = binding::production(reader)?;
-    let manifest_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut ids = Vec::with_capacity(manifest_len);
-    let mut digests = Vec::with_capacity(manifest_len);
+    let manifest_len = reader.read_collection_len(16 + 32).map_err(scalar::codec)?;
+    let mut ids = reader.reserve_collection(manifest_len).map_err(scalar::codec)?;
+    let mut digests = reader.reserve_collection(manifest_len).map_err(scalar::codec)?;
     for _ in 0..manifest_len {
         ids.push(ChangeManifestId::new(reader.read_fixed().map_err(scalar::codec)?)?);
         digests.push(scalar::digest(reader)?);
     }
-    let component_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut components = Vec::with_capacity(component_len);
+    let component_len = reader.read_collection_len(4).map_err(scalar::codec)?;
+    let mut components = reader.reserve_collection(component_len).map_err(scalar::codec)?;
     for _ in 0..component_len {
         components.push(scalar::component_id(reader)?);
     }
-    let kind_len = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut kinds = Vec::with_capacity(kind_len);
+    let kind_len = reader.read_collection_len(1).map_err(scalar::codec)?;
+    let mut kinds = reader.reserve_collection(kind_len).map_err(scalar::codec)?;
     for _ in 0..kind_len {
         kinds.push(scalar::component_kind(reader)?);
     }

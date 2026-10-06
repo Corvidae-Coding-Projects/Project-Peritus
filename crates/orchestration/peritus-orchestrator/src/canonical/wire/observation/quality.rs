@@ -60,8 +60,8 @@ pub fn read_review(reader: &mut CanonicalReader<'_>) -> Result<ReviewChildObserv
     let binding = super::super::read_digest(reader)?;
     let quorum = reader.read_bool()?;
     let count =
-        super::bounded_count(reader, usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES))?;
-    let mut findings = Vec::with_capacity(count);
+        super::bounded_count(reader, usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES), 16)?;
+    let mut findings = reader.reserve_collection(count)?;
     for _ in 0..count {
         findings.push(super::super::read_finding_id(reader)?);
     }
@@ -102,9 +102,12 @@ pub(super) fn read_review_fixer(
     let run = super::super::read_run_id(reader)?;
     let revision = super::super::read_revision(reader)?;
     let binding = super::super::read_digest(reader)?;
-    let count =
-        super::bounded_count(reader, usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES))?;
-    let mut records = Vec::with_capacity(count);
+    let count = super::bounded_count(
+        reader,
+        usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES),
+        16 + 1 + 16 + 32,
+    )?;
+    let mut records = reader.reserve_collection(count)?;
     for _ in 0..count {
         records.push(ReviewFixerRecord::from_wire(
             super::super::read_finding_id(reader)?,

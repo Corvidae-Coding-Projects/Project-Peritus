@@ -6,6 +6,10 @@ use super::{WorkingCodecError, count, fields};
 use super::super::{ObservationId, WorkingEntry, WorkingEntryKind, WorkingEntryStatus,
     WorkingLimits, WorkingLinks};
 
+// ID, kind/status tags, content prefix, three link prefixes, validity tags/file prefix,
+// supersedes tag, and stale-through counter. Variable fields only add bytes.
+pub(super) const MINIMUM_ENTRY_BYTES: usize = 16 + 2 + 4 + 3 * 4 + 3 + 4 + 1 + 8;
+
 pub(super) fn write_entry(w: &mut CanonicalWriter, entry: &WorkingEntry) -> Result<(), WorkingCodecError> {
     w.write_fixed(entry.id().as_bytes())?;
     w.write_u8(match entry.kind() {
@@ -51,8 +55,8 @@ pub(super) fn read_entry(r: &mut CanonicalReader<'_>, limits: WorkingLimits) -> 
         .map_err(|_| WorkingCodecError::InvalidValue)?;
     let supports = read_sources(r, limits.links())?;
     let contradicts = read_sources(r, limits.links())?;
-    let length = count(r, limits.links())?;
-    let mut dependencies = Vec::with_capacity(length);
+    let length = count(r, limits.links(), 16)?;
+    let mut dependencies = r.reserve_collection(length)?;
     for _ in 0..length { dependencies.push(fields::read_id(r)?); }
     let links = WorkingLinks::new(supports, contradicts, dependencies, limits)?;
     let validity = fields::read_validity(r, limits)?;
@@ -69,8 +73,8 @@ fn write_sources(w: &mut CanonicalWriter, sources: &[ObservationId]) -> Result<(
     Ok(())
 }
 fn read_sources(r: &mut CanonicalReader<'_>, maximum: usize) -> Result<Vec<ObservationId>, WorkingCodecError> {
-    let length = count(r, maximum)?;
-    let mut sources = Vec::with_capacity(length);
+    let length = count(r, maximum, 8)?;
+    let mut sources = r.reserve_collection(length)?;
     for _ in 0..length { sources.push(ObservationId::new(r.read_u64()?)?); }
     Ok(sources)
 }

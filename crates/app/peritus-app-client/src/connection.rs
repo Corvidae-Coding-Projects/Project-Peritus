@@ -116,7 +116,7 @@ impl Client {
                 "daemon established a different requested session",
             ));
         }
-        stream.set_limits(limits);
+        stream.set_limits(limits)?;
         Ok(Self {
             stream,
             context: ProtocolContext::new(protocol_id, version, session),

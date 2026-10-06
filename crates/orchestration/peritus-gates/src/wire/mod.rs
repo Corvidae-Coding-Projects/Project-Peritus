@@ -218,8 +218,8 @@ pub fn read_result(reader: &mut CanonicalReader<'_>) -> Result<GateAttemptResult
         6 => RecoveryRequirement::HumanReview,
         _ => return Err(CodecError::at(CodecErrorKind::UnknownTag, recovery_offset)),
     };
-    let count = reader.read_collection_len()?;
-    let mut artifacts = Vec::with_capacity(count);
+    let count = reader.read_collection_len(32 + 8 + 2 * 4)?;
+    let mut artifacts = reader.reserve_collection(count)?;
     for _ in 0..count {
         artifacts.push(read_artifact(reader)?);
     }
@@ -289,28 +289,28 @@ pub fn read_receipt(reader: &mut CanonicalReader<'_>) -> Result<GateEvidenceRece
     let result_event = read_event_id(reader)?;
     let result_position = reader.read_u64()?;
     let result_digest = read_digest(reader)?;
-    let required_count = reader.read_collection_len()?;
+    let required_count = reader.read_collection_len(32)?;
     if required_count > crate::evidence::MAX_PUBLISHED_GATE_EVIDENCE {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, reader.offset()));
     }
-    let mut required = Vec::with_capacity(required_count);
+    let mut required = reader.reserve_collection(required_count)?;
     for _ in 0..required_count {
         required.push(EvidenceRequirementId::new(read_digest(reader)?));
     }
-    let artifact_count = reader.read_collection_len()?;
+    let artifact_count = reader.read_collection_len(32 + 8 + 2 * 4)?;
     if artifact_count > crate::outcome::MAX_GATE_ARTIFACTS {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, reader.offset()));
     }
-    let mut artifacts = Vec::with_capacity(artifact_count);
+    let mut artifacts = reader.reserve_collection(artifact_count)?;
     for _ in 0..artifact_count {
         artifacts.push(read_artifact(reader)?);
     }
     let manifest = read_digest(reader)?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(32 + 16 + 32 + 8 + 16)?;
     if count > crate::evidence::MAX_PUBLISHED_GATE_EVIDENCE {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, reader.offset()));
     }
-    let mut evidence = Vec::with_capacity(count);
+    let mut evidence = reader.reserve_collection(count)?;
     for _ in 0..count {
         evidence.push(PublishedGateEvidence::from_parts(
             EvidenceRequirementId::new(read_digest(reader)?),

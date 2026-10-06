@@ -42,8 +42,8 @@ pub(super) fn read(
         .map_err(scalar::codec)?
         .then(|| InteractionGroupId::new(reader.read_fixed().map_err(scalar::codec)?))
         .transpose()?;
-    let length = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut entries = Vec::with_capacity(length);
+    let length = reader.read_collection_len(16 + 32 + 2 + 1 + 2).map_err(scalar::codec)?;
+    let mut entries = reader.reserve_collection(length).map_err(scalar::codec)?;
     for _ in 0..length {
         entries.push(AttributionEntry::new(
             ChangeManifestId::new(reader.read_fixed().map_err(scalar::codec)?)?,

@@ -68,8 +68,8 @@ pub(super) fn write_oscillation(
 pub(super) fn read_oscillation(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<OscillationReport, CodecError> {
-    let count = super::super::bounded_len(reader, 5)?;
-    let mut kinds = Vec::with_capacity(count);
+    let count = super::super::bounded_len(reader, 5, 1)?;
+    let mut kinds = reader.reserve_collection(count)?;
     for _ in 0..count {
         let offset = reader.offset();
         kinds.push(match reader.read_u8()? {
@@ -113,8 +113,8 @@ pub(super) fn read_terminal(
         4 => ReviewTerminalKind::Cancelled,
         _ => return Err(super::super::unknown(offset)),
     };
-    let count = super::super::bounded_len(reader, ReviewLimits::MAX_FINDINGS as usize)?;
-    let mut findings = Vec::with_capacity(count);
+    let count = super::super::bounded_len(reader, ReviewLimits::MAX_FINDINGS as usize, 16)?;
+    let mut findings = reader.reserve_collection(count)?;
     for _ in 0..count {
         findings.push(super::super::read_finding_id(reader)?);
     }

@@ -146,8 +146,8 @@ pub fn read_terminal(reader: &mut CanonicalReader<'_>) -> Result<SchedulerTermin
         6 => SchedulerTerminalKind::Cancelled,
         _ => return Err(super::unknown(offset)),
     };
-    let count = reader.read_collection_len()?;
-    let mut work = Vec::with_capacity(count);
+    let count = reader.read_collection_len(16)?;
+    let mut work = reader.reserve_collection(count)?;
     for _ in 0..count {
         work.push(super::read_work_id(reader)?);
     }

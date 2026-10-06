@@ -56,8 +56,8 @@ pub fn decode_working_event(bytes: &[u8], expected: WorkingBinding, limits: Work
         2 => {
             let binding = fields::read_binding(&mut r)?;
             let revision = r.read_u64()?;
-            let length = count(&mut r, limits.operations())?;
-            let mut entries = Vec::with_capacity(length);
+            let length = count(&mut r, limits.operations(), entry::MINIMUM_ENTRY_BYTES)?;
+            let mut entries = r.reserve_collection(length)?;
             for _ in 0..length { entries.push(entry::read_entry(&mut r, limits)?); }
             (binding, WorkingEvent::Delta(WorkingDelta::new(binding, revision, entries, limits)?))
         }

@@ -38,7 +38,7 @@ pub enum ErrorCode {
     CorruptManifest,
     /// A checked arithmetic operation overflowed.
     ArithmeticOverflow,
-    /// A filesystem effect failed.
+    /// A filesystem effect or canonical metadata allocation failed.
     Io,
     /// Rollback could not prove restoration of every original.
     Indeterminate,
@@ -80,7 +80,7 @@ pub enum RecoveryClass {
     ReinspectWorkspace,
     /// Obtain authority for the current workspace generation and revision.
     Reauthorize,
-    /// Retry the same operation identity after a transient filesystem failure.
+    /// Retry the same operation identity after a transient filesystem or capacity failure.
     Retry,
     /// Run transaction recovery before accepting more mutation.
     RecoverTransaction,
@@ -131,7 +131,7 @@ pub enum RollbackStatus {
     Indeterminate,
 }
 
-/// Typed patch error with bounded static detail and optional filesystem source.
+/// Typed patch error with bounded static detail and an optional I/O or capacity source.
 #[derive(Debug)]
 pub struct PatchError {
     code: ErrorCode,
@@ -192,6 +192,20 @@ impl PatchError {
         }
     }
 
+    pub(crate) fn codec_allocation(
+        operation: PatchOperationContext,
+        source: peritus_codec::CodecError,
+    ) -> Self {
+        Self::message(
+            ErrorCode::Io,
+            RecoveryClass::Retry,
+            operation,
+            RollbackStatus::NotRequired,
+            "canonical metadata allocation is temporarily unavailable",
+        )
+        .with_io_source(io::Error::new(io::ErrorKind::OutOfMemory, source))
+    }
+
     pub(crate) const fn indeterminate(operation: PatchOperationContext) -> Self {
         Self::message(
             ErrorCode::Indeterminate,
@@ -246,5 +260,44 @@ impl fmt::Display for PatchError {
 impl Error for PatchError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.source.as_ref().map(|source| source as &(dyn Error + 'static))
+    }
+}
+
+/// Codec capacity never selects a different canonical identity or durable representation.
+pub fn codec_encoding_fits(
+    result: Result<(), peritus_codec::CodecError>,
+    operation: PatchOperationContext,
+) -> Result<bool, PatchError> {
+    match result {
+        Ok(()) => Ok(true),
+        Err(error) if error.kind() == peritus_codec::CodecErrorKind::AllocationUnavailable => {
+            Err(PatchError::codec_allocation(operation, error))
+        }
+        Err(_) => Ok(false),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use peritus_codec::{CodecError, CodecErrorKind};
+
+    #[test]
+    fn allocation_pressure_does_not_select_a_different_representation() {
+        let source = CodecError::at(CodecErrorKind::AllocationUnavailable, 19);
+        let error = codec_encoding_fits(Err(source), PatchOperationContext::Plan).unwrap_err();
+        assert_eq!(error.recovery_class(), RecoveryClass::Retry);
+        assert_eq!(error.rollback_status(), RollbackStatus::NotRequired);
+        let io = error.source().unwrap().downcast_ref::<io::Error>().unwrap();
+        assert_eq!(io.kind(), io::ErrorKind::OutOfMemory);
+        assert_eq!(io.get_ref().unwrap().downcast_ref::<CodecError>(), Some(&source));
+        assert!(codec_encoding_fits(Ok(()), PatchOperationContext::Plan).unwrap());
+        assert!(
+            !codec_encoding_fits(
+                Err(CodecError::at(CodecErrorKind::LimitExceeded, 19)),
+                PatchOperationContext::Plan,
+            )
+            .unwrap()
+        );
     }
 }

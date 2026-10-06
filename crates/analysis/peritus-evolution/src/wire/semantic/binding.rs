@@ -152,12 +152,14 @@ pub(super) fn policy(
         reader.read_bool().map_err(scalar::codec)?,
         reader.read_bool().map_err(scalar::codec)?,
     )?;
-    let mut objectives = Vec::with_capacity(reader.read_collection_len().map_err(scalar::codec)?);
-    while objectives.len() < objectives.capacity() {
+    let objective_count = reader.read_collection_len(1).map_err(scalar::codec)?;
+    let mut objectives = reader.reserve_collection(objective_count).map_err(scalar::codec)?;
+    for _ in 0..objective_count {
         objectives.push(objective(reader.read_u8().map_err(scalar::codec)?)?);
     }
-    let mut review_kinds = Vec::with_capacity(reader.read_collection_len().map_err(scalar::codec)?);
-    while review_kinds.len() < review_kinds.capacity() {
+    let review_count = reader.read_collection_len(1).map_err(scalar::codec)?;
+    let mut review_kinds = reader.reserve_collection(review_count).map_err(scalar::codec)?;
+    for _ in 0..review_count {
         review_kinds.push(scalar::component_kind(reader)?);
     }
     let policy = PromotionPolicy::new(
@@ -246,8 +248,8 @@ pub(super) fn diagnosis(
     let evidence =
         EvidenceId::new(reader.read_fixed().map_err(scalar::codec)?).map_err(scalar::domain)?;
     let position = reader.read_u64().map_err(scalar::codec)?;
-    let length = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut citations = Vec::with_capacity(length);
+    let length = reader.read_collection_len(1 + 16).map_err(scalar::codec)?;
+    let mut citations = reader.reserve_collection(length).map_err(scalar::codec)?;
     for _ in 0..length {
         citations.push(match reader.read_u8().map_err(scalar::codec)? {
             1 => DiagnosisCitation::Claim(

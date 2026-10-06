@@ -26,6 +26,8 @@ pub enum CodecErrorKind {
     LimitExceeded,
     /// A length cannot be represented or added safely.
     LengthOverflow,
+    /// The allocator cannot currently retain the next physical portion of a valid value.
+    AllocationUnavailable,
     /// Input ended before a declared value was complete.
     Truncated,
     /// A boolean tag was not zero or one.

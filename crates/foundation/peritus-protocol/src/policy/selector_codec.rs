@@ -114,8 +114,8 @@ pub fn write_selector(
 
 pub fn read_selector(reader: &mut CanonicalReader<'_>) -> Result<ScopeSelectorDto, CodecError> {
     let actors = if reader.read_option_tag()? {
-        let count = reader.read_collection_len()?;
-        let mut values = Vec::with_capacity(count);
+        let count = reader.read_collection_len(16)?;
+        let mut values = reader.reserve_collection(count)?;
         for _ in 0..count {
             values.push(read_id(reader, ActorId::new)?);
         }
@@ -124,8 +124,8 @@ pub fn read_selector(reader: &mut CanonicalReader<'_>) -> Result<ScopeSelectorDt
         None
     };
     let roles = if reader.read_option_tag()? {
-        let count = reader.read_collection_len()?;
-        let mut values = Vec::with_capacity(count);
+        let count = reader.read_collection_len(2)?;
+        let mut values = reader.reserve_collection(count)?;
         for _ in 0..count {
             values.push(read_role(reader)?);
         }
@@ -134,8 +134,8 @@ pub fn read_selector(reader: &mut CanonicalReader<'_>) -> Result<ScopeSelectorDt
         None
     };
     let environments = if reader.read_option_tag()? {
-        let count = reader.read_collection_len()?;
-        let mut values = Vec::with_capacity(count);
+        let count = reader.read_collection_len(16)?;
+        let mut values = reader.reserve_collection(count)?;
         for _ in 0..count {
             values.push(read_id(reader, EnvironmentId::new)?);
         }
@@ -144,8 +144,8 @@ pub fn read_selector(reader: &mut CanonicalReader<'_>) -> Result<ScopeSelectorDt
         None
     };
     let permissions = if reader.read_option_tag()? {
-        let count = reader.read_collection_len()?;
-        let mut values = Vec::with_capacity(count);
+        let count = reader.read_collection_len(20)?;
+        let mut values = reader.reserve_collection(count)?;
         for _ in 0..count {
             values.push(reader.nested(read_permission)?);
         }

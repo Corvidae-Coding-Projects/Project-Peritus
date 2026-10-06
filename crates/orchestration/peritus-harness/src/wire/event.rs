@@ -133,8 +133,8 @@ impl CanonicalDecode for HarnessEventFrame {
         let command_digest = super::canonical::read_digest(reader)?;
         let successor_state_digest = super::canonical::read_digest(reader)?;
         let revision_digest = RevisionDigest::new(super::canonical::read_digest(reader)?);
-        let root_count = reader.read_collection_len()?;
-        let mut artifact_roots = Vec::with_capacity(root_count);
+        let root_count = reader.read_collection_len(32)?;
+        let mut artifact_roots = reader.reserve_collection(root_count)?;
         for _ in 0..root_count {
             artifact_roots.push(super::canonical::read_digest(reader)?);
         }

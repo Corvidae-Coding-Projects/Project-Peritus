@@ -338,11 +338,11 @@ pub fn read_resources(
     maximum: u16,
 ) -> Result<ResourceVector, CodecError> {
     let offset = reader.offset();
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(2 + 8)?;
     if count == 0 || count > usize::from(maximum) {
         return Err(invalid(reader));
     }
-    let mut entries = Vec::with_capacity(count);
+    let mut entries = reader.reserve_collection(count)?;
     for _ in 0..count {
         let kind = ResourceKind::new(reader.read_u16()?)
             .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, offset))?;

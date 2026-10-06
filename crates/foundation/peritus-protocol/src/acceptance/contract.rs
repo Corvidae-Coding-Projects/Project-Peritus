@@ -288,32 +288,34 @@ fn write_content(
 fn read_content(reader: &mut CanonicalReader<'_>) -> Result<AcceptanceContractContent, CodecError> {
     let id = read_id(reader, AcceptanceSpecId::new)?;
     let documents = read_documents(reader)?;
-    let requirement_count = reader.read_collection_len()?;
-    let mut requirements = Vec::with_capacity(requirement_count);
+    let requirement_count = reader.read_collection_len(32 + 32)?;
+    let mut requirements = reader.reserve_collection(requirement_count)?;
     for _ in 0..requirement_count {
         requirements.push(Requirement::new(
             RequirementId::new(read_digest(reader)?),
             read_content_ref(reader)?,
         ));
     }
-    let exclusion_count = reader.read_collection_len()?;
-    let mut exclusions = Vec::with_capacity(exclusion_count);
+    let exclusion_count = reader.read_collection_len(32)?;
+    let mut exclusions = reader.reserve_collection(exclusion_count)?;
     for _ in 0..exclusion_count {
         exclusions.push(Exclusion::new(read_content_ref(reader)?));
     }
-    let assumption_count = reader.read_collection_len()?;
-    let mut assumptions = Vec::with_capacity(assumption_count);
+    let assumption_count = reader.read_collection_len(32)?;
+    let mut assumptions = reader.reserve_collection(assumption_count)?;
     for _ in 0..assumption_count {
         assumptions.push(Assumption::new(read_content_ref(reader)?));
     }
-    let gate_count = reader.read_collection_len()?;
-    let mut gates = Vec::with_capacity(gate_count);
+    // Gate ID, four content digests, environment ID, success/freshness tags, optional-timeout
+    // sentinel, and two collection prefixes; nonempty variable parts consume additional bytes.
+    let gate_count = reader.read_collection_len(16 + 4 * 32 + 16 + 2 + 8 + 2 + 2 * 4)?;
+    let mut gates = reader.reserve_collection(gate_count)?;
     for _ in 0..gate_count {
         gates.push(reader.nested(read_gate)?);
     }
     let review_policy = reader.nested(read_review)?;
-    let evidence_count = reader.read_collection_len()?;
-    let mut evidence_requirements = Vec::with_capacity(evidence_count);
+    let evidence_count = reader.read_collection_len(32 + 32 + 2 + 2)?;
+    let mut evidence_requirements = reader.reserve_collection(evidence_count)?;
     for _ in 0..evidence_count {
         evidence_requirements.push(reader.nested(read_evidence)?);
     }

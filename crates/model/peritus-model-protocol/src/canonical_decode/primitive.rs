@@ -34,9 +34,10 @@ const fn max_usize(left: usize, right: usize) -> usize {
 pub(super) fn read_collection_len(
     reader: &mut CanonicalReader<'_>,
     maximum: usize,
+    minimum_item_bytes: usize,
     path: &'static str,
 ) -> Result<usize, ProtocolError> {
-    let count = reader.read_collection_len().map_err(codec)?;
+    let count = reader.read_collection_len(minimum_item_bytes).map_err(codec)?;
     if count > maximum {
         return Err(invalid(path, "canonical collection count exceeds its request bound"));
     }

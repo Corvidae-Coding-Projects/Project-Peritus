@@ -39,6 +39,17 @@ impl FrameHeader {
     pub const fn payload_len(self) -> u32 {
         self.payload_len
     }
+
+    /// Returns the representable complete frame length, including its header.
+    ///
+    /// # Errors
+    /// Returns length overflow when the host cannot represent this frame.
+    pub fn frame_len(self) -> Result<usize, CodecError> {
+        usize::try_from(self.payload_len)
+            .ok()
+            .and_then(|length| HEADER_LEN.checked_add(length))
+            .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, 12))
+    }
 }
 
 /// Borrowed checked canonical frame.
@@ -85,7 +96,10 @@ pub fn encode_frame(
     if frame_len > limits.max_frame_bytes {
         return Err(CodecError::limited(0, CodecLimit::FrameBytes));
     }
-    let mut frame = Vec::with_capacity(frame_len);
+    let mut frame = Vec::new();
+    frame
+        .try_reserve_exact(frame_len)
+        .map_err(|_| CodecError::new(CodecErrorKind::AllocationUnavailable, 0))?;
     frame.extend_from_slice(&MAGIC);
     frame.extend_from_slice(&FORMAT_VERSION.to_be_bytes());
     frame.extend_from_slice(&family.to_be_bytes());
@@ -101,6 +115,22 @@ pub fn decode_frame(input: &[u8], limits: CodecLimits) -> Result<DecodedFrame<'_
     if input.len() > limits.max_frame_bytes {
         return Err(CodecError::limited(0, CodecLimit::FrameBytes));
     }
+    let header = decode_frame_header(input, limits)?;
+    let expected = header.frame_len()?;
+    if input.len() < expected {
+        return Err(CodecError::new(CodecErrorKind::Truncated, input.len()));
+    }
+    if input.len() > expected {
+        return Err(CodecError::new(CodecErrorKind::TrailingBytes, expected));
+    }
+    Ok(DecodedFrame { header, payload: &input[HEADER_LEN..expected] })
+}
+
+/// Validates a complete version-one header before accepting any payload bytes.
+///
+/// This uses the same framing and caller-selected admissibility checks as [`decode_frame`].
+/// Additional bytes are ignored; complete-frame decoding still requires exact consumption.
+pub fn decode_frame_header(input: &[u8], limits: CodecLimits) -> Result<FrameHeader, CodecError> {
     if input.len() < HEADER_LEN {
         return Err(CodecError::new(CodecErrorKind::Truncated, input.len()));
     }
@@ -129,17 +159,9 @@ pub fn decode_frame(input: &[u8], limits: CodecLimits) -> Result<DecodedFrame<'_
     if payload_usize > limits.max_payload_bytes {
         return Err(CodecError::limited(12, CodecLimit::PayloadBytes));
     }
-    let expected = HEADER_LEN
-        .checked_add(payload_usize)
-        .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, 12))?;
-    if input.len() < expected {
-        return Err(CodecError::new(CodecErrorKind::Truncated, input.len()));
+    let header = FrameHeader { family, schema_version, payload_len };
+    if header.frame_len()? > limits.max_frame_bytes {
+        return Err(CodecError::limited(0, CodecLimit::FrameBytes));
     }
-    if input.len() > expected {
-        return Err(CodecError::new(CodecErrorKind::TrailingBytes, expected));
-    }
-    Ok(DecodedFrame {
-        header: FrameHeader { family, schema_version, payload_len },
-        payload: &input[HEADER_LEN..expected],
-    })
+    Ok(header)
 }

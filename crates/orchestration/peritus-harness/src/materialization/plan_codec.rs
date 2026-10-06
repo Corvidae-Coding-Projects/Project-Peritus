@@ -105,11 +105,11 @@ impl MaterializationPlan {
             .map_err(codec)?
             .then(|| MaterializationReceiptId::decode(reader.read_fixed().map_err(codec)?))
             .transpose()?;
-        let count = reader.read_collection_len().map_err(codec)?;
+        let count = reader.read_collection_len(1 + 4 + 1 + 32 + 8 + 1).map_err(codec)?;
         if count == 0 {
             return Err(invalid("decoded plan has no operations"));
         }
-        let mut operations = Vec::with_capacity(count);
+        let mut operations = reader.reserve_collection(count).map_err(codec)?;
         let mut previous: Option<WorkspacePath> = None;
         let mut computed_total = 0_u64;
         for _ in 0..count {

@@ -102,11 +102,12 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<CollaborationEventKind,
         let task_id = super::read_task_id(reader)?;
         let requested_by = super::read_actor_id(reader)?;
         let reason_digest = super::read_digest(reader)?;
-        let count = super::bounded_len(reader, crate::CollaborationLimits::MAX_TASKS as usize)?;
+        let count =
+            super::bounded_len(reader, crate::CollaborationLimits::MAX_TASKS as usize, 16 + 1)?;
         if count == 0 {
             return Err(super::invalid(reader));
         }
-        let mut effects = Vec::with_capacity(count);
+        let mut effects = reader.reserve_collection(count)?;
         for _ in 0..count {
             let id = super::read_task_id(reader)?;
             let phase_offset = reader.offset();

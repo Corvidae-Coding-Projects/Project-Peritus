@@ -16,6 +16,11 @@ use super::super::{
     write_revision,
 };
 
+// Fixed identity fields, empty collection prefixes, and absent optional fields in these schemas.
+pub const MINIMUM_CANDIDATE_BYTES: usize = 96 + 16 + 3 * 32 + 2 + 2 * 4 + 32;
+pub const MINIMUM_HANDOFF_BYTES: usize =
+    16 + 1 + 1 + 1 + 1 + 2 * 16 + 1 + MINIMUM_CANDIDATE_BYTES + 1 + 2 * 16 + 3 * 4 + 32;
+
 pub fn write_candidate(
     writer: &mut CanonicalWriter,
     value: &CandidateBinding,
@@ -55,13 +60,13 @@ pub fn read_candidate(
     let quality_snapshot_digest = read_digest(reader)?;
     let artifact = reader.read_option_tag()?.then(|| read_artifact_id(reader)).transpose()?;
     let artifact_digest = reader.read_option_tag()?.then(|| read_digest(reader)).transpose()?;
-    let count = bounded_count(reader, usize::from(limits.artifact_references()))?;
-    let mut actors = Vec::with_capacity(count);
+    let count = bounded_count(reader, usize::from(limits.artifact_references()), 16)?;
+    let mut actors = reader.reserve_collection(count)?;
     for _ in 0..count {
         actors.push(read_actor_id(reader)?);
     }
-    let count = bounded_count(reader, usize::from(limits.artifact_references()))?;
-    let mut ancestries = Vec::with_capacity(count);
+    let count = bounded_count(reader, usize::from(limits.artifact_references()), 32)?;
+    let mut ancestries = reader.reserve_collection(count)?;
     for _ in 0..count {
         ancestries.push(read_digest(reader)?);
     }
@@ -128,8 +133,8 @@ pub fn read_handoff(
     let work = read_nominal(reader, WorkId::new)?;
     let artifacts = read_digests(reader, usize::from(limits.artifact_references()))?;
     let evidence = read_digests(reader, usize::from(limits.artifact_references()))?;
-    let count = bounded_count(reader, usize::from(limits.artifact_references()))?;
-    let mut findings = Vec::with_capacity(count);
+    let count = bounded_count(reader, usize::from(limits.artifact_references()), 16)?;
+    let mut findings = reader.reserve_collection(count)?;
     for _ in 0..count {
         findings.push(super::super::read_finding_id(reader)?);
     }
@@ -210,16 +215,20 @@ fn read_digests(
     reader: &mut CanonicalReader<'_>,
     maximum: usize,
 ) -> Result<Vec<Sha256Digest>, CodecError> {
-    let count = bounded_count(reader, maximum)?;
-    let mut values = Vec::with_capacity(count);
+    let count = bounded_count(reader, maximum, 32)?;
+    let mut values = reader.reserve_collection(count)?;
     for _ in 0..count {
         values.push(read_digest(reader)?);
     }
     Ok(values)
 }
 
-fn bounded_count(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+fn bounded_count(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum { Err(super::super::invalid(reader)) } else { Ok(count) }
 }
 

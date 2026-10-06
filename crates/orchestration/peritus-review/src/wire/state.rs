@@ -112,26 +112,31 @@ impl CanonicalDecode for ReviewStateFrame {
             .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
         let last_event_id = super::read_event_id(reader)?;
         let state_digest = super::read_digest(reader)?;
-        let cycle_count =
-            super::bounded_len(reader, usize::from(limits.cycles().min(limits.assignments())))?;
-        let mut cycles = Vec::with_capacity(cycle_count);
+        let cycle_count = super::bounded_len(
+            reader,
+            usize::from(limits.cycles().min(limits.assignments())),
+            16 + 2 + 32 + 96 + 16 + 5 * 32 + 1 + 4 + 32 + 1 + 7 + 1 + 1,
+        )?;
+        let mut cycles = reader.reserve_collection(cycle_count)?;
         for _ in 0..cycle_count {
             cycles.push(read_cycle(reader)?);
         }
-        let finding_count = super::bounded_len(reader, limits.findings() as usize)?;
-        let mut findings = Vec::with_capacity(finding_count);
+        let finding_count =
+            super::bounded_len(reader, limits.findings() as usize, finding::MINIMUM_FINDING_BYTES)?;
+        let mut findings = reader.reserve_collection(finding_count)?;
         for _ in 0..finding_count {
             findings.push(finding::read_finding(reader)?);
         }
-        let waiver_count = super::bounded_len(reader, limits.findings() as usize)?;
-        let mut waivers = Vec::with_capacity(waiver_count);
+        let waiver_count =
+            super::bounded_len(reader, limits.findings() as usize, 16 + 96 + 16 + 4 * 32)?;
+        let mut waivers = reader.reserve_collection(waiver_count)?;
         for _ in 0..waiver_count {
             waivers.push(read_waiver(reader)?);
         }
         let quorum = summary::read_quorum(reader)?;
         let oscillation = summary::read_oscillation(reader)?;
-        let command_count = reader.read_collection_len()?;
-        let mut used_commands = Vec::with_capacity(command_count);
+        let command_count = reader.read_collection_len(16)?;
+        let mut used_commands = reader.reserve_collection(command_count)?;
         for _ in 0..command_count {
             used_commands.push(super::read_command_id(reader)?);
         }
@@ -244,8 +249,12 @@ pub(super) fn read_submission(
     let revision = super::read_revision(reader)?;
     let categories =
         super::read_digests(reader, ReviewLimits::MAX_CATEGORIES, ReviewCategory::new)?;
-    let count = super::bounded_len(reader, ReviewLimits::MAX_FINDINGS as usize)?;
-    let mut findings = Vec::with_capacity(count);
+    let count = super::bounded_len(
+        reader,
+        ReviewLimits::MAX_FINDINGS as usize,
+        finding::MINIMUM_FINDING_BYTES,
+    )?;
+    let mut findings = reader.reserve_collection(count)?;
     for _ in 0..count {
         findings.push(finding::read_finding(reader)?);
     }

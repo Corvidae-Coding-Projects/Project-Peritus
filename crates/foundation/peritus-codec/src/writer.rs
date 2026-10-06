@@ -12,7 +12,7 @@ use crate::{CodecError, CodecErrorKind, CodecLimit, CodecLimits};
 pub struct CanonicalWriter {
     bytes: Vec<u8>,
     limits: CodecLimits,
-    depth: u16,
+    depth: usize,
 }
 
 impl CanonicalWriter {
@@ -130,10 +130,15 @@ impl CanonicalWriter {
         &mut self,
         encode: impl FnOnce(&mut Self) -> Result<T, CodecError>,
     ) -> Result<T, CodecError> {
-        if self.depth >= self.limits.max_nesting_depth {
+        if self.limits.max_nesting_depth != CodecLimits::UNLIMITED_NESTING
+            && self.depth >= usize::from(self.limits.max_nesting_depth)
+        {
             return Err(CodecError::limited(self.len(), CodecLimit::NestingDepth));
         }
-        self.depth += 1;
+        self.depth = self
+            .depth
+            .checked_add(1)
+            .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, self.len()))?;
         let result = encode(self);
         self.depth -= 1;
         result
@@ -148,7 +153,9 @@ impl CanonicalWriter {
         if next > self.limits.max_payload_bytes {
             return Err(CodecError::limited(self.len(), CodecLimit::PayloadBytes));
         }
-        self.bytes.reserve(additional);
+        self.bytes
+            .try_reserve(additional)
+            .map_err(|_| CodecError::new(CodecErrorKind::AllocationUnavailable, self.len()))?;
         Ok(())
     }
 }

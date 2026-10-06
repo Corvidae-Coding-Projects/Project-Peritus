@@ -106,16 +106,16 @@ impl PatchSet {
                 .at(pair[0].path().clone()));
             }
         }
-        let legacy = (!snapshot)
-            .then(|| {
-                legacy_inline_identity(
-                    workspace_id,
-                    expected_generation,
-                    expected_revision,
-                    &operations,
-                )
-            })
-            .flatten();
+        let legacy = if snapshot {
+            None
+        } else {
+            legacy_inline_identity(
+                workspace_id,
+                expected_generation,
+                expected_revision,
+                &operations,
+            )?
+        };
         let mut patch = Self {
             workspace_id,
             expected_generation,
@@ -235,10 +235,12 @@ fn legacy_inline_identity(
     generation: Generation,
     revision: RevisionNumber,
     operations: &[PatchOperation],
-) -> Option<PatchIdentity> {
-    let total_bytes = operations.iter().try_fold(0usize, |total, operation| {
+) -> Result<Option<PatchIdentity>, PatchError> {
+    let Some(total_bytes) = operations.iter().try_fold(0usize, |total, operation| {
         total.checked_add(operation.final_file().map_or(0, |file| file.bytes().len()))
-    })?;
+    }) else {
+        return Ok(None);
+    };
     if operations.len() > LEGACY_PATCH_OPERATIONS
         || total_bytes > LEGACY_PATCH_BYTES
         || operations.iter().any(|operation| {
@@ -248,9 +250,9 @@ fn legacy_inline_identity(
                 || operation.final_file().is_some_and(|file| file.bytes().len() > LEGACY_FILE_BYTES)
         })
     {
-        return None;
+        return Ok(None);
     }
-    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    let mut writer = CanonicalWriter::new(CodecLimits::LEGACY_V1);
     let encoded = (|| {
         let directories = operations.iter().any(PatchOperation::covers_directory);
         writer.write_fixed(if directories {
@@ -304,10 +306,12 @@ fn legacy_inline_identity(
         }
         Ok::<(), peritus_codec::CodecError>(())
     })();
-    // Typed paths and identities are already checked. Failure here means the historical
-    // inline representation does not fit; the paged representation binds the same intent.
-    encoded.ok()?;
-    Some(PatchIdentity::new(peritus_codec::sha256(writer.as_slice())))
+    // Historical contract overflow selects paged authority. Allocator pressure instead keeps
+    // the same identity pending for retry; it never selects another representation.
+    if !crate::error::codec_encoding_fits(encoded, PatchOperationContext::Plan)? {
+        return Ok(None);
+    }
+    Ok(Some(PatchIdentity::new(peritus_codec::sha256(writer.as_slice()))))
 }
 
 fn metadata_identity(

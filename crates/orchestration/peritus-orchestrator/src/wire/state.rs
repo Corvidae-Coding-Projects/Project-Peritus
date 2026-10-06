@@ -239,12 +239,12 @@ fn read_candidates(
     reader: &mut CanonicalReader<'_>,
     limits: crate::OrchestratorLimits,
 ) -> Result<Vec<crate::CandidateBinding>, CodecError> {
-    let count = bounded(reader, usize::from(limits.revisions()))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::domain::read_candidate(reader, limits)?);
-    }
-    Ok(values)
+    read_values(
+        reader,
+        usize::from(limits.revisions()),
+        crate::canonical::wire::domain::MINIMUM_CANDIDATE_BYTES,
+        |reader| crate::canonical::wire::domain::read_candidate(reader, limits),
+    )
 }
 fn write_quality_cycles(
     writer: &mut CanonicalWriter,
@@ -260,12 +260,12 @@ fn read_quality_cycles(
     reader: &mut CanonicalReader<'_>,
     limits: crate::OrchestratorLimits,
 ) -> Result<Vec<crate::QualityCycleBinding>, CodecError> {
-    let count = bounded(reader, usize::from(limits.revisions()))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::domain::read_quality_cycle(reader)?);
-    }
-    Ok(values)
+    read_values(
+        reader,
+        usize::from(limits.revisions()),
+        96 + 5 * 16 + 5 * 32,
+        crate::canonical::wire::domain::read_quality_cycle,
+    )
 }
 fn write_handoffs(
     writer: &mut CanonicalWriter,
@@ -281,34 +281,35 @@ fn read_handoffs(
     reader: &mut CanonicalReader<'_>,
     limits: crate::OrchestratorLimits,
 ) -> Result<Vec<crate::Handoff>, CodecError> {
-    let count = bounded(reader, usize::from(limits.handoffs()))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::domain::read_handoff(reader, limits)?);
-    }
-    Ok(values)
+    read_values(
+        reader,
+        usize::from(limits.handoffs()),
+        crate::canonical::wire::domain::MINIMUM_HANDOFF_BYTES,
+        |reader| crate::canonical::wire::domain::read_handoff(reader, limits),
+    )
 }
 fn read_activations(
     reader: &mut CanonicalReader<'_>,
     limits: crate::OrchestratorLimits,
 ) -> Result<Vec<crate::HandoffActivationObservation>, CodecError> {
-    let count = bounded(reader, usize::from(limits.retained_observations()))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::observation::read_activation(reader)?);
-    }
-    Ok(values)
+    read_values(
+        reader,
+        usize::from(limits.retained_observations()),
+        8 * 16 + 1 + 96 + 2 * crate::canonical::wire::observation::MINIMUM_HEAD_BYTES,
+        crate::canonical::wire::observation::read_activation,
+    )
 }
 fn read_observations(
     reader: &mut CanonicalReader<'_>,
     limits: crate::OrchestratorLimits,
 ) -> Result<Vec<crate::ChildObservation>, CodecError> {
-    let count = bounded(reader, usize::from(limits.retained_observations()))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::observation::read_observation(reader)?);
-    }
-    Ok(values)
+    // The smallest variant is a cancellation classification: tag, kind, revision, class, digest.
+    read_values(
+        reader,
+        usize::from(limits.retained_observations()),
+        1 + 1 + 96 + 1 + 32,
+        crate::canonical::wire::observation::read_observation,
+    )
 }
 fn write_child_kinds(
     writer: &mut CanonicalWriter,
@@ -323,12 +324,7 @@ fn write_child_kinds(
 fn read_child_kinds(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<crate::ChildAggregateKind>, CodecError> {
-    let count = bounded(reader, 6)?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::read_child_kind(reader)?);
-    }
-    Ok(values)
+    read_values(reader, 6, 1, crate::canonical::wire::read_child_kind)
 }
 fn write_counters(
     writer: &mut CanonicalWriter,
@@ -365,12 +361,7 @@ fn read_counters(reader: &mut CanonicalReader<'_>) -> Result<OrchestratorCounter
 fn read_commands(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<peritus_types::CommandId>, CodecError> {
-    let count = bounded(reader, usize::from(u16::MAX))?;
-    let mut values = Vec::with_capacity(count);
-    for _ in 0..count {
-        values.push(crate::canonical::wire::read_command_id(reader)?);
-    }
-    Ok(values)
+    read_values(reader, usize::from(u16::MAX), 16, crate::canonical::wire::read_command_id)
 }
 fn write_terminal_option(
     writer: &mut CanonicalWriter,
@@ -382,7 +373,25 @@ fn write_terminal_option(
     }
     Ok(())
 }
-fn bounded(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+fn bounded(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count <= maximum { Ok(count) } else { Err(crate::canonical::wire::invalid(reader)) }
+}
+
+fn read_values<T>(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+    mut decode: impl FnMut(&mut CanonicalReader<'_>) -> Result<T, CodecError>,
+) -> Result<Vec<T>, CodecError> {
+    let count = bounded(reader, maximum, minimum_item_bytes)?;
+    let mut values = reader.reserve_collection(count)?;
+    for _ in 0..count {
+        values.push(decode(reader)?);
+    }
+    Ok(values)
 }

@@ -28,7 +28,7 @@ fn ordinary_manifest_paging_crosses_old_count_and_message_boundaries() {
     ] {
         let encoded = manifest.encode().expect("encode");
         if manifest.entries.len() == 5_000 {
-            assert!(encoded.len() > CodecLimits::PRODUCTION.max_payload_bytes);
+            assert!(encoded.len() > CodecLimits::LEGACY_V1.max_payload_bytes);
         }
         assert_eq!(Manifest::decode(&encoded).expect("all physical pages"), manifest);
         assert_eq!(Manifest::decode(&encoded).expect("decode").encode().expect("encode"), encoded);

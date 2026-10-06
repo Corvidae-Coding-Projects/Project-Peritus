@@ -268,11 +268,11 @@ fn write_finding_ids(
 fn read_finding_ids(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<peritus_types::FindingId>, CodecError> {
-    let count = super::bounded_len(reader, ReviewLimits::MAX_FINDINGS as usize)?;
+    let count = super::bounded_len(reader, ReviewLimits::MAX_FINDINGS as usize, 16)?;
     if count == 0 {
         return Err(super::invalid(reader));
     }
-    let mut values = Vec::with_capacity(count);
+    let mut values = reader.reserve_collection(count)?;
     for _ in 0..count {
         values.push(super::read_finding_id(reader)?);
     }

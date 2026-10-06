@@ -38,13 +38,13 @@ pub fn read_approval(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<ApprovalRequirementDto, CodecError> {
     let minimum_tier = read_authority_tier(reader)?;
-    let role_count = reader.read_collection_len()?;
-    let mut approver_roles = Vec::with_capacity(role_count);
+    let role_count = reader.read_collection_len(2)?;
+    let mut approver_roles = reader.reserve_collection(role_count)?;
     for _ in 0..role_count {
         approver_roles.push(read_role(reader)?);
     }
-    let independence_count = reader.read_collection_len()?;
-    let mut independence = Vec::with_capacity(independence_count);
+    let independence_count = reader.read_collection_len(2)?;
+    let mut independence = reader.reserve_collection(independence_count)?;
     for _ in 0..independence_count {
         independence.push(read_independence(reader)?);
     }
@@ -116,8 +116,9 @@ pub fn write_layer(
 
 pub fn read_layer(reader: &mut CanonicalReader<'_>) -> Result<RestrictionLayerDto, CodecError> {
     let tier = read_policy_tier(reader)?;
-    let count = reader.read_collection_len()?;
-    let mut rules = Vec::with_capacity(count);
+    // Digest, four selector option tags, revision tuple, and closed rule-kind tag.
+    let count = reader.read_collection_len(32 + 4 + 96 + 2)?;
+    let mut rules = reader.reserve_collection(count)?;
     for _ in 0..count {
         rules.push(reader.nested(read_rule)?);
     }

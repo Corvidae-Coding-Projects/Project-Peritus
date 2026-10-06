@@ -39,11 +39,11 @@ pub(super) fn assessment(
     let attribution = AttributionId::new(reader.read_fixed().map_err(scalar::codec)?)?;
     let evidence = scalar::digest(reader)?;
     let policy = scalar::digest(reader)?;
-    let length = reader.read_collection_len().map_err(scalar::codec)?;
+    let length = reader.read_collection_len(1 + 1 + 1 + 32).map_err(scalar::codec)?;
     if length != 14 || length > usize::from(limits.criteria()) {
         return Err(scalar::protocol());
     }
-    let mut criteria = Vec::with_capacity(length);
+    let mut criteria = reader.reserve_collection(length).map_err(scalar::codec)?;
     for expected in 0_u8..14 {
         let criterion = criterion(reader.read_u8().map_err(scalar::codec)?)?;
         if criterion.tag() != expected {
@@ -98,11 +98,11 @@ pub(super) fn selection(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<SelectionRecord, EvolutionError> {
     let policy = scalar::digest(reader)?;
-    let digest_len = reader.read_collection_len().map_err(scalar::codec)?;
+    let digest_len = reader.read_collection_len(32).map_err(scalar::codec)?;
     if digest_len == 0 {
         return Err(scalar::protocol());
     }
-    let mut digests = Vec::with_capacity(digest_len);
+    let mut digests = reader.reserve_collection(digest_len).map_err(scalar::codec)?;
     for _ in 0..digest_len {
         digests.push(scalar::digest(reader)?);
     }
@@ -111,11 +111,11 @@ pub(super) fn selection(
             reader.read_fixed().map_err(scalar::codec)?,
         )?),
         2 => {
-            let length = reader.read_collection_len().map_err(scalar::codec)?;
+            let length = reader.read_collection_len(16 + 2 * 4).map_err(scalar::codec)?;
             if length == 0 {
                 return Err(scalar::protocol());
             }
-            let mut rejections = Vec::with_capacity(length);
+            let mut rejections = reader.reserve_collection(length).map_err(scalar::codec)?;
             for _ in 0..length {
                 let variant = VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?;
                 let failed = read_criteria(reader)?;
@@ -178,8 +178,8 @@ fn write_criteria(
 }
 
 fn read_criteria(reader: &mut CanonicalReader<'_>) -> Result<Vec<Criterion>, EvolutionError> {
-    let length = reader.read_collection_len().map_err(scalar::codec)?;
-    let mut values = Vec::with_capacity(length);
+    let length = reader.read_collection_len(1).map_err(scalar::codec)?;
+    let mut values = reader.reserve_collection(length).map_err(scalar::codec)?;
     for _ in 0..length {
         values.push(criterion(reader.read_u8().map_err(scalar::codec)?)?);
     }

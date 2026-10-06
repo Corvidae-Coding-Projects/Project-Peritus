@@ -52,14 +52,14 @@ pub(super) fn read_proposal(reader: &mut CanonicalReader<'_>) -> Result<InitProp
     let query = super::workbench::read_query(reader)?;
     let revision = reader.read_u64()?;
     let folder_digest = read_digest(reader)?;
-    let source_count = reader.read_collection_len()?;
-    let mut sources = Vec::with_capacity(source_count);
+    let source_count = reader.read_collection_len(4 + 2 + 32 + 8)?;
+    let mut sources = reader.reserve_collection(source_count)?;
     for _ in 0..source_count {
         sources.push(read_source(reader)?);
     }
     let patch = read_patch(reader)?;
-    let command_count = reader.read_collection_len()?;
-    let mut commands = Vec::with_capacity(command_count);
+    let command_count = reader.read_collection_len(2 + 4 + 4 + 4 + 2)?;
+    let mut commands = reader.reserve_collection(command_count)?;
     for _ in 0..command_count {
         commands.push(read_command(reader)?);
     }
@@ -179,8 +179,8 @@ fn read_command(reader: &mut CanonicalReader<'_>) -> Result<InitCommand, CodecEr
     };
     let source = bounded_string(reader, 4096, offset)?;
     let executable = bounded_string(reader, 128, offset)?;
-    let argument_count = reader.read_collection_len()?;
-    let mut arguments = Vec::with_capacity(argument_count);
+    let argument_count = reader.read_collection_len(4)?;
+    let mut arguments = reader.reserve_collection(argument_count)?;
     for _ in 0..argument_count {
         arguments.push(bounded_string(reader, 1024, offset)?);
     }

@@ -137,14 +137,14 @@ pub(super) fn read_ranges(
     maximum: usize,
 ) -> Result<Vec<VersionRange>, CodecError> {
     let offset = reader.offset();
-    let length = reader.read_collection_len()?;
+    let length = reader.read_collection_len(3 * 2)?;
     if length > maximum {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
     if length == 0 {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
     }
-    let mut values = Vec::with_capacity(length);
+    let mut values = reader.reserve_collection(length)?;
     for _ in 0..length {
         let item_offset = reader.offset();
         let value = invalid(
@@ -184,11 +184,11 @@ pub(super) fn read_features(
     maximum: usize,
 ) -> Result<ProtocolFeatureSet, CodecError> {
     let collection_offset = reader.offset();
-    let length = reader.read_collection_len()?;
+    let length = reader.read_collection_len(4)?;
     if length > maximum {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, collection_offset));
     }
-    let mut values = Vec::with_capacity(length);
+    let mut values = reader.reserve_collection(length)?;
     for _ in 0..length {
         let item_offset = reader.offset();
         let value = invalid(item_offset, ProtocolFeatureName::new(reader.read_str()?.to_owned()))?;

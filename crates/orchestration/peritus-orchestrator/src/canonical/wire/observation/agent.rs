@@ -50,9 +50,12 @@ pub(super) fn read_agent(
     let revision = super::super::read_revision(reader)?;
     let proposal =
         reader.read_option_tag()?.then(|| super::super::read_digest(reader)).transpose()?;
-    let count =
-        super::bounded_count(reader, usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES))?;
-    let mut responses = Vec::with_capacity(count);
+    let count = super::bounded_count(
+        reader,
+        usize::from(OrchestratorLimits::MAX_ARTIFACT_REFERENCES),
+        16 + 32,
+    )?;
+    let mut responses = reader.reserve_collection(count)?;
     for _ in 0..count {
         responses.push(FixerResponseIdentity::from_wire(
             super::super::read_finding_id(reader)?,

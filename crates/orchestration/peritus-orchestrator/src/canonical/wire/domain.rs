@@ -17,6 +17,7 @@ use super::{
 };
 
 pub use super::records::{read_certificate, read_terminal, write_certificate, write_terminal};
+pub use material::{MINIMUM_CANDIDATE_BYTES, MINIMUM_HANDOFF_BYTES};
 pub use material::{
     read_candidate, read_directive, read_handoff, write_candidate, write_directive, write_handoff,
 };
@@ -183,8 +184,8 @@ pub fn read_reconciliation(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<ResumeReconciliation, CodecError> {
     let digest = read_digest(reader)?;
-    let count = bounded_count(reader, 6)?;
-    let mut heads = Vec::with_capacity(count);
+    let count = bounded_count(reader, 6, super::observation::MINIMUM_HEAD_BYTES)?;
+    let mut heads = reader.reserve_collection(count)?;
     for _ in 0..count {
         heads.push(super::observation::read_head(reader)?);
     }
@@ -230,8 +231,8 @@ pub fn read_ownership(
     let service_role = read_actor_role(reader)?;
     let writer = read_assignment(reader)?;
     let fixer = read_assignment(reader)?;
-    let count = bounded_count(reader, usize::from(limits.child_directives()))?;
-    let mut reviewers = Vec::with_capacity(count);
+    let count = bounded_count(reader, usize::from(limits.child_directives()), 16 + 1 + 1)?;
+    let mut reviewers = reader.reserve_collection(count)?;
     for _ in 0..count {
         reviewers.push(read_assignment(reader)?);
     }
@@ -239,8 +240,12 @@ pub fn read_ownership(
         .map_err(|_| super::invalid(reader))
 }
 
-fn bounded_count(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+fn bounded_count(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum { Err(super::invalid(reader)) } else { Ok(count) }
 }
 

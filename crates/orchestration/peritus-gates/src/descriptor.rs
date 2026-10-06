@@ -19,9 +19,9 @@ pub const MAX_GATES_PER_RUN: usize = 1_024;
 pub const MAX_GATE_DEPENDENCIES: usize = 1_024;
 /// Hard required-evidence declaration bound on one planned gate.
 pub const MAX_GATE_EVIDENCE: usize = 1_024;
-/// Hard total attempt-accounting bound for one run.
-pub const MAX_TOTAL_GATE_ATTEMPTS: usize =
-    peritus_codec::CodecLimits::PRODUCTION.max_collection_items;
+/// Largest total attempt history representable by the version-one `u32` collection prefix.
+/// This is a wire representation width, independent of the codec's former production quota.
+pub const MAX_TOTAL_GATE_ATTEMPTS: usize = u32::MAX as usize;
 
 /// One contract gate bound to its exact C4 quality implementation.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -351,9 +351,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn total_attempt_bound_matches_the_production_codec_collection_ceiling() {
-        assert_eq!(MAX_TOTAL_GATE_ATTEMPTS, 65_535);
+    fn attempt_accounting_retains_wire_representability_without_the_former_codec_quota() {
+        assert_eq!(MAX_TOTAL_GATE_ATTEMPTS, u32::MAX as usize);
         assert!(total_attempts_within_bound(1, u16::MAX));
-        assert!(!total_attempts_within_bound(2, 32_768));
+        assert!(total_attempts_within_bound(2, 32_768));
+        assert!(!total_attempts_within_bound(usize::MAX, 2));
     }
 }

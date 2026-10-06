@@ -10,7 +10,7 @@ use peritus_app_protocol::{
     APP_SCHEMA_V1, AppMessage, AppProtocolLimits, CLIENT_HELLO_FAMILY, ClientHello,
     IncompatibilityReason, NegotiationOutcome, ProtocolId, VersionRange, encode_app_message,
 };
-use peritus_codec::{FORMAT_VERSION, HEADER_LEN, MAGIC};
+use peritus_codec::{CodecLimits, FORMAT_VERSION, HEADER_LEN, MAGIC};
 use peritus_daemon::{AppFrameStream, DaemonErrorCode, DaemonRuntime, LocalEndpointAddress};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -107,12 +107,42 @@ async fn malformed_and_oversized_headers_close_without_waiting_for_declared_payl
     nonzero_flags[10..12].copy_from_slice(&1_u16.to_be_bytes());
     assert_connection_rejected(&socket, &nonzero_flags).await;
 
-    let oversized_payload = u32::try_from(AppProtocolLimits::PRODUCTION.codec().max_payload_bytes)
-        .expect("production payload bound fits u32")
+    // A legacy peer still selects its explicit contract. The current production profile has no
+    // synthetic frame ceiling; rejecting its largest representable header would reintroduce one.
+    let production = AppProtocolLimits::PRODUCTION;
+    let legacy = AppProtocolLimits::new(
+        CodecLimits::LEGACY_V1,
+        production.max_versions(),
+        production.max_features(),
+        production.max_idempotency_entries(),
+        production.max_topics(),
+        production.max_in_flight_events(),
+        production.max_artifact_chunk_bytes(),
+        production.max_prompt_choices(),
+        production.max_terminal_chunk_bytes(),
+        production.max_diagnostic_bytes(),
+        production.max_remaining_work_items(),
+    )
+    .expect("legacy peer limits");
+    let mut frames = AppFrameStream::new(connect(&socket).await, production);
+    frames
+        .write(&AppMessage::ClientHello(hello_with_limits(73, legacy)))
+        .await
+        .expect("write legacy peer hello");
+    let AppMessage::ServerHello(server) = frames.read().await.expect("read negotiated hello")
+    else {
+        panic!("daemon did not answer with ServerHello");
+    };
+    let NegotiationOutcome::Compatible(negotiated) = server.outcome() else {
+        panic!("legacy codec profile must remain compatible");
+    };
+    assert_eq!(negotiated.limits().codec(), CodecLimits::LEGACY_V1);
+    let oversized_payload = u32::try_from(legacy.codec().max_payload_bytes)
+        .expect("legacy payload bound fits u32")
         .checked_add(1)
         .expect("oversized boundary fits u32");
     let oversized_header = frame_header(oversized_payload);
-    assert_connection_rejected(&socket, &oversized_header).await;
+    assert_stream_rejected(frames.into_inner(), &oversized_header).await;
 
     tokio::time::timeout(LIFECYCLE_BOUND, runtime.shutdown())
         .await
@@ -184,12 +214,16 @@ fn run_async_test(test: impl Future<Output = ()>) {
 }
 
 fn compatible_hello(identity: u8) -> ClientHello {
+    hello_with_limits(identity, AppProtocolLimits::PRODUCTION)
+}
+
+fn hello_with_limits(identity: u8, limits: AppProtocolLimits) -> ClientHello {
     ClientHello::new(
         ProtocolId::new([identity; 16]).expect("protocol identity"),
         vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         Vec::new(),
         Vec::new(),
-        AppProtocolLimits::PRODUCTION,
+        limits,
         "peritus-framing-test".to_owned(),
     )
     .expect("client hello")
@@ -208,7 +242,10 @@ async fn connect(socket: &Path) -> UnixStream {
 }
 
 async fn assert_connection_rejected(socket: &Path, bytes: &[u8]) {
-    let mut stream = connect(socket).await;
+    assert_stream_rejected(connect(socket).await, bytes).await;
+}
+
+async fn assert_stream_rejected(mut stream: UnixStream, bytes: &[u8]) {
     tokio::time::timeout(IO_BOUND, stream.write_all(bytes))
         .await
         .expect("malformed write completes within the bound")

@@ -19,12 +19,12 @@ pub(super) fn read_count(
     minimum_bytes: usize,
 ) -> Option<usize> {
     let count = if schema == 1 {
-        reader.read_collection_len().ok()?
+        reader.read_collection_len(minimum_bytes).ok()?
     } else {
         usize::try_from(reader.read_u64().ok()?).ok()?
     };
     (count <= reader.remaining() / minimum_bytes
-        && (schema != 1 || count <= CodecLimits::PRODUCTION.max_collection_items))
+        && (schema != 1 || count <= CodecLimits::LEGACY_V1.max_collection_items))
         .then_some(count)
 }
 

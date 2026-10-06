@@ -161,33 +161,41 @@ fn decode_payload(
         .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
     let event = super::read_event_id(reader)?;
     let digest = super::read_digest(reader)?;
-    let worker_count = bounded(reader, usize::from(limits.workers()))?;
-    let mut workers = Vec::with_capacity(worker_count);
+    // Fixed descriptor fields, two collection prefixes, concurrency, and phase.
+    let worker_count = bounded(reader, usize::from(limits.workers()), 2 * 16 + 2 * 4 + 2 + 1)?;
+    let mut workers = reader.reserve_collection(worker_count)?;
     for _ in 0..worker_count {
         workers.push(super::read_worker_record(reader, limits)?);
     }
-    let work_count = bounded(reader, limits.retained_work() as usize)?;
-    let mut work = Vec::with_capacity(work_count);
+    // Fixed spec/record fields; resource entries, dependency IDs, and optional fields add bytes.
+    let work_count = bounded(
+        reader,
+        limits.retained_work() as usize,
+        2 * 16 + 96 + 2 + 4 + 1 + 4 + 1 + 2 + 1 + 32 + 1 + 8 + 2 + 2 + 1 + 1,
+    )?;
+    let mut work = reader.reserve_collection(work_count)?;
     for _ in 0..work_count {
         work.push(super::read_work_record(reader, limits)?);
     }
-    let reservation_count = bounded(reader, usize::from(limits.active_reservations()))?;
-    let mut reservations = Vec::with_capacity(reservation_count);
+    let reservation_count =
+        bounded(reader, usize::from(limits.active_reservations()), 4 * 16 + 2 + 96 + 4 + 32 + 1)?;
+    let mut reservations = reader.reserve_collection(reservation_count)?;
     for _ in 0..reservation_count {
         reservations.push(super::read_reservation(reader, limits)?);
     }
     let dispatch_count = bounded(
         reader,
         (limits.retained_work() as usize).saturating_mul(usize::from(limits.attempts_per_work())),
+        16,
     )?;
-    let mut dispatches = Vec::with_capacity(dispatch_count);
+    let mut dispatches = reader.reserve_collection(dispatch_count)?;
     for _ in 0..dispatch_count {
         dispatches.push(super::read_dispatch_id(reader)?);
     }
     let enqueue = reader.read_u64()?;
     let dispatch = reader.read_u64()?;
-    let command_count = reader.read_collection_len()?;
-    let mut commands = Vec::with_capacity(command_count);
+    let command_count = reader.read_collection_len(16)?;
+    let mut commands = reader.reserve_collection(command_count)?;
     for _ in 0..command_count {
         commands.push(super::read_command_id(reader)?);
     }
@@ -211,7 +219,11 @@ fn decode_payload(
     Ok(state)
 }
 
-fn bounded(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+fn bounded(
+    reader: &mut CanonicalReader<'_>,
+    maximum: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum { Err(super::invalid(reader)) } else { Ok(count) }
 }

@@ -234,12 +234,12 @@ impl EvaluationState {
         if pending_plan_id.is_some() != pending_plan_digest.is_some() {
             return Err(corrupt("pending plan identity and digest presence differ"));
         }
-        let batch_len = reader.read_collection_len().map_err(codec)?;
-        let mut batch_artifacts = Vec::with_capacity(batch_len);
+        let batch_len = reader.read_collection_len(32).map_err(codec)?;
+        let mut batch_artifacts = reader.reserve_collection(batch_len).map_err(codec)?;
         for _ in 0..batch_len {
             batch_artifacts.push(ArtifactDigest::from_sha256(digest(&mut reader)?));
         }
-        let rollout_len = reader.read_collection_len().map_err(codec)?;
+        let rollout_len = reader.read_collection_len(2 * 16 + 32 + 2 + 1).map_err(codec)?;
         let mut rollouts = BTreeMap::new();
         for _ in 0..rollout_len {
             let id = RolloutId::new(reader.read_fixed().map_err(codec)?)?;

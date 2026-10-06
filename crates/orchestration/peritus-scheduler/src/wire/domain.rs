@@ -29,11 +29,11 @@ pub fn read_descriptor(
     let offset = reader.offset();
     let id = super::read_worker_id(reader)?;
     let owner = super::read_actor_id(reader)?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(1)?;
     if count == 0 || count > 5 {
         return Err(super::invalid(reader));
     }
-    let mut classes = Vec::with_capacity(count);
+    let mut classes = reader.reserve_collection(count)?;
     for _ in 0..count {
         classes.push(read_class(reader)?);
     }
@@ -78,11 +78,11 @@ pub fn read_spec(
     let priority = reader.read_u8()?;
     let request = super::read_resources(reader, limits.resource_dimensions())?;
     let budget = reader.read_option_tag()?.then(|| super::read_budget_id(reader)).transpose()?;
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(16)?;
     if count > usize::from(limits.dependencies_per_work()) {
         return Err(super::invalid(reader));
     }
-    let mut dependencies = Vec::with_capacity(count);
+    let mut dependencies = reader.reserve_collection(count)?;
     for _ in 0..count {
         dependencies.push(super::read_work_id(reader)?);
     }

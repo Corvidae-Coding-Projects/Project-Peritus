@@ -55,7 +55,7 @@ fn reader(bytes: &[u8], magic: [u8; 4]) -> Result<CanonicalReader<'_>, WorkingCo
     Ok(reader)
 }
 
-fn count(reader: &mut CanonicalReader<'_>, maximum: usize) -> Result<usize, WorkingCodecError> {
-    let count = reader.read_collection_len()?;
+fn count(reader: &mut CanonicalReader<'_>, maximum: usize, minimum_item_bytes: usize) -> Result<usize, WorkingCodecError> {
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count > maximum { Err(WorkingError::Capacity.into()) } else { Ok(count) }
 }

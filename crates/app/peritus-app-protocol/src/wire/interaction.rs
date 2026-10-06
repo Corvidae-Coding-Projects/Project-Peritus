@@ -163,8 +163,8 @@ pub(super) fn read_snapshot(
     let models = read_models(r, efforts)?;
     let received = r.read_u64()?;
     let incorporated = r.read_u64()?;
-    let length = bounded_length(r, MAX_PRODUCT_ACTIVITIES)?;
-    let mut activities = Vec::with_capacity(length);
+    let length = bounded_length(r, MAX_PRODUCT_ACTIVITIES, 8 + 2 + 4 + 4)?;
+    let mut activities = r.reserve_collection(length)?;
     for _ in 0..length {
         let sequence = r.read_u64()?;
         let tag_offset = r.offset();
@@ -222,8 +222,8 @@ pub(super) fn read_catalog(r: &mut CanonicalReader<'_>) -> Result<ProductModelCa
     let timestamp = r.read_u64()?;
     let cached = r.read_option_tag()?;
     let error = r.read_str()?.to_owned();
-    let length = bounded_length(r, MAX_PRODUCT_MODELS)?;
-    let mut models = Vec::with_capacity(length);
+    let length = bounded_length(r, MAX_PRODUCT_MODELS, 4 + 4 + 1)?;
+    let mut models = r.reserve_collection(length)?;
     for _ in 0..length {
         let id = r.read_str()?.to_owned();
         let label = r.read_str()?.to_owned();
@@ -233,9 +233,13 @@ pub(super) fn read_catalog(r: &mut CanonicalReader<'_>) -> Result<ProductModelCa
     invalid(offset, ProductModelCatalog::new(profile, configured, models, timestamp, cached, error))
 }
 
-fn bounded_length(r: &mut CanonicalReader<'_>, limit: usize) -> Result<usize, CodecError> {
+fn bounded_length(
+    r: &mut CanonicalReader<'_>,
+    limit: usize,
+    minimum_item_bytes: usize,
+) -> Result<usize, CodecError> {
     let offset = r.offset();
-    let length = r.read_collection_len()?;
+    let length = r.read_collection_len(minimum_item_bytes)?;
     if length > limit {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }

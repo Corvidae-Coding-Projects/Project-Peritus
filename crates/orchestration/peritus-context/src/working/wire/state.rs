@@ -37,13 +37,13 @@ pub fn decode_working_state(bytes: &[u8], expected: WorkingBinding, maximum: Wor
     if !expected.same_lineage(environment.binding()) { return Err(WorkingError::BindingMismatch.into()); }
     let mut state = WorkingState::new(environment, limits)?;
     state.revision = r.read_u64()?;
-    let sources = count(&mut r, limits.observations())?;
+    let sources = count(&mut r, limits.observations(), 8 + 32 + 3 * 8 + 1)?;
     for sequence in 0..sources {
         let source = fields::read_source(&mut r)?;
         if source.id().get() != sequence as u64 + 1 { return Err(WorkingError::SourceSequence.into()); }
         state.observations.push(source);
     }
-    let entries = count(&mut r, limits.entries())?;
+    let entries = count(&mut r, limits.entries(), entry::MINIMUM_ENTRY_BYTES)?;
     for _ in 0..entries {
         let record = entry::read_entry(&mut r, limits)?;
         if state.entries.last().is_some_and(|old| old.id() >= record.id()) {
@@ -85,5 +85,6 @@ fn write_limits(w: &mut CanonicalWriter, limits: WorkingLimits) -> Result<(), Wo
     Ok(())
 }
 fn read_limits(r: &mut CanonicalReader<'_>, maximum: WorkingLimits) -> Result<WorkingLimits, WorkingCodecError> {
-    Ok(WorkingLimits::new(count(r, maximum.observations())?, count(r, maximum.entries())?, count(r, maximum.entry_bytes())?, count(r, maximum.links())?, count(r, maximum.operations())?)?)
+    // These five values advertise ceilings rather than declaring following collections.
+    Ok(WorkingLimits::new(count(r, maximum.observations(), 0)?, count(r, maximum.entries(), 0)?, count(r, maximum.entry_bytes(), 0)?, count(r, maximum.links(), 0)?, count(r, maximum.operations(), 0)?)?)
 }

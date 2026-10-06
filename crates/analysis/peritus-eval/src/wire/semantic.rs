@@ -40,8 +40,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
             let ordinal = reader.read_u32().map_err(codec)?;
             let total = reader.read_u32().map_err(codec)?;
             let artifact = ArtifactDigest::from_sha256(digest(&mut reader)?);
-            let length = reader.read_collection_len().map_err(codec)?;
-            let mut bindings = Vec::with_capacity(length);
+            let length = reader.read_collection_len(2 * 16 + 32).map_err(codec)?;
+            let mut bindings = reader.reserve_collection(length).map_err(codec)?;
             for _ in 0..length {
                 bindings.push(PlannedRolloutBinding::new(
                     RolloutId::new(reader.read_fixed().map_err(codec)?)?,
@@ -158,8 +158,8 @@ pub(crate) fn decode_work(reader: &mut CanonicalReader<'_>) -> Result<WorkSpec, 
         _ => return Err(protocol("unknown execution class")),
     };
     let priority = reader.read_u8().map_err(codec)?;
-    let resource_len = reader.read_collection_len().map_err(codec)?;
-    let mut resources = Vec::with_capacity(resource_len);
+    let resource_len = reader.read_collection_len(2 + 8).map_err(codec)?;
+    let mut resources = reader.reserve_collection(resource_len).map_err(codec)?;
     for _ in 0..resource_len {
         resources.push(ResourceEntry::new(
             ResourceKind::new(reader.read_u16().map_err(codec)?)
@@ -178,8 +178,8 @@ pub(crate) fn decode_work(reader: &mut CanonicalReader<'_>) -> Result<WorkSpec, 
                 .map_err(|_| protocol("invalid budget reservation identity"))
         })
         .transpose()?;
-    let dependency_len = reader.read_collection_len().map_err(codec)?;
-    let mut dependencies = Vec::with_capacity(dependency_len);
+    let dependency_len = reader.read_collection_len(16).map_err(codec)?;
+    let mut dependencies = reader.reserve_collection(dependency_len).map_err(codec)?;
     for _ in 0..dependency_len {
         dependencies.push(
             WorkId::new(reader.read_fixed().map_err(codec)?)

@@ -26,11 +26,11 @@ pub(super) fn read_filter(
     limits: AppProtocolLimits,
 ) -> Result<SubscriptionFilter, CodecError> {
     let offset = reader.offset();
-    let length = reader.read_collection_len()?;
+    let length = reader.read_collection_len(4)?;
     if length > limits.max_topics() {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
-    let mut topics = Vec::with_capacity(length);
+    let mut topics = reader.reserve_collection(length)?;
     for _ in 0..length {
         topics.push(reader.read_str()?.to_owned());
     }

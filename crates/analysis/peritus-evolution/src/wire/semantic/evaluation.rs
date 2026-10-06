@@ -132,8 +132,8 @@ fn analysis(
     let correctness = read_u32_metric(reader)?;
     let pass_at_k = match reader.read_u8().map_err(scalar::codec)? {
         1 => {
-            let length = reader.read_collection_len().map_err(scalar::codec)?;
-            let mut values = Vec::with_capacity(length);
+            let length = reader.read_collection_len(16 + 2 + 4).map_err(scalar::codec)?;
+            let mut values = reader.reserve_collection(length).map_err(scalar::codec)?;
             for _ in 0..length {
                 values.push(TaskPassAtKSnapshot::new(
                     TaskId::new(reader.read_fixed().map_err(scalar::codec)?)

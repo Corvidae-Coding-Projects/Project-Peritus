@@ -53,7 +53,12 @@ pub(crate) fn decode_pointer_state(bytes: &[u8]) -> Result<ProductionHarnessStat
     let last_event = scalar::event_id(&mut reader).map_err(scalar::codec)?;
     let encoded_state = scalar::digest(&mut reader)?;
     let phase = pointer_phase(reader.read_u8().map_err(scalar::codec)?)?;
-    let history = read_vec(&mut reader, usize::from(limits.activation_history()), activation)?;
+    let history = read_vec(
+        &mut reader,
+        usize::from(limits.activation_history()),
+        1 + 8 + 1 + (96 + 56 + 32 + 32 + 2 * 33) + 1 + 32 + 1 + 2 * 32 + 1,
+        activation,
+    )?;
     let pending = match reader.read_u8().map_err(scalar::codec)? {
         0 => None,
         1 => Some(PendingActivation::Promotion(proposal::promotion(&mut reader)?)),

@@ -12,6 +12,8 @@ use crate::{ChildHead, ChildObservation, KernelAcceptanceObservation};
 pub use d3::{read_activation, write_activation};
 pub use quality::{read_gate, read_review, write_gate, write_review};
 
+pub const MINIMUM_HEAD_BYTES: usize = 1 + 8 + 16 + 32 + 1;
+
 pub fn write_head(writer: &mut CanonicalWriter, value: ChildHead) -> Result<(), CodecError> {
     writer.write_u8(super::child_kind_tag(value.aggregate()))?;
     writer.write_u64(value.sequence().get())?;
@@ -134,7 +136,8 @@ pub fn read_kernel(
 pub fn bounded_count(
     reader: &mut CanonicalReader<'_>,
     maximum: usize,
+    minimum_item_bytes: usize,
 ) -> Result<usize, CodecError> {
-    let count = reader.read_collection_len()?;
+    let count = reader.read_collection_len(minimum_item_bytes)?;
     if count <= maximum { Ok(count) } else { Err(super::invalid(reader)) }
 }

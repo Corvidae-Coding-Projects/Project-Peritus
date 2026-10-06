@@ -85,11 +85,11 @@ pub(super) fn read_prompt_binding(
     } else {
         None
     };
-    let choice_count = reader.read_collection_len()?;
+    let choice_count = reader.read_collection_len(2 * 4)?;
     if choice_count > limits.max_prompt_choices() {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
-    let mut choices = Vec::with_capacity(choice_count);
+    let mut choices = reader.reserve_collection(choice_count)?;
     for _ in 0..choice_count {
         let choice_offset = reader.offset();
         choices.push(invalid(
@@ -102,8 +102,8 @@ pub(super) fn read_prompt_binding(
             ),
         )?);
     }
-    let constraint_count = reader.read_collection_len()?;
-    let mut constraints = Vec::with_capacity(constraint_count);
+    let constraint_count = reader.read_collection_len(1)?;
+    let mut constraints = reader.reserve_collection(constraint_count)?;
     for _ in 0..constraint_count {
         let tag_offset = reader.offset();
         constraints.push(match reader.read_u8()? {

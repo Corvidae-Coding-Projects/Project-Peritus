@@ -9,13 +9,14 @@ use super::super::super::scalar;
 pub(super) fn read_vec<T>(
     reader: &mut CanonicalReader<'_>,
     maximum: usize,
+    minimum_item_bytes: usize,
     mut read: impl FnMut(&mut CanonicalReader<'_>) -> Result<T, EvolutionError>,
 ) -> Result<Vec<T>, EvolutionError> {
-    let length = reader.read_collection_len().map_err(scalar::codec)?;
+    let length = reader.read_collection_len(minimum_item_bytes).map_err(scalar::codec)?;
     if length > maximum {
         return Err(scalar::protocol());
     }
-    let mut values = Vec::with_capacity(length);
+    let mut values = reader.reserve_collection(length).map_err(scalar::codec)?;
     for _ in 0..length {
         values.push(read(reader)?);
     }

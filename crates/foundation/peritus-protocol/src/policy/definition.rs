@@ -106,13 +106,14 @@ impl CanonicalDecode for PolicyDefinitionDto {
         let start = reader.offset();
         let policy_id = read_id(reader, PolicyId::new)?;
         let ceiling = reader.nested(read_ceiling)?;
-        let operation_count = reader.read_collection_len()?;
-        let mut operations = Vec::with_capacity(operation_count);
+        // Empty string prefix, operation-class tag, and risk-count prefix.
+        let operation_count = reader.read_collection_len(4 + 2 + 4)?;
+        let mut operations = reader.reserve_collection(operation_count)?;
         for _ in 0..operation_count {
             operations.push(reader.nested(read_operation)?);
         }
-        let layer_count = reader.read_collection_len()?;
-        let mut layers = Vec::with_capacity(layer_count);
+        let layer_count = reader.read_collection_len(2 + 4)?;
+        let mut layers = reader.reserve_collection(layer_count)?;
         for _ in 0..layer_count {
             layers.push(reader.nested(read_layer)?);
         }
@@ -151,23 +152,23 @@ fn write_boundary(
 }
 
 fn read_boundary(reader: &mut CanonicalReader<'_>) -> Result<AuthorityBoundaryDto, CodecError> {
-    let actor_count = reader.read_collection_len()?;
-    let mut actors = Vec::with_capacity(actor_count);
+    let actor_count = reader.read_collection_len(16)?;
+    let mut actors = reader.reserve_collection(actor_count)?;
     for _ in 0..actor_count {
         actors.push(read_id(reader, ActorId::new)?);
     }
-    let role_count = reader.read_collection_len()?;
-    let mut roles = Vec::with_capacity(role_count);
+    let role_count = reader.read_collection_len(2)?;
+    let mut roles = reader.reserve_collection(role_count)?;
     for _ in 0..role_count {
         roles.push(read_role(reader)?);
     }
-    let environment_count = reader.read_collection_len()?;
-    let mut environments = Vec::with_capacity(environment_count);
+    let environment_count = reader.read_collection_len(16)?;
+    let mut environments = reader.reserve_collection(environment_count)?;
     for _ in 0..environment_count {
         environments.push(read_id(reader, EnvironmentId::new)?);
     }
-    let permission_count = reader.read_collection_len()?;
-    let mut permissions = Vec::with_capacity(permission_count);
+    let permission_count = reader.read_collection_len(16 + 4)?;
+    let mut permissions = reader.reserve_collection(permission_count)?;
     for _ in 0..permission_count {
         permissions.push(reader.nested(super::selector_codec::read_permission)?);
     }
@@ -237,13 +238,14 @@ fn write_ceiling(
 
 fn read_ceiling(reader: &mut CanonicalReader<'_>) -> Result<AuthorityCeilingDto, CodecError> {
     let boundary = reader.nested(read_boundary)?;
-    let grant_count = reader.read_collection_len()?;
-    let mut grants = Vec::with_capacity(grant_count);
+    // Digest, four selector option tags, revision tuple, validity pair, and use-limit tag.
+    let grant_count = reader.read_collection_len(32 + 4 + 96 + 32 + 1)?;
+    let mut grants = reader.reserve_collection(grant_count)?;
     for _ in 0..grant_count {
         grants.push(reader.nested(read_grant)?);
     }
-    let deny_count = reader.read_collection_len()?;
-    let mut immutable_denies = Vec::with_capacity(deny_count);
+    let deny_count = reader.read_collection_len(32 + 4 + 96 + 2)?;
+    let mut immutable_denies = reader.reserve_collection(deny_count)?;
     for _ in 0..deny_count {
         immutable_denies.push(reader.nested(read_rule)?);
     }
@@ -268,8 +270,8 @@ fn read_operation(reader: &mut CanonicalReader<'_>) -> Result<OperationDescripto
     let name = CapabilityName::new(reader.read_str()?.to_owned())
         .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, name_offset))?;
     let operation_class = read_operation_class(reader)?;
-    let risk_count = reader.read_collection_len()?;
-    let mut risks = Vec::with_capacity(risk_count);
+    let risk_count = reader.read_collection_len(2)?;
+    let mut risks = reader.reserve_collection(risk_count)?;
     for _ in 0..risk_count {
         risks.push(read_risk(reader)?);
     }

@@ -33,19 +33,21 @@ pub(in crate::wire) fn read_observations(
     reader: &mut CanonicalReader<'_>,
 ) -> Result<Vec<ProductRunObservation>, CodecError> {
     let offset = reader.offset();
-    let count = reader.read_collection_len()?;
+    // Settlement tag, identifiers, providers, phase/cycle, text prefixes, operation, deliverable tag.
+    let count =
+        reader.read_collection_len(1 + 2 * 16 + 3 * 16 + 2 + 4 + 6 * 4 + 2 * 2 + 3 * 4 + 7 + 1)?;
     if count > MAX_PRODUCT_RUN_PAGE {
         return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
     }
-    (0..count)
-        .map(|_| {
-            let (snapshot, settlement) = if reader.read_option_tag()? {
-                let value = read_settlement_snapshot(reader)?;
-                (value.snapshot().clone(), Some(*value.settlement()))
-            } else {
-                (read_snapshot(reader)?, None)
-            };
-            invalid(offset, ProductRunObservation::new(snapshot, settlement))
-        })
-        .collect()
+    let mut observations = reader.reserve_collection(count)?;
+    for _ in 0..count {
+        let (snapshot, settlement) = if reader.read_option_tag()? {
+            let value = read_settlement_snapshot(reader)?;
+            (value.snapshot().clone(), Some(*value.settlement()))
+        } else {
+            (read_snapshot(reader)?, None)
+        };
+        observations.push(invalid(offset, ProductRunObservation::new(snapshot, settlement))?);
+    }
+    Ok(observations)
 }
