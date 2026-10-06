@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3638,
-        "tip_oid": "a08a004cb197f65978e2243c2448ecb7d5a99f35",
-        "prefix_sha256": "298345e66e33a4770dadbeeff46df1b010d6ea4af0cc976c1cee36f8eb521bc5"
+        "sequence": 3639,
+        "tip_oid": "bd2938c063df9e81a94a80dab77cafe32f60e144",
+        "prefix_sha256": "5ecf3dd6a4a859e44c166ad40db4352657e247a2396295f61cc36cac48a7852d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2967,
+  "next_comment_id": 2968,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:58:51.840802069Z",
+      "updated_at": "2026-10-06T22:59:33.078707499Z",
       "labels": [
         "ci"
       ],
@@ -22334,6 +22334,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXXR6JpFzrKEJoLcQpNSw/To5r+tTips4hZO6tKo/WuX0nIjqs6BP2rsbhbuKUSsXXQZFsDqUJNr8xQyAJIopBw=="
+        },
+        "d7f5731d-65de-4c36-9571-9da1b2cfc172": {
+          "display_id": 2967,
+          "author": "6ME5",
+          "content": "[action] Issue825 fix committed and pushed to PR112/develop at d2eb633326654d9d629beb26efa0120c8bdf1677; result2965 and published PRbody verified.19-file root repair and final local gates passed288tests2existingignores,100separate repaired7testexercises,strictworkspaceClippy6zero,fmt,WindowsGNUcheck2,strictVerus3ordinaryeffectroots0,rebuiltxtaskall3. All unrelated usage/audit hashes unchanged. Issue824 CLOSED2954 verified. Issue825 OPEN/lock6ME5 pending exacthead native Windows/macOS/Linux acceptance; Foundation run37543905215 currently pending, newhead CIwatch23820 active at /tmp/peritus-pr112-issue825-ci-watch.log, initial9inprogress3skippedzero failures. No local checks/source edits/mutations pending. Historical discardedauthpredicate remains unrecoverable; reproducedETXTBSY copiedfixtureowner andinformationloss defects repaired, no deadlines/retries changed.",
+          "created_at": "2026-10-06T22:59:33.074567761Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS7JSuuq45ie343i1Rdzu4s2/bgsinKB7EnA1aUBCavNJQpG/MeYnP7UzBq4cG6tptRShwgn4rY8K4Mq6G0WgDg=="
         },
         "fca6850f-bdbe-4049-b490-bd7f0f2005f7": {
           "display_id": 2956,
