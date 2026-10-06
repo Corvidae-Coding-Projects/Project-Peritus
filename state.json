@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3570,
-        "tip_oid": "9ab3c5100d20c9e1731d23b014bceccb01665eee",
-        "prefix_sha256": "339d377e6dfe651b6273f572bb19d25c8e48e3d59dd316f070fd46107607a253"
+        "sequence": 3571,
+        "tip_oid": "36e572e53646f90fb8475215f58b68befc0ed3ab",
+        "prefix_sha256": "cf87858e95b922392f813051f394b1ae3dbc8f759f164e94fa2dd6d727fd6369"
       },
       "NWAR": {
         "sequence": 39,
@@ -37273,12 +37273,13 @@
       "display_id": 107,
       "title": "[L007] Independent source-scan and included-content ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L007.\n\n- `crates/runtime/peritus-workspace/src/scoped_inspection.rs:16-17` caps the **complete source at 64 MiB**. `scoped_inspection/read.rs:98-109` rejects it before scanning even for a small selected range.\n- `inspection.rs:9-10` caps **included content at 8 MiB**. `scoped_inspection/read.rs:30-32` refuses a zero or larger caller bound; whole files and selected ranges are rejected rather than truncated at lines 101-109 and 134-138.\n- `scoped_inspection/selection.rs:26-38` rejects byte ranges beyond 64 MiB and line selections beyond **67,108,864** lines. Full source hashing and metadata checks are coupled to range reads, so selecting fewer bytes cannot bypass the source cap.\n- Daily-driving effect: inspection/attachment/checkpoint callers can refuse ordinary large build artifacts and datasets. Checkpoint capture supplies the full-file 8 MiB bound (L003); remaining callers are pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.855919839Z",
-      "updated_at": "2026-10-06T19:14:32.558295722Z",
+      "updated_at": "2026-10-06T19:15:00.199933203Z",
+      "closed_at": "2026-10-06T19:15:00.198657140Z",
       "labels": [
         "daily-driving-limiter"
       ],
