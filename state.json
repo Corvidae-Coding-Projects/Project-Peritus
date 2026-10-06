@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3608,
-        "tip_oid": "612ded97128339d30ece4b877a6f64d40be8c86d",
-        "prefix_sha256": "9ecc8db819f29dedb2b61095e1f96b7fca11fd9bd13e085d57db54238159a085"
+        "sequence": 3609,
+        "tip_oid": "133d5671ab196041ca19d1aba56bc135f38f04fa",
+        "prefix_sha256": "482f758cddaca37feffb91663267df08eb6b9c1a4bafc95144ffd848c8e4d2db"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2945,
+  "next_comment_id": 2946,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26027,7 +26027,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.861171552Z",
-      "updated_at": "2026-10-06T21:29:08.984958944Z",
+      "updated_at": "2026-10-06T21:43:01.083577943Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26076,6 +26076,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcrfAEv9Jkv4BXDaI+0sv/+UBCTbVyIxPWJ1XvUUxtuEwfe3y4r+zlyRS39eWfy8lmibOLMGdopvvkxKEFBCJCw=="
+        },
+        "3738088e-b1ee-4661-bb10-f59909c58996": {
+          "display_id": 2945,
+          "author": "6ME5",
+          "content": "Native Windows evidence for the reopened #108 follow-up is now verified at exact head 42236bb697be2469a8ce5710f582088cb0bf4ab9. Foundation runtime-tools job112508942507 / run37533431757 completed successfully at2026-10-06T21:41:07Z (https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37533431757/job/112508942507); REST job metadata confirms this SHA and success. Downloaded the completed job log and verified that the original deterministic membership-change regression, removal/same-count rename, duplicate/missing/order-independent evidence, deep handle-relative paths, retained continuation after source removal, cursor corruption and source/storage alias checks all executed and passed on Windows. This changes the remaining #108 qualification to native macOS acceptance plus continued CI monitoring. macOS runtime-tools test112508938363 is still queued; both duplicate shard test jobs remain queued. #108 stays open and active until native platform acceptance is complete. No further code changes or new ceilings were introduced.",
+          "created_at": "2026-10-06T21:43:01.067328416Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPkzMc/ZYGdPdNv6o960sXyjspcRAUKybIPkAsX7IUBAMktsKxMeRtgz9J6CzNFyhcwZzFh9BMBHy+5ESeNwzBA=="
         },
         "3eb9e5c2-27e2-4ee0-bac5-e57c1801bb89": {
           "display_id": 2927,
