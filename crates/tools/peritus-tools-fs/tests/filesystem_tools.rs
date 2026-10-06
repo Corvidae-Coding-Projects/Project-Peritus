@@ -133,3 +133,40 @@ fn descriptor_catalog_is_complete_canonical_and_deterministic() {
     );
     assert_eq!(descriptor_digest().expect("digest"), descriptor_digest().expect("digest"));
 }
+
+#[test]
+fn typed_mutations_do_not_reintroduce_patch_body_or_operation_ceilings() {
+    let version = WorkspaceVersion::new(
+        WorkspaceId::new([41; 16]).unwrap(),
+        Generation::first(),
+        RevisionNumber::first(),
+    );
+    let large = CreateInput::new(
+        "large",
+        vec![7; 8 * 1024 * 1024 + 1],
+        FileMode::Regular,
+        LineEndingPolicy::Preserve,
+    )
+    .expect("large typed body");
+    let compiled = CompiledMutation::create(version, large).expect("metadata authority");
+    assert!(
+        matches!(compiled.patch_set().operations()[0].postimage(), Preimage::Present { size, .. } if size == 8 * 1024 * 1024 + 1)
+    );
+    let edits = (0..1_025)
+        .map(|index| {
+            PatchEdit::Create(
+                CreateInput::new(
+                    format!("file-{index:04}"),
+                    Vec::new(),
+                    FileMode::Regular,
+                    LineEndingPolicy::Preserve,
+                )
+                .unwrap(),
+            )
+        })
+        .collect();
+    let compiled =
+        CompiledMutation::patch(version, PatchInput::new(edits).expect("many typed edits"))
+            .expect("one patch");
+    assert_eq!(compiled.patch_set().operations().len(), 1_025);
+}

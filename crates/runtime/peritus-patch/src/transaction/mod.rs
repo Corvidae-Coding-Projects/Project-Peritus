@@ -13,25 +13,14 @@ mod tests;
 
 use peritus_types::{Generation, RevisionNumber, Sha256Digest, WorkspaceId};
 
-use crate::{
-    ErrorCode, PatchError, PatchIdentity, PatchOperationContext, PatchSet, RecoveryClass,
-    RollbackStatus,
-};
+use crate::{PatchError, PatchIdentity, PatchSet};
 
 pub use apply::apply_patch;
 pub use manifest::TransactionPhase;
 pub use recover::recover_transaction;
 
-pub fn validate_patch_manifest_capacity(patch: &PatchSet) -> Result<(), PatchError> {
-    manifest::validate_patch_capacity(patch).map_err(|_| {
-        PatchError::message(
-            ErrorCode::InvalidPatchBounds,
-            RecoveryClass::CorrectPatch,
-            PatchOperationContext::Plan,
-            RollbackStatus::NotRequired,
-            "patch recovery manifest exceeds a configured resource bound",
-        )
-    })
+pub fn legacy_manifest_fits(patch: &PatchSet) -> Result<bool, PatchError> {
+    manifest::legacy_manifest_fits(patch)
 }
 
 /// Stable named effect boundaries used by fault-injection tests and diagnostics.
@@ -44,6 +33,8 @@ pub enum TransactionFaultPoint {
     AfterStageFinal,
     /// After the prepared manifest is durable.
     AfterPreparedManifest,
+    /// After the complete next manifest is synchronized, before replacing the recovery root.
+    BeforePublishManifest,
     /// After the installing phase is durable and before target mutation.
     AfterInstallingManifest,
     /// After one previously absent workspace directory has been created and synchronized.
@@ -70,6 +61,7 @@ impl TransactionFaultPoint {
             Self::BeforePrepare => "before_prepare",
             Self::AfterStageFinal => "after_stage_final",
             Self::AfterPreparedManifest => "after_prepared_manifest",
+            Self::BeforePublishManifest => "before_publish_manifest",
             Self::AfterInstallingManifest => "after_installing_manifest",
             Self::AfterCreateDirectory => "after_create_directory",
             Self::AfterBackupOriginal => "after_backup_original",

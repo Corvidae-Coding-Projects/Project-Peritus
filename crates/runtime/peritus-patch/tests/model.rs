@@ -62,9 +62,9 @@ fn duplicate_and_ancestor_targets_are_rejected() {
 }
 
 #[test]
-fn rejects_recovery_manifest_directory_overflow_during_planning() {
+fn plans_recovery_manifest_beyond_the_legacy_directory_collection() {
     let workspace = WorkspaceId::new([3; 16]).expect("workspace");
-    let operations = (0..peritus_patch::MAX_PATCH_OPERATIONS)
+    let operations = (0..1_024)
         .map(|index| {
             let path = format!("p{index}/{}/file", vec!["d"; 63].join("/"));
             PatchOperation::create(
@@ -74,7 +74,7 @@ fn rejects_recovery_manifest_directory_overflow_during_planning() {
             )
         })
         .collect();
-    let error = PatchSet::new(workspace, Generation::first(), RevisionNumber::first(), operations)
-        .expect_err("directory collection exceeds recovery manifest limit");
-    assert_eq!(error.code(), ErrorCode::InvalidPatchBounds);
+    let patch = PatchSet::new(workspace, Generation::first(), RevisionNumber::first(), operations)
+        .expect("large recovery metadata selects paged storage");
+    assert_eq!(patch.operations().len(), 1_024);
 }

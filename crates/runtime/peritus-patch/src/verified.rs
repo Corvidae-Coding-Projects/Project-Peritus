@@ -14,21 +14,12 @@ pub const fn path_bounds_valid(bytes: usize, components: usize) -> (valid: bool)
     bytes > 0 && bytes <= 4_096 && components > 0 && components <= 256
 }
 
-/// Checks nonempty operation and aggregate final-byte bounds.
+/// Checks the nonempty operation invariant without a cumulative work allowance.
 #[must_use]
-pub const fn patch_bounds_valid(
-    operations: usize,
-    final_bytes: usize,
-    operation_limit: usize,
-    byte_limit: usize,
-) -> (valid: bool)
-    ensures valid == (
-        operations > 0
-            && operations <= operation_limit
-            && final_bytes <= byte_limit
-    )
+pub const fn patch_bounds_valid(operations: usize) -> (valid: bool)
+    ensures valid == (operations > 0)
 {
-    operations > 0 && operations <= operation_limit && final_bytes <= byte_limit
+    operations > 0
 }
 
 /// Checks the three scalar workspace bindings accepted by the planner.

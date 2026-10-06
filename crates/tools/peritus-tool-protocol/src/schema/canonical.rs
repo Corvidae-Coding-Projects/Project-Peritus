@@ -145,7 +145,9 @@ fn schema_value(schema: &Schema) -> JsonValue {
         SchemaKind::Array { items, min_items, max_items } => {
             fields.insert("type".to_owned(), JsonValue::String("array".to_owned()));
             fields.insert("items".to_owned(), schema_value(items));
-            fields.insert("maxItems".to_owned(), JsonValue::Integer(i64::from(*max_items)));
+            if let Some(maximum) = max_items {
+                fields.insert("maxItems".to_owned(), JsonValue::Integer(i64::from(*maximum)));
+            }
             fields.insert("minItems".to_owned(), JsonValue::Integer(i64::from(*min_items)));
         }
         SchemaKind::Object { properties, additional_properties } => {

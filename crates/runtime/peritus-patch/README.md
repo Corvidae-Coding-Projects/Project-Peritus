@@ -10,13 +10,27 @@ reported ordinary failure has restored all original files. If restoration cannot
 transaction remains available to restart recovery and the error is explicitly indeterminate.
 The manifest carries a canonical SHA-256 checksum over every recovery-semantic byte; restart
 decoding verifies it before interpreting paths, preimages, or operation state.
-Inline patch construction rejects final content, aggregate content, operation counts, present
-preimages, and worst-case recovery manifests that exceed its payload policy before filesystem I/O.
-Snapshot restoration uses `SnapshotFile` and `PatchSet::from_snapshot`: it streams exact digest-bound
-contents through the same transaction without inheriting inline patch byte or operation ceilings.
-Both paths observe complete file contents and verify file identity; observation errors never become
-synthetic preimage digests. Version-two snapshot recovery manifests use wide collection counts and
-retain the version-one decoder for already prepared inline transactions.
+Patch admission has no per-file, aggregate-byte, operation-count, or manifest-message ceiling.
+`FinalFile` accepts owned bytes; `SnapshotFile` retains owned streaming storage and can be used with
+ordinary `PatchSet::new` as well as `PatchSet::from_snapshot`. Staging verifies every complete final
+before the first target effect. Preimages are fully hashed and originals remain in durable backup
+storage until the whole transaction is settled.
+
+Previously accepted inline patches retain their exact identities and schema-one/three receipts;
+snapshot identities and schema-two/three receipts also remain unchanged. New ordinary patches that
+do not fit the historical inline representation bind workspace/version, ordered paths, operation
+kinds, exact preimage/postimage digests, sizes, modes and inline line-ending intent under a separate
+version-four identity. Schema-four manifests stream deterministic 64 KiB physical pages with wide
+counts, page checksums and a whole-manifest checksum. There is no page-count allowance. A complete
+replacement is synchronized before atomic publication of the recovery root; pages never authorize
+separate effects. All four decoders remain available for restart recovery.
+
+The historical `MAX_FILE_BYTES`, `MAX_PATCH_BYTES` and `MAX_PATCH_OPERATIONS` exports are retained
+for source compatibility and describe the old inline encoding only. They do not reject patches.
+Independent caller policy/transport ceilings remain owned by those callers. This API still owns
+the complete operation metadata and returns complete receipt bytes in memory; physical memory or
+storage failure is not replaced by a synthetic byte/count allowance. Both representations observe
+complete contents; observation errors never become synthetic preimage digests.
 
 Restart recovery requires a `RecoveryBinding` containing the expected workspace identity,
 generation, and revision. A decoded manifest with a different binding produces an indeterminate

@@ -197,7 +197,7 @@ enum SchemaKind {
     Boolean,
     Integer { minimum: Option<i64>, maximum: Option<i64> },
     String { min_bytes: u32, max_bytes: u32 },
-    Array { items: Box<Schema>, min_items: u32, max_items: u32 },
+    Array { items: Box<Schema>, min_items: u32, max_items: Option<u32> },
     Object { properties: Vec<SchemaProperty>, additional_properties: bool },
 }
 
@@ -245,7 +245,23 @@ impl Schema {
     ///
     /// Rejects an inverted item-cardinality range.
     pub fn array(items: Self, min_items: u32, max_items: u32) -> Result<Self, ProtocolError> {
-        validate::cardinality(min_items, max_items, "array")?;
+        Self::array_with_optional_maximum(items, min_items, Some(max_items))
+    }
+
+    /// Creates an array schema with an optional semantic item ceiling.
+    /// An absent maximum emits no `maxItems`; transport limits remain separately owned.
+    /// Existing bounded array schemas retain their canonical bytes.
+    ///
+    /// # Errors
+    /// Rejects an inverted item-cardinality range when a maximum is present.
+    pub fn array_with_optional_maximum(
+        items: Self,
+        min_items: u32,
+        max_items: Option<u32>,
+    ) -> Result<Self, ProtocolError> {
+        if let Some(maximum) = max_items {
+            validate::cardinality(min_items, maximum, "array")?;
+        }
         Ok(Self {
             kind: SchemaKind::Array { items: Box::new(items), min_items, max_items },
             enum_values: Vec::new(),

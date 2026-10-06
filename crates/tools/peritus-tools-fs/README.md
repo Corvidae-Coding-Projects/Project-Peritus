@@ -19,6 +19,13 @@ can pass it to `WorkspaceGateway::apply_patch`, and its only effect entry consum
 the C1 authorization binding before effect. Successful `MutationOutcome` remains available for a
 separately authorized Git candidate operation.
 
+Typed mutation inputs and their compiled patches have no inherited file-byte, aggregate-byte or
+operation-count allowance. Mutation schemas omit the former `edits.maxItems` and preimage-size
+maximum, so an exact authorized large-file deletion does not require transporting the file body.
+The inline JSON transport/content-string bounds and inspection/search policies remain independent
+contracts. Existing field names and meanings are unchanged; descriptor digests bind the complete
+current schemas and accepted outcomes retain their original exact evidence.
+
 ## Focused checks
 
 From the repository root:

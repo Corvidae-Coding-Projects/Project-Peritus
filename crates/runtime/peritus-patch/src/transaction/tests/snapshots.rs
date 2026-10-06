@@ -24,8 +24,8 @@ impl crate::SnapshotSource for Saved {
 }
 
 fn snapshot_plan(workspace: &std::path::Path) -> (PatchPlan, Vec<u8>) {
-    let before = vec![3_u8; crate::MAX_FILE_BYTES + 1];
-    let after = vec![7_u8; crate::MAX_FILE_BYTES + 1];
+    let before = vec![3_u8; 8 * 1024 * 1024 + 1];
+    let after = vec![7_u8; 8 * 1024 * 1024 + 1];
     std::fs::write(workspace.join("large"), &before).expect("original large file");
     let mut operations = vec![
         PatchOperation::replace_snapshot(
@@ -35,7 +35,7 @@ fn snapshot_plan(workspace: &std::path::Path) -> (PatchPlan, Vec<u8>) {
         )
         .expect("snapshot replacement"),
     ];
-    for index in 0..crate::MAX_PATCH_OPERATIONS {
+    for index in 0..1_024 {
         operations.push(PatchOperation::create_snapshot(
             WorkspacePath::new(format!("small-{index:04}")).expect("path"),
             snapshot(b"saved"),
@@ -72,7 +72,7 @@ fn large_snapshot_with_1025_targets_recovers_exactly_after_restart() {
         recover_transaction(workspace.path(), &transaction, binding()).expect("restart");
     assert_eq!(recovered.state(), RecoveryState::AlreadyApplied);
     assert_eq!(std::fs::read(workspace.path().join("large")).expect("large"), expected);
-    for index in 0..crate::MAX_PATCH_OPERATIONS {
+    for index in 0..1_024 {
         assert_eq!(
             std::fs::read(workspace.path().join(format!("small-{index:04}"))).expect("small"),
             b"saved"
@@ -103,7 +103,7 @@ fn interrupted_large_snapshot_restores_all_preimages_after_restart() {
     assert_eq!(recovered.state(), RecoveryState::RolledBackCleanly);
     assert_eq!(
         std::fs::read(workspace.path().join("large")).expect("original"),
-        vec![3_u8; crate::MAX_FILE_BYTES + 1]
+        vec![3_u8; 8 * 1024 * 1024 + 1]
     );
     assert_eq!(std::fs::read_dir(workspace.path()).expect("workspace entries").count(), 1);
 }

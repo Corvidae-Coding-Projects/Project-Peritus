@@ -20,6 +20,7 @@ use super::{
 };
 
 mod directories;
+mod pages;
 mod snapshots;
 
 struct FailAt {
@@ -253,7 +254,7 @@ fn parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect
 fn oversized_observation_never_matches_a_forged_empty_digest() {
     let directory = tempfile::tempdir().expect("directory");
     let path = directory.path().join("large");
-    std::fs::write(&path, vec![7; crate::set::MAX_FILE_BYTES + 1]).expect("large file");
+    std::fs::write(&path, vec![7; 8 * 1024 * 1024 + 1]).expect("large file");
     let observed = observe_absolute(
         &path,
         crate::PatchOperationContext::InspectPreimage,
@@ -263,7 +264,7 @@ fn oversized_observation_never_matches_a_forged_empty_digest() {
     assert!(matches!(observed, Observation::Present(_)));
     let forged = super::manifest::TargetIdentity::File {
         digest: peritus_codec::sha256(&[]),
-        size: (crate::set::MAX_FILE_BYTES + 1) as u64,
+        size: (8 * 1024 * 1024 + 1) as u64,
         mode: FileMode::Regular,
     };
     assert!(!observation_matches(observed, Some(forged)));

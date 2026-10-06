@@ -1,4 +1,4 @@
-//! Bounded canonical patch sets.
+//! Canonical patch authority independent of inline content and message capacity.
 
 use peritus_codec::{CanonicalWriter, CodecLimits};
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
@@ -8,14 +8,30 @@ use crate::{
     Preimage, RecoveryClass, RollbackStatus,
 };
 
-/// Maximum exact final bytes carried by one file.
-pub const MAX_FILE_BYTES: usize = 8 * 1024 * 1024;
-/// Maximum aggregate final bytes in one patch.
-pub const MAX_PATCH_BYTES: usize = 8 * 1024 * 1024;
-/// Maximum operations in one patch.
-pub const MAX_PATCH_OPERATIONS: usize = 1_024;
+// Historical encoding classification only. Larger inputs use metadata authority and paged
+// transaction storage; these values are never admission limits for a new patch.
+pub const LEGACY_FILE_BYTES: usize = 8 * 1024 * 1024;
+const LEGACY_PATCH_BYTES: usize = 8 * 1024 * 1024;
+pub const LEGACY_PATCH_OPERATIONS: usize = 1_024;
 
-/// Nonempty bounded patch set in deterministic target-path order.
+/// Historical schema-one inline file capacity, retained for source compatibility.
+/// This is not an admission ceiling for [`crate::FinalFile`] or [`PatchSet`].
+pub const MAX_FILE_BYTES: usize = LEGACY_FILE_BYTES;
+/// Historical inline aggregate capacity, retained for source compatibility.
+/// This is not an admission ceiling for [`PatchSet`].
+pub const MAX_PATCH_BYTES: usize = LEGACY_PATCH_BYTES;
+/// Historical schema-one operation capacity, retained for source compatibility.
+/// This is not an admission ceiling for [`PatchSet`].
+pub const MAX_PATCH_OPERATIONS: usize = LEGACY_PATCH_OPERATIONS;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Representation {
+    Inline,
+    Snapshot,
+    Paged,
+}
+
+/// Nonempty patch set in deterministic target-path order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PatchSet {
     workspace_id: WorkspaceId,
@@ -23,15 +39,17 @@ pub struct PatchSet {
     expected_revision: RevisionNumber,
     operations: Vec<PatchOperation>,
     identity: PatchIdentity,
-    snapshot: bool,
+    representation: Representation,
 }
 
 impl PatchSet {
-    /// Validates bounds and target conflicts, sorts by path, and computes stable identity.
+    /// Validates target conflicts, sorts by path, and computes stable authority.
+    /// Owned streamed content is accepted alongside inline content. Size and operation count
+    /// select a compatible representation rather than limit the authorized mutation.
     ///
     /// # Errors
     ///
-    /// Returns a typed error for empty/oversized, duplicate, or ancestor-conflicting targets.
+    /// Returns a typed error for empty, duplicate, or ancestor-conflicting targets.
     pub fn new(
         workspace_id: WorkspaceId,
         expected_generation: Generation,
@@ -62,30 +80,7 @@ impl PatchSet {
         mut operations: Vec<PatchOperation>,
         snapshot: bool,
     ) -> Result<Self, PatchError> {
-        let total_bytes = operations.iter().try_fold(0usize, |total, operation| {
-            total
-                .checked_add(operation.final_file().map_or(0, |file| file.bytes().len()))
-                .ok_or_else(arithmetic_error)
-        })?;
-        if operations.is_empty()
-            || (!snapshot
-                && (!crate::verified::patch_bounds_valid(
-                    operations.len(),
-                    total_bytes,
-                    MAX_PATCH_OPERATIONS,
-                    MAX_PATCH_BYTES,
-                ) || operations.iter().any(PatchOperation::is_snapshot)))
-        {
-            return Err(bounds_error());
-        }
-        if !snapshot
-            && operations.iter().any(|operation| {
-                matches!(
-                    operation.preimage(),
-                    Preimage::Present { size, .. } if size > MAX_FILE_BYTES as u64
-                )
-            })
-        {
+        if !crate::verified::patch_bounds_valid(operations.len()) {
             return Err(bounds_error());
         }
         operations.sort_unstable_by(|left, right| left.path().cmp(right.path()));
@@ -111,27 +106,59 @@ impl PatchSet {
                 .at(pair[0].path().clone()));
             }
         }
-        let identity = canonical_identity(
+        let legacy = (!snapshot)
+            .then(|| {
+                legacy_inline_identity(
+                    workspace_id,
+                    expected_generation,
+                    expected_revision,
+                    &operations,
+                )
+            })
+            .flatten();
+        let mut patch = Self {
             workspace_id,
             expected_generation,
             expected_revision,
-            &operations,
-            snapshot,
-        )?;
-        let patch = Self {
-            workspace_id,
-            expected_generation,
-            expected_revision,
+            identity: legacy.unwrap_or_else(|| {
+                metadata_identity(
+                    workspace_id,
+                    expected_generation,
+                    expected_revision,
+                    &operations,
+                    snapshot,
+                )
+            }),
+            representation: if snapshot {
+                Representation::Snapshot
+            } else if legacy.is_some() {
+                Representation::Inline
+            } else {
+                Representation::Paged
+            },
             operations,
-            identity,
-            snapshot,
         };
-        crate::transaction::validate_patch_manifest_capacity(&patch)?;
+        if patch.representation == Representation::Inline
+            && !crate::transaction::legacy_manifest_fits(&patch)?
+        {
+            patch.representation = Representation::Paged;
+            patch.identity = metadata_identity(
+                workspace_id,
+                expected_generation,
+                expected_revision,
+                &patch.operations,
+                false,
+            );
+        }
         Ok(patch)
     }
 
     pub(crate) const fn is_snapshot(&self) -> bool {
-        self.snapshot
+        matches!(self.representation, Representation::Snapshot)
+    }
+
+    pub(crate) const fn is_paged(&self) -> bool {
+        matches!(self.representation, Representation::Paged)
     }
 
     /// Returns the bound workspace identity.
@@ -194,15 +221,24 @@ impl PatchSet {
     }
 }
 
-fn canonical_identity(
+fn legacy_inline_identity(
     workspace_id: WorkspaceId,
     generation: Generation,
     revision: RevisionNumber,
     operations: &[PatchOperation],
-    snapshot: bool,
-) -> Result<PatchIdentity, PatchError> {
-    if snapshot {
-        return Ok(snapshot_identity(workspace_id, generation, revision, operations));
+) -> Option<PatchIdentity> {
+    let total_bytes = operations.iter().try_fold(0usize, |total, operation| {
+        total.checked_add(operation.final_file().map_or(0, |file| file.bytes().len()))
+    })?;
+    if operations.len() > LEGACY_PATCH_OPERATIONS
+        || total_bytes > LEGACY_PATCH_BYTES
+        || operations.iter().any(|operation| {
+            operation.is_snapshot()
+                || matches!(operation.preimage(), Preimage::Present { size, .. } if size > LEGACY_FILE_BYTES as u64)
+                || operation.final_file().is_some_and(|file| file.bytes().len() > LEGACY_FILE_BYTES)
+        })
+    {
+        return None;
     }
     let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
     let encoded = (|| {
@@ -258,21 +294,31 @@ fn canonical_identity(
         }
         Ok::<(), peritus_codec::CodecError>(())
     })();
-    encoded.map_err(|_| bounds_error())?;
-    Ok(PatchIdentity::new(peritus_codec::sha256(writer.as_slice())))
+    // Typed paths and identities are already checked. Failure here means the historical
+    // inline representation does not fit; the paged representation binds the same intent.
+    encoded.ok()?;
+    Some(PatchIdentity::new(peritus_codec::sha256(writer.as_slice())))
 }
 
-fn snapshot_identity(
+fn metadata_identity(
     workspace_id: WorkspaceId,
     generation: Generation,
     revision: RevisionNumber,
     operations: &[PatchOperation],
+    snapshot: bool,
 ) -> PatchIdentity {
     use sha2::{Digest as _, Sha256};
 
     let mut digest = Sha256::new();
     let directories = operations.iter().any(PatchOperation::covers_directory);
-    digest.update(if directories { b"peritus-snapshot-v3\0" } else { b"peritus-snapshot-v2\0" });
+    let domain: &[u8] = if !snapshot {
+        b"peritus-patch-set-v4\0"
+    } else if directories {
+        b"peritus-snapshot-v3\0"
+    } else {
+        b"peritus-snapshot-v2\0"
+    };
+    digest.update(domain);
     digest.update(workspace_id.as_bytes());
     digest.update(generation.get().to_be_bytes());
     digest.update(revision.get().to_be_bytes());
@@ -302,6 +348,12 @@ fn snapshot_identity(
                 }
             }
         }
+        if !snapshot {
+            match operation.final_file() {
+                Some(file) => digest.update([1, file.line_endings().tag()]),
+                None => digest.update([0]),
+            }
+        }
     }
     PatchIdentity::new(peritus_types::Sha256Digest::new(digest.finalize().into()))
 }
@@ -312,63 +364,9 @@ const fn bounds_error() -> PatchError {
         RecoveryClass::CorrectPatch,
         PatchOperationContext::Plan,
         RollbackStatus::NotRequired,
-        "patch is empty or exceeds a configured resource bound",
-    )
-}
-
-const fn arithmetic_error() -> PatchError {
-    PatchError::message(
-        ErrorCode::ArithmeticOverflow,
-        RecoveryClass::CorrectPatch,
-        PatchOperationContext::Plan,
-        RollbackStatus::NotRequired,
-        "patch aggregate byte count overflowed",
+        "patch must contain at least one operation",
     )
 }
 
 #[cfg(test)]
-mod tests {
-    use peritus_types::{Generation, RevisionNumber, WorkspaceId};
-
-    use crate::{FileMode, FinalFile, LineEndingPolicy, PatchOperation, WorkspacePath};
-
-    use super::PatchSet;
-
-    fn workspace() -> WorkspaceId {
-        WorkspaceId::new([7; 16]).expect("nonzero")
-    }
-
-    #[test]
-    fn canonical_identity_does_not_depend_on_input_order() {
-        let file = |byte| {
-            FinalFile::new(vec![byte], FileMode::Regular, LineEndingPolicy::Preserve).expect("file")
-        };
-        let a = PatchOperation::create(WorkspacePath::new("a").expect("path"), file(1));
-        let b = PatchOperation::create(WorkspacePath::new("b").expect("path"), file(2));
-        let make = |operations| {
-            PatchSet::new(workspace(), Generation::first(), RevisionNumber::first(), operations)
-                .expect("patch")
-        };
-        assert_eq!(make(vec![a.clone(), b.clone()]).identity(), make(vec![b, a]).identity());
-    }
-
-    #[test]
-    fn directory_permissions_are_bound_into_inline_and_snapshot_authority() {
-        for constructor in [PatchSet::new, PatchSet::from_snapshot] {
-            let patch = |bits| {
-                constructor(
-                    workspace(),
-                    Generation::first(),
-                    RevisionNumber::first(),
-                    vec![PatchOperation::create_directory(
-                        WorkspacePath::new("empty").expect("path"),
-                        crate::DirectoryMode::new(bits).expect("mode"),
-                    )],
-                )
-                .expect("directory patch")
-            };
-            assert_ne!(patch(0o750).identity(), patch(0o700).identity());
-        }
-        assert!(crate::DirectoryMode::new(0o10000).is_err());
-    }
-}
+mod tests;

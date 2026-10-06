@@ -234,7 +234,7 @@ fn directory_manifest_keeps_large_file_and_many_path_snapshot_support() {
     use std::io::Write as _;
     let workspace = tempfile::tempdir().expect("workspace");
     let transactions = tempfile::tempdir().expect("transactions");
-    let bytes = vec![37; crate::MAX_FILE_BYTES + 1];
+    let bytes = vec![37; 8 * 1024 * 1024 + 1];
     let mut file = tempfile::tempfile().expect("snapshot source");
     file.write_all(&bytes).expect("snapshot bytes");
     let mut operations = vec![PatchOperation::create_snapshot(
@@ -246,7 +246,7 @@ fn directory_manifest_keeps_large_file_and_many_path_snapshot_support() {
             FileMode::Regular,
         ),
     )];
-    for index in 0..=crate::MAX_PATCH_OPERATIONS {
+    for index in 0..=1_024 {
         operations.push(PatchOperation::create_directory(
             WorkspacePath::new(format!("empty-{index:04}")).expect("path"),
             mode(),
@@ -275,8 +275,5 @@ fn directory_manifest_keeps_large_file_and_many_path_snapshot_support() {
         RecoveryState::AlreadyApplied
     );
     assert_eq!(fs::read(workspace.path().join("large")).expect("large file"), bytes);
-    assert_eq!(
-        fs::read_dir(workspace.path()).expect("workspace entries").count(),
-        crate::MAX_PATCH_OPERATIONS + 2
-    );
+    assert_eq!(fs::read_dir(workspace.path()).expect("workspace entries").count(), 1_026);
 }

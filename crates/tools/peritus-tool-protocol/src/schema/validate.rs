@@ -123,8 +123,10 @@ fn value_without_enum(
             }
         }
         (SchemaKind::Array { items, min_items, max_items }, JsonValue::Array(values)) => {
-            let length = u32::try_from(values.len()).unwrap_or(u32::MAX);
-            if length < *min_items || length > *max_items {
+            let length = values.len();
+            if length < *min_items as usize
+                || max_items.is_some_and(|maximum| length > maximum as usize)
+            {
                 return Err(violation(path, "array is outside the allowed cardinality"));
             }
             for (index, value) in values.iter().enumerate() {

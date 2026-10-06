@@ -1,4 +1,4 @@
-//! Exact version-one filesystem schemas.
+//! Exact filesystem schemas; mutation cardinality is independent of patch storage pages.
 
 use peritus_tool_protocol::{BoundedJson, JsonLimits, Schema, SchemaProperty};
 
@@ -70,7 +70,7 @@ pub fn patch_schema() -> Result<Schema, FsToolError> {
     ])?;
     object(vec![property(
         "edits",
-        Schema::array(edit, 1, 1_024).map_err(|_| schema_error())?,
+        Schema::array_with_optional_maximum(edit, 1, None).map_err(|_| schema_error())?,
         true,
     )?])
 }
@@ -105,7 +105,7 @@ fn preimage_schema(allow_absent: bool) -> Result<Schema, FsToolError> {
     object(vec![
         property("digest", Schema::string(64, 64).map_err(|_| schema_error())?, false)?,
         property("mode", mode()?, false)?,
-        property("size", integer(0, 8 * 1_024 * 1_024)?, false)?,
+        property("size", Schema::integer(Some(0), None).map_err(|_| schema_error())?, false)?,
         property(
             "state",
             enumeration(if allow_absent { &["absent", "present"][..] } else { &["present"][..] })?,

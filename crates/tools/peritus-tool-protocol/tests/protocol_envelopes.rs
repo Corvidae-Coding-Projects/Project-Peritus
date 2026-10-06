@@ -168,6 +168,37 @@ fn complete_schema_validation_rejects_wrong_and_extra_values() {
 }
 
 #[test]
+fn optional_array_maximum_preserves_old_bytes_and_has_no_substitute_ceiling() {
+    let bounded = Schema::array(Schema::boolean(), 1, 2).unwrap();
+    assert_eq!(
+        bounded.canonical_bytes(),
+        br#"{"items":{"type":"boolean"},"maxItems":2,"minItems":1,"type":"array"}"#
+    );
+    let unbounded = Schema::array_with_optional_maximum(Schema::boolean(), 1, None).unwrap();
+    assert_eq!(
+        unbounded.canonical_bytes(),
+        br#"{"items":{"type":"boolean"},"minItems":1,"type":"array"}"#
+    );
+    let values =
+        BoundedJson::array(vec![BoundedJson::boolean(true); 1_025], JsonLimits::PRODUCTION)
+            .unwrap();
+    assert!(bounded.validate(&values).is_err());
+    unbounded.validate(&values).unwrap();
+    assert!(
+        unbounded
+            .validate(&BoundedJson::array(Vec::new(), JsonLimits::PRODUCTION).unwrap())
+            .is_err()
+    );
+    assert!(
+        unbounded
+            .validate(&BoundedJson::parse("[true,1]", JsonLimits::PRODUCTION).unwrap())
+            .is_err()
+    );
+    assert!(Schema::array_with_optional_maximum(Schema::boolean(), 2, Some(1)).is_err());
+    assert_eq!(bounded.compatibility_with(&unbounded), SchemaCompatibility::Breaking);
+}
+
+#[test]
 fn canonical_json_rejects_duplicate_keys_at_every_depth() {
     let error =
         BoundedJson::parse(r#"{"outer":{"same":1,"same":2}}"#, JsonLimits::PRODUCTION).unwrap_err();

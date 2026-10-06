@@ -64,7 +64,7 @@ pub(super) fn read_identity(
     }
     let digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(|_| ())?);
     let size = reader.read_u64().map_err(|_| ())?;
-    if schema == 1 && size > crate::set::MAX_FILE_BYTES as u64 {
+    if schema == 1 && size > crate::set::LEGACY_FILE_BYTES as u64 {
         return Err(());
     }
     let mode = FileMode::from_tag(reader.read_u8().map_err(|_| ())?).ok_or(())?;

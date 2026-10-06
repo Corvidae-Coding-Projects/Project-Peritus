@@ -30,6 +30,83 @@ fn router_dispatches_remove_replace_and_atomic_multi_file_patch() {
 }
 
 #[test]
+fn router_removes_a_large_file_using_exact_authorized_preimage_metadata() {
+    let temp = TempDir::new().expect("temporary root");
+    let lower = Ids::new();
+    let parent = lower.for_tool_action(81, "fs.remove");
+    let mut fixture = workspace_fixture(&temp, &lower, "large-remove");
+    let bytes = vec![29; 8 * 1024 * 1024 + 1];
+    let target = fixture.gateway.state().binding().root().join("large");
+    std::fs::write(&target, &bytes).expect("large file");
+    let compiled = CompiledMutation::remove(
+        support::workspace_version(&lower),
+        RemoveInput::new("large", Preimage::from_bytes(&bytes, FileMode::Regular))
+            .expect("exact preimage"),
+    )
+    .expect("one large delete");
+    let json = format!(r#"{{"path":"large","preimage":{}}}"#, present_json(&bytes));
+    let (router, prepared) = support::prepare(&parent, "fs.remove", support::arguments(&json));
+    let (outcome, mutation) = support::dispatch(
+        &temp,
+        &lower,
+        &parent,
+        &mut fixture.gateway,
+        FsDispatchKind::Remove,
+        prepared,
+        router,
+        compiled,
+    );
+    support::assert_success(outcome);
+    assert!(mutation.is_some());
+    assert!(!target.exists());
+}
+
+#[test]
+fn typed_1025_edit_patch_applies_through_one_authorized_workspace_action() {
+    let temp = TempDir::new().expect("temporary root");
+    let lower = Ids::new();
+    let mut fixture = workspace_fixture(&temp, &lower, "many-edits");
+    let edits = (0..1_025)
+        .map(|index| {
+            PatchEdit::Create(
+                CreateInput::new(
+                    format!("file-{index:04}"),
+                    b"saved".to_vec(),
+                    FileMode::Regular,
+                    LineEndingPolicy::Preserve,
+                )
+                .expect("edit"),
+            )
+        })
+        .collect();
+    let compiled = CompiledMutation::patch(
+        support::workspace_version(&lower),
+        PatchInput::new(edits).expect("many edits"),
+    )
+    .expect("one compiled patch");
+    // C4's separate JSON member ceiling is tracked by #202. Exercise the typed mutation
+    // boundary with complete C1 authority, without claiming that transport is fixed.
+    let patch = compiled.into_patch();
+    let identity = patch.identity();
+    let intent =
+        authority_support::intent(&lower, peritus_workspace::patch_authorization_payload(&patch));
+    let receipts = authority_support::receipts(&temp, &lower, &intent);
+    let request = authority_support::exact_request(&intent, &receipts, &lower);
+    let outcome = fixture.gateway.apply_patch(&request, patch).expect("one authorized patch");
+    assert_eq!(outcome.patch_identity(), identity);
+    assert_eq!(outcome.action_id(), lower.action);
+    for index in 0..1_025 {
+        assert_eq!(
+            std::fs::read(
+                fixture.gateway.state().binding().root().join(format!("file-{index:04}"))
+            )
+            .expect("final"),
+            b"saved"
+        );
+    }
+}
+
+#[test]
 fn authorized_preimage_conflict_is_failed_without_effect() {
     let temp = TempDir::new().expect("temporary root");
     let lower = Ids::new();

@@ -12,6 +12,7 @@ use crate::{
 };
 
 mod codec;
+mod pages;
 use codec::{
     kind_from_tag, kind_tag, read_count, read_identity, shape_valid, write_count, write_identity,
 };
@@ -123,7 +124,9 @@ impl Manifest {
 
     fn from_patch(patch: &crate::PatchSet, created_directories: Vec<WorkspacePath>) -> Self {
         Self {
-            schema: if patch.operations().iter().any(PatchOperation::covers_directory) {
+            schema: if patch.is_paged() {
+                4
+            } else if patch.operations().iter().any(PatchOperation::covers_directory) {
                 3
             } else if patch.is_snapshot() {
                 2
@@ -141,6 +144,11 @@ impl Manifest {
     }
 
     pub(super) fn encode(&self) -> Result<Vec<u8>, PatchError> {
+        if self.schema == 4 {
+            let mut bytes = Vec::new();
+            pages::write(self, &mut bytes)?;
+            return Ok(bytes);
+        }
         let mut writer = CanonicalWriter::new(if self.schema == 1 {
             CodecLimits::PRODUCTION
         } else {
@@ -187,7 +195,7 @@ impl Manifest {
                 return None;
             }
             let schema = reader.read_u16().ok()?;
-            if schema != 1 && schema != 2 && schema != 3 {
+            if schema != 1 && schema != 2 && schema != 3 && schema != 4 {
                 return None;
             }
             if schema == 1 && bytes.len() > CodecLimits::PRODUCTION.max_payload_bytes {
@@ -199,33 +207,46 @@ impl Manifest {
             let revision = RevisionNumber::new(reader.read_u64().ok()?).ok()?;
             let identity = PatchIdentity::new(Sha256Digest::new(reader.read_fixed::<32>().ok()?));
             let entry_count = read_count(&mut reader, schema, 8)?;
-            if entry_count == 0 || (schema == 1 && entry_count > crate::MAX_PATCH_OPERATIONS) {
+            if entry_count == 0
+                || (schema == 1 && entry_count > crate::set::LEGACY_PATCH_OPERATIONS)
+            {
                 return None;
             }
-            let mut entries = Vec::with_capacity(entry_count);
-            for _ in 0..entry_count {
-                let kind = kind_from_tag(reader.read_u8().ok()?)?;
-                if schema < 3
-                    && matches!(
-                        kind,
-                        PatchOperationKind::CreateDirectory | PatchOperationKind::DeleteDirectory
-                    )
-                {
-                    return None;
+            let entries = if schema == 4 {
+                pages::read_entries(&mut reader, entry_count)?
+            } else {
+                let mut entries = Vec::with_capacity(entry_count);
+                for _ in 0..entry_count {
+                    let kind = kind_from_tag(reader.read_u8().ok()?)?;
+                    if schema < 3
+                        && matches!(
+                            kind,
+                            PatchOperationKind::CreateDirectory
+                                | PatchOperationKind::DeleteDirectory
+                        )
+                    {
+                        return None;
+                    }
+                    let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
+                    let preimage = read_identity(&mut reader, schema).ok()?;
+                    let postimage = read_identity(&mut reader, schema).ok()?;
+                    if !shape_valid(kind, preimage, postimage) {
+                        return None;
+                    }
+                    entries.push(ManifestEntry { kind, path, preimage, postimage });
                 }
-                let path = WorkspacePath::new(reader.read_str().ok()?).ok()?;
-                let preimage = read_identity(&mut reader, schema).ok()?;
-                let postimage = read_identity(&mut reader, schema).ok()?;
-                if !shape_valid(kind, preimage, postimage) {
-                    return None;
-                }
-                entries.push(ManifestEntry { kind, path, preimage, postimage });
-            }
+                entries
+            };
             let directory_count = read_count(&mut reader, schema, 5)?;
-            let mut created_directories = Vec::with_capacity(directory_count);
-            for _ in 0..directory_count {
-                created_directories.push(WorkspacePath::new(reader.read_str().ok()?).ok()?);
-            }
+            let created_directories = if schema == 4 {
+                pages::read_directories(&mut reader, directory_count)?
+            } else {
+                let mut directories = Vec::with_capacity(directory_count);
+                for _ in 0..directory_count {
+                    directories.push(WorkspacePath::new(reader.read_str().ok()?).ok()?);
+                }
+                directories
+            };
             reader.finish().ok()?;
             let manifest = Self {
                 schema,
@@ -240,6 +261,20 @@ impl Manifest {
             manifest.structure_valid().then_some(manifest)
         })();
         result.ok_or_else(corrupt_manifest)
+    }
+
+    pub(super) fn write_to(&self, output: &mut dyn std::io::Write) -> Result<(), PatchError> {
+        if self.schema == 4 {
+            pages::write(self, output)
+        } else {
+            output.write_all(&self.encode()?).map_err(|error| {
+                PatchError::io(
+                    PatchOperationContext::PersistManifest,
+                    RollbackStatus::NotRequired,
+                    error,
+                )
+            })
+        }
     }
 
     fn structure_valid(&self) -> bool {
@@ -264,7 +299,7 @@ impl Manifest {
     }
 }
 
-pub(super) fn validate_patch_capacity(patch: &crate::PatchSet) -> Result<(), PatchError> {
+pub(super) fn legacy_manifest_fits(patch: &crate::PatchSet) -> Result<bool, PatchError> {
     let mut directories = BTreeSet::new();
     for operation in patch.operations() {
         let components: Vec<_> = operation.path().components().collect();
@@ -281,7 +316,7 @@ pub(super) fn validate_patch_capacity(patch: &crate::PatchSet) -> Result<(), Pat
     directories.sort_by(|left, right| {
         left.components().count().cmp(&right.components().count()).then_with(|| left.cmp(right))
     });
-    Manifest::from_patch(patch, directories).encode().map(|_| ())
+    Ok(Manifest::from_patch(patch, directories).encode().is_ok())
 }
 
 const fn corrupt_manifest() -> PatchError {

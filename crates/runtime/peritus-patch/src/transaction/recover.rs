@@ -124,7 +124,7 @@ fn classify_transaction(
         }
         TransactionPhase::Installing if facts.all_post => {
             manifest.phase = TransactionPhase::Installed;
-            persist_manifest(transaction_directory, &manifest.encode()?)?;
+            persist_manifest(transaction_directory, &manifest, &super::NoFaults)?;
             completed_outcome(
                 RecoveryState::AlreadyApplied,
                 binding,

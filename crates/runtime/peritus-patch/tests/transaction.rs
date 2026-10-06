@@ -5,6 +5,7 @@ use peritus_patch::{
     WorkspacePath, apply_patch,
 };
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
+use std::io::Write as _;
 
 fn final_file(bytes: &[u8], mode: FileMode) -> FinalFile {
     FinalFile::new(bytes.to_vec(), mode, LineEndingPolicy::Preserve).expect("bounded final file")
@@ -150,9 +151,10 @@ fn rejects_targets_inside_a_nested_git_worktree() {
 }
 
 #[test]
-fn rejects_oversized_preimage_before_application() {
+fn large_preimages_remain_exact_and_can_be_replaced_or_deleted() {
     let workspace = tempfile::tempdir().expect("workspace");
-    let bytes = vec![5; peritus_patch::MAX_PATCH_BYTES + 1];
+    let transactions = tempfile::tempdir().expect("transactions");
+    let bytes = vec![5; 8 * 1024 * 1024 + 1];
     std::fs::write(workspace.path().join("large"), &bytes).expect("large preimage");
     let operation = PatchOperation::replace(
         WorkspacePath::new("large").expect("path"),
@@ -160,13 +162,58 @@ fn rejects_oversized_preimage_before_application() {
         final_file(b"replacement", FileMode::Regular),
     )
     .expect("replace shape");
-    let error = PatchSet::new(
-        workspace_id(),
-        Generation::first(),
-        RevisionNumber::first(),
-        vec![operation],
-    )
-    .expect_err("oversized preimage rejected");
-    assert_eq!(error.code(), ErrorCode::InvalidPatchBounds);
+    let error = apply_patch(workspace.path(), transactions.path(), &plan(vec![operation]))
+        .expect_err("a large preimage with the wrong digest remains rejected");
+    assert_eq!(error.code(), ErrorCode::PreimageMismatch);
     assert_eq!(std::fs::read(workspace.path().join("large")).expect("unchanged"), bytes);
+    std::fs::write(workspace.path().join("delete-large"), &bytes).expect("delete preimage");
+    let operations = vec![
+        PatchOperation::replace(
+            WorkspacePath::new("large").expect("path"),
+            Preimage::from_bytes(&bytes, FileMode::Regular),
+            final_file(b"replacement", FileMode::Regular),
+        )
+        .expect("replace"),
+        PatchOperation::delete(
+            WorkspacePath::new("delete-large").expect("path"),
+            Preimage::from_bytes(&bytes, FileMode::Regular),
+        )
+        .expect("delete"),
+    ];
+    let plan = plan(operations);
+    let applied =
+        apply_patch(workspace.path(), transactions.path(), &plan).expect("large preimages");
+    assert_eq!(applied.identity(), plan.identity());
+    assert_eq!(std::fs::read(workspace.path().join("large")).expect("replaced"), b"replacement");
+    assert!(!workspace.path().join("delete-large").exists());
+}
+
+#[test]
+fn large_inline_and_streamed_finals_share_one_atomic_transaction() {
+    let workspace = tempfile::tempdir().expect("workspace");
+    let transactions = tempfile::tempdir().expect("transactions");
+    let bytes = vec![23; 8 * 1024 * 1024 + 1];
+    let retained = tempfile::tempfile().expect("owned source");
+    (&retained).write_all(&bytes).expect("retain content");
+    let snapshot = peritus_patch::SnapshotFile::new(
+        retained,
+        peritus_codec::sha256(&bytes),
+        bytes.len() as u64,
+        FileMode::Regular,
+    );
+    let plan = plan(vec![
+        PatchOperation::create(
+            WorkspacePath::new("inline").expect("path"),
+            final_file(&bytes, FileMode::Regular),
+        ),
+        PatchOperation::create_snapshot(WorkspacePath::new("streamed").expect("path"), snapshot),
+    ]);
+    let applied =
+        apply_patch(workspace.path(), transactions.path(), &plan).expect("one large patch");
+    for path in ["inline", "streamed"] {
+        assert_eq!(std::fs::read(workspace.path().join(path)).expect("installed"), bytes);
+    }
+    assert_eq!(applied.identity(), plan.identity());
+    assert!(applied.installed_manifest().len() < 1024);
+    assert_eq!(peritus_codec::sha256(applied.installed_manifest()), applied.manifest_digest());
 }

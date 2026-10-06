@@ -194,7 +194,7 @@ impl CreateInput {
     /// Creates an absent-target file input.
     ///
     /// # Errors
-    /// Rejects an invalid path or oversized final content.
+    /// Rejects an invalid or protected path.
     pub fn new(
         path: impl Into<String>,
         bytes: Vec<u8>,
@@ -209,7 +209,7 @@ impl WriteInput {
     /// Creates an explicit absent-or-present write input.
     ///
     /// # Errors
-    /// Rejects an invalid path, preimage, or oversized final content.
+    /// Rejects an invalid or protected path.
     pub fn new(
         path: impl Into<String>,
         preimage: Preimage,
@@ -236,7 +236,7 @@ impl ReplaceInput {
     /// Creates an exact present-target replacement input.
     ///
     /// # Errors
-    /// Rejects an invalid path, absent preimage, or oversized final content.
+    /// Rejects an invalid path or absent preimage.
     pub fn new(
         path: impl Into<String>,
         preimage: Preimage,
@@ -267,7 +267,7 @@ pub enum PatchEdit {
     Remove(RemoveInput),
 }
 
-/// Nonempty bounded atomic multi-file patch input.
+/// Nonempty atomic multi-file patch input.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PatchInput {
     pub(crate) edits: Vec<PatchEdit>,
@@ -277,12 +277,12 @@ impl PatchInput {
     /// Creates a checked nonempty patch input.
     ///
     /// # Errors
-    /// Rejects empty or excessive operation counts.
+    /// Rejects an empty patch.
     pub fn new(edits: Vec<PatchEdit>) -> Result<Self, FsToolError> {
-        if edits.is_empty() || edits.len() > peritus_patch::MAX_PATCH_OPERATIONS {
+        if edits.is_empty() {
             return Err(FsToolError::invalid(
                 FsToolOperation::Patch,
-                "patch operation count is outside its bound",
+                "patch must contain at least one operation",
             ));
         }
         Ok(Self { edits })
@@ -298,9 +298,6 @@ fn final_input(
 ) -> Result<FinalInput, FsToolError> {
     let path = WorkspacePath::new(path.into())
         .map_err(|_| FsToolError::invalid(operation, "workspace path is invalid or protected"))?;
-    if bytes.len() > peritus_patch::MAX_PATCH_BYTES {
-        return Err(FsToolError::invalid(operation, "final file exceeds the patch byte bound"));
-    }
     Ok(FinalInput { path, bytes, mode, line_endings })
 }
 

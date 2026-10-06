@@ -2,7 +2,6 @@
 
 use std::{
     fs::{self, OpenOptions},
-    io::Write as _,
     path::{Path, PathBuf},
 };
 
@@ -52,7 +51,7 @@ pub(super) fn prepare_transaction(
         }
     }
     sync_directory(transaction_directory, RollbackStatus::NotRequired)?;
-    persist_manifest(transaction_directory, &manifest.encode()?)?;
+    persist_manifest(transaction_directory, manifest, faults)?;
     faults.check(TransactionFaultPoint::AfterPreparedManifest).map_err(|error| {
         PatchError::io(PatchOperationContext::PersistManifest, RollbackStatus::NotRequired, error)
     })
@@ -110,7 +109,8 @@ fn stage_final(
 
 pub(super) fn persist_manifest(
     transaction_directory: &Path,
-    bytes: &[u8],
+    manifest: &Manifest,
+    faults: &dyn FaultInjector,
 ) -> Result<(), PatchError> {
     let next = transaction_directory.join(NEXT_MANIFEST_FILE);
     let current = transaction_directory.join(MANIFEST_FILE);
@@ -123,7 +123,11 @@ pub(super) fn persist_manifest(
             )
         },
     )?;
-    file.write_all(bytes).and_then(|()| file.sync_all()).map_err(|error| {
+    manifest.write_to(&mut file)?;
+    file.sync_all().map_err(|error| {
+        PatchError::io(PatchOperationContext::PersistManifest, RollbackStatus::NotRequired, error)
+    })?;
+    faults.check(TransactionFaultPoint::BeforePublishManifest).map_err(|error| {
         PatchError::io(PatchOperationContext::PersistManifest, RollbackStatus::NotRequired, error)
     })?;
     fs::rename(&next, &current).map_err(|error| {

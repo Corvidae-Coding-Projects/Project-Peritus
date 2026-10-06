@@ -99,8 +99,7 @@ pub(super) fn apply_with_faults(
     }
 
     manifest.phase = TransactionPhase::Installing;
-    let installing = manifest.encode()?;
-    if let Err(error) = persist_manifest(&transaction_directory, &installing) {
+    if let Err(error) = persist_manifest(&transaction_directory, &manifest, faults) {
         let _cleanup_result = cleanup_transaction(&transaction_directory, &roots.transaction_root);
         return Err(error);
     }
@@ -185,7 +184,7 @@ fn install_all(
     verify_manifest_postimages(workspace, manifest)?;
     manifest.phase = TransactionPhase::Installed;
     let installed = manifest.encode()?;
-    persist_manifest(transaction_directory, &installed)?;
+    persist_manifest(transaction_directory, manifest, faults)?;
     Ok(installed)
 }
 

@@ -12,7 +12,7 @@ pub enum ErrorCode {
     InvalidPath,
     /// The path names protected Git, Peritus, or nested-repository metadata.
     ProtectedPath,
-    /// A patch contained no operations or exceeded a configured bound.
+    /// A patch contained no operations; the historical textual code is retained.
     InvalidPatchBounds,
     /// More than one operation named the same target.
     DuplicateTarget,

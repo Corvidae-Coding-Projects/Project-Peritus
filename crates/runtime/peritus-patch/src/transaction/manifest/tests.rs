@@ -1,5 +1,6 @@
 use super::*;
 use crate::{FinalFile, LineEndingPolicy, PatchSet};
+mod pages;
 
 fn patch(paths: impl Iterator<Item = String>) -> PatchSet {
     let empty = FinalFile::new(Vec::new(), FileMode::Regular, LineEndingPolicy::Preserve)
