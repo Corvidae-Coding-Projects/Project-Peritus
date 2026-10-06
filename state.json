@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3643,
-        "tip_oid": "d7d19d66d3d8ecf60eee09e5371a3fdc098f7f4d",
-        "prefix_sha256": "32ef05d7090b8689b919e624345fed2f11e8a8f51bdf2145d7ca5c8cdba57810"
+        "sequence": 3644,
+        "tip_oid": "afad8a669e9e637f8f1211ed5b2a3e1270763503",
+        "prefix_sha256": "dceece1921b09a70a922017887a4b5aa3f8c9edf1295f6855c87c02f234cea98"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2972,
+  "next_comment_id": 2973,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:17:14.856436972Z",
+      "updated_at": "2026-10-06T23:19:08.248525624Z",
       "labels": [
         "ci"
       ],
@@ -22334,6 +22334,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJKy3qRhB8ws4Mtw+v06omwF3ZAj7fs7Ga376X+9ngit7+OJV36SPKCp2ECr0iNirUTJ5tv9WTedHr2HjXj/0CA=="
+        },
+        "96ec9d40-1472-4732-9e2b-9c2ede07ef58": {
+          "display_id": 2972,
+          "author": "6ME5",
+          "content": "Native Windows provider acceptance verified on exact head d2eb633326654d9d629beb26efa0120c8bdf1677: Foundation model-orchestration job112543536752 SUCCESS, completed2026-10-06T23:16:18Z. Actual log confirms all6 real Codex process tests passed:14-case provider conformance using immutable executable aliases, obstructed trace/Auth terminal with unknown request count and cleanup, wrong-category actual facts, distinct fixture exit91/redacted I/O and cleanup redaction. The Linux-only controlled writer regression is appropriately absent on Windows. Both core redacted-I/O unit regression and missing-pinned-path process_spawn OS-cause test passed; all10 process transport tests passed. URL: https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37543905215/job/112543536752 . API metadata and log retained at /tmp/peritus-issue825-windows-provider-success.{json,log}. Linux and Windows provider+conformance acceptance complete4/6requiredshards; onlymacOS112543533469/112543533581remainqueued.825remainsOPENpendingmacOS, exactheadobserver71117 andfullPRwatch23820live. CurrentPR235SUCCESS59running153queued5skippedzeroFAILURE. No CI rerun, assertion weakening, deadline increase or replacement of earlier failed experiments.",
+          "created_at": "2026-10-06T23:19:08.244460623Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAP32BVLfncnJDu+NLfoG+RnE90S/dACBMIOI4dUUaIkols/KCyJwRr/3aqNzDmZReYE2L6JU088VXRIY5N22yBg=="
         },
         "98a4e11f-a2e8-4bf6-9cee-a7da0833b5f9": {
           "display_id": 2968,
