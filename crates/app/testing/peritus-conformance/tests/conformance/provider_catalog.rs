@@ -1,11 +1,12 @@
 use std::sync::{Arc, Mutex};
 
 use peritus_conformance::{
-    CaseDescriptor, CaseStatus, ConformanceFuture, ConformanceRunner, ProviderAttemptObservation,
-    ProviderAttemptOutcome, ProviderCancellationObservation, ProviderCapability,
-    ProviderCapabilityObservation, ProviderConformanceError, ProviderConformanceFixture,
-    ProviderConformanceObservation, ProviderConformanceSubject, ProviderEventKind,
-    ProviderEventObservation, ProviderFailureKind, ProviderFailureObservation,
+    CaseDescriptor, CaseStatus, ConformanceFuture, ConformanceRunner, Observation, ObservationId,
+    ObservationValue, ProviderAttemptObservation, ProviderAttemptOutcome,
+    ProviderCancellationObservation, ProviderCapability, ProviderCapabilityObservation,
+    ProviderConformanceError, ProviderConformanceFixture, ProviderConformanceObservation,
+    ProviderConformanceSubject, ProviderEventKind, ProviderEventObservation,
+    ProviderExerciseResult, ProviderFailureKind, ProviderFailureObservation,
     ProviderIsolationObservation, ProviderRedactionObservation, ProviderRetryObservation,
     ProviderScenario, ProviderStreamObservation, ProviderTerminal, ProviderUsageObservation,
     ProviderUsageSnapshot, SubjectDescriptor, SubjectFactory, SubjectFailure, SuiteStatus,
@@ -22,10 +23,12 @@ enum Behavior {
     RetryAmbiguous,
     FinalResultOnly,
     Unavailable,
+    ObservedUnavailable,
 }
 
 struct ReferenceProvider {
     behavior: Behavior,
+    counts: Arc<Mutex<Counts>>,
 }
 
 impl ProviderConformanceSubject for ReferenceProvider {
@@ -33,7 +36,8 @@ impl ProviderConformanceSubject for ReferenceProvider {
         &mut self,
         fixture: &ProviderConformanceFixture,
     ) -> Result<ProviderConformanceObservation, ProviderConformanceError> {
-        if matches!(self.behavior, Behavior::Unavailable) {
+        self.counts.lock().expect("counts lock").exercised += 1;
+        if matches!(self.behavior, Behavior::Unavailable | Behavior::ObservedUnavailable) {
             return Err(ProviderConformanceError::Infrastructure);
         }
         Ok(match fixture.scenario() {
@@ -77,6 +81,32 @@ impl ProviderConformanceSubject for ReferenceProvider {
                 ))
             }
         })
+    }
+
+    fn exercise_with_evidence(
+        &mut self,
+        fixture: &ProviderConformanceFixture,
+    ) -> ProviderExerciseResult {
+        let outcome = self.exercise(fixture);
+        let evidence = if matches!(self.behavior, Behavior::ObservedUnavailable) {
+            vec![
+                Observation::new(
+                    ObservationId::new("probe.stage").expect("ID"),
+                    ObservationValue::Text(text("fixture.cleanup")),
+                ),
+                Observation::new(
+                    ObservationId::new("probe.auth-requests").expect("ID"),
+                    ObservationValue::Unsigned(1),
+                ),
+                Observation::new(
+                    ObservationId::new("probe.directory-removed").expect("ID"),
+                    ObservationValue::Boolean(false),
+                ),
+            ]
+        } else {
+            Vec::new()
+        };
+        ProviderExerciseResult::new(outcome, evidence)
     }
 }
 
@@ -216,6 +246,7 @@ fn usage() -> ProviderConformanceObservation {
 struct Counts {
     created: usize,
     torn_down: usize,
+    exercised: usize,
 }
 
 struct Factory {
@@ -248,7 +279,8 @@ impl SubjectFactory<ReferenceProvider> for Factory {
     ) -> ConformanceFuture<'a, Result<ReferenceProvider, SubjectFailure>> {
         self.counts.lock().expect("counts lock").created += 1;
         let behavior = self.behavior;
-        Box::pin(async move { Ok(ReferenceProvider { behavior }) })
+        let counts = Arc::clone(&self.counts);
+        Box::pin(async move { Ok(ReferenceProvider { behavior, counts }) })
     }
 
     fn teardown<'a>(
@@ -308,4 +340,29 @@ fn unavailable_provider_probes_report_infrastructure_without_claiming_contract_v
     assert!(report.cases().iter().all(|case| case.observations().is_empty()));
     let counts = *factory.counts.lock().expect("counts lock");
     assert_eq!((counts.created, counts.torn_down), (14, 14));
+}
+
+#[test]
+fn failed_provider_exercises_retain_evidence_and_teardown_without_retrying() {
+    let factory = Factory::new(Behavior::ObservedUnavailable);
+    let report = block_on(ConformanceRunner::run(&provider_suite::<ReferenceProvider>(), &factory));
+    assert_eq!(report.status(), SuiteStatus::Failed);
+    assert!(!report.is_conformant());
+    assert_eq!(report.summary().infrastructure_failure_cases(), 14);
+    assert_eq!(report.summary().contract_violation_cases(), 0);
+    for case in report.cases() {
+        let observations = case.observations();
+        assert_eq!(observations.len(), 3, "{case:?}");
+        assert_eq!(observations[0].id().as_str(), "probe.stage");
+        assert_eq!(observations[0].value(), &ObservationValue::Text(text("fixture.cleanup")));
+        assert_eq!(observations[1].value(), &ObservationValue::Unsigned(1));
+        assert_eq!(observations[2].value(), &ObservationValue::Boolean(false));
+        assert!(matches!(
+            case.primary_failure(),
+            Some(peritus_conformance::CaseFailure::Exercise(_))
+        ));
+        assert!(case.teardown_failure().is_none());
+    }
+    let counts = *factory.counts.lock().expect("counts lock");
+    assert_eq!((counts.created, counts.exercised, counts.torn_down), (14, 14, 14));
 }

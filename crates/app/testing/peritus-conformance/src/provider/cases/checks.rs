@@ -2,6 +2,8 @@
 
 use std::collections::BTreeSet;
 
+use crate::Observation;
+
 use super::super::fixtures::fixture;
 use super::super::{
     ProviderAttemptOutcome, ProviderConformanceError, ProviderConformanceObservation,
@@ -12,10 +14,10 @@ use super::super::{
 pub(super) fn exercise<S: ProviderConformanceSubject>(
     subject: &mut S,
     scenario: ProviderScenario,
-) -> Result<bool, ProviderConformanceError> {
+) -> (Result<bool, ProviderConformanceError>, Vec<Observation>) {
     let request = fixture(scenario);
-    let observed = subject.exercise(&request)?;
-    Ok(match scenario {
+    let (outcome, evidence) = subject.exercise_with_evidence(&request).into_parts();
+    let exact = outcome.map(|observed| match scenario {
         ProviderScenario::CapabilityHonesty => capability(observed),
         ProviderScenario::OrderedDeduplication => ordered(observed),
         ProviderScenario::FragmentedToolCall => {
@@ -40,7 +42,8 @@ pub(super) fn exercise<S: ProviderConformanceSubject>(
         ProviderScenario::UsageAccounting => usage(observed),
         ProviderScenario::Redaction => redaction(observed, request.canary()),
         ProviderScenario::AdapterIsolation => isolation(observed, request.selected_adapter()),
-    })
+    });
+    (exact, evidence)
 }
 
 fn capability(observed: ProviderConformanceObservation) -> bool {

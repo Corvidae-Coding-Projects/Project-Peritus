@@ -20,7 +20,10 @@ impl<S: ProviderConformanceSubject> ConformanceCase<S> for ProviderCase {
     }
 
     fn run<'a>(&'a self, subject: &'a mut S) -> ConformanceFuture<'a, CaseResult> {
-        Box::pin(async move { result(checks::exercise(subject, self.scenario), self.scenario) })
+        Box::pin(async move {
+            let (outcome, evidence) = checks::exercise(subject, self.scenario);
+            result(outcome, evidence, self.scenario)
+        })
     }
 }
 
@@ -136,12 +139,16 @@ fn boxed<S: ProviderConformanceSubject + 'static>(
     })
 }
 
-fn result(exact: Result<bool, ProviderConformanceError>, scenario: ProviderScenario) -> CaseResult {
+fn result(
+    exact: Result<bool, ProviderConformanceError>,
+    mut observations: Vec<Observation>,
+    scenario: ProviderScenario,
+) -> CaseResult {
     let exact = match exact {
         Ok(exact) => exact,
         Err(ProviderConformanceError::Infrastructure) => {
             return CaseResult::infrastructure(
-                Vec::new(),
+                observations,
                 SubjectFailure::new(
                     FailureCode::catalog("PERITUS-PROVIDER-INFRASTRUCTURE"),
                     ReportText::literal("provider scenario could not be exercised or observed"),
@@ -149,8 +156,8 @@ fn result(exact: Result<bool, ProviderConformanceError>, scenario: ProviderScena
             );
         }
     };
-    let observations =
-        vec![Observation::new(ObservationId::catalog("exact"), ObservationValue::Boolean(exact))];
+    observations
+        .push(Observation::new(ObservationId::catalog("exact"), ObservationValue::Boolean(exact)));
     if exact {
         CaseResult::passed(observations)
     } else {

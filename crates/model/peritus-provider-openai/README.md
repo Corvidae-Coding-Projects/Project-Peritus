@@ -123,6 +123,16 @@ and forbidden-native-tool cases plus byte-exact prompt/schema goldens. A feature
 fake executable drives a separate fourteen-case production-process bridge; it is not built without
 `test-runtime-fake`.
 
+Each process fixture uses a private hard-link alias of the immutable built fake executable on the
+artifact's filesystem, with its own scenario name and trace directory. It never copies executable
+bytes while other tests fork: a writable copy descriptor inherited by another child can otherwise
+make Linux reject execution as `ExecutableFileBusy`. Fixture alias creation requires a writable
+artifact directory and hard-link support; failure remains explicit infrastructure evidence.
+The bridge retains the failed stage, redacted provider/OS cause, observed terminal category,
+readable trace counts, and explicit cleanup result in the A2 case report. Unreadable traces do not
+invent request counts. Fake trace I/O failures exit separately from scripted authentication
+rejection, and no failed exercise is retried into passing qualification.
+
 Direct dependencies are limited to Peritus protocol/core/foundation crates plus Serde, JSON,
 base64 projection, and temporary-directory isolation. Conformance, fake HTTP servers, and the Codex
 fake executable are development-only surfaces.

@@ -3,6 +3,9 @@
 #[path = "support/runtime.rs"]
 mod runtime;
 
+#[path = "process_transport/spawn.rs"]
+mod spawn;
+
 use std::fmt::Write as _;
 use std::io::{Read as _, Write as _};
 use std::time::Duration;

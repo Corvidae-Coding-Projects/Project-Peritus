@@ -2,6 +2,7 @@
 #![cfg(feature = "test-runtime-fake")]
 
 mod codex_runtime_conformance {
+    mod diagnostics;
     mod hardening;
     mod observations;
     mod redaction;
@@ -10,7 +11,7 @@ mod codex_runtime_conformance {
 
     use peritus_conformance::{
         ProviderConformanceError, ProviderConformanceFixture, ProviderConformanceObservation,
-        ProviderConformanceSubject,
+        ProviderConformanceSubject, ProviderExerciseResult,
     };
 
     struct Subject;
@@ -20,7 +21,20 @@ mod codex_runtime_conformance {
             &mut self,
             fixture: &ProviderConformanceFixture,
         ) -> Result<ProviderConformanceObservation, ProviderConformanceError> {
-            observations::exercise(fixture)
+            observations::exercise(fixture).map_err(|_| ProviderConformanceError::Infrastructure)
+        }
+
+        fn exercise_with_evidence(
+            &mut self,
+            fixture: &ProviderConformanceFixture,
+        ) -> ProviderExerciseResult {
+            match observations::exercise(fixture) {
+                Ok(observed) => ProviderExerciseResult::new(Ok(observed), Vec::new()),
+                Err(error) => ProviderExerciseResult::new(
+                    Err(ProviderConformanceError::Infrastructure),
+                    error.into_observations(),
+                ),
+            }
         }
     }
 }

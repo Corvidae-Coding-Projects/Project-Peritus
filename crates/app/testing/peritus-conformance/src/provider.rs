@@ -1,10 +1,12 @@
 //! Runtime-neutral model-provider conformance contract.
 
 mod cases;
+mod exercise;
 mod fixtures;
 mod observation;
 
 pub use cases::provider_suite;
+pub use exercise::ProviderExerciseResult;
 pub use observation::{
     ProviderAttemptObservation, ProviderAttemptOutcome, ProviderCancellationObservation,
     ProviderCapabilityObservation, ProviderConformanceObservation, ProviderEventKind,
@@ -184,4 +186,17 @@ pub trait ProviderConformanceSubject: Send {
         &mut self,
         fixture: &ProviderConformanceFixture,
     ) -> Result<ProviderConformanceObservation, ProviderConformanceError>;
+
+    /// Exercises one scenario and retains ordered, redacted evidence even when it fails.
+    ///
+    /// The default preserves existing adapters by invoking [`Self::exercise`] exactly once.
+    /// Adapters with infrastructure diagnostics should override this method and return the
+    /// original failed outcome with its stage, cause, and directly observed lifecycle facts.
+    /// Raw credentials, payloads, paths, and other sensitive inputs must not enter observations.
+    fn exercise_with_evidence(
+        &mut self,
+        fixture: &ProviderConformanceFixture,
+    ) -> ProviderExerciseResult {
+        ProviderExerciseResult::new(self.exercise(fixture), Vec::new())
+    }
 }

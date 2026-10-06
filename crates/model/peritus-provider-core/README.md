@@ -114,6 +114,9 @@ success, and cannot improve a model's reasoning or finish a truncated response.
 Errors contain a stable `ProviderCoreErrorKind`, code, static operation, and static redaction-safe
 detail. Transport-library error strings are not propagated because URLs and provider-controlled
 text can contain sensitive data. Body and framing failures are terminal for that owned stream.
+Process spawn failures additionally retain the OS I/O category and available numeric code through
+`ProviderCoreError::io_kind`, `raw_os_error`, and a redacted `Error::source`. Existing stable codes,
+operations, and display text remain unchanged; the original I/O error's text and paths are excluded.
 
 The crate deliberately exposes no Reqwest, Tokio, `url`, `bytes`, `zeroize`, or provider SDK type.
 Those dependencies are implementation details and may change without altering adapter-facing APIs.

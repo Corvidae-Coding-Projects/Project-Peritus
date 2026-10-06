@@ -114,8 +114,9 @@ fn spawn(request: &ProcessRequest) -> Result<Child, ProviderCoreError> {
     for name in request.environment_removals() {
         command.env_remove(name.as_str());
     }
-    command.spawn().map_err(|_| {
+    command.spawn().map_err(|error| {
         ProviderCoreError::connect("process_spawn", "owned subprocess could not be started")
+            .with_io_cause(&error)
     })
 }
 

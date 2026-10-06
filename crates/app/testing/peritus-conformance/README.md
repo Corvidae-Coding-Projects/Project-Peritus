@@ -66,7 +66,11 @@ fourteen fixed cases covering capability honesty, ordering and exact deduplicati
 tool calls, malformed and incomplete streams, interruption, cancellation, authentication, rate
 limits and retry-after, transient retry, ambiguous submission, usage, redaction, and adapter
 isolation. Its subjects return direct event, attempt, usage, and routing observations rather than
-self-reported verdicts. The tool suite exercises
+self-reported verdicts. Provider bridges can override `exercise_with_evidence` to return an owned
+`ProviderExerciseResult` containing the original outcome and ordered, redacted observations.
+Infrastructure failures retain those observations in the case report; recording evidence never
+retries an exercise or changes its verdict. Existing `exercise` implementations remain compatible
+through the default method, which invokes them once. The tool suite exercises
 descriptor/schema determinism, schema rejection before effect, canonical role/capability exposure,
 exact one-use dispatch, independent authority drift, truthful structured results, owned controls
 and deadlines, and replay without duplicate effects. The process suite exercises

@@ -62,6 +62,7 @@ pub struct ProviderCoreError {
     kind: ProviderCoreErrorKind,
     operation: &'static str,
     detail: &'static str,
+    io_cause: Option<IoCause>,
 }
 
 impl ProviderCoreError {
@@ -70,7 +71,12 @@ impl ProviderCoreError {
         operation: &'static str,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, detail }
+        Self { kind, operation, detail, io_cause: None }
+    }
+
+    pub(crate) fn with_io_cause(mut self, error: &std::io::Error) -> Self {
+        self.io_cause = Some(IoCause { kind: error.kind(), code: error.raw_os_error() });
+        self
     }
 
     /// Creates a redaction-safe error for a custom transport implementation.
@@ -156,6 +162,26 @@ impl ProviderCoreError {
     pub const fn detail(&self) -> &'static str {
         self.detail
     }
+
+    /// Returns the original OS I/O category when the effect owner retained a redacted cause.
+    ///
+    /// Absence means that no I/O category was recorded, not that an I/O operation succeeded.
+    #[must_use]
+    pub const fn io_kind(&self) -> Option<std::io::ErrorKind> {
+        match self.io_cause {
+            Some(cause) => Some(cause.kind),
+            None => None,
+        }
+    }
+
+    /// Returns the original numeric OS error code when one was available and retained.
+    #[must_use]
+    pub const fn raw_os_error(&self) -> Option<i32> {
+        match self.io_cause {
+            Some(cause) => cause.code,
+            None => None,
+        }
+    }
 }
 
 impl fmt::Display for ProviderCoreError {
@@ -164,4 +190,43 @@ impl fmt::Display for ProviderCoreError {
     }
 }
 
-impl std::error::Error for ProviderCoreError {}
+impl std::error::Error for ProviderCoreError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.io_cause.as_ref().map(|cause| cause as &dyn std::error::Error)
+    }
+}
+
+/// I/O cause metadata deliberately excludes the original error's untrusted text and paths.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct IoCause {
+    kind: std::io::ErrorKind,
+    code: Option<i32>,
+}
+
+impl fmt::Display for IoCause {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{:?} os-code={:?}", self.kind, self.code)
+    }
+}
+
+impl std::error::Error for IoCause {}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error as _;
+
+    use super::ProviderCoreError;
+
+    #[test]
+    fn io_cause_preserves_category_without_exposing_untrusted_text() {
+        let canary = "peritus-provider-secret-canary";
+        let source = std::io::Error::new(std::io::ErrorKind::PermissionDenied, canary);
+        let error =
+            ProviderCoreError::connect("process_spawn", "could not start").with_io_cause(&source);
+        assert_eq!(error.io_kind(), Some(std::io::ErrorKind::PermissionDenied));
+        assert_eq!(error.raw_os_error(), None);
+        assert!(error.source().is_some());
+        assert!(!format!("{error:?} {error} {}", error.source().unwrap()).contains(canary));
+        assert_eq!(error.to_string(), "PERITUS-PROVIDER-CORE-011 process_spawn: could not start");
+    }
+}

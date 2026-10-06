@@ -78,10 +78,10 @@ pub use crate::provider::{
     ProviderAttemptObservation, ProviderAttemptOutcome, ProviderCancellationObservation,
     ProviderCapability, ProviderCapabilityObservation, ProviderConformanceError,
     ProviderConformanceFixture, ProviderConformanceObservation, ProviderConformanceSubject,
-    ProviderEventKind, ProviderEventObservation, ProviderFailureKind, ProviderFailureObservation,
-    ProviderIsolationObservation, ProviderRedactionObservation, ProviderRetryObservation,
-    ProviderScenario, ProviderStreamObservation, ProviderTerminal, ProviderUsageObservation,
-    ProviderUsageSnapshot, provider_suite,
+    ProviderEventKind, ProviderEventObservation, ProviderExerciseResult, ProviderFailureKind,
+    ProviderFailureObservation, ProviderIsolationObservation, ProviderRedactionObservation,
+    ProviderRetryObservation, ProviderScenario, ProviderStreamObservation, ProviderTerminal,
+    ProviderUsageObservation, ProviderUsageSnapshot, provider_suite,
 };
 pub use crate::replay::{
     ReplayConformanceError, ReplayConformanceSubject, ReplayObservation, replay_suite,
