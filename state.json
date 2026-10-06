@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3619,
-        "tip_oid": "71e58cdf3fc5264ec2a015b07b14487d2afb1ba4",
-        "prefix_sha256": "01e3a1e081d62f4c1eb468a8a5ba5fef438e2185628e10f2e0a939f1f5413b78"
+        "sequence": 3620,
+        "tip_oid": "ada4d9a1ded496153be1a905f4969e5fc822f9af",
+        "prefix_sha256": "1cde0dddb538c43fc1acb2142ee2a20111a3b66ebba9961d6582f727a0b3ae86"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2951,
+  "next_comment_id": 2952,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20617,7 +20617,7 @@
       "parent_uuid": "1d5342a0-e55e-4413-b2dd-ad4438934bc7",
       "created_by": "6ME5",
       "created_at": "2026-10-06T20:34:09.843493907Z",
-      "updated_at": "2026-10-06T22:10:32.616272480Z",
+      "updated_at": "2026-10-06T22:13:09.898330439Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20630,6 +20630,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYW5iQiMMijDqhmItoJr7wiUyfNUL2GIcZn0iAIk+98QQJ0IKVHMKSl1FD9GRYNM/mvambK+RAbVqlvDIUa5dDg=="
+        },
+        "e7d5b2b5-0ba6-4752-b100-39177acfb13a": {
+          "display_id": 2951,
+          "author": "6ME5",
+          "content": "Committed 4ee46822d24da14cc16e809fc6563780631284f4: fix(provider): decouple journal persistence from pipe progress (#824). Six files only: private pipe reader, owned journal writer and tests, transport coordination, real process fixtures and README. The writer batches available physical chunks independently of pipe receipt; ownership is reserved before receipt, quiet native prefixes persist without EOF, and cancellation/error kills and reaps the child while accepted journal work settles. No public API/native journal format change, production deadline, retry quota, detached task or enlarged fixture watchdog. Exact final isolated six-file tree matches committed workspace hashes. Final 155 core/OpenAI/Anthropic tests passed, 2 existing authenticated-live ignores; deterministic held persistence barriers, physical backpressure/order, in-flight cancellation, persistence failure, real large stdin/stdout/stderr, exact journal bytes and child-lock release passed. Final strict workspace all-target/all-feature Clippy, formatting, Windows GNU workspace compilation, strict provider-core Verus --no-cheating, diff checks and rebuilt cargo xtask all passed (86 packages,4940 sources,3904 formal-boundary files,15108 ordinary-safe entries,273 docs,147 pinned actions). Pre-existing OpenAI usage/audit changes remain byte-for-byte untouched and excluded. Earlier intermittent authentication fixture failure remains unresolved under #825; passing reruns are not a repair claim. Push/native exact-head Windows acceptance remains to be verified before closing #824.",
+          "created_at": "2026-10-06T22:13:09.894027365Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAh8sbd3yVGIPSKkvVImzHbEjbPQhufvtLSXLeI7pg63gNfmsbbyH7slwmKEBkzWFtb8HuXWjvgbhW8s0hRwNJAQ=="
         },
         "f4023ec9-8e31-489e-a468-e73ef2e4c6fa": {
           "display_id": 2949,
