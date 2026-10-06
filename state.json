@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3628,
-        "tip_oid": "0f42dcd0af19c83fb1da75e1b538338b4376ef2d",
-        "prefix_sha256": "0f165183398b99d19bb756ec4b3fb6a97db6fd7e984cd525c5c1874611fc170b"
+        "sequence": 3629,
+        "tip_oid": "344dc89659d0a0412e4f82273bcff3d52be126c2",
+        "prefix_sha256": "9f70a97689704822a551ccb12b14f45e865eb5123049a8086536cd691e40123d"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2957,
+  "next_comment_id": 2958,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,11 +22222,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T22:35:06.800628265Z",
+      "updated_at": "2026-10-06T22:37:35.652038901Z",
       "labels": [
         "ci"
       ],
       "comments": {
+        "1bac8619-92e9-4686-948c-0aaa498ca8be": {
+          "display_id": 2957,
+          "author": "6ME5",
+          "content": "Repair design/preflight: affected scope is the std-only provider conformance exercise/report boundary, OpenAI development-only probe bridge and fake executable; no production credentials, wire format or existing user usage files change. Prefer an additive exercise_with_evidence method returning an owned ProviderExerciseResult with direct observations: legacy exercise implementations keep their existing default behavior, while the new bridge preserves a single failed invocation without global recording or a mutable side channel. Alternative: add a data-bearing Infrastructure enum variant; that would remove Copy and break exhaustive consumers, so avoid that migration. The probe owner must finish trace observation and explicit TempDir cleanup on both success and error, retain stable stage plus redacted provider code/I/O kind and numeric OS code, and report actual terminal/category and auth/turn counts. Fake trace reads/writes/location discovery must fail explicitly instead of inventing a count/name. Reproduce obstructed trace and wrong terminal classification through real local processes; test shared report retention and redaction. Checks: focused faults and full affected provider/conformance suites, strict workspace lint/build including Windows target, format/generated/xtask and relevant Verus. Historical intermittent authentication cause remains unknown and issue825 will remain OPEN until that cause is diagnosed and repaired. All source reads for the changed boundary are complete; zero-byte rule loaders and unrelated hashes verified.",
+          "created_at": "2026-10-06T22:37:35.647721650Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXquaGQ6xSdsfSutkWeuTqhtE2W+4qIqBUWj+H8p83v04YjbzJYa1YwK4rAZ8T7QEzbNEnAYuKw6Tp0pRZexKCw=="
+        },
         "91cac3f0-82c6-491b-86df-0f30b3b07956": {
           "display_id": 2952,
           "author": "6ME5",
