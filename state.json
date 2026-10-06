@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3596,
-        "tip_oid": "0cff8993a14bbd01956190aadc94b262d0a7d15c",
-        "prefix_sha256": "7b42f0326b828e6c445d92751a5c0534316348c12f95a244395cf347c4e9e102"
+        "sequence": 3597,
+        "tip_oid": "0d25c3ee966cba35d374d358a4bea3c5fb3fb5d0",
+        "prefix_sha256": "706cca73c112f28c8f9527a9bd980700be6da3bd070d818b906709d9c12f40a3"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2936,
+  "next_comment_id": 2937,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,7 +6882,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T20:53:17.817003127Z",
+      "updated_at": "2026-10-06T20:55:55.233568098Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6938,6 +6938,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+CS0AU80DQ4lD6M/NE55pSyevsOw/hMGWOaRds4obP1O1dUxTH13gBFtPcmAW97phK/k0yKVgVOkfaMueU43BQ=="
+        },
+        "eec8ed71-3f53-42a2-99b9-6715b8924c2a": {
+          "display_id": 2936,
+          "author": "6ME5",
+          "content": "The complete caller suites caught a persistence coupling: schema-one manifest selection still used the moving production codec profile, so removing default quotas could classify a 65,536-directory patch as legacy while the frozen legacy decoder rejected it. Freeze only historical inline identity and schema-one encode/decode classification to LEGACY_V1; larger valid patches continue into the existing paged transaction representation. Boundary tests compare against the historical profile. Client request/event exchanges also invalidate a connection on any returned error, so the client frame owner now waits through typed allocator pressure with retained retry progress, matching daemon receipt rather than forcing a replacement connection. No product limits are increased or substituted.",
+          "created_at": "2026-10-06T20:55:55.219472209Z",
+          "kind": "decision",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUkwnxsePTxFUa+YU2cx/KvBaoglrZ8ZJ5Gq22m87yY4vv+oY9fRFwiX3tim9UkvDALclpNG9aUIS0tNqapdnCQ=="
         },
         "f5f50c63-007b-41a9-8e68-7fd37423da3c": {
           "display_id": 2933,
