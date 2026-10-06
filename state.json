@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3598,
-        "tip_oid": "d64904467517140c09510b285eb295fadf3c2785",
-        "prefix_sha256": "3b91faf2ee02e3c206ff3b3c3cf7d412f7fbac3f3e8eb817864952960eccad92"
+        "sequence": 3599,
+        "tip_oid": "ccd1358c667b0cb52f7a68628f15592814a54ea1",
+        "prefix_sha256": "d959236d3052d90e25ec91a538220a53478f3e51d5b888652c49211486787830"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 825,
-  "next_comment_id": 2938,
+  "next_comment_id": 2939,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6882,11 +6882,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.865564519Z",
-      "updated_at": "2026-10-06T21:00:08.351206038Z",
+      "updated_at": "2026-10-06T21:05:26.627699382Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "3e907cc5-286d-4e76-8a9f-fa5fd41e0929": {
+          "display_id": 2938,
+          "author": "6ME5",
+          "content": "Delivered 01df76afdd3a05a161d287cae64ec290b0333b80: fix(codec): remove default logical admission ceilings (#109). Pushed to the existing fix/persistent-execution PR 112 targeting develop.\n\nThe default logical byte/count/depth quotas are removed without changing canonical v1 prefixes, bytes or digests. Both IPC readers own incremental receipt, validate the full header before body input and retain exact bytes and capacity-retry progress across cancellation. Every migrated owned collection decoder checks its schema minimum encoded extent before fallible reservation. Legacy peer negotiation and frozen historical Hello fixtures preserve older contracts; historical patch classification selects existing paged storage for larger inputs rather than writing legacy metadata that its reader cannot reopen. Allocation pressure remains retryable and cannot silently select another patch identity or be misreported as metadata corruption.\n\nVerification: complete all-feature suites for all 19 affected packages passed (993 tests, six existing ignored fixtures); final peritus-patch recheck after the visibility/comment cleanup passed all 65 tests. Strict all-target/all-feature workspace Clippy, native workspace compilation, Windows GNU all-target/all-feature workspace compilation, strict no-cheating Verus for the 19 affected packages, formatting, diff checks, rebuilt cargo xtask all including generated compatibility assets and policy/trust checks all pass. The 91 committed paths match the isolated qualified scope; separate provider, audit-document and untracked user artifacts remain outside this commit.\n\nQualification limits: this is not unlimited durable logical storage; journal #117/#120 and the other existing aggregate/transport findings remain open. Native Windows/macOS CI failures from the previous head remain tracked in reopened #108 and #824; this result does not claim those runners pass. PR 112: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/112",
+          "created_at": "2026-10-06T21:05:26.613867272Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+T/xNuT/Re02FQh3SqFj8ItMhopg+ECsu5Omrg1WDo2h+DdJmdkbOFOzjDxMaCWzus6WBFGJyD/42kKK7LYgCA=="
+        },
         "4941f897-d420-40c0-ac17-0df737a522f8": {
           "display_id": 2934,
           "author": "6ME5",
