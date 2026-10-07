@@ -8,8 +8,8 @@ use peritus_types::{
 
 use crate::{
     AnalysisCounts, DebuggerCommandKind, DebuggerError, DebuggerErrorKind, DebuggerOperation,
-    DebuggerRecovery, JobFailure, JobFailureCode, ModelAttemptFailure, ModelAttemptFailureCode,
-    ModelBudget, ModelRetryPolicy, PublicationRecord, ReportRecord, SelectionRecord,
+    DebuggerRecovery, JobFailure, JobFailureCode, ModelAttemptFailure, ModelBudget,
+    ModelRetryPolicy, PublicationRecord, ReportRecord, SelectionRecord,
 };
 
 pub(super) fn encode(kind: &DebuggerCommandKind) -> Result<Vec<u8>, DebuggerError> {
@@ -78,6 +78,9 @@ pub(super) fn decode(bytes: &[u8]) -> Result<DebuggerCommandKind, DebuggerError>
                 digest(&mut reader)?,
             ),
         },
+        13 => DebuggerCommandKind::RecordModelFailure {
+            failure: rich_model_failure(&mut reader)?,
+        },
         _ => return Err(protocol("unknown debugger semantic tag")),
     };
     reader.finish().map_err(codec)?;
@@ -122,19 +125,20 @@ fn model_budget(reader: &mut CanonicalReader<'_>) -> Result<ModelBudget, Debugge
 }
 
 fn retry_policy(reader: &mut CanonicalReader<'_>) -> Result<ModelRetryPolicy, DebuggerError> {
-    ModelRetryPolicy::new(reader.read_u16().map_err(codec)?, reader.read_u64().map_err(codec)?)
+    ModelRetryPolicy::from_encoded(
+        reader.read_u16().map_err(codec)?,
+        reader.read_u64().map_err(codec)?,
+    )
 }
 
 fn model_failure(reader: &mut CanonicalReader<'_>) -> Result<ModelAttemptFailure, DebuggerError> {
-    ModelAttemptFailure::new(
-        crate::ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
-        reader.read_u16().map_err(codec)?,
-        ModelAttemptFailureCode::from_tag(reader.read_u8().map_err(codec)?)?,
-        reader.read_bool().map_err(codec)?,
-        digest(reader)?,
-        reader.read_u64().map_err(codec)?,
-        reader.read_u64().map_err(codec)?,
-    )
+    crate::aggregate::decode_model_failure(reader, false)
+}
+
+fn rich_model_failure(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ModelAttemptFailure, DebuggerError> {
+    crate::aggregate::decode_model_failure(reader, true)
 }
 
 fn report(reader: &mut CanonicalReader<'_>) -> Result<ReportRecord, DebuggerError> {

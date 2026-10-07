@@ -1,4 +1,4 @@
-//! Commit-before-provider model attempt execution and bounded retry scheduling.
+//! Commit-before-provider model attempt execution and caller-controlled retry scheduling.
 
 use peritus_journal::SqliteJournal;
 use peritus_provider_core::{CancellationToken, ModelProvider};
@@ -6,9 +6,10 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use crate::{
     DebuggerCommand, DebuggerCommandKind, DebuggerError, DebuggerErrorKind, DebuggerOperation,
     DebuggerPhase, DebuggerRecovery, DebuggerState, ModelAnalysisPlan, ModelAttemptFailure,
-    ModelAttemptFailureCode, ModelDirectiveClaim, ModelRunSuccess, ModelWorkState,
-    TraceSelectionManifest, ValidatedModelProposal, commit_debugger_claimed_transition,
-    commit_debugger_settlement, commit_debugger_transition, decide, run_model_analysis,
+    ModelAttemptFailureCode, ModelAttemptResult, ModelDirectiveClaim, ModelPriorUsage,
+    ModelRunFailure, ModelRunSuccess, ModelWorkState, TraceSelectionManifest,
+    ValidatedModelProposal, commit_debugger_claimed_transition, commit_debugger_settlement,
+    commit_debugger_transition, decide, run_model_analysis_with_usage,
 };
 
 use super::{CommittedDebuggerTransition, TransitionIds};
@@ -33,7 +34,7 @@ impl ModelAttemptIds {
 pub enum ModelAttemptOutcome {
     /// Exactly one strict proposal passed E2 validation.
     Proposal(ValidatedModelProposal),
-    /// Provider/protocol/validation/budget failure was retained digest-only.
+    /// Provider/protocol/validation/budget failure was retained with recovery evidence.
     Failed(ModelAttemptFailure),
     /// Cooperative cancellation won and the job became terminal.
     Cancelled,
@@ -70,7 +71,7 @@ impl ModelAttemptExecution {
 /// # Errors
 /// Rejects plan/claim/state drift, stale C0 fences, provider/protocol failures that cannot be
 /// durably represented, or settlement failure. Ordinary provider failures are returned as a
-/// successful `ModelAttemptExecution::Failed` because their digest-only result is durable.
+/// successful `ModelAttemptExecution::Failed` because their typed result is durable.
 #[allow(clippy::too_many_arguments, reason = "effect owners and fences remain explicit")]
 pub async fn execute_model_attempt(
     journal: &mut SqliteJournal,
@@ -114,18 +115,30 @@ pub async fn execute_model_attempt(
         commit_debugger_claimed_transition(journal, &start_command, &start_transition, claim)?;
     let running = start_transition.state().clone();
     let started = CommittedDebuggerTransition::new(start_batch, running.clone());
-    let result = run_model_analysis(provider, plan, manifest, debugger_limits, cancellation).await;
+    let prior_usage = accumulated_usage(state);
+    let continuation = retry_continuation(state, directive.attempt());
+    let result = run_model_analysis_with_usage(
+        provider,
+        plan,
+        manifest,
+        debugger_limits,
+        cancellation,
+        prior_usage,
+        continuation.as_ref(),
+    )
+    .await;
     let (settlement_kind, outcome) = match result {
         Ok(success) => proposal_settlement(plan, directive.attempt(), &success),
-        Err(error) if error.kind() == DebuggerErrorKind::Cancelled => {
-            let reason_digest = diagnostic_digest(&error);
-            (DebuggerCommandKind::CancelJob { reason_digest }, ModelAttemptOutcome::Cancelled)
-        }
         Err(error) => {
             let failure = model_failure(plan, directive.attempt(), &error)?;
+            let outcome = if failure.code() == ModelAttemptFailureCode::Cancelled {
+                ModelAttemptOutcome::Cancelled
+            } else {
+                ModelAttemptOutcome::Failed(failure.clone())
+            };
             (
                 DebuggerCommandKind::RecordModelFailure { failure },
-                ModelAttemptOutcome::Failed(failure),
+                outcome,
             )
         }
     };
@@ -169,7 +182,7 @@ pub fn schedule_model_retry(
         ));
     }
     let next_attempt =
-        attempt.checked_add(1).ok_or_else(|| binding("model retry attempt overflowed"))?;
+        (*attempt).checked_add(1).ok_or_else(|| binding("model retry attempt overflowed"))?;
     let not_before_tick = now_tick
         .checked_add(delay_ticks)
         .ok_or_else(|| binding("model retry scheduling tick overflowed"))?;
@@ -211,23 +224,81 @@ fn proposal_settlement(
 fn model_failure(
     plan: &ModelAnalysisPlan,
     attempt: u16,
-    error: &DebuggerError,
+    error: &ModelRunFailure,
 ) -> Result<ModelAttemptFailure, DebuggerError> {
-    let code = match error.kind() {
-        DebuggerErrorKind::Budget => ModelAttemptFailureCode::BudgetExceeded,
-        DebuggerErrorKind::ModelRejected => ModelAttemptFailureCode::InvalidProposal,
-        DebuggerErrorKind::ModelProtocol => ModelAttemptFailureCode::MalformedStream,
-        DebuggerErrorKind::Cancelled => ModelAttemptFailureCode::Cancelled,
-        _ => ModelAttemptFailureCode::ProviderStream,
+    if error.context().profile_id() != plan.request().profile_id()
+        || error.context().profile_revision() != plan.request().profile_revision()
+    {
+        return Err(binding("model failure context differs from the frozen provider profile"));
+    }
+    ModelAttemptFailure::observed(
+        plan.id(),
+        attempt,
+        error.code(),
+        error.context().clone(),
+        error.diagnostic_digest(),
+        error.event_count(),
+        error.output_bytes(),
+        error.input_tokens(),
+        error.output_tokens(),
+        error.total_tokens(),
+    )
+}
+
+fn accumulated_usage(state: &DebuggerState) -> ModelPriorUsage {
+    let mut usage = ModelPriorUsage::default();
+    for observation in state.model_attempts() {
+        let (events, output_bytes, input_tokens, output_tokens, total_tokens) =
+            match observation.result() {
+                ModelAttemptResult::Proposal {
+                    output_bytes,
+                    event_count,
+                    input_tokens,
+                    output_tokens,
+                    total_tokens,
+                    ..
+                } => (
+                    *event_count,
+                    *output_bytes,
+                    *input_tokens,
+                    *output_tokens,
+                    *total_tokens,
+                ),
+                ModelAttemptResult::Failure(failure) => (
+                    failure.event_count(),
+                    failure.output_bytes(),
+                    failure.input_tokens(),
+                    failure.output_tokens(),
+                    failure.total_tokens(),
+                ),
+            };
+        usage.events = usage.events.saturating_add(events);
+        usage.output_bytes = usage.output_bytes.saturating_add(output_bytes);
+        usage.input_tokens = usage.input_tokens.saturating_add(input_tokens);
+        usage.output_tokens = usage.output_tokens.saturating_add(output_tokens);
+        usage.total_tokens = usage.total_tokens.saturating_add(total_tokens);
+    }
+    usage
+}
+
+fn retry_continuation(
+    state: &DebuggerState,
+    attempt: u16,
+) -> Option<peritus_model_protocol::Continuation> {
+    let previous = attempt.checked_sub(1)?;
+    let observation = state.model_attempts().last()?;
+    if observation.attempt() != previous {
+        return None;
+    }
+    let ModelAttemptResult::Failure(failure) = observation.result() else {
+        return None;
     };
-    let retryable = error.recovery() == DebuggerRecovery::Retry
-        && !matches!(
-            code,
-            ModelAttemptFailureCode::BudgetExceeded
-                | ModelAttemptFailureCode::InvalidProposal
-                | ModelAttemptFailureCode::Cancelled
-        );
-    ModelAttemptFailure::new(plan.id(), attempt, code, retryable, diagnostic_digest(error), 0, 0)
+    let context = failure.context()?;
+    context
+        .recovery()
+        .permits_same_plan_retry()
+    .then(|| context.continuation().cloned())
+    .flatten()
 }
 
 fn command(
@@ -245,15 +316,6 @@ fn command(
         state.query_digest(),
         kind,
     )
-}
-
-fn diagnostic_digest(error: &DebuggerError) -> peritus_types::Sha256Digest {
-    let mut bytes = b"peritus.debugger.model-failure.v1\0".to_vec();
-    bytes.extend_from_slice(
-        format!("{:?}:{:?}:{:?}", error.kind(), error.operation(), error.recovery()).as_bytes(),
-    );
-    bytes.extend_from_slice(error.detail().as_bytes());
-    peritus_codec::sha256(&bytes)
 }
 
 fn binding(detail: &'static str) -> DebuggerError {

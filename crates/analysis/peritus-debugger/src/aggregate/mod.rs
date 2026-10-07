@@ -16,10 +16,11 @@ pub use event::{DebuggerEvent, DebuggerEventKind, DebuggerTransition};
 pub use reducer::{apply_event, decide, replay};
 pub use state::DebuggerState;
 pub use types::{
-    AnalysisCounts, DebuggerPhase, JobFailure, JobFailureCode, ModelAttemptFailure,
-    ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult, ModelBudget,
-    ModelProgress, ModelRetryPolicy, ModelWorkState, PublicationRecord, ReportRecord,
-    SelectionRecord,
+    AnalysisCounts, DebuggerPhase, JobFailure, JobFailureCode, ModelAcceptanceCertainty,
+    ModelAttemptFailure, ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult,
+    ModelBudget, ModelFailureContext, ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery,
+    ModelProgress, ModelProviderFailureCause, ModelRetryPolicy, ModelWorkState, PublicationRecord,
+    ReportRecord, SelectionRecord,
 };
 
 pub(super) fn encode_kind(
@@ -59,9 +60,16 @@ pub(super) fn encode_retry_policy(
 
 pub(super) fn encode_model_failure(
     writer: &mut peritus_codec::CanonicalWriter,
-    failure: ModelAttemptFailure,
+    failure: &ModelAttemptFailure,
 ) -> Result<(), crate::DebuggerError> {
     command::codec::encode_model_failure(writer, failure)
+}
+
+pub(super) fn decode_model_failure(
+    reader: &mut peritus_codec::CanonicalReader<'_>,
+    rich: bool,
+) -> Result<ModelAttemptFailure, crate::DebuggerError> {
+    command::codec::decode_model_failure(reader, rich)
 }
 
 pub(super) fn encode_report(

@@ -42,7 +42,7 @@ pub(super) fn validate_mode(
                     ModelWorkState::Running {
                         attempt: current,
                         ..
-                    } if current == *attempt
+                    } if *current == *attempt
                 )
             {
                 return Err(binding::binding("claimed model directive differs from attempt start"));

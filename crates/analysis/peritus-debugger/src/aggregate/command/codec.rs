@@ -1,13 +1,15 @@
 //! Canonical semantic command encoding shared by frames and state checkpoints.
 
-use peritus_codec::CanonicalWriter;
+use peritus_codec::{CanonicalReader, CanonicalWriter};
+use peritus_model_protocol::{Continuation, EventId as ProviderEventId, ResponseId};
 use peritus_types::{RevisionTuple, Sha256Digest};
 
 use crate::{DebuggerError, DebuggerErrorKind, DebuggerOperation, DebuggerRecovery};
 
 use super::super::{
-    AnalysisCounts, ModelAttemptFailure, ModelBudget, ModelRetryPolicy, PublicationRecord,
-    ReportRecord,
+    AnalysisCounts, ModelAcceptanceCertainty, ModelAttemptFailure, ModelAttemptFailureCode,
+    ModelBudget, ModelFailureContext, ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery,
+    ModelProviderFailureCause, ModelRetryPolicy, PublicationRecord, ReportRecord,
 };
 use super::DebuggerCommandKind;
 
@@ -84,8 +86,8 @@ pub(in crate::aggregate) fn encode_kind(
             writer.write_u64(*total_tokens).map_err(codec)
         }
         DebuggerCommandKind::RecordModelFailure { failure } => {
-            writer.write_u8(7).map_err(codec)?;
-            encode_model_failure(writer, *failure)
+            writer.write_u8(if failure.is_legacy() { 7 } else { 13 }).map_err(codec)?;
+            encode_model_failure(writer, failure)
         }
         DebuggerCommandKind::ScheduleModelRetry { model_id, next_attempt, not_before_tick } => {
             writer.write_u8(8).map_err(codec)?;
@@ -150,21 +152,150 @@ pub(in crate::aggregate) fn encode_retry_policy(
     writer: &mut CanonicalWriter,
     policy: ModelRetryPolicy,
 ) -> Result<(), DebuggerError> {
-    writer.write_u16(policy.max_attempts()).map_err(codec)?;
+    writer.write_u16(policy.max_attempts().unwrap_or(0)).map_err(codec)?;
     writer.write_u64(policy.max_delay_ticks()).map_err(codec)
 }
 
 pub(in crate::aggregate) fn encode_model_failure(
     writer: &mut CanonicalWriter,
-    failure: ModelAttemptFailure,
+    failure: &ModelAttemptFailure,
 ) -> Result<(), DebuggerError> {
     writer.write_fixed(failure.model_id().as_bytes()).map_err(codec)?;
     writer.write_u16(failure.attempt()).map_err(codec)?;
     writer.write_u8(failure.code().tag()).map_err(codec)?;
-    writer.write_bool(failure.retryable()).map_err(codec)?;
+    if failure.is_legacy() {
+        writer.write_bool(failure.retryable()).map_err(codec)?;
+        writer.write_fixed(failure.diagnostic_digest().as_bytes()).map_err(codec)?;
+        writer.write_u64(failure.event_count()).map_err(codec)?;
+        return writer.write_u64(failure.total_tokens()).map_err(codec);
+    }
     writer.write_fixed(failure.diagnostic_digest().as_bytes()).map_err(codec)?;
+    let context = failure.context().ok_or_else(|| {
+        DebuggerError::new(
+            DebuggerErrorKind::Corruption,
+            DebuggerOperation::ApplyTransition,
+            DebuggerRecovery::Quarantine,
+            "rich model failure has no context",
+        )
+    })?;
+    writer.write_fixed(context.profile_id().as_bytes()).map_err(codec)?;
+    writer.write_u64(context.profile_revision()).map_err(codec)?;
+    writer.write_u8(context.origin().tag()).map_err(codec)?;
+    writer.write_u8(context.cause().tag()).map_err(codec)?;
+    writer.write_u8(context.recovery().tag()).map_err(codec)?;
+    writer.write_u8(context.phase().tag()).map_err(codec)?;
+    writer.write_u8(context.acceptance().tag()).map_err(codec)?;
+    writer.write_option_tag(context.continuation().is_some()).map_err(codec)?;
+    if let Some(continuation) = context.continuation() {
+        writer.write_str(continuation.response_id().expose_for_wire()).map_err(codec)?;
+        writer.write_option_tag(continuation.event_id().is_some()).map_err(codec)?;
+        if let Some(event_id) = continuation.event_id() {
+            writer.write_str(event_id.expose_for_wire()).map_err(codec)?;
+        }
+        writer.write_option_tag(continuation.sequence().is_some()).map_err(codec)?;
+        if let Some(sequence) = continuation.sequence() {
+            writer.write_u64(sequence).map_err(codec)?;
+        }
+    }
+    writer.write_option_tag(context.http_status().is_some()).map_err(codec)?;
+    if let Some(status) = context.http_status() {
+        writer.write_u16(status).map_err(codec)?;
+    }
+    writer.write_option_tag(context.retry_after_millis().is_some()).map_err(codec)?;
+    if let Some(delay) = context.retry_after_millis() {
+        writer.write_u64(delay).map_err(codec)?;
+    }
+    writer.write_fixed(context.observations_digest().as_bytes()).map_err(codec)?;
     writer.write_u64(failure.event_count()).map_err(codec)?;
+    writer.write_u64(failure.output_bytes()).map_err(codec)?;
+    writer.write_u64(failure.input_tokens()).map_err(codec)?;
+    writer.write_u64(failure.output_tokens()).map_err(codec)?;
     writer.write_u64(failure.total_tokens()).map_err(codec)
+}
+
+pub(in crate::aggregate) fn decode_model_failure(
+    reader: &mut CanonicalReader<'_>,
+    rich: bool,
+) -> Result<ModelAttemptFailure, DebuggerError> {
+    let model_id = crate::ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?;
+    let attempt = reader.read_u16().map_err(codec)?;
+    let code = ModelAttemptFailureCode::from_tag(reader.read_u8().map_err(codec)?)?;
+    if !rich {
+        return ModelAttemptFailure::new(
+            model_id,
+            attempt,
+            code,
+            reader.read_bool().map_err(codec)?,
+            Sha256Digest::new(reader.read_fixed().map_err(codec)?),
+            reader.read_u64().map_err(codec)?,
+            reader.read_u64().map_err(codec)?,
+        );
+    }
+    let diagnostic_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+    let profile_id = peritus_types::ProviderProfileId::new(reader.read_fixed().map_err(codec)?)
+        .map_err(|_| corrupt("invalid model-failure provider profile identity"))?;
+    let profile_revision = reader.read_u64().map_err(codec)?;
+    let origin = ModelFailureOrigin::from_tag(reader.read_u8().map_err(codec)?)?;
+    let cause = ModelProviderFailureCause::from_tag(reader.read_u8().map_err(codec)?)?;
+    let recovery = ModelFailureRecovery::from_tag(reader.read_u8().map_err(codec)?)?;
+    let phase = ModelFailurePhase::from_tag(reader.read_u8().map_err(codec)?)?;
+    let acceptance = ModelAcceptanceCertainty::from_tag(reader.read_u8().map_err(codec)?)?;
+    let continuation = if reader.read_option_tag().map_err(codec)? {
+        let response_id =
+            ResponseId::new(reader.read_str().map_err(codec)?.to_owned()).map_err(protocol)?;
+        let event_id = if reader.read_option_tag().map_err(codec)? {
+            Some(
+                ProviderEventId::new(reader.read_str().map_err(codec)?.to_owned())
+                    .map_err(protocol)?,
+            )
+        } else {
+            None
+        };
+        let sequence = if reader.read_option_tag().map_err(codec)? {
+            Some(reader.read_u64().map_err(codec)?)
+        } else {
+            None
+        };
+        Some(Continuation::new(response_id, event_id, sequence).map_err(protocol)?)
+    } else {
+        None
+    };
+    let http_status = if reader.read_option_tag().map_err(codec)? {
+        Some(reader.read_u16().map_err(codec)?)
+    } else {
+        None
+    };
+    let retry_after_millis = if reader.read_option_tag().map_err(codec)? {
+        Some(reader.read_u64().map_err(codec)?)
+    } else {
+        None
+    };
+    let observations_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+    let context = ModelFailureContext::new(
+        profile_id,
+        profile_revision,
+        origin,
+        cause,
+        recovery,
+        phase,
+        acceptance,
+        continuation,
+        http_status,
+        retry_after_millis,
+        observations_digest,
+    )?;
+    ModelAttemptFailure::observed(
+        model_id,
+        attempt,
+        code,
+        context,
+        diagnostic_digest,
+        reader.read_u64().map_err(codec)?,
+        reader.read_u64().map_err(codec)?,
+        reader.read_u64().map_err(codec)?,
+        reader.read_u64().map_err(codec)?,
+        reader.read_u64().map_err(codec)?,
+    )
 }
 
 pub(in crate::aggregate) fn encode_report(
@@ -204,5 +335,23 @@ fn codec(error: impl core::fmt::Display) -> DebuggerError {
         DebuggerOperation::ApplyTransition,
         DebuggerRecovery::CorrectInput,
         error.to_string(),
+    )
+}
+
+fn protocol(error: impl core::fmt::Display) -> DebuggerError {
+    DebuggerError::new(
+        DebuggerErrorKind::ModelProtocol,
+        DebuggerOperation::DecodeProtocol,
+        DebuggerRecovery::Quarantine,
+        error.to_string(),
+    )
+}
+
+fn corrupt(detail: &'static str) -> DebuggerError {
+    DebuggerError::new(
+        DebuggerErrorKind::Corruption,
+        DebuggerOperation::DecodeProtocol,
+        DebuggerRecovery::Quarantine,
+        detail,
     )
 }

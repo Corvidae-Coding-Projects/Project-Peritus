@@ -1,8 +1,8 @@
 //! The complete immutable model request and its canonical identity.
 
-use peritus_types::ProviderProfileId;
+use peritus_types::{ArtifactId, ProviderProfileId, Sha256Digest};
 
-use super::{RequestOptions, validation};
+use super::{Continuation, RequestOptions, validation};
 use crate::{
     Message, NegotiatedCapabilities, ParallelToolPolicy, ProtocolError, ProtocolLimits,
     ProtocolVersion, ProviderName, ProviderProfile, RequestId, ToolChoice, ToolDefinition,
@@ -81,6 +81,74 @@ impl ModelRequest {
     pub fn with_local_session_directory(mut self, directory: std::path::PathBuf) -> Self {
         self.local_session_directory = Some(directory);
         self
+    }
+
+    /// Binds an observed provider continuation to a retry of this exact logical request.
+    ///
+    /// The immutable profile, negotiated capabilities, messages, tools, native session directory,
+    /// and caller request identity are retained. Complete request validation is repeated after the
+    /// continuation is installed.
+    ///
+    /// # Errors
+    ///
+    /// Returns a protocol error when the continuation requires an unnegotiated capability.
+    pub fn with_continuation(
+        mut self,
+        continuation: Continuation,
+        limits: ProtocolLimits,
+    ) -> Result<Self, ProtocolError> {
+        self.options = self.options.with_continuation(continuation);
+        validation::request(
+            self.negotiated,
+            &self.messages,
+            &self.tools,
+            self.parallel_tools,
+            &self.options,
+            limits,
+        )?;
+        Ok(self)
+    }
+
+    /// Resolves authenticated artifact media for one immediate provider projection.
+    ///
+    /// The semantic request, fingerprint, and durable archive retain artifact identities. Only the
+    /// returned in-memory copy exposes bytes to the selected provider adapter.
+    ///
+    /// # Errors
+    /// Returns the resolver's typed error or a protocol error converted into it when bytes do not
+    /// match their exact digest or the selected provider's per-image limit.
+    pub fn resolve_artifacts<E>(
+        mut self,
+        mut resolver: impl FnMut(ArtifactId, Sha256Digest, u64) -> Result<Vec<u8>, E>,
+    ) -> Result<Self, E>
+    where
+        E: From<ProtocolError>,
+    {
+        let maximum = self.negotiated.limits().max_inline_media_bytes();
+        for message in &mut self.messages {
+            for block in message.content_mut() {
+                let media = match block {
+                    crate::ContentBlock::Image(media)
+                    | crate::ContentBlock::Audio(media)
+                    | crate::ContentBlock::Document(media) => media,
+                    crate::ContentBlock::Text(_)
+                    | crate::ContentBlock::ToolCall(_)
+                    | crate::ContentBlock::ToolResult(_)
+                    | crate::ContentBlock::Refusal(_)
+                    | crate::ContentBlock::Reasoning(_)
+                    | crate::ContentBlock::ProviderExtension(_) => continue,
+                };
+                let Some((artifact, digest)) = media.artifact_reference() else {
+                    continue;
+                };
+                let bytes = resolver(artifact, digest, maximum)?;
+                *media = media
+                    .clone()
+                    .with_resolved_artifact(bytes, maximum)
+                    .map_err(E::from)?;
+            }
+        }
+        Ok(self)
     }
 
     /// Returns the host-owned native runtime storage namespace, when supplied.

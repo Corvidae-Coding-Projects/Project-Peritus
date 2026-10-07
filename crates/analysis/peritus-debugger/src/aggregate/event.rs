@@ -10,7 +10,7 @@ use super::{
 };
 
 /// Closed family-83 semantic event vocabulary.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DebuggerEventKind {
     /// Immutable job input was registered.
     JobCreated {

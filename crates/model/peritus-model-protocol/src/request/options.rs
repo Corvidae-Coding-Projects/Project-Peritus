@@ -233,6 +233,12 @@ impl RequestOptions {
     pub const fn continuation(&self) -> Option<&Continuation> {
         self.continuation.as_ref()
     }
+    /// Replaces the continuation while retaining every other request option.
+    #[must_use]
+    pub fn with_continuation(mut self, continuation: Continuation) -> Self {
+        self.continuation = Some(continuation);
+        self
+    }
     /// Provider extensions.
     #[must_use]
     pub fn extensions(&self) -> &[ProviderExtension] {

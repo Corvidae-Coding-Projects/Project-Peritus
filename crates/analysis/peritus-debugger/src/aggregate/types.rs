@@ -7,8 +7,10 @@ mod records;
 
 pub use failure::{JobFailure, JobFailureCode};
 pub use model::{
-    ModelAttemptFailure, ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult,
-    ModelBudget, ModelProgress, ModelRetryPolicy, ModelWorkState,
+    ModelAcceptanceCertainty, ModelAttemptFailure, ModelAttemptFailureCode,
+    ModelAttemptObservation, ModelAttemptResult, ModelBudget, ModelFailureContext,
+    ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery, ModelProgress,
+    ModelProviderFailureCause, ModelRetryPolicy, ModelWorkState,
 };
 pub use phase::DebuggerPhase;
 pub use records::{AnalysisCounts, PublicationRecord, ReportRecord, SelectionRecord};

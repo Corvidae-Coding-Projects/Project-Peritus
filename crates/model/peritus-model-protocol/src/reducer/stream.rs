@@ -2,9 +2,9 @@
 
 use super::{ReducerTransition, ResponseReducer, SeenEvent};
 use crate::{
-    CacheObservation, EventEnvelope, FailureCategory, ModelEvent, ProtocolError, ProtocolErrorKind,
-    ProtocolLimits, ProviderExtension, ProviderName, RateLimitObservation, ReducerTransitionFacts,
-    ResponseId, TerminalOutcome, UsageCounters, UsageTracker,
+    CacheObservation, Continuation, EventEnvelope, FailureCategory, ModelEvent, ProtocolError,
+    ProtocolErrorKind, ProtocolLimits, ProviderExtension, ProviderName, RateLimitObservation,
+    ReducerTransitionFacts, ResponseId, ResumeKind, TerminalOutcome, UsageCounters, UsageTracker,
 };
 
 impl ResponseReducer {
@@ -20,6 +20,7 @@ impl ResponseReducer {
             output_bytes: 0,
             started: false,
             response_id: None,
+            last_provider_event_id: None,
             seen: std::collections::BTreeMap::new(),
             indexes: std::collections::BTreeSet::new(),
             items: std::collections::BTreeMap::new(),
@@ -71,6 +72,9 @@ impl ResponseReducer {
             self.last_provider_sequence = envelope.provider_sequence();
         }
         if let Some(id) = envelope.provider_event_id().cloned() {
+            if envelope.provider_sequence().is_some() {
+                self.last_provider_event_id = Some(id.clone());
+            }
             self.seen.insert(
                 id,
                 SeenEvent {
@@ -127,6 +131,32 @@ impl ResponseReducer {
     #[must_use]
     pub const fn response_id(&self) -> Option<&ResponseId> {
         self.response_id.as_ref()
+    }
+    /// Returns a continuation only when the profile's declared resume strength is satisfied.
+    #[must_use]
+    pub fn continuation(&self, resume: ResumeKind) -> Option<Continuation> {
+        let response_id = self.response_id.clone()?;
+        match resume {
+            ResumeKind::Unsupported => None,
+            ResumeKind::SemanticContinuation => Continuation::new(response_id, None, None).ok(),
+            ResumeKind::ExactCursor => Continuation::new(
+                response_id,
+                self.last_provider_event_id.clone(),
+                self.last_provider_sequence,
+            )
+            .ok()
+            .filter(|continuation| continuation.event_id().is_some()),
+        }
+    }
+    /// Number of normalized events accepted by the reducer, excluding exact duplicates.
+    #[must_use]
+    pub fn event_count(&self) -> u64 {
+        u64::try_from(self.event_count).unwrap_or(u64::MAX)
+    }
+    /// Number of output bytes assembled before terminal classification.
+    #[must_use]
+    pub fn output_bytes(&self) -> u64 {
+        u64::try_from(self.output_bytes).unwrap_or(u64::MAX)
     }
     /// Returns cumulative usage high water.
     #[must_use]

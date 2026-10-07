@@ -120,8 +120,8 @@ impl DebuggerLimits {
             16 * 1024 * 1024,      // model output bytes
             262_144,               // model events
             4_000_000,             // model tokens
-            8,                     // model attempts
-            7,                     // retries
+            u16::MAX as u64,       // representable model attempt identities
+            u16::MAX as u64 - 1,   // representable retry transitions
             24 * 60 * 60 * 1_000,  // accounted wall time
             131_072,               // diagnostics
             16 * 1024 * 1024,      // complete C0 state-install bytes

@@ -97,8 +97,8 @@ impl DebuggerState {
     }
     /// Optional model-analysis state.
     #[must_use]
-    pub const fn model(&self) -> Option<ModelProgress> {
-        self.model
+    pub const fn model(&self) -> Option<&ModelProgress> {
+        self.model.as_ref()
     }
     /// Complete settled model-attempt history in attempt order.
     #[must_use]

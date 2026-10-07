@@ -113,6 +113,18 @@ pub(super) fn decode(bytes: &[u8]) -> Result<DebuggerState, DebuggerError> {
 fn validate_shape(state: &DebuggerState) -> Result<(), DebuggerError> {
     let complete_analysis =
         state.deterministic_digest().is_some() && state.analysis_counts().is_some();
+    let model_history_valid = state.model_attempts().iter().all(|observation| {
+        state.model().is_some_and(|model| model.id() == observation.model_id())
+            && match observation.result() {
+                crate::ModelAttemptResult::Proposal { .. } => true,
+                crate::ModelAttemptResult::Failure(failure) => failure.context().map_or(
+                    true,
+                    |context| {
+                        context.profile_id() == state.revision().provider_profile_id()
+                    },
+                ),
+            }
+    });
     let valid = match state.phase() {
         DebuggerPhase::Created => state.selection().is_none() && !complete_analysis,
         DebuggerPhase::Selected => state.selection().is_some() && !complete_analysis,
@@ -127,7 +139,11 @@ fn validate_shape(state: &DebuggerState) -> Result<(), DebuggerError> {
         DebuggerPhase::Failed => state.failure().is_some(),
         DebuggerPhase::Cancelled => state.cancellation_reason_digest().is_some(),
     };
-    if valid { Ok(()) } else { Err(corrupt("state fields contradict the durable job phase")) }
+    if valid && model_history_valid {
+        Ok(())
+    } else {
+        Err(corrupt("state fields contradict the durable job phase or provider history"))
+    }
 }
 
 fn encode_selection(

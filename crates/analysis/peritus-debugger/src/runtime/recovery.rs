@@ -55,16 +55,16 @@ pub fn decide_recovery(
         }
         DebuggerPhase::ModelPending => match state.model().map(crate::ModelProgress::state) {
             Some(ModelWorkState::Pending { attempt, .. }) if directive_available => {
-                DebuggerRecoveryDecision::ClaimModelAttempt { attempt }
+                DebuggerRecoveryDecision::ClaimModelAttempt { attempt: *attempt }
             }
             Some(ModelWorkState::AwaitingRetry { attempt, .. }) => {
-                DebuggerRecoveryDecision::ScheduleModelRetry { completed_attempt: attempt }
+                DebuggerRecoveryDecision::ScheduleModelRetry { completed_attempt: *attempt }
             }
             _ => DebuggerRecoveryDecision::Quarantine,
         },
         DebuggerPhase::ModelRunning => match state.model().map(crate::ModelProgress::state) {
             Some(ModelWorkState::Running { attempt, .. }) if directive_available => {
-                DebuggerRecoveryDecision::ResumeModelAttempt { attempt }
+                DebuggerRecoveryDecision::ResumeModelAttempt { attempt: *attempt }
             }
             _ => DebuggerRecoveryDecision::Quarantine,
         },

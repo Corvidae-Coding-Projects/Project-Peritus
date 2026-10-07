@@ -117,7 +117,7 @@ pub(super) fn command(
             *total_tokens,
         ),
         (Some(prior), DebuggerCommandKind::RecordModelFailure { failure }) => {
-            model::record_failure(prior, command, sequence, *failure)
+            model::record_failure(prior, command, sequence, failure.clone())
         }
         (
             Some(prior),

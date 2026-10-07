@@ -32,7 +32,7 @@ impl DebuggerEventFrame {
     ///
     /// Returns a codec error when the semantic event exceeds family-83 bounds.
     pub fn from_event(event: &DebuggerEvent) -> Result<Self, CodecError> {
-        let command_kind = event_to_command(*event.kind(), event.query_digest());
+        let command_kind = event_to_command(event.kind().clone(), event.query_digest());
         Ok(Self {
             event_id: event.id(),
             command_id: event.command_id(),
@@ -140,7 +140,7 @@ impl CanonicalDecode for DebuggerEventFrame {
 }
 
 #[allow(clippy::too_many_lines, reason = "closed command-event schema mapping stays exhaustive")]
-const fn event_to_command(
+fn event_to_command(
     kind: DebuggerEventKind,
     query_digest: Sha256Digest,
 ) -> DebuggerCommandKind {
@@ -215,7 +215,7 @@ const fn event_to_command(
     }
 }
 
-const fn command_to_event(kind: DebuggerCommandKind) -> DebuggerEventKind {
+fn command_to_event(kind: DebuggerCommandKind) -> DebuggerEventKind {
     match kind {
         DebuggerCommandKind::CreateJob { revision, limits_digest, model_plan_digest, .. } => {
             DebuggerEventKind::JobCreated { revision, limits_digest, model_plan_digest }

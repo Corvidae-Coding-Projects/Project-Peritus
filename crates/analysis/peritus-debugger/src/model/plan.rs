@@ -142,8 +142,10 @@ impl ModelAnalysisPlan {
         if budget.max_events() > debugger_limits.get(DebuggerLimit::ModelEvents)
             || budget.max_output_bytes() > debugger_limits.get(DebuggerLimit::ModelOutputBytes)
             || budget.max_total_tokens() > debugger_limits.get(DebuggerLimit::ModelTokens)
-            || u64::from(retry_policy.max_attempts()) > debugger_limits.model_attempts()
-            || u64::from(retry_policy.max_attempts().saturating_sub(1)) > debugger_limits.retries()
+            || retry_policy.max_attempts().is_some_and(|attempts| {
+                u64::from(attempts) > debugger_limits.model_attempts()
+                    || u64::from(attempts.saturating_sub(1)) > debugger_limits.retries()
+            })
         {
             return Err(budget_error("model plan exceeds the frozen debugger resource policy"));
         }

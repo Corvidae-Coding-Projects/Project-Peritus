@@ -5,14 +5,14 @@ use peritus_codec::{CanonicalReader, CanonicalWriter};
 use crate::{DebuggerError, ModelAnalysisId};
 
 use super::super::super::{
-    ModelAttemptFailure, ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult,
-    ModelBudget, ModelProgress, ModelRetryPolicy, ModelWorkState,
+    ModelAttemptObservation, ModelAttemptResult, ModelBudget, ModelProgress, ModelRetryPolicy,
+    ModelWorkState,
 };
 use super::{codec, corrupt, digest};
 
 pub(super) fn encode_model(
     writer: &mut CanonicalWriter,
-    model: Option<ModelProgress>,
+    model: Option<&ModelProgress>,
 ) -> Result<(), DebuggerError> {
     writer.write_option_tag(model.is_some()).map_err(codec)?;
     let Some(value) = model else {
@@ -26,27 +26,27 @@ pub(super) fn encode_model(
     match value.state() {
         ModelWorkState::Pending { attempt, not_before_tick } => {
             writer.write_u8(1).map_err(codec)?;
-            writer.write_u16(attempt).map_err(codec)?;
-            writer.write_u64(not_before_tick).map_err(codec)
+            writer.write_u16(*attempt).map_err(codec)?;
+            writer.write_u64(*not_before_tick).map_err(codec)
         }
         ModelWorkState::Running { attempt, started_at_tick } => {
             writer.write_u8(2).map_err(codec)?;
-            writer.write_u16(attempt).map_err(codec)?;
-            writer.write_u64(started_at_tick).map_err(codec)
+            writer.write_u16(*attempt).map_err(codec)?;
+            writer.write_u64(*started_at_tick).map_err(codec)
         }
         ModelWorkState::AwaitingRetry { attempt, failure } => {
-            writer.write_u8(3).map_err(codec)?;
-            writer.write_u16(attempt).map_err(codec)?;
+            writer.write_u8(if failure.is_legacy() { 3 } else { 6 }).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
             crate::aggregate::encode_model_failure(writer, failure)
         }
         ModelWorkState::Validated { attempt, proposal_digest } => {
             writer.write_u8(4).map_err(codec)?;
-            writer.write_u16(attempt).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
             writer.write_fixed(proposal_digest.as_bytes()).map_err(codec)
         }
         ModelWorkState::Rejected { attempt, failure } => {
-            writer.write_u8(5).map_err(codec)?;
-            writer.write_u16(attempt).map_err(codec)?;
+            writer.write_u8(if failure.is_legacy() { 5 } else { 7 }).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
             crate::aggregate::encode_model_failure(writer, failure)
         }
     }
@@ -62,7 +62,7 @@ pub(super) fn decode_model(
     let plan_digest = digest(reader)?;
     let request_digest = digest(reader)?;
     let budget = decode_model_budget(reader)?;
-    let retry = ModelRetryPolicy::new(
+    let retry = ModelRetryPolicy::from_encoded(
         reader.read_u16().map_err(codec)?,
         reader.read_u64().map_err(codec)?,
     )?;
@@ -77,7 +77,10 @@ pub(super) fn decode_model(
         },
         3 => {
             let attempt = nonzero_attempt(reader.read_u16().map_err(codec)?)?;
-            ModelWorkState::AwaitingRetry { attempt, failure: decode_model_failure(reader)? }
+            ModelWorkState::AwaitingRetry {
+                attempt,
+                failure: crate::aggregate::decode_model_failure(reader, false)?,
+            }
         }
         4 => ModelWorkState::Validated {
             attempt: nonzero_attempt(reader.read_u16().map_err(codec)?)?,
@@ -85,13 +88,30 @@ pub(super) fn decode_model(
         },
         5 => {
             let attempt = nonzero_attempt(reader.read_u16().map_err(codec)?)?;
-            ModelWorkState::Rejected { attempt, failure: decode_model_failure(reader)? }
+            ModelWorkState::Rejected {
+                attempt,
+                failure: crate::aggregate::decode_model_failure(reader, false)?,
+            }
+        }
+        6 => {
+            let attempt = nonzero_attempt(reader.read_u16().map_err(codec)?)?;
+            ModelWorkState::AwaitingRetry {
+                attempt,
+                failure: crate::aggregate::decode_model_failure(reader, true)?,
+            }
+        }
+        7 => {
+            let attempt = nonzero_attempt(reader.read_u16().map_err(codec)?)?;
+            ModelWorkState::Rejected {
+                attempt,
+                failure: crate::aggregate::decode_model_failure(reader, true)?,
+            }
         }
         _ => return Err(corrupt("unknown model-work state tag")),
     };
     let progress =
         ModelProgress::new(id, plan_digest, request_digest, budget, retry).with_state(state);
-    validate_model_state(progress)?;
+    validate_model_state(&progress)?;
     Ok(Some(progress))
 }
 
@@ -123,7 +143,7 @@ pub(super) fn encode_model_attempts(
                 writer.write_u64(total_tokens).map_err(codec)?;
             }
             ModelAttemptResult::Failure(failure) => {
-                writer.write_u8(2).map_err(codec)?;
+                writer.write_u8(if failure.is_legacy() { 2 } else { 3 }).map_err(codec)?;
                 crate::aggregate::encode_model_failure(writer, failure)?;
             }
         }
@@ -136,8 +156,8 @@ pub(super) fn decode_model_attempts(
 ) -> Result<Vec<ModelAttemptObservation>, DebuggerError> {
     let count =
         reader.read_collection_len(16 + 2 + 1 + 16 + 2 + 1 + 1 + 32 + 2 * 8).map_err(codec)?;
-    if count > 32 {
-        return Err(corrupt("model attempt history exceeds compiled bound"));
+    if count > usize::from(u16::MAX) {
+        return Err(corrupt("model attempt history exceeds its identity representation"));
     }
     let mut attempts = reader.reserve_collection(count).map_err(codec)?;
     for index in 0..count {
@@ -156,7 +176,8 @@ pub(super) fn decode_model_attempts(
                 output_tokens: reader.read_u64().map_err(codec)?,
                 total_tokens: reader.read_u64().map_err(codec)?,
             },
-            2 => ModelAttemptResult::Failure(decode_model_failure(reader)?),
+            2 => ModelAttemptResult::Failure(crate::aggregate::decode_model_failure(reader, false)?),
+            3 => ModelAttemptResult::Failure(crate::aggregate::decode_model_failure(reader, true)?),
             _ => return Err(corrupt("unknown model attempt result tag")),
         };
         attempts.push(ModelAttemptObservation::new(model_id, attempt, result)?);
@@ -164,15 +185,23 @@ pub(super) fn decode_model_attempts(
     Ok(attempts)
 }
 
-fn validate_model_state(model: ModelProgress) -> Result<(), DebuggerError> {
-    let (attempt, nested) = match model.state() {
+fn validate_model_state(model: &ModelProgress) -> Result<(), DebuggerError> {
+    let (attempt, nested, retry_state_valid) = match model.state() {
         ModelWorkState::Pending { attempt, .. }
         | ModelWorkState::Running { attempt, .. }
-        | ModelWorkState::Validated { attempt, .. } => (attempt, None),
-        ModelWorkState::AwaitingRetry { attempt, failure }
-        | ModelWorkState::Rejected { attempt, failure } => (attempt, Some(failure)),
+        | ModelWorkState::Validated { attempt, .. } => (*attempt, None, true),
+        ModelWorkState::AwaitingRetry { attempt, failure } => (
+            *attempt,
+            Some(failure),
+            failure.retryable()
+                && attempt
+                    .checked_add(1)
+                    .is_some_and(|next| model.retry_policy().permits(next)),
+        ),
+        ModelWorkState::Rejected { attempt, failure } => (*attempt, Some(failure), true),
     };
-    if attempt > model.retry_policy().max_attempts()
+    if !retry_state_valid
+        || !model.retry_policy().permits(attempt)
         || nested
             .is_some_and(|failure| failure.model_id() != model.id() || failure.attempt() != attempt)
     {
@@ -186,20 +215,6 @@ fn decode_model_budget(reader: &mut CanonicalReader<'_>) -> Result<ModelBudget, 
         reader.read_u64().map_err(codec)?,
         reader.read_u64().map_err(codec)?,
         reader.read_u64().map_err(codec)?,
-        reader.read_u64().map_err(codec)?,
-        reader.read_u64().map_err(codec)?,
-    )
-}
-
-fn decode_model_failure(
-    reader: &mut CanonicalReader<'_>,
-) -> Result<ModelAttemptFailure, DebuggerError> {
-    ModelAttemptFailure::new(
-        ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
-        reader.read_u16().map_err(codec)?,
-        ModelAttemptFailureCode::from_tag(reader.read_u8().map_err(codec)?)?,
-        reader.read_bool().map_err(codec)?,
-        digest(reader)?,
         reader.read_u64().map_err(codec)?,
         reader.read_u64().map_err(codec)?,
     )

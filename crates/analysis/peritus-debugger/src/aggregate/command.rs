@@ -18,7 +18,7 @@ use super::{
 const COMMAND_DOMAIN: &[u8] = b"peritus.debugger.command.v1\0";
 
 /// Closed E2 command vocabulary. No variant carries mutation or acceptance authority.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DebuggerCommandKind {
     /// Creates one immutable debugger job.
     CreateJob {

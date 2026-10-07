@@ -87,7 +87,7 @@ impl DebuggerProjection {
             deterministic_digest: state.deterministic_digest(),
             analysis_counts: state.analysis_counts(),
             model_id: model.map(crate::ModelProgress::id),
-            model_state: model.map(crate::ModelProgress::state),
+            model_state: model.map(|progress| progress.state().clone()),
             model_attempts: state.model_attempts().to_vec(),
             report_id: report.map(crate::ReportRecord::id),
             report_digest: report.map(crate::ReportRecord::digest),
@@ -147,9 +147,9 @@ impl DebuggerProjection {
     }
     /// Optional model identity and exact work state.
     #[must_use]
-    pub const fn model(&self) -> Option<(ModelAnalysisId, ModelWorkState)> {
-        match (self.model_id, self.model_state) {
-            (Some(id), Some(state)) => Some((id, state)),
+    pub fn model(&self) -> Option<(ModelAnalysisId, ModelWorkState)> {
+        match (self.model_id, self.model_state.as_ref()) {
+            (Some(id), Some(state)) => Some((id, state.clone())),
             _ => None,
         }
     }

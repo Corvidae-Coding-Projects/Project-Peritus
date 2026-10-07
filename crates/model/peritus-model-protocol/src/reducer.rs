@@ -171,6 +171,7 @@ pub struct ResponseReducer {
     output_bytes: usize,
     started: bool,
     response_id: Option<ResponseId>,
+    last_provider_event_id: Option<crate::EventId>,
     seen: BTreeMap<EventId, SeenEvent>,
     indexes: BTreeSet<u32>,
     items: BTreeMap<ItemId, ItemAssembly>,
@@ -195,6 +196,7 @@ impl fmt::Debug for ResponseReducer {
             .field("output_bytes", &self.output_bytes)
             .field("started", &self.started)
             .field("response_id", &self.response_id)
+            .field("has_provider_cursor", &self.last_provider_event_id.is_some())
             .field("seen_events", &self.seen.len())
             .field("open_items", &self.items.len())
             .field("completed_items", &self.completed.len())

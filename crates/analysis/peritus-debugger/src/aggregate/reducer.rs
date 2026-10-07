@@ -71,7 +71,7 @@ pub fn apply_event(
         event.previous_event(),
         event.prior_state_digest(),
         event.query_digest(),
-        event_to_command(*event.kind(), event.query_digest()),
+        event_to_command(event.kind().clone(), event.query_digest()),
     )?;
     if command.digest() != event.command_digest() {
         return Err(replay_error("event command digest differs from semantic payload"));
@@ -137,7 +137,7 @@ fn validate_fence(
 }
 
 #[allow(clippy::too_many_lines, reason = "closed event-to-command mapping stays exhaustive")]
-const fn event_to_command(
+fn event_to_command(
     kind: DebuggerEventKind,
     query_digest: Sha256Digest,
 ) -> DebuggerCommandKind {
