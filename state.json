@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3769,
-        "tip_oid": "1a996b3099f489d9bee90189f5e12a8aa899b5f8",
-        "prefix_sha256": "7953c4463d50c848dd05ef75e63877e3e6ceb1c07876231d93996be9534644c3"
+        "sequence": 3770,
+        "tip_oid": "814c6f3df508754ea144f7a95554b66e6c27699a",
+        "prefix_sha256": "4a00c09a2238aae3d2cf0ddb605e570e60c844a37bc13578cb7835a2c6dabdf0"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3075,
+  "next_comment_id": 3076,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32923,7 +32923,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.176486792Z",
-      "updated_at": "2026-10-07T06:20:24.880780791Z",
+      "updated_at": "2026-10-07T06:48:57.755696262Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32952,6 +32952,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfayQQnW7ty2Uy59Runh/jOKD8CFy//16uBdTgvPRHTRb4SObhGg0fWa7x1L1rO4EndHqeBuWF3IlXKMt3p7PDw=="
+        },
+        "f1f5a5bb-3f96-4bc2-bf3d-1e7ce36add39": {
+          "display_id": 3075,
+          "author": "6ME5",
+          "content": "Code-only integration: the inspector now reads checkpoint schemas 1/2/3/4, using schema-4 paged working-state roots plus indexed sources/transcripts and verified artifact callbacks. It acquires the exact canonical view's owned artifact handle before semantic inspection, reads the archive in bounded chunks from that handle, and retains it for subsequent cursor reads. This avoids reopening/substituting the archive after inspection and supports the new checkpoint lineage. Opening still materializes the logical state/view; this is not a completion claim. No tests or manual runners have run; issue stays open for final integrated verification.",
+          "created_at": "2026-10-07T06:48:57.735714122Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAw3fdq0Lr6x9b/nnorTvRueLE8+ZbETJIdhWBSklYar5Mf6ivXw5NXYi8dGC+h1GY0kJsj80flwjHIQJi/hLUBw=="
         }
       }
     },
