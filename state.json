@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3823,
-        "tip_oid": "1885e76a17c3d592793924c5979451c78b5b9f23",
-        "prefix_sha256": "775bf6edda79effcb90b65311da8ef5c62dfc1a402a44deda0701f9adb8488b0"
+        "sequence": 3824,
+        "tip_oid": "92a60ad2a52bac255f2e1b4e918cf93d7703ba15",
+        "prefix_sha256": "46c42962aa339bbad6bd2c288880f33a433d98146fda2bec9c4a6c5f6a5c2e67"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3129,
+  "next_comment_id": 3130,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -3594,7 +3594,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.599059067Z",
-      "updated_at": "2026-10-07T12:33:30.292676838Z",
+      "updated_at": "2026-10-07T15:54:09.714101503Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -3605,6 +3605,15 @@
           "content": "Systemic repair plan for L110: Tiny selected shell preview limits cannot contain the mandatory empty-output marker.\n\nOwning contract and implementation boundary: crates/tools/peritus-tools-shell/src/render.rs:16-34,51-61; command_runtime/result.rs:9-10,116-126. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMake empty output a typed terminal value independent of a mandatory display marker. Construct previews against their actual final UTF-8 encoded length, including omission markers, and use a compact valid empty rendering or a referenced display when the selected allowance is tiny. Terminal effect truth must remain valid even when no nonempty text fits.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:21:37.467Z",
           "kind": "decision"
+        },
+        "cbc42d38-5ed5-444e-b78d-2c03e0aa9467": {
+          "display_id": 3129,
+          "author": "6ME5",
+          "content": "Signed source commit 97a41b46e63c0ed5231844b849d58e2e9c9b82c8 created for the product UTF-8 preview correction. Decoded replacement bytes and omission/incomplete markers now fit the existing per-stream display capacity. Full output artifacts and command ownership remain preserved. Shared shell/quality rendering was separately delivered in2deb7abb8. This focused commit retains the unstaged artifact-reader/paged-progress/settlement successors and changes no canonical receipts. Full source and staged diff inspected; whitespace clean. No tests, builds, lint, formatting or test edits; runtime validation deferred until ALL batch code is finished. Issue209 remains open.",
+          "created_at": "2026-10-07T15:54:09.709747735Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf5u8crI2gk5puoWFjdDOrRSdFMRRbPEBOy18dJWm/uxHLUmq1QYIkyvtjh6uC2tnYTgTjbB991R0qg50TlpbAA=="
         },
         "efab69ae-ba2f-4ef8-9fc4-574877e2b8fc": {
           "display_id": 3090,
