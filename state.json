@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3758,
-        "tip_oid": "77d56bd1ee3abf5f8fedd5c5dc4797119c202cb6",
-        "prefix_sha256": "8361479d793c9410a8e380a5532f252f1d174b420a41c873a3b964eb47032379"
+        "sequence": 3759,
+        "tip_oid": "da19bf627b692a10a2bed7ad84cdddc2dc871966",
+        "prefix_sha256": "124c2eed7bcdb05b66c97ac081dd41057243c1562da51a0f46d9adec84a7b628"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3064,
+  "next_comment_id": 3065,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32851,7 +32851,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.176486792Z",
-      "updated_at": "2026-10-07T06:09:34.632500058Z",
+      "updated_at": "2026-10-07T06:20:24.880780791Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32871,6 +32871,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiRZGo4ceXP82nq6dPFJyO8yOas+mEmU0W2uPTZjGGjcQtEUUWR1/ErlG9VXqaoY7pPJMRAk0oABeYwE+fQapBw=="
+        },
+        "ef081e30-b3bb-4726-af07-b2d5a4b2421d": {
+          "display_id": 3064,
+          "author": "6ME5",
+          "content": "Code-only CLI integration: context-inspect now exposes summary, exact source/message pages, raw canonical view ranges, and complete archive streaming through the retained inspection owner. Legacy complete JSON output remains compatible. Source/message pages carry checkpoint generation and canonical-view digest, and nontext locations point to the appropriate archive API. Opening still validates/materializes the checkpoint projection; issue remains open. No manual tests/build/lint/format/codegen or test edits; final verification is deferred.",
+          "created_at": "2026-10-07T06:20:24.865388351Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfayQQnW7ty2Uy59Runh/jOKD8CFy//16uBdTgvPRHTRb4SObhGg0fWa7x1L1rO4EndHqeBuWF3IlXKMt3p7PDw=="
         }
       }
     },
