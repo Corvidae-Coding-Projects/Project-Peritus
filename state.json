@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3798,
-        "tip_oid": "3d9db228506e0693540c2e3b4286c572a48b25b3",
-        "prefix_sha256": "c7dc49bd18a8698fa49d16db584b3602a47054d35ef699f3748ffbe469431a5b"
+        "sequence": 3799,
+        "tip_oid": "a972bb7999ddf00554a9fdf93bc2b4d9590d7190",
+        "prefix_sha256": "4271a1c38d8f85dc0be0e01e79034f66f627a2d4b23167f2d65e4a39594d8546"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3104,
+  "next_comment_id": 3105,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1532,7 +1532,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.270531227Z",
-      "updated_at": "2026-10-07T07:47:53.689762040Z",
+      "updated_at": "2026-10-07T13:23:23.575446710Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -1552,6 +1552,15 @@
           "content": "Systemic repair plan for L102: Product command acceptance contracts still declare a synthetic one-millisecond gate timeout.\n\nOwning contract and implementation boundary: command_runtime/contract.rs:23-35; peritus-spec/src/gate.rs:53-79; command_runtime/kernel.rs:22-138. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nConstruct minimal command acceptance contracts with an absent timeout unless a real deadline was explicitly selected. Carry that optionality through canonical encoding, kernel commitments, recovery and actual gate execution, avoiding a synthetic one-millisecond placeholder. Preserve graph dependencies and exact target binding, and verify untimed contracts round-trip and remain accepted by every consumer.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "ad895a80-bb7f-4b26-9a67-8608df4a278f": {
+          "display_id": 3104,
+          "author": "6ME5",
+          "content": "Resumed source-only downstream/recovery audit confirms the existing one-file correction is systemic without a protocol migration. Acceptance v1 already canonically encodes an absent timeout as zero and reconstructs None while retaining every nonzero legacy timeout exactly. The command C0 journal binds the exact canonical contract digest in the kernel successor; reducer-driven restart replay re-resolves the contract and rejects a changed binding or successor digest. This internal command gate is not executed as a D1 effect. Actual D1 quality execution still preserves explicitly selected deadlines through exact GatePlan/CheckDefinition equality, C2 QualityPlanInputs equality, and the C4 dispatcher check before launch. User-selected command deadlines remain separately bound in the real C4/C2 execution plan and budget authority. Durable source handoff and hashes are in .crosslink/code-batch-recovery/2026-10-07-issue201/. Per batch direction, no tests, builds, checks, lint, formatting, code generation, Verus, qualification runners, or test-file edits were performed; runtime/formal final validation remains outstanding and the issue stays open.",
+          "created_at": "2026-10-07T13:23:23.571041202Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAkPgxxfWhRh8+STG9m52iDZjM8UrS5Wu41zB20Y9JpyMmmpwKX1Rdd/Y9HxUEnQb/OGQ6Zvtvtnzp/GLMNTXRBQ=="
         }
       }
     },
