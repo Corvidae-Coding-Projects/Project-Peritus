@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3778,
-        "tip_oid": "d26a08f502bec5d6593e1e5a9261231a2b17e683",
-        "prefix_sha256": "f25c0c45e9cc0fe29f293d661a3361b94c90dea095d66bcdf55afdf7b7c93b7c"
+        "sequence": 3779,
+        "tip_oid": "7c607df6236a4c8f2c8f01a590db9b352d3c0f88",
+        "prefix_sha256": "5f448a268bb45748c188794f0c5af98270385a5a2b31896971b206aa6bcc9195"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3084,
+  "next_comment_id": 3085,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -39600,11 +39600,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.266107086Z",
-      "updated_at": "2026-10-06T13:19:08.268241657Z",
+      "updated_at": "2026-10-07T07:44:35.963117011Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "73016fb7-6511-47bc-abb1-58d9e8fa538b": {
+          "display_id": 3084,
+          "author": "6ME5",
+          "content": "Code-only batch observation: recovery now reports each scoped native probe/termination failure with its exact process identity and original typed cause and continues other records. Root PID absence no longer proves complete tree absence: ProcessTreeQuiescence requires explicit containment evidence (Unix signal-zero ESRCH; Windows remains unverifiable without durable reopenable job identity). A missing tree during Starting remains unresolved, and manifest predecessor comparison prevents stale recovery facts from settling concurrently advanced ownership. Streaming callbacks preserve bounded scan memory. Windows job reopening, zombie handling, and restart adoption remain outstanding; no runners were invoked and this issue remains open pending final validation.",
+          "created_at": "2026-10-07T07:44:35.940481795Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA632rPbI8ci+8NyvhdclQU47IL91lVp4mZ0/3UPBS5U2PJIobbaXYa/+FMcPmKTR3+JR1YJntMR1wtbvZxcjEBQ=="
+        },
         "f1487033-a663-478f-805e-f646ce33ff22": {
           "display_id": 2272,
           "author": "6ME5",
