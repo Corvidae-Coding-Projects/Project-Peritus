@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3866,
-        "tip_oid": "9d60ccbf884797d5996c0b474dbc3507a9e2f168",
-        "prefix_sha256": "c48acf61c3b077cb352035d35e143c2997470aeeb4bbab5abf60bd0a0fd9d022"
+        "sequence": 3867,
+        "tip_oid": "bfc895d4569aa2a80ddfc05e9104fbbf2deac7ee",
+        "prefix_sha256": "95517bf6cce043d55be20a5e5b595b7093f0bf27d51958be9f9b8cb3c72b64d3"
       },
       "NWAR": {
         "sequence": 39,
@@ -6050,12 +6050,13 @@
       "display_id": 500,
       "title": "[L419] E2 collapses permanent provider failures into retries and records zero failed-attempt usage",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L419.\n\n- Evidence: `crates/analysis/peritus-debugger/src/model/runner.rs:73-197`, `src/runtime/model.rs:211-231`, `src/aggregate/reducer/apply/model.rs:131-161`, `src/aggregate/types/model.rs:20-102` in the same crate.\n- Behavior: Profile validation, provider start, and provider pull failures are normalized to ModelProtocol with Retry using their display text. Durable normalization then calls all such failures MalformedStream and records event_count and total_tokens as zero, even if a stream already emitted events/usage. Retry policy requires finite positive attempts (type ceiling 32, plan admission additionally constrained by L415's default 8); exhaustion returns the job to deterministic report preparation. Frozen model ceilings are checked separately for each result/failure, without cumulative failed-attempt usage.\n- Consequence: Unsupported configuration or other permanent provider failures can repeatedly submit the same request until the synthetic attempt ceiling instead of explaining the correction required. Distinct transport/profile failures and consumed failed-attempt usage disappear from the durable record; quota decisions and diagnosis cannot use accurate aggregate consumption. Model-budget/invalid-proposal failures are intentionally nonretryable, and exhausting optional model work does not itself delete the run context or forbid deterministic reporting.\n- Repair direction: Preserve typed provider failure, recovery certainty, continuation, and observed usage through failure settlement. Retry only failures whose recovery can change the outcome, with an explicit user policy for stopping, and account consumption across attempts without conflating protection with task termination. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.466830110Z",
-      "updated_at": "2026-10-07T23:29:34.709600611Z",
+      "updated_at": "2026-10-07T23:30:55.048569146Z",
+      "closed_at": "2026-10-07T23:30:55.045844025Z",
       "labels": [
         "daily-driving-limiter"
       ],
