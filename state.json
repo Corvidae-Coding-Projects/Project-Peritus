@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3756,
-        "tip_oid": "29498c77d9df560cb6c582340b9721b29c57f512",
-        "prefix_sha256": "c34b358f80dcd4d2f22c006dc037bc5bcf333c47f7e876a79bc04bcf386d738c"
+        "sequence": 3757,
+        "tip_oid": "b12bb1747d485a899ca7692d06033c8abc214dfb",
+        "prefix_sha256": "524c674afffe8d0df92abc1d7dcb0eb1f4c966747e124ffd5f6df641e1ef6fb6"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3062,
+  "next_comment_id": 3063,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -2132,7 +2132,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.163787760Z",
-      "updated_at": "2026-10-06T13:19:08.165790499Z",
+      "updated_at": "2026-10-07T06:11:13.265438419Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -2143,6 +2143,15 @@
           "content": "Systemic repair plan for L078: Memory retrieval has small pages, scan caps, and conservative byte packing.\n\nOwning contract and implementation boundary: tools/read.rs:19-43,265-285; tools.rs:133-148; read.rs:87-91. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nProvide lossless cursor-based retrieval of all occurrences and byte ranges, using streamed artifact access and actual encoded page sizes. A too-large next entry must yield a smaller fragment with continuation rather than make pagination impossible. Stable source/offset identities and exact displayed coverage should let the model retrieve evidence without repeated full-artifact scans.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "81ba296b-57d1-4ba2-9745-46dfc40acdbb": {
+          "display_id": 3062,
+          "author": "6ME5",
+          "content": "Implemented the L078 source repair in the shared tree. context_read now streams exact digest/size-checked artifact ranges, supports u64 half-open ranges and explicit-handle cursors, enumerates every overlapping literal match across source/chunk boundaries, and removes the request/handle/query/cursor/source/scan cumulative policy caps. Cursors are checksum-bound to scope, mode, request and position. Pages use actual JSON encoded length, report exact offset/end/next and match ranges, and oversized state entries return lossless entry_fragment continuation instead of an impossible-page rejection. The configured response ceiling and u64 handle representation remain physical limits. No durable schema changed.\n\nImmutable review artifact: /tmp/peritus-issue-177-context-read-20261007T-Xa2D1S/issue-177.patch\nSHA-256: fa0272fe52cd467817f1b0ae0e956dfba2b011658aaaa746c9668147f0e582ca\nManifest: /tmp/peritus-issue-177-context-read-20261007T-Xa2D1S/MANIFEST.md\n\nStatic contiguous source review completed. Per assignment, no tests, builds, lint, format, codegen, or qualification commands were run. Keep open for the decision's independent large/non-ASCII, overlap, boundary, corruption, cancellation, restart, and ordinary-input validation.",
+          "created_at": "2026-10-07T06:11:13.261084849Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKU/MOYY7ov2MgSPEB7iYkObechx2QMwsWz8osTGSBSvmJTOxyYIBdrE1GZdmkBHP3JJc44q6NWJqYinxjBXUDQ=="
         }
       }
     },
