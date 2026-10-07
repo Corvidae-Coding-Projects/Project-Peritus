@@ -8,12 +8,16 @@ use peritus_journal::SqliteJournal;
 use peritus_types::EvidenceId;
 
 use crate::{
-    DebuggerCommand, DebuggerCommandKind, DebuggerError, DebuggerErrorKind, DebuggerOperation,
-    DebuggerPhase, DebuggerRecovery, DebuggerState, PublicationDirectiveClaim, PublicationRecord,
-    ValidatedReport, commit_debugger_settlement, decide,
+    DebuggerCommand, DebuggerCommandKind, DebuggerCommitMode, DebuggerError, DebuggerErrorKind,
+    DebuggerEventKind, DebuggerOperation, DebuggerPhase, DebuggerRecovery, DebuggerState,
+    PublicationDirectiveClaim, PublicationRecord, ValidatedReport, commit_debugger_settlement,
+    decide, load_debugger_operation,
 };
 
-use super::{CommittedDebuggerTransition, FinalizedReportArtifact, TransitionIds};
+use super::{
+    CommittedDebuggerTransition, FinalizedReportArtifact, TransitionIds,
+    validate_recovered_claim,
+};
 
 #[cfg(test)]
 mod tests;
@@ -67,8 +71,7 @@ pub fn publish_claimed_report(
     let durable_report =
         state.report().ok_or_else(|| binding("report-ready state has no durable report"))?;
     let directive = claim.directive();
-    if state.phase() != DebuggerPhase::ReportReady
-        || durable_report.id() != report.id()
+    if durable_report.id() != report.id()
         || durable_report.digest() != artifact.artifact_digest().sha256()
         || durable_report.size() != artifact.size()
         || artifact.report_id() != report.id()
@@ -95,15 +98,53 @@ pub fn publish_claimed_report(
         causes,
     )
     .map_err(evidence_error)?;
-    let export = journal.integrity_export().map_err(journal_error)?;
-    let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
     let publication = PublicationRecord::new(
         report.id(),
         artifact.artifact_digest().sha256(),
         artifact.size(),
-        evidence.id(),
+        evidence_id,
         report_commit_position,
     )?;
+    if let Some(operation) = load_debugger_operation(journal, state.job_id(), ids.command_id())? {
+        validate_recovered_claim(
+            operation.receipt(),
+            DebuggerCommitMode::Settlement,
+            directive.outbox_id()?,
+            claim.fence(),
+            DebuggerOperation::PublishEvidence,
+        )?;
+        if operation.event().id() != ids.event_id()
+            || operation.event().command_id() != ids.command_id()
+            || !matches!(
+                operation.event().kind(),
+                DebuggerEventKind::PublicationRecorded { publication: observed }
+                    if *observed == publication
+            )
+            || operation.historical_state().report() != Some(durable_report)
+            || operation.historical_state().publication() != Some(publication)
+        {
+            return Err(recovery(
+                "recovered publication differs from the exact retry request",
+            ));
+        }
+        let evidence = evidence_store
+            .load(evidence_id)
+            .map_err(evidence_error)?
+            .ok_or_else(|| recovery("recovered publication evidence is absent"))?;
+        validate_recovered_evidence(&evidence, &draft)?;
+        return Ok(PublicationExecution {
+            evidence,
+            committed: CommittedDebuggerTransition::new(operation),
+        });
+    }
+    if state.phase() != DebuggerPhase::ReportReady {
+        return Err(binding("publication state is not report-ready"));
+    }
+    let export = journal.integrity_export().map_err(journal_error)?;
+    let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
+    if evidence.id() != publication.evidence_id() {
+        return Err(recovery("admitted evidence identity differs from publication"));
+    }
     let command = DebuggerCommand::new(
         ids.command_id(),
         ids.event_id(),
@@ -115,11 +156,31 @@ pub fn publish_claimed_report(
         DebuggerCommandKind::RecordPublication { publication },
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_debugger_settlement(journal, &command, &transition, claim)?;
+    let operation = commit_debugger_settlement(journal, &command, &transition, claim)?;
     Ok(PublicationExecution {
         evidence,
-        committed: CommittedDebuggerTransition::new(batch, transition.state().clone()),
+        committed: CommittedDebuggerTransition::new(operation),
     })
+}
+
+fn validate_recovered_evidence(
+    evidence: &EvidenceRecord,
+    draft: &EvidenceDraft,
+) -> Result<(), DebuggerError> {
+    if evidence.id() != draft.id()
+        || evidence.kind() != draft.kind()
+        || evidence.source() != draft.source()
+        || evidence.revision() != draft.revision()
+        || evidence.provenance().global_position() != draft.journal_position()
+        || evidence.payload_digest() != draft.payload_digest()
+        || evidence.artifacts() != draft.artifacts()
+        || evidence.causes() != draft.causes()
+    {
+        return Err(recovery(
+            "recovered publication evidence differs from the original admission",
+        ));
+    }
+    Ok(())
 }
 
 fn report_evidence_id(report: &ValidatedReport) -> Result<EvidenceId, DebuggerError> {
@@ -162,5 +223,14 @@ fn journal_error(error: impl core::fmt::Display) -> DebuggerError {
         DebuggerOperation::PublishEvidence,
         DebuggerRecovery::ReplayAggregate,
         error.to_string(),
+    )
+}
+
+fn recovery(detail: &'static str) -> DebuggerError {
+    DebuggerError::new(
+        DebuggerErrorKind::Recovery,
+        DebuggerOperation::Recover,
+        DebuggerRecovery::Quarantine,
+        detail,
     )
 }

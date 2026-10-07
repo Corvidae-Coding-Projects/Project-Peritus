@@ -42,7 +42,7 @@ pub(super) fn dispatch(
         Err(_) => return semantic_rejection(),
     };
     peritus_debugger::commit_debugger_transition(journal, &command, &transition)
-        .map(DomainOutcome::Committed)
+        .map(|operation| DomainOutcome::Committed(operation.into_parts().0))
         .map_err(|error| domain_failure("commit debugger transition", error))
 }
 

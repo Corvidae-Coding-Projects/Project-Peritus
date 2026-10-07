@@ -76,9 +76,10 @@ pub fn load_debugger_replay(
 ) -> Result<DebuggerReplay, DebuggerError> {
     let aggregate = debugger_aggregate_key(job_id)?;
     let state_key = debugger_state_key(job_id);
-    let records = journal.records_for_aggregate(aggregate).map_err(journal_error)?;
-    let state_record =
-        journal.state_record(DEBUGGER_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
+    let (records, state_record) = journal
+        .aggregate_checkpoint_snapshot(aggregate, DEBUGGER_STATE_NAMESPACE, &state_key)
+        .map_err(journal_error)?
+        .into_parts();
     if records.is_empty() != state_record.is_none() {
         return Err(recovery("debugger event/checkpoint presence differs"));
     }

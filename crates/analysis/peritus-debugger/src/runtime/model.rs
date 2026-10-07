@@ -5,16 +5,17 @@ use peritus_policy::AuthorityInstant;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 
 use crate::{
-    DebuggerCommand, DebuggerCommandKind, DebuggerError, DebuggerErrorKind, DebuggerOperation,
-    DebuggerPhase, DebuggerRecovery, DebuggerState, ModelAnalysisPlan, ModelAttemptFailure,
-    ModelAttemptFailureCode, ModelAttemptResult, ModelDirective, ModelDirectiveClaim, ModelPriorUsage,
-    ModelRunFailure, ModelRunSuccess, ModelWorkState, TraceSelectionManifest,
-    ModelRetryPolicy, ModelRetrySchedule, ModelStartBasis, ValidatedModelProposal,
+    DebuggerCommand, DebuggerCommandKind, DebuggerCommitMode, DebuggerError, DebuggerErrorKind,
+    DebuggerEventKind, DebuggerOperation, DebuggerPhase, DebuggerRecovery, DebuggerState,
+    ModelAnalysisPlan, ModelAttemptFailure, ModelAttemptFailureCode, ModelAttemptResult,
+    ModelDirective, ModelDirectiveClaim, ModelPriorUsage, ModelRetryPolicy, ModelRetrySchedule,
+    ModelRunFailure, ModelRunSuccess, ModelStartBasis, ModelWorkState, TraceSelectionManifest,
+    ValidatedModelProposal,
     commit_debugger_claimed_transition, commit_debugger_settlement, commit_debugger_transition,
-    decide, run_model_analysis_with_usage,
+    decide, load_debugger_operation, run_model_analysis_with_usage,
 };
 
-use super::{CommittedDebuggerTransition, TransitionIds};
+use super::{CommittedDebuggerTransition, TransitionIds, validate_recovered_claim};
 
 /// Caller-reserved identities for attempt-start and exact settlement transitions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -40,6 +41,8 @@ pub enum ModelAttemptOutcome {
     Failed(ModelAttemptFailure),
     /// Cooperative cancellation won and the job became terminal.
     Cancelled,
+    /// An exact retry recovered the already durable semantic result without provider I/O.
+    Recovered(ModelAttemptResult),
 }
 
 /// Both C0 transition observations around one provider call.
@@ -113,17 +116,20 @@ pub async fn execute_model_attempt(
     cancellation: CancellationToken,
 ) -> Result<ModelAttemptExecution, DebuggerError> {
     let directive = claim.directive();
-    let model =
-        state.model().ok_or_else(|| binding("model directive has no durable model plan"))?;
+    let model = validate_model_binding(state, plan, directive)?;
+    let basis = start_basis(directive, started_at)?;
+    if let Some((started, settled, outcome)) = recover_model_execution(
+        journal,
+        state.job_id(),
+        plan,
+        claim,
+        started_at,
+        basis,
+        ids,
+    )? {
+        return Ok(ModelAttemptExecution { started, settled, outcome });
+    }
     if state.phase() != DebuggerPhase::ModelPending
-        || directive.job_id() != state.job_id()
-        || directive.model_id() != plan.id()
-        || directive.plan_digest() != plan.digest()
-        || directive.request_digest() != plan.request_digest()
-        || model.id() != plan.id()
-        || model.plan_digest() != plan.digest()
-        || model.request_digest() != plan.request_digest()
-        || model.budget() != plan.budget()
         || !match model.state() {
             ModelWorkState::PendingOnClock { attempt, schedule } => {
                 *attempt == directive.attempt() && directive.schedule() == Some(*schedule)
@@ -138,19 +144,6 @@ pub async fn execute_model_attempt(
     {
         return Err(binding("model state, plan, and claimed directive differ"));
     }
-    let basis = if let Some(schedule) = directive.schedule() {
-        schedule
-            .admission(started_at)
-            .ok_or_else(|| binding("claimed model retry is not yet authority-clock eligible"))?
-    } else if directive.attempt() == 1 && directive.not_before_tick() == 0 {
-        ModelStartBasis::Immediate
-    } else if directive.attempt() > 1
-        && started_at.tick_millis() >= directive.not_before_tick()
-    {
-        ModelStartBasis::LegacyTick
-    } else {
-        return Err(binding("claimed legacy model retry is not yet eligible"));
-    };
     let start_command = command(
         state,
         ids.start,
@@ -162,10 +155,24 @@ pub async fn execute_model_attempt(
         },
     )?;
     let start_transition = decide(Some(state), &start_command)?;
-    let start_batch =
+    let start_operation =
         commit_debugger_claimed_transition(journal, &start_command, &start_transition, claim)?;
-    let running = start_transition.state().clone();
-    let started = CommittedDebuggerTransition::new(start_batch, running.clone());
+    let started = CommittedDebuggerTransition::new(start_operation);
+    if !started.is_current() {
+        if let Some((settled, outcome)) = recover_model_settlement(
+            journal,
+            state.job_id(),
+            plan,
+            claim,
+            ids.settlement,
+        )? {
+            return Ok(ModelAttemptExecution { started, settled, outcome });
+        }
+        return Err(recovery(
+            "model-attempt start is historical but its exact settlement is absent",
+        ));
+    }
+    let running = started.historical_state().clone();
     let (settled, outcome) = settle_model_attempt_effect(
         journal,
         provider,
@@ -209,18 +216,17 @@ pub async fn resume_model_attempt(
     cancellation: CancellationToken,
 ) -> Result<ResumedModelAttemptExecution, DebuggerError> {
     let directive = claim.directive();
-    let model = state
-        .model()
-        .ok_or_else(|| binding("reclaimed model directive has no durable model plan"))?;
+    let model = validate_model_binding(state, plan, directive)?;
+    if let Some((settled, outcome)) = recover_model_settlement(
+        journal,
+        state.job_id(),
+        plan,
+        claim,
+        settlement_ids,
+    )? {
+        return Ok(ResumedModelAttemptExecution { settled, outcome });
+    }
     if state.phase() != DebuggerPhase::ModelRunning
-        || directive.job_id() != state.job_id()
-        || directive.model_id() != plan.id()
-        || directive.plan_digest() != plan.digest()
-        || directive.request_digest() != plan.request_digest()
-        || model.id() != plan.id()
-        || model.plan_digest() != plan.digest()
-        || model.request_digest() != plan.request_digest()
-        || model.budget() != plan.budget()
         || !running_directive_matches(model.state(), directive)
     {
         return Err(binding(
@@ -240,6 +246,213 @@ pub async fn resume_model_attempt(
     )
     .await?;
     Ok(ResumedModelAttemptExecution { settled, outcome })
+}
+
+fn validate_model_binding<'a>(
+    state: &'a DebuggerState,
+    plan: &ModelAnalysisPlan,
+    directive: ModelDirective,
+) -> Result<&'a crate::ModelProgress, DebuggerError> {
+    let model = state
+        .model()
+        .ok_or_else(|| binding("model directive has no durable model plan"))?;
+    if directive.job_id() != state.job_id()
+        || directive.model_id() != plan.id()
+        || directive.plan_digest() != plan.digest()
+        || directive.request_digest() != plan.request_digest()
+        || model.id() != plan.id()
+        || model.plan_digest() != plan.digest()
+        || model.request_digest() != plan.request_digest()
+        || model.budget() != plan.budget()
+    {
+        return Err(binding("model state, plan, and claimed directive differ"));
+    }
+    Ok(model)
+}
+
+fn start_basis(
+    directive: ModelDirective,
+    started_at: AuthorityInstant,
+) -> Result<ModelStartBasis, DebuggerError> {
+    if let Some(schedule) = directive.schedule() {
+        schedule
+            .admission(started_at)
+            .ok_or_else(|| binding("claimed model retry is not yet authority-clock eligible"))
+    } else if directive.attempt() == 1 && directive.not_before_tick() == 0 {
+        Ok(ModelStartBasis::Immediate)
+    } else if directive.attempt() > 1
+        && started_at.tick_millis() >= directive.not_before_tick()
+    {
+        Ok(ModelStartBasis::LegacyTick)
+    } else {
+        Err(binding("claimed legacy model retry is not yet eligible"))
+    }
+}
+
+#[allow(clippy::too_many_arguments, reason = "exact recovered start and settlement stay explicit")]
+fn recover_model_execution(
+    journal: &SqliteJournal,
+    job_id: crate::DebuggerJobId,
+    plan: &ModelAnalysisPlan,
+    claim: ModelDirectiveClaim,
+    started_at: AuthorityInstant,
+    basis: ModelStartBasis,
+    ids: ModelAttemptIds,
+) -> Result<
+    Option<(CommittedDebuggerTransition, CommittedDebuggerTransition, ModelAttemptOutcome)>,
+    DebuggerError,
+> {
+    let Some((settled, outcome)) =
+        recover_model_settlement(journal, job_id, plan, claim, ids.settlement)?
+    else {
+        return Ok(None);
+    };
+    let start = load_debugger_operation(journal, job_id, ids.start.command_id())?
+        .ok_or_else(|| recovery("settled model attempt has no durable start operation"))?;
+    let directive = claim.directive();
+    validate_recovered_claim(
+        start.receipt(),
+        DebuggerCommitMode::Claimed,
+        directive.outbox_id()?,
+        claim.fence(),
+        DebuggerOperation::RunModelAnalysis,
+    )?;
+    if start.event().id() != ids.start.event_id()
+        || start.event().command_id() != ids.start.command_id()
+        || start.event().job_id() != job_id
+        || start.event().id() != settled.event().previous_event().ok_or_else(|| {
+            recovery("settled model attempt is detached from its durable start")
+        })?
+        || !matches!(
+            start.event().kind(),
+            DebuggerEventKind::ModelAttemptStartedOnClock {
+                model_id,
+                attempt,
+                started_at: observed_at,
+                basis: observed_basis,
+            } if *model_id == plan.id()
+                && *attempt == directive.attempt()
+                && *observed_at == started_at
+                && *observed_basis == basis
+        )
+        || !recovered_model_state_matches(start.historical_state(), plan, directive)
+        || !running_directive_matches(
+            start
+                .historical_state()
+                .model()
+                .ok_or_else(|| recovery("recovered model start has no model state"))?
+                .state(),
+            directive,
+        )
+    {
+        return Err(recovery(
+            "recovered model start differs from the exact retry request",
+        ));
+    }
+    Ok(Some((
+        CommittedDebuggerTransition::new(start),
+        settled,
+        outcome,
+    )))
+}
+
+fn recover_model_settlement(
+    journal: &SqliteJournal,
+    job_id: crate::DebuggerJobId,
+    plan: &ModelAnalysisPlan,
+    claim: ModelDirectiveClaim,
+    ids: TransitionIds,
+) -> Result<Option<(CommittedDebuggerTransition, ModelAttemptOutcome)>, DebuggerError> {
+    let Some(operation) = load_debugger_operation(journal, job_id, ids.command_id())? else {
+        return Ok(None);
+    };
+    let directive = claim.directive();
+    validate_recovered_claim(
+        operation.receipt(),
+        DebuggerCommitMode::Settlement,
+        directive.outbox_id()?,
+        claim.fence(),
+        DebuggerOperation::RunModelAnalysis,
+    )?;
+    if operation.event().id() != ids.event_id()
+        || operation.event().command_id() != ids.command_id()
+        || operation.event().job_id() != job_id
+        || !recovered_model_state_matches(operation.historical_state(), plan, directive)
+    {
+        return Err(recovery(
+            "recovered model settlement differs from the exact retry request",
+        ));
+    }
+    let result = result_from_settlement(operation.event().kind(), plan, directive.attempt())?;
+    let observation = operation
+        .historical_state()
+        .model_attempts()
+        .last()
+        .ok_or_else(|| recovery("recovered model settlement has no attempt observation"))?;
+    if observation.model_id() != plan.id()
+        || observation.attempt() != directive.attempt()
+        || observation.result() != &result
+    {
+        return Err(recovery(
+            "recovered model event and historical attempt observation differ",
+        ));
+    }
+    Ok(Some((
+        CommittedDebuggerTransition::new(operation),
+        ModelAttemptOutcome::Recovered(result),
+    )))
+}
+
+fn recovered_model_state_matches(
+    state: &DebuggerState,
+    plan: &ModelAnalysisPlan,
+    directive: ModelDirective,
+) -> bool {
+    state.job_id() == directive.job_id()
+        && state.model().is_some_and(|model| {
+            model.id() == plan.id()
+                && model.plan_digest() == plan.digest()
+                && model.request_digest() == plan.request_digest()
+                && model.budget() == plan.budget()
+        })
+}
+
+fn result_from_settlement(
+    event: &DebuggerEventKind,
+    plan: &ModelAnalysisPlan,
+    attempt: u16,
+) -> Result<ModelAttemptResult, DebuggerError> {
+    match event {
+        DebuggerEventKind::ModelProposalRecorded {
+            model_id,
+            attempt: observed_attempt,
+            proposal_digest,
+            output_digest,
+            output_bytes,
+            event_count,
+            input_tokens,
+            output_tokens,
+            total_tokens,
+        } if *model_id == plan.id() && *observed_attempt == attempt => {
+            Ok(ModelAttemptResult::Proposal {
+                proposal_digest: *proposal_digest,
+                output_digest: *output_digest,
+                output_bytes: *output_bytes,
+                event_count: *event_count,
+                input_tokens: *input_tokens,
+                output_tokens: *output_tokens,
+                total_tokens: *total_tokens,
+            })
+        }
+        DebuggerEventKind::ModelFailureRecorded { failure }
+            if failure.model_id() == plan.id() && failure.attempt() == attempt =>
+        {
+            Ok(ModelAttemptResult::Failure(failure.clone()))
+        }
+        _ => Err(recovery(
+            "recovered model command is not the exact attempt settlement",
+        )),
+    }
 }
 
 #[allow(clippy::too_many_arguments, reason = "effect owners and exact fence stay explicit")]
@@ -281,13 +494,10 @@ async fn settle_model_attempt_effect(
     };
     let settlement_command = command(state, settlement_ids, settlement_kind)?;
     let settlement_transition = decide(Some(state), &settlement_command)?;
-    let settlement_batch =
+    let settlement_operation =
         commit_debugger_settlement(journal, &settlement_command, &settlement_transition, claim)?;
     Ok((
-        CommittedDebuggerTransition::new(
-            settlement_batch,
-            settlement_transition.state().clone(),
-        ),
+        CommittedDebuggerTransition::new(settlement_operation),
         outcome,
     ))
 }
@@ -371,8 +581,8 @@ pub fn schedule_model_retry(
         },
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_debugger_transition(journal, &command, &transition)?;
-    Ok(CommittedDebuggerTransition::new(batch, transition.state().clone()))
+    let operation = commit_debugger_transition(journal, &command, &transition)?;
+    Ok(CommittedDebuggerTransition::new(operation))
 }
 
 /// Replaces caller-owned retry stopping and delay bounds without replacing model work.
@@ -400,8 +610,8 @@ pub fn amend_model_retry_policy(
         },
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_debugger_transition(journal, &command, &transition)?;
-    Ok(CommittedDebuggerTransition::new(batch, transition.state().clone()))
+    let operation = commit_debugger_transition(journal, &command, &transition)?;
+    Ok(CommittedDebuggerTransition::new(operation))
 }
 
 fn proposal_settlement(
@@ -527,6 +737,15 @@ fn binding(detail: &'static str) -> DebuggerError {
         DebuggerErrorKind::Binding,
         DebuggerOperation::RunModelAnalysis,
         DebuggerRecovery::ReplayAggregate,
+        detail,
+    )
+}
+
+fn recovery(detail: &'static str) -> DebuggerError {
+    DebuggerError::new(
+        DebuggerErrorKind::Recovery,
+        DebuggerOperation::Recover,
+        DebuggerRecovery::Quarantine,
         detail,
     )
 }

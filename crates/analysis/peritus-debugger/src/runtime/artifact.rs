@@ -163,8 +163,8 @@ pub fn commit_report_ready(
         DebuggerCommandKind::CompleteReport { report: record },
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_debugger_transition(journal, &command, &transition)?;
-    Ok(CommittedDebuggerTransition::new(batch, transition.state().clone()))
+    let operation = commit_debugger_transition(journal, &command, &transition)?;
+    Ok(CommittedDebuggerTransition::new(operation))
 }
 
 fn artifact(error: impl core::fmt::Display) -> DebuggerError {
