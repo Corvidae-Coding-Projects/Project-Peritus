@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3774,
-        "tip_oid": "74530ef934580029a108a43dedb4bbad3f579b8d",
-        "prefix_sha256": "b4c2d672854dc6ec41192e3dfb2e1ba47161b724d88b1fa95a58a77c6dc6110c"
+        "sequence": 3775,
+        "tip_oid": "dd6915eb53626d5125ccfa7eb833502dfc05d1eb",
+        "prefix_sha256": "ba483802f4d368a462a24e18590cbe489bbd03e63e23205939eefb5a88047184"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3080,
+  "next_comment_id": 3081,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37507,7 +37507,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.229205294Z",
-      "updated_at": "2026-10-06T13:19:08.231495472Z",
+      "updated_at": "2026-10-07T07:31:01.110237213Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -37518,6 +37518,15 @@
           "content": "Systemic repair plan for L093: Process retention removes settled results and one-use records under count pressure.\n\nOwning contract and implementation boundary: registry_storage.rs:203-223; recovery/manifest.rs:133-137; consumption/tests.rs:199-233. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRetire process records only after exact output publication and ownership settlement, keeping a durable one-use tombstone and indexed terminal receipt. Spools still required for publication/retry remain recovery roots. Active-table capacity can be reclaimed independently of historical identity, so count pressure neither loses results nor permits redispatch.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "93f38fe8-53d2-482b-8c8e-1d1662d07ff5": {
+          "display_id": 3080,
+          "author": "6ME5",
+          "content": "The code-only repair is included in the #187 registry changes: retirement now requires exact artifact-publication completion and ownership settlement, writes a verified immutable terminal tombstone before active files are removed, preserves legacy claims-v1 one-use receipts for downgrade safety, and indexes historical terminal results independently of active-record capacity. Pending spools remain recovery inputs. This is implementation progress, not final verification; issue remains open and no tests are being run during the code batch.",
+          "created_at": "2026-10-07T07:31:01.094155992Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaPlXmtzukxy7CJIQ7LmMynwxcl68sOyEwOf6/xjPpIZQ+2l1v2S6D39Qy6Ln7VNlb/X8GnAiG1Y0tzClcxF5AQ=="
         }
       }
     },
