@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3788,
-        "tip_oid": "c77512834780463ced843786c8fc6ebca6223dfe",
-        "prefix_sha256": "165494915673527cf1256411abd3541a90ff20429237623e4d5ad0e60c5fe82d"
+        "sequence": 3789,
+        "tip_oid": "269b2d4175cf1eddf12e82496791bde0fcda6d26",
+        "prefix_sha256": "f2ea6f881b38381d66cbaa724b550f839e19c4f622e950a488b63e2ec6f1fa94"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3094,
+  "next_comment_id": 3095,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26835,7 +26835,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.224578977Z",
-      "updated_at": "2026-10-06T13:19:08.226761567Z",
+      "updated_at": "2026-10-07T12:51:48.001800879Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -26846,6 +26846,15 @@
           "content": "Systemic repair plan for L092: Bounded control admission and synchronous stdin can obstruct cancellation and observation.\n\nOwning contract and implementation boundary: control.rs:221-235; supervisor/io.rs:147-169; native/windows_channel.rs:93-101. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nGive cancel/signal/observation an independent control lane and run stdin writes through nonblocking or separately owned cancellable I/O. Admit cumulative input against acknowledged physical chunks before accepting it, so rejected stdin cannot become a supervisor failure. Use fair drains across input, output and resource work while retaining exact ordering and cancellation intent.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "dc6d8870-842b-4fc9-a830-94ec3c74cd69": {
+          "display_id": 3094,
+          "author": "6ME5",
+          "content": "Source-only resumed batch: cancellable stdin/control ownership is saved under .crosslink/code-batch-recovery/2026-10-07-issue191-stdin-owner/. Cancellation admission and actual supervisor completion are separate facts; Unix writes are nonblocking before admission, Windows wakes the retained exact input thread, accepted close is ordered, and real input tasks are drained/joined before ownership settlement. PTY closure uses current terminal settings and preserves producer closure in raw/disabled-EOF modes without inventing child EOF. The admitted-cancellation/observed-exit race retains the actual first reason. Parent/source review found and corrected those semantics. No tests, builds, checks, Clippy, rustfmt, codegen or test-file edits; validation and issue closure remain deferred until the very end.",
+          "created_at": "2026-10-07T12:51:47.997927595Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA6NNqP+LGItqrFho0ZYxV0jbFQIZOAcqcNFT9WmLcZkZy7lyKI/UHpq83AJZFuyG/ruYZ7PHYtiHV6346lsqMCQ=="
         }
       }
     },
