@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3679,
-        "tip_oid": "df7cdd127d8f62b9bd29c871b0777ad062f06c16",
-        "prefix_sha256": "86906acb489daf448360de28b36d84cc0be3e342729dee853ee2d79fe3567b2f"
+        "sequence": 3680,
+        "tip_oid": "6d99a8e8f5c43dc9be0acfb7b9d1f84b4e770d8b",
+        "prefix_sha256": "1fc92fde5a2e2780317361072b20a029b0629dae6a7b582901fe31cc0318c437"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3007,
+  "next_comment_id": 3008,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20029,7 +20029,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:27:37.478501640Z",
+      "updated_at": "2026-10-07T01:41:24.634192297Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20166,6 +20166,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS1Cm7Lgd7UFpJRg+yB5cMtyykqcfYO4LPNUMnCGyK7gJeoiOgRvrNWktr8cXDGHFk7yMDcdFqAISAa5Z0at1CQ=="
+        },
+        "fa09d67b-5172-4936-ae6f-2f3f20cab5f4": {
+          "display_id": 3007,
+          "author": "6ME5",
+          "content": "[action] Batch code-only integration: #119 and #819 source handoffs integrated, including caller queue fixture lifetime repair and preserving dirty settings baselines by actual immutable values. #119/#819 worker locks released; issues remain open. #820 remaining code review requires native WM_CLOSE observation, isolated failure recovery owner, exact-generation child stop and orderly observer-failure drain. No new tests/builds/format/lint runners yet. Root tracker stale readiness repaired by exact Crosslink root daemon stop/ensure; new PID858980 ready_current, installed Peritus daemons untouched.",
+          "created_at": "2026-10-07T01:41:24.625115638Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzFqUvGKisIfbRvOnly/kJnZ8uL2trNcng3T8XlN+BIXuHsJP5zzDY9xw5VXWHwYx/BfXP9HoIAOpOOjVBV3yAw=="
         }
       }
     },
