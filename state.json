@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3810,
-        "tip_oid": "1c9836d96b8c3b796ad56329f949105b5ff82d35",
-        "prefix_sha256": "cf118e1a73ff42ecf1909eb9d6298eb7ebfc4976abe721296d778d959155b763"
+        "sequence": 3811,
+        "tip_oid": "6006e94e9f6ab2d1c2618c20daab04be2e7fd3f8",
+        "prefix_sha256": "9951d28c399b5d8e86c874d7047d94ca4ca7da5c8a8c65fcd7f5b37aa772e9b9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3116,
+  "next_comment_id": 3117,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24044,11 +24044,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.665154046Z",
-      "updated_at": "2026-10-07T13:59:27.044845692Z",
+      "updated_at": "2026-10-07T14:35:11.039098204Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "4571767e-96f3-4837-8bb4-21c0690b05ee": {
+          "display_id": 3116,
+          "author": "6ME5",
+          "content": "Source-only #222 scope successor frozen at .crosslink/code-batch-recovery/2026-10-07-root222-scope/HANDOFF.md (focused patch 85ebb26b9c7fc9749b0610e4727460ad61e66fd2d66323399771a1afdf5f6785). One WorkspaceProductScope reader now governs design, global/nearest gate discovery, and artifact command admission. Only an actually absent optional marker defaults Source; unreadable/dangling/malformed/unsupported/unknown declarations remain explicit with their original cause instead of silently entering provider design. Valid schema-1 artifact behavior retained, explicit schema-1 source supported, nested language discovery cannot hide the global declaration. No new size/count/time allowance, receipt rewrite or authority widening. Task-fit typed/minimal source planning and source-aware grounding remain open; no full completion claim. Full source/diff and focused apply/whitespace static inspection only. No tests/test edits/builds/checks/linters/formatters/formal runners; verification remains deferred until ALL batch code is finished.",
+          "created_at": "2026-10-07T14:35:11.034747374Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQbFKHgrPch/MET9DRtkT+FukKeBekBoHSL4YFrYPSU/KbZv3z55P+Blq3xV0ulPZh//IWmvmRoZv4ZcMJnCBBQ=="
+        },
         "aef38c8f-ebf8-46bd-be6b-f58f843814e5": {
           "display_id": 2294,
           "author": "6ME5",
