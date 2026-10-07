@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3726,
-        "tip_oid": "8245d4c08d1ca5031abba9e7edada914af0137b7",
-        "prefix_sha256": "abc350a13302f0d8818ec0fe21e107289eab56b11cf8b80a95790601258489f4"
+        "sequence": 3727,
+        "tip_oid": "ee9ea0e5f727f1b376636774636ecd3f8d254452",
+        "prefix_sha256": "578b71c7924d6248cafd54d8aea21e8543688a615c42af476664a33b9ee9bcc5"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3033,
+  "next_comment_id": 3034,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15268,7 +15268,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.908062449Z",
-      "updated_at": "2026-10-07T04:06:15.135034497Z",
+      "updated_at": "2026-10-07T04:21:45.280152596Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15306,6 +15306,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXmJc2anrioRyluOK46mi9fS3wZUf0R/jOKjHBgXdz52tZ6TCbkdIcEfxQ7yTfFb8zQ43+wy1FWkKq4dY0PAACg=="
+        },
+        "fa0ebc82-4408-4ed8-b927-acfd40bfd57d": {
+          "display_id": 3033,
+          "author": "6ME5",
+          "content": "Integrated durable indexed pending-operation traversal and settled-parent child recovery from the batching agent. Browser draft reads now distinguish storage failure from absence. Recovered receipts reserve UI application independently of retirement; failed draft restoration or application preserves the original pending recovery record for another attempt. Store-scoped cursor identity and derived-index repair are still being corrected. No manually invoked tests/build/lint/codegen/qualification in this code phase; issue remains open until final validation.",
+          "created_at": "2026-10-07T04:21:45.276297506Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnbXMVvE0mffW1yUPQb4f55Zl8EdQI7YuO1hRxLk7jCl+qoazsGJfXgxfX8XQ27VtNxmlt7At8Fr5dNC1+OGaDw=="
         }
       }
     },
