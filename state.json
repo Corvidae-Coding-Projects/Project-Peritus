@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3703,
-        "tip_oid": "38eb9ca4d12021dc11a0c727a477a77959c4bd30",
-        "prefix_sha256": "c158873959148ed77e669ff2bd787d0d3e7a9f6d3c7f503efaa0cee4a464a57b"
+        "sequence": 3704,
+        "tip_oid": "2c1986c4ceddcf8bd8771674634ab5c468050971",
+        "prefix_sha256": "9111652058b178fcadab610a806031f32fe8dbbfdfef36d5ebd00a79bc24e91d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3018,
+  "next_comment_id": 3019,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31014,7 +31014,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.931027695Z",
-      "updated_at": "2026-10-06T13:27:51.933311870Z",
+      "updated_at": "2026-10-07T02:38:33.932134620Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31025,6 +31025,15 @@
           "content": "Systemic repair plan for L815: Browser recovery promises do not match recovery effects or persistence.\n\nOwning contract and implementation boundary: webui/src/lib/api.ts:1-62; webui/src/lib/operations.svelte.ts:1-16; webui/src/lib/files/drafts.svelte.ts:1-33; webui/src/lib/workspace.svelte.ts:161-180; webui/src/lib/components/Recovery.svelte:7-18. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate receipt inspection, explicit retry, and acknowledgement into distinct effects; persist exact unresolved payloads and file drafts under stable workspace/session identities, and surface storage failure. Preserve the rule against repeating an ambiguous effect without its original identity. No tests run.\n\nPreserve: committed command/event identity, exact causal and digest roots, exclusive ownership, atomic publication, reference-safe artifact retention and verified recovery from the last durable frontier. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: history beyond the reported count/byte boundaries, lock contention lasting beyond the old patience window, lost commit acknowledgements followed by later progress, torn uncommitted tails and true committed corruption, then reopen and resolve exact historical receipts. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "286403b4-2239-4d7b-8d5b-4392dcfe2507": {
+          "display_id": 3018,
+          "author": "6ME5",
+          "content": "Code-only batching: receipt inspection now has no workbench transmission fallback; explicit same-identity retry and manual review have separate POST owners. Browser operation payloads and file drafts use IndexedDB under a persisted gateway workspace identity, denied storage is visible, and stale restoration cannot reclaim an already acknowledged receipt. Stop admission is independent of uncertain conversation submission. Final verification is deferred by user instruction; issue remains open.",
+          "created_at": "2026-10-07T02:38:33.928061664Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB/ezwRXqPfIZxp+Ks5SUfpljD61juD/aAIvSXPN5QpT/REiqj2cjtVbkDykWGj9JgOS7/PwJs1SIc0Gh4Fl5Dw=="
         }
       }
     },
