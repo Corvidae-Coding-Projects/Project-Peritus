@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3812,
-        "tip_oid": "32fb1d39f013f967fc179921dca13922682da867",
-        "prefix_sha256": "4650923680c60b75e6d2a950d99b6724831c47751060d10ad837f9f2919c6e80"
+        "sequence": 3813,
+        "tip_oid": "bac9e58b42c10417c93dc26cec4fdc9da45d60e3",
+        "prefix_sha256": "e4a25e03acc3c02436d187f79570f2af6eeaf6ee09601a72c439a71d545ebfc8"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3118,
+  "next_comment_id": 3119,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23996,11 +23996,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.683031654Z",
-      "updated_at": "2026-10-06T13:21:37.685093457Z",
+      "updated_at": "2026-10-07T15:04:03.806428166Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "65532fc6-9b2d-4799-8c51-85becdeb94ae": {
+          "display_id": 3118,
+          "author": "6ME5",
+          "content": "Source-only #226/#224 successor frozen in .crosslink/code-batch-recovery/2026-10-07-root226-evidence/HANDOFF.md. Removes independent 384KiB and 50/75% review-input ceilings; exact supplied evidence remains retrievable by immutable scoped handles and encoded pages. Pages preserve cursors under actual provider observation capacity, durable replay preserves observed evidence, missing-grounding/schema repair no longer mandates unchanged rereads, and changed input yields to outer review instead of stale internal rereview. Provider-output sentinel clipped before real reservations. Focused patch SHA11ff9890f9425c998deabfc06dd8cf92bc622d062cac9b1725e25fa297a7e874; static source/diff/apply/hash checks only. No tests, test edits, builds, runners, commit/push, or closure. Structured output continuation and legacy retry-fingerprint compatibility remain open; all validation deferred until the entire code batch is done.",
+          "created_at": "2026-10-07T15:04:03.794999373Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAthuqZd49N2TdDD3Plr0/XZiMcYCg1Wu7tU4J4GTnocnObNNFyO1IOQwNa8tuV5O183CiVdkZmlmqdFkNzlhbBw=="
+        },
         "c83c7b96-095e-4f80-b8ab-d437b18fb296": {
           "display_id": 2298,
           "author": "6ME5",
