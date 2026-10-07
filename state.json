@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3662,
-        "tip_oid": "3ba405abdc9585cc7caa1cb0a6e2e5ec0a3eaeb4",
-        "prefix_sha256": "6b57781a060fd9e6b864a75c46e56f4e9b04f12a678135bd4220546abc7da90f"
+        "sequence": 3663,
+        "tip_oid": "4dedd7c01484cbc69731de4c2354c9132c035a6f",
+        "prefix_sha256": "e65ec0549bed59a8bfc1a2a0c91de9d6fe3eb75d015c06e53ba39fb6406cb9b0"
       },
       "NWAR": {
         "sequence": 39,
@@ -22217,12 +22217,13 @@
       "display_id": 825,
       "title": "[CI] Diagnose intermittent Codex authentication conformance failure",
       "description": "During #824 qualification, the untouched OpenAI authentication conformance scenario intermittently reported PERITUS-PROVIDER-INFRASTRUCTURE in codex_runtime_passes_all_cases_through_real_owned_processes. Evidence: /tmp/peritus-issue824-adapter-tests3.log, original branch head 42236bb697be2469a8ce5710f582088cb0bf4ab9 plus the selected #824 transport changes in /home/doll/.cache/peritus-issue824.bIV21R. The same full suites passed before and after without an authentication change; the focused suite passed 20 instrumented runs on both the changed transport and untouched HEAD transport. Those passes do not diagnose or repair the original failing predicate. Fully read conformance support/runner/observations, test-only fake behavior/trace and authentication caller. No native account or network was involved. Systemic repair: make fixture infrastructure failures retain the exact failing stage, redacted transport error, observed terminal category, request trace counts and cleanup result; preserve the individual failed exercise evidence instead of replacing all causes with one generic Infrastructure value. Reproduce with that provenance, determine whether the fake-process lifecycle or production nonzero-exit/authentication classification violated its contract, then fix that owner or classification and add a deterministic regression. Do not increase fixture deadlines, retry a failing exercise into a passing result, weaken assertions or claim that this is proven unrelated to the transport. Keep this investigation separate from #824's journal/pipe progress repair; no production root cause has yet been established.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-07T00:16:31.149944211Z",
+      "updated_at": "2026-10-07T00:17:05.281531421Z",
+      "closed_at": "2026-10-07T00:17:05.280090932Z",
       "labels": [
         "ci"
       ],
