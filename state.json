@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3766,
-        "tip_oid": "7d38eccd97470209316317d2fdf9ba0a5d065863",
-        "prefix_sha256": "279b86a0f2c4f00cc4dc56f614ea8009e7e12282decd45024f4347e5a6f37b17"
+        "sequence": 3767,
+        "tip_oid": "1de211fe2ec17590dd429f2f31cea4849f28419e",
+        "prefix_sha256": "836b202f663452e75fffbaaef166e49bacd0ae07ee7b3cd1cad367677c9bcae8"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3072,
+  "next_comment_id": 3073,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -14407,7 +14407,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.071691854Z",
-      "updated_at": "2026-10-07T06:37:52.454525812Z",
+      "updated_at": "2026-10-07T06:39:10.406522522Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -14420,6 +14420,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUHR4yclqBO/368R2DBCJTMQIieFMmaw8VXUYX8PoQbHeBImys0nl3GI/L/GzpyRD64hlJdx8qrcIgicrGjgcCA=="
+        },
+        "a32101be-dc81-46bc-9188-0ff2356d8df1": {
+          "display_id": 3072,
+          "author": "6ME5",
+          "content": "Code-only record-boundary slice implemented and frozen; issue remains open for deferred validation. On top of agent119 schema-4 paging work, record encode/decode no longer impose the synthetic 32 MiB cumulative JSON ceiling. They retain canonical re-encoding and now reject only values that cannot be represented by the production u32 frame length. Recovered tool call identity validation no longer rejects exact nonempty IDs above 256 bytes or names above 128 bytes; invocation, sequence, archive kind, artifact digest/length, and nonempty ID/name invariants remain. Frozen artifact: /tmp/peritus-issue-156-record-20261007T-KJzQrF/issue-156-record.patch sha256 00884ceb358a9a32d5637883baae9fd4e5f8708d8c04797b3e83baf5e79742dc. Static source/diff review only; no tests, build, lint, format, codegen, or qualification runner was invoked.",
+          "created_at": "2026-10-07T06:39:10.302971333Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9Mr40NV1Oamv6VDBAzDVQIM4ZqsGo56WKPI/c9YsH4V/2Ehz5DHlZFdV/cN+2N1NdZjrTDUjBjINne6J5OAfCw=="
         },
         "eab02665-ec86-4286-9e99-c74f2312f6b5": {
           "display_id": 2228,
