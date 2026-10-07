@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3879,
-        "tip_oid": "585bb3e0dc0d35fc72709b5f76b6b9607d92f483",
-        "prefix_sha256": "1719ce20e108456b7a91ad98a425cbdcca7615957ed1a548106cf7285ed2b281"
+        "sequence": 3880,
+        "tip_oid": "672816e5baa47716a9197433ed894a6f89f23892",
+        "prefix_sha256": "2cdfc4f5b70031a39281d55bfcddc503279cc6ad6600d5ccfb7a26689d6a4636"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3143,
+  "next_comment_id": 3144,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23345,7 +23345,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.199454940Z",
-      "updated_at": "2026-10-06T13:27:51.201664635Z",
+      "updated_at": "2026-10-07T23:52:02.161748326Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -23356,6 +23356,15 @@
           "content": "Systemic repair plan for L596: macOS resource supervision has fixed traversal ceilings and fragile live sampling.\n\nOwning contract and implementation boundary: crates/runtime/peritus-sandbox-macos/src/resource_monitor.rs:21-23,42-75,118-167,183-279; src/resource_monitor/pids.rs:20-54; src/resource.rs:94-108,130-139. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse resumable, cancellation-aware sampling that tolerates disappearance races, grow enumeration buffers with explicit capacity reporting, preserve unknown measurements, and distinguish omitted budgets from required control dimensions. Audit CPU aggregation against actual descendant lifetime accounting.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "ff2f3d66-1663-47f1-9abc-c3177834b461": {
+          "display_id": 3143,
+          "author": "6ME5",
+          "content": "Code complete in commit f9695fc02. Implemented incremental cancellable disk sampling without total-entry ceilings, growing native enumeration buffers, known/unknown measurements, disappearance tolerance, per-file positive growth accounting, corrected CPU aggregation, and selected-vs-omitted control authority. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation, or runtime validation were run; final validation remains deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-07T23:52:02.152947079Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoHjmEPa05iynvvHtiGwOLoDKFCTeXFhDKmAyUq30Zhs2/X6MsN5kTutrq9v9glQPpaisvOkfz8tb6Sk1gPJDDA=="
         }
       }
     },
