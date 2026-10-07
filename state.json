@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3811,
-        "tip_oid": "6006e94e9f6ab2d1c2618c20daab04be2e7fd3f8",
-        "prefix_sha256": "9951d28c399b5d8e86c874d7047d94ca4ca7da5c8a8c65fcd7f5b37aa772e9b9"
+        "sequence": 3812,
+        "tip_oid": "32fb1d39f013f967fc179921dca13922682da867",
+        "prefix_sha256": "4650923680c60b75e6d2a950d99b6724831c47751060d10ad837f9f2919c6e80"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3117,
+  "next_comment_id": 3118,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -36342,11 +36342,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.674065201Z",
-      "updated_at": "2026-10-06T13:21:37.676461845Z",
+      "updated_at": "2026-10-07T14:44:17.747462967Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "8b4b46c0-f7ec-4bbb-90d3-ee6634869188": {
+          "display_id": 3117,
+          "author": "6ME5",
+          "content": "Source-only tranche frozen in .crosslink/code-batch-recovery/2026-10-07-root224-review/HANDOFF.md; focused patch SHA-256 9f88ac7b37b4e49ef3c0f4e0ff5e2617b44fc15bff4f484806069d510a0ce55a. Removed reviewer 4096-token ceiling and explicit loop output constructor's 32768 rejection; reviewer generation follows actual negotiated provider allowance on each turn. Typed submission repair preserves grounding and no longer orders fresh inventory/unchanged reads. Removed finding field/summary/count admission caps through constructor and durable restore while retaining required content, exact identity, duplicate rejection and conserved lifecycle. Newer governing input cannot admit the previous response as current review. Source-aware grounding, complete evidence/rejected-response retrieval and logical typed output continuation still remain; no completion claim. Full source/diff and static patch/whitespace inspection only. No test edits or validation runners; issue remains open until the complete code batch and final verification.",
+          "created_at": "2026-10-07T14:44:17.743775314Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXL4qFdser7jYyDqwT8fp/gPXeTUA8x1SbjTvqEblJJjqsAGi1zAcdVTZF8gb/eHi5i5K0kxiCP6ykZBqBVazAw=="
+        },
         "95407d02-9eb5-41bd-8ab9-8a978517310d": {
           "display_id": 2296,
           "author": "6ME5",
