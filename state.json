@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3753,
-        "tip_oid": "f1f54ef0ec1cbda18da4dc295e32f99276634c1b",
-        "prefix_sha256": "bb2d12d6accf7fac26bf8410bbea56156256c233484c497a8858d31d9964578d"
+        "sequence": 3754,
+        "tip_oid": "6a30e99b9e22296c880c6369f5d747f868c3fef0",
+        "prefix_sha256": "588dddbe6f6342ab7a2e86fdacddbb80b7af7469e75dc8e291c2bb7b0659717d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3059,
+  "next_comment_id": 3060,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32833,7 +32833,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.176486792Z",
-      "updated_at": "2026-10-06T13:19:08.178714597Z",
+      "updated_at": "2026-10-07T06:09:34.632500058Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32844,6 +32844,15 @@
           "content": "Systemic repair plan for L081: Exact context inspection has a 32-MiB output stop and growing validation cost.\n\nOwning contract and implementation boundary: local_context/storage/inspection.rs:93-105; checkpoint_validation.rs:98-116; working/state_access.rs:43-50; checkpoint_validation.rs:15-43. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nExpose context inspection as paged exact records and an independently downloadable canonical view artifact instead of a complete hex-duplicated response. Index source identity lookup and verify checkpoint lineage incrementally from trusted roots. Preserve complete predecessor/binding validation through resumable traversal rather than quadratic full-index scans on each query.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "c8933d85-c294-40c7-8a1f-ebb98caf91a4": {
+          "display_id": 3059,
+          "author": "6ME5",
+          "content": "Code-only L081 repair in shared source: added an immutable LocalContextInspection frontier with 256-record source pages, 16-message pages, and 64KiB exact canonical archive ranges through a preverified owned reader. The legacy complete inspection API retains output compatibility and no longer rejects at32MiB; it reads through the owned handle so later catalog retirement cannot replace its bytes. WorkingState::observation now uses checked contiguous one-based identity indexing, preserving binding and exact returned-ID checks; full index validation no longer performs a linear prefix scan for every source. Remaining scaling boundary: opening inspection still materializes and validates the full source projection; future page-derived indexes/owner references must remove that cost without relaxing root integrity. Manual tests/build/lint/format/codegen/qualification remain deferred to the final phase; issue stays open pending final validation.",
+          "created_at": "2026-10-07T06:09:34.626118803Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiRZGo4ceXP82nq6dPFJyO8yOas+mEmU0W2uPTZjGGjcQtEUUWR1/ErlG9VXqaoY7pPJMRAk0oABeYwE+fQapBw=="
         }
       }
     },
