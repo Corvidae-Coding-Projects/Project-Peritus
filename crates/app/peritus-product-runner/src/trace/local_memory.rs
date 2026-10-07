@@ -79,9 +79,6 @@ pub fn observations(
         Err(_) => return Err(failure("open scoped observation trace")),
     };
     let length = file.metadata().map_err(|_| failure("inspect trace length"))?.len();
-    if length > 1024 * 1024 * 1024 {
-        return Err(failure("observation trace exceeds recovery bound"));
-    }
     let mut position = 0_u64;
     while position < length {
         if length - position < 9 {
