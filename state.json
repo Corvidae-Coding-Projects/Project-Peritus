@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3725,
-        "tip_oid": "bfff1c19948d833d70700bd5d109be1fbf3e9396",
-        "prefix_sha256": "a66b6056b812642b1e84980489e453335b2b4c00a7bceb7450433ee915d6a5ae"
+        "sequence": 3726,
+        "tip_oid": "8245d4c08d1ca5031abba9e7edada914af0137b7",
+        "prefix_sha256": "abc350a13302f0d8818ec0fe21e107289eab56b11cf8b80a95790601258489f4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3032,
+  "next_comment_id": 3033,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22931,11 +22931,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.898843708Z",
-      "updated_at": "2026-10-06T13:27:51.901106610Z",
+      "updated_at": "2026-10-07T04:21:09.302981693Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "27894212-c117-4834-9fde-6b0835bd62b8": {
+          "display_id": 3032,
+          "author": "6ME5",
+          "content": "Integrated the fully read primary-message core handoff (v5, SHA-256 aaa428a0f210467feda192cb04c6512f22e67b03295f360719f6a1b621a1731a). Completed scoped artifacts are validated off the authority owner before atomic queue admission; authoritative request tools are separate from external evidence; source rereads and negotiated row projections are supported. Added range verification against block digests captured during initial whole-object verification so same-length mutation cannot silently change governing bytes. Exact generation-bound snapshots, paged public replies, composer/upload paths and directory follow-ups remain in implementation. Code phase only: no manually invoked tests/build/lint/codegen/qualification; issue remains open.",
+          "created_at": "2026-10-07T04:21:09.294110641Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV1lg7XCIqV18Xlu2MBj6lUI0kLqBqiokAB3u2/GQAclr41n+dwwc62wh5+soistqBvIDWiHwb7OT7qh00bFoDQ=="
+        },
         "cce1f56f-9fdf-451d-a077-d7386b5b57ab": {
           "display_id": 2877,
           "author": "6ME5",
