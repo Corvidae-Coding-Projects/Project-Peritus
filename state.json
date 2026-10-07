@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3865,
-        "tip_oid": "f4e4771b8dfdda2a2fc13a0e4679073dfc46f734",
-        "prefix_sha256": "798dedbee46a81f4654e01c107e5375108510802b5d447f97a131eff2892259a"
+        "sequence": 3866,
+        "tip_oid": "9d60ccbf884797d5996c0b474dbc3507a9e2f168",
+        "prefix_sha256": "c48acf61c3b077cb352035d35e143c2997470aeeb4bbab5abf60bd0a0fd9d022"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3137,
+  "next_comment_id": 3138,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6055,7 +6055,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.466830110Z",
-      "updated_at": "2026-10-06T13:27:50.469013288Z",
+      "updated_at": "2026-10-07T23:29:34.709600611Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6066,6 +6066,15 @@
           "content": "Systemic repair plan for L419: E2 collapses permanent provider failures into retries and records zero failed-attempt usage.\n\nOwning contract and implementation boundary: crates/analysis/peritus-debugger/src/model/runner.rs:73-197; src/runtime/model.rs:211-231; src/aggregate/reducer/apply/model.rs:131-161; src/aggregate/types/model.rs:20-102. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPreserve typed provider failure, recovery certainty, continuation, and observed usage through failure settlement. Retry only failures whose recovery can change the outcome, with an explicit user policy for stopping, and account consumption across attempts without conflating protection with task termination. No tests run.\n\nPreserve: definitely-unaccepted versus ambiguously-accepted request state, exact native thread/profile identity, ordered provider observations, tool-result protocol, explicit cancellation and real provider/model capabilities. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long provider outages and Retry-After, split transport chunks and large streams, ambiguous acceptance and duplicate events, cancellation during recovery, adapter restart and route changes, proving same-thread reconnection and no duplicated accepted request/effect. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "f0101ad4-2cbd-4953-9905-5c80dde755b2": {
+          "display_id": 3137,
+          "author": "6ME5",
+          "content": "Code complete in commit eefe7d1bd. Implemented typed durable provider failures and acceptance/recovery certainty, exact native continuation for retries, explicit persistent or caller-bounded retry policy, cumulative failed-attempt usage accounting, and compatible historical decoding. Permanent failures return to deterministic completion rather than retrying or dropping the logical job. Closing at the code-complete stage as explicitly directed by the user. No tests, builds, lint, formatting, reviews, or validation checks were run; all validation remains deferred until every task issue is code complete and closed.",
+          "created_at": "2026-10-07T23:29:34.692535657Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9gA8zDr3AmxXu7rmhw6ImqXBe9tciLw/TXls17Qcgc5MO4B3RtVc9aRETj2EOtSvLueNhEupq+iR8QhyZ1WFAA=="
         }
       }
     },
