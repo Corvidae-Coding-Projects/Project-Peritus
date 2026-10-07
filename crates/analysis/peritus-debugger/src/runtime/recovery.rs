@@ -2,11 +2,94 @@
 
 use peritus_journal::OutboxDeliveryStatus;
 use peritus_policy::AuthorityInstant;
+use peritus_types::EvidenceId;
 
 use crate::{
-    DebuggerDirectiveDelivery, DebuggerPhase, DebuggerState, ModelDirectiveDelivery,
+    DebuggerDirectiveDelivery, DebuggerJobId, DebuggerPhase, DebuggerState, ModelDirectiveDelivery,
     ModelRetrySchedule, ModelStartBasis, ModelWorkState, PublicationDirectiveDelivery,
+    ReportRecord,
 };
+
+/// Result of observing one durable publication dependency through its owning store.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationDependencyStatus {
+    /// The exact dependency was loaded and verified.
+    Verified,
+    /// The owner authoritatively reported that the exact identity is absent.
+    Missing,
+    /// The owner could not complete the observation and a later read may succeed.
+    Unavailable,
+}
+
+/// Identity-bound artifact and evidence observations for one report publication.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PublicationRecoveryObservation {
+    job_id: DebuggerJobId,
+    report: ReportRecord,
+    evidence_id: EvidenceId,
+    artifact: PublicationDependencyStatus,
+    evidence: PublicationDependencyStatus,
+}
+
+impl PublicationRecoveryObservation {
+    pub(crate) const fn new(
+        job_id: DebuggerJobId,
+        report: ReportRecord,
+        evidence_id: EvidenceId,
+        artifact: PublicationDependencyStatus,
+        evidence: PublicationDependencyStatus,
+    ) -> Self {
+        Self { job_id, report, evidence_id, artifact, evidence }
+    }
+
+    /// Owning debugger job.
+    #[must_use]
+    pub const fn job_id(self) -> DebuggerJobId {
+        self.job_id
+    }
+    /// Exact durable report record.
+    #[must_use]
+    pub const fn report(self) -> ReportRecord {
+        self.report
+    }
+    /// Content-derived evidence identity.
+    #[must_use]
+    pub const fn evidence_id(self) -> EvidenceId {
+        self.evidence_id
+    }
+    /// Artifact-owner observation.
+    #[must_use]
+    pub const fn artifact(self) -> PublicationDependencyStatus {
+        self.artifact
+    }
+    /// Evidence-owner observation.
+    #[must_use]
+    pub const fn evidence(self) -> PublicationDependencyStatus {
+        self.evidence
+    }
+}
+
+/// Read-only observation of the exact publication directive owner.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationDeliveryObservation {
+    /// The exact retained directive row was loaded and decoded.
+    Observed(PublicationDirectiveDelivery),
+    /// The directive owner authoritatively reported that the row is absent.
+    Missing,
+    /// The directive owner could not complete the observation.
+    Unavailable,
+}
+
+/// Exact completed-publication dependencies that must be restored.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationDependencyRepair {
+    /// Restore the report artifact owner only.
+    Artifact,
+    /// Restore the report evidence owner only.
+    Evidence,
+    /// Restore both exact dependency owners.
+    ArtifactAndEvidence,
+}
 
 /// Closed recovery action selected without performing an effect.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -83,8 +166,17 @@ pub enum DebuggerRecoveryDecision {
         /// Observed elapsed lease boundary.
         lease_until: u64,
     },
-    /// Exact evidence already exists; retry only the publication settlement.
+    /// Exact evidence already exists; use [`crate::reconcile_interrupted_publication`] to settle.
     ReconcilePublication,
+    /// A publication owner could not complete a read; repeat
+    /// [`crate::observe_publication_dependencies`] later.
+    AwaitPublicationObservation,
+    /// Use [`crate::repair_completed_publication`] to restore dependencies for an accepted
+    /// terminal publication.
+    RepairCompletedPublication {
+        /// Exact owner dependencies found authoritatively absent.
+        repair: PublicationDependencyRepair,
+    },
     /// Durable terminal work is complete.
     Complete,
     /// Owner observations contradict the durable state and require quarantine.
@@ -96,6 +188,8 @@ pub enum DebuggerRecoveryDecision {
 /// `staged_artifact` means the report digest is finalized and verifies. `evidence_admitted` means
 /// the exact content-derived report evidence exists. `directive_available` means the expected
 /// durable outbox row is pending/claimable or already held by this recovery worker.
+/// A false owner boolean is treated as authoritative absence; callers that can observe temporary
+/// owner failure must use [`decide_publication_recovery`].
 #[must_use]
 pub fn decide_recovery(
     state: &DebuggerState,
@@ -155,7 +249,9 @@ pub fn decide_recovery(
             if staged_artifact && evidence_admitted {
                 DebuggerRecoveryDecision::Complete
             } else {
-                DebuggerRecoveryDecision::ReconcilePublication
+                DebuggerRecoveryDecision::RepairCompletedPublication {
+                    repair: missing_dependencies(staged_artifact, evidence_admitted),
+                }
             }
         }
         DebuggerPhase::Failed | DebuggerPhase::Cancelled => DebuggerRecoveryDecision::Complete,
@@ -167,6 +263,8 @@ pub fn decide_recovery(
 /// Unlike [`decide_recovery`], this path distinguishes an unclaimed row, a live claim lease, and
 /// an expired reclaimable lease. It also validates that the retained directive still names the
 /// same job, model attempt, plan/request, or report represented by the aggregate.
+/// Dependency booleans still mean verified versus authoritatively absent; use
+/// [`decide_publication_recovery`] when an owner read can be temporarily unavailable.
 #[must_use]
 pub fn decide_recovery_with_delivery(
     state: &DebuggerState,
@@ -244,10 +342,121 @@ pub fn decide_recovery_with_delivery(
             if staged_artifact && evidence_admitted {
                 DebuggerRecoveryDecision::Complete
             } else {
-                DebuggerRecoveryDecision::ReconcilePublication
+                DebuggerRecoveryDecision::RepairCompletedPublication {
+                    repair: missing_dependencies(staged_artifact, evidence_admitted),
+                }
             }
         }
         DebuggerPhase::Failed | DebuggerPhase::Cancelled => DebuggerRecoveryDecision::Complete,
+    }
+}
+
+/// Chooses publication recovery from identity-bound owner observations.
+///
+/// This path distinguishes authoritative absence from temporary observation failure. A terminal
+/// publication never returns the pre-settlement reconciliation action.
+#[must_use]
+pub fn decide_publication_recovery(
+    state: &DebuggerState,
+    dependencies: PublicationRecoveryObservation,
+    delivery: PublicationDeliveryObservation,
+) -> DebuggerRecoveryDecision {
+    let Some(report) = state.report() else {
+        return DebuggerRecoveryDecision::Quarantine;
+    };
+    if dependencies.job_id() != state.job_id() || dependencies.report() != report {
+        return DebuggerRecoveryDecision::Quarantine;
+    }
+    match state.phase() {
+        DebuggerPhase::ReportReady => {
+            if dependencies.artifact() == PublicationDependencyStatus::Unavailable
+                || dependencies.evidence() == PublicationDependencyStatus::Unavailable
+                || delivery == PublicationDeliveryObservation::Unavailable
+            {
+                return DebuggerRecoveryDecision::AwaitPublicationObservation;
+            }
+            if dependencies.artifact() != PublicationDependencyStatus::Verified {
+                return DebuggerRecoveryDecision::Quarantine;
+            }
+            let PublicationDeliveryObservation::Observed(delivery) = delivery else {
+                return DebuggerRecoveryDecision::Quarantine;
+            };
+            let Some(status) = publication_delivery_status(
+                state,
+                Some(DebuggerDirectiveDelivery::Publication(delivery)),
+            ) else {
+                return DebuggerRecoveryDecision::Quarantine;
+            };
+            match status {
+                OutboxDeliveryStatus::Pending
+                    if dependencies.evidence() == PublicationDependencyStatus::Verified =>
+                {
+                    DebuggerRecoveryDecision::ReconcilePublication
+                }
+                OutboxDeliveryStatus::Pending
+                    if dependencies.evidence() == PublicationDependencyStatus::Missing =>
+                {
+                    DebuggerRecoveryDecision::ClaimPublication
+                }
+                OutboxDeliveryStatus::Waiting { fence, lease_until } => {
+                    DebuggerRecoveryDecision::WaitForPublication { fence, lease_until }
+                }
+                OutboxDeliveryStatus::Reclaimable { prior_fence, lease_until } => {
+                    DebuggerRecoveryDecision::ReclaimPublication { prior_fence, lease_until }
+                }
+                OutboxDeliveryStatus::Acknowledged | OutboxDeliveryStatus::Exhausted => {
+                    DebuggerRecoveryDecision::Quarantine
+                }
+                OutboxDeliveryStatus::Pending => DebuggerRecoveryDecision::Quarantine,
+            }
+        }
+        DebuggerPhase::Published => {
+            let Some(publication) = state.publication() else {
+                return DebuggerRecoveryDecision::Quarantine;
+            };
+            if publication.report_id() != report.id()
+                || publication.evidence_id() != dependencies.evidence_id()
+            {
+                return DebuggerRecoveryDecision::Quarantine;
+            }
+            match (dependencies.artifact(), dependencies.evidence()) {
+                (PublicationDependencyStatus::Verified, PublicationDependencyStatus::Verified) => {
+                    DebuggerRecoveryDecision::Complete
+                }
+                (PublicationDependencyStatus::Unavailable, _)
+                | (_, PublicationDependencyStatus::Unavailable) => {
+                    DebuggerRecoveryDecision::AwaitPublicationObservation
+                }
+                (PublicationDependencyStatus::Missing, PublicationDependencyStatus::Missing) => {
+                    DebuggerRecoveryDecision::RepairCompletedPublication {
+                        repair: PublicationDependencyRepair::ArtifactAndEvidence,
+                    }
+                }
+                (PublicationDependencyStatus::Missing, PublicationDependencyStatus::Verified) => {
+                    DebuggerRecoveryDecision::RepairCompletedPublication {
+                        repair: PublicationDependencyRepair::Artifact,
+                    }
+                }
+                (PublicationDependencyStatus::Verified, PublicationDependencyStatus::Missing) => {
+                    DebuggerRecoveryDecision::RepairCompletedPublication {
+                        repair: PublicationDependencyRepair::Evidence,
+                    }
+                }
+            }
+        }
+        _ => DebuggerRecoveryDecision::Quarantine,
+    }
+}
+
+const fn missing_dependencies(
+    staged_artifact: bool,
+    evidence_admitted: bool,
+) -> PublicationDependencyRepair {
+    match (staged_artifact, evidence_admitted) {
+        (false, false) => PublicationDependencyRepair::ArtifactAndEvidence,
+        (false, true) => PublicationDependencyRepair::Artifact,
+        (true, false) => PublicationDependencyRepair::Evidence,
+        (true, true) => PublicationDependencyRepair::ArtifactAndEvidence,
     }
 }
 

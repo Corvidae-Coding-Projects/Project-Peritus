@@ -16,10 +16,15 @@ pub use model::{
     ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, ResumedModelAttemptExecution,
     amend_model_retry_policy, execute_model_attempt, resume_model_attempt, schedule_model_retry,
 };
-pub use publication::{PublicationExecution, publish_claimed_report};
+pub use publication::{
+    CompletedPublicationRepair, PublicationExecution, observe_publication_dependencies,
+    publish_claimed_report, reconcile_interrupted_publication, repair_completed_publication,
+};
 pub use recovery::{
-    DebuggerRecoveryDecision, decide_recovery, decide_recovery_on_clock,
-    decide_recovery_on_clock_with_delivery, decide_recovery_with_delivery,
+    DebuggerRecoveryDecision, PublicationDeliveryObservation, PublicationDependencyRepair,
+    PublicationDependencyStatus, PublicationRecoveryObservation, decide_publication_recovery,
+    decide_recovery, decide_recovery_on_clock, decide_recovery_on_clock_with_delivery,
+    decide_recovery_with_delivery,
 };
 
 use crate::{

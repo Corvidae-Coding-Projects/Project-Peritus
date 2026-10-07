@@ -1,7 +1,8 @@
 //! Canonical validated-report artifact finalization.
 
 use peritus_artifact_store::{
-    ArtifactDigest, ArtifactStore, EncryptionMetadata, MediaType, Publication, WriteRequest,
+    ArtifactDigest, ArtifactStore, ArtifactStoreError, EncryptionMetadata, MediaType, Publication,
+    RecoveryClass, WriteRequest,
 };
 use peritus_journal::SqliteJournal;
 use peritus_types::{EventId, Sha256Digest};
@@ -167,11 +168,18 @@ pub fn commit_report_ready(
     Ok(CommittedDebuggerTransition::new(operation))
 }
 
-fn artifact(error: impl core::fmt::Display) -> DebuggerError {
+fn artifact(error: ArtifactStoreError) -> DebuggerError {
+    let recovery = match error.recovery_class() {
+        RecoveryClass::CorrectRequest => DebuggerRecovery::CorrectInput,
+        RecoveryClass::Retry => DebuggerRecovery::Retry,
+        RecoveryClass::RecoverStore => DebuggerRecovery::RepairDependency,
+        RecoveryClass::TerminalIntegrity => DebuggerRecovery::Quarantine,
+        _ => DebuggerRecovery::Quarantine,
+    };
     DebuggerError::new(
         DebuggerErrorKind::Artifact,
         DebuggerOperation::PublishArtifact,
-        DebuggerRecovery::Reconcile,
+        recovery,
         error.to_string(),
     )
 }
