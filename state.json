@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3736,
-        "tip_oid": "b8fade81c61d272c099626c3da92e6459baa3e56",
-        "prefix_sha256": "0e997f98358b870bf59c1567ad3f9ff30b4b3e516ac32549ae49eb884a79aaab"
+        "sequence": 3737,
+        "tip_oid": "e41d2b0fb14e963e15bb42b5d4414006fbaf0650",
+        "prefix_sha256": "b001c14f76ef97d668fd727e2fea1039b654d35f22220f97e290c6657b788043"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3043,
+  "next_comment_id": 3044,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6458,11 +6458,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.054621756Z",
-      "updated_at": "2026-10-06T13:19:08.056762662Z",
+      "updated_at": "2026-10-07T05:01:56.697223208Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "5bf7dead-e523-4db5-88e3-cf2425b1bb51": {
+          "display_id": 3043,
+          "author": "6ME5",
+          "content": "Code-only implementation: waiting projections now have an independent delivery future and no observer-error path cancels or returns from the accepted provider future. The daemon captures cheap exact run/start/provider/frontier identity, writes a coalesced atomic status sidecar on an owned blocking worker, and reconstructs it at observation/restart without rewriting the whole run record or admitting provider work. Contention or filesystem failure is reported and retried on the existing notice cadence; later provider/activity progress or explicit cancellation supersedes stale notices. Authoritative input, raw trace, effect, and accounting persistence remain separate fail-closed boundaries. Existing observer-failure fixtures and every validation runner remain deferred to the final batch phase; issue remains open and unverified.",
+          "created_at": "2026-10-07T05:01:56.691672898Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAl27A36LEmiO5yedg2t1OkB+Wc2LmOhFy7pSmtOLLAuqp9swDLBGYllY/0ELaB5SohiaeJO20UjVZd7eCZ0GlDw=="
+        },
         "7074da9d-3678-439b-914a-fce9472c6b9f": {
           "display_id": 2224,
           "author": "6ME5",
