@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3762,
-        "tip_oid": "05096a65f9a15a2e1a0dc4a2733233b5da7fe1b3",
-        "prefix_sha256": "371ff6640ecfc82095c0ce02719211c71ccb02aa58b212e7c5897ef9ac725e2d"
+        "sequence": 3763,
+        "tip_oid": "3e53113e46bc04f3553c587b3ac9e0e2aad4533a",
+        "prefix_sha256": "e57d95c1737e42293811743bf36e830dc9b2bda864b0c9ba24e27dabdf45f1da"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3068,
+  "next_comment_id": 3069,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15119,7 +15119,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.953588245Z",
-      "updated_at": "2026-10-07T05:41:30.528554077Z",
+      "updated_at": "2026-10-07T06:33:33.722045007Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15157,6 +15157,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQ2KeOEUoCUY/8i02vW86z+KnlLTwvC3+OaLA5G8vMfHxUhqhDzPZR3dhHhdmnQRdFQTv4uD49mFvs3S/P/DnCw=="
+        },
+        "bf07b5ad-4c61-4ea1-80fd-f12675cf782d": {
+          "display_id": 3068,
+          "author": "6ME5",
+          "content": "Code-only continuation: editor navigation now preserves global selections across physical windows, including surrogate and CRLF boundaries. IME updates remain provisional until composition commits once into the durable draft and undo history; canceled composition restores the original selection, duplicate final input is ignored, and navigation commands defer while composition is provisional. A clipped textarea cursor no longer overwrites the known logical caret, and rejected undo preimage validation no longer consumes history. Whole live draft strings and remaining collection work are still pending. No manual tests, builds, lint, formatting, or test edits were performed; this issue remains open until final verification.",
+          "created_at": "2026-10-07T06:33:33.697310276Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIH6OixUSJXYK0ia9mi9YwLrOMJPevAFfCGPp+VLeGTbfUHk6/eyOgHsdC3pYebJR/pEfkU3t00asqZL5WNekCA=="
         },
         "c9825cb4-a298-426f-ace7-55f594087645": {
           "display_id": 3051,
