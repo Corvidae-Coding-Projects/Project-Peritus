@@ -294,19 +294,14 @@ fn artifact_commands(
     let Some(manifest) = project.manifest() else {
         return Ok(Vec::new());
     };
-    let path = workspace_root.join(manifest);
-    let text = std::fs::read_to_string(&path)
-        .map_err(|_| planning("artifact workspace manifest is unreadable"))?;
-    let value = toml::from_str::<toml::Value>(&text)
-        .map_err(|_| planning("artifact workspace manifest is invalid TOML"))?;
-    let table =
-        value.as_table().ok_or_else(|| planning("artifact workspace manifest must be a table"))?;
-    if table.len() != 2
-        || table.get("schema_version").and_then(toml::Value::as_integer) != Some(1)
-        || table.get("kind").and_then(toml::Value::as_str) != Some("artifact")
-    {
+    let directory = workspace_root
+        .join(manifest)
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| planning("artifact workspace manifest has no parent"))?;
+    if super::WorkspaceProductScope::read(&directory)? != super::WorkspaceProductScope::Artifact {
         return Err(planning(
-            "artifact workspace manifest must contain only schema_version = 1 and kind = \"artifact\"",
+            "artifact gate admission requires the declared artifact workspace scope",
         ));
     }
     Ok(vec![spec(

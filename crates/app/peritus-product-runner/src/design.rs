@@ -61,7 +61,7 @@ pub async fn create(
     cycle: u32,
     accounting: &mut RunAccounting,
 ) -> Result<DesignDocument, ProductRunnerError> {
-    let scope = design_scope(&input.workspace_root);
+    let scope = read_design_scope(&input.workspace_root)?;
     if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
         return artifact::create(input);
     }
@@ -187,24 +187,24 @@ fn system_prompt(remaining: Option<std::time::Duration>) -> String {
     }
 }
 
+fn read_design_scope(workspace_root: &Path) -> Result<DesignScope, ProductRunnerError> {
+    peritus_gates::WorkspaceProductScope::read(workspace_root)
+        .map(|scope| match scope {
+            peritus_gates::WorkspaceProductScope::Artifact => DesignScope::Artifact,
+            peritus_gates::WorkspaceProductScope::Source => DesignScope::Source,
+        })
+        .map_err(|error| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidPrecondition,
+                "admit declared workspace design scope",
+                error.to_string(),
+            )
+        })
+}
+
+#[cfg(test)]
 fn design_scope(workspace_root: &Path) -> DesignScope {
-    let Ok(text) = fs::read_to_string(workspace_root.join("peritus-workspace.toml")) else {
-        return DesignScope::Source;
-    };
-    let Ok(value) = toml::from_str::<toml::Value>(&text) else {
-        return DesignScope::Source;
-    };
-    let Some(table) = value.as_table() else {
-        return DesignScope::Source;
-    };
-    if table.len() == 2
-        && table.get("schema_version").and_then(toml::Value::as_integer) == Some(1)
-        && table.get("kind").and_then(toml::Value::as_str) == Some("artifact")
-    {
-        DesignScope::Artifact
-    } else {
-        DesignScope::Source
-    }
+    read_design_scope(workspace_root).expect("fixture workspace scope is valid")
 }
 
 fn user_prompt(transcript: &str, correction: Option<&str>) -> String {

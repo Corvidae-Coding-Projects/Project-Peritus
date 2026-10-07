@@ -135,13 +135,16 @@ impl TargetGatePlan {
         mut changed_paths: Vec<PathBuf>,
         requested_artifacts: &[PathBuf],
     ) -> Result<Self, GateError> {
+        // The global declaration governs admission even when a nested language manifest wins
+        // nearest-project discovery. It must never be hidden by that navigation decision.
+        let _ = super::WorkspaceProductScope::read(workspace_root)?;
         changed_paths.sort();
         changed_paths.dedup();
         let requested_artifacts = requested_artifacts.iter().collect::<BTreeSet<_>>();
         let mut projects = BTreeSet::new();
         let mut uncovered_paths = Vec::new();
         for path in &changed_paths {
-            let found = nearest_projects(workspace_root, path);
+            let found = nearest_projects(workspace_root, path)?;
             if found.is_empty() {
                 if requested_artifacts.contains(path) {
                     projects.insert(AffectedProject {
@@ -211,13 +214,13 @@ fn adjacent_to_manifestless_project(path: &Path, project: &AffectedProject) -> b
         && path.parent().unwrap_or_else(|| Path::new("")) == project.root()
 }
 
-fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProject> {
+fn nearest_projects(workspace_root: &Path, changed: &Path) -> Result<Vec<AffectedProject>, GateError> {
     let standalone_python = standalone_python_project(changed);
     let mut relative = changed.parent().unwrap_or_else(|| Path::new(""));
     loop {
         let absolute = workspace_root.join(relative);
+        let scope = super::WorkspaceProductScope::read(&absolute)?;
         let mut found = [
-            (ProjectKind::Artifact, "peritus-workspace.toml"),
             (ProjectKind::Rust, "Cargo.toml"),
             (ProjectKind::Node, "package.json"),
             (ProjectKind::Python, "pyproject.toml"),
@@ -232,6 +235,13 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
             manifest: Some(relative.join(marker)),
         })
         .collect::<Vec<_>>();
+        if scope == super::WorkspaceProductScope::Artifact {
+            found.push(AffectedProject {
+                kind: ProjectKind::Artifact,
+                root: relative.to_path_buf(),
+                manifest: Some(relative.join("peritus-workspace.toml")),
+            });
+        }
         if !found.iter().any(|project| project.kind == ProjectKind::Python)
             && conventional_python_tests(&absolute, relative, changed)
         {
@@ -262,11 +272,11 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
                 && !found.iter().any(|project| project.kind == ProjectKind::Python)
             {
                 if found.iter().all(|project| project.kind == ProjectKind::Artifact) {
-                    return vec![python.clone()];
+                    return Ok(vec![python.clone()]);
                 }
                 found.push(python.clone());
             }
-            return found;
+            return Ok(found);
         }
         let Some(parent) = relative.parent() else { break };
         if parent == relative {
@@ -274,7 +284,7 @@ fn nearest_projects(workspace_root: &Path, changed: &Path) -> Vec<AffectedProjec
         }
         relative = parent;
     }
-    standalone_python.into_iter().collect()
+    Ok(standalone_python.into_iter().collect())
 }
 
 fn standalone_python_project(changed: &Path) -> Option<AffectedProject> {

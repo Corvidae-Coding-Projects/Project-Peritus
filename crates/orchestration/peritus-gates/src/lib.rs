@@ -49,7 +49,7 @@ pub use outcome::{
 #[cfg(not(verus_only))]
 pub use product::{
     AffectedProject, GateCommandSpec, GateExecutionRecord, ProjectKind, TargetGatePlan,
-    TargetGateReport,
+    TargetGateReport, WorkspaceProductScope,
 };
 pub use projection::{GateProjection, ProjectedGate, ProjectedRun};
 pub use reducer::{decide, replay, start};
