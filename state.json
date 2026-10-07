@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3672,
-        "tip_oid": "1ea681e9eb50fa057e8338a352130bf19a835558",
-        "prefix_sha256": "875da7b88d38cdd8db6c972a83a07a848fba638cc504f1441342053e7ba3687c"
+        "sequence": 3673,
+        "tip_oid": "0b8163c86b27eb86a7ad9789997db5b4c2c86412",
+        "prefix_sha256": "941dba28b1f8f364e0780565fd40111606b7f4e1448f4c8c9d90304de3fd7751"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2998,
+  "next_comment_id": 2999,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,7 +20019,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T00:54:46.191286031Z",
+      "updated_at": "2026-10-07T01:03:48.201464618Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20066,6 +20066,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASWX1SmBcmghSmIL/7Xb8gGZ8guNFP3n28XjEYOpoKl5wuiPmz0DqWrTZGnu6nW9HxXLMYO9Zug9SrCv9ujrTDQ=="
+        },
+        "a86d714d-5472-4684-8d95-05d6f58fe0a4": {
+          "display_id": 2998,
+          "author": "6ME5",
+          "content": "Checkpoint-only control paging now has an executed green 16 MiB+1 operation/projection reopen-and-continue regression (control-paging2.log), and three new control-page fault boundaries passed with predecessor/original-receipt and quota recovery. New operation frames use schema2 roots; legacy schema1 frames remain exact. Conversation roots split bounded noncheckpoint core from reusable content-addressed checkpoint metadata, under one C0 transaction. Replay, operation lookup, catalog and fork writer use shared decoders. Product-control tests1 reported39 pass and one fixture-sizing failure:128-byte path suffixes did not actually exceed16MiB operation size. Increased the fixture to192, kept the >16MiB assertion; affected65536-path test reran green in many-path-control-paging2.log. Public baseline3 cases executed red (258-byte name,65536 coverage/conflicts) before public edits; new additive wide forms passed all8 checkpoint protocol tests, including legacy exact version bytes and tampered fingerprints. Feature negotiation, pre-effect admission and generated schema still being completed; final strict/native/formal checks pending.110 remains OPEN and uncommitted.",
+          "created_at": "2026-10-07T01:03:48.186012494Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZV6iNnDlrI3BY7mLJCxVCPf51amlLXq8Vlrc3n3xxtNQZ4+E2PGygXIqX2dWG/iL0Pw7EAEXb6f4zMoTuGL0Dw=="
         },
         "abd85fda-3530-4603-bc1d-d965ada52396": {
           "display_id": 2991,
