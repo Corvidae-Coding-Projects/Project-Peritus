@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3779,
-        "tip_oid": "7c607df6236a4c8f2c8f01a590db9b352d3c0f88",
-        "prefix_sha256": "5f448a268bb45748c188794f0c5af98270385a5a2b31896971b206aa6bcc9195"
+        "sequence": 3780,
+        "tip_oid": "9caac63e17fc81ebd2a8d85f2bcedbdbe7af9fa0",
+        "prefix_sha256": "c9ab3a1c04560611703b9143abdf26b5a3bed8df33b7a405cb1b5dc5fdad40e2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3085,
+  "next_comment_id": 3086,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1532,11 +1532,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.270531227Z",
-      "updated_at": "2026-10-06T13:19:08.272830980Z",
+      "updated_at": "2026-10-07T07:47:53.689762040Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "27f39dd6-8482-43bb-8518-b2ae6fcb9261": {
+          "display_id": 3085,
+          "author": "6ME5",
+          "content": "Code-only batch observation: the command runtime no longer constructs an internal one-millisecond GateExecutionPlan timeout. It uses the existing optional-timeout representation with no selected timeout. AcceptanceContractDto now computes the canonical digest from the actual untimed declaration and validates the domain contract, replacing the unrelated correlation-derived digest. Existing accepted timed records are not rewritten. No tests, builds, lint, formatting, or generators were invoked; final round-trip/restart validation remains outstanding and the issue stays open.",
+          "created_at": "2026-10-07T07:47:53.635964057Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAMK5engHSx4ddE4zO672fr1hxHIhEAePu3qUYnPUUZAbzHKESdykk+2FYud1+Xy69F+6ZIYb7bfFA8jQB96WLDw=="
+        },
         "57228286-2222-467c-ad6a-e159b2f290eb": {
           "display_id": 2273,
           "author": "6ME5",
