@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3796,
-        "tip_oid": "c67de39a3e1a429c171fa01ffc73502e4b10f3d4",
-        "prefix_sha256": "93c2423d52a3be35ed96e2eb2b3a512ab48506d7f0f32c523d20b19cbbd791ef"
+        "sequence": 3797,
+        "tip_oid": "0cc8c88d29fc0f44488f6322a360ef9c4059b4c2",
+        "prefix_sha256": "10499644f067c1e294045a3e4b13a51ee532b6b4634f4214ea36bd3efb72cf2d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3102,
+  "next_comment_id": 3103,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23464,11 +23464,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.910024918Z",
-      "updated_at": "2026-10-06T13:19:07.912166160Z",
+      "updated_at": "2026-10-07T13:20:23.910789608Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "7ad5d6b9-e227-45d4-9743-2a4b6baafbd0": {
+          "display_id": 3102,
+          "author": "6ME5",
+          "content": "Source-only recovery of interrupted issue 119: fully read original worktree and current journal/control-store paths; their prior contention corrections are already integrated or superseded, so no stale restoration was made. Implemented the remaining startup cancellation seam across six production paths: one host-owned JournalCancellation exists before blocking startup, scopes journal/artifact/control/improvement waits, retains and joins workers, and preserves host/supervisor stop observation. Root review additionally made the first select poll the lazy stop listener before starting the worker; merely pinning it did not install the signal listener. Source handoffs: .crosslink/code-batch-recovery/issue119-MANIFEST.md and .crosslink/code-batch-recovery/2026-10-07-root119/HANDOFF.md, with focused patches, preimages and hashes. Static source/patch checks only; native restart adoption (#193) and existing separate evidence/migration startup policies are not claimed solved here. No tests/builds/toolchains/formatters/runners or test edits, no restart/install/commit/push/closure. User requires all validation at the very end of the entire code batch; issue remains open.",
+          "created_at": "2026-10-07T13:20:23.906802196Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsc5wsr9AAYW4fRUYL/0QT5+/ClVZZkr5osWhn8e92OqcCM/LMMFGrcph02FAqmbJBnmMOYGblCqvCujav+EBBw=="
+        },
         "d4fa8297-c490-4d62-b568-2aa2f87fc8d8": {
           "display_id": 2191,
           "author": "6ME5",
