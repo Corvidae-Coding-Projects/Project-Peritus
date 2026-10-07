@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3704,
-        "tip_oid": "2c1986c4ceddcf8bd8771674634ab5c468050971",
-        "prefix_sha256": "9111652058b178fcadab610a806031f32fe8dbbfdfef36d5ebd00a79bc24e91d"
+        "sequence": 3705,
+        "tip_oid": "3b6aca51eb458c07aada7e880a9755916051c4db",
+        "prefix_sha256": "f4e415ed95b74bbfa592743335a10e46e47bc32a1edd460e9b4c1617be6d97c4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3019,
+  "next_comment_id": 3020,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20084,7 +20084,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T02:20:33.814256101Z",
+      "updated_at": "2026-10-07T02:40:58.822396784Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20257,6 +20257,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlbEeCB1CnUAXQJfF/fCX3uZbD0aEe5Vbb1fuKawczOwztIMf6h4T58sniCJen26Exoknh6xrLtYiWxSATKnVAQ=="
+        },
+        "d1d7f8e7-2e05-4826-b2e8-c3a4bcdffe66": {
+          "display_id": 3019,
+          "author": "6ME5",
+          "content": "[action] Code-only batches integrated: 815 alias/history, 818 explorer identities, 811 independent observations. Root is finishing 812 exact persisted recovery payloads and 803 durable receipt identities; agents continue 119/112/317 lifecycle, 814 UI authority and 821 package handoff. All checks remain deferred; no new issue closures or commits.",
+          "created_at": "2026-10-07T02:40:58.815330071Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAngxycf2PmGsvxzXQ+eM9gtccicA1LdWPKeOCQIoU5MTGiiubN5DHnwQqr7JP/3z3AhlUPO8Rwulj9WBfO4y+Dw=="
         },
         "e04b7325-07d1-409f-acc8-8eb4aa4612aa": {
           "display_id": 3009,
