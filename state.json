@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3660,
-        "tip_oid": "909824eb94f177aa9b1f9d09586adccccfcda6e3",
-        "prefix_sha256": "93b0eee752fc96103bb7c7f3ae312f2a19b954bc8d774f59a4181c3e42305e76"
+        "sequence": 3661,
+        "tip_oid": "2220d2b025d5c44bcfc688cb196bc5b49e486a0e",
+        "prefix_sha256": "0899cb5782068dace886d6fddd67bdb366c5e518914db33a4d63b1764edc0477"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2989,
+  "next_comment_id": 2990,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-07T00:12:26.765969433Z",
+      "updated_at": "2026-10-07T00:15:15.339578130Z",
       "labels": [
         "ci"
       ],
@@ -22379,6 +22379,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8DcD2u3pr/eETlOV+PQhYsxz9Jf/HpxlCPIaiRUMZby8YArnWovoyaW7ONoA4L5ekwa68xCsNdTPVopBwXN+BQ=="
+        },
+        "7262f135-e835-40ed-84d4-d28395cb9f8f": {
+          "display_id": 2989,
+          "author": "6ME5",
+          "content": "[action] Issue825 final followup a26a324558bd592356af9b19fda4458ce54d881a remains committed/pushed in PR112/develop. Fresh native acceptance5/6: Linux provider112560348413 andconformance112560348294, Macprovider112560348702, Windowsprovider112560352091 andconformance112560351923 SUCCESS exacthead; actual named regression logs inspected and metadata/log pairs /tmp/peritus-issue825-followup-{linux-provider,linux-conformance,macos-provider,windows-provider,windows-conformance}-success.{json,log}. LatestWindows provider ended00:11:28Z all16portableCodex tests andcoreI/O regressions pass. Only Macconformance112560348606 islive in Runreviewedpackageshard, started00:08:52Z withrunnerassigned. Nativeobserver36823 LIVE. FullPRwatch70938 terminalexit1 causedbyGraphQL TCPreadreset, notCI; originallogretained, replacement fullPRwatch71240 LIVE log /tmp/peritus-pr112-issue825-followup-ci-watch2.log. LatestPR219SUCCESS60running162queued5skipped0failures, headverifieda26. Local298tests2existingliveignores17LinuxCodex, strictworkspaceClippy/fmt/WindowsGNU/Verus/xtask pass. No code edits this turn; unrelated usage/audit work preserved, all10selectedfilesalreadycommitted. PRbody /tmp/peritus-pr112-body-issue825-followup.md published/verified honest pendingfollowupstatus.825OPEN lock6ME5 until lastMacconformanceactualregressionlogverified; then finalresult,close825 --no-changelog, verifylockrelease, updatePRbody, start110.110 sourceworknotstarted. NoCI/test reruns and no new productdeadline/retry; historicalauthpredicateunrecoverable. Goal remainsactive; thisturn accepted4additionalnativejobs andrecordedactualevidence, so progress, not a blocker.",
+          "created_at": "2026-10-07T00:15:15.326874568Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXsQeh19/6lLudgs4gDc8Lpw9c8Qje4Vw0lrsV9d8CSU5DZUVFUHcyK+5nOv86F7TpYRC+wZQu1T7lOU5+uP1Dw=="
         },
         "76568c9f-3776-419d-8cb2-cf98a01b176d": {
           "display_id": 2987,
