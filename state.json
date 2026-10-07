@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3828,
-        "tip_oid": "0777c3960b440940633bfdd7638f65b33d89c01c",
-        "prefix_sha256": "acf8549ba1cd54794c0b7df4bb57bf28889a885b6f39c631ca23ad276db8aeff"
+        "sequence": 3830,
+        "tip_oid": "88a581ba0306eaec46d42b5c7d0378f101b75459",
+        "prefix_sha256": "739085909f2e2351d776e5dc052a33acb017153fafec239b76012c900eba33b8"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3134,
+  "next_comment_id": 3135,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -946,6 +946,10 @@
       "agent_id": "6ME5",
       "branch": "fix/persistent-execution",
       "claimed_at": "2026-10-07T01:43:15.340930573Z"
+    },
+    "122": {
+      "agent_id": "6ME5",
+      "claimed_at": "2026-10-07T21:06:49.394903302Z"
     },
     "317": {
       "agent_id": "6ME5",
@@ -23575,7 +23579,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.233698590Z",
-      "updated_at": "2026-10-07T16:12:00.547921381Z",
+      "updated_at": "2026-10-07T16:24:04.583439050Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -23595,6 +23599,15 @@
           "content": "Systemic repair plan for L094: Restart reconciliation terminates exact live trees instead of reconnecting control.\n\nOwning contract and implementation boundary: recovery/reconcile.rs:124-168; consumption/watchdog.rs:7-28; platform/watchdog.rs:142-156; platform/inheritance.rs:12-32; platform/pipe.rs:51-52; platform/pty.rs:124-125. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMove running process ownership to a durable supervisor boundary independent of the daemon attachment, or implement fenced adoption using exact birth/containment identity and persisted control channels. Reconcile the same live tree after restart rather than killing it as the default recovery action. Keep explicit cancel cleanup and PID-reuse safeguards; migrate parent-death/watchdog semantics together with the new ownership contract.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "f7acbb64-4106-4377-8422-3f6761adee7f": {
+          "display_id": 3134,
+          "author": "6ME5",
+          "content": "Static review of the retained-owner storage successor found that its per-identity kernel lock still guards a stale private SQLite projection. Independently opened supervisor and daemon-child ProcessStores can overwrite newer manifest or native-observation state. Source repair is in progress: reconcile exact authoritative claim, manifest, tombstone, and consumed quarantine receipt under the identity lock before decisions or mutations, without rebuilding lifetime history on each operation. Atomic staging and tombstone restoration source corrections are archived; no tests or builds have run and issue completion is not claimed.",
+          "created_at": "2026-10-07T16:24:04.570844332Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcZydpm1usT9WjWg8kyWC8YmrlWvq4AwCEagd6PEfPdBxX8WT/JeBPZrB0/rvXFIS3uzVbk29nm3m9H4rOE0eAQ=="
         }
       }
     },
