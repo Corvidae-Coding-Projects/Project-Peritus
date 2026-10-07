@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3677,
-        "tip_oid": "c420cabaa34ae5a57fdecf0711f49029602a09ef",
-        "prefix_sha256": "75e2ffce9f360b6515c0a607620586fe1191639951e88b0a64314c01e4777782"
+        "sequence": 3678,
+        "tip_oid": "7892e9f16f1c0bde0a4812f0650d5defe5a05e90",
+        "prefix_sha256": "45ea52dad8b0ae72edc3525e78464d698882a05256fb13bc653cecccf489840d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3003,
+  "next_comment_id": 3004,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20037,7 +20037,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:20:06.180183688Z",
+      "updated_at": "2026-10-07T01:24:12.965035854Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20059,6 +20059,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzrzX6g3GPB/1ogVV7Vd/P1t9Dfqt0MfIzJtlD8DiB/SOmH1vcUWVotm1UTA36SO9G2JQojci112bxdUZ7RbHAQ=="
+        },
+        "0a89a1ed-33ed-43d0-8cd9-86b11dade1be": {
+          "display_id": 3003,
+          "author": "6ME5",
+          "content": "[action] Batch code-only phase continues. All three worktree Crosslink tracking daemons are now verified ready_current after sequential bootstrap; installed Peritus daemons untouched. Root110 existing affected suite stopped making progress at isolated fork fixture: full source identifies introduced recursive controls mutex acquisition in validate_fork_coverage called inside fork_workbench with_controls. Corrected main source to require caller-owned &ControlStore; live test process/source left untouched, regression rerun deferred to final batch validation. New scenario module is390lines, storage321, so soft400budgets corrected structurally. Agent820 first-pass supervision submitted; root requested source-grounded stop ownership review before acceptance. No new checks, commits, pushes, or issue closures.",
+          "created_at": "2026-10-07T01:24:12.951016713Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhlJ6aMuKy48HhWTvOQetVrgu0Qf28SKEqGzsQWvGryOKySPmrCnyfdsHIavONYti+GL4iGztnIQdf4TAyaITDA=="
         },
         "16ade33a-5f12-49db-a86d-ca0831ecb859": {
           "display_id": 2996,
