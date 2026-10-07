@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3794,
-        "tip_oid": "794b08bba118ce926af388450a138f6557690530",
-        "prefix_sha256": "04a10be4274d5f501eadf8850b6f3b79df0280a1ee23058231f43246426f45ce"
+        "sequence": 3795,
+        "tip_oid": "91739b032cd271c130d8491d4c318344edb1cdfd",
+        "prefix_sha256": "bb5e2c71c21bf506474eadc56b6b409a45c1bd13ccd268454b0c9387b9799eb9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3100,
+  "next_comment_id": 3101,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24200,11 +24200,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.962379690Z",
-      "updated_at": "2026-10-07T01:30:36.561150415Z",
+      "updated_at": "2026-10-07T13:04:27.726877848Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "1fddae28-e021-4853-9a42-cc9442f4e639": {
+          "display_id": 3100,
+          "author": "6ME5",
+          "content": "Source-only recovery against preserved fix/batch-settings-drafts-819 is complete. The shared tree already contains the full settings draft revision, exact operation ownership, and configuration recovery chain, with later strengthening through workspace-bound IndexedDB records, reserved settlements, per-operation durable owners, and paged pending inspection. No production edit was required. The preserved worktree-only 4 MiB ACTION_BODY_LIMIT and matching import precheck were intentionally not restored because current gateway body policy disables the cumulative default limit and collects action bodies without a cumulative work allowance; root confirmed preserving that later policy. Exact current/worktree copies, comparison patch, hashes, and full-read coverage are recorded in .crosslink/code-batch-recovery/2026-10-07-issue819-MANIFEST.md. No tests, builds, Cargo check, Clippy, rustfmt, npm, browser, codegen, Verus, or qualification runners were invoked, and no test source was edited. This is source review only; final validation remains deferred.",
+          "created_at": "2026-10-07T13:04:27.722624700Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIANYzXVdhrsd4uV75tw9Bu1Fmf+ighI776yqdnYvXYSh6EyRs7LHE8Rs6FfYqfNiKviCmlyF3c+KcOuEWaOjDw=="
+        },
         "2bc52f17-3cea-4a37-9fec-096e718bf970": {
           "display_id": 3005,
           "author": "hoQk",
