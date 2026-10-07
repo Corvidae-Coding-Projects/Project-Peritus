@@ -94,7 +94,7 @@ pub(super) fn build_model_request(
             StructuredOutput::Text,
             reasoning,
             GenerationConfig::new(
-                profile.limits().max_output_tokens().min(output_tokens),
+                negotiated.limits().max_output_tokens().min(output_tokens),
                 Vec::new(),
                 None,
                 None,

@@ -75,6 +75,8 @@ impl DeveloperLoop {
                 profile.limits(),
             )?;
             let negotiated = negotiate(profile, requested)?;
+            let reserved_output_tokens = request.limits.max_output_tokens()
+                .min(negotiated.limits().max_output_tokens());
             let governing_input = if let Some(input) = input {
                 input_revision = input.revision;
                 Some(user_message(
@@ -120,7 +122,7 @@ impl DeveloperLoop {
                         &messages,
                         &request.tools,
                         profile,
-                        request.limits.max_output_tokens(),
+                        reserved_output_tokens,
                         protocol_limits,
                         protected_prefix,
                     )?
@@ -165,7 +167,7 @@ impl DeveloperLoop {
                     &mut messages,
                     &request.tools,
                     profile,
-                    request.limits.max_output_tokens(),
+                    reserved_output_tokens,
                     protocol_limits,
                     protected_prefix,
                 )?;

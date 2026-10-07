@@ -56,19 +56,28 @@ impl DeveloperLoopLimits {
         Ok(self)
     }
 
-    /// Applies a smaller generation ceiling to each provider turn in this loop.
+    /// Selects a generation allowance for each provider turn in this loop.
+    /// The immutable provider profile supplies the actual model ceiling at request construction.
     ///
     /// # Errors
-    /// Rejects zero or a value wider than the production developer-loop ceiling.
+    /// Rejects zero; this policy does not impose another host output-token ceiling.
     pub const fn with_max_output_tokens(
         mut self,
         max_output_tokens: u64,
     ) -> Result<Self, DeveloperLoopError> {
-        if max_output_tokens == 0 || max_output_tokens > 32_768 {
+        if max_output_tokens == 0 {
             return Err(DeveloperLoopError::LimitExceeded);
         }
         self.max_output_tokens = max_output_tokens;
         Ok(self)
+    }
+
+    /// Uses the actual negotiated provider output allowance on every model turn.
+    /// This also follows a provider selection changed at a later live-input boundary.
+    #[must_use]
+    pub const fn with_provider_output(mut self) -> Self {
+        self.max_output_tokens = u64::MAX;
+        self
     }
 
     /// Maximum provider turns.
