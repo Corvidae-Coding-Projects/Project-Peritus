@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3710,
-        "tip_oid": "4995d563ca57f46e526b3a9f8a8fdd24c7ac8371",
-        "prefix_sha256": "dacaf424bbf5c445766ac6c7de1d3eb52ae14796a002a6767fc1d7b863cb16dd"
+        "sequence": 3711,
+        "tip_oid": "37638aa6407ff18d125b5bdc6ca6b76858fbc22f",
+        "prefix_sha256": "17905ee66b2348be39d83ff678f531b36f634d5aa58c2dc1a1374686d67df8d2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3020,
+  "next_comment_id": 3021,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31043,7 +31043,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.931027695Z",
-      "updated_at": "2026-10-07T02:38:33.932134620Z",
+      "updated_at": "2026-10-07T02:50:29.032667125Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31063,6 +31063,15 @@
           "kind": "progress",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB/ezwRXqPfIZxp+Ks5SUfpljD61juD/aAIvSXPN5QpT/REiqj2cjtVbkDykWGj9JgOS7/PwJs1SIc0Gh4Fl5Dw=="
+        },
+        "93ec5e8f-d295-4a6b-bc45-aabc1d9b029a": {
+          "display_id": 3020,
+          "author": "6ME5",
+          "content": "Code-only integration now persists exact file save bodies in the gateway and workspace-bound browser records; legacy records require a matching gateway-owned operation before adoption. Receipt inspection never retransmits, validates original envelopes/stages and distinguishes known rejection from an unknown outcome. Queue-only acceptance remains pending for explicit retry. Stop has independent admission. Validation deferred until the coding pass ends; issue remains open.",
+          "created_at": "2026-10-07T02:50:29.028206519Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnsnkAmJ2+tznc0Ll8ydagi2D7WTIceCpRc9+ftpqobvGKT8QorDuf+ffwwps11mFTGIM4aFj2unSTVZ56x+9DA=="
         }
       }
     },
