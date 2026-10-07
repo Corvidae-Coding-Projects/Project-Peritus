@@ -26,24 +26,32 @@ impl ProductRunService {
         } else {
             "capture admitted; completion not observed"
         };
-        let (receipt, admitted) = self.admit_preview(command, run, |preview| {
-            mutate_launch(preview, request.launch(), |current| {
-                let mut captures = current.captures().to_vec();
-                captures.push(capture_receipt(
-                    command.operation(),
-                    state,
-                    request.target(),
-                    detail,
-                )?);
-                rebuild_launch_with(
-                    current,
-                    current.interactions().to_vec(),
-                    captures,
-                    current.feedback().to_vec(),
-                    current.behavior_checks(),
-                )
-            })
-        })?;
+        let identity = self
+            .capture_run_identity(run)
+            .map_err(super::aggregate::preview_service_error)?;
+        let (receipt, admitted) = self.admit_preview_with_identity(
+            command,
+            run,
+            &identity,
+            |preview| {
+                mutate_launch(preview, request.launch(), |current| {
+                    let mut captures = current.captures().to_vec();
+                    captures.push(capture_receipt(
+                        command.operation(),
+                        state,
+                        request.target(),
+                        detail,
+                    )?);
+                    rebuild_launch_with(
+                        current,
+                        current.interactions().to_vec(),
+                        captures,
+                        current.feedback().to_vec(),
+                        current.behavior_checks(),
+                    )
+                })
+            },
+        )?;
         if !admitted {
             self.qualify_graphical_goal(run, command, request.launch())?;
             return Ok(receipt);
@@ -65,7 +73,7 @@ impl ProductRunService {
             )
             .await;
         if let Ok(completed) = published {
-            self.update_capture(run, request.launch(), command.operation(), completed)?;
+            self.update_capture(&identity, request.launch(), command.operation(), completed)?;
             self.qualify_graphical_goal(run, command, request.launch())?;
         }
         Ok(receipt)
@@ -216,12 +224,30 @@ impl ProductRunService {
 
     pub(super) fn update_capture(
         &self,
-        run: RunId,
+        identity: &crate::product_run::publication::RunIdentitySnapshot,
         launch: ControlOperationId,
         operation: ControlOperationId,
         completed: CompletedCapture,
     ) -> Result<(), AppProtocolError> {
-        self.update_launch(run, launch, |current| {
+        self.update_launch(identity, operation, launch, |current| {
+            let prior = current
+                .captures()
+                .iter()
+                .find(|value| value.operation() == operation)
+                .ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+            if prior.state() == WorkbenchCaptureState::Captured {
+                if prior.artifact() == Some(completed.artifact)
+                    && prior.image_digest() == Some(completed.digest)
+                    && prior.dimensions() == Some(completed.dimensions)
+                    && prior.captured_unix_millis() == Some(completed.captured_unix_millis)
+                {
+                    return Ok(None);
+                }
+                return Err(app_error(Code::IdempotencyConflict));
+            }
+            if prior.state() != WorkbenchCaptureState::Failed {
+                return Err(app_error(Code::StaleRevision));
+            }
             let captures = current
                 .captures()
                 .iter()
@@ -249,6 +275,7 @@ impl ProductRunService {
                 current.feedback().to_vec(),
                 current.behavior_checks(),
             )
+            .map(Some)
         })
     }
 }

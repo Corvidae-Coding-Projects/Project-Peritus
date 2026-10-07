@@ -25,8 +25,9 @@ impl ProductRunService {
     ) -> AppResponsePayload {
         let result = self.control_workspace(query).and_then(|()| {
             let id = ConversationId::new(query.conversation().into_bytes())?;
-            let record =
-                self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+            let record = self
+                .with_control_conversation(id, |store| store.load(id))?
+                .ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
                 || record.workspace_bytes() != query.workspace().as_bytes()
             {
@@ -53,7 +54,7 @@ impl ProductRunService {
             Ok(operation) => operation,
             Err(error) => return error_response(error),
         };
-        let prepared = match self.with_controls(false, |store| {
+        let prepared = match self.with_control_conversation(operation.conversation(), |store| {
             if let Some(receipt) = resolve_user_operation(store, &operation)? {
                 let record = store.load(operation.conversation())?.ok_or(ControlError::NotFound)?;
                 let run = record.goal().ok_or(ControlError::NotFound)?.run_bytes();
@@ -94,7 +95,7 @@ impl ProductRunService {
             if !retryable {
                 return error_response(ControlError::InvalidInput.into());
             }
-            if let Err(error) = self.with_controls(false, |store| {
+            if let Err(error) = self.with_control_conversation(operation.conversation(), |store| {
                 if resolve_user_operation(store, &operation)?.is_none() {
                     store.accept(&operation)?;
                 }
@@ -103,7 +104,7 @@ impl ProductRunService {
                 return error_response(error);
             }
         }
-        let accepted = match self.with_controls(false, |store| {
+        let accepted = match self.with_control_conversation(operation.conversation(), |store| {
             store
                 .operation(operation.conversation(), operation.id())?
                 .ok_or_else(|| ControlError::NotFound.into())
@@ -111,9 +112,13 @@ impl ProductRunService {
             Ok(accepted) => accepted,
             Err(error) => return error_response(error),
         };
-        match self.retry_admitted(run, Some(&accepted)).await {
+        match self.retry_admitted(
+            run,
+            Some(crate::product_run::lifecycle::RetryAdmission::Goal(accepted)),
+        )
+        .await {
             Ok(_) => self
-                .with_controls(false, |store| {
+                .with_control_conversation(operation.conversation(), |store| {
                     resolve_user_operation(store, &operation)?
                         .ok_or_else(|| ControlError::NotFound.into())
                 })
@@ -129,7 +134,7 @@ impl ProductRunService {
         record: &crate::product_run::RunRecord,
         operation: &ControlOperation,
     ) -> Result<bool, ProductRunServiceError> {
-        if record.goal_resume == Some(operation.id())
+        if record.attempt_admission == Some(operation.id())
             && record.snapshot.phase() != peritus_app_protocol::ProductRunPhase::RecoveryRequired
         {
             return Ok(false);
@@ -147,7 +152,7 @@ impl ProductRunService {
         {
             return Err(ProductRunServiceError::Control(ControlError::ScopeMismatch));
         }
-        self.with_controls(false, |store| {
+        self.with_control_conversation(operation.conversation(), |store| {
             let receipt = store.resolve(operation)?.ok_or(ControlError::NotFound)?;
             let resumed = store
                 .load_revision(operation.conversation(), receipt.accepted_revision())?
@@ -169,9 +174,12 @@ impl ProductRunService {
             WorkbenchIntent::PauseGoal { goal, .. } | WorkbenchIntent::ClearGoal { goal } => *goal,
             _ => return,
         };
+        let id = match ConversationId::new(command.query().conversation().into_bytes()) {
+            Ok(id) => id,
+            Err(_) => return,
+        };
         let run = self
-            .with_controls(false, |store| {
-                let id = ConversationId::new(command.query().conversation().into_bytes())?;
+            .with_control_conversation(id, |store| {
                 let record = store.load(id)?.ok_or(ControlError::NotFound)?;
                 let goal = record
                     .goal()
@@ -184,6 +192,7 @@ impl ProductRunService {
         let Ok(mut records) = self.inner.records.write() else { return };
         let Some(record) = records.get_mut(&run) else { return };
         record.cancelled.store(true, Ordering::Release);
+        record.control_cancellation.cancel();
         let _ = record.provider_cancellation.cancel();
     }
 }

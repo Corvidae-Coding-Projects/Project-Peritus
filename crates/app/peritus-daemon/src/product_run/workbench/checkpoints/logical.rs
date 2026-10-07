@@ -1,5 +1,6 @@
 //! Reserved logical rewind branches, published atomically only after successful settlement.
 use super::{ControlError, ControlStore, Error, ProductRunService, derived_id, public_restore};
+use crate::product_control::{AuthorityKey, AuthoritySet};
 use peritus_app_protocol::{
     ControlOperationId, ConversationTitle, WorkbenchCommand, WorkbenchForkMode,
     WorkbenchForkRequest, WorkbenchIntent, WorkbenchQuery, WorkbenchRestoreReceipt,
@@ -20,8 +21,13 @@ impl ProductRunService {
         record: &ConversationRecord,
     ) -> Result<Option<ConversationBranch>, Error> {
         let Some(child) = request.child() else { return Ok(None) };
-        self.with_controls(false, |store| {
-            if store.load(ConversationId::new(child.into_bytes())?)?.is_some() {
+        let child_id = ConversationId::new(child.into_bytes())?;
+        let authorities = AuthoritySet::new([
+            AuthorityKey::Conversation(record.id()),
+            AuthorityKey::Conversation(child_id),
+        ]);
+        self.with_control_authorities(authorities, |store| {
+            if store.load(child_id)?.is_some() {
                 return Err(ControlError::IdempotencyConflict.into());
             }
             let checkpoint = store
@@ -33,8 +39,12 @@ impl ProductRunService {
             let refs = checkpoint.references();
             let fork = WorkbenchForkRequest::new(
                 WorkbenchQuery::new(child, request.query().workspace()),
-                ConversationTitle::new(format!("Rewind of {}", record.title()))
-                    .map_err(|_| ControlError::Capacity)?,
+                ConversationTitle::derived_label(
+                    "Rewind of ",
+                    record.title(),
+                    peritus_app_protocol::CONVERSATION_TITLE_LABEL_BYTES,
+                )
+                .map_err(|_| ControlError::InvalidInput)?,
                 request.checkpoint(),
                 refs.source_conversation_revision(),
                 refs.context_generation(),
@@ -115,7 +125,14 @@ impl ProductRunService {
         }
         let source = ConversationId::new(command.query().conversation().into_bytes())?;
         let restore_id = RestoreId::new(command.operation().into_bytes())?;
-        let published = self.with_controls(false, |store| {
+        let WorkbenchIntent::ApplyRewind(preview) = command.intent() else {
+            return Err(ControlError::InvalidInput.into());
+        };
+        let mut keys = vec![AuthorityKey::Conversation(source)];
+        if let Some(child) = preview.request().child() {
+            keys.push(AuthorityKey::Conversation(ConversationId::new(child.into_bytes())?));
+        }
+        let published = self.with_control_authorities(AuthoritySet::new(keys), |store| {
             publish_branch(store, actor, command, source, restore_id, publish)
         })?;
         let Some(revision) = published else { return Ok(receipt) };

@@ -10,6 +10,7 @@ use super::{
     derived_id, error_response, external_effects, noop_manifest, patch_input, patch_mode,
     patch_preimage, public_restore, public_version,
 };
+use crate::product_control::{AuthorityKey, AuthoritySet};
 
 mod plan;
 mod preview;
@@ -57,7 +58,7 @@ impl ProductRunService {
         let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
         let restore_id = RestoreId::new(command.operation().into_bytes())?;
         let before = self
-            .with_controls(false, |store| store.load(conversation))?
+            .with_control_conversation(conversation, |store| store.load(conversation))?
             .ok_or(ControlError::NotFound)?;
         check_record(&before, actor, command.query(), None)?;
         if before.restores().iter().any(|restore| restore.id() == restore_id) {
@@ -74,11 +75,13 @@ impl ProductRunService {
 
         let checkpoint_id = CheckpointId::new(request.checkpoint().into_bytes())?;
         let record = self
-            .with_controls(false, |store| store.load(conversation))?
+            .with_control_conversation(conversation, |store| store.load(conversation))?
             .ok_or(ControlError::NotFound)?;
         check_record(&record, actor, command.query(), Some(command.expected_revision()))?;
         let checkpoint = self
-            .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
+            .with_control_conversation(conversation, |store| {
+                store.load_checkpoint(conversation, checkpoint_id)
+            })?
             .ok_or(ControlError::NotFound)?;
         let replay_only = !record.checkpoints().iter().any(|value| value.id() == checkpoint_id);
         let conversation_only =
@@ -128,7 +131,7 @@ impl ProductRunService {
             None
         };
         let plan = if conflicts.is_empty() && !conversation_only {
-            self.with_controls(false, |store| {
+            self.with_control_conversation(conversation, |store| {
                 self.restore_plan_materialized(
                     store,
                     command.query(),
@@ -183,13 +186,23 @@ impl ProductRunService {
             .filter(|path| path.disposition() == WorkbenchRewindDisposition::Restore)
             .map(|path| path.path().to_owned())
             .collect::<Vec<_>>();
+        let prepared = self
+            .inner
+            .control_generation
+            .prepare_restore_snapshots(&prepare, &recovery_bodies)?;
+        let mut authority_keys = vec![AuthorityKey::Conversation(conversation)];
+        if let Some(child) = confirmed.request().child() {
+            authority_keys.push(AuthorityKey::Conversation(ConversationId::new(
+                child.into_bytes(),
+            )?));
+        }
 
         let (status, terminal_conflicts, _transaction_manifest, accepted_revision) = self
-            .with_controls(false, |store| {
+            .with_control_authorities(AuthoritySet::new(authority_keys), |store| {
                 if !conversation_only {
                     self.require_folder_write(store, actor, command, command.expected_revision())?;
                 }
-                let preparation = store.accept_restore_snapshots(&prepare, &recovery_bodies)?;
+                let preparation = store.accept_prepared_restore_snapshots(prepared)?;
                 #[cfg(test)]
                 self.check_rewind_fault(command, RewindFaultPoint::AfterPrepare)?;
                 let (status, terminal_conflicts, transaction_manifest) = if !conflicts.is_empty() {

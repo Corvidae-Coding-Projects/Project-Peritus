@@ -1,40 +1,41 @@
 //! Active product-run task ownership and terminal projection.
 mod runtime;
 
-use peritus_app_protocol::{ProductDeliverable, ProductRunPhase, ProductRunSnapshot};
+use peritus_app_protocol::{ProductRunPhase, ProductRunSnapshot};
 use peritus_product_runner::ProductRunOutcome;
 use peritus_product_runner::control::GoalSettlement;
 use peritus_run_settlement::RunDisposition;
 use peritus_types::RunId;
+use std::sync::Arc;
 
-use super::persistence::persist_record;
+use super::publication::{MutationDisposition, RunMutationKind};
 use super::snapshot::replace_snapshot;
 use super::{ProductRunService, ProductRunServiceError};
 mod baseline;
+mod failure;
 mod goal;
 mod handoff;
 mod launch;
-use handoff::{fail_handoff, terminal_summary};
+mod terminal;
 #[cfg(test)]
 pub use launch::inject_finish_barrier;
 
 impl ProductRunService {
     fn observe(&self, run_id: RunId, update: peritus_product_runner::ProductRunUpdate) {
-        let Ok(mut records) = self.inner.records.write() else { return };
-        let Some(record) = records.get_mut(&run_id) else { return };
-        if record.snapshot.phase() == ProductRunPhase::RecoveryRequired {
-            return;
-        }
-        if !update.finding_state.is_empty() {
-            record.finding_state = update.finding_state;
-        }
-        record.progress.observe(update.progress);
-        if let Some(checkpoint) = update.checkpoint {
-            record.checkpoint = Some(checkpoint);
-        }
-        if !update.remaining_work.is_empty() {
-            record.remaining_work = update.remaining_work;
-        }
+        let rejected_head = peritus_codec::sha256(update.finding_state.as_bytes());
+        let rejected_bytes = u64::try_from(update.finding_state.len()).unwrap_or(u64::MAX);
+        let rejected_phase = match update.phase {
+            peritus_product_runner::ProductRunPhase::Designing => 1,
+            peritus_product_runner::ProductRunPhase::Writing => 2,
+            peritus_product_runner::ProductRunPhase::Checking => 3,
+            peritus_product_runner::ProductRunPhase::Reviewing => 4,
+            peritus_product_runner::ProductRunPhase::Fixing => 5,
+            peritus_product_runner::ProductRunPhase::Verifying => 6,
+            peritus_product_runner::ProductRunPhase::Finalizing => 7,
+            peritus_product_runner::ProductRunPhase::Complete => 8,
+        };
+        let finding_catalog =
+            super::persistence::FindingBodyStore::published_catalog(&update.finding_state);
         let phase = match update.phase {
             peritus_product_runner::ProductRunPhase::Designing => ProductRunPhase::Designing,
             peritus_product_runner::ProductRunPhase::Writing => ProductRunPhase::Writing,
@@ -45,338 +46,361 @@ impl ProductRunService {
             peritus_product_runner::ProductRunPhase::Finalizing => ProductRunPhase::Verifying,
             peritus_product_runner::ProductRunPhase::Complete => ProductRunPhase::Complete,
         };
-        if phase != record.snapshot.phase()
-            && update.phase != peritus_product_runner::ProductRunPhase::Finalizing
-            && matches!(
-                record.interaction.mode,
-                peritus_app_protocol::ProductInteractionMode::Build
-                    | peritus_app_protocol::ProductInteractionMode::Chat
-            )
-        {
-            let options = &mut record.interaction;
-            let message = match phase {
-                ProductRunPhase::Designing => {
-                    "I'm inspecting the workspace and preparing the design."
-                }
-                ProductRunPhase::Writing => "I'm moving on to the implementation.",
-                ProductRunPhase::Checking => {
-                    "The changes are ready for checks. I'm verifying them now."
-                }
-                ProductRunPhase::Reviewing => {
-                    "The candidate is ready for independent review. I'll check it against your request."
-                }
-                ProductRunPhase::Fixing => {
-                    "The review found issues to address. I'm working through those fixes."
-                }
-                ProductRunPhase::Verifying => {
-                    "I'm checking the final result before handing it back to you."
-                }
-                _ => "",
-            };
-            if !message.is_empty()
-                && options
-                    .append(peritus_app_protocol::ProductActivityKind::Status, message, "")
-                    .is_err()
-            {
-                options.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-                return;
-            }
-        }
-        if let Ok(operation) = super::operation::retained_execution(run_id, phase, "")
-            && let Ok(snapshot) = ProductRunSnapshot::new(
-                run_id,
-                record.request.workspace_id(),
-                record.request.providers(),
-                phase,
-                update.cycle,
-                record.request.display_task().to_owned(),
-                update.status,
-                update.diff,
-                update.gates,
-                update.review,
-                update.summary,
-                operation,
-            )
-        {
-            record.snapshot = snapshot;
-            let _ = persist_record(&self.inner.directory, record);
-        }
-    }
-
-    fn finish(
-        &self,
-        run_id: RunId,
-        result: Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>,
-    ) {
-        let Ok(mut records) = self.inner.records.write() else { return };
-        let Some(record) = records.get_mut(&run_id) else { return };
-        if record.snapshot.phase() == ProductRunPhase::RecoveryRequired {
-            let _ = persist_record(&self.inner.directory, record);
-            return;
-        }
-        if let Ok(outcome) = &result {
-            record.checkpoint = outcome.settlement().checkpoint().copied();
-            record.settlement = Some(*outcome.settlement());
-            record.resume = outcome.resume().cloned();
-            record.remaining_work = outcome.remaining_work().to_vec();
-            record.interruption_cause = outcome.detail().map_or_else(String::new, str::to_owned);
-            record.candidate_actionable =
-                !self.inner.folders.contains_key(&record.request.workspace_id())
-                    && outcome.candidate().is_some()
-                    && outcome.settlement().checkpoint().is_some();
-            if matches!(
-                outcome.settlement().disposition(),
-                RunDisposition::Accepted | RunDisposition::WaitingForUser
-            ) {
-                // The runner has returned, so its in-place writes have reached a completed owned
-                // boundary. A failed seal remains visibly unsealed and can never be overwritten.
-                let _ = self.seal_latest_checkpoint(&record.interaction.workbench, run_id);
-            }
-        }
-        if !self.retain_task_baseline(record) {
-            return;
-        }
-        let Ok(goal_status) = self.settle_workbench_goal(record, &result) else {
-            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-            if let Ok(snapshot) = replace_snapshot(
-                &record.snapshot,
-                ProductRunPhase::RecoveryRequired,
-                "Goal settlement persistence failed",
-                "The runner stopped, but its terminal goal evidence could not be durably reconciled.",
-            ) {
-                record.snapshot = snapshot;
-            }
-            let _ = persist_record(&self.inner.directory, record);
-            return;
+        let attempt = match self.capture_run_identity(run_id) {
+            Ok(identity) => identity.cancelled,
+            Err(_) => return,
         };
-        let public_reply = match result {
-            Ok(outcome) if outcome.settlement().disposition() == RunDisposition::Accepted => {
-                let Some(output) = outcome.candidate() else {
-                    fail_handoff(record);
-                    let _ = persist_record(&self.inner.directory, record);
-                    return;
-                };
-                let completion_message = format!("Completed: {}", output.summary);
-                let deliverable = self.project_deliverable(record, &outcome);
-                if deliverable.is_none()
-                    && !self.inner.folders.contains_key(&record.request.workspace_id())
+        let input_digest = rejected_head;
+        let mutation = self.mutate_run(
+            run_id,
+            Some(&attempt),
+            RunMutationKind::ExecutionObservation,
+            input_digest,
+            MutationDisposition::DurabilityRequired,
+            |record| {
+                let mut rejected_handoff = None;
+                if record.handoff_recovery_pending {
+                    return Ok(None);
+                }
+                let retain_cancelled = record.user_cancelled
+                    || record.snapshot.phase() == ProductRunPhase::Cancelled;
+                let retain_rejected_finding = record.rejected_finding_update.is_some();
+                record.progress.observe(update.progress);
+                if let Some(checkpoint) = update.checkpoint {
+                    record.checkpoint = Some(checkpoint);
+                }
+                record.remaining_work = update.remaining_work;
+                if !retain_cancelled
+                    && phase != record.snapshot.phase()
+                    && update.phase != peritus_product_runner::ProductRunPhase::Finalizing
+                    && matches!(
+                        record.interaction.mode,
+                        peritus_app_protocol::ProductInteractionMode::Build
+                            | peritus_app_protocol::ProductInteractionMode::Chat
+                    )
                 {
-                    fail_handoff(record);
-                    let _ = persist_record(&self.inner.directory, record);
-                    return;
-                }
-                if let Ok(operation) = super::operation::retained_execution(
-                    run_id,
-                    ProductRunPhase::Complete,
-                    &record.interruption_cause,
-                ) && let Ok(snapshot) = ProductRunSnapshot::new(
-                    run_id,
-                    record.request.workspace_id(),
-                    record.request.providers(),
-                    ProductRunPhase::Complete,
-                    output.fixer_cycles + 1,
-                    record.request.display_task().to_owned(),
-                    if deliverable.is_some() {
-                        "Qualified — passing checks and independent review".to_owned()
-                    } else {
-                        "Completed in place — tracked task files passed checks and independent review".to_owned()
-                    },
-                    output.diff.clone(),
-                    output.gates.clone(),
-                    output.review.clone(),
-                    output.summary.clone(),
-                    operation,
-                ) {
-                    record.snapshot = match deliverable {
-                        Some(deliverable) => snapshot.with_deliverable(deliverable),
-                        None => snapshot,
+                    let message = match phase {
+                        ProductRunPhase::Designing => {
+                            "I'm inspecting the workspace and preparing the design."
+                        }
+                        ProductRunPhase::Writing => "I'm moving on to the implementation.",
+                        ProductRunPhase::Checking => {
+                            "The changes are ready for checks. I'm verifying them now."
+                        }
+                        ProductRunPhase::Reviewing => {
+                            "The candidate is ready for independent review. I'll check it against your request."
+                        }
+                        ProductRunPhase::Fixing => {
+                            "The review found issues to address. I'm working through those fixes."
+                        }
+                        ProductRunPhase::Verifying => {
+                            "I'm checking the final result before handing it back to you."
+                        }
+                        _ => "",
                     };
-                } else {
-                    fail_handoff(record);
-                    let _ = persist_record(&self.inner.directory, record);
-                    return;
-                }
-                completion_message
-            }
-            Ok(outcome) if outcome.settlement().disposition() == RunDisposition::WaitingForUser => {
-                let Some(question) = outcome.question() else {
-                    fail_handoff(record);
-                    let _ = persist_record(&self.inner.directory, record);
-                    return;
-                };
-                let chatting =
-                    record.interaction.mode != peritus_app_protocol::ProductInteractionMode::Build;
-                let status = if chatting {
-                    if outcome.candidate().is_some() {
-                        "Idle — unqualified changes retained"
-                    } else {
-                        "Idle — ready for your next message"
+                    if !message.is_empty()
+                        && record
+                            .interaction
+                            .append(peritus_app_protocol::ProductActivityKind::Status, message, "")
+                            .is_err()
+                    {
+                        record.interaction.persistence_failed.store(
+                            true,
+                            std::sync::atomic::Ordering::Release,
+                        );
+                        return Ok(None);
                     }
-                } else if outcome.candidate().is_some() {
-                    "Waiting for you — candidate preserved"
-                } else {
-                    "Waiting for you"
-                };
-                if let Ok(snapshot) = replace_snapshot(
-                    &record.snapshot,
-                    ProductRunPhase::WaitingForUser,
-                    status,
-                    &terminal_summary(&outcome, question.message()),
-                ) {
-                    record.snapshot = self.with_candidate(record, &outcome, snapshot);
                 }
-                question.message().to_owned()
-            }
-            Ok(outcome) => self.finish_nonaccepted(record, &outcome),
-            Err(error) => {
-                let phase =
-                    if error.kind() == peritus_product_runner::ProductRunnerErrorKind::Cancelled {
-                        ProductRunPhase::Cancelled
-                    } else {
-                        ProductRunPhase::Failed
-                    };
-                if let Ok(snapshot) = replace_snapshot(
-                    &record.snapshot,
-                    phase,
-                    &format!("{} failed", error.operation()),
-                    error.detail(),
-                ) {
+                let projected_phase = if retain_cancelled {
+                    ProductRunPhase::Cancelled
+                } else {
+                    phase
+                };
+                if let Ok(operation) =
+                    super::operation::retained_execution(run_id, projected_phase, "")
+                    && let Ok(snapshot) = ProductRunSnapshot::new(
+                        run_id,
+                        record.request.workspace_id(),
+                        record.request.providers(),
+                        projected_phase,
+                        update.cycle,
+                        record.request.display_task().to_owned(),
+                        update.status.clone(),
+                        update.diff.clone(),
+                        update.gates.clone(),
+                        update.review.clone(),
+                        update.summary.clone(),
+                        operation,
+                    )
+                {
                     record.snapshot = snapshot;
                 }
-                format!(
-                    "I couldn't finish this run: {}: {}. Send a message to correct, clarify, or continue it.",
-                    error.operation(),
-                    error.detail()
-                )
-            }
+                if !update.finding_state.is_empty() && !retain_rejected_finding {
+                    match finding_catalog {
+                        Ok(catalog) => {
+                            record.finding_state = update.finding_state;
+                            record.finding_catalog = catalog;
+                            record.rejected_finding_update = None;
+                        }
+                        Err(error) => {
+                            let accepted_head = record.finding_catalog.head_digest;
+                            let detail = error.describe();
+                            record.rejected_finding_update = Some(super::RejectedFindingUpdate {
+                                accepted_head,
+                                rejected_head,
+                                rejected_bytes,
+                                rejected_finding_state: update.finding_state,
+                                phase: rejected_phase,
+                                cycle: update.cycle,
+                                status: update.status,
+                                diff: update.diff,
+                                gates: update.gates,
+                                review: update.review,
+                                summary: update.summary,
+                                error: detail.clone(),
+                            });
+                            record.interruption_cause.clone_from(&detail);
+                            record.candidate_actionable = false;
+                            record.handoff_recovery_pending = true;
+                            if let Ok(snapshot) = replace_snapshot(
+                                &record.snapshot,
+                                if record.user_cancelled {
+                                    ProductRunPhase::Cancelled
+                                } else {
+                                    ProductRunPhase::RecoveryRequired
+                                },
+                                if record.user_cancelled {
+                                    "Run cancelled"
+                                } else {
+                                    "Product finding update requires recovery"
+                                },
+                                if record.user_cancelled {
+                                    "Cancelled while rejected finding evidence was retained"
+                                } else {
+                                    &detail
+                                },
+                            ) {
+                                record.snapshot = snapshot;
+                            }
+                            let Some(sequence) = record.handoff_sequence.checked_add(1) else {
+                                record.interaction.record_persistence_failure(
+                                    "product-run handoff sequence overflow".to_owned(),
+                                );
+                                return Ok(None);
+                            };
+                            let mut handoff = record.clone();
+                            handoff.handoff_sequence = sequence;
+                            let cancellation_generation = record
+                                .user_cancelled
+                                .then(|| {
+                                    self.pending_user_cancellation_generation(
+                                        run_id,
+                                        &record.cancelled,
+                                    )
+                                })
+                                .flatten();
+                            rejected_handoff = Some((
+                                handoff,
+                                record.handoff_sequence,
+                                record.attempt_sequence,
+                                Arc::clone(&record.cancelled),
+                                rejected_head,
+                                cancellation_generation,
+                            ));
+                        }
+                    }
+                }
+                Ok(rejected_handoff)
+            },
+        );
+        let (rejected_handoff, ticket) = match mutation {
+            Ok(value) => value,
+            Err(_) => return,
         };
-        if let Some(status) = goal_status
-            && let Ok(snapshot) = replace_snapshot(
-                &record.snapshot,
-                record.snapshot.phase(),
-                status,
-                record.snapshot.summary(),
-            )
-        {
-            record.snapshot = snapshot;
+        if self.await_run_durable(ticket).is_err() {
+            return;
         }
-        if let Err(error) = self.collect_improvement(record) {
-            let _ = record.interaction.append(
-                peritus_app_protocol::ProductActivityKind::Error,
-                "Could not collect an improvement suggestion. Open the inbox to retry collection.",
-                &error.describe(),
-            );
-        }
-        self.deliver_public_reply(record, public_reply);
-        super::interaction::terminal_activity(record);
-        let _ = persist_record(&self.inner.directory, record);
-    }
 
-    fn finish_nonaccepted(
-        &self,
-        record: &mut super::RunRecord,
-        outcome: &ProductRunOutcome,
-    ) -> String {
-        let phase = match outcome.settlement().disposition() {
-            RunDisposition::Cancelled => ProductRunPhase::Cancelled,
-            RunDisposition::RecoveryRequired => ProductRunPhase::RecoveryRequired,
-            RunDisposition::CandidateAvailable | RunDisposition::FailedNoCandidate => {
-                ProductRunPhase::Failed
-            }
-            RunDisposition::Accepted | RunDisposition::WaitingForUser => return String::new(),
+        let Some((
+            mut handoff,
+            prior_sequence,
+            attempt_sequence,
+            attempt,
+            rejected_head,
+            cancellation_generation,
+        )) = rejected_handoff
+        else {
+            return;
         };
-        let has_candidate = outcome.candidate().is_some();
-        let in_place = self.inner.folders.contains_key(&record.request.workspace_id());
-        let status = match (outcome.settlement().disposition(), has_candidate) {
-            (RunDisposition::Cancelled, _) if in_place => {
-                "Cancelled — in-place effects retained, not verified complete"
-            }
-            (RunDisposition::RecoveryRequired, _) if in_place => {
-                "Recovery required — in-place effects retained, not verified complete"
-            }
-            (_, _) if in_place => "Stopped — in-place effects retained, not verified complete",
-            (RunDisposition::CandidateAvailable, _) => "Candidate available",
-            (RunDisposition::RecoveryRequired, true) => "Recovery required — candidate preserved",
-            (RunDisposition::RecoveryRequired, false) => "Recovery required",
-            (RunDisposition::Cancelled, true) => "Cancelled — candidate preserved",
-            (RunDisposition::Cancelled, false) => "Cancelled — no candidate",
-            _ => "Stopped with no candidate",
-        };
-        let detail = outcome.detail().unwrap_or(status);
-        let summary = terminal_summary(outcome, detail);
-        if let Some(output) = outcome.candidate()
-            && let Ok(operation) = super::operation::retained_execution(
-                record.request.run_id(),
-                phase,
-                &record.interruption_cause,
-            )
-            && let Ok(snapshot) = ProductRunSnapshot::new(
-                record.request.run_id(),
-                record.request.workspace_id(),
-                record.request.providers(),
-                phase,
-                output.fixer_cycles.saturating_add(1),
-                record.request.display_task().to_owned(),
-                status.to_owned(),
-                output.diff.clone(),
-                output.gates.clone(),
-                output.review.clone(),
-                summary.clone(),
-                operation,
-            )
-        {
-            record.snapshot = self.with_candidate(record, outcome, snapshot);
-        } else if let Ok(snapshot) = replace_snapshot(&record.snapshot, phase, status, &summary) {
-            record.snapshot = snapshot;
-        }
-        let remaining = if outcome.remaining_work().is_empty() {
-            String::new()
-        } else {
-            format!(" Remaining work: {}.", outcome.remaining_work().join("; "))
-        };
-        format!("{status}: {detail}.{remaining}")
-    }
-
-    fn deliver_public_reply(&self, record: &mut super::RunRecord, text: String) {
-        if self
-            .with_controls(false, |store| store.publish_reply(&record.interaction.workbench, &text))
-            .is_err()
-        {
-            fail_handoff(record);
-            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
-        }
-    }
-
-    fn with_candidate(
-        &self,
-        record: &super::RunRecord,
-        outcome: &ProductRunOutcome,
-        snapshot: ProductRunSnapshot,
-    ) -> ProductRunSnapshot {
-        match self.project_deliverable(record, outcome) {
-            Some(deliverable) => snapshot.with_deliverable(deliverable),
-            None => snapshot,
-        }
-    }
-
-    fn project_deliverable(
-        &self,
-        record: &super::RunRecord,
-        outcome: &ProductRunOutcome,
-    ) -> Option<ProductDeliverable> {
-        if self.inner.folders.contains_key(&record.request.workspace_id()) {
-            return None;
-        }
-        let output = outcome.candidate()?;
-        let stage = outcome.settlement().checkpoint()?.stage();
-        let workspace = self.inner.workspaces.get(&record.request.workspace_id())?;
-        ProductDeliverable::candidate(
-            workspace.to_string_lossy().into_owned(),
-            output.changed_paths.iter().map(|path| path.to_string_lossy().into_owned()).collect(),
-            output.successful_commands.clone(),
-            output.run_instructions.clone(),
-            stage,
+        if super::persistence::write_handoff_retrying(
+            &self.inner.directory,
+            &handoff,
+            super::persistence::HandoffKind::RejectedFindingUpdate,
+            &self.inner.control_shutdown,
         )
-        .ok()
+        .is_err()
+        {
+            return;
+        }
+        handoff.handoff_recovery_pending = false;
+        let installed = self.mutate_run(
+            run_id,
+            Some(&attempt),
+            RunMutationKind::Recovery,
+            rejected_head,
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                if record.attempt_sequence != attempt_sequence
+                    || record.handoff_sequence != prior_sequence
+                    || !record.rejected_finding_update.as_ref().is_some_and(|rejected| {
+                        rejected.rejected_head == rejected_head
+                    })
+                {
+                    return Ok(None);
+                }
+                handoff.user_cancelled |= record.user_cancelled;
+                if handoff.user_cancelled {
+                    handoff.snapshot = replace_snapshot(
+                        &handoff.snapshot,
+                        ProductRunPhase::Cancelled,
+                        "Run cancelled",
+                        "Cancelled while rejected finding evidence was retained",
+                    )
+                    .unwrap_or_else(|_| record.snapshot.clone());
+                }
+                handoff.interaction = record.interaction.clone();
+                handoff.preview = record.preview.clone();
+                let record_revision = record.record_revision;
+                let record_lineage_root = record.record_lineage_root;
+                let durable_record_revision = record.durable_record_revision;
+                let durable_lineage_root = record.durable_lineage_root;
+                let durable_canonical_digest = record.durable_canonical_digest;
+                let settlement_obligation = record.settlement_obligation.clone();
+                *record = handoff;
+                record.record_revision = record_revision;
+                record.record_lineage_root = record_lineage_root;
+                record.durable_record_revision = durable_record_revision;
+                record.durable_lineage_root = durable_lineage_root;
+                record.durable_canonical_digest = durable_canonical_digest;
+                record.settlement_obligation = settlement_obligation;
+                record.interaction.record_persistence_failure(
+                    "the runner emitted a finding ledger that was not fully externalized".to_owned(),
+                );
+                record.interaction.persistence_failed.store(
+                    true,
+                    std::sync::atomic::Ordering::Release,
+                );
+                let control = record.control_cancellation.clone();
+                let provider = record.provider_cancellation.clone();
+                let cancellation_handoff = if record.user_cancelled {
+                    let sequence = record.handoff_sequence.checked_add(1).ok_or_else(|| {
+                        ProductRunServiceError::internal(
+                            "publish terminal cancellation handoff",
+                            "handoff sequence overflow",
+                        )
+                    })?;
+                    let mut cancellation = record.clone();
+                    cancellation.handoff_sequence = sequence;
+                    cancellation.snapshot = replace_snapshot(
+                        &cancellation.snapshot,
+                        ProductRunPhase::Cancelled,
+                        "Run cancelled",
+                        "Cancelled while rejected finding evidence was retained",
+                    )?;
+                    cancellation.handoff_recovery_pending = true;
+                    record.handoff_recovery_pending = true;
+                    Some((
+                        cancellation,
+                        record.handoff_sequence,
+                        record.attempt_sequence,
+                        Arc::clone(&record.cancelled),
+                        self.pending_user_cancellation_generation(run_id, &record.cancelled),
+                    ))
+                } else {
+                    None
+                };
+                Ok(Some((cancellation_handoff, control, provider)))
+            },
+        );
+        let (installed, ticket) = match installed {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+        if self.await_run_durable(ticket).is_err() {
+            return;
+        }
+        let Some((cancellation_handoff, control, provider)) = installed else {
+            return;
+        };
+        if let Some(generation) = cancellation_generation {
+            let _ = self.acknowledge_user_cancellation(run_id, &attempt, generation);
+        }
+        attempt.store(true, std::sync::atomic::Ordering::Release);
+        control.cancel();
+        let _ = provider.cancel();
+        let Some((
+            mut cancellation,
+            prior_sequence,
+            attempt_sequence,
+            attempt,
+            cancellation_generation,
+        )) = cancellation_handoff
+        else {
+            return;
+        };
+        if super::persistence::write_handoff_retrying(
+            &self.inner.directory,
+            &cancellation,
+            super::persistence::HandoffKind::Terminal,
+            &self.inner.control_shutdown,
+        )
+        .is_err()
+        {
+            return;
+        }
+        cancellation.handoff_recovery_pending = false;
+        let input = peritus_codec::sha256(b"terminal-cancellation-handoff");
+        let installed = self.mutate_run(
+            run_id,
+            Some(&attempt),
+            RunMutationKind::Recovery,
+            input,
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                if record.attempt_sequence != attempt_sequence
+                    || record.handoff_sequence != prior_sequence
+                    || !record.user_cancelled
+                {
+                    return Ok(false);
+                }
+                cancellation.user_cancelled = true;
+                cancellation.interaction = record.interaction.clone();
+                cancellation.preview = record.preview.clone();
+                let record_revision = record.record_revision;
+                let record_lineage_root = record.record_lineage_root;
+                let durable_record_revision = record.durable_record_revision;
+                let durable_lineage_root = record.durable_lineage_root;
+                let durable_canonical_digest = record.durable_canonical_digest;
+                let settlement_obligation = record.settlement_obligation.clone();
+                *record = cancellation;
+                record.record_revision = record_revision;
+                record.record_lineage_root = record_lineage_root;
+                record.durable_record_revision = durable_record_revision;
+                record.durable_lineage_root = durable_lineage_root;
+                record.durable_canonical_digest = durable_canonical_digest;
+                record.settlement_obligation = settlement_obligation;
+                Ok(true)
+            },
+        );
+        let (installed, ticket) = match installed {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+        if self.await_run_durable(ticket).is_ok()
+            && installed
+            && let Some(generation) = cancellation_generation
+        {
+            let _ = self.acknowledge_user_cancellation(run_id, &attempt, generation);
+        }
     }
 }

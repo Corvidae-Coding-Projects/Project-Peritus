@@ -5,9 +5,12 @@ use crate::product_run::workbench::{error_response, inputs::project_row};
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, MAX_WORKBENCH_IMAGE_PAGE, WorkbenchImageFormat as F,
     WorkbenchImageLabel, WorkbenchImageMetadata, WorkbenchImagePage, WorkbenchImageQuery,
-    WorkbenchImageRow,
+    WorkbenchImageRow, WorkbenchImageValidation as V,
 };
-use peritus_product_runner::control::{ControlError, ConversationId, ImageAttachment, ImageFormat};
+use peritus_product_runner::{
+    attachment::ImageValidation,
+    control::{ControlError, ConversationId, ImageAttachment, ImageFormat},
+};
 use peritus_types::{ActorId, ArtifactId};
 
 impl ProductRunService {
@@ -16,10 +19,20 @@ impl ProductRunService {
         actor: ActorId,
         query: WorkbenchImageQuery,
     ) -> AppResponsePayload {
+        self.workbench_images_projection(actor, query, false)
+    }
+
+    pub(crate) fn workbench_images_projection(
+        &self,
+        actor: ActorId,
+        query: WorkbenchImageQuery,
+        request_sources: bool,
+    ) -> AppResponsePayload {
         let result = self.control_workspace(query.query()).and_then(|()| {
             let id = ConversationId::new(query.query().conversation().into_bytes())?;
-            let record =
-                self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+            let record = self
+                .with_control_conversation(id, |store| store.load(id))?
+                .ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
                 || record.workspace_bytes() != query.query().workspace().as_bytes()
             {
@@ -51,7 +64,7 @@ impl ProductRunService {
                         WorkbenchImageLabel::new(image.label().to_owned())
                             .map_err(|_| ControlError::InvalidInput)?,
                         metadata(image)?,
-                        project_row(source)?,
+                        project_row(source, request_sources)?,
                         (entry.selected(), eligible),
                     )
                     .map_err(|_| ControlError::InvalidInput)?,
@@ -73,12 +86,16 @@ fn metadata(image: &ImageAttachment) -> Result<WorkbenchImageMetadata, ControlEr
         ImageFormat::Gif => F::Gif,
         ImageFormat::Webp => F::Webp,
     };
-    WorkbenchImageMetadata::new(
+    WorkbenchImageMetadata::new_with_validation(
         image.digest(),
         image.bytes(),
         format,
         image.dimensions(),
         image.frames(),
+        match image.validation() {
+            ImageValidation::CompletePixels => V::CompletePixels,
+            ImageValidation::ContainerStructure => V::ContainerStructure,
+        },
     )
     .map_err(|_| ControlError::InvalidInput)
 }

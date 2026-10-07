@@ -2,7 +2,7 @@
 use super::super::images::daemon_error;
 use super::{
     ActorId, AppProtocolError, AppResponsePayload, Code, ControlError, Error, ProductRunService,
-    ValidatedFileText, WorkbenchCommand, WorkbenchIntent, app_error, domain_operation, error_value,
+    WorkbenchCommand, WorkbenchIntent, app_error, domain_operation_with_store, error_value,
 };
 use crate::AuthorityHandle;
 use peritus_app_protocol::{
@@ -10,7 +10,8 @@ use peritus_app_protocol::{
     WorkbenchFileUpload, WorkbenchReceipt,
 };
 use peritus_product_runner::control::{
-    ControlText, FileAttachment, FileObservation, FileRange, FileSource, FileVersion, OperationId,
+    ConversationId, FileAttachment, FileObservation, FileRange, FileSource, FileSourceLabel,
+    FileVersion, OperationId,
 };
 use peritus_types::{ArtifactId, SessionId};
 
@@ -21,6 +22,34 @@ impl ProductRunService {
         actor: ActorId,
         session: SessionId,
         request: &WorkbenchFileUpload,
+        maximum_chunk_bytes: usize,
+    ) -> Result<(), AppProtocolError> {
+        let service = self.clone();
+        let authority = authority.clone();
+        let request = request.clone();
+        Self::await_blocking_future("begin durable workbench file upload", move || {
+            async move {
+                service
+                    .begin_workbench_file_upload_owned(
+                        authority,
+                        actor,
+                        session,
+                        request,
+                        maximum_chunk_bytes,
+                    )
+                    .await
+            }
+        })
+        .await
+        .unwrap_or_else(|_| Err(app_error(Code::Internal)))
+    }
+
+    async fn begin_workbench_file_upload_owned(
+        &self,
+        authority: AuthorityHandle,
+        actor: ActorId,
+        session: SessionId,
+        request: WorkbenchFileUpload,
         maximum_chunk_bytes: usize,
     ) -> Result<(), AppProtocolError> {
         let scope = self.image_scope(actor, request.query(), request.revision())?;
@@ -41,18 +70,32 @@ impl ProductRunService {
         actor: ActorId,
         request: &WorkbenchFileImportRequest,
     ) -> AppResponsePayload {
-        self.prepare_file_import(authority, actor, request)
-            .await
-            .map_or_else(AppResponsePayload::Error, |(preview, _)| {
-                AppResponsePayload::WorkbenchFileImportPreview(preview)
-            })
+        let service = self.clone();
+        let authority = authority.clone();
+        let request = request.clone();
+        Self::await_blocking_future("preview durable workbench file import", move || {
+            async move { service.preview_workbench_file_import_owned(authority, actor, request).await }
+        })
+        .await
+        .unwrap_or_else(|_| AppResponsePayload::Error(app_error(Code::Internal)))
     }
-    async fn prepare_file_import(
+
+    async fn preview_workbench_file_import_owned(
+        &self,
+        authority: AuthorityHandle,
+        actor: ActorId,
+        request: WorkbenchFileImportRequest,
+    ) -> AppResponsePayload {
+        self.prepare_file_source(&authority, actor, &request)
+            .await
+            .map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchFileImportPreview)
+    }
+    async fn prepare_file_source(
         &self,
         authority: &AuthorityHandle,
         actor: ActorId,
         request: &WorkbenchFileImportRequest,
-    ) -> Result<(WorkbenchFileImportPreview, ValidatedFileText), AppProtocolError> {
+    ) -> Result<WorkbenchFileImportPreview, AppProtocolError> {
         let selection = request.selection();
         self.require_workspace_permissions(
             actor,
@@ -64,21 +107,19 @@ impl ProductRunService {
         let provider = self
             .select_provider(selection.provider(), selection.model())
             .map_err(|_| app_error(Code::MissingRequiredFeature))?;
-        let (catalog, bytes) = authority
-            .read_scoped_artifact(
-                scope,
-                request.artifact(),
-                peritus_app_protocol::MAX_WORKBENCH_FILE_BYTES,
-            )
+        let catalog = authority
+            .authorize_scoped_text(scope, request.artifact())
             .await
             .map_err(daemon_error)?;
-        if !matches!(catalog.media_type(), "text/plain" | "application/octet-stream") {
+        if catalog.digest() != request.file().digest()
+            || catalog.byte_size() != request.file().bytes()
+        {
             return Err(app_error(Code::MalformedFrame));
         }
-        let text = ValidatedFileText::new(bytes).map_err(|_| app_error(Code::MalformedFrame))?;
-        if text.digest() != request.file().digest() || text.bytes() != request.file().bytes() {
-            return Err(app_error(Code::MalformedFrame));
-        }
+        super::super::sources::validate_file_source_artifact(
+            &self.inner.request_source_artifacts,
+            &catalog,
+        )?;
         let profile = provider.profile();
         let preview = WorkbenchFileImportPreview::new(
             request.clone(),
@@ -86,7 +127,7 @@ impl ProductRunService {
             profile.model().as_str().to_owned(),
         )?;
         self.image_scope(actor, selection.query(), selection.revision())?;
-        Ok((preview, text))
+        Ok(preview)
     }
     pub(crate) async fn confirm_workbench_file_import(
         &self,
@@ -94,7 +135,23 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
-        self.confirm_import(authority, actor, command)
+        let service = self.clone();
+        let authority = authority.clone();
+        let command = command.clone();
+        Self::await_blocking_future("confirm durable workbench file import", move || {
+            async move { service.confirm_workbench_file_import_owned(authority, actor, command).await }
+        })
+        .await
+        .unwrap_or_else(|_| AppResponsePayload::Error(app_error(Code::Internal)))
+    }
+
+    async fn confirm_workbench_file_import_owned(
+        &self,
+        authority: AuthorityHandle,
+        actor: ActorId,
+        command: WorkbenchCommand,
+    ) -> AppResponsePayload {
+        self.confirm_import(&authority, actor, &command)
             .await
             .map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchReceipt)
     }
@@ -104,18 +161,25 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
     ) -> Result<WorkbenchReceipt, AppProtocolError> {
-        let WorkbenchIntent::AttachFileImport { preview, .. } = command.intent() else {
-            return Err(app_error(Code::MalformedFrame));
+        let preview = match command.intent() {
+            WorkbenchIntent::AttachFileImport { preview, .. }
+            | WorkbenchIntent::AttachFileSource { preview } => preview,
+            _ => return Err(app_error(Code::MalformedFrame)),
         };
         self.control_workspace(command.query()).map_err(error_value)?;
-        let operation = domain_operation(actor, command).map_err(error_value)?;
-        let prior =
-            self.with_controls(false, |store| store.resolve(&operation)).map_err(error_value)?;
+        let conversation = ConversationId::new(command.query().conversation().into_bytes())
+            .map_err(|_| app_error(Code::MalformedFrame))?;
+        let (operation, prior) = self
+            .with_control_conversation(conversation, |store| {
+                let operation = domain_operation_with_store(store, actor, command)?;
+                let prior = store.resolve(&operation)?;
+                Ok((operation, prior))
+            })
+            .map_err(error_value)?;
         let receipt = if let Some(receipt) = prior {
             receipt
         } else {
-            let (current, text) =
-                self.prepare_file_import(authority, actor, preview.request()).await?;
+            let current = self.prepare_file_source(authority, actor, preview.request()).await?;
             if current != *preview {
                 return Err(app_error(Code::StaleRevision));
             }
@@ -123,7 +187,9 @@ impl ProductRunService {
                 return Err(app_error(Code::ReadOnly));
             }
             let consent = current.canonical_bytes().map_err(|_| app_error(Code::MalformedFrame))?;
-            self.with_controls(false, |store| store.accept_file(&operation, &text, consent))
+            self.with_control_conversation(operation.conversation(), |store| {
+                store.accept_file_source(&operation, consent)
+            })
                 .map_err(error_value)?
         };
         WorkbenchReceipt::new(
@@ -149,7 +215,42 @@ pub(in crate::product_run::workbench) fn domain_import(
         WorkbenchFileRange::Bytes { start, end } => FileRange::Bytes { start, end },
         WorkbenchFileRange::Lines { first, last } => FileRange::Lines { first, last },
     };
-    let source = FileSource::imported(ControlText::new(selection.path().to_owned())?, range)?;
+    let source =
+        FileSource::imported_label(FileSourceLabel::new(selection.path().to_owned())?, range)?;
+    let file = request.file();
+    let observation = FileObservation::new(
+        file.source_digest(),
+        file.source_bytes(),
+        file.range(),
+        file.digest(),
+    )?;
+    let version = FileVersion::external(
+        OperationId::new(command.operation().into_bytes())?,
+        request.artifact(),
+        observation,
+        preview.fingerprint().map_err(|_| ControlError::InvalidInput)?,
+    )?;
+    Ok(FileAttachment::new(source, version)?)
+}
+
+/// Reconstructs the exact canonical body emitted for accepted captioned imports before
+/// descriptor-backed external artifact identity was introduced.
+pub(in crate::product_run::workbench) fn domain_legacy_import(
+    command: &WorkbenchCommand,
+    preview: &WorkbenchFileImportPreview,
+) -> Result<FileAttachment, Error> {
+    let request = preview.request();
+    let selection = request.selection();
+    if command.query() != selection.query() || command.expected_revision() != selection.revision() {
+        return Err(ControlError::ScopeMismatch.into());
+    }
+    let range = match selection.range() {
+        WorkbenchFileRange::All => FileRange::All,
+        WorkbenchFileRange::Bytes { start, end } => FileRange::Bytes { start, end },
+        WorkbenchFileRange::Lines { first, last } => FileRange::Lines { first, last },
+    };
+    let source =
+        FileSource::imported_label(FileSourceLabel::new(selection.path().to_owned())?, range)?;
     let file = request.file();
     let observation = FileObservation::new(
         file.source_digest(),
@@ -161,6 +262,38 @@ pub(in crate::product_run::workbench) fn domain_import(
         OperationId::new(command.operation().into_bytes())?,
         ArtifactId::new(command.operation().into_bytes())
             .map_err(|_| ControlError::InvalidInput)?,
+        observation,
+        preview.fingerprint().map_err(|_| ControlError::InvalidInput)?,
+    )?;
+    Ok(FileAttachment::new(source, version)?)
+}
+
+pub(in crate::product_run::workbench) fn domain_file_source(
+    command: &WorkbenchCommand,
+    preview: &WorkbenchFileImportPreview,
+) -> Result<FileAttachment, Error> {
+    let request = preview.request();
+    let selection = request.selection();
+    if command.query() != selection.query() || command.expected_revision() != selection.revision() {
+        return Err(ControlError::ScopeMismatch.into());
+    }
+    let range = match selection.range() {
+        WorkbenchFileRange::All => FileRange::All,
+        WorkbenchFileRange::Bytes { start, end } => FileRange::Bytes { start, end },
+        WorkbenchFileRange::Lines { first, last } => FileRange::Lines { first, last },
+    };
+    let source =
+        FileSource::imported_label(FileSourceLabel::new(selection.path().to_owned())?, range)?;
+    let file = request.file();
+    let observation = FileObservation::new(
+        file.source_digest(),
+        file.source_bytes(),
+        file.range(),
+        file.digest(),
+    )?;
+    let version = FileVersion::external(
+        OperationId::new(command.operation().into_bytes())?,
+        request.artifact(),
         observation,
         preview.fingerprint().map_err(|_| ControlError::InvalidInput)?,
     )?;

@@ -11,8 +11,10 @@ mod interaction;
 mod library;
 mod lifecycle;
 mod operation;
+mod ownership;
 mod permissions;
 mod persistence;
+mod publication;
 mod progress;
 mod recovery;
 mod request;
@@ -36,17 +38,23 @@ use peritus_app_protocol::{
     ProductRunSnapshot, WorkbenchResultPage,
 };
 use peritus_process::ProcessStore;
-use peritus_product_runner::{CommandRuntime, PreviewLaunch, ProductRunResume, RoleProviders};
+use peritus_product_runner::{
+    CommandRuntime, ContextSource, PreviewLaunch, ProductRunResume, RoleProviders,
+};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
-use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
+use peritus_types::{ProviderProfileId, RunId, Sha256Digest, WorkspaceId};
 use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{DaemonComponents, DaemonError, startup::workspace::WorkspaceCatalog};
 
 pub use error::ProductRunServiceError;
 use error::{filesystem, invalid};
+#[cfg(test)]
 use persistence::persist_record;
+pub(super) use publication::{
+    MutationDisposition, MutationTicket, RunIdentitySnapshot, RunMutationKind,
+};
 #[cfg(test)]
 fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonError> {
     persistence::load_records(directory)
@@ -54,6 +62,7 @@ fn load_records(directory: &Path) -> Result<BTreeMap<RunId, RunRecord>, DaemonEr
 use progress::RunProgress;
 use recovery::reconcile_restored_candidates;
 use request::ProductRunRequest;
+pub(super) use ownership::{PreparedRetry, PreparedRunLaunch};
 use snapshot::{
     initial_snapshot, live_snapshot, project_snapshot, replace_snapshot, workspace_has_active_run,
 };
@@ -66,24 +75,141 @@ pub struct ProductRunService {
 struct Inner {
     improvements: std::sync::Mutex<improvements::Store>,
     improvement_launch: Mutex<()>,
-    controls: std::sync::Mutex<Option<crate::product_control::ControlStore>>,
+    control_generation: crate::product_control::ControlGeneration,
+    #[cfg(test)]
+    controls: workbench::ControlOwnerQueue,
+    control_shutdown: peritus_journal::JournalCancellation,
+    control_reconciliation: peritus_journal::JournalCancellation,
     control_store: peritus_journal::StoreId,
     directory: PathBuf,
+    publications: publication::RunPublicationManager,
     records: RwLock<BTreeMap<RunId, RunRecord>>,
+    run_cancellations: std::sync::Mutex<BTreeMap<RunId, RunCancellation>>,
     providers: BTreeMap<ProviderProfileId, Arc<dyn ModelProvider>>,
     automatic_provider_failover: bool,
     local_context: peritus_product_runner::LocalContextConfig,
+    managed_gate_network: peritus_product_runner::ManagedGateNetworkCatalog,
     workspaces: BTreeMap<WorkspaceId, PathBuf>,
     folders: BTreeMap<WorkspaceId, crate::config::FolderDeclaration>,
     processes: ProcessStore,
-    tasks: Mutex<Vec<JoinHandle<()>>>,
+    tasks: Mutex<ProductRunTasks>,
     model_catalogs: catalog::ModelCatalogs,
     image_decodes: Arc<tokio::sync::Semaphore>,
     host_permissions: permissions::HostPermissionCatalog,
+    request_source_artifacts: peritus_artifact_store::StoreConfig,
+    finding_bodies: persistence::FindingBodyStore,
+    request_source_readers: std::sync::Mutex<RequestSourceReaders>,
+    reply_artifacts: peritus_artifact_store::StoreConfig,
+    reply_readers: std::sync::Mutex<RequestSourceReaders>,
+    retained_reply_owners:
+        std::sync::Mutex<std::collections::BTreeSet<peritus_product_runner::control::OperationId>>,
     preview_processes: std::sync::Mutex<BTreeMap<ControlOperationId, PreviewProcess>>,
     preview_capture: PreviewCaptureHost,
     #[cfg(test)]
     rewind_faults: std::sync::Mutex<Vec<([u8; 16], workbench::RewindFaultPoint)>>,
+}
+
+#[derive(Default)]
+struct RequestSourceReaders {
+    readers: BTreeMap<
+        peritus_types::Sha256Digest,
+        Arc<std::sync::Mutex<peritus_artifact_store::ArtifactReadHandle>>,
+    >,
+    recent: std::collections::VecDeque<peritus_types::Sha256Digest>,
+}
+
+#[derive(Clone)]
+struct FindingSourceCatalog {
+    head_digest: Sha256Digest,
+    review_artifacts_externalized: bool,
+    entries: Vec<(ContextSource, ReviewArtifactReference)>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct RejectedFindingUpdate {
+    accepted_head: Sha256Digest,
+    rejected_head: Sha256Digest,
+    rejected_bytes: u64,
+    rejected_finding_state: String,
+    phase: u16,
+    cycle: u32,
+    status: String,
+    diff: String,
+    gates: String,
+    review: String,
+    summary: String,
+    error: String,
+}
+
+#[derive(Clone, Copy)]
+struct ReviewArtifactReference {
+    digest: Sha256Digest,
+    bytes: u64,
+    source_ordinal: u64,
+}
+
+struct RunCancellation {
+    actor: [u8; 16],
+    continuation: Option<peritus_product_runner::control::OperationId>,
+    attempt_cancelled: Arc<AtomicBool>,
+    control: peritus_journal::JournalCancellation,
+    provider: CancellationToken,
+    reconciliation: Option<Arc<crate::product_control::ControlReconciliation>>,
+    user_requested: AtomicBool,
+    requested_generation: u64,
+    acknowledged_generation: u64,
+    cancellation_retainer: bool,
+    owner_dropped: bool,
+    active: AtomicBool,
+    launched: AtomicBool,
+    ungoverned: bool,
+}
+
+/// Exact immutable control revision owned by one continuation attempt.
+///
+/// Receipt acceptance lives in C0. This separate run record is installed only when the daemon
+/// has retained everything required to recover the same attempt after owner loss.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct ContinuationSource {
+    operation: peritus_product_runner::control::OperationId,
+    revision: u64,
+    generation: u64,
+    settled: bool,
+}
+
+impl ContinuationSource {
+    const fn new(
+        operation: peritus_product_runner::control::OperationId,
+        revision: u64,
+        generation: u64,
+    ) -> Self {
+        Self { operation, revision, generation, settled: false }
+    }
+}
+
+struct ProductRunTasks {
+    accepting: bool,
+    owners: Vec<JoinHandle<Result<(), String>>>,
+    failed_owners: usize,
+    first_owner_failure: Option<String>,
+}
+
+impl ProductRunTasks {
+    fn new() -> Self {
+        Self {
+            accepting: true,
+            owners: Vec::new(),
+            failed_owners: 0,
+            first_owner_failure: None,
+        }
+    }
+
+    fn record_owner_failure(&mut self, detail: impl Into<String>) {
+        self.failed_owners = self.failed_owners.saturating_add(1);
+        if self.first_owner_failure.is_none() {
+            self.first_owner_failure = Some(detail.into());
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -117,18 +243,43 @@ struct PreviewOperationRecord {
 
 #[derive(Clone)]
 struct RunRecord {
+    /// Execution attempt generation. Fresh runs start at one and every retry advances it.
+    attempt_sequence: u64,
+    /// Highest immutable handoff sequence incorporated into this canonical projection.
+    handoff_sequence: u64,
+    /// Monotonic canonical record mutation revision.
+    record_revision: u64,
+    /// Immutable acceptance-lineage root at `record_revision`.
+    record_lineage_root: Sha256Digest,
+    /// Last durable publication head known when this process adopted the record.
+    durable_record_revision: u64,
+    durable_lineage_root: Sha256Digest,
+    durable_canonical_digest: Sha256Digest,
+    /// Immutable terminal settlement/reply plan and its monotonic completion evidence.
+    settlement_obligation: Option<persistence::SettlementObligation>,
+    /// Independent review-artifact migration marker. Zero remains migration-pending.
+    review_artifact_migration_version: u16,
+    /// Prevents execution while a malformed, gapped, or not-yet-published handoff is unresolved.
+    handoff_recovery_pending: bool,
+    rejected_finding_update: Option<RejectedFindingUpdate>,
     interaction: interaction::InteractionOptions,
-    goal_resume: Option<peritus_product_runner::control::OperationId>,
+    attempt_admission: Option<peritus_product_runner::control::OperationId>,
+    continuation_admissions: Vec<peritus_product_runner::control::OperationId>,
+    continuation_sources: Vec<ContinuationSource>,
     request: ProductRunRequest,
     snapshot: ProductRunSnapshot,
     cancelled: Arc<AtomicBool>,
+    control_cancellation: peritus_journal::JournalCancellation,
     user_cancelled: bool,
     provider_cancellation: CancellationToken,
     finding_state: String,
+    finding_catalog: Arc<FindingSourceCatalog>,
     progress: RunProgress,
     checkpoint: Option<CandidateCheckpoint>,
     settlement: Option<RunSettlement>,
     resume: Option<ProductRunResume>,
+    /// An unreadable or newer durable continuation retained byte-for-byte for repair or upgrade.
+    opaque_resume: Option<persistence::OpaqueResume>,
     remaining_work: Vec<String>,
     interruption_cause: String,
     candidate_actionable: bool,
@@ -137,104 +288,13 @@ struct RunRecord {
     preview: PreviewAggregate,
 }
 
-impl ProductRunService {
-    async fn start_configured(
-        &self,
-        request: ProductRunRequest,
-        mut interaction: interaction::InteractionOptions,
-    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        self.validate_workspace_mode(request.workspace_id(), interaction.mode)?;
-        let providers = self.resolve_selected_providers(request.providers(), &interaction)?;
-        let workspace_root = self
-            .inner
-            .workspaces
-            .get(&request.workspace_id())
-            .cloned()
-            .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
-        let snapshot = initial_snapshot(&request)?;
-        let cancelled = Arc::new(AtomicBool::new(false));
-        let provider_cancellation = CancellationToken::new();
-        self.append_control_inputs(&mut interaction)?;
-        {
-            let mut records =
-                self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-            if let Some(staged) = records.get(&request.run_id()) {
-                let proposed = &interaction.workbench;
-                let existing = &staged.interaction.workbench;
-                let replace_staged = proposed == existing
-                    && staged.snapshot.phase()
-                        == peritus_app_protocol::ProductRunPhase::RecoveryRequired
-                    && self.with_controls(false, |store| store.resolve(proposed))?.is_none();
-                if !replace_staged {
-                    return Err(ProductRunServiceError::Duplicate);
-                }
-            }
-            if workspace_has_active_run(&records, request.workspace_id(), None) {
-                return Err(ProductRunServiceError::InvalidState);
-            }
-            deliverable::discard::workspace_available(
-                &self.inner.directory,
-                &records,
-                request.workspace_id(),
-            )?;
-            records.insert(
-                request.run_id(),
-                RunRecord {
-                    interaction,
-                    goal_resume: None,
-                    request: request.clone(),
-                    snapshot: snapshot.clone(),
-                    cancelled: Arc::clone(&cancelled),
-                    user_cancelled: false,
-                    provider_cancellation: provider_cancellation.clone(),
-                    finding_state: String::new(),
-                    progress: RunProgress::default(),
-                    checkpoint: None,
-                    settlement: None,
-                    resume: None,
-                    remaining_work: Vec::new(),
-                    interruption_cause: String::new(),
-                    candidate_actionable: false,
-                    task_baseline_required: !self
-                        .inner
-                        .folders
-                        .contains_key(&request.workspace_id()),
-                    task_baseline: None,
-                    preview: PreviewAggregate::default(),
-                },
-            );
-            if let Err(error) = persist_record(
-                &self.inner.directory,
-                records.get(&request.run_id()).expect("inserted product run"),
-            ) {
-                records.remove(&request.run_id());
-                return Err(error);
-            }
-            let start = &records
-                .get(&request.run_id())
-                .expect("inserted product run")
-                .interaction
-                .workbench;
-            if let Err(error) = self.with_controls(false, |store| store.accept(start)) {
-                // The staged record is in the fenced generation and cannot run without its C0
-                // binding. Retain it on disk for diagnosis/recovery, but never spawn on failure.
-                records.remove(&request.run_id());
-                return Err(error.into());
-            }
-        }
-        self.spawn(
-            request,
-            workspace_root,
-            providers,
-            cancelled,
-            provider_cancellation,
-            String::new(),
-            None,
-        )
-        .await;
-        Ok(snapshot)
+impl RunRecord {
+    const fn resume_decode_pending(&self) -> bool {
+        self.opaque_resume.is_some()
     }
+}
 
+impl ProductRunService {
     fn validate_workspace_mode(
         &self,
         workspace_id: WorkspaceId,

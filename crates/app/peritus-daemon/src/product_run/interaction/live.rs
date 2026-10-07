@@ -3,158 +3,163 @@
 use super::{
     InteractionOptions, ProductRunService, ProductRunServiceError, narration, tool_activity,
 };
+use crate::product_control::RequestSourceSnapshot;
 use peritus_agent::DeveloperInput;
 #[cfg(not(verus_only))]
 use peritus_agent::{
     DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperLoopError,
-    DeveloperModelRole, DeveloperRequestAdmission, DeveloperToolEffect,
+    DeveloperModelRole, DeveloperProviderSelection, DeveloperRequestAdmission,
+    DeveloperToolEffect,
 };
-use peritus_app_protocol::{ProductActivityKind, ProductInteractionMode};
-use peritus_product_runner::{ConversationView, WorkspaceMutationKind, control::HostPermissions};
-use peritus_types::RunId;
-use std::{path::PathBuf, sync::Arc};
+use peritus_app_protocol::{ProductActivityKind, ProductModelChoice};
+use peritus_types::{ProviderProfileId, RunId, Sha256Digest};
+use std::{pin::Pin, sync::Arc};
 
 pub(super) struct LiveConversation {
     pub(super) service: ProductRunService,
     pub(super) run_id: RunId,
+    pub(super) attempt_cancelled: Arc<std::sync::atomic::AtomicBool>,
+    pub(super) request_sources: std::sync::Mutex<Option<Arc<RequestSourceSnapshot>>>,
 }
-impl ConversationView for LiveConversation {
-    fn uses_explicit_media(&self) -> bool {
-        // An unavailable control binding must not permit a fallback to ambient file discovery.
-        self.service.governed_run(self.run_id).unwrap_or(true)
+impl LiveConversation {
+    pub(super) fn request_source_snapshot(
+        &self,
+    ) -> Result<Arc<RequestSourceSnapshot>, ProductRunServiceError> {
+        {
+            let cached = self.request_sources.lock().map_err(|_| {
+                ProductRunServiceError::internal(
+                    "read admitted conversation sources",
+                    "request-source snapshot lock was poisoned",
+                )
+            })?;
+            if let Some(snapshot) = cached.as_ref() {
+                return Ok(Arc::clone(snapshot));
+            }
+        }
+        self.current_request_source_snapshot()
     }
-    fn stable_request_context(&self) -> String {
-        let result = (|| {
-            let records = self
-                .service
-                .inner
-                .records
-                .read()
-                .map_err(|_| ProductRunServiceError::Unavailable)?;
-            let record = records.get(&self.run_id).ok_or(ProductRunServiceError::NotFound)?;
-            let start = &record.interaction.workbench;
-            self.service.with_controls(false, |store| {
-                store.capture_execution(start)?;
-                let record = store.load(start.conversation())?.ok_or(peritus_product_runner::control::ControlError::NotFound)?;
-                let text = record.inputs().incorporated_conversation()?;
-                Ok(if text.is_empty() { "Current user instructions are supplied by the host at the request admission boundary.".to_owned() } else { text })
-            }).map_err(ProductRunServiceError::from)
-        })();
-        result.unwrap_or_else(|_| {
-            "Governing conversation unavailable; execution must stop.".to_owned()
-        })
-    }
-    fn reference_authority_context(&self) -> String {
-        let result = (|| {
-            let records = self
-                .service
-                .inner
-                .records
-                .read()
-                .map_err(|_| ProductRunServiceError::Unavailable)?;
-            let record = records.get(&self.run_id).ok_or(ProductRunServiceError::NotFound)?;
-            let start = &record.interaction.workbench;
-            self.service
-                .with_controls(false, |store| store.capture_execution(start))
-                .map(|capture| capture.reference_authority_context().to_owned())
-                .map_err(ProductRunServiceError::from)
-        })();
-        result.unwrap_or_default()
-    }
-    fn incorporated_revision(&self) -> u64 {
-        self.service
-            .inner
-            .records
-            .read()
-            .ok()
-            .and_then(|records| {
-                records.get(&self.run_id).map(|record| record.interaction.incorporated)
+
+    /// Reconciles the cached provider snapshot with the exact current durable input generation.
+    /// Source tools use `request_source_snapshot` and therefore retain their admitted view;
+    /// obligation boundaries call this method before adopting a conversation revision.
+    pub(super) fn current_request_source_snapshot(
+        &self,
+    ) -> Result<Arc<RequestSourceSnapshot>, ProductRunServiceError> {
+        let record = self.attempt_record()?;
+        let captured = self.service.record_capture(&record)?;
+        let snapshot = self
+            .service
+            .with_control_conversation(captured.conversation(), |store| {
+                store.request_source_snapshot(&captured)
             })
-            .unwrap_or(0)
-    }
-    fn revision(&self) -> u64 {
-        self.service
-            .inner
-            .records
-            .read()
-            .ok()
-            .and_then(|records| {
-                records
-                    .get(&self.run_id)
-                    .and_then(|record| self.service.record_input_revision(record).ok())
-            })
-            .unwrap_or(u64::MAX)
-    }
-    fn render(&self) -> String {
-        self.service
-            .inner
-            .records
-            .read()
-            .ok()
-            .and_then(|records| {
-                records.get(&self.run_id).and_then(|record| self.service.record_input(record).ok())
-            })
-            .map_or_else(
-                || "Governing conversation unavailable; execution must stop.".to_owned(),
-                |input| input.conversation,
+            .map_err(ProductRunServiceError::from)?;
+        let candidate = Arc::new(snapshot);
+        let mut cached = self.request_sources.lock().map_err(|_| {
+            ProductRunServiceError::internal(
+                "read admitted conversation sources",
+                "request-source snapshot lock was poisoned",
             )
+        })?;
+        if let Some(existing) = cached.as_ref()
+            && existing.generation() == candidate.generation()
+        {
+            if existing.authority_binding() != candidate.authority_binding()
+                || existing.catalog_binding() != candidate.catalog_binding()
+            {
+                return Err(ProductRunServiceError::internal(
+                    "reconcile authoritative conversation sources",
+                    "one durable input generation produced conflicting source bindings",
+                ));
+            }
+            return Ok(Arc::clone(existing));
+        }
+        *cached = Some(Arc::clone(&candidate));
+        Ok(candidate)
     }
-    fn protected_paths(&self) -> Vec<PathBuf> {
-        self.review_record()
-            // An unavailable narrowing record must prevent mutation while retaining read-only
-            // diagnosis. Empty relative path means the complete workspace mutation surface.
-            .map_or_else(|_| vec![PathBuf::new()], |record| record.reviews().protected_paths())
-    }
-    fn effective_permissions(&self) -> HostPermissions {
-        // Tool boundaries must not retain ambient authority when the durable policy cannot be
-        // read or its run/workspace binding is unavailable.
-        self.service.effective_permissions(self.run_id).unwrap_or_else(|_| HostPermissions::none())
-    }
-    fn permits_pipeline_handoff(&self) -> bool {
-        self.review_record().is_ok_and(|record| {
-            record.reviews().pending_pipeline_permission(record.inputs()).unwrap_or(true)
-        })
-    }
-    fn checkpoint_before_workspace_mutation(
+
+    pub(super) fn bind_request_source_snapshot(
         &self,
-        relative_path: &std::path::Path,
-        kind: WorkspaceMutationKind,
-    ) -> Result<(), String> {
-        let start = self
-            .workbench_start_record()
-            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus did not change the workspace"))?;
-        self.service
-            .capture_automatic_checkpoint(&start, self.run_id, relative_path, kind)
-            .map_err(|error| format!("automatic workspace checkpoint could not be durably captured: {error}. Peritus did not change the workspace"))
+        generation: u64,
+        snapshot: RequestSourceSnapshot,
+    ) -> Result<(), ProductRunServiceError> {
+        if snapshot.generation() != generation {
+            return Err(ProductRunServiceError::internal(
+                "bind admitted conversation sources",
+                "request-source snapshot generation differs from provider admission",
+            ));
+        }
+        let mut cached = self.request_sources.lock().map_err(|_| {
+            ProductRunServiceError::internal(
+                "bind admitted conversation sources",
+                "request-source snapshot lock was poisoned",
+            )
+        })?;
+        *cached = Some(Arc::new(snapshot));
+        Ok(())
     }
-    #[cfg(not(verus_only))]
-    fn checkpoint_before_workspace_mutation_async<'a>(
-        &'a self,
-        relative_path: &'a std::path::Path,
-        kind: WorkspaceMutationKind,
-    ) -> peritus_product_runner::WorkspaceCheckpointFuture<'a> {
-        Box::pin(self.capture_checkpoint_when_available(relative_path, kind))
-    }
-    fn seal_workspace_mutation_checkpoint(
-        &self,
-        relative_path: &std::path::Path,
-        kind: WorkspaceMutationKind,
-        owned_postchange: peritus_product_runner::control::CheckpointFileVersion,
-    ) -> Result<(), String> {
-        let start = self
-            .workbench_start_record()
-            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus stopped before accepting another workspace mutation"))?;
-        self.service
-            .seal_automatic_checkpoint(&start, self.run_id, relative_path, kind, owned_postchange)
-            .map_err(|error| format!("automatic workspace checkpoint could not be durably sealed: {error}. Peritus stopped because the completed mutation could not be recorded durably"))
-    }
-    #[cfg(not(verus_only))]
-    fn interaction(&self) -> Option<&dyn DeveloperInteraction> {
-        Some(self)
+
+    fn release_request_source_snapshot(&self) -> Result<(), ProductRunServiceError> {
+        let mut cached = self.request_sources.lock().map_err(|_| {
+            ProductRunServiceError::internal(
+                "release admitted conversation sources",
+                "request-source snapshot lock was poisoned",
+            )
+        })?;
+        *cached = None;
+        Ok(())
     }
 }
+
+#[cfg(not(verus_only))]
+pub(super) fn provider_selection_provenance(
+    profile: ProviderProfileId,
+    choice: &ProductModelChoice,
+) -> Sha256Digest {
+    let mut bytes = b"peritus-product-provider-selection/v1\0".to_vec();
+    bytes.extend_from_slice(profile.as_bytes());
+    bytes.extend_from_slice(
+        &u64::try_from(choice.id().len()).unwrap_or(u64::MAX).to_le_bytes(),
+    );
+    bytes.extend_from_slice(choice.id().as_bytes());
+    bytes.push(u8::from(choice.manual()));
+    bytes.extend_from_slice(&choice.effort().tag().to_le_bytes());
+    peritus_codec::sha256(&bytes)
+}
+
 #[cfg(not(verus_only))]
 impl DeveloperInteraction for LiveConversation {
+    fn observe_waiting(
+        &self,
+        elapsed_seconds: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<(), DeveloperLoopError>> + Send + '_>> {
+        let service = self.service.clone();
+        // Capture only cheap identity fields. Contention defers this projection; it never
+        // monopolizes the provider poll or admits work against an invented owner.
+        let notice = waiting::capture(&service, self.run_id, elapsed_seconds);
+        Box::pin(async move {
+            let notice = notice?;
+            tokio::task::spawn_blocking(move || {
+                let result = waiting::retain(&service, &notice);
+                if let Err(error) = &result {
+                    crate::diagnostic::report(&format!(
+                        "peritusd: waiting status outbox delivery is deferred: {error}; the provider request remains owned",
+                    ));
+                }
+                result
+            })
+                .await
+                .map_err(|error| DeveloperLoopError::Trace(format!("retain waiting notice: {error}")))?
+                .map_err(|error| port_error("retain waiting notice", error))
+        })
+    }
+
+    fn waiting_observation_failed(&self, error: &DeveloperLoopError) {
+        crate::diagnostic::report(&format!(
+            "peritusd: waiting status delivery for {:?} is deferred; the accepted provider request remains owned: {error}",
+            self.run_id,
+        ));
+    }
+
     fn allows_semantic_compaction(&self) -> bool {
         false
     }
@@ -162,12 +167,17 @@ impl DeveloperInteraction for LiveConversation {
         &self,
         role: DeveloperModelRole,
     ) -> Result<Option<Arc<dyn peritus_provider_core::ModelProvider>>, DeveloperLoopError> {
-        let records = self.service.inner.records.read().map_err(|_| {
-            port_internal("select the run provider", "the product-run record lock was poisoned")
-        })?;
-        let record = records.get(&self.run_id).ok_or_else(|| {
-            port_internal("select the run provider", "the product-run record was not found")
-        })?;
+        self.provider_selection(role)
+            .map(|selection| selection.map(DeveloperProviderSelection::into_provider))
+    }
+
+    fn provider_selection(
+        &self,
+        role: DeveloperModelRole,
+    ) -> Result<Option<DeveloperProviderSelection>, DeveloperLoopError> {
+        let record = self
+            .attempt_record()
+            .map_err(|error| port_error("select the run provider", error))?;
         let options = &record.interaction;
         if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
             return Err(port_internal(
@@ -184,24 +194,17 @@ impl DeveloperInteraction for LiveConversation {
             DeveloperModelRole::Reviewer => (providers.reviewer(), options.models.reviewer()),
             DeveloperModelRole::Fixer => (providers.fixer(), options.models.fixer()),
         };
+        let provenance = provider_selection_provenance(profile, choice);
         self.service
             .select_provider(profile, choice)
-            .map(Some)
+            .map(|provider| Some(DeveloperProviderSelection::new(provider, provenance)))
             .map_err(|error| port_error("select the run provider", error))
     }
 
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
-        // Admission holds the write lock until persistence succeeds. A model cannot observe an
-        // input revision halfway through its durable receive transaction.
-        let records = self.service.inner.records.read().map_err(|_| {
-            port_internal(
-                "read the governing conversation",
-                "the product-run record lock was poisoned",
-            )
-        })?;
-        let record = records.get(&self.run_id).ok_or_else(|| {
-            port_internal("read the governing conversation", "the product-run record was not found")
-        })?;
+        let record = self
+            .attempt_record()
+            .map_err(|error| port_error("read the governing conversation", error))?;
         if record.interaction.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
             let detail = record
                 .interaction
@@ -210,7 +213,7 @@ impl DeveloperInteraction for LiveConversation {
             return Err(port_internal("read the governing conversation", &detail));
         }
         self.service
-            .record_input(record)
+            .record_input(&record)
             .map_err(|error| port_error("read the governing conversation", error))
     }
     fn prepare_request(
@@ -218,7 +221,7 @@ impl DeveloperInteraction for LiveConversation {
         revision: u64,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
-        self.prepare_request_for_role(DeveloperModelRole::Writer, revision, request)
+        self.prepare_request_for_role(DeveloperModelRole::Writer, revision, None, request)
     }
 
     fn prepare_role_request(
@@ -227,7 +230,36 @@ impl DeveloperInteraction for LiveConversation {
         revision: u64,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
-        self.prepare_request_for_role(role, revision, request)
+        self.prepare_request_for_role(role, revision, None, request)
+    }
+
+    fn prepare_selected_role_request(
+        &self,
+        role: DeveloperModelRole,
+        revision: u64,
+        selection_provenance: Option<Sha256Digest>,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
+        self.prepare_request_for_role(role, revision, selection_provenance, request)
+    }
+
+    fn materialize_request(
+        &self,
+        request: peritus_model_protocol::ModelRequest,
+    ) -> Result<peritus_model_protocol::ModelRequest, DeveloperLoopError> {
+        let start = self.workbench_start()?;
+        request.resolve_artifacts(|artifact, digest, maximum| {
+            self.service
+                .with_control_conversation(start.conversation(), |store| {
+                    store.materialize_image_media(&start, artifact, digest, maximum)
+                })
+                .map_err(|error| {
+                    port_error(
+                        "resolve admitted image artifact for the selected provider",
+                        error.into(),
+                    )
+                })
+        })
     }
 
     fn complete_role_request(
@@ -239,7 +271,7 @@ impl DeveloperInteraction for LiveConversation {
         let start = self.workbench_start()?;
         let admission = self
             .service
-            .with_controls(false, |store| {
+            .with_control_conversation(start.conversation(), |store| {
                 store.complete_goal_request(&start, goal_role(role), request_id, usage)
             })
             .map_err(|error| {
@@ -249,6 +281,8 @@ impl DeveloperInteraction for LiveConversation {
             progress.complete_provider_request(usage);
             Ok(())
         })?;
+        self.release_request_source_snapshot()
+            .map_err(|error| port_error("release admitted conversation sources", error))?;
         Ok(control_flow(admission))
     }
 
@@ -263,7 +297,7 @@ impl DeveloperInteraction for LiveConversation {
         let start = self.workbench_start()?;
         let admission = self
             .service
-            .with_controls(false, |store| {
+            .with_control_conversation(start.conversation(), |store| {
                 if store.capture_execution(&start)?.inputs().generation() != input_revision {
                     return Ok(None);
                 }
@@ -292,7 +326,7 @@ impl DeveloperInteraction for LiveConversation {
         let start = self.workbench_start()?;
         let admission = self
             .service
-            .with_controls(false, |store| {
+            .with_control_conversation(start.conversation(), |store| {
                 store.complete_goal_tool(&start, goal_role(role), invocation, sequence)
             })
             .map_err(|error| {
@@ -364,11 +398,13 @@ impl DeveloperInteraction for LiveConversation {
         })
     }
 }
+mod conversation;
 #[cfg(not(verus_only))]
 mod checkpoint_wait;
 #[cfg(not(verus_only))]
 mod request;
 mod review;
+pub(in crate::product_run::interaction) mod waiting;
 
 #[cfg(not(verus_only))]
 const fn goal_role(role: DeveloperModelRole) -> peritus_product_runner::control::GoalRole {

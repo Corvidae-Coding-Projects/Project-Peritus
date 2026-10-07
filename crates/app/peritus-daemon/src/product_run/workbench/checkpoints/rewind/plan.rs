@@ -12,8 +12,7 @@ use super::{
 };
 
 pub(in crate::product_run::workbench::checkpoints) fn selected_coverage_matches(
-    store: &ControlStore,
-    checkpoint: super::CheckpointId,
+    snapshots: &crate::product_control::CheckpointSnapshots<'_>,
     index: usize,
     expected: &super::CheckpointPath,
     current: &super::super::CapturedPath,
@@ -23,8 +22,8 @@ pub(in crate::product_run::workbench::checkpoints) fn selected_coverage_matches(
     else {
         return Err(ControlError::InvalidInput.into());
     };
-    let saved = store
-        .checkpoint_snapshot(checkpoint, index, expected.checkpoint())?
+    let saved = snapshots
+        .snapshot(index, expected.checkpoint())?
         .ok_or(Error::Corrupt("selected fork source missing"))?;
     let (Some(body), Some(digest), Some(bytes), Some(mode)) =
         (&current.body, current.version.digest(), current.version.bytes(), current.version.mode())
@@ -51,7 +50,10 @@ impl ProductRunService {
         checkpoint: &UserCheckpoint,
         preview: &WorkbenchRewindPreview,
     ) -> Result<Option<PatchSet>, Error> {
-        self.with_controls(false, |store| {
+        let conversation = peritus_product_runner::control::ConversationId::new(
+            query.conversation().into_bytes(),
+        )?;
+        self.with_control_conversation(conversation, |store| {
             self.restore_plan_with_store(store, query, checkpoint, preview, None)
         })
     }
@@ -106,6 +108,12 @@ impl ProductRunService {
         streamed: bool,
         range_input: Option<(&UserCheckpoint, Option<&[Option<tempfile::TempPath>]>)>,
     ) -> Result<Option<PatchSet>, Error> {
+        let snapshots = store.checkpoint_snapshots(checkpoint.id())?;
+        let recovery_snapshots = if let Some((recovery, None)) = range_input {
+            Some(store.checkpoint_snapshots(recovery.id())?)
+        } else {
+            None
+        };
         let mut operations = Vec::new();
         for (index, (path, preview_path)) in
             checkpoint.paths().iter().zip(preview.paths()).enumerate()
@@ -131,8 +139,8 @@ impl ProductRunService {
                 {
                     return Err(Error::StalePreimage);
                 }
-                let captured = store
-                    .checkpoint_snapshot(checkpoint.id(), index, path.checkpoint())?
+                let captured = snapshots
+                    .snapshot(index, path.checkpoint())?
                     .ok_or(Error::Corrupt("selected-range source snapshot missing"))?;
                 let current = match bodies {
                     Some(bodies) => {
@@ -149,8 +157,10 @@ impl ProductRunService {
                             ),
                         )
                     }
-                    None => store
-                        .checkpoint_snapshot(recovery.id(), index, before.checkpoint())?
+                    None => recovery_snapshots
+                        .as_ref()
+                        .ok_or(Error::Corrupt("range recovery snapshot reader missing"))?
+                        .snapshot(index, before.checkpoint())?
                         .ok_or(Error::Corrupt("range recovery snapshot missing"))?,
                 };
                 let snapshot = ranges::materialize(&captured, &current, selected)?;
@@ -181,8 +191,8 @@ impl ProductRunService {
                     }
                 }
                 target @ CheckpointFileVersion::Present { .. } if streamed => {
-                    let snapshot = store
-                        .checkpoint_snapshot(checkpoint.id(), index, target)?
+                    let snapshot = snapshots
+                        .snapshot(index, target)?
                         .ok_or(Error::Corrupt("present checkpoint has no snapshot"))?;
                     match preimage {
                         Preimage::Absent => {

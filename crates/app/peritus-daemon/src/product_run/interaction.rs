@@ -1,6 +1,7 @@
 //! Conversation semantics, durable input acknowledgements, and public execution activity.
 
 use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
+use crate::product_control::{CapturedConversation, CapturedFileReaders};
 use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductActivityKind,
@@ -10,12 +11,15 @@ use peritus_product_runner::ConversationView;
 use peritus_types::RunId;
 use std::sync::Arc;
 
+use super::publication::{MutationDisposition, RunMutationKind};
+
 mod live;
 use live::LiveConversation;
 mod inputs;
 mod models;
 mod narration;
 mod presentation;
+mod sources;
 const SUMMARY_DETAIL: &str = "Provider thinking summary";
 mod tool_activity;
 
@@ -24,6 +28,7 @@ pub(super) struct InteractionOptions {
     pub(super) workbench: peritus_product_runner::control::ControlOperation,
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
     persistence_error: Arc<std::sync::RwLock<Option<String>>>,
+    file_readers: Arc<std::sync::Mutex<Option<Arc<CapturedFileReaders>>>>,
     pub(super) mode: ProductInteractionMode,
     pub(super) models: ProductRoleModels,
     pub(super) incorporated: u64,
@@ -46,6 +51,7 @@ impl InteractionOptions {
             workbench,
             persistence_failed: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             persistence_error: Arc::new(std::sync::RwLock::new(None)),
+            file_readers: Arc::new(std::sync::Mutex::new(None)),
             mode,
             models,
             incorporated: 0,
@@ -233,33 +239,38 @@ impl InteractionOptions {
 
 impl ProductRunService {
     pub(super) fn pending_interactive_input(&self, run_id: RunId) -> bool {
-        self.inner
+        let record = self
+            .inner
             .records
             .read()
             .ok()
-            .and_then(|records| {
-                records.get(&run_id).map(|record| {
-                    record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
-                        && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
-                        && self.pending_record_input(record).unwrap_or(false)
-                        && !record
-                            .interaction
-                            .persistence_failed
-                            .load(std::sync::atomic::Ordering::Acquire)
-                })
-            })
-            .unwrap_or(false)
+            .and_then(|records| records.get(&run_id).cloned());
+        record.is_some_and(|record| {
+            record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
+                && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
+                && self.pending_record_input(&record).unwrap_or(false)
+                && !record
+                    .interaction
+                    .persistence_failed
+                    .load(std::sync::atomic::Ordering::Acquire)
+        })
     }
     pub(crate) fn query_interaction(
         &self,
         query: ProductInteractionQuery,
     ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
         self.synchronize_public_inputs(query.run_id())?;
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let record = records.get(&query.run_id()).ok_or(ProductRunServiceError::NotFound)?;
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&query.run_id())
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
         let options = &record.interaction;
         let persistence_failure = options.persistence_failure();
-        let mut snapshot = live_snapshot(&self.inner.directory, record)?;
+        let mut snapshot = live_snapshot(&self.inner.directory, &record)?;
         let mut activities = if record.checkpoint.is_some() {
             options.activities.iter().map(presentation::pipeline_activity).collect()
         } else {
@@ -285,40 +296,61 @@ impl ProductRunService {
                 )
                 .map_err(|_| ProductRunServiceError::InvalidMessage)?,
             );
-            self.record_input_revision(record).unwrap_or(options.incorporated)
+            self.record_input_revision(&record).unwrap_or(options.incorporated)
         } else {
-            self.record_input_revision(record)?
+            self.record_input_revision(&record)?
         };
+        let waiting = live::waiting::pending(&record);
+        let mode = options.mode;
+        let models = options.models.clone();
+        let incorporated = options.incorporated;
+        let settlement = super::snapshot::delivery_settlement(&record);
+        if let Some(waiting) = waiting {
+            live::waiting::project(self, &waiting, &mut activities);
+        }
         ProductInteractionSnapshot::new(
             snapshot,
-            options.mode,
-            options.models.clone(),
+            mode,
+            models,
             input_revision,
-            options.incorporated,
+            incorporated,
             activities,
-            super::snapshot::delivery_settlement(record),
+            settlement,
         )
         .map_err(|_| ProductRunServiceError::InvalidMessage)
     }
 
     pub(super) fn live_conversation(&self, run_id: RunId) -> Arc<dyn ConversationView> {
-        Arc::new(LiveConversation { service: self.clone(), run_id })
+        let attempt_cancelled = self
+            .inner
+            .records
+            .read()
+            .ok()
+            .and_then(|records| records.get(&run_id).map(|record| Arc::clone(&record.cancelled)))
+            .unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(true)));
+        Arc::new(LiveConversation {
+            service: self.clone(),
+            run_id,
+            attempt_cancelled,
+            request_sources: std::sync::Mutex::new(None),
+        })
     }
 
     pub(super) fn record_input_revision(
         &self,
         record: &super::RunRecord,
     ) -> Result<u64, ProductRunServiceError> {
-        self.with_controls(false, |store| store.capture_execution(&record.interaction.workbench))
+        self.record_capture(record)
             .map(|capture| capture.inputs().generation())
-            .map_err(Into::into)
     }
 
     pub(super) fn pending_record_input(
         &self,
         record: &super::RunRecord,
     ) -> Result<bool, ProductRunServiceError> {
-        self.with_controls(false, |store| store.capture_execution(&record.interaction.workbench))
+        self.with_control_conversation(record.interaction.workbench.conversation(), |store| {
+            store.capture_execution(&record.interaction.workbench)
+        })
             .map(|capture| !capture.inputs().pending().is_empty())
             .map_err(Into::into)
     }
@@ -327,13 +359,247 @@ impl ProductRunService {
         &self,
         record: &super::RunRecord,
     ) -> Result<DeveloperInput, ProductRunServiceError> {
-        let captured = self
-            .with_controls(false, |store| store.capture_execution(&record.interaction.workbench))?;
+        let captured = self.record_capture(record)?;
         Ok(DeveloperInput {
             revision: captured.inputs().generation(),
             conversation: captured.conversation_with_guidance()?,
             images: captured.images().to_vec(),
         })
+    }
+
+    fn record_capture(
+        &self,
+        record: &super::RunRecord,
+    ) -> Result<crate::product_control::CapturedConversation, ProductRunServiceError> {
+        let source = record.continuation_sources.iter().rev().find(|source| !source.settled);
+        self.with_control_conversation(record.interaction.workbench.conversation(), |store| {
+            source.map_or_else(
+                || store.capture_execution(&record.interaction.workbench),
+                |source| {
+                    if record.interaction.incorporated < source.generation {
+                        store.capture_execution_revision(
+                            &record.interaction.workbench,
+                            source.revision,
+                        )
+                    } else {
+                        store.capture_execution_revision_incorporated(
+                            &record.interaction.workbench,
+                            source.revision,
+                        )
+                    }
+                },
+            )
+        })
+        .map_err(Into::into)
+    }
+
+    fn active_continuation_source(
+        record: &super::RunRecord,
+    ) -> Option<super::ContinuationSource> {
+        record
+            .continuation_sources
+            .iter()
+            .rev()
+            .find(|source| !source.settled)
+            .copied()
+    }
+
+    /// Captures current file authority and reconciles readers owned by the durable run record.
+    fn current_file_sources(
+        &self,
+        run_id: RunId,
+    ) -> Result<(CapturedConversation, Arc<CapturedFileReaders>), ProductRunServiceError> {
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| {
+                ProductRunServiceError::internal(
+                    "read authoritative file sources",
+                    "the product-run record lock was poisoned",
+                )
+            })?
+            .get(&run_id)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        // Serialize capture with cache replacement so an older concurrent capture cannot replace
+        // a newer selected scope after that newer scope has already installed its readers.
+        let mut cached = record.interaction.file_readers.lock().map_err(|_| {
+            ProductRunServiceError::internal(
+                "retain authoritative file sources",
+                "the file-source reader lock was poisoned",
+            )
+        })?;
+        let captured = self.record_capture(&record)?;
+        let readers = captured.file_readers(cached.as_ref());
+        *cached = Some(Arc::clone(&readers));
+        Ok((captured, readers))
+    }
+
+    /// Lists ordinary run attachments from the exact control capture governing this run.
+    fn attachment_context_sources(
+        &self,
+        run_id: RunId,
+        after: Option<u64>,
+    ) -> Result<peritus_product_runner::ContextSourcePage, ProductRunServiceError> {
+        let (captured, _readers) = self.current_file_sources(run_id)?;
+        captured.context_sources(after).map_err(Into::into)
+    }
+
+    /// Reads one exact ordinary-run attachment slice from its durable selected version.
+    fn read_attachment_context_source(
+        &self,
+        run_id: RunId,
+        source: u64,
+        offset: u64,
+    ) -> Result<peritus_product_runner::ContextSourceSlice, ProductRunServiceError> {
+        let (captured, readers) = self.current_file_sources(run_id)?;
+        self.read_captured_file_source(&captured, readers.as_ref(), source, offset)
+    }
+
+    /// Pages existing attachment or improvement sources first, then the reserved finding range.
+    pub(super) fn combined_context_sources(
+        &self,
+        run_id: RunId,
+        after: Option<u64>,
+    ) -> Result<peritus_product_runner::ContextSourcePage, ProductRunServiceError> {
+        use peritus_product_runner::{ContextSourcePage, MAX_CONTEXT_SOURCE_PAGE};
+        use peritus_review::PRODUCT_FINDING_SOURCE_ORDINAL_BASE;
+
+        let base = if after.is_some_and(|after| {
+            after >= PRODUCT_FINDING_SOURCE_ORDINAL_BASE
+        }) {
+            ContextSourcePage::new(after, Vec::new(), None).map_err(|error| {
+                ProductRunServiceError::internal("page product context sources", error)
+            })?
+        } else if let Some(page) = self.improvement_context_sources(run_id, after)? {
+            page
+        } else {
+            self.attachment_context_sources(run_id, after)?
+        };
+        if base.sources().iter().any(|source| {
+            source.ordinal() >= PRODUCT_FINDING_SOURCE_ORDINAL_BASE
+        }) || base.next().is_some_and(|next| {
+            next >= PRODUCT_FINDING_SOURCE_ORDINAL_BASE
+        }) {
+            return Err(ProductRunServiceError::internal(
+                "page product context sources",
+                "an existing source provider entered the reserved finding ordinal range",
+            ));
+        }
+        if base.next().is_some() {
+            return Ok(base);
+        }
+        let finding_catalog = {
+            let records = self
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
+            records
+                .get(&run_id)
+                .ok_or(ProductRunServiceError::NotFound)?
+                .finding_catalog
+                .clone()
+        };
+        let remaining = MAX_CONTEXT_SOURCE_PAGE.saturating_sub(base.sources().len());
+        let finding_page = self
+            .inner
+            .finding_bodies
+            .page(&finding_catalog, after, remaining)?;
+        let mut sources = base.sources().to_vec();
+        sources.extend(finding_page.sources);
+        let next = if finding_page.has_more {
+            sources.last().map(peritus_product_runner::ContextSource::ordinal)
+        } else {
+            None
+        };
+        ContextSourcePage::new(after, sources, next).map_err(|error| {
+            ProductRunServiceError::internal("page product context sources", error)
+        })
+    }
+
+    /// Routes the collision-free upper ordinal range to immutable finding bodies.
+    pub(super) fn read_combined_context_source(
+        &self,
+        run_id: RunId,
+        source: u64,
+        offset: u64,
+    ) -> Result<peritus_product_runner::ContextSourceSlice, ProductRunServiceError> {
+        if source >= peritus_review::PRODUCT_FINDING_SOURCE_ORDINAL_BASE {
+            let finding_catalog = {
+                let records = self
+                    .inner
+                    .records
+                    .read()
+                    .map_err(|_| ProductRunServiceError::Unavailable)?;
+                records
+                    .get(&run_id)
+                    .ok_or(ProductRunServiceError::NotFound)?
+                    .finding_catalog
+                    .clone()
+            };
+            return self
+                .inner
+                .finding_bodies
+                .read(&finding_catalog, source, offset);
+        }
+        if let Some(slice) = self.read_improvement_context_source(run_id, source, offset)? {
+            return Ok(slice);
+        }
+        self.read_attachment_context_source(run_id, source, offset)
+    }
+
+    /// Publishes the compact ledger head only after the runner has synchronized every body.
+    pub(super) fn adopt_finding_state(
+        &self,
+        run_id: RunId,
+        finding_state: &str,
+    ) -> Result<(), ProductRunServiceError> {
+        let identity = self.capture_run_identity(run_id)?;
+        let ledger = peritus_product_runner::ProductRunner::decode_finding_state(finding_state)
+            .map_err(|error| {
+                ProductRunServiceError::internal(
+                    "adopt product finding state",
+                    error.to_string(),
+                )
+            })?;
+        if ledger.has_inline_bodies() {
+            return Err(ProductRunServiceError::internal(
+                "adopt product finding state",
+                "a governed finding ledger still contains inline bodies",
+            ));
+        }
+        let finding_catalog = super::persistence::FindingBodyStore::catalog_from_ledger(
+            finding_state,
+            &ledger,
+        )?;
+        if identity.finding_head == finding_catalog.head_digest
+            && identity.finding_state == finding_state
+        {
+            return Ok(());
+        }
+        let input_digest = finding_catalog.head_digest;
+        let finding_state = finding_state.to_owned();
+        let expected_attempt = Arc::clone(&identity.cancelled);
+        let (_, ticket) = self.mutate_run(
+            run_id,
+            Some(&expected_attempt),
+            RunMutationKind::InteractionSource,
+            input_digest,
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                if record.finding_catalog.head_digest != identity.finding_head
+                    || record.finding_state != identity.finding_state
+                {
+                    return Err(ProductRunServiceError::InvalidState);
+                }
+                record.finding_state = finding_state;
+                record.finding_catalog = finding_catalog;
+                Ok(())
+            },
+        )?;
+        self.await_run_durable(ticket)
     }
 }
 

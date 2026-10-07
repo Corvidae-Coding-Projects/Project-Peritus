@@ -9,7 +9,9 @@ use peritus_product_runner::{
 };
 use std::path::Path;
 
-use super::{ProductRunServiceError, RunRecord, deliverable};
+use super::{
+    MutationDisposition, ProductRunServiceError, RunMutationKind, RunRecord, deliverable,
+};
 
 const REVIEWED_COMMAND_UNCERTAINTY: &str = "A reviewed command outcome remains unknown. Developer mutations for this requirements revision are frozen; inspect and preserve the candidate or provide new user input.";
 
@@ -19,9 +21,15 @@ impl super::ProductRunService {
         run: peritus_types::RunId,
         action: Action,
     ) -> Result<(), ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if project(&self.inner.directory, record)?.legal_controls().allows(action) {
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        if project(&self.inner.directory, &record)?.legal_controls().allows(action) {
             Ok(())
         } else {
             Err(ProductRunServiceError::InvalidState)
@@ -32,10 +40,25 @@ impl super::ProductRunService {
         &self,
         run: peritus_types::RunId,
     ) -> Result<peritus_app_protocol::ProductRunSnapshot, ProductRunServiceError> {
-        let mut records =
-            self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        let projection = project(&self.inner.directory, record)?;
+        let authorities = self.retained_effect_authorities(run)?;
+        self.with_run_authorities(authorities, || self.acknowledge_command_outcome_owned(run))
+    }
+
+    fn acknowledge_command_outcome_owned(
+        &self,
+        run: peritus_types::RunId,
+    ) -> Result<peritus_app_protocol::ProductRunSnapshot, ProductRunServiceError> {
+        let identity = self.capture_run_identity(run)?;
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        let effects = effects_path(&self.inner.directory, &record);
+        let projection = project(&self.inner.directory, &record)?;
         if projection.kind() != Kind::Command
             || projection.state() != State::OutcomeUnknown
             || !projection.legal_controls().allows(Action::Acknowledge)
@@ -43,7 +66,7 @@ impl super::ProductRunService {
             return Err(ProductRunServiceError::InvalidState);
         }
         acknowledge_uncertain_effect(
-            &effects_path(&self.inner.directory, record),
+            &effects,
             projection.identity(),
         )
         .map_err(|error| {
@@ -52,16 +75,35 @@ impl super::ProductRunService {
                 error.to_string(),
             )
         })?;
+        let input = peritus_codec::sha256(projection.identity().as_bytes());
         let detail = REVIEWED_COMMAND_UNCERTAINTY;
-        detail.clone_into(&mut record.interruption_cause);
-        record.snapshot = super::snapshot::replace_snapshot(
-            &record.snapshot,
-            record.snapshot.phase(),
-            detail,
-            record.snapshot.summary(),
+        let (_, ticket) = self.mutate_run(
+            run,
+            Some(&identity.cancelled),
+            RunMutationKind::Acknowledge,
+            input,
+            MutationDisposition::DurabilityRequired,
+            |record| {
+                detail.clone_into(&mut record.interruption_cause);
+                record.snapshot = super::snapshot::replace_snapshot(
+                    &record.snapshot,
+                    record.snapshot.phase(),
+                    detail,
+                    record.snapshot.summary(),
+                )?;
+                Ok(())
+            },
         )?;
-        super::persistence::persist_record(&self.inner.directory, record)?;
-        super::snapshot::live_snapshot(&self.inner.directory, record)
+        self.await_run_durable(ticket)?;
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        super::snapshot::live_snapshot(&self.inner.directory, &record)
     }
 }
 

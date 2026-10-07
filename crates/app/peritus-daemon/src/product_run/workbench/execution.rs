@@ -33,7 +33,7 @@ impl ProductRunService {
             Ok(operation) => operation,
             Err(error) => return error_response(error),
         };
-        let admission = self.with_controls(false, |store| {
+        let admission = self.with_control_conversation(operation.conversation(), |store| {
             if let Some(receipt) = resolve_user_operation(store, &operation)? {
                 return Ok(Admission::Existing(receipt));
             }
@@ -76,7 +76,7 @@ impl ProductRunService {
         }
         match self.start_configured(request, options).await {
             Ok(_) => self
-                .with_controls(false, |store| {
+                .with_control_conversation(operation.conversation(), |store| {
                     resolve_user_operation(store, &operation)?
                         .ok_or_else(|| ControlError::NotFound.into())
                 })

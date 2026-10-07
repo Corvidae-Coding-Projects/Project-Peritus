@@ -8,6 +8,8 @@ use super::{
     checkpoint_references, external_effects, observe_empty_directory, observe_path, public_query,
     validate_automatic_checkpoint, validate_run_binding,
 };
+use crate::product_run::ProductRunServiceError;
+use std::sync::{Arc, atomic::AtomicBool};
 
 #[cfg(test)]
 mod tests;
@@ -25,7 +27,16 @@ impl ProductRunService {
         let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
         let workspace =
             WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        self.capture_automatic_checkpoint_for_operation(
+        let cancellation = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?
+            .get(&run)
+            .ok_or(ControlError::NotFound)?
+            .control_cancellation
+            .clone();
+        self.capture_automatic_checkpoint_for_operation_cancellable(
             actor,
             start.conversation(),
             workspace,
@@ -33,6 +44,7 @@ impl ProductRunService {
             path,
             kind,
             None,
+            &cancellation,
         )
         .map(|_| ())
     }
@@ -51,13 +63,44 @@ impl ProductRunService {
         kind: WorkspaceMutationKind,
         expected_revision: Option<u64>,
     ) -> Result<u64, Error> {
+        self.capture_automatic_checkpoint_for_operation_cancellable(
+            actor,
+            conversation,
+            workspace,
+            run,
+            path,
+            kind,
+            expected_revision,
+            &self.inner.control_shutdown,
+        )
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the authenticated checkpoint binding, cancellation and optional first-admission fence stay explicit"
+    )]
+    fn capture_automatic_checkpoint_for_operation_cancellable(
+        &self,
+        actor: ActorId,
+        conversation: ConversationId,
+        workspace: WorkspaceId,
+        run: RunId,
+        path: &str,
+        kind: WorkspaceMutationKind,
+        expected_revision: Option<u64>,
+        cancellation: &peritus_journal::JournalCancellation,
+    ) -> Result<u64, Error> {
         let query = public_query(conversation, workspace)?;
         let checkpoint = automatic_checkpoint_id(run, path, kind)?;
-        let (record, existing) = self.with_controls(false, |store| {
-            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
-            let existing = store.load_checkpoint(conversation, checkpoint)?;
-            Ok((record, existing))
-        })?;
+        let (record, existing) = self.with_control_conversation_cancellable(
+            conversation,
+            cancellation,
+            |store| {
+                let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+                let existing = store.load_checkpoint(conversation, checkpoint)?;
+                Ok((record, existing))
+            },
+        )?;
         check_automatic_record(&record, actor, workspace)?;
         if let Some(existing) = existing {
             validate_automatic_checkpoint(&existing, run, path, kind)?;
@@ -99,50 +142,66 @@ impl ProductRunService {
             record.revision(),
             ControlIntent::CreateAutomaticCheckpoint(value),
         );
-        self.with_controls(false, |store| store.accept_checkpoint_snapshots(&operation, &bodies))
-            .map(|receipt| receipt.accepted_revision())
+        let prepared = self
+            .inner
+            .control_generation
+            .prepare_checkpoint_snapshots(&operation, &bodies)?;
+        self.with_control_conversation_cancellable(conversation, cancellation, |store| {
+            store.accept_prepared_checkpoint_snapshots(prepared)
+        })
+        .map(|receipt| receipt.accepted_revision())
     }
 
     pub(crate) fn seal_automatic_checkpoint(
         &self,
         start: &ControlOperation,
         run: RunId,
+        attempt: &Arc<AtomicBool>,
         relative: &Path,
         kind: WorkspaceMutationKind,
         owned_postchange: CheckpointFileVersion,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ProductRunServiceError> {
         validate_run_binding(start, run)?;
-        let path = relative.to_str().ok_or(ControlError::InvalidInput)?;
+        let reconciliation = self.retained_control_reconciliation(run, attempt)?;
+        let path = relative
+            .to_str()
+            .ok_or(ProductRunServiceError::Control(ControlError::InvalidInput))?;
         let conversation = start.conversation();
-        let record = self
-            .with_controls(false, |store| store.load(conversation))?
-            .ok_or(ControlError::NotFound)?;
-        let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        let workspace =
-            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        check_automatic_record(&record, actor, workspace)?;
+        let actor = ActorId::new(*start.actor_bytes())
+            .map_err(|_| ProductRunServiceError::Control(ControlError::InvalidInput))?;
+        let workspace = WorkspaceId::new(*start.workspace_bytes())
+            .map_err(|_| ProductRunServiceError::Control(ControlError::InvalidInput))?;
         let checkpoint_id = automatic_checkpoint_id(run, path, kind)?;
-        let checkpoint = self
-            .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint_id))?
-            .ok_or(ControlError::NotFound)?;
+        let (record, checkpoint) = self.with_control_reconciliation(&reconciliation, |store| {
+            let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+            let checkpoint = store
+                .load_checkpoint(conversation, checkpoint_id)?
+                .ok_or(ControlError::NotFound)?;
+            Ok((record, checkpoint))
+        })?;
+        check_automatic_record(&record, actor, workspace)?;
         validate_automatic_checkpoint(&checkpoint, run, path, kind)?;
         let versions = if checkpoint.paths().is_empty() {
             Vec::new()
         } else {
             vec![(path.to_owned(), owned_postchange)]
         };
-        self.seal_checkpoint_versions(start, run, &checkpoint, versions)
+        self.seal_checkpoint_versions(start, run, &reconciliation, &checkpoint, versions)
     }
 
     pub(crate) fn seal_latest_checkpoint(
         &self,
         start: &ControlOperation,
         run: RunId,
-    ) -> Result<(), Error> {
+        attempt: &Arc<AtomicBool>,
+    ) -> Result<(), ProductRunServiceError> {
         validate_run_binding(start, run)?;
+        let reconciliation = self.retained_control_reconciliation(run, attempt)?;
         let record = self
-            .with_controls(false, |store| store.load(start.conversation()))?
-            .ok_or(ControlError::NotFound)?;
+            .with_control_reconciliation(&reconciliation, |store| {
+                store.load(start.conversation())
+            })?
+            .ok_or(ProductRunServiceError::Control(ControlError::NotFound))?;
         let Some(checkpoint) = record.checkpoints().iter().rev().find(|checkpoint| {
             checkpoint.sealed_by_run().is_none()
                 && checkpoint.automatic_run().is_none()
@@ -150,24 +209,26 @@ impl ProductRunService {
         }) else {
             return Ok(());
         };
-        self.seal_checkpoint(start, run, &record, checkpoint)
+        self.seal_checkpoint(start, run, &reconciliation, &record, checkpoint)
     }
 
     fn seal_checkpoint(
         &self,
         start: &ControlOperation,
         run: RunId,
+        reconciliation: &crate::product_control::ControlReconciliation,
         record: &ConversationRecord,
         checkpoint: &UserCheckpoint,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ProductRunServiceError> {
         let conversation = start.conversation();
-        let workspace =
-            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
+        let workspace = WorkspaceId::new(*start.workspace_bytes())
+            .map_err(|_| ProductRunServiceError::Control(ControlError::InvalidInput))?;
         let query = public_query(conversation, workspace)?;
         let captured = self.observe_checkpoint_paths(record, query, checkpoint)?;
         self.seal_checkpoint_versions(
             start,
             run,
+            reconciliation,
             checkpoint,
             captured.into_iter().map(|path| (path.path, path.version)).collect(),
         )
@@ -177,14 +238,16 @@ impl ProductRunService {
         &self,
         start: &ControlOperation,
         run: RunId,
+        reconciliation: &crate::product_control::ControlReconciliation,
         checkpoint: &UserCheckpoint,
         versions: Vec<(String, CheckpointFileVersion)>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ProductRunServiceError> {
         let conversation = start.conversation();
-        let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        let workspace =
-            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
-        self.with_controls(false, |store| {
+        let actor = ActorId::new(*start.actor_bytes())
+            .map_err(|_| ProductRunServiceError::Control(ControlError::InvalidInput))?;
+        let workspace = WorkspaceId::new(*start.workspace_bytes())
+            .map_err(|_| ProductRunServiceError::Control(ControlError::InvalidInput))?;
+        self.with_control_reconciliation(reconciliation, |store| {
             let current = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             let retained =
                 current.checkpoints().iter().find(|value| value.id() == checkpoint.id()).cloned();

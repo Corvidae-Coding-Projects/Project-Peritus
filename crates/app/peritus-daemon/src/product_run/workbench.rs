@@ -1,7 +1,10 @@
 //! Authenticated A3/domain mapping and the single serialized control-journal owner.
 
 use super::ProductRunService;
-use crate::product_control::{ControlStore, ControlStoreError as Error};
+use crate::product_control::{
+    AuthorityKey, AuthoritySet, ControlReconciliation, ControlStore,
+    ControlStoreError as Error,
+};
 use peritus_app_protocol::{
     AppErrorCode, AppProtocolError, AppResponsePayload, ConversationTitle, WorkbenchCommand,
     WorkbenchIntent, WorkbenchQuery, WorkbenchReceipt, WorkbenchSnapshot,
@@ -10,6 +13,8 @@ use peritus_product_runner::control::{
     ControlError, ControlOperation, ControlReceipt, ConversationId, ConversationRecord,
 };
 use peritus_types::ActorId;
+#[cfg(test)]
+use std::{collections::VecDeque, sync::Arc, time::Duration};
 
 mod brief;
 mod checkpoints;
@@ -33,17 +38,227 @@ mod launch;
 mod mapping;
 mod review;
 mod run_control;
+mod sources;
 
 use mapping::{domain_operation, domain_operation_with_store, equivalent_user_intent};
 
+#[cfg(test)]
+pub(super) struct ControlOwnerQueue {
+    pub(super) owner: std::sync::Mutex<Option<ControlStore>>,
+    order: std::sync::Mutex<ControlQueueState>,
+    ready: std::sync::Condvar,
+}
+
+#[cfg(test)]
+#[derive(Default)]
+struct ControlQueueState {
+    active: bool,
+    waiters: VecDeque<Arc<()>>,
+}
+
+#[cfg(test)]
+pub(super) struct ControlPermit<'a>(&'a ControlOwnerQueue);
+
+#[cfg(test)]
+impl ControlOwnerQueue {
+    pub(super) fn new(owner: Option<ControlStore>) -> Self {
+        Self {
+            owner: std::sync::Mutex::new(owner),
+            order: std::sync::Mutex::new(ControlQueueState::default()),
+            ready: std::sync::Condvar::new(),
+        }
+    }
+
+    pub(super) fn acquire(
+        &self,
+        cancellation: &peritus_journal::JournalCancellation,
+    ) -> Result<ControlPermit<'_>, Error> {
+        let waiter = Arc::new(());
+        let mut order =
+            self.order.lock().map_err(|_| Error::Corrupt("control owner queue lock poisoned"))?;
+        order.waiters.push_back(Arc::clone(&waiter));
+        loop {
+            if cancellation.is_cancelled() {
+                if let Some(index) =
+                    order.waiters.iter().position(|queued| Arc::ptr_eq(queued, &waiter))
+                {
+                    order.waiters.remove(index);
+                }
+                self.ready.notify_all();
+                return Err(Error::ContentionCancelled);
+            }
+            if !order.active
+                && order.waiters.front().is_some_and(|queued| Arc::ptr_eq(queued, &waiter))
+            {
+                order.waiters.pop_front();
+                order.active = true;
+                return Ok(ControlPermit(self));
+            }
+            let wake = self
+                .ready
+                .wait_timeout(order, Duration::from_millis(1))
+                .map_err(|_| Error::Corrupt("control owner queue wait poisoned"))?;
+            order = wake.0;
+        }
+    }
+}
+
+#[cfg(test)]
+impl Drop for ControlPermit<'_> {
+    fn drop(&mut self) {
+        if let Ok(mut order) = self.0.order.lock() {
+            order.active = false;
+            self.0.ready.notify_all();
+        }
+    }
+}
+
 impl ProductRunService {
+    pub(super) fn with_control_authorities<T>(
+        &self,
+        authorities: AuthoritySet,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        self.with_control_authorities_cancellable(
+            authorities,
+            &self.inner.control_shutdown,
+            operation,
+        )
+    }
+
+    pub(super) fn with_run_authorities<T>(
+        &self,
+        authorities: AuthoritySet,
+        operation: impl FnOnce() -> Result<T, super::ProductRunServiceError>,
+    ) -> Result<T, super::ProductRunServiceError> {
+        let authority = self
+            .inner
+            .control_generation
+            .acquire(authorities, &self.inner.control_shutdown)?;
+        let _store = self.inner.control_generation.open_scope(
+            authority.into_scope(),
+            &self.inner.control_shutdown,
+        )?;
+        if self.inner.control_shutdown.is_cancelled() {
+            return Err(super::ProductRunServiceError::Unavailable);
+        }
+        operation()
+    }
+
+    pub(super) fn with_control_authorities_cancellable<T>(
+        &self,
+        authorities: AuthoritySet,
+        cancellation: &peritus_journal::JournalCancellation,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        let authority = self.inner.control_generation.acquire(authorities, cancellation)?;
+        let mut store = self
+            .inner
+            .control_generation
+            .open_scope(authority.into_scope(), cancellation)?;
+        cancellation.run(|| operation(&mut store))
+    }
+
+    pub(super) fn with_control_conversation<T>(
+        &self,
+        conversation: peritus_product_runner::control::ConversationId,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        self.with_control_authorities(
+            AuthoritySet::new([AuthorityKey::Conversation(conversation)]),
+            operation,
+        )
+    }
+
+    pub(super) fn with_control_conversation_cancellable<T>(
+        &self,
+        conversation: peritus_product_runner::control::ConversationId,
+        cancellation: &peritus_journal::JournalCancellation,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        self.with_control_authorities_cancellable(
+            AuthoritySet::new([AuthorityKey::Conversation(conversation)]),
+            cancellation,
+            operation,
+        )
+    }
+
+    pub(super) fn with_control_index_read<T>(
+        &self,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        let mut store = self
+            .inner
+            .control_generation
+            .open_index_read(&self.inner.control_shutdown)?;
+        self.inner.control_shutdown.run(|| operation(&mut store))
+    }
+
+    pub(super) fn register_control_reconciliation(
+        &self,
+        authorities: AuthoritySet,
+    ) -> Result<ControlReconciliation, Error> {
+        self.inner.control_generation.register_reconciliation(authorities)
+    }
+
+    pub(super) fn with_control_reconciliation<T>(
+        &self,
+        reconciliation: &ControlReconciliation,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        let authority = reconciliation.acquire(&self.inner.control_reconciliation)?;
+        let mut store = self.inner.control_generation.open_scope(
+            authority.into_scope(),
+            &self.inner.control_reconciliation,
+        )?;
+        self.inner.control_reconciliation.run(|| operation(&mut store))
+    }
+
+    pub(super) fn retained_conversation(
+        &self,
+        run: peritus_types::RunId,
+    ) -> Result<peritus_product_runner::control::ConversationId, super::ProductRunServiceError>
+    {
+        let records =
+            self.inner.records.read().map_err(|_| super::ProductRunServiceError::Unavailable)?;
+        let record = records.get(&run).ok_or(super::ProductRunServiceError::NotFound)?;
+        Ok(record.interaction.workbench.conversation())
+    }
+
+    pub(super) fn retained_run_authorities(
+        &self,
+        run: peritus_types::RunId,
+    ) -> Result<AuthoritySet, super::ProductRunServiceError> {
+        let conversation = self.retained_conversation(run)?;
+        Ok(AuthoritySet::new([
+            AuthorityKey::Conversation(conversation),
+            AuthorityKey::Run(run),
+        ]))
+    }
+
+    pub(super) fn retained_effect_authorities(
+        &self,
+        run: peritus_types::RunId,
+    ) -> Result<AuthoritySet, super::ProductRunServiceError> {
+        let records =
+            self.inner.records.read().map_err(|_| super::ProductRunServiceError::Unavailable)?;
+        let record = records.get(&run).ok_or(super::ProductRunServiceError::NotFound)?;
+        Ok(AuthoritySet::new([
+            AuthorityKey::Run(run),
+            AuthorityKey::Workspace(record.request.workspace_id()),
+        ]))
+    }
+
     pub(crate) fn preview_workbench_compaction(
         &self,
         actor: ActorId,
         request: &peritus_app_protocol::WorkbenchCompactionRequest,
     ) -> AppResponsePayload {
         let result = self.control_workspace(request.query()).and_then(|()| {
-            let run = self.with_controls(false, |store| store.compaction_run(actor, request))?;
+            let conversation = control_conversation(request.query())?;
+            let run = self.with_control_conversation(conversation, |store| {
+                store.compaction_run(actor, request)
+            })?;
             let records = self
                 .inner
                 .records
@@ -53,7 +268,7 @@ impl ProductRunService {
                 record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::Complete
             });
             drop(records);
-            self.with_controls(false, |store| {
+            self.with_control_conversation(conversation, |store| {
                 store.compaction_preview(actor, request, complete).map(|(_, preview)| preview)
             })
         });
@@ -65,9 +280,11 @@ impl ProductRunService {
         actor: ActorId,
         query: peritus_app_protocol::WorkbenchContextQuery,
     ) -> AppResponsePayload {
-        let result = self
-            .control_workspace(query.query())
-            .and_then(|()| self.with_controls(false, |store| store.context_page(actor, query)));
+        let result = self.control_workspace(query.query()).and_then(|()| {
+            self.with_control_conversation(control_conversation(query.query())?, |store| {
+                store.context_page(actor, query)
+            })
+        });
         result.map_or_else(error_response, AppResponsePayload::WorkbenchContext)
     }
 
@@ -76,9 +293,11 @@ impl ProductRunService {
         actor: ActorId,
         query: peritus_app_protocol::WorkbenchMemoryQuery,
     ) -> AppResponsePayload {
-        let result = self
-            .control_workspace(query.query())
-            .and_then(|()| self.with_controls(false, |store| store.guidance_page(actor, query)));
+        let result = self.control_workspace(query.query()).and_then(|()| {
+            self.with_control_authorities(workbench_authorities(query.query())?, |store| {
+                store.guidance_page(actor, query)
+            })
+        });
         result.map_or_else(error_response, AppResponsePayload::WorkbenchMemory)
     }
 
@@ -88,7 +307,7 @@ impl ProductRunService {
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
         let result = self.control_workspace(command.query()).and_then(|()| {
-            self.with_controls(false, |store| {
+            self.with_control_authorities(workbench_authorities(command.query())?, |store| {
                 let operation = domain_operation_with_store(store, actor, command)?;
                 let mutation = guidance::mutation(command.intent())?;
                 store.accept_guidance(&operation, mutation)
@@ -112,9 +331,10 @@ impl ProductRunService {
         query: WorkbenchQuery,
     ) -> AppResponsePayload {
         let result = self.control_workspace(query).and_then(|()| {
-            let id = ConversationId::new(query.conversation().into_bytes())?;
-            let record =
-                self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+            let id = control_conversation(query)?;
+            let record = self
+                .with_control_conversation(id, |store| store.load(id))?
+                .ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
                 || record.workspace_bytes() != query.workspace().as_bytes()
             {
@@ -158,7 +378,7 @@ impl ProductRunService {
         }
         let result = self.control_workspace(command.query()).and_then(|()| {
             let receipt = self
-                .with_controls(false, |store| {
+                .with_control_authorities(workbench_authorities(command.query())?, |store| {
                     let operation = domain_operation_with_store(store, actor, command)?;
                     resolve_user_operation(store, &operation)
                 })?
@@ -180,9 +400,31 @@ impl ProductRunService {
         create: bool,
         operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
     ) -> Result<T, Error> {
+        // Foreground admission waits have no request deadline, but daemon shutdown owns their
+        // cancellation so task joining cannot be held forever by transient database ownership.
+        self.with_controls_cancellable(create, &self.inner.control_shutdown, operation)
+    }
+
+    pub(super) fn with_controls_cancellable<T>(
+        &self,
+        create: bool,
+        cancellation: &peritus_journal::JournalCancellation,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        #[cfg(not(test))]
+        {
+            let _ = (create, cancellation, operation);
+            return Err(Error::Corrupt(
+                "unscoped control access must declare its complete authority set",
+            ));
+        }
+        #[cfg(test)]
+        {
+        let _permit = self.inner.controls.acquire(cancellation)?;
         let mut owner = self
             .inner
             .controls
+            .owner
             .lock()
             .map_err(|_| Error::Corrupt("control owner lock poisoned"))?;
         if owner.is_none() {
@@ -195,11 +437,43 @@ impl ProductRunService {
                 .parent()
                 .ok_or(Error::Corrupt("control parent directory missing"))?
                 .join("workbench-v1");
-            *owner = Some(ControlStore::open(&root, self.inner.control_store)?);
+            *owner = Some(ControlStore::open_cancellable(
+                &root,
+                self.inner.control_store,
+                cancellation,
+            )?);
         }
         let store = owner.as_mut().ok_or(Error::Corrupt("control owner initialization failed"))?;
-        operation(store)
+        let result = cancellation.run(|| operation(store));
+        match result {
+            Err(Error::Journal(error)) if error.is_contention() && cancellation.is_cancelled() => {
+                Err(Error::ContentionCancelled)
+            }
+            result => result,
+        }
+        }
     }
+
+    pub(super) fn with_controls_reconciling<T>(
+        &self,
+        operation: impl FnOnce(&mut ControlStore) -> Result<T, Error>,
+    ) -> Result<T, Error> {
+        // Run cancellation and shutdown admission cancellation cannot revoke already-owned
+        // checkpoint, settlement, or reply publication. Those exact identities drain here and
+        // remain recoverable from the journal if process shutdown ultimately interrupts them.
+        self.with_controls_cancellable(false, &self.inner.control_reconciliation, operation)
+    }
+}
+
+fn control_conversation(query: WorkbenchQuery) -> Result<ConversationId, Error> {
+    ConversationId::new(query.conversation().into_bytes()).map_err(Into::into)
+}
+
+fn workbench_authorities(query: WorkbenchQuery) -> Result<AuthoritySet, Error> {
+    Ok(AuthoritySet::new([
+        AuthorityKey::Conversation(control_conversation(query)?),
+        AuthorityKey::Workspace(query.workspace()),
+    ]))
 }
 
 pub(super) fn resolve_user_operation(
@@ -257,7 +531,7 @@ pub(super) fn error_value(error: Error) -> AppProtocolError {
         Error::Control(ControlError::Capacity) => AppErrorCode::LimitExceeded,
         Error::Control(ControlError::UnsupportedSchema) => AppErrorCode::UnsupportedSchema,
         Error::Control(ControlError::NotFound) => AppErrorCode::InvalidIdentifier,
-        Error::Io(_) | Error::Journal(_) => AppErrorCode::Backpressure,
+        Error::ContentionCancelled | Error::Io(_) | Error::Journal(_) => AppErrorCode::Backpressure,
         Error::PermissionDenied => AppErrorCode::ReadOnly,
         Error::Workspace(error) if std::error::Error::source(&error).is_some() => {
             AppErrorCode::Backpressure

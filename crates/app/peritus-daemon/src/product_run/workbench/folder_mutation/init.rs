@@ -25,7 +25,7 @@ impl ProductRunService {
             .and_then(|()| {
                 let id = ConversationId::new(request.query().conversation().into_bytes())?;
                 let record = self
-                    .with_controls(false, |store| store.load(id))?
+                    .with_control_conversation(id, |store| store.load(id))?
                     .ok_or(ControlError::NotFound)?;
                 if record.owner_bytes() != actor.as_bytes()
                     || record.workspace_bytes() != request.query().workspace().as_bytes()
@@ -72,8 +72,9 @@ impl ProductRunService {
         )?;
         self.control_workspace(command.query())?;
         let id = ConversationId::new(command.query().conversation().into_bytes())?;
-        let record =
-            self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+        let record = self
+            .with_control_conversation(id, |store| store.load(id))?
+            .ok_or(ControlError::NotFound)?;
         if record.owner_bytes() != actor.as_bytes()
             || record.workspace_bytes() != command.query().workspace().as_bytes()
         {
@@ -123,7 +124,8 @@ impl ProductRunService {
         };
         self.control_workspace(command.query())?;
         let fingerprint = proposal.fingerprint().map_err(|_| ControlError::InvalidInput)?;
-        if let Some(receipt) = self.with_controls(false, |store| {
+        let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
+        if let Some(receipt) = self.with_control_conversation(conversation, |store| {
             resolve_initialization(store, actor, command, fingerprint.as_bytes())
         })? {
             return Ok(receipt);
@@ -131,7 +133,7 @@ impl ProductRunService {
         let revision = RevisionNumber::new(command.expected_revision())
             .map_err(|_| ControlError::InvalidInput)?;
         let patch = self.prepare_init_patch(actor, command, Generation::first(), revision)?;
-        self.with_controls(false, |store| {
+        self.with_control_conversation(conversation, |store| {
             if let Some(receipt) =
                 resolve_initialization(store, actor, command, fingerprint.as_bytes())?
             {
@@ -175,7 +177,8 @@ impl ProductRunService {
         };
         self.control_workspace(command.query())?;
         let fingerprint = proposal.fingerprint().map_err(|_| ControlError::InvalidInput)?;
-        self.with_controls(false, |store| {
+        let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
+        self.with_control_conversation(conversation, |store| {
             resolve_initialization(store, actor, command, fingerprint.as_bytes())?
                 .ok_or_else(|| ControlError::NotFound.into())
         })

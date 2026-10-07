@@ -1,7 +1,7 @@
 //! Exact parent/checkpoint lineage validation and atomic non-running child creation.
 
 use super::{ProductRunService, error_response, receipt_projection};
-use crate::product_control::ControlStoreError;
+use crate::product_control::{AuthorityKey, AuthoritySet, ControlStoreError};
 use peritus_app_protocol::{
     AppResponsePayload, WorkbenchCommand, WorkbenchForkMode, WorkbenchForkRequest, WorkbenchIntent,
 };
@@ -22,8 +22,13 @@ impl ProductRunService {
         };
         let result = self.control_workspace(command.query()).and_then(|()| {
             self.validate_fork_workspaces(command, request)?;
-            self.with_controls(false, |store| {
-                let source_id = ConversationId::new(command.query().conversation().into_bytes())?;
+            let source_id = ConversationId::new(command.query().conversation().into_bytes())?;
+            let child_id = ConversationId::new(request.child().conversation().into_bytes())?;
+            let authorities = AuthoritySet::new([
+                AuthorityKey::Conversation(source_id),
+                AuthorityKey::Conversation(child_id),
+            ]);
+            self.with_control_authorities(authorities, |store| {
                 let operation_id = OperationId::new(command.operation().into_bytes())?;
                 if let Some(existing) = store.operation(source_id, operation_id)? {
                     if existing.actor_bytes() != actor.as_bytes() {
@@ -64,7 +69,7 @@ impl ProductRunService {
                     )?
                     .ok_or(ControlError::NotFound)?;
                 validate_checkpoint_reference(&checkpoint, request)?;
-                self.validate_fork_coverage(&source, request, &checkpoint)?;
+                self.validate_fork_coverage(store, &source, request, &checkpoint)?;
                 let historical = store
                     .load_revision(source_id, request.source_revision())?
                     .ok_or(ControlError::NotFound)?;

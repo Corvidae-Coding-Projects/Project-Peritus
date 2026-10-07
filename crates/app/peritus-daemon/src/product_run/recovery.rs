@@ -10,7 +10,7 @@ use peritus_run_settlement::{
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
 use super::{
-    ProductRunServiceError, RunRecord, persistence::persist_record, snapshot::replace_snapshot,
+    ProductRunServiceError, RunRecord, snapshot::replace_snapshot,
 };
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -20,15 +20,20 @@ pub(super) fn reconcile_restored_candidates(
     workspaces: &BTreeMap<WorkspaceId, PathBuf>,
 ) -> Result<(), DaemonError> {
     for record in records.values_mut().filter(|record| terminal_candidate(record)) {
+        if record.resume_decode_pending() {
+            // The opaque continuation root is still the sole authority for this exact checkpoint.
+            // Advancing candidate lineage would strand that retained root on its predecessor.
+            continue;
+        }
         match super::deliverable::discard::recover_completed(directory, record) {
             Ok(true) => {
-                persist_record(directory, record).map_err(persistence_error)?;
+                persist_recovery(directory, record)?;
                 continue;
             }
             Ok(false) => {}
             Err(error) => {
                 mark_unavailable(record, &error.to_string()).map_err(persistence_error)?;
-                persist_record(directory, record).map_err(persistence_error)?;
+                persist_recovery(directory, record)?;
                 continue;
             }
         }
@@ -40,20 +45,20 @@ pub(super) fn reconcile_restored_candidates(
                     super::deliverable::discard::Pending::mark_interrupted(record)
                         .map_err(persistence_error)?;
                 }
-                persist_record(directory, record).map_err(persistence_error)?;
+                persist_recovery(directory, record)?;
                 continue;
             }
             Ok(None) => {}
             Err(error) => {
                 mark_unavailable(record, &error.to_string()).map_err(persistence_error)?;
-                persist_record(directory, record).map_err(persistence_error)?;
+                persist_recovery(directory, record)?;
                 continue;
             }
         }
         let Some(root) = workspaces.get(&record.request.workspace_id()) else {
             mark_unavailable(record, "configured workspace is unavailable after restart")
                 .map_err(persistence_error)?;
-            persist_record(directory, record).map_err(persistence_error)?;
+            persist_recovery(directory, record)?;
             continue;
         };
         let current_repository = if let Ok(current) = ProductRunner::candidate_digest(root) {
@@ -61,7 +66,7 @@ pub(super) fn reconcile_restored_candidates(
         } else {
             mark_unavailable(record, "candidate workspace could not be validated after restart")
                 .map_err(persistence_error)?;
-            persist_record(directory, record).map_err(persistence_error)?;
+            persist_recovery(directory, record)?;
             continue;
         };
         let current_content = if let Ok(current) = ProductRunner::candidate_source_digest(root) {
@@ -72,17 +77,21 @@ pub(super) fn reconcile_restored_candidates(
                 "candidate source content could not be validated after restart",
             )
             .map_err(persistence_error)?;
-            persist_record(directory, record).map_err(persistence_error)?;
+            persist_recovery(directory, record)?;
             continue;
         };
         let expected = record.checkpoint.as_ref().expect("terminal candidate has checkpoint");
+        let execution_evidence_current = expected.identity().execution_digest().is_none()
+            || record.resume.as_ref().is_some_and(|resume| {
+                resume.checkpoint() == expected && resume.retains_current_gate_state()
+            });
         if current_repository != expected.identity().repository_digest()
             || current_content != expected.identity().content_digest()
-            || expected.identity().execution_digest().is_some()
+            || !execution_evidence_current
         {
             mark_stale(record, current_content, current_repository, None)
                 .map_err(persistence_error)?;
-            persist_record(directory, record).map_err(persistence_error)?;
+            persist_recovery(directory, record)?;
         } else if record.resume.is_some() {
             project_reconciled(
                 record,
@@ -92,10 +101,22 @@ pub(super) fn reconcile_restored_candidates(
                     .ok_or_else(|| persistence_error(ProductRunServiceError::InvalidState))?,
             )
             .map_err(persistence_error)?;
-            persist_record(directory, record).map_err(persistence_error)?;
+            persist_recovery(directory, record)?;
         }
     }
     Ok(())
+}
+
+fn persist_recovery(
+    directory: &std::path::Path,
+    record: &mut RunRecord,
+) -> Result<(), DaemonError> {
+    super::publication::persist_startup_record(
+        directory,
+        record,
+        peritus_codec::sha256(b"reconcile-restored-product-candidate"),
+    )
+    .map_err(persistence_error)
 }
 
 fn terminal_candidate(record: &RunRecord) -> bool {

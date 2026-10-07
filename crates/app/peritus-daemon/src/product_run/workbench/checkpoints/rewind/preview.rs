@@ -31,7 +31,7 @@ impl ProductRunService {
         self.control_workspace(request.query())?;
         let conversation = ConversationId::new(request.query().conversation().into_bytes())?;
         let checkpoint_id = CheckpointId::new(request.checkpoint().into_bytes())?;
-        let (record, checkpoint) = self.with_controls(false, |store| {
+        let (record, checkpoint) = self.with_control_conversation(conversation, |store| {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             let checkpoint = store
                 .load_checkpoint(conversation, checkpoint_id)?

@@ -227,7 +227,7 @@ impl ProductRunService {
             Err(error) if error.code() == Code::StaleRevision => return Ok(()),
             Err(error) => return Err(error),
         }
-        self.with_controls(false, |store| {
+        self.with_control_conversation(start.conversation(), |store| {
             let record = store.load(start.conversation())?.ok_or(ControlError::NotFound)?;
             let goal = record
                 .goal()

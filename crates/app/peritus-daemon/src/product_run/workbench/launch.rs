@@ -42,7 +42,7 @@ use aggregate::{
 };
 use capture::{capture_capability_for, hex, receipt, region_within};
 use evidence::{active_launch_run, capture_capability, preview_launches, resolve_workspace_path};
-use process::{PreviewTarget, app_error, launch_state, text};
+use process::{PreviewObservationFence, PreviewTarget, app_error, launch_state, text};
 
 const MAX_CAPTURE_BYTES: u64 = 16 * 1_024 * 1_024;
 
@@ -56,14 +56,44 @@ impl ProductRunService {
         maximum_chunk_bytes: usize,
         command: &WorkbenchCommand,
     ) -> AppResponsePayload {
+        let service = self.clone();
+        let authority = authority.clone();
+        let command = command.clone();
+        Self::await_blocking_future("apply durable workbench preview command", move || {
+            async move {
+                service
+                    .workbench_preview_command_owned(
+                        authority,
+                        actor,
+                        session,
+                        correlation,
+                        maximum_chunk_bytes,
+                        command,
+                    )
+                    .await
+            }
+        })
+        .await
+        .unwrap_or_else(|_| AppResponsePayload::Error(app_error(Code::Internal)))
+    }
+
+    async fn workbench_preview_command_owned(
+        &self,
+        authority: AuthorityHandle,
+        actor: ActorId,
+        session: SessionId,
+        correlation: CorrelationId,
+        maximum_chunk_bytes: usize,
+        command: WorkbenchCommand,
+    ) -> AppResponsePayload {
         let result = self
             .apply_preview_command(
-                authority,
+                &authority,
                 actor,
                 session,
                 correlation,
                 maximum_chunk_bytes,
-                command,
+                &command,
             )
             .await;
         result.map_or_else(AppResponsePayload::Error, AppResponsePayload::WorkbenchReceipt)
@@ -178,9 +208,10 @@ impl ProductRunService {
         query: WorkbenchResultQuery,
     ) -> Result<WorkbenchResultPage, AppProtocolError> {
         self.control_workspace(query.query()).map_err(error_value)?;
+        let conversation = ConversationId::new(query.query().conversation().into_bytes())
+            .map_err(|_| app_error(Code::MalformedFrame))?;
         let control_revision = self
-            .with_controls(false, |store| {
-                let conversation = ConversationId::new(query.query().conversation().into_bytes())?;
+            .with_control_conversation(conversation, |store| {
                 let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
                 if record.owner_bytes() != actor.as_bytes()
                     || record.workspace_bytes() != query.query().workspace().as_bytes()
@@ -216,27 +247,35 @@ impl ProductRunService {
         if profile.run() != self.preview_run(command)? {
             return Err(app_error(Code::MalformedFrame));
         }
+        let identity = self
+            .capture_run_identity(profile.run())
+            .map_err(aggregate::preview_service_error)?;
         let (workspace, direct) = self.verify_profile(command.query(), profile)?;
-        let (receipt, admitted) = self.admit_preview(command, profile.run(), |preview| {
-            let mut launches = preview_launches(preview);
-            launches.push(
-                WorkbenchLaunchResult::new(
-                    command.operation(),
-                    profile.clone(),
-                    None,
-                    WorkbenchLaunchState::Accepted,
-                    false,
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    0,
-                    None,
-                    None,
-                )
-                .map_err(|_| app_error(Code::MalformedFrame))?,
-            );
-            replace_page(preview, command.query(), command.expected_revision(), launches)
-        })?;
+        let (receipt, admitted) = self.admit_preview_with_identity(
+            command,
+            profile.run(),
+            &identity,
+            |preview| {
+                let mut launches = preview_launches(preview);
+                launches.push(
+                    WorkbenchLaunchResult::new(
+                        command.operation(),
+                        profile.clone(),
+                        None,
+                        WorkbenchLaunchState::Accepted,
+                        false,
+                        Vec::new(),
+                        Vec::new(),
+                        Vec::new(),
+                        0,
+                        None,
+                        None,
+                    )
+                    .map_err(|_| app_error(Code::MalformedFrame))?,
+                );
+                replace_page(preview, command.query(), command.expected_revision(), launches)
+            },
+        )?;
         if !admitted {
             return Ok(receipt);
         }
@@ -252,12 +291,35 @@ impl ProductRunService {
                         command.operation(),
                         super::super::PreviewProcess { runtime, launch: launch.clone() },
                     );
-                self.store_observation(profile.run(), command.operation(), &launch, &observation)?;
+                self.store_observation(
+                    &identity,
+                    command.operation(),
+                    PreviewObservationFence::Start { operation: command.operation() },
+                    &launch,
+                    &observation,
+                )?;
             }
             Err(_) => {
-                self.update_launch(profile.run(), command.operation(), |current| {
-                    rebuild_launch(current, None, WorkbenchLaunchState::Failed, false)
-                })?;
+                self.update_launch(
+                    &identity,
+                    command.operation(),
+                    command.operation(),
+                    |current| {
+                        if current.state() == WorkbenchLaunchState::Failed
+                            && current.process().is_none()
+                            && !current.ready()
+                        {
+                            return Ok(None);
+                        }
+                        if current.state() != WorkbenchLaunchState::Accepted
+                            || current.process().is_some()
+                            || current.ready()
+                        {
+                            return Err(app_error(Code::StaleRevision));
+                        }
+                        rebuild_launch(current, None, WorkbenchLaunchState::Failed, false).map(Some)
+                    },
+                )?;
             }
         }
         Ok(receipt)

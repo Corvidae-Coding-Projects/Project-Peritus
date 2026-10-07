@@ -7,7 +7,7 @@ use peritus_app_protocol::{
     WorkbenchQuery,
 };
 use peritus_product_runner::{
-    attachment::ValidatedFileText,
+    attachment::ValidatedFileTextSource,
     control::{ControlError, ConversationId, ConversationRecord},
 };
 use peritus_types::ActorId;
@@ -17,12 +17,14 @@ mod import;
 mod mapping;
 mod page;
 mod refresh;
-pub(super) use import::domain_import;
+pub(super) use import::{domain_file_source, domain_import};
 pub(super) use mapping::domain_file;
 
 const fn app_error(code: Code) -> AppProtocolError {
     AppProtocolError::new(code, None)
 }
+
+type PreparedFile = ValidatedFileTextSource<std::fs::File>;
 
 impl ProductRunService {
     fn file_record(
@@ -32,10 +34,9 @@ impl ProductRunService {
         revision: u64,
     ) -> Result<ConversationRecord, Error> {
         self.control_workspace(query)?;
+        let conversation = ConversationId::new(query.conversation().into_bytes())?;
         let record = self
-            .with_controls(false, |store| {
-                store.load(ConversationId::new(query.conversation().into_bytes())?)
-            })?
+            .with_control_conversation(conversation, |store| store.load(conversation))?
             .ok_or(ControlError::NotFound)?;
         if record.owner_bytes() != actor.as_bytes()
             || record.workspace_bytes() != query.workspace().as_bytes()
@@ -76,7 +77,7 @@ impl ProductRunService {
         &self,
         actor: ActorId,
         request: &WorkbenchFileRequest,
-    ) -> Result<(WorkbenchFilePreview, ValidatedFileText), AppProtocolError> {
+    ) -> Result<(WorkbenchFilePreview, PreparedFile), AppProtocolError> {
         self.require_workspace_permissions(
             actor,
             request.query(),
@@ -115,16 +116,19 @@ impl ProductRunService {
                 FileReadSelection::bytes(start, end)
             }
             peritus_app_protocol::WorkbenchFileRange::Lines { first, last } => {
-                FileReadSelection::lines(first, last)
+                FileReadSelection::lines_u64(first, last)
             }
         }
         .map_err(|_| app_error(Code::MalformedFrame))?;
+        let mut storage = tempfile::tempfile().map_err(|_| app_error(Code::Internal))?;
         let inspected = FolderInspection::open(&identity)
-            .and_then(|reader| {
-                reader.read_file(&path, selection, peritus_app_protocol::MAX_WORKBENCH_FILE_BYTES)
-            })
+            .and_then(|reader| reader.copy_selection(&path, selection, &mut storage))
             .map_err(|_| app_error(Code::InvalidIdentifier))?;
-        let text = ValidatedFileText::new(inspected.bytes().to_vec())
+        let text = ValidatedFileTextSource::new(
+            storage,
+            inspected.digest(),
+            inspected.selected_bytes(),
+        )
             .map_err(|_| app_error(Code::MalformedFrame))?;
         let metadata = WorkbenchFileMetadata::new(
             inspected.source_digest(),
@@ -179,17 +183,25 @@ impl ProductRunService {
         };
         self.control_workspace(command.query()).map_err(error_value)?;
         let operation = domain_operation(actor, command).map_err(error_value)?;
-        let prior =
-            self.with_controls(false, |store| store.resolve(&operation)).map_err(error_value)?;
+        let prior = self
+            .with_control_conversation(operation.conversation(), |store| store.resolve(&operation))
+            .map_err(error_value)?;
         let receipt = if let Some(receipt) = prior {
             receipt
         } else {
-            let (current, text) = self.prepare_file(actor, preview.request())?;
+            let (current, mut text) = self.prepare_file(actor, preview.request())?;
             if current != *preview {
                 return Err(app_error(Code::StaleRevision));
             }
             let consent = preview.canonical_bytes().map_err(|_| app_error(Code::MalformedFrame))?;
-            self.with_controls(false, |store| store.accept_file(&operation, &text, consent))
+            let prepared = self
+                .inner
+                .control_generation
+                .prepare_file_stream(&operation, &mut text, consent)
+                .map_err(error_value)?;
+            self.with_control_conversation(operation.conversation(), |store| {
+                store.accept_prepared_file(prepared)
+            })
                 .map_err(error_value)?
         };
         peritus_app_protocol::WorkbenchReceipt::new(

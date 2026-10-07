@@ -1,6 +1,7 @@
 //! Durable model selection, independent of user-input admission and task ownership.
 
 use super::{InteractionOptions, ProductRunService, ProductRunServiceError};
+use crate::product_run::publication::{MutationDisposition, RunMutationKind};
 use peritus_app_protocol::{ProductActivityKind, ProductInteractionQuery, ProductModelUpdate};
 
 impl ProductRunService {
@@ -9,51 +10,76 @@ impl ProductRunService {
         actor: peritus_types::ActorId,
         update: &ProductModelUpdate,
     ) -> Result<peritus_app_protocol::ProductInteractionSnapshot, ProductRunServiceError> {
-        let (providers, mode) = {
-            let records =
-                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-            let record = records.get(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-            let options = &record.interaction;
-            self.authorize_model_selection(actor, options)?;
-            (record.request.providers(), options.mode)
-        };
-        let mut selection = {
-            let records =
-                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-            records
-                .get(&update.run_id())
-                .ok_or(ProductRunServiceError::NotFound)?
-                .interaction
-                .clone()
-        };
-        selection.models = update.models().clone();
+        let service = self.clone();
+        let update = update.clone();
+        Self::await_blocking_future("update durable product-run models", move || async move {
+            service.update_models_owned(actor, update).await
+        })
+        .await?
+    }
+
+    async fn update_models_owned(
+        &self,
+        actor: peritus_types::ActorId,
+        update: ProductModelUpdate,
+    ) -> Result<peritus_app_protocol::ProductInteractionSnapshot, ProductRunServiceError> {
+        let run = update.run_id();
+        let identity = self.capture_run_identity(run)?;
+        self.authorize_model_selection(actor, &identity.interaction)?;
+        let providers = identity.request.providers();
+        let mode = identity.interaction.mode;
+        let requested_models = update.models().clone();
+        let mut selection = identity.interaction.clone();
+        selection.models = requested_models.clone();
         self.validate_models(providers, &selection.models).await?;
         // Resolve all adapters before mutating durable state. Discovery alone is not support.
         self.resolve_selected_providers(providers, &selection)?;
-        {
-            let mut records =
-                self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-            let record =
-                records.get_mut(&update.run_id()).ok_or(ProductRunServiceError::NotFound)?;
-            let prior = record.interaction.clone();
-            self.authorize_model_selection(actor, &prior)?;
-            if prior.mode != mode {
-                return Err(ProductRunServiceError::InvalidState);
-            }
-            if prior.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-                return Err(ProductRunServiceError::Unavailable);
-            }
-            let mut next = prior.clone();
-            next.models = update.models().clone();
-            next.append(ProductActivityKind::Status,
-                "Model selection saved for subsequent model turns; any in-flight turn is unchanged.", "")?;
-            record.interaction = next;
-            if let Err(error) = super::super::persist_record(&self.inner.directory, record) {
-                record.interaction = prior;
-                return Err(error);
-            }
+        let mut input = b"peritus-product-run-model-selection-v1\0".to_vec();
+        input.extend_from_slice(run.as_bytes());
+        input.extend_from_slice(actor.as_bytes());
+        for choice in [
+            requested_models.writer(),
+            requested_models.reviewer(),
+            requested_models.fixer(),
+        ] {
+            input.extend_from_slice(&(choice.id().len() as u64).to_be_bytes());
+            input.extend_from_slice(choice.id().as_bytes());
+            input.push(u8::from(choice.manual()));
+            input.extend_from_slice(&choice.effort().tag().to_be_bytes());
         }
-        self.query_interaction(ProductInteractionQuery::new(update.run_id()))
+        let expected_attempt = std::sync::Arc::clone(&identity.cancelled);
+        let (_, ticket) = self.mutate_run(
+            run,
+            Some(&expected_attempt),
+            RunMutationKind::ModelSelection,
+            peritus_codec::sha256(&input),
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                let prior = record.interaction.clone();
+                if record.request.workspace_id() != identity.workspace
+                    || prior.workbench != identity.start
+                    || prior.mode != mode
+                    || prior.models != identity.interaction.models
+                    || prior.workbench.actor_bytes() != actor.as_bytes()
+                {
+                    return Err(ProductRunServiceError::InvalidState);
+                }
+                if prior.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
+                    return Err(ProductRunServiceError::Unavailable);
+                }
+                let mut next = prior.clone();
+                next.models = requested_models;
+                next.append(
+                    ProductActivityKind::Status,
+                    "Model selection saved for subsequent model turns; any in-flight turn is unchanged.",
+                    "",
+                )?;
+                record.interaction = next;
+                Ok(())
+            },
+        )?;
+        self.await_run_durable(ticket)?;
+        self.query_interaction(ProductInteractionQuery::new(run))
     }
 
     fn authorize_model_selection(
@@ -62,7 +88,7 @@ impl ProductRunService {
         options: &InteractionOptions,
     ) -> Result<(), ProductRunServiceError> {
         let binding = &options.workbench;
-        self.with_controls(false, |store| {
+        self.with_control_conversation(binding.conversation(), |store| {
             let record = store
                 .load(binding.conversation())?
                 .ok_or(peritus_product_runner::control::ControlError::NotFound)?;

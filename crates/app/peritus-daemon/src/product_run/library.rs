@@ -66,7 +66,7 @@ impl ProductRunService {
         actor: ActorId,
         query: &ConversationLibraryQuery,
     ) -> Result<Vec<ConversationLibraryItem>, ControlStoreError> {
-        self.with_controls(false, |store| {
+        self.with_control_index_read(|store| {
             let mut items = Vec::new();
             for (id, activity) in store.conversation_ids()? {
                 let record = store

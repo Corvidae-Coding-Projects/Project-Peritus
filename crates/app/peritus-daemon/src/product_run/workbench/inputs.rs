@@ -8,7 +8,7 @@ use peritus_app_protocol::{
 };
 use peritus_product_runner::control::{
     ControlError, ControlText, ConversationId, InputId, InputRevision, InputSelection, InputState,
-    QueueIntent,
+    QueueIntent, RequestSource,
 };
 use peritus_types::ActorId;
 
@@ -18,10 +18,20 @@ impl ProductRunService {
         actor: ActorId,
         query: WorkbenchQueueQuery,
     ) -> AppResponsePayload {
+        self.workbench_queue_projection(actor, query, false)
+    }
+
+    pub(crate) fn workbench_queue_projection(
+        &self,
+        actor: ActorId,
+        query: WorkbenchQueueQuery,
+        request_sources: bool,
+    ) -> AppResponsePayload {
         let result = self.control_workspace(query.query()).and_then(|()| {
             let id = ConversationId::new(query.query().conversation().into_bytes())?;
-            let record =
-                self.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+            let record = self
+                .with_control_conversation(id, |store| store.load(id))?
+                .ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
                 || record.workspace_bytes() != query.query().workspace().as_bytes()
             {
@@ -45,7 +55,7 @@ impl ProductRunService {
                 .into_iter()
                 .skip(query.offset() as usize)
                 .take(MAX_WORKBENCH_INPUT_PAGE)
-                .map(project_row)
+                .map(|row| project_row(row, request_sources))
                 .collect::<Result<_, _>>()?;
             let query = WorkbenchQueueQuery::new(
                 query.query(),
@@ -88,10 +98,43 @@ pub(super) fn domain_intent(value: &WorkbenchQueueIntent) -> Result<QueueIntent,
             QueueIntent::Hold { selected: selection(*selected)?, held: *held }
         }
         WorkbenchQueueIntent::Withdraw(selected) => QueueIntent::Withdraw(selection(*selected)?),
+        WorkbenchQueueIntent::Move { selected, position } => {
+            QueueIntent::Move { selected: selection(*selected)?, position: *position }
+        }
         WorkbenchQueueIntent::Reorder(value) => QueueIntent::Reorder(ids(value)?),
+        WorkbenchQueueIntent::EnqueueSource { id, source, dependencies } => {
+            QueueIntent::EnqueueSource {
+                id: InputId::new(id.into_bytes())?,
+                source: request_source(*source)?,
+                dependencies: ids(dependencies)?,
+            }
+        }
+        WorkbenchQueueIntent::EditSource { selected, source } => QueueIntent::EditSource {
+            selected: selection(*selected)?,
+            source: request_source(*source)?,
+        },
+        WorkbenchQueueIntent::CorrectSource { original, id, source } => {
+            QueueIntent::CorrectSource {
+                original: selection(*original)?,
+                id: InputId::new(id.into_bytes())?,
+                source: request_source(*source)?,
+            }
+        }
     })
 }
-pub(super) fn project_row(value: &InputRevision) -> Result<WorkbenchInputRow, Error> {
+fn request_source(
+    value: peritus_app_protocol::WorkbenchInputSource,
+) -> Result<RequestSource, ControlError> {
+    RequestSource::new(
+        value.artifact().into_bytes(),
+        value.digest().into_bytes(),
+        value.bytes(),
+    )
+}
+pub(super) fn project_row(
+    value: &InputRevision,
+    request_sources: bool,
+) -> Result<WorkbenchInputRow, Error> {
     let id = WorkbenchInputId::new(*value.selection().id().as_bytes())
         .map_err(|_| ControlError::InvalidInput)?;
     let selected = WorkbenchInputSelection::new(id, value.selection().revision())
@@ -113,6 +156,30 @@ pub(super) fn project_row(value: &InputRevision) -> Result<WorkbenchInputRow, Er
         .map_err(|_| ControlError::InvalidInput)?;
     let dependencies =
         WorkbenchInputOrder::new(dependencies).map_err(|_| ControlError::InvalidInput)?;
-    WorkbenchInputRow::new(selected, text, state, dependencies)
-        .map_err(|_| ControlError::InvalidInput.into())
+    match value.source().filter(|_| request_sources) {
+        Some(source) => WorkbenchInputRow::new_source(
+            selected,
+            text,
+            peritus_app_protocol::WorkbenchInputSource::new(
+                peritus_types::ArtifactId::new(source.artifact_bytes())
+                    .map_err(|_| ControlError::InvalidInput)?,
+                peritus_types::Sha256Digest::new(source.digest()),
+                source.bytes(),
+            )
+            .map_err(|_| ControlError::InvalidInput)?,
+            state,
+            dependencies,
+        ),
+        None => WorkbenchInputRow::new(selected, text, state, dependencies),
+    }
+    .map_err(|_| ControlError::InvalidInput.into())
+}
+
+pub(super) const fn is_source_intent(value: &WorkbenchQueueIntent) -> bool {
+    matches!(
+        value,
+        WorkbenchQueueIntent::EnqueueSource { .. }
+            | WorkbenchQueueIntent::EditSource { .. }
+            | WorkbenchQueueIntent::CorrectSource { .. }
+    )
 }

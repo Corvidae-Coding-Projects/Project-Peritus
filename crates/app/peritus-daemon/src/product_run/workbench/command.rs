@@ -6,7 +6,9 @@ use super::{
     WorkbenchIntent, WorkbenchReceipt, domain_operation_with_store, error_response, guidance,
     receipt_projection, resolve_user_operation, review,
 };
+use crate::product_control::{AuthorityKey, AuthoritySet};
 use crate::product_run::permissions;
+use peritus_product_runner::control::ConversationId;
 
 impl ProductRunService {
     pub(crate) async fn workbench_command(
@@ -23,6 +25,43 @@ impl ProductRunService {
         command: &WorkbenchCommand,
         checkpoint_coverage: bool,
     ) -> AppResponsePayload {
+        self.workbench_command_with_checkpoint_features(actor, command, checkpoint_coverage, true)
+            .await
+    }
+
+    pub(crate) async fn workbench_command_with_checkpoint_features(
+        &self,
+        actor: ActorId,
+        command: &WorkbenchCommand,
+        checkpoint_coverage: bool,
+        checkpoint_manifests: bool,
+    ) -> AppResponsePayload {
+        let service = self.clone();
+        let command = command.clone();
+        Self::await_blocking_future("run durable workbench command", move || async move {
+            service
+                .workbench_command_with_checkpoint_features_owned(
+                    actor,
+                    command,
+                    checkpoint_coverage,
+                    checkpoint_manifests,
+                )
+                .await
+        })
+        .await
+        .unwrap_or_else(crate::product_run::ProductRunServiceError::response)
+    }
+
+    async fn workbench_command_with_checkpoint_features_owned(
+        &self,
+        actor: ActorId,
+        command: WorkbenchCommand,
+        checkpoint_coverage: bool,
+        checkpoint_manifests: bool,
+    ) -> AppResponsePayload {
+        if matches!(command.intent(), WorkbenchIntent::Queue(queue) if super::inputs::is_source_intent(queue)) {
+            return error_response(ControlError::InvalidInput.into());
+        }
         if let Err(error) = self.ensure_workspace_available(command.query().workspace()) {
             return error.response();
         }
@@ -34,10 +73,20 @@ impl ProductRunService {
         }
         match command.intent() {
             WorkbenchIntent::StartExecution(_) | WorkbenchIntent::StartGoal { .. } => {
-                return self.start_workbench(actor, command).await;
+                return self.start_workbench(actor, &command).await;
+            }
+            WorkbenchIntent::ContinueExecution(_) => {
+                return self.continue_workbench_execution(actor, &command).await;
             }
             WorkbenchIntent::CreateCheckpoint(_) => {
-                return self.create_workbench_checkpoint(actor, command, checkpoint_coverage).await;
+                return self
+                    .create_workbench_checkpoint(
+                        actor,
+                        &command,
+                        checkpoint_coverage,
+                        checkpoint_manifests,
+                    )
+                    .await;
             }
             _ => {}
         }
@@ -49,10 +98,10 @@ impl ProductRunService {
                 | WorkbenchIntent::CheckPreviewBehavior { .. }
                 | WorkbenchIntent::AddArtifactFeedback { .. }
         ) {
-            return self.workbench_preview_local_command(actor, command);
+            return self.workbench_preview_local_command(actor, &command);
         }
         if matches!(command.intent(), WorkbenchIntent::ResumeGoal { .. }) {
-            return self.resume_workbench_goal(actor, command).await;
+            return self.resume_workbench_goal(actor, &command).await;
         }
         let review = matches!(
             command.intent(),
@@ -61,11 +110,13 @@ impl ProductRunService {
                 | WorkbenchIntent::DismissReview { .. }
         );
         if review {
-            let operation = match domain_operation(actor, command) {
+            let operation = match domain_operation(actor, &command) {
                 Ok(operation) => operation,
                 Err(error) => return error_response(error),
             };
-            match self.with_controls(false, |store| store.resolve(&operation)) {
+            match self.with_control_conversation(operation.conversation(), |store| {
+                store.resolve(&operation)
+            }) {
                 Ok(Some(receipt)) => {
                     return WorkbenchReceipt::new(
                         command.operation(),
@@ -81,26 +132,35 @@ impl ProductRunService {
                 Ok(None) => {}
                 Err(error) => return error_response(error),
             }
-            if let Err(error) = review::validate_command(self, actor, command) {
+            if let Err(error) = review::validate_command(self, actor, &command) {
                 return error_response(error);
             }
         }
         if matches!(command.intent(), WorkbenchIntent::ForkConversation(_)) {
-            return self.fork_workbench(actor, command);
+            return self.fork_workbench(actor, &command);
         }
         if guidance::is_guidance(command.intent()) {
-            return self.workbench_guidance_command(actor, command);
+            return self.workbench_guidance_command(actor, &command);
         }
         let result = self.control_workspace(command.query()).and_then(|()| {
-            let create = matches!(command.intent(), WorkbenchIntent::CreateConversation(_));
+            let conversation =
+                ConversationId::new(command.query().conversation().into_bytes())?;
             let permission_host = if matches!(command.intent(), WorkbenchIntent::SetPermissions(_))
             {
                 Some(self.permission_host(command.query().workspace())?)
             } else {
                 None
             };
-            self.with_controls(create, |store| {
-                let operation = domain_operation_with_store(store, actor, command)?;
+            let authorities = if permission_host.is_some() {
+                AuthoritySet::new([
+                    AuthorityKey::Conversation(conversation),
+                    AuthorityKey::Workspace(command.query().workspace()),
+                ])
+            } else {
+                AuthoritySet::new([AuthorityKey::Conversation(conversation)])
+            };
+            self.with_control_authorities(authorities, |store| {
+                let operation = domain_operation_with_store(store, actor, &command)?;
                 if let Some(receipt) = resolve_user_operation(store, &operation)? {
                     return Ok((receipt, true));
                 }
@@ -111,7 +171,7 @@ impl ProductRunService {
                 .map(|receipt| (receipt, false))
             })
             .and_then(|(receipt, replay)| {
-                receipt_projection(command, &receipt).map(|projected| (projected, replay))
+                receipt_projection(&command, &receipt).map(|projected| (projected, replay))
             })
         });
         let fresh = result.as_ref().is_ok_and(|(_, replay)| !replay);
@@ -127,12 +187,12 @@ impl ProductRunService {
         ) && fresh
             && matches!(response, AppResponsePayload::WorkbenchReceipt(_))
         {
-            self.signal_goal_cancellation(command);
+            self.signal_goal_cancellation(&command);
         }
         if review
             && fresh
             && matches!(response, AppResponsePayload::WorkbenchReceipt(_))
-            && let Err(error) = review::resume_feedback(self, actor, command).await
+            && let Err(error) = review::resume_feedback(self, actor, &command).await
         {
             return error.response();
         }

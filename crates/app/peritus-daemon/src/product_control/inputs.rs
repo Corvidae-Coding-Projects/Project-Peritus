@@ -13,8 +13,12 @@ pub(super) mod tests;
 mod archive;
 mod files;
 mod manifest;
+mod requests;
+pub(crate) use requests::{RequestSourceBody, RequestSourceSnapshot, read_verified_text};
 pub(super) use archive::inspect::inspect_manifest;
-pub(super) use archive::{RequestArchive, validate_archive, verify_manifest};
+pub(super) use archive::{
+    RequestArchive, manifest_source_revision, validate_archive, verify_manifest,
+};
 
 /// Authenticated read-only input capture. Private fields prevent constructing a false view.
 #[derive(Clone, Debug)]
@@ -22,6 +26,8 @@ pub struct CapturedConversation {
     conversation: ConversationId,
     actor: ActorId,
     workspace: WorkspaceId,
+    source_revision: u64,
+    source_incorporated: bool,
     revision: u64,
     inputs: InputCapture,
     user_context: String,
@@ -31,14 +37,50 @@ pub struct CapturedConversation {
     image_sources: Vec<peritus_product_runner::control::ImageAttachment>,
     images: Vec<peritus_model_protocol::MediaInput>,
     file_sources: Vec<manifest::FileSource>,
-    file_context: String,
     guidance: peritus_app_protocol::WorkbenchGuidanceRender,
 }
+
+type FileReaderSlot = std::sync::Arc<
+    std::sync::Mutex<Option<peritus_artifact_store::ArtifactReadHandle>>,
+>;
+
+/// Authenticated artifact readers owned by one exact selected file scope.
+///
+/// The live conversation retains this separately from `CapturedConversation` so non-file input
+/// generations can advance without reopening unchanged immutable file versions.
+pub(crate) struct CapturedFileReaders {
+    conversation: ConversationId,
+    actor: ActorId,
+    workspace: WorkspaceId,
+    file_sources: Vec<manifest::FileSource>,
+    readers: Vec<FileReaderSlot>,
+}
+
 impl CapturedConversation {
+    /// Returns the authenticated conversation owner of this exact capture.
+    #[must_use]
+    pub(crate) const fn conversation(&self) -> ConversationId {
+        self.conversation
+    }
+    /// Returns the authenticated actor owner of this exact capture.
+    #[must_use]
+    pub(crate) const fn actor(&self) -> ActorId {
+        self.actor
+    }
+    /// Returns the authenticated workspace owner of this exact capture.
+    #[must_use]
+    pub(crate) const fn workspace(&self) -> WorkspaceId {
+        self.workspace
+    }
     /// Returns the aggregate revision governing this request candidate.
     #[must_use]
     pub const fn revision(&self) -> u64 {
         self.revision
+    }
+    /// Returns the immutable aggregate revision from which request content was selected.
+    #[must_use]
+    pub const fn source_revision(&self) -> u64 {
+        self.source_revision
     }
     /// Borrows the exact input candidate, without granting permission to execute it.
     #[must_use]
@@ -95,6 +137,65 @@ impl ControlStore {
         )
     }
 
+    /// Captures the exact historical control revision sealed by a continuation receipt while
+    /// fencing any incorporation append against the current aggregate revision.
+    pub fn capture_execution_revision(
+        &self,
+        start: &ControlOperation,
+        source_revision: u64,
+    ) -> Result<CapturedConversation, Error> {
+        let current = self.execution_record(start)?;
+        let source = self
+            .load_revision(start.conversation(), source_revision)?
+            .ok_or(ControlError::NotFound)?;
+        let expected = current.execution().ok_or(ControlError::NotFound)?;
+        let selected = source.execution().ok_or(ControlError::NotFound)?;
+        if selected.run_bytes() != expected.run_bytes()
+            || selected.start_operation() != expected.start_operation()
+            || selected.settings_digest() != expected.settings_digest()
+        {
+            return Err(ControlError::ScopeMismatch.into());
+        }
+        self.capture_record(
+            source,
+            ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?,
+            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?,
+            source_revision,
+            false,
+            current.revision(),
+        )
+    }
+
+    /// Captures the same sealed continuation source after its pending items were incorporated,
+    /// without admitting newer queued input into later requests of the same attempt.
+    pub fn capture_execution_revision_incorporated(
+        &self,
+        start: &ControlOperation,
+        source_revision: u64,
+    ) -> Result<CapturedConversation, Error> {
+        let current = self.execution_record(start)?;
+        let source = self
+            .load_revision(start.conversation(), source_revision)?
+            .ok_or(ControlError::NotFound)?;
+        let expected = current.execution().ok_or(ControlError::NotFound)?;
+        let selected = source.execution().ok_or(ControlError::NotFound)?;
+        if selected.run_bytes() != expected.run_bytes()
+            || selected.start_operation() != expected.start_operation()
+            || selected.settings_digest() != expected.settings_digest()
+        {
+            return Err(ControlError::ScopeMismatch.into());
+        }
+        let source = incorporated_source_view(source)?;
+        self.capture_record(
+            source,
+            ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?,
+            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?,
+            source_revision,
+            true,
+            current.revision(),
+        )
+    }
+
     pub(crate) fn execution_record(
         &self,
         start: &ControlOperation,
@@ -129,9 +230,50 @@ impl ControlStore {
         if captured.inputs().generation() != generation {
             return Ok(InputAdmission::Stale);
         }
+        self.prepare_execution_capture(start, captured, request)
+    }
+
+    /// Binds a provider request to the immutable source revision already owned by an accepted
+    /// continuation. Newer queued input remains pending for a later request.
+    pub fn prepare_execution_revision(
+        &mut self,
+        start: &ControlOperation,
+        source_revision: u64,
+        generation: u64,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<InputAdmission, Error> {
+        let captured = self.capture_execution_revision(start, source_revision)?;
+        if captured.inputs().generation() != generation {
+            return Err(Error::Corrupt("continuation source generation changed"));
+        }
+        self.prepare_execution_capture(start, captured, request)
+    }
+
+    /// Binds a later provider request from the same continuation attempt to the sealed
+    /// post-incorporation view, still excluding input accepted after the continuation receipt.
+    pub fn prepare_execution_revision_incorporated(
+        &mut self,
+        start: &ControlOperation,
+        source_revision: u64,
+        generation: u64,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<InputAdmission, Error> {
+        let captured = self.capture_execution_revision_incorporated(start, source_revision)?;
+        if captured.inputs().generation() != generation {
+            return Err(Error::Corrupt("continuation source generation changed"));
+        }
+        self.prepare_execution_capture(start, captured, request)
+    }
+
+    fn prepare_execution_capture(
+        &mut self,
+        start: &ControlOperation,
+        captured: CapturedConversation,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<InputAdmission, Error> {
         let mut identity = b"peritus-workbench/invocation/v1".to_vec();
         identity.extend_from_slice(start.id().as_bytes());
-        identity.extend_from_slice(&captured.revision().to_be_bytes());
+        identity.extend_from_slice(&captured.source_revision().to_be_bytes());
         identity.extend_from_slice(request.request_id().expose_for_wire().as_bytes());
         let digest = peritus_codec::sha256(&identity);
         let mut bytes = [0; 16];
@@ -148,36 +290,41 @@ impl ControlStore {
         workspace: WorkspaceId,
     ) -> Result<CapturedConversation, Error> {
         let record = self.load(conversation)?.ok_or(ControlError::NotFound)?;
+        let revision = record.revision();
+        self.capture_record(record, actor, workspace, revision, false, revision)
+    }
+
+    fn capture_record(
+        &self,
+        record: peritus_product_runner::control::ConversationRecord,
+        actor: ActorId,
+        workspace: WorkspaceId,
+        source_revision: u64,
+        source_incorporated: bool,
+        revision: u64,
+    ) -> Result<CapturedConversation, Error> {
         if record.owner_bytes() != actor.as_bytes()
             || record.workspace_bytes() != workspace.as_bytes()
         {
             return Err(ControlError::ScopeMismatch.into());
         }
-        let user_context = record.inputs().capture()?.conversation().to_owned();
-        let metadata = record
+        let user_capture = record.inputs().capture()?;
+        let user_context = inline_user_context(record.inputs(), &user_capture)?;
+        let reply_bytes = record
             .replies()
             .iter()
-            .map(|reply| (reply.after_invocation(), String::new()))
-            .collect();
-        let eligible = record.capture_with_replies(&metadata, true)?;
-        let selected: Vec<_> = record
+            .map(|reply| (reply.after_invocation(), reply.bytes()))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        let inline = record.inline_reply_sources(&reply_bytes, true)?;
+        let replies = record
             .replies()
             .iter()
-            .filter(|reply| eligible.public_replies().contains(&reply.after_invocation()))
-            .collect();
-        let bytes: u64 = selected.iter().map(|reply| reply.bytes().saturating_add(32)).sum();
-        if bytes.saturating_add(eligible.conversation().len() as u64)
-            > MAX_REQUEST_CONTEXT_BYTES as u64
-        {
-            return Err(ControlError::Capacity.into());
-        }
-        let replies = selected
-            .into_iter()
+            .filter(|reference| inline.contains(&reference.after_invocation()))
             .map(|reference| {
                 self.reply_text(reference).map(|text| (reference.after_invocation(), text))
             })
             .collect::<Result<std::collections::BTreeMap<_, _>, _>>()?;
-        let inputs = record.capture_with_replies(&replies, true)?;
+        let inputs = record.capture_with_reply_sources(&reply_bytes, &replies, true)?;
         let replies = record
             .replies()
             .iter()
@@ -193,7 +340,12 @@ impl ControlStore {
                     .revisions()
                     .iter()
                     .find(|item| item.selection() == *selection)
-                    .map(manifest::InputSource::from_revision)
+                    .map(|revision| {
+                        manifest::InputSource::from_revision(
+                            revision,
+                            inputs.out_of_line().contains(selection),
+                        )
+                    })
                     .ok_or(Error::Corrupt("captured source revision missing"))
             })
             .collect::<Result<_, _>>()?;
@@ -206,16 +358,6 @@ impl ControlStore {
             .collect();
         let image_sources: Vec<_> =
             record.eligible_images(inputs.included()).into_iter().cloned().collect();
-        if image_sources.len() > peritus_product_runner::attachment::MAX_IMAGE_COUNT
-            || image_sources
-                .iter()
-                .try_fold(0_u64, |total, image| total.checked_add(image.bytes()))
-                .is_none_or(|total| {
-                    total > peritus_product_runner::attachment::MAX_IMAGE_SELECTION_BYTES
-                })
-        {
-            return Err(ControlError::Capacity.into());
-        }
         let images =
             image_sources.iter().map(|image| self.image_media(image)).collect::<Result<_, _>>()?;
         let file_sources = record
@@ -223,21 +365,8 @@ impl ControlStore {
             .into_iter()
             .map(manifest::FileSource::selected)
             .collect::<Vec<_>>();
-        if file_sources.len() > peritus_product_runner::attachment::MAX_FILE_COUNT
-            || file_sources
-                .iter()
-                .try_fold(0_u64, |total, file| {
-                    total.checked_add(file.version.observation().bytes())
-                })
-                .is_none_or(|total| {
-                    total > peritus_product_runner::attachment::MAX_FILE_SELECTION_BYTES
-                })
-        {
-            return Err(ControlError::Capacity.into());
-        }
-        let file_context = self.file_context(&file_sources)?;
-        let inputs = inputs.with_file_context(&file_context)?;
-        let app_conversation = peritus_app_protocol::ConversationId::new(*conversation.as_bytes())
+        let app_conversation =
+            peritus_app_protocol::ConversationId::new(*record.id().as_bytes())
             .map_err(|_| ControlError::InvalidInput)?;
         let guidance = self.guidance_for_request(workspace, app_conversation)?;
         if inputs.conversation().len().saturating_add(guidance.text().len())
@@ -246,10 +375,12 @@ impl ControlStore {
             return Err(ControlError::Capacity.into());
         }
         Ok(CapturedConversation {
-            conversation,
+            conversation: record.id(),
             actor,
             workspace,
-            revision: record.revision(),
+            source_revision,
+            source_incorporated,
+            revision,
             inputs,
             user_context,
             replies,
@@ -258,7 +389,6 @@ impl ControlStore {
             image_sources,
             images,
             file_sources,
-            file_context,
             guidance,
         })
     }
@@ -300,6 +430,63 @@ impl ControlStore {
             Err(error) => Err(error),
         }
     }
+}
+
+fn inline_user_context(
+    ledger: &peritus_product_runner::control::InputLedger,
+    captured: &InputCapture,
+) -> Result<String, Error> {
+    let mut context = String::new();
+    for selection in captured.included() {
+        if captured.out_of_line().contains(selection) {
+            continue;
+        }
+        let revision = ledger
+            .revisions()
+            .iter()
+            .find(|revision| revision.selection() == *selection)
+            .ok_or(Error::Corrupt("captured authority revision missing"))?;
+        if !context.is_empty() {
+            context.push_str("\n\n");
+        }
+        context.push_str("User: ");
+        context.push_str(revision.text());
+    }
+    Ok(context)
+}
+
+pub(super) fn incorporated_source_view(
+    source: peritus_product_runner::control::ConversationRecord,
+) -> Result<peritus_product_runner::control::ConversationRecord, Error> {
+    let items = source.inputs().capture()?.pending().to_vec();
+    if items.is_empty() {
+        return Err(Error::Corrupt("continuation source has no pending input"));
+    }
+    let execution = source.execution().ok_or(ControlError::NotFound)?;
+    let mut identity = b"peritus-workbench/sealed-continuation-view/v1".to_vec();
+    identity.extend_from_slice(execution.start_operation().as_bytes());
+    identity.extend_from_slice(&source.revision().to_be_bytes());
+    let digest = peritus_codec::sha256(&identity);
+    let digest_bytes = digest.into_bytes();
+    let mut bytes = [0_u8; 16];
+    bytes.copy_from_slice(&digest_bytes[..16]);
+    bytes[0] |= 1;
+    let operation = ControlOperation::new(
+        OperationId::new(bytes)?,
+        source.id(),
+        ActorId::new(*source.owner_bytes()).map_err(|_| ControlError::InvalidInput)?,
+        WorkspaceId::new(*source.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?,
+        source.revision(),
+        ControlIntent::Queue(QueueIntent::Incorporate {
+            invocation: InvocationId::new(bytes)?,
+            request_digest: digest_bytes,
+            manifest_digest: digest_bytes,
+            items,
+        }),
+    );
+    peritus_product_runner::control::ConversationRecord::apply(Some(&source), &operation)
+        .map(|(record, _)| record)
+        .map_err(Into::into)
 }
 
 impl InputAdmission {

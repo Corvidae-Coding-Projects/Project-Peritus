@@ -17,7 +17,12 @@ impl crate::product_run::ProductRunService {
         &self,
         workspace: WorkspaceId,
     ) -> Result<(), ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        let records = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .clone();
         workspace_available(&self.inner.directory, &records, workspace)
     }
 }

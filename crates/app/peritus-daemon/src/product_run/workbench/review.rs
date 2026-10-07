@@ -3,9 +3,10 @@
 use std::path::PathBuf;
 
 use super::{Error, ProductRunService, error_response};
+use crate::product_control::{AuthorityKey, AuthoritySet};
 use crate::product_run::{
-    ProductRunServiceError, RunProgress, initial_snapshot, persist_record, replace_snapshot,
-    workspace_has_active_run,
+    MutationDisposition, PreparedRunLaunch, ProductRunServiceError, RunMutationKind, RunProgress,
+    initial_snapshot, replace_snapshot, workspace_has_active_run,
 };
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, WorkbenchCommand, WorkbenchDiffFile, WorkbenchInputId,
@@ -119,80 +120,151 @@ pub(super) async fn resume_feedback(
             return Ok(());
         }
     };
-    let launch = {
-        let mut records =
-            service.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let workspace =
-            records.get(&run).ok_or(ProductRunServiceError::NotFound)?.request.workspace_id();
+    service.ensure_run_admission()?;
+    if service.run_owner_active(run)? {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    let identity = service.capture_run_identity(run)?;
+    let workspace = identity.workspace;
+    let (record_view, records_view) = {
+        let records = service
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
+        let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
+        if !identity.matches(record) {
+            return Err(ProductRunServiceError::InvalidState);
+        }
         if workspace_has_active_run(&records, workspace, Some(run)) {
             return Err(ProductRunServiceError::InvalidState);
         }
-        crate::product_run::deliverable::discard::workspace_available(
-            &service.inner.directory,
-            &records,
-            workspace,
-        )?;
-        let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if !super::super::operation::may_start_execution(&service.inner.directory, record)? {
+        (record.clone(), records.clone())
+    };
+    crate::product_run::deliverable::discard::workspace_available(
+        &service.inner.directory,
+        &records_view,
+        workspace,
+    )?;
+    if !super::super::operation::may_start_execution(&service.inner.directory, &record_view)? {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    let mut options = identity.interaction.clone();
+    let providers = service.resolve_selected_providers(identity.request.providers(), &options)?;
+    let root = service
+        .inner
+        .workspaces
+        .get(&workspace)
+        .cloned()
+        .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
+    options.mode = mode;
+    options.append(
+        peritus_app_protocol::ProductActivityKind::User,
+        &activity,
+        match feedback {
+            WorkbenchReviewFeedback::Explain => {
+                "Anchored explanation admitted with read-only review authority"
+            }
+            WorkbenchReviewFeedback::RequestRevision => {
+                "Anchored revision admitted through the ordinary qualified pipeline"
+            }
+            _ => panic!("non-running feedback returned above"),
+        },
+    )?;
+    let mut queued_snapshot = initial_snapshot(&identity.request)?;
+    queued_snapshot = replace_snapshot(
+        &queued_snapshot,
+        peritus_app_protocol::ProductRunPhase::Queued,
+        match feedback {
+            WorkbenchReviewFeedback::Explain => {
+                "Anchored explanation queued for read-only review"
+            }
+            WorkbenchReviewFeedback::RequestRevision => {
+                "Anchored revision queued for the writer"
+            }
+            _ => panic!("non-running feedback returned above"),
+        },
+        "",
+    )?;
+    let mut progress = RunProgress::default();
+    progress.catalog_sequence = identity.progress.catalog_sequence;
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let control_cancellation = peritus_journal::JournalCancellation::new();
+    let token = CancellationToken::new();
+    let expected_attempt = Arc::clone(&identity.cancelled);
+    let mut input = b"peritus-review-feedback-admission-v1\0".to_vec();
+    input.extend_from_slice(command.operation().as_bytes());
+    input.extend_from_slice(run.as_bytes());
+    let input_digest = peritus_codec::sha256(&input);
+    let authorities = AuthoritySet::new([
+        AuthorityKey::Run(run),
+        AuthorityKey::Workspace(workspace),
+    ]);
+    let (launch, ticket) = service.with_run_authorities(authorities, || {
+        service.ensure_run_admission()?;
+        if service.run_owner_active(run)? {
             return Err(ProductRunServiceError::InvalidState);
         }
-        let mut options = record.interaction.clone();
-        let providers = service.resolve_selected_providers(record.request.providers(), &options)?;
-        let root = service
-            .inner
-            .workspaces
-            .get(&workspace)
-            .cloned()
-            .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
-        options.mode = mode;
-        options.append(
-            peritus_app_protocol::ProductActivityKind::User,
-            &activity,
-            match feedback {
-                WorkbenchReviewFeedback::Explain => {
-                    "Anchored explanation admitted with read-only review authority"
+        {
+            let records = service
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?;
+            let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
+            if !identity.matches(record)
+                || workspace_has_active_run(&records, workspace, Some(run))
+            {
+                return Err(ProductRunServiceError::InvalidState);
+            }
+        }
+        service.mutate_run(
+            run,
+            Some(&expected_attempt),
+            RunMutationKind::ReviewFeedbackAdmission,
+            input_digest,
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                if !identity.matches(record) {
+                    return Err(ProductRunServiceError::InvalidState);
                 }
-                WorkbenchReviewFeedback::RequestRevision => {
-                    "Anchored revision admitted through the ordinary qualified pipeline"
-                }
-                _ => panic!("non-running feedback returned above"),
+                record.cancelled = Arc::clone(&cancelled);
+                record.control_cancellation = control_cancellation.clone();
+                record.provider_cancellation = token.clone();
+                record.interaction = options;
+                record.snapshot = queued_snapshot;
+                record.progress = progress;
+                record.settlement = None;
+                record.interruption_cause.clear();
+                let owner = service.register_run_cancellation(
+                    run,
+                    &cancelled,
+                    &control_cancellation,
+                    &token,
+                    &record.interaction.workbench,
+                    None,
+                )?;
+                Ok(PreparedRunLaunch {
+                    request: record.request.clone(),
+                    workspace_root: root,
+                    providers,
+                    cancelled,
+                    provider_cancellation: token,
+                    finding_state: record.finding_state.clone(),
+                    resume: record.resume.clone(),
+                    snapshot: record.snapshot.clone(),
+                    owner,
+                })
             },
-        )?;
-        let cancelled = Arc::new(AtomicBool::new(false));
-        let token = CancellationToken::new();
-        record.cancelled = Arc::clone(&cancelled);
-        record.provider_cancellation = token.clone();
-        record.interaction = options;
-        record.snapshot = initial_snapshot(&record.request)?;
-        record.snapshot = replace_snapshot(
-            &record.snapshot,
-            peritus_app_protocol::ProductRunPhase::Queued,
-            match feedback {
-                WorkbenchReviewFeedback::Explain => {
-                    "Anchored explanation queued for read-only review"
-                }
-                WorkbenchReviewFeedback::RequestRevision => {
-                    "Anchored revision queued for the writer"
-                }
-                _ => panic!("non-running feedback returned above"),
-            },
-            "",
-        )?;
-        record.progress = RunProgress::default();
-        record.settlement = None;
-        record.interruption_cause.clear();
-        persist_record(&service.inner.directory, record)?;
-        (
-            record.request.clone(),
-            root,
-            providers,
-            cancelled,
-            token,
-            record.finding_state.clone(),
-            record.resume.clone(),
         )
-    };
-    service.spawn(launch.0, launch.1, launch.2, launch.3, launch.4, launch.5, launch.6).await;
+    })?;
+    if let Err(error) = service.await_run_durable(ticket) {
+        return match service.discard_prepared_run(launch) {
+            Ok(()) => Err(error),
+            Err(discard) => Err(discard),
+        };
+    }
+    service.launch_prepared(launch).await?;
     Ok(())
 }
 
@@ -241,8 +313,9 @@ fn load_control(
 ) -> Result<ConversationRecord, Error> {
     service.control_workspace(query)?;
     let id = ConversationId::new(query.conversation().into_bytes())?;
-    let record =
-        service.with_controls(false, |store| store.load(id))?.ok_or(ControlError::NotFound)?;
+    let record = service
+        .with_control_conversation(id, |store| store.load(id))?
+        .ok_or(ControlError::NotFound)?;
     if record.owner_bytes() != actor.as_bytes()
         || record.workspace_bytes() != query.workspace().as_bytes()
     {
@@ -263,9 +336,11 @@ fn current_targets(
     control: &ConversationRecord,
     run: RunId,
 ) -> Result<CurrentReview, Error> {
-    let records =
-        service.inner.records.read().map_err(|_| Error::Corrupt("run owner lock poisoned"))?;
-    let record = records.get(&run).ok_or(ControlError::NotFound)?;
+    let record = {
+        let records =
+            service.inner.records.read().map_err(|_| Error::Corrupt("run owner lock poisoned"))?;
+        records.get(&run).cloned().ok_or(ControlError::NotFound)?
+    };
     let start = &record.interaction.workbench;
     if start.conversation() != control.id()
         || start.workspace_bytes() != control.workspace_bytes()
@@ -274,7 +349,7 @@ fn current_targets(
     {
         return Err(ControlError::ScopeMismatch.into());
     }
-    if !super::super::operation::may_start_execution(&service.inner.directory, record)
+    if !super::super::operation::may_start_execution(&service.inner.directory, &record)
         .map_err(|_| Error::Corrupt("operation projection unavailable"))?
     {
         return Err(ControlError::InvalidInput.into());

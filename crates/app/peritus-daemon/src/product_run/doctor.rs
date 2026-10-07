@@ -37,8 +37,15 @@ impl ProductRunService {
         findings.push(finding("provider-authentication", Status::Unsupported,
             "No credential value was read or displayed, and no authentication or network probe was run.",
             "Use the provider's explicit authentication flow if a request reports an authentication failure.")?);
-        let records =
-            self.inner.records.try_read().map_err(|_| ProductRunServiceError::Unavailable)?;
+        let records = self
+            .inner
+            .records
+            .try_read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .values()
+            .filter(|record| record.request.workspace_id() == query.workspace())
+            .cloned()
+            .collect::<Vec<_>>();
         findings.push(finding(
             "loaded-product-state",
             Status::Healthy,
@@ -46,8 +53,7 @@ impl ProductRunService {
             "This is not a full on-disk integrity scan or a repair.",
         )?);
         let (live, unresolved) = records
-            .values()
-            .filter(|record| record.request.workspace_id() == query.workspace())
+            .iter()
             .try_fold((false, false), |(live, unresolved), record| {
                 let state = super::operation::project(&self.inner.directory, record)?.state();
                 Ok::<_, ProductRunServiceError>((

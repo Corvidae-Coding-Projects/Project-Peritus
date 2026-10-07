@@ -5,16 +5,18 @@ use std::{
     io::Write as _,
     path::{Path, PathBuf},
     process::Command,
+    sync::Arc,
 };
 
 use peritus_app_protocol::{ProductDeliverable, ProductRunControlAction, ProductRunSnapshot};
 use peritus_product_runner::ProductRunner;
 use peritus_run_settlement::CandidateStage;
-use peritus_types::RunId;
+use peritus_types::{RunId, Sha256Digest};
 
-use super::persistence::persist_record;
 use super::snapshot::replace_snapshot;
-use super::{ProductRunService, ProductRunServiceError};
+use super::{
+    MutationDisposition, ProductRunService, ProductRunServiceError, RunMutationKind, RunRecord,
+};
 
 pub(in crate::product_run) mod commit;
 pub(super) mod discard;
@@ -27,48 +29,99 @@ impl ProductRunService {
         run_id: RunId,
         action: ProductRunControlAction,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
-        let mut records =
-            self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
-        if !record.snapshot.phase().terminal() {
+        let authorities = self.retained_effect_authorities(run_id)?;
+        self.with_run_authorities(authorities, || {
+            self.control_deliverable_owned(run_id, action)
+        })
+    }
+
+    fn control_deliverable_owned(
+        &self,
+        run_id: RunId,
+        action: ProductRunControlAction,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let (mut records_view, mut prepared) = {
+            let records =
+                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+            let record = records.get(&run_id).ok_or(ProductRunServiceError::NotFound)?.clone();
+            (records.clone(), record)
+        };
+        if !prepared.snapshot.phase().terminal() {
             return Err(ProductRunServiceError::InvalidState);
         }
         let saved_export = action == ProductRunControlAction::Export
-            && record.snapshot.deliverable().is_some_and(export_available);
+            && prepared.snapshot.deliverable().is_some_and(export_available);
         // Returning an existing immutable export does not depend on mutable-workspace recovery.
-        if !saved_export && discard::recover_completed(&self.inner.directory, record)? {
-            persist_record(&self.inner.directory, record)?;
+        if !saved_export && discard::recover_completed(&self.inner.directory, &mut prepared)? {
+            let attempt = Arc::clone(&prepared.cancelled);
+            let revision = prepared.record_revision;
+            self.publish_deliverable_projection(
+                run_id,
+                &attempt,
+                revision,
+                RunMutationKind::Recovery,
+                deliverable_input(action, b"recover-completed-discard"),
+                prepared,
+            )?;
+            (records_view, prepared) = {
+                let records = self
+                    .inner
+                    .records
+                    .read()
+                    .map_err(|_| ProductRunServiceError::Unavailable)?;
+                let record =
+                    records.get(&run_id).ok_or(ProductRunServiceError::NotFound)?.clone();
+                (records.clone(), record)
+            };
         }
         let mut deliverable =
-            record.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)?;
-        let pending = discard::Pending::read(&self.inner.directory, record)?;
+            prepared.snapshot.deliverable().cloned().ok_or(ProductRunServiceError::InvalidState)?;
+        let pending = discard::Pending::read(&self.inner.directory, &prepared)?;
         if pending.is_some() && action != ProductRunControlAction::Discard && !saved_export {
             return Err(ProductRunServiceError::InvalidState);
         }
-        if let Some(snapshot) = repeated_action(record, action, &deliverable) {
+        if repeated_action(&prepared, action, &deliverable).is_some() {
             // An earlier attempt may have completed its effects but failed to save
             // the result. A retry must make that result durable before acknowledging it.
-            persist_record(&self.inner.directory, record)?;
+            let attempt = Arc::clone(&prepared.cancelled);
+            let revision = prepared.record_revision;
+            let snapshot = prepared.snapshot.clone();
+            let (_, ticket) = self.mutate_run(
+                run_id,
+                Some(&attempt),
+                RunMutationKind::DeliverableEffect,
+                deliverable_input(action, b"repeat"),
+                MutationDisposition::DurabilityRequired,
+                move |record| {
+                    if record.record_revision != revision
+                        || repeated_action(record, action, &deliverable).is_none()
+                    {
+                        return Err(ProductRunServiceError::InvalidState);
+                    }
+                    Ok(())
+                },
+            )?;
+            self.await_run_durable(ticket)?;
             return Ok(snapshot);
         }
-        let workspace_id = record.request.workspace_id();
+        let workspace_id = prepared.request.workspace_id();
         if pending.is_none() {
-            discard::workspace_available(&self.inner.directory, &records, workspace_id)?;
+            discard::workspace_available(&self.inner.directory, &records_view, workspace_id)?;
         }
-        let record = records.get_mut(&run_id).ok_or(ProductRunServiceError::NotFound)?;
         let workspace = self
             .inner
             .workspaces
-            .get(&record.request.workspace_id())
+            .get(&prepared.request.workspace_id())
+            .cloned()
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
-        if pending.is_some() && Path::new(deliverable.workspace_path()) != workspace {
+        if pending.is_some() && Path::new(deliverable.workspace_path()) != workspace.as_path() {
             return Err(ProductRunServiceError::InvalidState);
         }
         if action == ProductRunControlAction::Commit {
             deliverable =
-                commit::validate_retry(&self.inner.directory, record, &deliverable, workspace)?;
+                commit::validate_retry(&self.inner.directory, &mut prepared, &deliverable, &workspace)?;
         } else if pending.is_none() {
-            validate_exact_candidate(record, &deliverable, workspace)?;
+            validate_exact_candidate(&prepared, &deliverable, &workspace)?;
         }
         let (deliverable, status) = match action {
             ProductRunControlAction::Accept => {
@@ -80,14 +133,76 @@ impl ProductRunService {
                 (deliverable.mark_accepted(), status.to_owned())
             }
             ProductRunControlAction::Commit => {
-                commit::with_recovery(&self.inner.directory, record, deliverable)?
+                let (staged, staging_status) =
+                    commit::prepare_recovery(&self.inner.directory, &prepared, deliverable)?;
+                prepared.snapshot = replace_snapshot(
+                    &prepared.snapshot,
+                    prepared.snapshot.phase(),
+                    &staging_status,
+                    prepared.snapshot.summary(),
+                )?
+                .with_deliverable(staged.clone());
+                let attempt = Arc::clone(&prepared.cancelled);
+                let revision = prepared.record_revision;
+                self.publish_deliverable_projection(
+                    run_id,
+                    &attempt,
+                    revision,
+                    RunMutationKind::DeliverableReservation,
+                    deliverable_input(action, b"commit-reservation"),
+                    prepared,
+                )?;
+                prepared = {
+                    let records = self
+                        .inner
+                        .records
+                        .read()
+                        .map_err(|_| ProductRunServiceError::Unavailable)?;
+                    records.get(&run_id).ok_or(ProductRunServiceError::NotFound)?.clone()
+                };
+                let staged = prepared
+                    .snapshot
+                    .deliverable()
+                    .cloned()
+                    .ok_or(ProductRunServiceError::InvalidState)?;
+                match commit::commit_prepared(&self.inner.directory, &mut prepared, staged) {
+                    Ok(committed) => committed,
+                    Err(error) => {
+                        let detail = error.to_string();
+                        let detail = &detail[..detail.floor_char_boundary(detail.len().min(8192))];
+                        let display = prepared
+                            .snapshot
+                            .deliverable()
+                            .map(ProductDeliverable::export_path)
+                            .unwrap_or_default();
+                        prepared.snapshot = replace_snapshot(
+                            &prepared.snapshot,
+                            prepared.snapshot.phase(),
+                            &format!(
+                                "Commit did not complete: {detail}. Source patch saved to {display}"
+                            ),
+                            prepared.snapshot.summary(),
+                        )?;
+                        let attempt = Arc::clone(&prepared.cancelled);
+                        let revision = prepared.record_revision;
+                        self.publish_deliverable_projection(
+                            run_id,
+                            &attempt,
+                            revision,
+                            RunMutationKind::DeliverableEffect,
+                            deliverable_input(action, b"commit-failed"),
+                            prepared,
+                        )?;
+                        return Err(error);
+                    }
+                }
             }
             ProductRunControlAction::Export => {
                 let path = export_deliverable(
                     &self.inner.directory,
                     run_id,
                     &deliverable,
-                    record.task_baseline.as_deref(),
+                    prepared.task_baseline.as_deref(),
                 )?;
                 let display = path.to_string_lossy().into_owned();
                 (
@@ -101,28 +216,67 @@ impl ProductRunService {
                 if !deliverable.commit_revision().is_empty() {
                     return Err(ProductRunServiceError::InvalidState);
                 }
-                let completion =
-                    discard::Reservation::prepare(&self.inner.directory, record, &deliverable)?;
-                let pending = match pending {
-                    Some(pending) => Some(pending),
-                    None => discard::Pending::prepare(&self.inner.directory, record, workspace)?,
+                drop(discard::Reservation::prepare(
+                    &self.inner.directory,
+                    &prepared,
+                    &deliverable,
+                )?);
+                if pending.is_none() {
+                    let _ = discard::Pending::prepare(
+                        &self.inner.directory,
+                        &prepared,
+                        &workspace,
+                    )?;
+                }
+                let attempt = Arc::clone(&prepared.cancelled);
+                let revision = prepared.record_revision;
+                self.publish_deliverable_projection(
+                    run_id,
+                    &attempt,
+                    revision,
+                    RunMutationKind::DeliverableReservation,
+                    deliverable_input(action, b"discard-reservation"),
+                    prepared,
+                )?;
+                prepared = {
+                    let records = self
+                        .inner
+                        .records
+                        .read()
+                        .map_err(|_| ProductRunServiceError::Unavailable)?;
+                    records.get(&run_id).ok_or(ProductRunServiceError::NotFound)?.clone()
                 };
+                let completion = discard::Reservation::prepare(
+                    &self.inner.directory,
+                    &prepared,
+                    &deliverable,
+                )?;
+                let pending = discard::Pending::read(&self.inner.directory, &prepared)?;
                 let recovered = if let Some(pending) = pending {
-                    match pending.execute(&self.inner.directory, record) {
+                    match pending.execute(&self.inner.directory, &prepared) {
                         Ok(paths) => paths,
                         Err(error) => {
-                            discard::Pending::mark_interrupted(record)?;
-                            persist_record(&self.inner.directory, record)?;
+                            discard::Pending::mark_interrupted(&mut prepared)?;
+                            let attempt = Arc::clone(&prepared.cancelled);
+                            let revision = prepared.record_revision;
+                            self.publish_deliverable_projection(
+                                run_id,
+                                &attempt,
+                                revision,
+                                RunMutationKind::DeliverableEffect,
+                                deliverable_input(action, b"discard-interrupted"),
+                                prepared,
+                            )?;
                             return Err(error);
                         }
                     }
                 } else {
-                    let baseline = record
+                    let baseline = prepared
                         .task_baseline
                         .as_deref()
                         .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
                     ProductRunner::discard_from_baseline(
-                        workspace,
+                        &workspace,
                         baseline,
                         deliverable.changed_paths(),
                     )
@@ -144,19 +298,110 @@ impl ProductRunService {
             }
         };
         let snapshot = replace_snapshot(
-            &record.snapshot,
-            record.snapshot.phase(),
+            &prepared.snapshot,
+            prepared.snapshot.phase(),
             &status,
-            record.snapshot.summary(),
+            prepared.snapshot.summary(),
         )?
         .with_deliverable(deliverable);
-        record.snapshot = snapshot;
+        prepared.snapshot = snapshot;
         if action == ProductRunControlAction::Discard {
-            discard::Pending::clear_interruption(record);
+            discard::Pending::clear_interruption(&mut prepared);
         }
-        persist_record(&self.inner.directory, record)?;
-        Ok(record.snapshot.clone())
+        let attempt = Arc::clone(&prepared.cancelled);
+        let revision = prepared.record_revision;
+        self.publish_deliverable_projection(
+            run_id,
+            &attempt,
+            revision,
+            RunMutationKind::DeliverableEffect,
+            deliverable_input(action, b"complete"),
+            prepared,
+        )
     }
+
+    fn publish_deliverable_projection(
+        &self,
+        run: RunId,
+        attempt: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+        expected_revision: u64,
+        kind: RunMutationKind,
+        input: Sha256Digest,
+        prepared: RunRecord,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        let (snapshot, ticket) = self.mutate_run(
+            run,
+            Some(attempt),
+            kind,
+            input,
+            MutationDisposition::DurabilityRequired,
+            move |record| {
+                if record.record_revision < expected_revision {
+                    return Err(ProductRunServiceError::InvalidState);
+                }
+                apply_prepared_projection(record, prepared, expected_revision)?;
+                Ok(record.snapshot.clone())
+            },
+        )?;
+        self.await_run_durable(ticket)?;
+        Ok(snapshot)
+    }
+}
+
+fn apply_prepared_projection(
+    record: &mut RunRecord,
+    prepared: RunRecord,
+    expected_revision: u64,
+) -> Result<(), ProductRunServiceError> {
+    if record.attempt_sequence != prepared.attempt_sequence
+        || record.handoff_sequence != prepared.handoff_sequence
+        || record.request.run_id() != prepared.request.run_id()
+        || record.request.workspace_id() != prepared.request.workspace_id()
+        || record.interaction.workbench != prepared.interaction.workbench
+    {
+        return Err(ProductRunServiceError::InvalidState);
+    }
+    let retained_boundary = (record.record_revision > expected_revision
+        && matches!(
+            record.snapshot.phase(),
+            peritus_app_protocol::ProductRunPhase::Cancelled
+                | peritus_app_protocol::ProductRunPhase::RecoveryRequired
+        ))
+        .then(|| {
+            (
+                record.snapshot.phase(),
+                record.snapshot.status().to_owned(),
+                record.snapshot.summary().to_owned(),
+            )
+        });
+    record.snapshot = prepared.snapshot;
+    record.checkpoint = prepared.checkpoint;
+    record.settlement = prepared.settlement;
+    record.resume = prepared.resume;
+    record.candidate_actionable = prepared.candidate_actionable;
+    record.interruption_cause = prepared.interruption_cause;
+    record.remaining_work = prepared.remaining_work;
+    if let Some((phase, status, summary)) = retained_boundary {
+        record.snapshot = replace_snapshot(&record.snapshot, phase, &status, &summary)?;
+    }
+    Ok(())
+}
+
+fn deliverable_input(action: ProductRunControlAction, stage: &[u8]) -> Sha256Digest {
+    let action = match action {
+        ProductRunControlAction::Accept => b"accept".as_slice(),
+        ProductRunControlAction::Commit => b"commit".as_slice(),
+        ProductRunControlAction::Export => b"export".as_slice(),
+        ProductRunControlAction::Discard => b"discard".as_slice(),
+        ProductRunControlAction::Cancel => b"cancel".as_slice(),
+        ProductRunControlAction::Retry => b"retry".as_slice(),
+        ProductRunControlAction::Acknowledge => b"acknowledge".as_slice(),
+    };
+    let mut input = Vec::with_capacity(action.len() + stage.len() + 1);
+    input.extend_from_slice(action);
+    input.push(0);
+    input.extend_from_slice(stage);
+    peritus_codec::sha256(&input)
 }
 
 fn discard_status(recovered: &[PathBuf]) -> String {

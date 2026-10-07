@@ -1,6 +1,10 @@
 //! Durable preview aggregate admission and immutable result rebuilding.
 
 use super::*;
+use crate::product_run::{
+    ProductRunServiceError,
+    publication::{MutationDisposition, RunIdentitySnapshot, RunMutationKind},
+};
 
 impl ProductRunService {
     pub(in crate::product_run::workbench) fn resolve_preview_receipt(
@@ -34,53 +38,135 @@ impl ProductRunService {
         run: RunId,
         mutate: impl FnOnce(&mut super::super::super::PreviewAggregate) -> Result<(), AppProtocolError>,
     ) -> Result<(WorkbenchReceipt, bool), AppProtocolError> {
+        let identity = self.capture_run_identity(run).map_err(preview_service_error)?;
+        self.admit_preview_with_identity(command, run, &identity, mutate)
+    }
+
+    pub(super) fn admit_preview_with_identity(
+        &self,
+        command: &WorkbenchCommand,
+        run: RunId,
+        identity: &RunIdentitySnapshot,
+        mutate: impl FnOnce(&mut super::super::super::PreviewAggregate) -> Result<(), AppProtocolError>,
+    ) -> Result<(WorkbenchReceipt, bool), AppProtocolError> {
         let fingerprint = command.fingerprint().map_err(|_| app_error(Code::MalformedFrame))?;
-        let mut records = self.inner.records.write().map_err(|_| app_error(Code::Backpressure))?;
-        let record = records.get_mut(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-        if let Some(prior) = record.preview.operations.get(&command.operation()) {
-            if prior.fingerprint != fingerprint {
-                return Err(app_error(Code::IdempotencyConflict));
-            }
-            return receipt(command, prior.accepted_revision, fingerprint)
-                .map(|value| (value, false));
+        if identity.run != run {
+            return Err(app_error(Code::InvalidIdentifier));
         }
-        let previous = record.preview.clone();
-        mutate(&mut record.preview)?;
-        record.preview.operations.insert(
-            command.operation(),
-            super::super::super::PreviewOperationRecord {
-                fingerprint,
-                accepted_revision: command.expected_revision(),
-                result_sequence: record
-                    .preview
-                    .page
-                    .as_ref()
-                    .map_or(0, WorkbenchResultPage::result_revision),
-                completed_sequence: 0,
-            },
-        );
-        if super::super::super::persist_record(&self.inner.directory, record).is_err() {
-            record.preview = previous;
-            return Err(app_error(Code::Backpressure));
-        }
-        receipt(command, command.expected_revision(), fingerprint).map(|value| (value, true))
+        let mut input = b"peritus-product-run-preview-admission-v1\0".to_vec();
+        input.extend_from_slice(run.as_bytes());
+        input.extend_from_slice(command.operation().as_bytes());
+        input.extend_from_slice(fingerprint.as_bytes());
+        input.extend_from_slice(&command.expected_revision().to_be_bytes());
+        let ((accepted_revision, admitted), ticket) = self
+            .mutate_run(
+                run,
+                Some(&identity.cancelled),
+                RunMutationKind::PreviewAdmission,
+                peritus_codec::sha256(&input),
+                MutationDisposition::DurabilityRequired,
+                move |record| {
+                    if record.request.workspace_id() != identity.workspace
+                        || record.interaction.workbench != identity.start
+                    {
+                        return Err(ProductRunServiceError::InvalidState);
+                    }
+                    if let Some(prior) = record.preview.operations.get(&command.operation()) {
+                        if prior.fingerprint != fingerprint {
+                            return Err(ProductRunServiceError::InvalidState);
+                        }
+                        return Ok((prior.accepted_revision, false));
+                    }
+                    mutate(&mut record.preview).map_err(preview_mutation_error)?;
+                    record.preview.operations.insert(
+                        command.operation(),
+                        super::super::super::PreviewOperationRecord {
+                            fingerprint,
+                            accepted_revision: command.expected_revision(),
+                            result_sequence: record
+                                .preview
+                                .page
+                                .as_ref()
+                                .map_or(0, WorkbenchResultPage::result_revision),
+                            completed_sequence: 0,
+                        },
+                    );
+                    Ok((command.expected_revision(), true))
+                },
+            )
+            .map_err(preview_service_error)?;
+        self.await_run_durable(ticket).map_err(preview_service_error)?;
+        receipt(command, accepted_revision, fingerprint).map(|value| (value, admitted))
     }
 
     pub(super) fn update_launch(
         &self,
-        run: RunId,
+        identity: &RunIdentitySnapshot,
+        operation: ControlOperationId,
         launch: ControlOperationId,
-        update: impl FnOnce(&WorkbenchLaunchResult) -> Result<WorkbenchLaunchResult, AppProtocolError>,
+        update: impl FnOnce(
+            &WorkbenchLaunchResult,
+        ) -> Result<Option<WorkbenchLaunchResult>, AppProtocolError>,
     ) -> Result<(), AppProtocolError> {
-        let mut records = self.inner.records.write().map_err(|_| app_error(Code::Backpressure))?;
-        let record = records.get_mut(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-        let previous = record.preview.clone();
-        mutate_launch(&mut record.preview, launch, update)?;
-        if super::super::super::persist_record(&self.inner.directory, record).is_err() {
-            record.preview = previous;
-            return Err(app_error(Code::Backpressure));
+        let run = identity.run;
+        let mut input = b"peritus-product-run-preview-launch-update-v1\0".to_vec();
+        input.extend_from_slice(run.as_bytes());
+        input.extend_from_slice(operation.as_bytes());
+        input.extend_from_slice(launch.as_bytes());
+        let (_, ticket) = self
+            .mutate_run(
+                run,
+                Some(&identity.cancelled),
+                RunMutationKind::PreviewObservation,
+                peritus_codec::sha256(&input),
+                MutationDisposition::DurabilityRequired,
+                move |record| {
+                    if record.request.workspace_id() != identity.workspace
+                        || record.interaction.workbench != identity.start
+                        || !record.preview.operations.contains_key(&operation)
+                    {
+                        return Err(ProductRunServiceError::InvalidState);
+                    }
+                    let current = require_launch(&record.preview, launch)
+                        .map_err(preview_mutation_error)?;
+                    let Some(updated) = update(current).map_err(preview_mutation_error)? else {
+                        return Ok(());
+                    };
+                    mutate_launch(&mut record.preview, launch, |_| Ok(updated))
+                        .map_err(preview_mutation_error)
+                },
+            )
+            .map_err(preview_service_error)?;
+        self.await_run_durable(ticket).map_err(preview_service_error)
+    }
+}
+
+pub(super) fn preview_mutation_error(error: AppProtocolError) -> ProductRunServiceError {
+    match error.code() {
+        Code::InvalidIdentifier => ProductRunServiceError::NotFound,
+        Code::IdempotencyConflict | Code::StaleRevision => ProductRunServiceError::InvalidState,
+        Code::MalformedFrame => ProductRunServiceError::InvalidMessage,
+        _ => ProductRunServiceError::Unavailable,
+    }
+}
+
+pub(super) fn preview_service_error(error: ProductRunServiceError) -> AppProtocolError {
+    match error {
+        ProductRunServiceError::NotFound => app_error(Code::InvalidIdentifier),
+        ProductRunServiceError::Duplicate | ProductRunServiceError::InvalidState => {
+            app_error(Code::IdempotencyConflict)
         }
-        Ok(())
+        ProductRunServiceError::InvalidMessage => app_error(Code::MalformedFrame),
+        ProductRunServiceError::Control(ControlError::StaleRevision) => {
+            app_error(Code::StaleRevision)
+        }
+        ProductRunServiceError::Control(ControlError::IdempotencyConflict) => {
+            app_error(Code::IdempotencyConflict)
+        }
+        ProductRunServiceError::Control(ControlError::NotFound) => {
+            app_error(Code::InvalidIdentifier)
+        }
+        _ => app_error(Code::Backpressure),
     }
 }
 

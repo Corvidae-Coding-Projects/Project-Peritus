@@ -3,29 +3,84 @@
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductRunObservation, ProductRunPhase, ProductRunSettlementSnapshot,
-    ProductRunSnapshot,
+    AppResponsePayload, ProductRunObservation, ProductRunPage, ProductRunPageEntry,
+    ProductRunPageQuery, ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot,
+    ProductRunStoreId,
 };
 use peritus_types::{RunId, WorkspaceId};
 
 use super::{ProductRunRequest, ProductRunServiceError, RunRecord};
 
 impl super::ProductRunService {
+    pub(crate) fn query_run_page(
+        &self,
+        query: ProductRunPageQuery,
+    ) -> Result<ProductRunPage, ProductRunServiceError> {
+        let catalog = self.inner.model_catalogs.runs()?;
+        let store = ProductRunStoreId::new(*self.inner.control_store.as_bytes())
+            .map_err(|_| ProductRunServiceError::InvalidState)?;
+        let selected = catalog.select(query, store)?;
+        drop(catalog);
+        let captured = {
+            let records =
+                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+            selected
+                .keys
+                .into_iter()
+                .map(|key| {
+                    records
+                        .get(&key.run())
+                        .cloned()
+                        .map(|record| (key, record))
+                        .ok_or(ProductRunServiceError::InvalidState)
+                })
+                .collect::<Result<Vec<_>, _>>()?
+        };
+        let entries = captured
+            .into_iter()
+            .map(|(key, record)| {
+                ProductRunPageEntry::new(
+                    key.sequence(),
+                    observation(&self.inner.directory, &record)?,
+                )
+                .map_err(|_| ProductRunServiceError::InvalidState)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        ProductRunPage::new(store, entries, selected.next)
+            .map_err(|_| ProductRunServiceError::InvalidState)
+    }
+
     pub(crate) fn query_observations(
         &self,
         query: peritus_app_protocol::ProductRunQuery,
     ) -> Result<Vec<ProductRunObservation>, ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
         if let Some(run) = query.run_id() {
-            return records
+            let record = self
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?
                 .get(&run)
+                .cloned();
+            return record
+                .as_ref()
                 .map(|record| observation(&self.inner.directory, record))
                 .transpose()
                 .map(|value| value.into_iter().collect());
         }
-        super::recent_records(&records, query.offset())
+        let records = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
+        let captured = super::recent_records(&records, query.offset())
             .into_iter()
             .take(peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
+            .cloned()
+            .collect::<Vec<_>>();
+        drop(records);
+        captured
+            .iter()
             .map(|record| observation(&self.inner.directory, record))
             .collect()
     }

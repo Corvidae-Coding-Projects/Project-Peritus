@@ -49,9 +49,9 @@ pub(super) fn validate_retry(
     }
 }
 
-pub(super) fn with_recovery(
+pub(super) fn prepare_recovery(
     directory: &Path,
-    record: &mut super::super::RunRecord,
+    record: &super::super::RunRecord,
     deliverable: ProductDeliverable,
 ) -> Result<(ProductDeliverable, String), ProductRunServiceError> {
     if record.task_baseline_required && record.task_baseline.is_none() {
@@ -74,6 +74,18 @@ pub(super) fn with_recovery(
         .mark_exported(display.clone())
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
     attempt::save(directory, record, &deliverable)?;
+    Ok((
+        deliverable,
+        format!("Patch saved to {display}; committing selected files"),
+    ))
+}
+
+pub(super) fn commit_prepared(
+    directory: &Path,
+    record: &mut super::super::RunRecord,
+    deliverable: ProductDeliverable,
+) -> Result<(ProductDeliverable, String), ProductRunServiceError> {
+    let display = deliverable.export_path().to_owned();
     record.snapshot = super::replace_snapshot(
         &record.snapshot,
         record.snapshot.phase(),
@@ -81,27 +93,12 @@ pub(super) fn with_recovery(
         record.snapshot.summary(),
     )?
     .with_deliverable(deliverable.clone());
-    super::persist_record(directory, record)?;
     let description = if record.snapshot.summary().trim().is_empty() {
         record.request.display_task()
     } else {
         record.snapshot.summary()
     };
-    let revision = match commit_deliverable(&deliverable, description) {
-        Ok(revision) => revision,
-        Err(error) => {
-            let detail = error.to_string();
-            let detail = &detail[..detail.floor_char_boundary(detail.len().min(8192))];
-            record.snapshot = super::replace_snapshot(
-                &record.snapshot,
-                record.snapshot.phase(),
-                &format!("Commit did not complete: {detail}. Source patch saved to {display}"),
-                record.snapshot.summary(),
-            )?;
-            super::persist_record(directory, record)?;
-            return Err(error);
-        }
-    };
+    let revision = commit_deliverable(&deliverable, description)?;
     let deliverable = deliverable
         .mark_committed(revision.clone())
         .map_err(|_| ProductRunServiceError::InvalidMessage)?;
@@ -110,6 +107,43 @@ pub(super) fn with_recovery(
         deliverable,
         format!("Deliverable committed as {revision}; source patch saved to {display}{detail}"),
     ))
+}
+
+#[cfg(test)]
+pub(super) fn with_recovery(
+    directory: &Path,
+    record: &mut super::super::RunRecord,
+    deliverable: ProductDeliverable,
+) -> Result<(ProductDeliverable, String), ProductRunServiceError> {
+    let (deliverable, status) = prepare_recovery(directory, record, deliverable)?;
+    record.snapshot = super::replace_snapshot(
+        &record.snapshot,
+        record.snapshot.phase(),
+        &status,
+        record.snapshot.summary(),
+    )?
+    .with_deliverable(deliverable.clone());
+    super::persist_record(directory, record)?;
+    match commit_prepared(directory, record, deliverable) {
+        Ok(committed) => Ok(committed),
+        Err(error) => {
+            let detail = error.to_string();
+            let detail = &detail[..detail.floor_char_boundary(detail.len().min(8192))];
+            let display = record
+                .snapshot
+                .deliverable()
+                .map(ProductDeliverable::export_path)
+                .unwrap_or_default();
+            record.snapshot = super::replace_snapshot(
+                &record.snapshot,
+                record.snapshot.phase(),
+                &format!("Commit did not complete: {detail}. Source patch saved to {display}"),
+                record.snapshot.summary(),
+            )?;
+            super::persist_record(directory, record)?;
+            Err(error)
+        }
+    }
 }
 
 pub(super) fn commit_deliverable(

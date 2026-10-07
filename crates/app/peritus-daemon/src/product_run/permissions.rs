@@ -110,7 +110,7 @@ impl ProductRunService {
         let result = self.control_workspace(query).and_then(|()| {
             let id = ConversationId::new(query.conversation().into_bytes())?;
             let mut host = self.inner.host_permissions.get(query.workspace())?;
-            self.with_controls(false, |store| {
+            self.with_control_conversation(id, |store| {
                 let record = store.load(id)?.ok_or(ControlError::NotFound)?;
                 if record.owner_bytes() != actor.as_bytes()
                     || record.workspace_bytes() != query.workspace().as_bytes()
@@ -139,7 +139,7 @@ impl ProductRunService {
         self.control_workspace(query)?;
         let conversation = ConversationId::new(query.conversation().into_bytes())?;
         let host = self.inner.host_permissions.get(query.workspace())?.permissions;
-        self.with_controls(false, |store| {
+        self.with_control_conversation(conversation, |store| {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             if record.owner_bytes() != actor.as_bytes()
                 || record.workspace_bytes() != query.workspace().as_bytes()
@@ -199,15 +199,11 @@ impl ProductRunService {
         let conversation = record.interaction.workbench.conversation();
         let host = self.inner.host_permissions.get(workspace)?.permissions;
         drop(records);
-        let owner = self
-            .inner
-            .controls
-            .lock()
-            .map_err(|_| Error::Corrupt("control owner lock poisoned"))?;
-        let store = owner.as_ref().ok_or(ControlError::NotFound)?;
-        let branch = store.branch(conversation)?;
-        let host = branch_permissions(host, branch.as_ref());
-        Ok(store.permission_policy(workspace)?.effective_permissions(host))
+        self.with_control_conversation(conversation, |store| {
+            let branch = store.branch(conversation)?;
+            let host = branch_permissions(host, branch.as_ref());
+            Ok(store.permission_policy(workspace)?.effective_permissions(host))
+        })
     }
 }
 
@@ -252,6 +248,7 @@ pub(super) const fn command_permissions(
         WorkbenchIntent::ApplyInitDiff(_) => &[Read, Write],
         WorkbenchIntent::AttachFile { .. }
         | WorkbenchIntent::AttachFileImport { .. }
+        | WorkbenchIntent::AttachFileSource { .. }
         | WorkbenchIntent::AttachImage { .. } => &[Read],
         WorkbenchIntent::StartPreview(_)
         | WorkbenchIntent::InteractPreview { .. }

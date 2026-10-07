@@ -17,7 +17,9 @@ impl ProductRunService {
         start: &ControlOperation,
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<bool, ProductRunServiceError> {
-        let record = self.with_controls(false, |store| store.execution_record(start))?;
+        let record = self.with_control_conversation(start.conversation(), |store| {
+            store.execution_record(start)
+        })?;
         let included =
             record.inputs().capture().map_err(crate::product_control::ControlStoreError::from)?;
         let references: Vec<_> = record
@@ -55,7 +57,7 @@ impl ProductRunService {
                     .map_err(|_| ProductRunServiceError::Unavailable)?,
             )
             .map_err(|_| ProductRunServiceError::Unavailable)?;
-            let (preview, text) = self
+            let (preview, mut text) = self
                 .prepare_file(actor, &selection)
                 .map_err(|_| ProductRunServiceError::Unavailable)?;
             if source.folder() != Some(preview.folder()) {
@@ -104,8 +106,14 @@ impl ProductRunService {
                     version,
                 },
             );
-            let receipt =
-                self.with_controls(false, |store| store.accept_file(&operation, &text, consent))?;
+            let prepared = self.inner.control_generation.prepare_file_stream(
+                &operation,
+                &mut text,
+                consent,
+            )?;
+            let receipt = self.with_control_conversation(start.conversation(), |store| {
+                store.accept_prepared_file(prepared)
+            })?;
             revision = receipt.accepted_revision();
             changed = true;
         }

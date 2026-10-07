@@ -1,4 +1,4 @@
-//! Bounded workspace checkpoints and exact-preimage rewind transactions.
+//! Workspace checkpoints and exact-preimage rewind transactions.
 
 use super::{ControlStore, Error, ProductRunService, error_response};
 use peritus_app_protocol::{
@@ -13,9 +13,10 @@ use peritus_patch::{
     FileMode, FinalFile, LineEndingPolicy, PatchOperation, PatchSet, Preimage, WorkspacePath,
 };
 use peritus_product_runner::control::{
-    CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointRange,
-    CheckpointReferences, ControlError, ControlIntent, ControlOperation, ConversationId,
-    ConversationRecord, OperationId, RestoreId, RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointExclusion, CheckpointExclusionReason, CheckpointFileMode, CheckpointFileVersion,
+    CheckpointId, CheckpointPath, CheckpointRange, CheckpointReferences, ControlError,
+    ControlIntent, ControlOperation, ConversationId, ConversationRecord, OperationId, RestoreId,
+    RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 use peritus_types::{ActorId, Generation, RevisionNumber, Sha256Digest};
 use peritus_workspace::{FolderIdentity, FolderInspection};
@@ -64,12 +65,13 @@ impl CapturedPath {
 
 struct CapturedCoverage {
     paths: Vec<CapturedPath>,
-    exclusions: Vec<String>,
+    exclusions: Vec<CheckpointExclusion>,
 }
 
 impl ProductRunService {
     pub(super) fn validate_fork_coverage(
         &self,
+        store: &ControlStore,
         source: &ConversationRecord,
         request: &peritus_app_protocol::WorkbenchForkRequest,
         checkpoint: &UserCheckpoint,
@@ -81,20 +83,13 @@ impl ProductRunService {
             return Err(ControlError::InvalidInput.into());
         }
         let observed = self.capture_checkpoint_paths(source, request.child(), checkpoint)?;
+        let snapshots = store.checkpoint_snapshots(checkpoint.id())?;
         for (index, (current, expected)) in observed.iter().zip(checkpoint.paths()).enumerate() {
             if matches!(
                 expected.coverage(),
                 peritus_product_runner::control::CheckpointCoverage::SelectedRanges(_)
             ) {
-                self.with_controls(false, |store| {
-                    rewind::selected_coverage_matches(
-                        store,
-                        checkpoint.id(),
-                        index,
-                        expected,
-                        current,
-                    )
-                })?;
+                rewind::selected_coverage_matches(&snapshots, index, expected, current)?;
             } else if current.version != expected.checkpoint() {
                 return Err(Error::StalePreimage);
             }
@@ -109,7 +104,7 @@ impl ProductRunService {
     ) -> AppResponsePayload {
         let result = self.control_workspace(request.query()).and_then(|()| {
             let conversation = ConversationId::new(request.query().conversation().into_bytes())?;
-            self.with_controls(false, |store| {
+            self.with_control_conversation(conversation, |store| {
                 let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
                 check_record(&record, actor, request.query(), Some(request.revision()))?;
                 let checkpoint = store
@@ -133,11 +128,12 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
         checkpoint_coverage: bool,
+        checkpoint_manifests: bool,
     ) -> AppResponsePayload {
         let service = self.clone();
         let command = command.clone();
         match tokio::task::spawn_blocking(move || {
-            service.create_checkpoint(actor, &command, checkpoint_coverage)
+            service.create_checkpoint(actor, &command, checkpoint_coverage, checkpoint_manifests)
         })
         .await
         {
@@ -153,6 +149,7 @@ impl ProductRunService {
         actor: ActorId,
         command: &WorkbenchCommand,
         checkpoint_coverage: bool,
+        checkpoint_manifests: bool,
     ) -> Result<WorkbenchCheckpointReceipt, Error> {
         let WorkbenchIntent::CreateCheckpoint(name) = command.intent() else {
             return Err(ControlError::InvalidInput.into());
@@ -161,12 +158,13 @@ impl ProductRunService {
         let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
         let checkpoint = CheckpointId::new(command.operation().into_bytes())?;
         let record = self
-            .with_controls(false, |store| store.load(conversation))?
+            .with_control_conversation(conversation, |store| store.load(conversation))?
             .ok_or(ControlError::NotFound)?;
         check_record(&record, actor, command.query(), None)?;
 
         if let Some(existing) = record.checkpoints().iter().find(|value| value.id() == checkpoint) {
             require_checkpoint_schema(existing.paths(), checkpoint_coverage)?;
+            require_manifest_schema(command, record.revision(), existing, checkpoint_manifests)?;
             if existing.name() != name.as_str() {
                 return Err(ControlError::IdempotencyConflict.into());
             }
@@ -186,8 +184,15 @@ impl ProductRunService {
             name.as_str().to_owned(),
             references,
             paths,
-            coverage.exclusions,
+            Vec::new(),
             external_effects(),
+        )?
+        .with_exclusions(coverage.exclusions);
+        require_manifest_schema(
+            command,
+            record.revision(),
+            &checkpoint_value,
+            checkpoint_manifests,
         )?;
         let operation = ControlOperation::new(
             OperationId::new(command.operation().into_bytes())?,
@@ -198,8 +203,14 @@ impl ProductRunService {
             ControlIntent::CreateCheckpoint(checkpoint_value.clone()),
         );
         let bodies = coverage.paths.into_iter().map(|path| path.body).collect::<Vec<_>>();
+        let prepared = self
+            .inner
+            .control_generation
+            .prepare_checkpoint_snapshots(&operation, &bodies)?;
         let receipt = self
-            .with_controls(false, |store| store.accept_checkpoint_snapshots(&operation, &bodies))?;
+            .with_control_conversation(conversation, |store| {
+                store.accept_prepared_checkpoint_snapshots(prepared)
+            })?;
         public_checkpoint(command.query(), receipt.accepted_revision(), &checkpoint_value)
     }
 
@@ -213,7 +224,7 @@ impl ProductRunService {
         };
         self.control_workspace(command.query())?;
         let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
-        self.with_controls(false, |store| {
+        self.with_control_conversation(conversation, |store| {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             check_record(&record, actor, command.query(), None)?;
             let checkpoint_id = CheckpointId::new(command.operation().into_bytes())?;
@@ -240,6 +251,20 @@ impl ProductRunService {
             )
         })
     }
+}
+
+fn require_manifest_schema(
+    command: &WorkbenchCommand,
+    revision: u64,
+    checkpoint: &UserCheckpoint,
+    supported: bool,
+) -> Result<(), Error> {
+    if !supported
+        && public_checkpoint(command.query(), revision, checkpoint)?.requires_manifest_feature()
+    {
+        return Err(ControlError::UnsupportedSchema.into());
+    }
+    Ok(())
 }
 
 fn require_checkpoint_schema(paths: &[CheckpointPath], supported: bool) -> Result<(), Error> {

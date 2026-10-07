@@ -1,16 +1,15 @@
 //! Atomic fork publication and rebuildable conversation-catalog projection.
 
 use super::{
-    ControlStore, Error, FRAME_FAMILY, RECEIPT_NAMESPACE, ROOT_NAMESPACE, aggregate, command_id,
-    event_id,
+    ControlStore, Error, RECEIPT_NAMESPACE, ROOT_NAMESPACE, aggregate, command_id, event_id,
 };
-use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};
+use peritus_codec::sha256;
 use peritus_journal::{
-    AppendRequest, CommandResolution, EventDraft, ExactFrame, HeadExpectation, StateInstall,
+    AppendRequest, CommandResolution, EventDraft, HeadExpectation, StateInstall,
 };
 use peritus_product_runner::control::{
     ControlError, ControlOperation, ControlReceipt, ConversationBranch, ConversationId,
-    ConversationRecord,
+    ConversationReplay,
 };
 use peritus_types::{EventId, EventSequence};
 use std::collections::BTreeMap;
@@ -24,6 +23,9 @@ impl ControlStore {
         child: &ControlOperation,
         branch: &ConversationBranch,
     ) -> Result<ControlReceipt, Error> {
+        self.require_conversation_scope(source.conversation())?;
+        self.require_conversation_scope(child.conversation())?;
+        let _commit = self.generation.acquire_commit(&self.cancellation)?;
         if source.id() != child.id()
             || source.id() != branch.operation()
             || source.conversation() != branch.source()
@@ -45,15 +47,29 @@ impl ControlStore {
         {
             return Err(ControlError::IdempotencyConflict.into());
         }
-        let source_current = self.load(source.conversation())?.ok_or(ControlError::NotFound)?;
+        let mut source_replay = self.load_replay(source.conversation())?;
+        let source_current = source_replay
+            .current()
+            .cloned()
+            .ok_or(ControlError::NotFound)?;
         self.check_reserved_child(child.conversation(), Some(source))?;
         if self.load(child.conversation())?.is_some() {
             return Err(ControlError::IdempotencyConflict.into());
         }
-        let (source_next, receipt) = ConversationRecord::apply(Some(&source_current), source)?;
-        let (child_next, _) = ConversationRecord::apply(None, child)?;
+        let receipt = source_replay.apply(source)?;
+        let source_next = source_replay
+            .current()
+            .cloned()
+            .ok_or(Error::Corrupt("fork source successor is missing"))?;
+        let mut child_replay = ConversationReplay::default();
+        child_replay.apply(child)?;
+        let child_next = child_replay
+            .current()
+            .cloned()
+            .ok_or(Error::Corrupt("fork child successor is missing"))?;
         let source_payload = source.canonical_bytes()?;
         let child_payload = child.canonical_bytes()?;
+        let mut publications = super::checkpoints::snapshot::ControlPublications::default();
         let branch_payload = branch.canonical_bytes()?;
         let source_aggregate = aggregate(source.conversation())?;
         let child_aggregate = aggregate(child.conversation())?;
@@ -67,7 +83,7 @@ impl ControlStore {
             EventSequence::new(source_next.revision()).map_err(|_| ControlError::Capacity)?,
             event_id(source)?,
             source_head.map(peritus_journal::AggregateHead::event_id),
-            frame(&source_payload)?,
+            self.control_event(source, &source_payload, &source_next, &mut publications)?,
             sha256(source.workspace_bytes()),
             Vec::new(),
         )?;
@@ -76,7 +92,7 @@ impl ControlStore {
             EventSequence::new(child_next.revision()).map_err(|_| ControlError::Capacity)?,
             child_event_id(child)?,
             None,
-            frame(&child_payload)?,
+            self.control_event(child, &child_payload, &child_next, &mut publications)?,
             sha256(child.workspace_bytes()),
             Vec::new(),
         )?;
@@ -93,14 +109,24 @@ impl ControlStore {
                 source.conversation().as_bytes().to_vec(),
                 Some(source_current.revision()),
                 source_next.revision(),
-                source_next.canonical_bytes()?,
+                self.control_projection(
+                    source,
+                    &source_next,
+                    &source_replay,
+                    &mut publications,
+                )?,
             )?,
             StateInstall::new(
                 ROOT_NAMESPACE,
                 child.conversation().as_bytes().to_vec(),
                 None,
                 child_next.revision(),
-                child_next.canonical_bytes()?,
+                self.control_projection(
+                    child,
+                    &child_next,
+                    &child_replay,
+                    &mut publications,
+                )?,
             )?,
             StateInstall::new(
                 RECEIPT_NAMESPACE,
@@ -117,6 +143,7 @@ impl ControlStore {
                 branch_payload,
             )?,
         ];
+        publications.append_installs(&mut installs);
         installs.sort_by(|left, right| {
             (left.namespace(), left.key()).cmp(&(right.namespace(), right.key()))
         });
@@ -134,7 +161,14 @@ impl ControlStore {
             Vec::new(),
         )
         .plan()?;
-        match self.journal.append(plan) {
+        let _leases = self.generation.acquire_publications(
+            publications.claims(),
+            &self.cancellation,
+        )?;
+        publications.activate(self)?;
+        #[cfg(test)]
+        publications.before_root_publication()?;
+        let result = match self.journal.append(plan) {
             Ok(_) => {
                 self.verify_fork(branch)?;
                 self.resolve_fork(source, child, branch)?
@@ -147,7 +181,20 @@ impl ControlStore {
                 }
                 None => Err(error.into()),
             },
+        };
+        if result.is_ok() {
+            publications.finish()?;
+            for conversation in [source.conversation(), child.conversation()] {
+                if let Err(error) = self.refresh_replay_projection(conversation) {
+                    use std::io::Write as _;
+                    let _ = writeln!(
+                        std::io::stderr().lock(),
+                        "conversation projection refresh failed after accepted fork: {error}"
+                    );
+                }
+            }
         }
+        result
     }
 
     /// Resolves only the exact three-part fork command fingerprint.
@@ -190,28 +237,33 @@ impl ControlStore {
         Ok(Some(branch))
     }
 
-    /// Rebuilds the conversation catalog from authoritative immutable control events.
+    /// Rebuilds the conversation catalog from current journal-owned projection metadata.
     pub fn conversation_ids(&self) -> Result<BTreeMap<ConversationId, u64>, Error> {
-        let mut cursor = 0;
+        self.require_index_read_scope()?;
+        let mut cursor = None;
         let mut conversations = BTreeMap::new();
         loop {
-            let window = self.journal.global_events_after(cursor, 4096)?;
-            if window.has_retention_gap_after(cursor) {
-                return Err(Error::Corrupt("control history cannot rebuild conversation index"));
-            }
-            if window.records().is_empty() {
-                break;
-            }
-            for record in window.records() {
-                if record.frame_family() != FRAME_FAMILY {
-                    return Err(Error::Corrupt("unexpected control history family"));
+            let page = self.journal.state_record_metadata_page(
+                ROOT_NAMESPACE,
+                cursor.as_deref(),
+                usize::MAX,
+            )?;
+            let (records, next) = page.into_parts();
+            for record in records {
+                let key: [u8; 16] = record
+                    .key()
+                    .try_into()
+                    .map_err(|_| Error::Corrupt("invalid conversation catalog key"))?;
+                let id = ConversationId::new(key)
+                    .map_err(|_| Error::Corrupt("invalid conversation catalog identity"))?;
+                if conversations.insert(id, record.producing_position()).is_some() {
+                    return Err(Error::Corrupt("duplicate conversation catalog identity"));
                 }
-                let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
-                    .map_err(|_| Error::Corrupt("invalid control history frame"))?;
-                let operation = ControlOperation::parse(frame.payload())?;
-                conversations.insert(operation.conversation(), record.global_position());
-                cursor = record.global_position();
             }
+            let Some(next) = next else {
+                break;
+            };
+            cursor = Some(next);
         }
         Ok(conversations)
     }
@@ -234,14 +286,6 @@ fn fork_binding(
     binding.extend_from_slice(&child.canonical_bytes()?);
     binding.extend_from_slice(&branch.canonical_bytes()?);
     Ok(binding)
-}
-
-fn frame(payload: &[u8]) -> Result<ExactFrame, Error> {
-    ExactFrame::new(
-        encode_frame(FRAME_FAMILY, 1, payload, CodecLimits::PRODUCTION)
-            .map_err(|_| Error::Corrupt("cannot encode bounded fork event"))?,
-    )
-    .map_err(Into::into)
 }
 
 fn child_event_id(operation: &ControlOperation) -> Result<EventId, Error> {

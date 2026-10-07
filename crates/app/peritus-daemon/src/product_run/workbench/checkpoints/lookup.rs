@@ -39,7 +39,7 @@ impl ProductRunService {
         }
         self.control_workspace(command.query())?;
         let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
-        let receipt = self.with_controls(false, |store| {
+        let receipt = self.with_control_conversation(conversation, |store| {
             let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
             check_record(&record, actor, command.query(), None)?;
             let restore_id = RestoreId::new(command.operation().into_bytes())?;

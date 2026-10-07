@@ -5,12 +5,70 @@ mod replay;
 use super::{ControlStore, ControlStoreError as Error};
 use peritus_model_protocol::UsageCounters;
 use peritus_product_runner::control::{
-    ControlError, ControlIntent, ControlOperation, ConversationRecord, GoalAdmission, GoalRole,
-    GoalSettlement, GoalState, GoalUsageReport, OperationId,
+    ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord,
+    GoalAdmission, GoalRole, GoalSettlement, GoalState, GoalUsageReport, OperationId,
 };
-use peritus_types::{ActorId, WorkspaceId};
+use peritus_types::{ActorId, RunId, WorkspaceId};
 
 use replay::{apply_versioned_tool_goal, equivalent_host_intent, goal_tool_key};
+
+/// Stable goal meaning that must remain true across off-lane obligation work.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct GoalSemanticBinding {
+    conversation: ConversationId,
+    run: RunId,
+    goal: OperationId,
+    attempt: u32,
+    user_revision: u64,
+    input_generation: u64,
+}
+
+impl GoalSemanticBinding {
+    #[must_use]
+    pub(crate) const fn conversation(&self) -> ConversationId {
+        self.conversation
+    }
+
+    #[must_use]
+    pub(crate) const fn run(&self) -> RunId {
+        self.run
+    }
+
+    #[must_use]
+    pub(crate) const fn goal(&self) -> OperationId {
+        self.goal
+    }
+
+    #[must_use]
+    pub(crate) const fn attempt(&self) -> u32 {
+        self.attempt
+    }
+
+    #[must_use]
+    pub(crate) const fn user_revision(&self) -> u64 {
+        self.user_revision
+    }
+
+    #[must_use]
+    pub(crate) const fn input_generation(&self) -> u64 {
+        self.input_generation
+    }
+}
+
+/// Settlement intent prepared against one exact semantic goal binding.
+pub(crate) struct PreparedGoalSettlement {
+    start: ControlOperation,
+    binding: GoalSemanticBinding,
+    semantic_key: Vec<u8>,
+    intent: ControlIntent,
+}
+
+impl PreparedGoalSettlement {
+    #[must_use]
+    pub(crate) const fn binding(&self) -> &GoalSemanticBinding {
+        &self.binding
+    }
+}
 
 impl ControlStore {
     /// Returns the current attempt for a governed goal, or `None` for an ordinary execution.
@@ -208,11 +266,29 @@ impl ControlStore {
         evidence_input_generation: Option<u64>,
         unresolved_effects: bool,
     ) -> Result<(), Error> {
-        let Some((record, goal)) = self.goal_record(start)? else {
+        let Some(prepared) = self.prepare_goal_settlement(
+            start,
+            settlement,
+            evidence_input_generation,
+            unresolved_effects,
+        )? else {
             return Ok(());
         };
+        self.commit_goal_settlement(prepared)
+    }
+
+    pub(crate) fn prepare_goal_settlement(
+        &self,
+        start: &ControlOperation,
+        settlement: GoalSettlement,
+        evidence_input_generation: Option<u64>,
+        unresolved_effects: bool,
+    ) -> Result<Option<PreparedGoalSettlement>, Error> {
+        let Some((record, goal)) = self.goal_record(start)? else {
+            return Ok(None);
+        };
         if goal.state() == GoalState::Paused {
-            return Ok(());
+            return Ok(None);
         }
         let attempt = goal.attempt();
         let goal_id = goal.id();
@@ -226,8 +302,40 @@ impl ControlStore {
             unresolved_effects,
             now_unix_millis: now_millis(),
         };
-        self.apply_host_goal(start, &record, goal_key(b"settlement", attempt, &semantic), intent)?;
+        Ok(Some(PreparedGoalSettlement {
+            start: start.clone(),
+            binding: semantic_binding(start, &record, &goal)?,
+            semantic_key: goal_key(b"settlement", attempt, &semantic),
+            intent,
+        }))
+    }
+
+    pub(crate) fn commit_goal_settlement(
+        &mut self,
+        prepared: PreparedGoalSettlement,
+    ) -> Result<(), Error> {
+        let Some((record, goal)) = self.goal_record(&prepared.start)? else {
+            return Err(ControlError::NotFound.into());
+        };
+        if semantic_binding(&prepared.start, &record, &goal)? != prepared.binding {
+            return Err(ControlError::StaleRevision.into());
+        }
+        self.apply_host_goal(
+            &prepared.start,
+            &record,
+            prepared.semantic_key,
+            prepared.intent,
+        )?;
         Ok(())
+    }
+
+    pub(crate) fn inspect_goal_semantic(
+        &self,
+        start: &ControlOperation,
+    ) -> Result<Option<GoalSemanticBinding>, Error> {
+        self.goal_record(start)?
+            .map(|(record, goal)| semantic_binding(start, &record, &goal))
+            .transpose()
     }
 
     /// Publishes exact daemon-qualified graphical evidence for the current goal revision.
@@ -294,6 +402,10 @@ impl ControlStore {
         start: &ControlOperation,
     ) -> Result<Option<(ConversationRecord, peritus_product_runner::control::GoalRecord)>, Error>
     {
+        self.require_conversation_scope(start.conversation())?;
+        let run = RunId::new(*execution_run(start)?)
+            .map_err(|_| ControlError::InvalidInput)?;
+        self.require_run_scope(run)?;
         let record = self.execution_record(start)?;
         let Some(goal) = record.goal().cloned() else {
             return Ok(None);
@@ -334,6 +446,21 @@ impl ControlStore {
         self.accept_host_goal_operation(&operation)?;
         self.load(start.conversation())?.ok_or_else(|| ControlError::NotFound.into())
     }
+}
+
+fn semantic_binding(
+    start: &ControlOperation,
+    _record: &ConversationRecord,
+    goal: &peritus_product_runner::control::GoalRecord,
+) -> Result<GoalSemanticBinding, Error> {
+    Ok(GoalSemanticBinding {
+        conversation: start.conversation(),
+        run: RunId::new(*execution_run(start)?).map_err(|_| ControlError::InvalidInput)?,
+        goal: goal.id(),
+        attempt: goal.attempt(),
+        user_revision: goal.user_revision(),
+        input_generation: goal.required_input_generation(),
+    })
 }
 
 fn execution_run(start: &ControlOperation) -> Result<&[u8; 16], Error> {

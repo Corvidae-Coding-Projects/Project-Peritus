@@ -31,9 +31,18 @@ impl ProductRunService {
         actor: ActorId,
         query: WorkbenchQuery,
     ) -> AppResponsePayload {
+        self.workbench_brief_projection(actor, query, false)
+    }
+
+    pub(crate) fn workbench_brief_projection(
+        &self,
+        actor: ActorId,
+        query: WorkbenchQuery,
+        request_sources: bool,
+    ) -> AppResponsePayload {
         let result = self.control_workspace(query).and_then(|()| {
             let id = ConversationId::new(query.conversation().into_bytes())?;
-            self.with_controls(false, |store| {
+            self.with_control_conversation(id, |store| {
                 let record = store.load(id)?.ok_or(ControlError::NotFound)?;
                 if record.owner_bytes() != actor.as_bytes()
                     || record.workspace_bytes() != query.workspace().as_bytes()
@@ -52,7 +61,7 @@ impl ProductRunService {
                     entries.push(
                         WorkbenchBriefEntry::new(
                             project_field(binding.field()),
-                            project_row(source)?,
+                            project_row(source, request_sources)?,
                         )
                         .map_err(|_| ControlError::InvalidInput)?,
                     );
