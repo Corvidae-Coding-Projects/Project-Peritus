@@ -33,9 +33,9 @@
         "prefix_sha256": "020430056763719b5871b32b73b6c1a0a86363a39372cdc7869d8419faf27576"
       },
       "hoQk": {
-        "sequence": 2,
-        "tip_oid": "2bfd7fd80a61df148de3b9543e5b60e34108d069",
-        "prefix_sha256": "0934b52761da145f80cd454003871116dc96f66ea21e3bcf5424640a8280354d"
+        "sequence": 3,
+        "tip_oid": "3522b11a022eb1af8810a4ec26231e5cc3095639",
+        "prefix_sha256": "6f7a61c0f98d72329517c99fa9835d8f0d485d349743ec1af08837d7bee65f8a"
       },
       "i0ox": {
         "sequence": 2,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3006,
+  "next_comment_id": 3007,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23712,7 +23712,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.962379690Z",
-      "updated_at": "2026-10-07T01:30:04.350904955Z",
+      "updated_at": "2026-10-07T01:30:36.561150415Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -23725,6 +23725,15 @@
           "kind": "note",
           "signed_by": "SHA256:Rew+33PQWiacHUuyRkylGAnQBekp5xH7gMfvFEJn7uc",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6e9I8LahfTOGZjEyfce5cAOBtK1XYW9vKFBQoAkjx0AAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1z9mglftP+DFPTkNen509loL+AjwCpTzAy6qkrDRpLN3RguJU19lc1OPR9bViLGBsQuNaaDEfrYmh7FUaIpjDw=="
+        },
+        "86712297-9dcc-4dfb-b973-6b8ec910babc": {
+          "display_id": 3006,
+          "author": "hoQk",
+          "content": "[action] Prepared complete issue 819 code and regression source; validation deferred to final batch by user instruction.",
+          "created_at": "2026-10-07T01:30:36.556225409Z",
+          "kind": "note",
+          "signed_by": "SHA256:Rew+33PQWiacHUuyRkylGAnQBekp5xH7gMfvFEJn7uc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6e9I8LahfTOGZjEyfce5cAOBtK1XYW9vKFBQoAkjx0AAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGbz98rZLoO2aVO6e/uWBZ0STzfTWkJGpNQw/Qu7PXfhvuT5I9j8x+vvVjFSlz+P//NuMGASkizBNbOIw6oj9Aw=="
         },
         "c887dfd4-6a00-4e50-b25d-112f41c08ab8": {
           "display_id": 2891,
