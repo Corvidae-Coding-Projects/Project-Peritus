@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3673,
-        "tip_oid": "0b8163c86b27eb86a7ad9789997db5b4c2c86412",
-        "prefix_sha256": "941dba28b1f8f364e0780565fd40111606b7f4e1448f4c8c9d90304de3fd7751"
+        "sequence": 3674,
+        "tip_oid": "dda5efaed1cc799ff03ffbd02fceb1035c813c64",
+        "prefix_sha256": "b50603ea9e26b77de06b5df6a9cb9029bac2d8a9265b4e0d68cd054908c55b48"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2999,
+  "next_comment_id": 3000,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,11 +20019,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:03:48.201464618Z",
+      "updated_at": "2026-10-07T01:10:01.106381818Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "092d5920-d334-42c4-81ec-a7748b9c1848": {
+          "display_id": 2999,
+          "author": "6ME5",
+          "content": "[action] Live tracker status: 718 limiter-audit children, 6 closed and 712 open (including current110); four related follow-up issues822-825 closed, total10 delivered issue closures. Issue110 only: 50 selected source paths uncommitted, unrelated hashes verified OK. Checkpoint control operation/projection paging and fault recovery regressions green including65536paths and16MiB+1name; public wide-protocol8 tests green, affected model/client/protocol libs green before latest negotiation fixtures. New feature and pre-effect old-peer admission implemented, canonical schema fixture inputs updated; generated artifacts and full final strict/native/formal/platform gates pending. New legacy body-root/integrity tests had two compile errors in tests only, corrected after reading actual PatchOperation API; checkpoint-flow-tests3 running. No110 commit or close;825 closed lock released. PR112 remains a26 head; monitor active. Goal active, work only tracker110.",
+          "created_at": "2026-10-07T01:10:01.097902367Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAzrzX6g3GPB/1ogVV7Vd/P1t9Dfqt0MfIzJtlD8DiB/SOmH1vcUWVotm1UTA36SO9G2JQojci112bxdUZ7RbHAQ=="
+        },
         "16ade33a-5f12-49db-a86d-ca0831ecb859": {
           "display_id": 2996,
           "author": "6ME5",
