@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3715,
-        "tip_oid": "0a44f53182fe722a293f6cdcde98c7984c66bcad",
-        "prefix_sha256": "355e3c7913ee9d22dc25d9775916326f22b0dfa5b6a9c0cf1e88df67ff8819a2"
+        "sequence": 3716,
+        "tip_oid": "add1bb598c15077fd2777e18043a504a5feb0bf2",
+        "prefix_sha256": "f9e6e5c9c9bf638b6c4bd8fca860dfb68e37097e9e9f61ee748cf0d7aaaa3bb9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3024,
+  "next_comment_id": 3025,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24933,7 +24933,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.566581144Z",
-      "updated_at": "2026-10-06T13:27:51.568850055Z",
+      "updated_at": "2026-10-07T02:58:52.533219223Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -24944,6 +24944,15 @@
           "content": "Systemic repair plan for L699: Improvement inbox uses whole bounded collections with quadratic duplicate validation.\n\nOwning contract and implementation boundary: crates/app/peritus-app-protocol/src/improvements.rs:6-7,81-93,189-210,239-263. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPage durable history and enforce duplicate identity through indexed storage; preserve explicit evaluation authority and inert evidence boundaries. No tests run.\n\nPreserve: durable logical session and run identity, exact command receipts, atomic snapshot/cursor binding, explicit authority, selected UI state, complete history retrieval and owned-effect reconciliation. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large histories and non-ASCII fields, queue/connection pressure, delayed acknowledgements, subscription gaps, disconnect/reconnect and daemon restart, proving snapshot recovery, preserved selection/context, responsive controls and no duplicate command. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "ca3ac6e7-fa9a-43fe-9ed9-797738ac7e09": {
+          "display_id": 3024,
+          "author": "6ME5",
+          "content": "The 4096-byte proposal/evidence domain quota and duplicate wire rejection are removed through construction, wire and durable restart paths; frontend maxlength and the false 32-candidate full banner are removed. No replacement UI admission quota. Whole-inbox/evidence collection representation and history paging remain separate unfinished work in this issue. Source fixtures updated but runners deferred; issue remains open.",
+          "created_at": "2026-10-07T02:58:52.528852599Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAxUOhZsLI9ZOFmLgq4CvWzgUD8BQy5Z6zjId8nn2++6OY0fclIzoZcQWc4aHI1WMNPvpG66Wm4g9Xer7lp5aUAA=="
         }
       }
     },
