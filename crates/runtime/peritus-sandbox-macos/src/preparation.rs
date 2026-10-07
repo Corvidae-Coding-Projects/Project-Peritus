@@ -398,7 +398,12 @@ impl MacosBackend {
             helper_digest,
             proxy_digest,
             observation_limit,
-            SessionResources::new(exec_status_owner, proxy_owner, secret_owner),
+            SessionResources::new_cancellable(
+                exec_status_owner,
+                proxy_owner,
+                secret_owner,
+                Arc::clone(&preparation_continues),
+            ),
         )?;
         preparation_progress(PreparationProgress::Complete);
         Ok(session)

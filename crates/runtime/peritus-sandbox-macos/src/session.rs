@@ -1,6 +1,6 @@
 //! Supervised native session lifecycle.
 
-use std::collections::VecDeque;
+use std::{collections::VecDeque, sync::Arc};
 
 use peritus_network::ManagedProxy;
 use peritus_process::{
@@ -36,15 +36,26 @@ pub(crate) struct SessionResources {
     exec_status: crate::exec_status::ExecStatusOwner,
     proxy: Option<ManagedProxy>,
     secrets: SecretDeliverySession,
+    preparation_continues: Arc<dyn Fn() -> bool + Send + Sync>,
 }
 
 impl SessionResources {
-    pub(crate) const fn new(
+    #[cfg(all(test, unix))]
+    pub(crate) fn new(
         exec_status: crate::exec_status::ExecStatusOwner,
         proxy: Option<ManagedProxy>,
         secrets: SecretDeliverySession,
     ) -> Self {
-        Self { exec_status, proxy, secrets }
+        Self::new_cancellable(exec_status, proxy, secrets, Arc::new(|| true))
+    }
+
+    pub(crate) fn new_cancellable(
+        exec_status: crate::exec_status::ExecStatusOwner,
+        proxy: Option<ManagedProxy>,
+        secrets: SecretDeliverySession,
+        preparation_continues: Arc<dyn Fn() -> bool + Send + Sync>,
+    ) -> Self {
+        Self { exec_status, proxy, secrets, preparation_continues }
     }
 
     fn cleanup_after_preparation_failure(mut self, original: MacosError) -> MacosError {
@@ -187,9 +198,11 @@ impl MacosSession {
         }
         let cleanup =
             CleanupProgress::prepared(manifest.proxy().is_some(), !manifest.secrets().is_empty());
-        let resource_monitor = match ResourceMonitor::new(
+        let preparation_continues = Arc::clone(&resources.preparation_continues);
+        let resource_monitor = match ResourceMonitor::new_cancellable(
             manifest.working_directory(),
             manifest.resources(),
+            || preparation_continues(),
         ) {
             Ok(monitor) => monitor,
             Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
@@ -208,7 +221,12 @@ impl MacosSession {
             Ok(recovery) => recovery,
             Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
         };
-        let SessionResources { exec_status, proxy, secrets } = resources;
+        let SessionResources {
+            exec_status,
+            proxy,
+            secrets,
+            preparation_continues: _,
+        } = resources;
         let common = EnforcementObservation::new(
             1,
             manifest.plan_digest(),

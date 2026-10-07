@@ -1,10 +1,16 @@
-//! Complete bounded libproc process-group counts for required resource samples.
+//! Complete libproc process-group counts for selected resource samples.
 
 use crate::MacosError;
 
 use super::sample_error;
 
 #[cfg(target_os = "macos")]
+pub(super) enum PidEnumeration {
+    Known(Vec<i32>),
+    Unknown,
+}
+
+#[cfg(all(test, target_os = "macos"))]
 #[allow(unsafe_code, reason = "bounded libproc process ID query with no ownership transfer")]
 pub(super) fn enumerate(group: i32, pids: &mut [i32]) -> Result<usize, MacosError> {
     use std::{ffi::c_void, mem::size_of_val};
@@ -15,6 +21,37 @@ pub(super) fn enumerate(group: i32, pids: &mut [i32]) -> Result<usize, MacosErro
         // exactly the owned process group, initializes integer PIDs and transfers no ownership.
         unsafe { libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes) }
     })
+}
+
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code, reason = "resizable libproc process ID query with no ownership transfer")]
+pub(super) fn enumerate_all(group: i32) -> Result<PidEnumeration, MacosError> {
+    use std::{ffi::c_void, mem::size_of_val};
+
+    let mut capacity = 256_usize;
+    loop {
+        let mut pids = vec![0_i32; capacity];
+        let buffer_bytes = i32::try_from(size_of_val(pids.as_slice())).map_err(|_| sample_error())?;
+        let count = match observe_group(capacity.saturating_add(1), || {
+            // SAFETY: `pids` is writable for its checked byte length. The buffer remains live for
+            // the complete read-only query and no process identity pointer is retained.
+            unsafe {
+                libc::proc_listpgrppids(
+                    group,
+                    pids.as_mut_ptr().cast::<c_void>(),
+                    buffer_bytes,
+                )
+            }
+        }) {
+            Ok(count) => count,
+            Err(_) => return Ok(PidEnumeration::Unknown),
+        };
+        if count < capacity {
+            pids.truncate(count);
+            return Ok(PidEnumeration::Known(pids));
+        }
+        capacity = capacity.checked_mul(2).ok_or_else(sample_error)?;
+    }
 }
 
 #[cfg(target_os = "macos")]

@@ -41,6 +41,7 @@ impl EnforcementLevel {
 pub struct ResourceControl {
     kind: SandboxResourceKind,
     ceiling: u64,
+    selected: bool,
     level: EnforcementLevel,
 }
 
@@ -48,7 +49,7 @@ impl ResourceControl {
     /// Creates a dimension-specific control.
     #[must_use]
     pub const fn new(kind: SandboxResourceKind, ceiling: u64, level: EnforcementLevel) -> Self {
-        Self { kind, ceiling, level }
+        Self { kind, ceiling, selected: ceiling != 0, level }
     }
 
     /// Returns the controlled dimension.
@@ -61,6 +62,12 @@ impl ResourceControl {
     #[must_use]
     pub const fn ceiling(self) -> u64 {
         self.ceiling
+    }
+
+    /// Reports whether the request selected this resource dimension.
+    #[must_use]
+    pub const fn is_selected(self) -> bool {
+        self.selected
     }
 
     /// Returns the enforcement owner.
@@ -97,7 +104,7 @@ impl ResourceControlPlan {
         ];
         let controls = std::array::from_fn(|index| {
             let kind = kinds[index];
-            let ceiling = limits.limit(kind).get();
+            let ceiling = limits.selected_limit(kind).map_or(0, |value| value.get());
             let level = if kind == SandboxResourceKind::CpuTime
                 && levels[index] == EnforcementLevel::Hard
                 && !ceiling.is_multiple_of(1_000)
@@ -129,7 +136,8 @@ impl ResourceControlPlan {
     #[must_use]
     pub fn is_complete(&self) -> bool {
         self.controls.iter().all(|control| {
-            matches!(control.level, EnforcementLevel::Hard | EnforcementLevel::Supervisor)
+            !control.is_selected()
+                || matches!(control.level, EnforcementLevel::Hard | EnforcementLevel::Supervisor)
         })
     }
 }
