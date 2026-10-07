@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3653,
-        "tip_oid": "2de24d5ddf0bc45d926d625a4f3a5c50839741f0",
-        "prefix_sha256": "a976d6a89b7d8c78d0a0f2ecabcd6514f5bfe51c0dbb54ecf8352bc609c790dc"
+        "sequence": 3654,
+        "tip_oid": "119dc67f3488ff03f264c02068682766c987e549",
+        "prefix_sha256": "31aedd205cddcfb4324f3f86d4dcd904db050070b740fb4068c56e6fa340c333"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2982,
+  "next_comment_id": 2983,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-06T23:55:53.055925030Z",
+      "updated_at": "2026-10-07T00:00:19.968358798Z",
       "labels": [
         "ci"
       ],
@@ -22307,6 +22307,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJLwOelQxi/V3XPIoaAT2TeDj50ppoDe7xsAMVgJ8l0Vv68l7/RJ+GnIRLVmyWHnXP9h6oP40AqDCYPItOor5DQ=="
+        },
+        "419791b9-c01c-4223-ae2c-13f04cc4d5df": {
+          "display_id": 2982,
+          "author": "6ME5",
+          "content": "[action] Issue 825 followup a26a324558bd592356af9b19fda4458ce54d881a is committed and pushed to PR112/develop; result comment2980 and all298 local tests, strict lint/format/Windows GNU/Verus/xtask recorded. No source edits pending; selected ten-file main/isolated hashes verified and user usage/audit work preserved. Published PR body /tmp/peritus-pr112-body-issue825-followup.md matches live body after update. Native Foundation run37549144111 has Linux conformance112560348294, Linux provider112560348413 and macOS provider112560348702 in progress; macOS conformance112560348606, Windows conformance112560351923 and Windows provider112560352091 queued. No native failures reported. Exact-head native observer36823 and full PR watcher70938 are LIVE; state /tmp/peritus-issue825-followup-native-acceptance.json, log /tmp/peritus-issue825-followup-native-watch.log, full watch /tmp/peritus-pr112-issue825-followup-ci-watch.log. Baseline d2 all6 native shards accepted including actual Mac provider log, but does not qualify followup. Keep825 OPEN until fresh exact-a26 named regression logs pass; then add final result, close825 --no-changelog, verify lock release and continue110. Issue110 source work has not started. Historical discarded authentication predicate cannot be reconstructed; retained copied-executable ETXTBSY and receipt-loss reproductions are repaired without a new product deadline, retry or recorder. Session96/focus825/lock6ME5 remain active; goal remains active, not blocked or complete.",
+          "created_at": "2026-10-07T00:00:19.964103702Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAq15DGEYEbC4phgU2O+t8FpTjoyQEilVxcQiH1mkufX/hX0pJkOxNDZLJho4kOqsd8Z63zHDuuuPxp7m8SuZeCA=="
         },
         "45057710-b193-4db0-93cf-d6b342146bea": {
           "display_id": 2978,
