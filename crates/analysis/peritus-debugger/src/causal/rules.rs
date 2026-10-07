@@ -139,10 +139,13 @@ pub(super) fn ambiguity_for_entry(
 }
 
 pub(super) fn success_citations(timeline: &Timeline) -> Vec<EvidenceCitation> {
-    timeline
+    let mut citations: Vec<_> = timeline
         .entries()
         .iter()
         .filter(|entry| entry.outcome().is_some_and(OutcomeClass::is_task_success))
         .map(|entry| entry.citation().clone())
-        .collect()
+        .collect();
+    citations.sort();
+    citations.dedup();
+    citations
 }

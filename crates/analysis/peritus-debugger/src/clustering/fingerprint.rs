@@ -35,6 +35,7 @@ impl PatternFingerprint {
         bytes.extend_from_slice(subject.environment_id().as_bytes());
         bytes.extend_from_slice(subject.harness_revision().digest().as_bytes());
         bytes.extend_from_slice(&subject.revision().workspace_revision().get().to_be_bytes());
+        bytes.extend_from_slice(subject.revision().provider_profile_id().as_bytes());
         bytes.push(component_kind.map_or(0, ComponentKind::tag));
         bytes.extend_from_slice(&normalized_causal_shape(finding, manifest));
         Ok(Self(crate::identity::domain_digest(

@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    DebuggerError, DebuggerLimit, DebuggerLimits, DebuggerOperation, FailureCategory,
-    PatternCluster, PatternId, PatternKind, SubjectId, TraceSelectionManifest,
+    DebuggerError, DebuggerLimits, DebuggerOperation, FailureCategory, PatternCluster, PatternId,
+    PatternKind, SubjectId, TraceSelectionManifest,
 };
 use peritus_harness::{
     HarnessProjection,
@@ -112,7 +112,7 @@ impl ComponentCorrelation {
 ///
 /// # Errors
 ///
-/// Rejects revision drift, absent exact revisions, inconsistent declarations, or link bounds.
+/// Rejects revision drift, absent exact revisions, or inconsistent declarations.
 #[allow(
     clippy::too_many_lines,
     reason = "the bounded E1 correlation pass keeps revision checks and emitted evidence together"
@@ -121,7 +121,7 @@ pub fn map_components(
     patterns: &[PatternCluster],
     manifest: &TraceSelectionManifest,
     harness: &HarnessProjection,
-    limits: DebuggerLimits,
+    _limits: DebuggerLimits,
 ) -> Result<Vec<ComponentCorrelation>, DebuggerError> {
     let successful: BTreeSet<SubjectId> = patterns
         .iter()
@@ -220,11 +220,6 @@ pub fn map_components(
             ),
         )
     });
-    limits.check(
-        DebuggerLimit::ComponentLinks,
-        correlations.len(),
-        DebuggerOperation::MapComponents,
-    )?;
     Ok(correlations)
 }
 

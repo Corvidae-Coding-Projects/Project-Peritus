@@ -134,7 +134,6 @@ pub fn analyze_timelines(
     causes.sort_by_key(RootCauseCandidate::id);
     causes.dedup_by_key(|cause| cause.id());
     limits.check(DebuggerLimit::Diagnostics, findings.len(), DebuggerOperation::AnalyzeCauses)?;
-    limits.check(DebuggerLimit::Claims, causes.len(), DebuggerOperation::AnalyzeCauses)?;
     Ok(DeterministicAnalysis { findings, causes })
 }
 

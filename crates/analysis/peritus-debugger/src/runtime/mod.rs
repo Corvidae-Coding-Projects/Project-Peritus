@@ -12,6 +12,7 @@ pub use artifact::{
     FinalizedReportArtifact, commit_report_ready, finalize_report_artifact, report_record,
     stage_and_commit_report,
 };
+pub(super) use artifact::verify_report_artifact;
 pub use model::{
     ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, ResumedModelAttemptExecution,
     amend_model_retry_policy, execute_model_attempt, resume_model_attempt, schedule_model_retry,

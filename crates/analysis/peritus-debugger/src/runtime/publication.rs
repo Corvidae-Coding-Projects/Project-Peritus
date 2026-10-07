@@ -18,7 +18,7 @@ use crate::{
 use super::{
     CommittedDebuggerTransition, FinalizedReportArtifact, PublicationDependencyStatus,
     PublicationRecoveryObservation, TransitionIds, finalize_report_artifact, report_record,
-    validate_recovered_claim,
+    validate_recovered_claim, verify_report_artifact,
 };
 
 #[cfg(test)]
@@ -87,7 +87,7 @@ pub fn observe_publication_dependencies(
             "published state differs from the exact dependency observation",
         ));
     }
-    let artifact = observe_artifact(artifact_store, durable_report)?;
+    let artifact = observe_artifact(artifact_store, durable_report, report)?;
     let evidence = match evidence_store.load(draft.id()) {
         Ok(Some(record)) => {
             validate_recovered_evidence(&record, &draft)?;
@@ -161,7 +161,7 @@ pub fn publish_claimed_report(
             "publication state, claim, artifact, report, or journal position differs",
         ));
     }
-    artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
+    verify_report_artifact(artifact_store, report, artifact)?;
     if let Some(operation) = recover_claimed_publication(
         journal,
         state.job_id(),
@@ -241,7 +241,7 @@ pub fn reconcile_interrupted_publication(
             "interrupted publication report, claim, or artifact differs",
         ));
     }
-    artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
+    verify_report_artifact(artifact_store, report, artifact)?;
     let evidence = evidence_store
         .load(publication.evidence_id())
         .map_err(evidence_error)?
@@ -437,23 +437,36 @@ fn publication_plan(
 
 fn observe_artifact(
     artifact_store: &ArtifactStore,
-    report: crate::ReportRecord,
+    durable_report: crate::ReportRecord,
+    report: &ValidatedReport,
 ) -> Result<PublicationDependencyStatus, DebuggerError> {
-    let digest = ArtifactDigest::from_sha256(report.digest());
-    match artifact_store.verify(digest) {
-        Ok(metadata) if metadata.size() == report.size() => {
-            Ok(PublicationDependencyStatus::Verified)
+    if report_record(report)? != durable_report {
+        return Err(recovery(
+            "validated artifact root differs from the durable report",
+        ));
+    }
+    let mut missing = false;
+    let mut unavailable = false;
+    for object in report.artifact_objects() {
+        let digest = ArtifactDigest::from_sha256(object.digest());
+        match artifact_store.verify(digest) {
+            Ok(metadata) if metadata.size() == object.size() => {}
+            Ok(_) => {
+                return Err(recovery(
+                    "verified report object size differs from the durable index",
+                ));
+            }
+            Err(error) if error.code() == ErrorCode::MissingArtifact => missing = true,
+            Err(error) if error.recovery_class() == RecoveryClass::Retry => unavailable = true,
+            Err(error) => return Err(artifact_integrity(error)),
         }
-        Ok(_) => Err(recovery(
-            "verified report artifact size differs from the durable report",
-        )),
-        Err(error) if error.code() == ErrorCode::MissingArtifact => {
-            Ok(PublicationDependencyStatus::Missing)
-        }
-        Err(error) if error.recovery_class() == RecoveryClass::Retry => {
-            Ok(PublicationDependencyStatus::Unavailable)
-        }
-        Err(error) => Err(artifact_integrity(error)),
+    }
+    if unavailable {
+        Ok(PublicationDependencyStatus::Unavailable)
+    } else if missing {
+        Ok(PublicationDependencyStatus::Missing)
+    } else {
+        Ok(PublicationDependencyStatus::Verified)
     }
 }
 
@@ -607,14 +620,6 @@ fn binding(detail: &'static str) -> DebuggerError {
         DebuggerOperation::PublishEvidence,
         DebuggerRecovery::Quarantine,
         detail,
-    )
-}
-fn artifact_error(error: impl core::fmt::Display) -> DebuggerError {
-    DebuggerError::new(
-        DebuggerErrorKind::Artifact,
-        DebuggerOperation::PublishArtifact,
-        DebuggerRecovery::Reconcile,
-        error.to_string(),
     )
 }
 fn artifact_integrity(error: impl core::fmt::Display) -> DebuggerError {

@@ -61,12 +61,12 @@ impl FinalizedReportArtifact {
 /// # Errors
 /// Rejects an unrepresentable or empty canonical report.
 pub fn report_record(report: &ValidatedReport) -> Result<ReportRecord, DebuggerError> {
-    let size = u64::try_from(report.canonical_bytes().len())
+    let size = u64::try_from(report.artifact_bytes().len())
         .map_err(|_| artifact_error("validated report size cannot be represented"))?;
-    ReportRecord::new(report.id(), peritus_codec::sha256(report.canonical_bytes()), size)
+    ReportRecord::new(report.id(), peritus_codec::sha256(report.artifact_bytes()), size)
 }
 
-/// Streams exact canonical report bytes to the C0 artifact owner and verifies finalization.
+/// Streams the exact bottom-up report artifact tree and verifies finalization.
 ///
 /// # Errors
 /// Rejects size/digest drift or artifact-store failure. Exact retries observe existing bytes.
@@ -76,29 +76,53 @@ pub fn finalize_report_artifact(
     creating_event: EventId,
 ) -> Result<FinalizedReportArtifact, DebuggerError> {
     let record = report_record(report)?;
-    let digest = ArtifactDigest::from_sha256(record.digest());
-    let media_type =
-        MediaType::new("application/vnd.peritus.debugger-report+json").map_err(artifact)?;
-    let request = WriteRequest::new(
-        digest,
-        record.size(),
-        record.size(),
-        media_type,
-        EncryptionMetadata::unencrypted(),
-        creating_event,
-    );
-    let mut writer = store.begin_write(request).map_err(artifact)?;
-    writer.write_chunk(report.canonical_bytes()).map_err(artifact)?;
-    let finalized = writer.finalize().map_err(artifact)?;
-    let metadata = store.verify(finalized.digest()).map_err(artifact)?;
-    if finalized.digest() != digest
-        || finalized.size() != record.size()
-        || metadata.size() != record.size()
-    {
-        return Err(artifact_error(
-            "finalized report artifact differs from validated canonical bytes",
-        ));
+    let mut root = None;
+    for object in report.artifact_objects() {
+        let digest = ArtifactDigest::from_sha256(object.digest());
+        let media_type =
+            MediaType::new("application/vnd.peritus.debugger-report+json").map_err(artifact)?;
+        let request = WriteRequest::new(
+            digest,
+            object.size(),
+            object.size(),
+            media_type,
+            EncryptionMetadata::unencrypted(),
+            creating_event,
+        );
+        let mut writer = store.begin_write(request).map_err(artifact)?;
+        writer.write_chunk(object.bytes()).map_err(artifact)?;
+        let finalized = writer.finalize().map_err(artifact)?;
+        let metadata = store.verify(finalized.digest()).map_err(artifact)?;
+        if finalized.digest() != digest
+            || finalized.size() != object.size()
+            || metadata.size() != object.size()
+        {
+            return Err(artifact_error(
+                "finalized report object differs from its canonical bytes",
+            ));
+        }
+        if !object.dependencies().is_empty() {
+            store
+                .bind_dependencies(
+                    digest,
+                    object.dependencies().iter().map(|(child, size)| {
+                        (ArtifactDigest::from_sha256(*child), *size)
+                    }),
+                )
+                .map_err(artifact)?;
+        }
+        if object.digest() == record.digest() {
+            root = Some(finalized);
+        }
     }
+    let finalized = root.ok_or_else(|| artifact_error("validated report artifact root is absent"))?;
+    verify_report_artifact(store, report, FinalizedReportArtifact {
+        report_id: report.id(),
+        payload_digest: report.digest(),
+        artifact_digest: finalized.digest(),
+        size: finalized.size(),
+        publication: finalized.publication(),
+    })?;
     Ok(FinalizedReportArtifact {
         report_id: report.id(),
         payload_digest: report.digest(),
@@ -152,7 +176,7 @@ pub fn commit_report_ready(
     {
         return Err(artifact_error("staged artifact differs from the validated report"));
     }
-    artifact_store.verify(staged.artifact_digest()).map_err(artifact)?;
+    verify_report_artifact(artifact_store, report, staged)?;
     let command = DebuggerCommand::new(
         ids.command_id(),
         ids.event_id(),
@@ -166,6 +190,34 @@ pub fn commit_report_ready(
     let transition = decide(Some(state), &command)?;
     let operation = commit_debugger_transition(journal, &command, &transition)?;
     Ok(CommittedDebuggerTransition::new(operation))
+}
+
+pub(super) fn verify_report_artifact(
+    store: &ArtifactStore,
+    report: &ValidatedReport,
+    artifact_observation: FinalizedReportArtifact,
+) -> Result<(), DebuggerError> {
+    let record = report_record(report)?;
+    if artifact_observation.report_id() != report.id()
+        || artifact_observation.payload_digest() != report.digest()
+        || artifact_observation.artifact_digest().sha256() != record.digest()
+        || artifact_observation.size() != record.size()
+    {
+        return Err(artifact_error(
+            "report artifact observation differs from the validated artifact root",
+        ));
+    }
+    for object in report.artifact_objects() {
+        let metadata = store
+            .verify(ArtifactDigest::from_sha256(object.digest()))
+            .map_err(artifact)?;
+        if metadata.size() != object.size() {
+            return Err(artifact_error(
+                "verified report object size differs from its canonical bytes",
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn artifact(error: ArtifactStoreError) -> DebuggerError {

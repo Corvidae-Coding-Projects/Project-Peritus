@@ -142,7 +142,8 @@ impl PatternCluster {
 ///
 /// # Errors
 ///
-/// Rejects missing subject bindings or pattern/member bound excess; it never samples members.
+/// Rejects missing subject bindings. Oversized clusters are losslessly partitioned at the active
+/// member-page bound; no finding is sampled or discarded.
 pub fn cluster_findings(
     findings: &[AnalysisFinding],
     manifest: &TraceSelectionManifest,
@@ -180,8 +181,20 @@ pub fn cluster_findings(
         });
     }
     agglomerate(&mut groups);
-    let mut clusters = Vec::with_capacity(groups.len());
-    for mut members in groups {
+    let member_page_size = usize::try_from(limits.get(DebuggerLimit::PatternMembers))
+        .unwrap_or(usize::MAX)
+        .max(1);
+    let mut partitions = Vec::new();
+    for members in groups {
+        let partition_count = members.len().div_ceil(member_page_size);
+        for (partition, chunk) in members.chunks(member_page_size).enumerate() {
+            let partition = (partition_count > 1)
+                .then(|| u64::try_from(partition).unwrap_or(u64::MAX));
+            partitions.push((chunk.to_vec(), partition));
+        }
+    }
+    let mut clusters = Vec::with_capacity(partitions.len());
+    for (mut members, partition) in partitions {
         members.sort_by(|left, right| {
             (left.subject_id, left.fingerprint, &left.citations).cmp(&(
                 right.subject_id,
@@ -189,11 +202,6 @@ pub fn cluster_findings(
                 &right.citations,
             ))
         });
-        limits.check(
-            DebuggerLimit::PatternMembers,
-            members.len(),
-            DebuggerOperation::ClusterPatterns,
-        )?;
         let mut source_fingerprints: Vec<_> =
             members.iter().map(|member| member.fingerprint).collect();
         source_fingerprints.sort();
@@ -211,6 +219,10 @@ pub fn cluster_findings(
             identity.extend_from_slice(member.subject_id.as_bytes());
             identity.extend_from_slice(member.fingerprint.digest().as_bytes());
         }
+        if let Some(partition) = partition {
+            identity.extend_from_slice(b"partition\0");
+            identity.extend_from_slice(&partition.to_be_bytes());
+        }
         clusters.push(PatternCluster {
             id: PatternId::derive(PATTERN_ID_DOMAIN, &identity)?,
             kind,
@@ -219,9 +231,9 @@ pub fn cluster_findings(
             members,
         });
     }
-    clusters
-        .sort_by_key(|cluster| (cluster.kind, cluster.fingerprint, cluster.members[0].subject_id));
-    limits.check(DebuggerLimit::Patterns, clusters.len(), DebuggerOperation::ClusterPatterns)?;
+    clusters.sort_by_key(|cluster| {
+        (cluster.kind, cluster.fingerprint, cluster.members[0].subject_id, cluster.id)
+    });
     Ok(clusters)
 }
 
@@ -245,6 +257,10 @@ fn similar(left: &PatternMember, right: &PatternMember) -> bool {
     pattern_kind(left.outcome) == pattern_kind(right.outcome)
         && left.category == right.category
         && left.analyzer == right.analyzer
+        && left.environment_id == right.environment_id
+        && left.harness_revision == right.harness_revision
+        && left.workspace_revision == right.workspace_revision
+        && left.provider_profile_id == right.provider_profile_id
         && left.component_kind == right.component_kind
 }
 
