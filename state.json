@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3763,
-        "tip_oid": "3e53113e46bc04f3553c587b3ac9e0e2aad4533a",
-        "prefix_sha256": "e57d95c1737e42293811743bf36e830dc9b2bda864b0c9ba24e27dabdf45f1da"
+        "sequence": 3764,
+        "tip_oid": "bfd883135ee21bfd760bc69ee47cd6a3f53c5642",
+        "prefix_sha256": "bd7b7dbcab142bc22c0e5d22857b5111882fab2aaa5c16e42de7294c89235502"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3069,
+  "next_comment_id": 3070,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40902,7 +40902,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.067749262Z",
-      "updated_at": "2026-10-07T06:29:17.610765147Z",
+      "updated_at": "2026-10-07T06:35:05.361775531Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -40922,6 +40922,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALBgnU2vmdFMEGgVJD//Q4gFvoBFvYaJCpuQXyT8RNcxzcXxFb7rYYUv09Fwhcb9r7zrunlzaAGU+XojAufaXAw=="
+        },
+        "c768a1e2-a436-4b79-ba08-21fa280cd6b8": {
+          "display_id": 3069,
+          "author": "6ME5",
+          "content": "Code-only refinement: production conversation, designer, writer/fixer, and reviewer construction now awaits an owned blocking worker for local-context lock acquisition and recovery, preserving the same lineage and provider cancellation. Dropping pre-dispatch construction signals its owner cancellation instead of leaving an indefinite abandoned waiter; successful construction transfers ownership to the retained context. This avoids blocking the async control loop while waiting for the actual previous owner to release. Source review and diff whitespace check only; no manual tests/build/lint/format or test edits. Final verification remains deferred and the issue stays open.",
+          "created_at": "2026-10-07T06:35:05.345474850Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAh/W1FdwRrrrSUBIDAGrHzpHWtByoPVNbgjuriyojQXjIOzOYU/JkchJB9lGKumCLXrnVEDMARZ0iw9Jva1i1CA=="
         }
       }
     },
