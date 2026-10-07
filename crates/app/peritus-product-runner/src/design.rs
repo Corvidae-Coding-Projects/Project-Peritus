@@ -17,8 +17,6 @@ use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MINIMUM_DESIGN_BYTES: usize = 512;
-const MAXIMUM_DESIGN_BYTES: usize = 1024 * 1024;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum DesignScope {
     Artifact,
@@ -174,9 +172,9 @@ fn grounded_markdown(
 }
 
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {
-    let proportionality = "Scale the design to the actual change. Keep small changes concise while giving multi-module source work all detail needed for independent implementation. Do not repeat the same requirement across sections merely to make the document longer.";
+    let proportionality = "Scale the design to the actual change. For a small change, provide only the concrete implementation decision and how to verify it. A concise plan is sufficient; no byte count, title format, or number of headings is required. Give multi-module source work the detail needed for independent implementation. Use headings when they help the reader, and do not repeat requirements merely to make the document longer.";
     let instructions = format!(
-        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return only a detailed Markdown design document, not JSON and not a code fence. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the document in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Include sections for Objective and acceptance criteria, Repository findings, Architecture and interfaces, Data and control flow, File and module plan, Implementation slices, Verification, and Risks or explicit non-goals. Make slices independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
+        "You are the design architect in a serious coding harness. Inspect the actual repository with the read-only workspace tools before designing. Return an implementation plan in Markdown. Preserve the requested ambition and cover the full requested product rather than proposing an MVP. Ground the plan in concrete existing paths, manifests, interfaces, conventions, and constraints; for a greenfield repository, specify the exact structure to create. Begin acceptance reasoning from the original request's literal paths, values, operations, and grammatical scope. Do not override an explicit expected value with a model-derived invariant or manufacture a conflict by broadening a narrowly scoped rule. Respect the workspace's declared product kind: for an artifact workspace whose requested deliverables are generated outputs rather than retained code, design a bounded producer and independent artifact/effect verification without inventing package scaffolding. Where the change needs them, address acceptance criteria, repository findings, interfaces, data flow, affected files, implementation steps, verification, and concrete risks. Make steps independently actionable where practical. Focus on realistic application behavior and avoid speculative adversarial edge cases. Do not edit files, run commands, implement code, or commit.\n\n{}\n\n{proportionality}",
         crate::engineering_workflow::architect(),
     );
     if let Some(remaining) = remaining {
@@ -220,7 +218,7 @@ fn user_prompt(transcript: &str, correction: Option<&str>) -> String {
 
 fn correction_prompt(error: &ProductRunnerError) -> String {
     format!(
-        "The previous design was rejected during {}: {}. Return the full design again. Its first nonblank line must be one document title beginning with `# `, and it must contain at least four section headings beginning with `## `. Do not make every section a top-level `#` heading.",
+        "The previous plan was rejected during {}: {}. Resolve that specific criterion under the same task and retained context. Accepted source observations remain available; do not repeat startup inspection solely because plan validation was retried. Return the concrete implementation plan at the level of detail this request needs. No byte count, title format, or heading count is required.",
         error.operation(),
         error.detail(),
     )
@@ -233,16 +231,11 @@ fn normalize(value: &str) -> Result<String, ProductRunnerError> {
         .or_else(|| trimmed.strip_prefix("```md"))
         .and_then(|inner| inner.strip_suffix("```"))
         .map_or(trimmed, str::trim);
-    let sections = markdown.lines().filter(|line| line.starts_with("## ")).count();
-    if markdown.len() < MINIMUM_DESIGN_BYTES
-        || markdown.len() > MAXIMUM_DESIGN_BYTES
-        || !markdown.starts_with("# ")
-        || sections < 4
-    {
+    if markdown.is_empty() {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::InvalidModelOutput,
             "validate implementation design",
-            "designer must return a detailed Markdown document with a title and at least four sections",
+            "designer returned an empty implementation plan; provide the concrete change and its verification",
         ));
     }
     Ok(format!("{markdown}\n"))
