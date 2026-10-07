@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3676,
-        "tip_oid": "eaf6ffc97eba885a165ff8f287eabd91569cf9f2",
-        "prefix_sha256": "80f368cef04624aa578d0b61cc0c1bd5c4d06a228720ce11ac4c52cda9056498"
+        "sequence": 3677,
+        "tip_oid": "c420cabaa34ae5a57fdecf0711f49029602a09ef",
+        "prefix_sha256": "75e2ffce9f360b6515c0a607620586fe1191639951e88b0a64314c01e4777782"
       },
       "NWAR": {
         "sequence": 39,
@@ -60,7 +60,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3002,
+  "next_comment_id": 3003,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20028,7 +20028,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:16:10.503857393Z",
+      "updated_at": "2026-10-07T01:20:06.180183688Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20102,6 +20102,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASWX1SmBcmghSmIL/7Xb8gGZ8guNFP3n28XjEYOpoKl5wuiPmz0DqWrTZGnu6nW9HxXLMYO9Zug9SrCv9ujrTDQ=="
+        },
+        "9b700267-6eb3-4a28-8646-6c0204b2f052": {
+          "display_id": 3002,
+          "author": "6ME5",
+          "content": "[action] User further steered batch: subagents CODE ONLY, write regression tests but execute all tests/checks at the end after batch integration; no agents interfere with running tests. Messages delivered to119819820. Agent820 already had14focusedplatform tests pass and a daemon test compile running before steering; it reports leaving that process alone. Root existing62450 affected tests continue naturally. Root110 soft-budget violations repaired structurally: immutable operation/request/reply readers moved to storage/inspection.rs; historical fixture defaults moved to scenario/defaults.rs; no budget relaxation. Final gates deferred until all batch code ready. Worktree tracker bootstrap contention from simultaneous new Crosslink daemons repaired with exact tracking-only daemon restart; no installed Peritus processes touched. Root preserves unrelated hashes; issue110 and three batchissues stay OPEN, no new commit/push/closure yet.",
+          "created_at": "2026-10-07T01:20:06.131852702Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACfIxDa6diuBm7FLShcjz2asL5v+VOHMvhGTjpju7x7GvRIoL9mbCH2CGRwneSY0FVIx8vbdqO7p2wzrzdxQhBw=="
         },
         "a86d714d-5472-4684-8d95-05d6f58fe0a4": {
           "display_id": 2998,
