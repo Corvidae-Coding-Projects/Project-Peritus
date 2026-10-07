@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3809,
-        "tip_oid": "e6450bc35330ec28d9d517cd3d8aedb526fb03df",
-        "prefix_sha256": "2f215b76c53de9967e3bad5328475918999a56b141effb096d32eb8bc1959466"
+        "sequence": 3810,
+        "tip_oid": "1c9836d96b8c3b796ad56329f949105b5ff82d35",
+        "prefix_sha256": "cf118e1a73ff42ecf1909eb9d6298eb7ebfc4976abe721296d778d959155b763"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3115,
+  "next_comment_id": 3116,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31845,11 +31845,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.632818789Z",
-      "updated_at": "2026-10-07T13:55:33.176216363Z",
+      "updated_at": "2026-10-07T14:33:15.342367321Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "b1466b4a-12d3-476c-b44f-4ffef0215103": {
+          "display_id": 3115,
+          "author": "6ME5",
+          "content": "Source-only protected-publication successor frozen at .crosslink/code-batch-recovery/2026-10-07-root216-protected/HANDOFF.md (focused patch bf105553e6731776cdb9c7dd63750566b37309f18f55f5960247d054a93e7b21). Recorder transitions validate a complete replacement before atomic publication; failed admission cannot partially advance sequence/context. Terminal recovery reads the last verified publication under poison without clearing poison or permitting effects, consumes the same sole reducer settlement only as Recovery/Cancellation, and rejects terminal reopening. Progress projection, selected-policy admission and initial changed-path faults no longer abort a valid retained handoff. Derived knowledge failure retains complete raw resume values, and the driver binds the current #217 obligation root before host publication. Typed finding retention and genuinely absent-design continuation remain assigned to agent193 with #214 durable publication coordination; issue completion not claimed. Static full source/diff, whitespace and focused apply inspection only; no runners or test edits. All tests/build/lint/formal verification remains deferred until ALL batch code is done. Issue remains open.",
+          "created_at": "2026-10-07T14:33:15.338592163Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA31GB2lucv9ck4O4zAqVMfyxsBOuyDEvPFUCu6Xc4AXaBPu9ZwdzpnnxzeaEz7WeWpdRZZZDlXeR7R/lK/9mcDQ=="
+        },
         "b449d6ad-790f-4c60-a600-e34724f3afb3": {
           "display_id": 3109,
           "author": "6ME5",
