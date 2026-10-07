@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3882,
-        "tip_oid": "15d0ff88976c3d2b3729ce0222a06384f9e3c184",
-        "prefix_sha256": "669c9a96ddfdda5c55cf646d6ea43df1294961af49175a8fff434482f3235c73"
+        "sequence": 3883,
+        "tip_oid": "7ebcf27f7b7354577fb44c8f4eb3f1e5be9bce6d",
+        "prefix_sha256": "ae78478e7f4601a1edd8b287956e5e7c1bd9acce0ca48aeb10d194c973e0448a"
       },
       "NWAR": {
         "sequence": 39,
@@ -28388,12 +28388,13 @@
       "display_id": 124,
       "title": "[L025] Public activity windows and text truncation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L025.\n\n- `peritus-daemon/src/product_run/interaction.rs:106-127,138-231,357-365` truncates activity text/detail to the imported `MAX_PRODUCT_ACTIVITY_BYTES`, chunks streamed text to that ceiling, and removes the oldest activity whenever the imported `MAX_PRODUCT_ACTIVITIES` window is full. The definitions are now read: `peritus-app-protocol/src/product/interaction.rs:75-78` sets **256 entries** and **8,192 bytes per text/detail field**. Its constructors independently reject larger fields or collections at lines 139-141 and 192-196.\n- Leading whitespace in a pending stream is discarded after 256 valid bytes at lines 174-176. Invalid UTF-8 is rejected explicitly rather than displayed. Persistence-failure presentation may evict another activity to insert its error at lines 253-302.\n- Effect: the interaction view cannot expose complete indefinitely growing activity/text history through this window. This is a presentation/history boundary; an execution-duration restriction is not established by these reads. Durable retention and client pagination remain pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.931616646Z",
-      "updated_at": "2026-10-07T23:54:43.620390913Z",
+      "updated_at": "2026-10-07T23:56:01.433297560Z",
+      "closed_at": "2026-10-07T23:56:01.430457613Z",
       "labels": [
         "daily-driving-limiter"
       ],
