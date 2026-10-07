@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3868,
-        "tip_oid": "aa85b4905633e4c3b6b8905447cbe8affffa5ff4",
-        "prefix_sha256": "87a514f330ba5d13823949390b2d7dc32849c65dabda670dbc2f463933ca6fb4"
+        "sequence": 3869,
+        "tip_oid": "a8a9292baaf60348100366a0a5aaf364607cb7c6",
+        "prefix_sha256": "4c950d04b774d1ca726c6a9f568b5cc4d2b3d8dae2954eb4fee0b5d3a9bc96c0"
       },
       "NWAR": {
         "sequence": 39,
@@ -33338,12 +33338,13 @@
       "display_id": 123,
       "title": "[L024] SQLite native length and configurable database page ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L024.\n\n- `peritus-journal/src/sqlite/connection.rs:268-273` sets `SQLITE_LIMIT_LENGTH` to **32 MiB** and attached-database count to **zero**. The length limit is an additional hard database representation ceiling; attached-database restriction is a connection-security boundary.\n- `connection.rs:173-204` exposes `limit_storage_pages`, rejects zero/unrepresentable/below-current ceilings, and sets `max_page_count`; transactions requiring another page then fail with SQLITE_FULL. The method does not lower storage by deleting existing pages.\n- Default page-budget callers and real disk-pressure handling remain pending. A configurable page limit is not evidence that the default daemon imposes a small database quota; only the API/enforcement is established here.\n- Schema/store identity and WAL activation are admission requirements at lines 99-113,246-255,277-350. Unsupported generations require the migration owner rather than implicit reset.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.927015328Z",
-      "updated_at": "2026-10-07T23:33:38.795784282Z",
+      "updated_at": "2026-10-07T23:34:58.200023973Z",
+      "closed_at": "2026-10-07T23:34:58.197217928Z",
       "labels": [
         "daily-driving-limiter"
       ],
