@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3813,
-        "tip_oid": "bac9e58b42c10417c93dc26cec4fdc9da45d60e3",
-        "prefix_sha256": "e4a25e03acc3c02436d187f79570f2af6eeaf6ee09601a72c439a71d545ebfc8"
+        "sequence": 3814,
+        "tip_oid": "1ed01e124f155fe47bdbe5e105499af094dcbad2",
+        "prefix_sha256": "492ee6cf7b62063ebebfd501fe83ede2863f772442fcddd84abeb6c1dcd731bd"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3119,
+  "next_comment_id": 3120,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -36351,7 +36351,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.674065201Z",
-      "updated_at": "2026-10-07T14:44:17.747462967Z",
+      "updated_at": "2026-10-07T15:27:30.232609092Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -36371,6 +36371,15 @@
           "content": "Systemic repair plan for L125: Reviewer segments and output are bounded while invalid submissions can trigger unlimited fresh reads.\n\nOwning contract and implementation boundary: peritus-product-runner/src/reviewer_turn.rs:11-12,213-216; review.rs. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPersist reviewer grounding and candidate evidence across segment and parse-correction boundaries. Model typed submission errors as focused repair obligations, with output streaming/continuation adequate for the declared schema. Reuse unchanged authoritative reads and maintain complete finding conservation rather than forcing every invalid JSON retry back through a fresh inventory.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:21:37.467Z",
           "kind": "decision"
+        },
+        "e2c465f6-1fe6-4d88-ae5a-348ebc510e13": {
+          "display_id": 3119,
+          "author": "6ME5",
+          "content": "Delivered ba5a9775c72f9f9d776f250f73d0477df44c8f12 to PR112: removes finding field, summary, and count ceilings while preserving typed content, NUL, and duplicate-identity checks. Full source and focused diff reviewed; whitespace clean. Tests/builds/lint/formatting deferred by explicit user instruction until all batch code is complete. Issue stays open pending integrated final verification.",
+          "created_at": "2026-10-07T15:27:30.228780206Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHSS9sSNXCjlzeZZYSY+A/j1oKDMtjqgEeZ/0UuU6uWnp7n+GsTgExnRIhlZ2vYLnE/0v9CUm+SLvPGYt8E8/Cg=="
         }
       }
     },
