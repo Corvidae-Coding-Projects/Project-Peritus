@@ -204,19 +204,18 @@ pub struct ProbeRequest {
     helper_path: PathBuf,
     seatbelt_path: PathBuf,
     proxy: Option<ProxyRoute>,
-    connect_timeout: Duration,
+    operation_timeout: Option<Duration>,
 }
 
 impl ProbeRequest {
-    /// Creates a probe request with exact installed paths and optional proxy route.
+    /// Creates an untimed probe request with exact installed paths and optional proxy route.
     ///
     /// # Errors
-    /// Rejects non-absolute paths or a zero connection timeout.
+    /// Rejects non-absolute paths.
     pub fn new(
         helper_path: PathBuf,
         seatbelt_path: PathBuf,
         proxy: Option<ProxyRoute>,
-        connect_timeout: Duration,
     ) -> Result<Self, MacosError> {
         if !helper_path.is_absolute() || !seatbelt_path.is_absolute() {
             return Err(crate::error::invalid(
@@ -224,13 +223,39 @@ impl ProbeRequest {
                 "probe executable paths must be absolute",
             ));
         }
-        if connect_timeout.is_zero() {
+        Ok(Self { helper_path, seatbelt_path, proxy, operation_timeout: None })
+    }
+
+    /// Applies one caller-selected duration to each otherwise untimed native probe operation.
+    ///
+    /// # Errors
+    /// Rejects a zero duration.
+    pub fn with_operation_timeout(mut self, timeout: Duration) -> Result<Self, MacosError> {
+        if timeout.is_zero() {
             return Err(crate::error::invalid(
                 MacosOperation::Probe,
-                "proxy probe timeout is zero",
+                "probe operation timeout is zero",
             ));
         }
-        Ok(Self { helper_path, seatbelt_path, proxy, connect_timeout })
+        self.operation_timeout = Some(timeout);
+        Ok(self)
+    }
+
+    /// Creates a probe request with no managed proxy route or elapsed probe timeout.
+    ///
+    /// # Errors
+    /// Rejects non-absolute installed paths.
+    pub fn without_proxy(
+        helper_path: PathBuf,
+        seatbelt_path: PathBuf,
+    ) -> Result<Self, MacosError> {
+        if !helper_path.is_absolute() || !seatbelt_path.is_absolute() {
+            return Err(crate::error::invalid(
+                MacosOperation::Probe,
+                "probe executable paths must be absolute",
+            ));
+        }
+        Self::new(helper_path, seatbelt_path, None)
     }
 
     /// Returns the helper path.
@@ -250,6 +275,12 @@ impl ProbeRequest {
     pub const fn proxy(&self) -> Option<ProxyRoute> {
         self.proxy
     }
+
+    /// Returns the optional caller-selected duration for each native probe operation.
+    #[must_use]
+    pub const fn operation_timeout(&self) -> Option<Duration> {
+        self.operation_timeout
+    }
 }
 
 /// Native probe implementation. It never invokes a shell.
@@ -262,16 +293,40 @@ impl SystemProbe {
     /// # Errors
     /// Returns a typed probe failure only when observed output is malformed or unbounded.
     pub fn run(request: &ProbeRequest) -> Result<MacosHostProbe, MacosError> {
+        Self::run_cancellable(request, || true)
+    }
+
+    /// Executes native checks while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns a typed probe failure when cancelled or observed output is malformed.
+    pub fn run_cancellable(
+        request: &ProbeRequest,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<MacosHostProbe, MacosError> {
         #[cfg(target_os = "macos")]
         {
-            native::run_macos_probe(request)
+            native::run_macos_probe(request, &mut should_continue)
         }
         #[cfg(not(target_os = "macos"))]
         {
             let _ = request;
-            Ok(MacosHostProbe::unsupported_current_host())
+            if should_continue() {
+                Ok(MacosHostProbe::unsupported_current_host())
+            } else {
+                Err(probe_cancelled())
+            }
         }
     }
+}
+
+fn probe_cancelled() -> MacosError {
+    MacosError::new(
+        MacosErrorKind::ProbeFailed,
+        MacosOperation::Probe,
+        RecoveryAction::SelectSupportedBackend,
+        "native capability probe was cancelled by its caller",
+    )
 }
 
 fn supported_features(evidence: &ProbeEvidence) -> FeatureSet {

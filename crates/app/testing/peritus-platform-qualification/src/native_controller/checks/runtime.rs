@@ -252,15 +252,12 @@ fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std:
 
 #[cfg(target_os = "macos")]
 fn native_sandbox_probe(layout: &HostLayout) -> Result<Observation, Box<dyn std::error::Error>> {
-    use std::time::Duration;
-
     use peritus_sandbox_macos::{ProbeRequest, SystemProbe};
 
     let request = ProbeRequest::new(
         layout.helper.clone(),
         "/usr/bin/sandbox-exec".into(),
         None,
-        Duration::from_secs(1),
     )?;
     let probe = SystemProbe::run(&request)?;
     let evidence = probe.evidence();

@@ -9,9 +9,10 @@ use peritus_sandbox_macos::{MacosDescriptor, ProbeRequest, SystemProbe};
 #[test]
 fn live_macos_probe_reports_installed_capabilities_truthfully() {
     let helper = std::env::current_exe().unwrap();
-    let request =
-        ProbeRequest::new(helper, "/usr/bin/sandbox-exec".into(), None, Duration::from_secs(1))
-            .unwrap();
+    let request = ProbeRequest::new(helper, "/usr/bin/sandbox-exec".into(), None)
+        .unwrap()
+        .with_operation_timeout(Duration::from_secs(1))
+        .unwrap();
     let probe = SystemProbe::run(&request).unwrap();
     let evidence = probe.evidence();
     assert!(evidence.platform);

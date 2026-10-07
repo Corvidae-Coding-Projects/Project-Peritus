@@ -220,7 +220,6 @@ fn non_macos_system_probe_is_strictly_unsupported() {
                 "/helper".into(),
                 "/usr/bin/sandbox-exec".into(),
                 None,
-                std::time::Duration::from_millis(10),
             )
             .unwrap(),
         )
