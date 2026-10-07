@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3804,
-        "tip_oid": "5598559c1ae45f915944cc84bc622f9861fa2d78",
-        "prefix_sha256": "327b37ef3c4fcd5d085869b6d1a2b3c4f44285b4b98f5797f3c3d8c09d7b1fc4"
+        "sequence": 3805,
+        "tip_oid": "0c68e9be2b65941d80bf4fb1f942a4958a8cb682",
+        "prefix_sha256": "b21d43c7f27301b3dd95c2f525c9faf67df0e3a0c866b34546c256d030b3e47f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3110,
+  "next_comment_id": 3111,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24044,7 +24044,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.665154046Z",
-      "updated_at": "2026-10-06T13:21:37.667411735Z",
+      "updated_at": "2026-10-07T13:59:27.044845692Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -24055,6 +24055,15 @@
           "content": "Systemic repair plan for L123: Mandatory design shape and unlimited validation retries can repeat grounding forever.\n\nOwning contract and implementation boundary: peritus-product-runner/src/design.rs:20-21,229-248; design.rs:75-173. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nReplace mandatory document length/heading shape with task-fit typed design obligations and a minimal deterministic path for small tasks. Retain grounding and accepted design evidence across validation retries, return every actual violated criterion, and drive the unresolved obligation toward a writer handoff. Validate final published design plus wrappers, and treat malformed scope metadata explicitly instead of silently selecting the provider-design workflow.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:21:37.467Z",
           "kind": "decision"
+        },
+        "e300d74b-de04-4e66-8ef3-414a2a6fd7cd": {
+          "display_id": 3110,
+          "author": "6ME5",
+          "content": "Source tranche for #222 frozen in .crosslink/code-batch-recovery/2026-10-07-root222/HANDOFF.md (focused patch SHA-256 736e184618437eff27ac04cffcd6db312e05d5c32ae993843e2bd509b531c030). Removed mandatory 512-byte minimum, one-MiB ceiling, title form, and four-section count; grounded nonempty concise plans can reach the writer without a replacement quota. System/retry instructions now scale to the actual task and point to retained observations. Existing native/context reentry, grounding checks, complete wrapper publication, persisted plan bytes and resume schemas preserved. Task-fit typed/deterministic source-task planning, shared scope metadata admission, and source-aware grounding lineage remain open; no full-issue completion claimed. Static source/diff inspection only. No tests or test edits, builds, checks, linters, formatters, or formal runners; verification deferred until ALL batch code is finished. Issue stays open.",
+          "created_at": "2026-10-07T13:59:27.040711685Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACDu9vhTDavPYzmjn4maG2IK7SEah1L2qTYexbtKFFsca7VITs+AwJbxM4ilkvBx79IPqCvT0VzX6tqo4mf7NDQ=="
         }
       }
     },
