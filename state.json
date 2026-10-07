@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3748,
-        "tip_oid": "e4cde82b92e5d3b505decf159b8ed7939fe43c08",
-        "prefix_sha256": "f3c03a798639545a92e336b954bafa3a326846dcb9bb42be5f963847e58e0192"
+        "sequence": 3749,
+        "tip_oid": "37d3e4bfe2287c959262bc50deaa066403fa4b44",
+        "prefix_sha256": "e601f27006686fc1a798d0fa52ad0a77d3cdeab404466f26d2e7c849259615a4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3055,
+  "next_comment_id": 3056,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15088,7 +15088,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.953588245Z",
-      "updated_at": "2026-10-07T05:24:47.632802395Z",
+      "updated_at": "2026-10-07T05:41:30.528554077Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15101,6 +15101,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEOYxthB/uaQUYE8TgfeT/Xb26jCAZaNAV+Pu03cejN0BIMXsiZRrsxO2Ut3UZeC2548tGuhxpCUPfTCyNIWuDg=="
+        },
+        "3bcf2a1f-5d5d-4a1f-8eb5-45a64ddf5574": {
+          "display_id": 3055,
+          "author": "6ME5",
+          "content": "Code-only continuation: transcript activity and detail bodies now use fixed physical render windows with complete earlier/later access. Session/run libraries and parent selection use bounded pages rather than ever-growing Show More lists; the selected parent stays available when paging. Project, session, and file rails likewise render physical windows, with keyboard selection bringing the chosen session into view. Text-page frontiers now share immutable radix-tree nodes, avoiding repeated copies of a growing page array, and line lookup uses the page index. Source inspection and diff whitespace checks only; tests/build/lint/format runners remain deferred, limitations and prior unverified changes remain open, and no issue completion is claimed.",
+          "created_at": "2026-10-07T05:41:30.513295711Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEZf1ZRDoY88fj+kOrINNpvjCMu2RR7n36lArOmbuaMvW2OslvkQwT5GRZiQVitlUG/2QWu7UXUiRtHNFK6VgDw=="
         },
         "8c881e6e-b5e3-449a-8b9f-fc8ffb5ba613": {
           "display_id": 2889,
