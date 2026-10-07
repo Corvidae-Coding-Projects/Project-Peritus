@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3773,
-        "tip_oid": "fc2d7daad996f136ac0f1bc245cea29252242a75",
-        "prefix_sha256": "80168c658b4b06a0282bd52fe0159c479816d3c115c8a82c817deecc4da8c4fc"
+        "sequence": 3774,
+        "tip_oid": "74530ef934580029a108a43dedb4bbad3f579b8d",
+        "prefix_sha256": "b4c2d672854dc6ec41192e3dfb2e1ba47161b724d88b1fa95a58a77c6dc6110c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3079,
+  "next_comment_id": 3080,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25940,11 +25940,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.207448665Z",
-      "updated_at": "2026-10-06T13:19:08.209597105Z",
+      "updated_at": "2026-10-07T07:17:35.923144075Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "5addca21-c6dd-4a70-b33b-5a8bd6219343": {
+          "display_id": 3079,
+          "author": "6ME5",
+          "content": "#187 code implemented; final-phase verification is deferred as requested. Removed the 16,384 open/consume admission ceilings and 15,360 retirement threshold. Replaced lifetime in-memory maps with a private SQLite projection rebuilt record-by-record from authoritative files, bounded cache and 256-record query pages. Settled results retire only after complete artifact publication, into checksum-bound immutable claim+terminal tombstones published and synced before active manifest/spool deletion; legacy fixed-size consumption claims remain to prevent downgrade identity reuse. Terminal lookup and complete quiescence/reconciliation include tombstones. Added streaming reconcile_with plus the collecting compatibility API. Ambiguous manifest publication re-observes canonical disk state; derived projection errors rebuild under the same owner on next use, retaining the prior frontier until replacement validates. Quarantine preserves consumed filename identities as indeterminate records. Optional retirement or scratch cleanup failures do not impose a new admission ceiling; scratch indexes have kernel-owned leases and only abandoned indexes can be reclaimed. Underlying new SQLite/IO errors retain source provenance via the #189 ProcessError API. Source/diff review only: no tests, builds, lint, formatting or codegen runners invoked. Issue remains open. Residual: startup rebuild reads historical files and the compatibility reconcile report collects all results; these are not yet performance-qualified.",
+          "created_at": "2026-10-07T07:17:35.865366812Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAbfddfFjznON7vsKIn6hujYLaeRsJ++e1bp3CsLLMc/5T7WHQ+4VAh8/MfDgx2wwAdJ6Atdldt18mwmYzuwHiCg=="
+        },
         "ea314648-dbad-43ea-90f1-e074411fb254": {
           "display_id": 2259,
           "author": "6ME5",
