@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3768,
-        "tip_oid": "47813e584924d060aff0f775f62328a11ea97c03",
-        "prefix_sha256": "dcd26a93db2e92593c579accd34f8a147eca28283d98438746bfc3e48f88857f"
+        "sequence": 3769,
+        "tip_oid": "1a996b3099f489d9bee90189f5e12a8aa899b5f8",
+        "prefix_sha256": "7953c4463d50c848dd05ef75e63877e3e6ceb1c07876231d93996be9534644c3"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3074,
+  "next_comment_id": 3075,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -7321,7 +7321,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.041710760Z",
-      "updated_at": "2026-10-06T13:19:08.043920679Z",
+      "updated_at": "2026-10-07T06:48:14.855656958Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -7332,6 +7332,15 @@
           "content": "Systemic repair plan for L050: Retry attempts remain finite while elapsed retry horizon is absent.\n\nOwning contract and implementation boundary: peritus-agent/src/developer/retry.rs:18-20,129-157; developer/execution/invocation.rs:19-26,40-48; model_request.rs:33-40,58-70. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nReplace finite transient retry attempts with a durable retry state carrying acceptance certainty, provider-request identity and next eligible time. Continue safe definitely-unaccepted retries until cancellation or a real unrecoverable condition; reconcile ambiguous accepted attempts instead of resending them. Reuse valid grounding attestations and native context rather than forcing another prerequisite after reconstruction.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "8473da98-7309-4c3c-aeeb-f857582de0f0": {
+          "display_id": 3074,
+          "author": "6ME5",
+          "content": "Code-only follow-up: source inspection confirmed RequestSourceProgress was recreated per invocation while durable grounding recovery ignored request_sources/request_source_read. Added exact authority/catalog bindings to successful host results, reconstruction from matching archived call/result pairs, monotonic byte-frontier credit, and retained user-derived reference/access-policy projections scoped to the same workspace and governing authority. Conversation retries now retain and recover that evidence and forward model-context observations; user steering clears repository grounding while preserving immutable request-body credit. Forced tool selection now requests the governing catalog/body before workspace_list, removing the contradictory mandatory-tool loop. Old unbound results grant no credit. No tests or manual runners have run; issue remains open pending final integrated verification.",
+          "created_at": "2026-10-07T06:48:14.828656490Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAneCGpsm8C3hnRPIObemBqxeRTKdk4HqFQ2LCYz5aN84VIvaaFGhFrZM9wVqn0Tir35oQYta237Oj5dtsylAnAw=="
         }
       }
     },
