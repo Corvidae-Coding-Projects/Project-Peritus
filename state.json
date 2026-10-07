@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3661,
-        "tip_oid": "2220d2b025d5c44bcfc688cb196bc5b49e486a0e",
-        "prefix_sha256": "0899cb5782068dace886d6fddd67bdb366c5e518914db33a4d63b1764edc0477"
+        "sequence": 3662,
+        "tip_oid": "3ba405abdc9585cc7caa1cb0a6e2e5ec0a3eaeb4",
+        "prefix_sha256": "6b57781a060fd9e6b864a75c46e56f4e9b04f12a678135bd4220546abc7da90f"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2990,
+  "next_comment_id": 2991,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-07T00:15:15.339578130Z",
+      "updated_at": "2026-10-07T00:16:31.149944211Z",
       "labels": [
         "ci"
       ],
@@ -22343,6 +22343,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJRTw6pQN0jFh2Zc7Icid/Y/VqVePTzmiccoZ6hhsO22Uyz0OplAasAVXHI4c8dAtB13cAg+dl8mMyXJ2DNGWDg=="
+        },
+        "477ff9f0-2684-44a5-8fb6-794f1c0077ef": {
+          "display_id": 2990,
+          "author": "6ME5",
+          "content": "Final acceptance for commit a26a324558bd592356af9b19fda4458ce54d881a is complete. All six Foundation run37549144111 native provider/shared-conformance shards pass on this exact head: Linux112560348413/112560348294, macOS112560348702/112560348606 and Windows112560352091/112560351923. The last Mac shared-conformance job completed2026-10-07T00:15:42Z; its actual log confirms retained failed-exercise evidence, exact single exercise/teardown and infrastructure classification regressions executed and passed. All17 Linux and16 portable Mac/Windows Codex process tests and core I/O-cause regressions were inspected in actual logs. Native metadata/log pairs retained under /tmp/peritus-issue825-followup-*-success.{json,log}; run URL https://github.com/Corvidae-Coding-Projects/Project-Peritus/actions/runs/37549144111 . Initial immutable fixture/I/O-cause repair d2eb633326654d9d629beb26efa0120c8bdf1677 also had all six native shards accepted. Final local298 tests2existing authenticated-live ignores, strict full-workspace lint/format, Windows GNU compilation, relevant Verus and rebuilt xtask all pass; selected code matches the isolated qualified tree, user usage/audit work preserved. The captured copied-executable ETXTBSY writer mechanism and observed receipt-loss gaps have deterministic before/after evidence and owner-level repair. Failed experiments remain retained; the old discarded historical auth predicate cannot be retroactively recovered and is not asserted as proved. No hidden retry, deadline increase, global recorder or weakened test. No remaining825 work; closing825 before110. Full PR CI and separate protected-proof/journal/JSON/harness issues remain outside this issue closure. Full PR read-only watcher71240 remains live.",
+          "created_at": "2026-10-07T00:16:31.145661611Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABpxd/eI4RL13S40O9dMXLKXwbCabYO4jf6x/YbB1qEeaFn1YboEuaYPvZoDvDLRQiLS9XuF9r6+C4MKwnBY1BQ=="
         },
         "4b2d1ab9-a8ec-4f6b-b919-b3496d721aa0": {
           "display_id": 2979,
