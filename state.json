@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3678,
-        "tip_oid": "7892e9f16f1c0bde0a4812f0650d5defe5a05e90",
-        "prefix_sha256": "45ea52dad8b0ae72edc3525e78464d698882a05256fb13bc653cecccf489840d"
+        "sequence": 3679,
+        "tip_oid": "df7cdd127d8f62b9bd29c871b0777ad062f06c16",
+        "prefix_sha256": "86906acb489daf448360de28b36d84cc0be3e342729dee853ee2d79fe3567b2f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3004,
+  "next_comment_id": 3005,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20037,7 +20037,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:24:12.965035854Z",
+      "updated_at": "2026-10-07T01:27:37.478501640Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20129,6 +20129,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACfIxDa6diuBm7FLShcjz2asL5v+VOHMvhGTjpju7x7GvRIoL9mbCH2CGRwneSY0FVIx8vbdqO7p2wzrzdxQhBw=="
+        },
+        "a29e744d-ddb3-4f08-b924-57226753f412": {
+          "display_id": 3004,
+          "author": "6ME5",
+          "content": "Code-only batch review found a concrete regression before commit: the complete affected suite stopped at isolated_fork_preserves_parent_and_starts_as_an_independent_draft. fork_workbench calls validate_fork_coverage while already owning controls; the new one-manifest snapshot reader had acquired controls again and deadlocked on the same owner. Root cause corrected structurally: validate_fork_coverage now requires caller-owned &ControlStore, and the sole fork caller passes its existing store. This also removes the previously nested selected-range coverage access. Existing full composed fork fixture is the regression gate; no test was disabled or assertion weakened. Source-layout responsibility splits now keep storage.rs321lines and scenario.rs390lines without changing budgets. Final rerun and commit are deferred until the requested entire code batch is integrated; #110 remains OPEN.",
+          "created_at": "2026-10-07T01:27:37.473998187Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlQ+CjOcA08b9tC+U4Fvg6JxbCI4ZZowatbM0F0q8pkYH3sBcEqSk/utKg5AsS0hDhwGG0hh6yiB9/79NBYHYBw=="
         },
         "a86d714d-5472-4684-8d95-05d6f58fe0a4": {
           "display_id": 2998,
