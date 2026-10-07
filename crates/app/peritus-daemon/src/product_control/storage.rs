@@ -763,7 +763,12 @@ fn open_journal(
     cancellation: &JournalCancellation,
 ) -> Result<SqliteJournal, Error> {
     loop {
-        match SqliteJournal::open_waiting(root.join("control.sqlite3"), store, cancellation) {
+        match SqliteJournal::open_waiting_with_options(
+            root.join("control.sqlite3"),
+            store,
+            peritus_journal::SqliteJournalOptions::native(),
+            cancellation,
+        ) {
             Ok(journal) => return Ok(journal),
             Err(error) if error.is_contention() => {
                 if cancellation.is_cancelled() {

@@ -30,7 +30,7 @@ pub async fn submit(
     let envelope = binding.frames().envelope().as_domain();
     let request_id = ApplicationRequestId::new(binding.request_id().into_bytes())
         .map_err(journal_value_error)?;
-    let command = NewApplicationCommand::new(
+    let command = NewApplicationCommand::new_recoverable(
         actor_id,
         binding.session_id(),
         binding.idempotency_key().as_bytes().to_vec(),
@@ -38,6 +38,8 @@ pub async fn submit(
         binding.frames().command_frame().digest(),
         request_id,
         envelope.command_id(),
+        binding.frames().envelope_frame().bytes().to_vec(),
+        binding.frames().command_frame().bytes().to_vec(),
     )
     .map_err(journal_value_error)?;
 

@@ -40,6 +40,8 @@ pub(super) struct PromptRow {
     settlement_request_id: Option<Vec<u8>>,
     settlement_digest: Option<Vec<u8>>,
     settlement_bytes: Option<Vec<u8>>,
+    binding_byte_length: Option<i64>,
+    settlement_byte_length: Option<i64>,
 }
 
 impl PromptRow {
@@ -67,18 +69,25 @@ impl PromptRow {
             settlement_request_id: row.get(19)?,
             settlement_digest: row.get(20)?,
             settlement_bytes: row.get(21)?,
+            binding_byte_length: row.get(22)?,
+            settlement_byte_length: row.get(23)?,
         })
     }
 
-    pub(super) fn parse(self) -> Result<ApplicationPromptRecord, JournalError> {
+    pub(super) fn parse(
+        self,
+        connection: &rusqlite::Connection,
+    ) -> Result<ApplicationPromptRecord, JournalError> {
         let revision = revision(&self)?;
         let state = ApplicationPromptState::from_tag(self.state)
             .ok_or_else(|| corrupt("unknown application prompt state"))?;
         let settlement = parse_settlement(
+            connection,
             self.settlement_kind,
             self.settlement_request_id,
             self.settlement_digest,
             self.settlement_bytes,
+            self.settlement_byte_length,
         )?;
         if (state == ApplicationPromptState::Awaiting) != settlement.is_none() {
             return Err(corrupt("stored application prompt settlement shape is inconsistent"));
@@ -104,9 +113,15 @@ impl PromptRow {
         }
         let binding_digest =
             digest_from_blob(&self.binding_digest, "application prompt binding digest")?;
-        if self.binding_bytes.is_empty()
-            || self.binding_bytes.len() > MAX_APPLICATION_PROMPT_BINDING_BYTES
-            || peritus_codec::sha256(&self.binding_bytes) != binding_digest
+        let binding_bytes = crate::sqlite::content::restore_or_inline(
+            connection,
+            self.binding_bytes,
+            binding_digest,
+            self.binding_byte_length,
+            MAX_APPLICATION_PROMPT_BINDING_BYTES,
+        )?;
+        if binding_bytes.is_empty()
+            || binding_bytes.len() > MAX_APPLICATION_PROMPT_BINDING_BYTES
         {
             return Err(corrupt("stored application prompt binding bytes are invalid"));
         }
@@ -141,7 +156,7 @@ impl PromptRow {
             )?)
             .map_err(|_| corrupt("stored application prompt cancellation generation is zero"))?,
             binding_digest,
-            binding_bytes: self.binding_bytes,
+            binding_bytes,
             maximum_answer_bytes,
             state,
             settlement,
@@ -181,22 +196,31 @@ fn revision(row: &PromptRow) -> Result<RevisionTuple, JournalError> {
 }
 
 fn parse_settlement(
+    connection: &rusqlite::Connection,
     kind: Option<i64>,
     request_id: Option<Vec<u8>>,
     digest: Option<Vec<u8>>,
     bytes: Option<Vec<u8>>,
+    byte_length: Option<i64>,
 ) -> Result<Option<ApplicationPromptSettlement>, JournalError> {
-    let (kind, request_id, digest, bytes) = match (kind, request_id, digest, bytes) {
-        (None, None, None, None) => return Ok(None),
+    let (kind, request_id, digest, inline_bytes) = match (kind, request_id, digest, bytes) {
+        (None, None, None, None) if byte_length.is_none() => return Ok(None),
         (Some(kind), Some(request_id), Some(digest), Some(bytes)) => {
             (kind, request_id, digest, bytes)
         }
         _ => return Err(corrupt("stored application prompt settlement is partial")),
     };
+    let digest = digest_from_blob(&digest, "application prompt settlement digest")?;
+    let bytes = crate::sqlite::content::restore_or_inline(
+        connection,
+        inline_bytes,
+        digest,
+        byte_length,
+        MAX_APPLICATION_PROMPT_SETTLEMENT_BYTES,
+    )?;
     if bytes.is_empty() || bytes.len() > MAX_APPLICATION_PROMPT_SETTLEMENT_BYTES {
         return Err(corrupt("stored application prompt settlement bytes are outside limits"));
     }
-    let digest = digest_from_blob(&digest, "application prompt settlement digest")?;
     ApplicationPromptSettlement::new(
         ApplicationPromptSettlementKind::from_tag(kind)
             .ok_or_else(|| corrupt("unknown application prompt settlement kind"))?,

@@ -13,13 +13,14 @@ pub(super) fn journal_observation(
     let position = integer(position, "journal position")?;
     let raw = transaction
         .query_row(
-            "SELECT e.global_position, e.event_id, e.event_hash, c.batch_hash, e.frame_family, e.frame_schema, e.frame_digest, e.revision_digest, e.frame FROM events AS e JOIN commands AS c ON c.command_id = e.command_id WHERE e.global_position = ?1 AND e.global_position BETWEEN c.first_position AND c.last_position",
+            "SELECT e.global_position, e.event_id, e.event_hash, c.batch_hash, e.frame_family, e.frame_schema, e.frame_digest, e.revision_digest, e.frame, e.frame_byte_length FROM events AS e JOIN commands AS c ON c.command_id = e.command_id WHERE e.global_position = ?1 AND e.global_position BETWEEN c.first_position AND c.last_position",
             [position],
             |row| {
                 Ok((
                     row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?, row.get::<_, Vec<u8>>(2)?,
                     row.get::<_, Vec<u8>>(3)?, row.get::<_, i64>(4)?, row.get::<_, i64>(5)?,
                     row.get::<_, Vec<u8>>(6)?, row.get::<_, Vec<u8>>(7)?, row.get::<_, Vec<u8>>(8)?,
+                    row.get::<_, Option<i64>>(9)?,
                 ))
             },
         )
@@ -38,6 +39,8 @@ pub(super) fn journal_observation(
                 .map(ArtifactDigest::from_sha256)
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let frame_digest = digest(&raw.6, "frame digest")?;
+    let frame = restore_journal_frame(transaction, raw.8, frame_digest, raw.9)?;
     Ok(DurableJournalObservation {
         global_position: positive(raw.0, "global position")?,
         event_id: EventId::new(array16(&raw.1, "event id")?)
@@ -46,11 +49,103 @@ pub(super) fn journal_observation(
         batch_hash: digest(&raw.3, "batch hash")?,
         frame_family: positive_u16(raw.4, "frame family")?,
         frame_schema: positive_u16(raw.5, "frame schema")?,
-        frame_digest: digest(&raw.6, "frame digest")?,
+        frame_digest,
         revision_digest: digest(&raw.7, "revision digest")?,
-        frame: raw.8,
+        frame,
         artifacts,
     })
+}
+
+const JOURNAL_CONTENT_CHUNK_BYTES: usize = 64 * 1024;
+
+fn restore_journal_frame(
+    transaction: &Transaction<'_>,
+    inline: Vec<u8>,
+    frame_digest: Sha256Digest,
+    byte_length: Option<i64>,
+) -> Result<Vec<u8>, EvidenceError> {
+    let Some(byte_length) = byte_length else {
+        if inline.is_empty()
+            || inline.len() > peritus_journal::MAX_EVENT_FRAME_BYTES
+            || peritus_codec::sha256(&inline) != frame_digest
+        {
+            return Err(journal_mismatch("legacy journal frame bytes are invalid"));
+        }
+        return Ok(inline);
+    };
+    if inline.as_slice() != [0] {
+        return Err(journal_mismatch("paged journal frame also retains inline bytes"));
+    }
+    let byte_length = usize::try_from(byte_length)
+        .map_err(|_| journal_mismatch("paged journal frame length is invalid"))?;
+    if byte_length == 0 || byte_length > peritus_journal::MAX_EVENT_FRAME_BYTES {
+        return Err(journal_mismatch("paged journal frame length exceeds its durable bound"));
+    }
+    let expected_chunks = byte_length.div_ceil(JOURNAL_CONTENT_CHUNK_BYTES);
+    let header: Option<(i64, i64)> = transaction
+        .query_row(
+            "SELECT byte_length, chunk_count FROM journal_content WHERE content_digest = ?1",
+            [frame_digest.as_bytes().as_slice()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|error| EvidenceError::sqlite("read journal frame content header", error))?;
+    if header
+        != Some((
+            i64::try_from(byte_length)
+                .map_err(|_| journal_mismatch("journal frame length is not representable"))?,
+            i64::try_from(expected_chunks)
+                .map_err(|_| journal_mismatch("journal frame chunk count is not representable"))?,
+        ))
+    {
+        return Err(journal_mismatch("journal frame content header is inconsistent"));
+    }
+    let mut statement = transaction
+        .prepare(
+            "SELECT chunk_index, payload FROM journal_content_chunks
+              WHERE content_digest = ?1 ORDER BY chunk_index",
+        )
+        .map_err(|error| EvidenceError::sqlite("prepare journal frame chunks", error))?;
+    let rows = statement
+        .query_map([frame_digest.as_bytes().as_slice()], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .map_err(|error| EvidenceError::sqlite("query journal frame chunks", error))?;
+    let mut frame = Vec::with_capacity(byte_length);
+    let mut observed_chunks = 0_usize;
+    for row in rows {
+        let (index, chunk) =
+            row.map_err(|error| EvidenceError::sqlite("read journal frame chunk", error))?;
+        let expected_bytes = byte_length
+            .saturating_sub(frame.len())
+            .min(JOURNAL_CONTENT_CHUNK_BYTES);
+        if usize::try_from(index).ok() != Some(observed_chunks)
+            || chunk.len() != expected_bytes
+            || expected_bytes == 0
+        {
+            return Err(journal_mismatch("journal frame chunks are not canonical"));
+        }
+        frame.extend_from_slice(&chunk);
+        observed_chunks = observed_chunks
+            .checked_add(1)
+            .ok_or_else(|| journal_mismatch("journal frame chunk count overflowed"))?;
+    }
+    if observed_chunks != expected_chunks
+        || frame.len() != byte_length
+        || peritus_codec::sha256(&frame) != frame_digest
+    {
+        return Err(journal_mismatch("journal frame chunks do not match their digest"));
+    }
+    Ok(frame)
+}
+
+fn journal_mismatch(detail: &'static str) -> EvidenceError {
+    EvidenceError::new(
+        EvidenceErrorKind::JournalMismatch,
+        RecoveryAction::RepairDependency,
+        "read journal evidence provenance",
+        detail,
+    )
 }
 
 pub(super) fn load_record(

@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, OpenFlags, limits::Limit};
 
 use crate::{
     MigrationConfig, MigrationError, MigrationErrorCode, MigrationOperationId, MigrationPlan,
@@ -142,12 +142,18 @@ impl MigrationEngine {
         connection
             .busy_timeout(config.busy_timeout())
             .map_err(|error| MigrationError::sqlite("configure migration busy timeout", error))?;
+        if let Some(maximum_pages) = config.maximum_pages() {
+            apply_page_ceiling(&connection, maximum_pages)?;
+        }
         connection
             .pragma_update(None, "synchronous", "FULL")
             .map_err(|error| MigrationError::sqlite("configure synchronous FULL", error))?;
         connection
             .pragma_update(None, "foreign_keys", true)
             .map_err(|error| MigrationError::sqlite("configure foreign keys", error))?;
+        connection
+            .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
+            .map_err(|error| MigrationError::sqlite("disable migration attached databases", error))?;
         verify_database(&connection)?;
         catalog::install(&connection)?;
         Ok(Self {
@@ -346,6 +352,35 @@ impl MigrationEngine {
             reconciled,
         }
     }
+}
+
+fn apply_page_ceiling(
+    connection: &Connection,
+    maximum_pages: u64,
+) -> Result<(), MigrationError> {
+    let maximum = i64::try_from(maximum_pages).map_err(|_| {
+        invalid_config("migration database page ceiling is not representable")
+    })?;
+    let current: i64 = connection
+        .pragma_query_value(None, "page_count", |row| row.get(0))
+        .map_err(|error| MigrationError::sqlite("read migration database page count", error))?;
+    if current < 0 || u64::try_from(current).ok().is_none_or(|pages| maximum_pages < pages) {
+        return Err(invalid_config(
+            "migration database page ceiling is below current allocation",
+        ));
+    }
+    connection
+        .pragma_update(None, "max_page_count", maximum)
+        .map_err(|error| MigrationError::sqlite("configure migration database page ceiling", error))?;
+    let observed: i64 = connection
+        .pragma_query_value(None, "max_page_count", |row| row.get(0))
+        .map_err(|error| MigrationError::sqlite("observe migration database page ceiling", error))?;
+    if u64::try_from(observed).ok() != Some(maximum_pages) {
+        return Err(invalid_config(
+            "SQLite did not retain the requested migration database page ceiling",
+        ));
+    }
+    Ok(())
 }
 
 fn verify_integrity(connection: &Connection) -> Result<(), MigrationError> {

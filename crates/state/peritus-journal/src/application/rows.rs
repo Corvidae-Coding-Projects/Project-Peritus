@@ -8,6 +8,7 @@ use super::types::{
     ApplicationCommandState, ApplicationPrincipal, ApplicationPrincipalKind,
     ApplicationPrincipalState, ApplicationRequestId, ApplicationSession, ApplicationSessionState,
     ApplicationWorkspace, ApplicationWorkspaceState, MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES,
+    RetainedApplicationCommand,
 };
 use crate::{
     JournalError,
@@ -99,6 +100,9 @@ pub(super) struct CommandRow {
     last: Option<i64>,
     error_code: Option<String>,
     result_digest: Option<Vec<u8>>,
+    envelope_digest: Option<Vec<u8>>,
+    envelope_byte_length: Option<i64>,
+    domain_command_byte_length: Option<i64>,
 }
 
 impl CommandRow {
@@ -116,10 +120,16 @@ impl CommandRow {
             last: row.get(9)?,
             error_code: row.get(10)?,
             result_digest: row.get(11)?,
+            envelope_digest: row.get(12)?,
+            envelope_byte_length: row.get(13)?,
+            domain_command_byte_length: row.get(14)?,
         })
     }
 
-    pub(super) fn parse(self) -> Result<ApplicationCommandRecord, JournalError> {
+    pub(super) fn parse(
+        self,
+        connection: &rusqlite::Connection,
+    ) -> Result<ApplicationCommandRecord, JournalError> {
         if self.key.is_empty() || self.key.len() > 256 {
             return Err(corrupt("stored application idempotency key is invalid"));
         }
@@ -138,15 +148,46 @@ impl CommandRow {
             .as_deref()
             .map(|bytes| digest_from_blob(bytes, "application result digest"))
             .transpose()?;
+        let domain_command_digest =
+            digest_from_blob(&self.domain_command_digest, "application domain command digest")?;
+        let submission = match (
+            self.envelope_digest,
+            self.envelope_byte_length,
+            self.domain_command_byte_length,
+        ) {
+            (None, None, None) => None,
+            (Some(envelope_digest), Some(envelope_byte_length), Some(command_byte_length)) => {
+                let envelope_digest =
+                    digest_from_blob(&envelope_digest, "application command envelope digest")?;
+                let envelope_bytes = crate::sqlite::content::restore(
+                    connection,
+                    envelope_digest,
+                    envelope_byte_length,
+                    crate::MAX_EVENT_FRAME_BYTES,
+                )?;
+                let command_bytes = crate::sqlite::content::restore(
+                    connection,
+                    domain_command_digest,
+                    command_byte_length,
+                    crate::MAX_EVENT_FRAME_BYTES,
+                )?;
+                if envelope_bytes.is_empty() || command_bytes.is_empty() {
+                    return Err(corrupt("stored recoverable command contains an empty frame"));
+                }
+                Some(RetainedApplicationCommand {
+                    envelope_digest,
+                    envelope_bytes,
+                    command_bytes,
+                })
+            }
+            _ => return Err(corrupt("stored application command recovery metadata is partial")),
+        };
         let record = ApplicationCommandRecord {
             actor_id: actor_id(&self.actor)?,
             session_id: session_id(&self.session)?,
             idempotency_key: self.key,
             request_digest: digest_from_blob(&self.request_digest, "application request digest")?,
-            domain_command_digest: digest_from_blob(
-                &self.domain_command_digest,
-                "application domain command digest",
-            )?,
+            domain_command_digest,
             request_id: ApplicationRequestId::new(array_from_blob(
                 &self.request_id,
                 "application request identity",
@@ -162,6 +203,7 @@ impl CommandRow {
             last_position,
             error_code: self.error_code,
             result_digest,
+            submission,
         };
         validate_command_shape(&record)?;
         Ok(record)
@@ -191,8 +233,7 @@ impl ArtifactRow {
     pub(super) fn parse(self) -> Result<ApplicationArtifact, JournalError> {
         let byte_size = u64::try_from(self.size)
             .map_err(|_| corrupt("stored application artifact size is negative"))?;
-        if self.media_type.is_empty() || self.media_type.len() > 255 || !self.media_type.is_ascii()
-        {
+        if self.media_type.is_empty() || !self.media_type.is_ascii() {
             return Err(corrupt("stored application artifact media type is invalid"));
         }
         Ok(ApplicationArtifact {
@@ -219,20 +260,34 @@ pub(super) struct WorkspaceRow {
     bytes: Vec<u8>,
     digest: Vec<u8>,
     state: i64,
+    byte_length: Option<i64>,
 }
 
 impl WorkspaceRow {
     pub(super) fn read(row: &Row<'_>) -> rusqlite::Result<Self> {
-        Ok(Self { id: row.get(0)?, bytes: row.get(1)?, digest: row.get(2)?, state: row.get(3)? })
+        Ok(Self {
+            id: row.get(0)?,
+            bytes: row.get(1)?,
+            digest: row.get(2)?,
+            state: row.get(3)?,
+            byte_length: row.get(4)?,
+        })
     }
-    pub(super) fn parse(self) -> Result<ApplicationWorkspace, JournalError> {
-        if self.bytes.is_empty() || self.bytes.len() > MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES
+    pub(super) fn parse(
+        self,
+        connection: &rusqlite::Connection,
+    ) -> Result<ApplicationWorkspace, JournalError> {
+        let registration_digest = digest_from_blob(&self.digest, "application workspace digest")?;
+        let bytes = crate::sqlite::content::restore_or_inline(
+            connection,
+            self.bytes,
+            registration_digest,
+            self.byte_length,
+            MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES,
+        )?;
+        if bytes.is_empty() || bytes.len() > MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES
         {
             return Err(corrupt("stored workspace registration is outside the production bound"));
-        }
-        let registration_digest = digest_from_blob(&self.digest, "application workspace digest")?;
-        if peritus_codec::sha256(&self.bytes) != registration_digest {
-            return Err(corrupt("stored workspace registration digest differs from its bytes"));
         }
         Ok(ApplicationWorkspace {
             workspace_id: WorkspaceId::new(array_from_blob(
@@ -240,7 +295,7 @@ impl WorkspaceRow {
                 "application workspace identity",
             )?)
             .map_err(|_| corrupt("stored application workspace identity is invalid"))?,
-            registration_bytes: self.bytes,
+            registration_bytes: bytes,
             registration_digest,
             state: ApplicationWorkspaceState::from_tag(self.state)
                 .ok_or_else(|| corrupt("unknown application workspace state"))?,

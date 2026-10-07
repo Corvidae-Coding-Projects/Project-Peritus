@@ -25,11 +25,17 @@ fn insert_events(
     let mut last = 0;
     for planned in &plan.events {
         let draft = &planned.draft;
+        let frame_byte_length = super::content::install(
+            transaction,
+            draft.frame().bytes(),
+            draft.frame().digest(),
+            crate::MAX_EVENT_FRAME_BYTES,
+        )?;
         let causal_ids: Vec<u8> =
             draft.causal_parents().iter().flat_map(|id| id.as_bytes().iter().copied()).collect();
         transaction
             .execute(
-                "INSERT INTO events(event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                "INSERT INTO events(event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame, frame_byte_length) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
                 params![
                     draft.event_id().as_bytes().as_slice(),
                     draft.aggregate().kind().tag(),
@@ -44,7 +50,8 @@ fn insert_events(
                     draft.frame().digest().as_bytes().as_slice(),
                     draft.revision_digest().as_bytes().as_slice(),
                     causal_ids,
-                    draft.frame().bytes(),
+                    super::content::PAGED_INLINE_VALUE,
+                    frame_byte_length,
                 ],
             )
             .map_err(|error| JournalError::sqlite("insert event", error))?;
@@ -107,13 +114,18 @@ fn install_state(
             .map_err(|error| JournalError::sqlite("append state record history", error))?;
         transaction
             .execute(
-                "INSERT INTO state_records(namespace, record_key, revision, value_digest, value, producing_position) VALUES (?1, ?2, ?3, ?4, ?5, ?6) ON CONFLICT(namespace, record_key) DO UPDATE SET revision = excluded.revision, value_digest = excluded.value_digest, value = excluded.value, producing_position = excluded.producing_position",
+                "INSERT INTO state_records(namespace, record_key, revision, value_digest, value, root_digest, value_bytes, producing_position) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8) ON CONFLICT(namespace, record_key) DO UPDATE SET revision = excluded.revision, value_digest = excluded.value_digest, value = excluded.value, root_digest = excluded.root_digest, value_bytes = excluded.value_bytes, producing_position = excluded.producing_position",
                 params![
                     i64::from(install.namespace()),
                     install.key(),
                     super::append::to_i64(install.revision(), "state revision")?,
                     install.digest().as_bytes().as_slice(),
-                    install.bytes(),
+                    Vec::<u8>::new(),
+                    root.as_bytes().as_slice(),
+                    super::append::to_i64(
+                        install.bytes().len() as u64,
+                        "state value length",
+                    )?,
                     super::append::to_i64(position, "state producing position")?,
                 ],
             )
@@ -130,14 +142,23 @@ fn install_registry(
     let Some(install) = &plan.registry_install else {
         return Ok(());
     };
+    let snapshot_digest = peritus_codec::sha256(install.snapshot_bytes());
+    let snapshot_byte_length = super::content::install(
+        transaction,
+        install.snapshot_bytes(),
+        snapshot_digest,
+        crate::MAX_EVENT_FRAME_BYTES,
+    )?;
     transaction
         .execute(
-            "INSERT INTO credential_registry(singleton, revision, generation, snapshot_digest, snapshot, producing_position) VALUES (1, ?1, ?2, ?3, ?4, ?5) ON CONFLICT(singleton) DO UPDATE SET revision = excluded.revision, generation = excluded.generation, snapshot_digest = excluded.snapshot_digest, snapshot = excluded.snapshot, producing_position = excluded.producing_position",
+            "INSERT INTO credential_registry(singleton, revision, generation, snapshot_digest, snapshot, snapshot_content_digest, snapshot_byte_length, producing_position) VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7) ON CONFLICT(singleton) DO UPDATE SET revision = excluded.revision, generation = excluded.generation, snapshot_digest = excluded.snapshot_digest, snapshot = excluded.snapshot, snapshot_content_digest = excluded.snapshot_content_digest, snapshot_byte_length = excluded.snapshot_byte_length, producing_position = excluded.producing_position",
             params![
                 super::append::to_i64(install.revision(), "registry revision")?,
                 super::append::to_i64(install.generation(), "credential generation")?,
                 install.digest().as_bytes().as_slice(),
-                install.snapshot_bytes(),
+                super::content::PAGED_INLINE_VALUE,
+                snapshot_digest.as_bytes().as_slice(),
+                snapshot_byte_length,
                 super::append::to_i64(position, "registry producing position")?,
             ],
         )
@@ -151,12 +172,19 @@ fn insert_artifact_references(
     _position: u64,
 ) -> Result<(), JournalError> {
     for dependency in &plan.artifact_dependencies {
-        peritus_artifact_store::sqlite_interop::insert_reference(
+        let referenceable = peritus_artifact_store::sqlite_interop::insert_reference(
             transaction,
             peritus_artifact_store::ReferenceOwner::journal(plan.batch_hash),
             peritus_artifact_store::ArtifactDigest::from_sha256(dependency.digest()),
         )
         .map_err(|error| JournalError::sqlite("insert artifact reference", error))?;
+        if !referenceable {
+            return Err(JournalError::new(
+                JournalErrorKind::MissingArtifact,
+                "insert artifact dependency closure",
+                "required artifact dependency closure is absent, inactive, or inconsistent",
+            ));
+        }
     }
     Ok(())
 }
@@ -167,14 +195,23 @@ fn insert_outbox(
     position: u64,
 ) -> Result<(), JournalError> {
     for entry in &plan.outbox {
+        let payload_digest = peritus_codec::sha256(entry.payload());
+        let payload_byte_length = super::content::install(
+            transaction,
+            entry.payload(),
+            payload_digest,
+            crate::outbox::MAX_OUTBOX_PAYLOAD_BYTES,
+        )?;
         transaction
             .execute(
-                "INSERT INTO outbox(outbox_id, producing_position, destination, payload, max_attempts, state) VALUES (?1, ?2, ?3, ?4, ?5, 1)",
+                "INSERT INTO outbox(outbox_id, producing_position, destination, payload, payload_digest, payload_byte_length, max_attempts, state) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
                 params![
                     entry.id().as_bytes().as_slice(),
                     super::append::to_i64(position, "outbox producing position")?,
                     entry.destination(),
-                    entry.payload(),
+                    super::content::PAGED_INLINE_VALUE,
+                    payload_digest.as_bytes().as_slice(),
+                    payload_byte_length,
                     i64::from(entry.max_attempts()),
                 ],
             )

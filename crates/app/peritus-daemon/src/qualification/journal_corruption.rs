@@ -10,8 +10,6 @@ use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery, DaemonRu
 
 use super::journal::open_journal;
 
-const CORRUPT_FRAME: &[u8] = b"peritus/h1/deliberately-corrupt-journal-frame/v1";
-
 /// Exact facts retained after changing one committed event frame without changing its hash.
 pub struct JournalCorruptionCheckpoint {
     request_sha256: String,
@@ -93,9 +91,7 @@ pub fn stage_corruption(config: &DaemonConfig) -> Result<JournalCorruptionCheckp
     if original_frame_sha256.as_bytes() != recorded_digest.as_slice() {
         return Err(qualification_error("committed journal frame was invalid before injection"));
     }
-    let changed = connection
-        .execute("UPDATE events SET frame = ?1 WHERE global_position = 1", [CORRUPT_FRAME])
-        .map_err(sqlite_error)?;
+    let changed = corrupt_frame(&connection, &original_frame)?;
     if changed != 1 {
         return Err(qualification_error("journal fault injection changed the wrong row count"));
     }
@@ -198,11 +194,100 @@ fn open_database(config: &DaemonConfig) -> Result<Connection, DaemonError> {
 }
 
 fn frame(connection: &Connection) -> Result<Vec<u8>, DaemonError> {
-    connection
-        .query_row("SELECT frame FROM events WHERE global_position = 1", [], |row| row.get(0))
+    let row: (Vec<u8>, Vec<u8>, Option<i64>) = connection
+        .query_row(
+            "SELECT frame, frame_digest, frame_byte_length
+               FROM events WHERE global_position = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
         .optional()
         .map_err(sqlite_error)?
-        .ok_or_else(|| qualification_error("qualification journal event is absent"))
+        .ok_or_else(|| qualification_error("qualification journal event is absent"))?;
+    let Some(byte_length) = row.2 else {
+        return Ok(row.0);
+    };
+    if row.0.as_slice() != [0] {
+        return Err(qualification_error("qualification paged frame marker is invalid"));
+    }
+    let byte_length = usize::try_from(byte_length)
+        .map_err(|_| qualification_error("qualification frame length is invalid"))?;
+    if byte_length == 0 || byte_length > peritus_journal::MAX_EVENT_FRAME_BYTES {
+        return Err(qualification_error("qualification frame length is outside its bound"));
+    }
+    let mut statement = connection
+        .prepare(
+            "SELECT chunk_index, payload FROM journal_content_chunks
+              WHERE content_digest = ?1 ORDER BY chunk_index",
+        )
+        .map_err(sqlite_error)?;
+    let chunks = statement
+        .query_map([row.1], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?))
+        })
+        .map_err(sqlite_error)?;
+    let mut frame = Vec::with_capacity(byte_length);
+    for chunk in chunks {
+        let (index, chunk) = chunk.map_err(sqlite_error)?;
+        if usize::try_from(index).ok() != Some(frame.len() / (64 * 1024)) {
+            return Err(qualification_error("qualification frame chunks are not ordered"));
+        }
+        frame.extend_from_slice(&chunk);
+    }
+    if frame.len() != byte_length {
+        return Err(qualification_error("qualification frame chunks have the wrong length"));
+    }
+    Ok(frame)
+}
+
+fn corrupt_frame(connection: &Connection, original: &[u8]) -> Result<usize, DaemonError> {
+    if original.is_empty() {
+        return Err(qualification_error("qualification journal frame is empty"));
+    }
+    let row: (Vec<u8>, Option<i64>) = connection
+        .query_row(
+            "SELECT frame_digest, frame_byte_length FROM events WHERE global_position = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(sqlite_error)?
+        .ok_or_else(|| qualification_error("qualification journal event is absent"))?;
+    match row.1 {
+        Some(_) => {
+            let mut chunk: Vec<u8> = connection
+                .query_row(
+                    "SELECT payload FROM journal_content_chunks
+                      WHERE content_digest = ?1 AND chunk_index = 0",
+                    [row.0.as_slice()],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(sqlite_error)?
+                .ok_or_else(|| qualification_error("qualification frame chunk is absent"))?;
+            let first = chunk
+                .first_mut()
+                .ok_or_else(|| qualification_error("qualification frame chunk is empty"))?;
+            *first ^= 1;
+            connection
+                .execute(
+                    "UPDATE journal_content_chunks SET payload = ?1
+                      WHERE content_digest = ?2 AND chunk_index = 0",
+                    rusqlite::params![chunk, row.0],
+                )
+                .map_err(sqlite_error)
+        }
+        None => {
+            let mut corrupt = original.to_vec();
+            corrupt[0] ^= 1;
+            connection
+                .execute(
+                    "UPDATE events SET frame = ?1 WHERE global_position = 1",
+                    [corrupt],
+                )
+                .map_err(sqlite_error)
+        }
+    }
 }
 
 fn recorded_frame_digest(connection: &Connection) -> Result<Vec<u8>, DaemonError> {

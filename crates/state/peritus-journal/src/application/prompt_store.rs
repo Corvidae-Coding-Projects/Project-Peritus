@@ -17,7 +17,7 @@ const PROMPT_COLUMNS: &str = "prompt_id, actor_id, session_id, originating_reque
     acceptance_spec_id, harness_id, workspace_id, workspace_generation, workspace_revision, \
     policy_id, provider_profile_id, freshness_digest, cancellation_generation, binding_digest, \
     binding_bytes, maximum_answer_bytes, state, settlement_kind, settlement_request_id, \
-    settlement_digest, settlement_bytes";
+    settlement_digest, settlement_bytes, binding_byte_length, settlement_byte_length";
 
 impl SqliteJournal {
     /// Durably registers an immutable prompt target before the prompt can be published.
@@ -57,6 +57,12 @@ impl SqliteJournal {
             return Err(invalid("application prompt session is not active for the actor"));
         }
         let revision = target.revision;
+        let binding_byte_length = crate::sqlite::content::install(
+            &transaction,
+            &target.binding_bytes,
+            target.binding_digest,
+            super::prompt_types::MAX_APPLICATION_PROMPT_BINDING_BYTES,
+        )?;
         transaction
             .execute(
                 "INSERT INTO app_prompt_targets(\
@@ -64,8 +70,8 @@ impl SqliteJournal {
                     acceptance_spec_id, harness_id, workspace_id, workspace_generation, \
                     workspace_revision, policy_id, provider_profile_id, freshness_digest, \
                     cancellation_generation, binding_digest, binding_bytes, maximum_answer_bytes, \
-                    state\
-                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 1)",
+                    state, binding_byte_length\
+                 ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, 1, ?18)",
                 params![
                     target.prompt_id.as_bytes().as_slice(),
                     target.actor_id.as_bytes().as_slice(),
@@ -82,9 +88,10 @@ impl SqliteJournal {
                     target.freshness_digest.as_bytes().as_slice(),
                     to_i64(target.cancellation_generation.get(), "prompt cancellation generation")?,
                     target.binding_digest.as_bytes().as_slice(),
-                    target.binding_bytes,
+                    crate::sqlite::content::PAGED_INLINE_VALUE,
                     i64::try_from(target.maximum_answer_bytes)
                         .map_err(|_| invalid("application prompt answer bound cannot be stored"))?,
+                    binding_byte_length,
                 ],
             )
             .map_err(|error| JournalError::sqlite("insert application prompt target", error))?;
@@ -151,17 +158,25 @@ impl SqliteJournal {
         }
         let state =
             if settlement.kind() == ApplicationPromptSettlementKind::Cancellation { 3 } else { 2 };
+        let settlement_byte_length = crate::sqlite::content::install(
+            &transaction,
+            &settlement.bytes,
+            settlement.digest,
+            super::prompt_types::MAX_APPLICATION_PROMPT_SETTLEMENT_BYTES,
+        )?;
         transaction
             .execute(
                 "UPDATE app_prompt_targets SET state = ?1, settlement_kind = ?2, \
-                    settlement_request_id = ?3, settlement_digest = ?4, settlement_bytes = ?5 \
-                 WHERE prompt_id = ?6 AND state = 1",
+                    settlement_request_id = ?3, settlement_digest = ?4, settlement_bytes = ?5, \
+                    settlement_byte_length = ?6 \
+                 WHERE prompt_id = ?7 AND state = 1",
                 params![
                     state,
                     settlement.kind.tag(),
                     settlement.request_id.as_bytes().as_slice(),
                     settlement.digest.as_bytes().as_slice(),
-                    settlement.bytes,
+                    crate::sqlite::content::PAGED_INLINE_VALUE,
+                    settlement_byte_length,
                     prompt_id.as_bytes().as_slice(),
                 ],
             )
@@ -184,7 +199,7 @@ fn load_prompt(
         .query_row(&sql, params![prompt_id.as_bytes().as_slice()], PromptRow::read)
         .optional()
         .map_err(|error| JournalError::sqlite("read application prompt target", error))?
-        .map(PromptRow::parse)
+        .map(|row| row.parse(connection))
         .transpose()
 }
 

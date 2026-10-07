@@ -5,7 +5,17 @@ use rusqlite::{OptionalExtension, TransactionBehavior, params};
 
 use super::SqliteJournal;
 
-type OutboxClaimRow = (Vec<u8>, i64, String, Vec<u8>, i64, i64, Option<i64>);
+type OutboxClaimRow = (
+    Vec<u8>,
+    i64,
+    String,
+    Vec<u8>,
+    Option<Vec<u8>>,
+    Option<i64>,
+    i64,
+    i64,
+    Option<i64>,
+);
 
 impl SqliteJournal {
     /// Claims the next pending or expired outbox row under a monotonically increasing fence.
@@ -42,13 +52,39 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("mark exhausted outbox rows", error))?;
         let selected: Option<OutboxClaimRow> = transaction
             .query_row(
-                "SELECT outbox_id, producing_position, destination, payload, attempts, max_attempts, fence FROM outbox WHERE (state = 1 OR (state = 2 AND lease_until <= ?1)) AND attempts < max_attempts ORDER BY outbox_id LIMIT 1",
+                "SELECT outbox_id, producing_position, destination, payload, payload_digest,
+                        payload_byte_length, attempts, max_attempts, fence
+                   FROM outbox
+                  WHERE (state = 1 OR (state = 2 AND lease_until <= ?1))
+                    AND attempts < max_attempts ORDER BY outbox_id LIMIT 1",
                 params![now_i64],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                        row.get(7)?,
+                        row.get(8)?,
+                    ))
+                },
             )
             .optional()
             .map_err(|error| JournalError::sqlite("select outbox claim", error))?;
-        let Some((id, position, destination, payload, attempts, max_attempts, fence)) = selected
+        let Some((
+            id,
+            position,
+            destination,
+            inline_payload,
+            payload_digest,
+            payload_byte_length,
+            attempts,
+            max_attempts,
+            fence,
+        )) = selected
         else {
             transaction
                 .commit()
@@ -57,6 +93,27 @@ impl SqliteJournal {
         };
         let id = OutboxId::new(super::query::array_from_blob(&id, "outbox identity")?)
             .map_err(|_| super::query::corrupt("stored outbox identity is invalid"))?;
+        let payload = match (payload_digest, payload_byte_length) {
+            (None, None) => {
+                if inline_payload.len() > crate::outbox::MAX_OUTBOX_PAYLOAD_BYTES {
+                    return Err(super::query::corrupt(
+                        "stored outbox payload exceeds its durable bound",
+                    ));
+                }
+                inline_payload
+            }
+            (Some(digest), Some(byte_length)) => {
+                let digest = super::query::digest_from_blob(&digest, "outbox payload digest")?;
+                super::content::restore_or_inline(
+                    &transaction,
+                    inline_payload,
+                    digest,
+                    Some(byte_length),
+                    crate::outbox::MAX_OUTBOX_PAYLOAD_BYTES,
+                )?
+            }
+            _ => return Err(super::query::corrupt("outbox payload paging metadata is partial")),
+        };
         let attempts = u16::try_from(attempts)
             .map_err(|_| super::query::corrupt("stored outbox attempts are invalid"))?;
         let max_attempts = u16::try_from(max_attempts)

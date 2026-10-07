@@ -54,6 +54,7 @@ pub struct MigrationConfig {
     compatibility: ApplicationCompatibility,
     space_reserve_bytes: u64,
     busy_timeout: Duration,
+    maximum_pages: Option<u64>,
 }
 
 impl MigrationConfig {
@@ -88,6 +89,7 @@ impl MigrationConfig {
             compatibility,
             space_reserve_bytes,
             busy_timeout: Duration::from_secs(5),
+            maximum_pages: None,
         })
     }
 
@@ -96,6 +98,19 @@ impl MigrationConfig {
     pub const fn with_busy_timeout(mut self, busy_timeout: Duration) -> Self {
         self.busy_timeout = busy_timeout;
         self
+    }
+
+    /// Applies an explicit positive SQLite database page ceiling to migration-owned writes.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero or values outside SQLite's signed integer representation.
+    pub fn with_maximum_pages(mut self, maximum_pages: u64) -> Result<Self, MigrationError> {
+        if maximum_pages == 0 || i64::try_from(maximum_pages).is_err() {
+            return Err(invalid("database page ceiling must be a positive SQLite integer"));
+        }
+        self.maximum_pages = Some(maximum_pages);
+        Ok(self)
     }
 
     /// Returns database path.
@@ -127,6 +142,11 @@ impl MigrationConfig {
     #[must_use]
     pub const fn busy_timeout(&self) -> Duration {
         self.busy_timeout
+    }
+    /// Returns the selected SQLite database page ceiling.
+    #[must_use]
+    pub const fn maximum_pages(&self) -> Option<u64> {
+        self.maximum_pages
     }
 }
 

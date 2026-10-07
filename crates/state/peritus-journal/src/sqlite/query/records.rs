@@ -106,7 +106,7 @@ pub fn load_records_range(
 ) -> Result<Vec<CommittedRecord>, JournalError> {
     let mut statement = connection
         .prepare(
-            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame FROM events WHERE global_position BETWEEN ?1 AND ?2 ORDER BY global_position",
+            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame, frame_byte_length FROM events WHERE global_position BETWEEN ?1 AND ?2 ORDER BY global_position",
         )
         .map_err(|error| JournalError::sqlite("prepare event range", error))?;
     let mut rows = statement
@@ -115,7 +115,7 @@ pub fn load_records_range(
             super::super::append::to_i64(last, "last event position")?,
         ])
         .map_err(|error| JournalError::sqlite("query event range", error))?;
-    load_rows(&mut rows)
+    load_rows(connection, &mut rows)
 }
 
 pub(super) fn load_aggregate_records(
@@ -124,16 +124,41 @@ pub(super) fn load_aggregate_records(
 ) -> Result<Vec<CommittedRecord>, JournalError> {
     let mut statement = connection
         .prepare(
-            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame FROM events WHERE aggregate_kind = ?1 AND aggregate_id = ?2 ORDER BY sequence",
+            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame, frame_byte_length FROM events WHERE aggregate_kind = ?1 AND aggregate_id = ?2 ORDER BY sequence",
         )
         .map_err(|error| JournalError::sqlite("prepare aggregate events", error))?;
     let mut rows = statement
         .query(params![key.kind().tag(), key.id().as_bytes().as_slice()])
         .map_err(|error| JournalError::sqlite("query aggregate events", error))?;
-    load_rows(&mut rows)
+    load_rows(connection, &mut rows)
 }
 
-fn load_rows(rows: &mut Rows<'_>) -> Result<Vec<CommittedRecord>, JournalError> {
+pub(super) fn load_aggregate_records_after(
+    connection: &Connection,
+    key: AggregateKey,
+    cursor: u64,
+    maximum: usize,
+) -> Result<Vec<CommittedRecord>, JournalError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT global_position, event_id, aggregate_kind, aggregate_id, sequence, previous_event_id, previous_event_hash, event_hash, command_id, frame_family, frame_schema, frame_digest, revision_digest, causal_ids, frame, frame_byte_length FROM events WHERE aggregate_kind = ?1 AND aggregate_id = ?2 AND sequence > ?3 ORDER BY sequence LIMIT ?4",
+        )
+        .map_err(|error| JournalError::sqlite("prepare aggregate event page", error))?;
+    let mut rows = statement
+        .query(params![
+            key.kind().tag(),
+            key.id().as_bytes().as_slice(),
+            super::super::append::to_i64(cursor, "aggregate event cursor")?,
+            i64::try_from(maximum).map_err(|_| corrupt("aggregate page size cannot be represented"))?,
+        ])
+        .map_err(|error| JournalError::sqlite("query aggregate event page", error))?;
+    load_rows(connection, &mut rows)
+}
+
+fn load_rows(
+    connection: &Connection,
+    rows: &mut Rows<'_>,
+) -> Result<Vec<CommittedRecord>, JournalError> {
     let mut records = Vec::new();
     while let Some(row) =
         rows.next().map_err(|error| JournalError::sqlite("read immutable events", error))?
@@ -182,8 +207,11 @@ fn load_rows(rows: &mut Rows<'_>) -> Result<Vec<CommittedRecord>, JournalError> 
                 .get(13)
                 .map_err(|error| JournalError::sqlite("read causal identities", error))?,
             frame: row.get(14).map_err(|error| JournalError::sqlite("read exact frame", error))?,
+            frame_byte_length: row
+                .get(15)
+                .map_err(|error| JournalError::sqlite("read exact frame length", error))?,
         };
-        records.push(parse_record(raw)?);
+        records.push(parse_record(connection, raw)?);
     }
     Ok(records)
 }
@@ -204,9 +232,10 @@ struct RawRecord {
     revision_digest: Vec<u8>,
     causal_ids: Vec<u8>,
     frame: Vec<u8>,
+    frame_byte_length: Option<i64>,
 }
 
-fn parse_record(raw: RawRecord) -> Result<CommittedRecord, JournalError> {
+fn parse_record(connection: &Connection, raw: RawRecord) -> Result<CommittedRecord, JournalError> {
     let global_position = positive_u64(raw.global_position, "global event position")?;
     let event_id = event_id_from_blob(&raw.event_id, "event identity")?;
     let aggregate_kind = AggregateKind::from_tag(raw.aggregate_kind)
@@ -225,10 +254,19 @@ fn parse_record(raw: RawRecord) -> Result<CommittedRecord, JournalError> {
     let stored_event_hash = digest_from_blob(&raw.event_hash, "event hash")?;
     let command_id = CommandId::new(array_from_blob(&raw.command_id, "command identity")?)
         .map_err(|_| corrupt("invalid stored command identity"))?;
-    let frame = ExactFrame::new(raw.frame).map_err(|_| corrupt("stored frame is not canonical"))?;
+    let frame_digest = digest_from_blob(&raw.frame_digest, "frame digest")?;
+    let frame_bytes = super::super::content::restore_or_inline(
+        connection,
+        raw.frame,
+        frame_digest,
+        raw.frame_byte_length,
+        crate::MAX_EVENT_FRAME_BYTES,
+    )?;
+    let frame = ExactFrame::new(frame_bytes)
+        .map_err(|_| corrupt("stored frame is not canonical"))?;
     if i64::from(frame.family()) != raw.frame_family
         || i64::from(frame.schema_version()) != raw.frame_schema
-        || frame.digest() != digest_from_blob(&raw.frame_digest, "frame digest")?
+        || frame.digest() != frame_digest
     {
         return Err(corrupt("stored frame metadata or digest does not match exact bytes"));
     }

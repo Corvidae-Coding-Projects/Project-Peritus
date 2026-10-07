@@ -12,6 +12,10 @@ use crate::{JournalError, JournalErrorKind};
 pub use aggregate::{AggregateCheckpointSnapshot, parse_head};
 pub use command::resolve_command;
 pub use records::load_records_range;
+pub use state::{
+    MAX_STATE_RECORD_METADATA_PAGE, StateRecordMetadata, StateRecordMetadataPage,
+};
+pub(crate) use state::load_state_record;
 
 pub fn digest_from_blob(bytes: &[u8], _field: &'static str) -> Result<Sha256Digest, JournalError> {
     Ok(Sha256Digest::new(array_from_blob(bytes, "digest")?))

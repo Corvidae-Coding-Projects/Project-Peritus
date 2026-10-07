@@ -57,14 +57,40 @@ impl SqliteJournal {
         {
             return Err(invalid("application command session is not active for the actor"));
         }
+        let (envelope_digest, envelope_byte_length, domain_command_byte_length) =
+            match command.submission.as_ref() {
+                Some(submission) => {
+                    let envelope_byte_length = crate::sqlite::content::install(
+                        &transaction,
+                        &submission.envelope_bytes,
+                        submission.envelope_digest,
+                        crate::MAX_EVENT_FRAME_BYTES,
+                    )?;
+                    let domain_command_byte_length = crate::sqlite::content::install(
+                        &transaction,
+                        &submission.command_bytes,
+                        command.domain_command_digest,
+                        crate::MAX_EVENT_FRAME_BYTES,
+                    )?;
+                    (
+                        Some(submission.envelope_digest.as_bytes().to_vec()),
+                        Some(envelope_byte_length),
+                        Some(domain_command_byte_length),
+                    )
+                }
+                None => (None, None, None),
+            };
         transaction.execute(
-            "INSERT INTO app_commands(actor_id, session_id, idempotency_key, request_digest, request_id, domain_command_digest, command_id, state) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
+            "INSERT INTO app_commands(actor_id, session_id, idempotency_key, request_digest, request_id, domain_command_digest, command_id, state, envelope_digest, envelope_byte_length, domain_command_byte_length) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1, ?8, ?9, ?10)",
             params![
                 command.actor_id.as_bytes().as_slice(), command.session_id.as_bytes().as_slice(),
                 command.idempotency_key, command.request_digest.as_bytes().as_slice(),
                 command.request_id.as_bytes().as_slice(),
                 command.domain_command_digest.as_bytes().as_slice(),
                 command.command_id.as_bytes().as_slice(),
+                envelope_digest,
+                envelope_byte_length,
+                domain_command_byte_length,
             ],
         ).map_err(|error| JournalError::sqlite("insert application command", error))?;
         let inserted = load_command_by_id(&transaction, command.command_id)?
@@ -194,7 +220,7 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("query unsettled application commands", error))?;
         rows.map(|row| {
             row.map_err(|error| JournalError::sqlite("read unsettled application command", error))
-                .and_then(CommandRow::parse)
+                .and_then(|row| row.parse(&self.connection))
         })
         .collect()
     }

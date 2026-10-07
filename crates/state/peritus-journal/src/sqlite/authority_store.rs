@@ -8,7 +8,7 @@ use rusqlite::{OptionalExtension, TransactionBehavior, params};
 
 use super::SqliteJournal;
 
-type RegistryRow = (i64, i64, Vec<u8>, Vec<u8>, i64);
+type RegistryRow = (i64, i64, Vec<u8>, Vec<u8>, Option<Vec<u8>>, Option<i64>, i64);
 
 impl SqliteJournal {
     /// Atomically compares and allocates the next positive authority epoch.
@@ -100,13 +100,34 @@ impl SqliteJournal {
         let row: Option<RegistryRow> = self
             .connection
             .query_row(
-                "SELECT revision, generation, snapshot_digest, snapshot, producing_position FROM credential_registry WHERE singleton = 1",
+                "SELECT revision, generation, snapshot_digest, snapshot,
+                        snapshot_content_digest, snapshot_byte_length, producing_position
+                   FROM credential_registry WHERE singleton = 1",
                 [],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+                |row| {
+                    Ok((
+                        row.get(0)?,
+                        row.get(1)?,
+                        row.get(2)?,
+                        row.get(3)?,
+                        row.get(4)?,
+                        row.get(5)?,
+                        row.get(6)?,
+                    ))
+                },
             )
             .optional()
             .map_err(|error| JournalError::sqlite("observe credential registry", error))?;
-        let Some((revision, generation, stored_digest, snapshot, producing_position)) = row else {
+        let Some((
+            revision,
+            generation,
+            stored_digest,
+            inline_snapshot,
+            content_digest,
+            snapshot_byte_length,
+            producing_position,
+        )) = row
+        else {
             return Err(JournalError::new(
                 JournalErrorKind::NotFound,
                 "observe credential registry",
@@ -117,6 +138,27 @@ impl SqliteJournal {
         let generation = super::query::positive_u64(generation, "credential generation")?;
         let producing_position =
             super::query::positive_u64(producing_position, "registry producing position")?;
+        let snapshot = match (content_digest, snapshot_byte_length) {
+            (None, None) => inline_snapshot,
+            (Some(content_digest), Some(byte_length)) => {
+                let content_digest = super::query::digest_from_blob(
+                    &content_digest,
+                    "credential snapshot content digest",
+                )?;
+                super::content::restore_or_inline(
+                    &self.connection,
+                    inline_snapshot,
+                    content_digest,
+                    Some(byte_length),
+                    crate::MAX_EVENT_FRAME_BYTES,
+                )?
+            }
+            _ => {
+                return Err(super::query::corrupt(
+                    "credential snapshot paging metadata is partial",
+                ));
+            }
+        };
         let snapshot = ExactFrame::new(snapshot)
             .map_err(|_| super::query::corrupt("stored credential snapshot frame is invalid"))?;
         let stored_digest =

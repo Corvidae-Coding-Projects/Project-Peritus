@@ -1,6 +1,6 @@
 //! Small exact-journal helpers for per-command authority evidence.
 
-use std::{path::Path, time::Duration};
+use std::path::Path;
 
 use peritus_codec::{CodecLimits, encode_frame, encode_message, sha256};
 use peritus_journal::{
@@ -18,12 +18,8 @@ pub(super) fn open(path: &Path, ids: &CommandIds, label: &str) -> Result<SqliteJ
         std::fs::create_dir_all(parent)
             .map_err(|error| format!("create command authority directory: {error}"))?;
     }
-    SqliteJournal::open(
-        path,
-        ids.store(label)?,
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
-    )
-    .map_err(|error| format!("open command authority journal: {error}"))
+    SqliteJournal::open(path, ids.store(label)?, SqliteJournalOptions::native())
+        .map_err(|error| format!("open command authority journal: {error}"))
 }
 
 #[allow(clippy::too_many_arguments)]

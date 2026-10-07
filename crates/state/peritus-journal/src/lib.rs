@@ -22,8 +22,7 @@ mod sqlite;
 mod verified;
 
 pub use append_plan::{
-    AppendPlan, AppendRequest, HeadExpectation, MAX_BATCH_EVENTS,
-    bind_outbox_acknowledgements_digest,
+    AppendPlan, AppendRequest, HeadExpectation, bind_outbox_acknowledgements_digest,
 };
 pub use application::{
     ApplicationArtifact, ApplicationArtifactState, ApplicationCommandAdmission,
@@ -58,11 +57,15 @@ pub use outbox::{OutboxAcknowledgement, OutboxDraft, OutboxMessage, OutboxState}
 pub use receipt::{CommittedBatch, CurrentCredentialRegistry};
 pub use record::{
     ArtifactDependency, CommittedRecord, DurableStateRecord, EventDraft, ExactFrame,
-    GlobalEventWindow, MAX_GLOBAL_WINDOW_RECORDS, MAX_STATE_BYTES, MAX_STATE_KEY_BYTES,
+    GlobalEventWindow, MAX_EVENT_FRAME_BYTES, MAX_GLOBAL_WINDOW_RECORDS, MAX_STATE_BYTES,
+    MAX_STATE_KEY_BYTES,
     StateInstall,
 };
-pub use sqlite::query::AggregateCheckpointSnapshot;
+pub use sqlite::query::{
+    AggregateCheckpointSnapshot, MAX_STATE_RECORD_METADATA_PAGE, StateRecordMetadata,
+    StateRecordMetadataPage,
+};
 pub use sqlite::{
-    CommandResolution, JournalReader, ReplayObservation, SqliteJournal, SqliteJournalOptions,
-    SqliteSettings, SqliteStoragePages,
+    CommandResolution, JournalCancellation, JournalReader, ReplayObservation, SqliteJournal,
+    SqliteJournalOptions, SqliteSettings, SqliteStoragePages,
 };

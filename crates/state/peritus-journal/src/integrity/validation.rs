@@ -129,44 +129,32 @@ fn load_state_history(transaction: &Transaction<'_>) -> Result<StateCatalog, Jou
 }
 
 fn load_current_state(transaction: &Transaction<'_>) -> Result<StateCatalog, JournalError> {
-    let mut statement = transaction
-        .prepare(
-            "SELECT namespace, record_key, revision, value_digest, value, producing_position
-               FROM state_records
-           ORDER BY namespace, record_key",
-        )
-        .map_err(|error| JournalError::sqlite("prepare current state integrity", error))?;
-    let mut rows = statement
-        .query([])
-        .map_err(|error| JournalError::sqlite("query current state integrity", error))?;
+    let keys = {
+        let mut statement = transaction
+            .prepare(
+                "SELECT namespace, record_key FROM state_records ORDER BY namespace, record_key",
+            )
+            .map_err(|error| JournalError::sqlite("prepare current state integrity", error))?;
+        let rows = statement
+            .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, Vec<u8>>(1)?)))
+            .map_err(|error| JournalError::sqlite("query current state integrity", error))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| JournalError::sqlite("read current state integrity", error))?
+    };
     let mut current = StateCatalog::new();
-    while let Some(row) =
-        rows.next().map_err(|error| JournalError::sqlite("read current state integrity", error))?
-    {
-        let namespace = state_namespace(
-            row.get(0).map_err(|error| JournalError::sqlite("decode state namespace", error))?,
-        )?;
-        let key: Vec<u8> =
-            row.get(1).map_err(|error| JournalError::sqlite("decode state key", error))?;
-        let revision = positive(
-            row.get(2).map_err(|error| JournalError::sqlite("decode state revision", error))?,
-        )?;
-        let raw_digest: Vec<u8> =
-            row.get(3).map_err(|error| JournalError::sqlite("decode state digest", error))?;
-        let bytes: Vec<u8> =
-            row.get(4).map_err(|error| JournalError::sqlite("decode state bytes", error))?;
-        let producing_position =
-            positive(row.get(5).map_err(|error| {
-                JournalError::sqlite("decode state producing position", error)
-            })?)?;
-        let digest = crate::sqlite::query::digest_from_blob(&raw_digest, "state digest")?;
-        if digest != sha256(&bytes) {
-            return Err(corrupt("state record digest does not match exact bytes"));
-        }
+    for (namespace, key) in keys {
+        let namespace = state_namespace(namespace)?;
+        let record = crate::sqlite::query::load_state_record(transaction, namespace, &key)?
+            .ok_or_else(|| corrupt("enumerated current state record disappeared"))?;
         if current
             .insert(
                 (namespace, key),
-                StateObservation { revision, digest, bytes, producing_position },
+                StateObservation {
+                    revision: record.revision,
+                    digest: record.digest,
+                    bytes: record.bytes,
+                    producing_position: record.producing_position,
+                },
             )
             .is_some()
         {
@@ -188,15 +176,33 @@ fn positive(value: i64) -> Result<u64, JournalError> {
 }
 
 pub(super) fn validate_registry(transaction: &Transaction<'_>) -> Result<(), JournalError> {
-    let row: Option<(Vec<u8>, Vec<u8>)> = transaction
+    let row: Option<(Vec<u8>, Vec<u8>, Option<Vec<u8>>, Option<i64>)> = transaction
         .query_row(
-            "SELECT snapshot_digest, snapshot FROM credential_registry WHERE singleton = 1",
+            "SELECT snapshot_digest, snapshot, snapshot_content_digest, snapshot_byte_length
+               FROM credential_registry WHERE singleton = 1",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )
         .optional()
         .map_err(|error| JournalError::sqlite("query registry integrity", error))?;
-    if let Some((digest, bytes)) = row {
+    if let Some((digest, inline, content_digest, byte_length)) = row {
+        let bytes = match (content_digest, byte_length) {
+            (None, None) => inline,
+            (Some(content_digest), Some(byte_length)) => {
+                let content_digest = crate::sqlite::query::digest_from_blob(
+                    &content_digest,
+                    "registry content digest",
+                )?;
+                crate::sqlite::content::restore_or_inline(
+                    transaction,
+                    inline,
+                    content_digest,
+                    Some(byte_length),
+                    crate::MAX_EVENT_FRAME_BYTES,
+                )?
+            }
+            _ => return Err(corrupt("credential registry paging metadata is partial")),
+        };
         let snapshot = crate::ExactFrame::new(bytes)
             .map_err(|_| corrupt("credential registry snapshot is not a canonical frame"))?;
         let payload_digest = crate::authority::credential_registry_payload_digest(&snapshot)

@@ -14,6 +14,7 @@ mod catalog;
 mod context;
 mod deserialize;
 mod folder;
+mod network;
 mod paths;
 mod product;
 mod provider;
@@ -22,6 +23,9 @@ pub use approval::ApprovalRegistryDeclaration;
 pub use catalog::{ProjectDeclaration, ToolPolicy, WorkspaceDeclaration};
 pub use context::ContextPolicy;
 pub use folder::FolderDeclaration;
+pub use network::{
+    ManagedGateNetworkDestinationDeclaration, ManagedGateNetworkGrantDeclaration,
+};
 pub use paths::DaemonPaths;
 pub use product::ProductRunPolicy;
 pub use provider::{ProviderProfileDeclaration, ProviderRoute, ProviderRouteKind};
@@ -70,8 +74,14 @@ pub struct DaemonLimits {
     connection_queue: usize,
     maximum_connections: usize,
     maximum_workers: usize,
-    maximum_artifact_bytes: u64,
-    artifact_quota_bytes: u64,
+    #[serde(default)]
+    journal_maximum_pages: Option<u64>,
+    #[serde(default)]
+    maximum_artifact_bytes: Option<u64>,
+    #[serde(default)]
+    artifact_quota_bytes: Option<u64>,
+    #[serde(default)]
+    artifact_minimum_free_bytes: u64,
     shutdown_millis: u64,
 }
 
@@ -82,8 +92,10 @@ impl DaemonLimits {
         connection_queue: 256,
         maximum_connections: 64,
         maximum_workers: 32,
-        maximum_artifact_bytes: 1_073_741_824,
-        artifact_quota_bytes: 68_719_476_736,
+        journal_maximum_pages: None,
+        maximum_artifact_bytes: None,
+        artifact_quota_bytes: None,
+        artifact_minimum_free_bytes: 0,
         shutdown_millis: 30_000,
     };
 
@@ -107,15 +119,60 @@ impl DaemonLimits {
     pub const fn maximum_workers(self) -> usize {
         self.maximum_workers
     }
+    /// Returns the explicitly configured SQLite database page ceiling.
+    #[must_use]
+    pub const fn journal_maximum_pages(self) -> Option<u64> {
+        self.journal_maximum_pages
+    }
+    /// Builds the journal open policy selected by this daemon configuration.
+    #[must_use]
+    pub const fn journal_options(self) -> peritus_journal::SqliteJournalOptions {
+        match self.journal_maximum_pages {
+            Some(maximum_pages) => {
+                peritus_journal::SqliteJournalOptions::native()
+                    .with_maximum_pages(maximum_pages)
+            }
+            None => peritus_journal::SqliteJournalOptions::native(),
+        }
+    }
     /// Returns the maximum size of one immutable artifact.
     #[must_use]
     pub const fn maximum_artifact_bytes(self) -> u64 {
-        self.maximum_artifact_bytes
+        match self.maximum_artifact_bytes {
+            Some(limit) => limit,
+            None => match self.artifact_quota_bytes {
+                Some(quota) => quota,
+                None => i64::MAX as u64,
+            },
+        }
     }
-    /// Returns total logical immutable artifact quota.
+    /// Returns the optional total logical immutable artifact quota.
     #[must_use]
-    pub const fn artifact_quota_bytes(self) -> u64 {
+    pub const fn artifact_quota_bytes(self) -> Option<u64> {
         self.artifact_quota_bytes
+    }
+    /// Returns physical space retained after each artifact reservation.
+    #[must_use]
+    pub const fn artifact_minimum_free_bytes(self) -> u64 {
+        self.artifact_minimum_free_bytes
+    }
+
+    pub(crate) fn artifact_store_config(
+        self,
+        root: impl Into<PathBuf>,
+    ) -> Result<peritus_artifact_store::StoreConfig, peritus_artifact_store::ArtifactStoreError> {
+        let config = match self.artifact_quota_bytes {
+            Some(quota) => peritus_artifact_store::StoreConfig::new(
+                root,
+                self.maximum_artifact_bytes(),
+                quota,
+            )?,
+            None => peritus_artifact_store::StoreConfig::for_available_space(
+                root,
+                self.maximum_artifact_bytes(),
+            )?,
+        };
+        config.with_minimum_free_bytes(self.artifact_minimum_free_bytes)
     }
     /// Returns bounded orderly shutdown duration.
     #[must_use]
@@ -132,9 +189,24 @@ impl DaemonLimits {
             || self.maximum_connections > 1_024
             || self.maximum_workers == 0
             || self.maximum_workers > 1_024
-            || self.maximum_artifact_bytes == 0
-            || self.maximum_artifact_bytes > self.artifact_quota_bytes
-            || self.artifact_quota_bytes > i64::MAX as u64
+            || self.journal_maximum_pages.is_some_and(|pages| pages == 0)
+            || self
+                .journal_maximum_pages
+                .is_some_and(|pages| pages > i64::MAX as u64)
+            || self.maximum_artifact_bytes.is_some_and(|limit| limit == 0)
+            || self
+                .maximum_artifact_bytes
+                .is_some_and(|limit| limit > i64::MAX as u64)
+            || self.artifact_quota_bytes.is_some_and(|quota| quota == 0)
+            || self.artifact_quota_bytes.is_some_and(|quota| quota > i64::MAX as u64)
+            || matches!(
+                (self.maximum_artifact_bytes, self.artifact_quota_bytes),
+                (Some(limit), Some(quota)) if limit > quota
+            )
+            || self
+                .maximum_artifact_bytes()
+                .checked_add(self.artifact_minimum_free_bytes)
+                .is_none()
             || self.shutdown_millis == 0
             || self.shutdown_millis > 600_000
         {
@@ -166,6 +238,7 @@ pub struct DaemonConfig {
     providers: Vec<ProviderRoute>,
     product: ProductRunPolicy,
     context: ContextPolicy,
+    managed_gate_network: Vec<ManagedGateNetworkGrantDeclaration>,
     telemetry: TelemetryExport,
     process_crash_watchdog: Option<PathBuf>,
 }
@@ -298,6 +371,11 @@ impl DaemonConfig {
     pub const fn context(&self) -> &ContextPolicy {
         &self.context
     }
+    /// Borrows trusted exact-command managed-network grants.
+    #[must_use]
+    pub fn managed_gate_network(&self) -> &[ManagedGateNetworkGrantDeclaration] {
+        &self.managed_gate_network
+    }
     /// Borrows telemetry export policy.
     #[must_use]
     pub const fn telemetry(&self) -> &TelemetryExport {
@@ -326,6 +404,7 @@ impl DaemonConfig {
         provider::validate(&self.providers)?;
         self.product.validate()?;
         self.context.validate(&self.providers, self.product)?;
+        network::validate(&self.managed_gate_network)?;
         if let TelemetryExport::LocalFile { directory, quota_bytes } = &self.telemetry
             && (!directory.is_absolute()
                 || directory.components().any(|part| part == Component::ParentDir)

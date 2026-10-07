@@ -64,6 +64,15 @@ pub struct NewApplicationCommand {
     pub(super) domain_command_digest: Sha256Digest,
     pub(super) request_id: ApplicationRequestId,
     pub(super) command_id: CommandId,
+    pub(super) submission: Option<RetainedApplicationCommand>,
+}
+
+/// Exact admitted submission bytes retained until the command reaches a terminal result.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(super) struct RetainedApplicationCommand {
+    pub(super) envelope_digest: Sha256Digest,
+    pub(super) envelope_bytes: Vec<u8>,
+    pub(super) command_bytes: Vec<u8>,
 }
 
 impl NewApplicationCommand {
@@ -92,7 +101,55 @@ impl NewApplicationCommand {
             domain_command_digest,
             request_id,
             command_id,
+            submission: None,
         })
+    }
+
+    /// Creates an admission that retains both exact B3 frames for storage-failure recovery.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty or oversized frames and a command frame that differs from its bound digest.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the complete recoverable application-command binding remains explicit"
+    )]
+    pub fn new_recoverable(
+        actor_id: ActorId,
+        session_id: SessionId,
+        idempotency_key: Vec<u8>,
+        request_digest: Sha256Digest,
+        domain_command_digest: Sha256Digest,
+        request_id: ApplicationRequestId,
+        command_id: CommandId,
+        envelope_bytes: Vec<u8>,
+        command_bytes: Vec<u8>,
+    ) -> Result<Self, JournalError> {
+        if envelope_bytes.is_empty()
+            || envelope_bytes.len() > crate::MAX_EVENT_FRAME_BYTES
+            || command_bytes.is_empty()
+            || command_bytes.len() > crate::MAX_EVENT_FRAME_BYTES
+            || peritus_codec::sha256(&command_bytes) != domain_command_digest
+        {
+            return Err(invalid(
+                "recoverable application command frames are empty, oversized, or mismatched",
+            ));
+        }
+        let mut command = Self::new(
+            actor_id,
+            session_id,
+            idempotency_key,
+            request_digest,
+            domain_command_digest,
+            request_id,
+            command_id,
+        )?;
+        command.submission = Some(RetainedApplicationCommand {
+            envelope_digest: peritus_codec::sha256(&envelope_bytes),
+            envelope_bytes,
+            command_bytes,
+        });
+        Ok(command)
     }
 }
 
@@ -111,6 +168,7 @@ pub struct ApplicationCommandRecord {
     pub(super) last_position: Option<u64>,
     pub(super) error_code: Option<String>,
     pub(super) result_digest: Option<Sha256Digest>,
+    pub(super) submission: Option<RetainedApplicationCommand>,
 }
 
 impl ApplicationCommandRecord {
@@ -142,6 +200,16 @@ impl ApplicationCommandRecord {
     #[must_use]
     pub const fn domain_command_digest(&self) -> Sha256Digest {
         self.domain_command_digest
+    }
+    /// Borrows the exact retained B0 envelope frame when this command supports redispatch.
+    #[must_use]
+    pub fn envelope_frame_bytes(&self) -> Option<&[u8]> {
+        self.submission.as_ref().map(|submission| submission.envelope_bytes.as_slice())
+    }
+    /// Borrows the exact retained registered command frame when this command supports redispatch.
+    #[must_use]
+    pub fn domain_command_frame_bytes(&self) -> Option<&[u8]> {
+        self.submission.as_ref().map(|submission| submission.command_bytes.as_slice())
     }
 
     /// Returns the original application request identity.

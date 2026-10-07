@@ -17,7 +17,8 @@ pub(super) const PRINCIPAL_COLUMNS: &str =
 pub(super) const SESSION_COLUMNS: &str = "session_id, actor_id, authority_epoch, state, created_at, \
     last_protocol_id, last_version_major, last_version_minor";
 pub(super) const COMMAND_COLUMNS: &str = "actor_id, session_id, idempotency_key, request_digest, request_id, \
-    domain_command_digest, command_id, state, first_position, last_position, error_code, result_digest";
+    domain_command_digest, command_id, state, first_position, last_position, error_code, result_digest, \
+    envelope_digest, envelope_byte_length, domain_command_byte_length";
 pub(super) const ARTIFACT_COLUMNS: &str =
     "artifact_id, digest, byte_size, media_type, state, producing_position";
 
@@ -77,7 +78,7 @@ pub(super) fn load_command_by_key(
         )
         .optional()
         .map_err(|error| JournalError::sqlite("read application command key", error))?
-        .map(CommandRow::parse)
+        .map(|row| row.parse(connection))
         .transpose()
 }
 
@@ -90,7 +91,7 @@ pub(super) fn load_command_by_id(
         .query_row(&sql, params![command.as_bytes().as_slice()], CommandRow::read)
         .optional()
         .map_err(|error| JournalError::sqlite("read application command identity", error))?
-        .map(CommandRow::parse)
+        .map(|row| row.parse(connection))
         .transpose()
 }
 

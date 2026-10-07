@@ -1,6 +1,6 @@
 //! Shared authoritative-journal access for production qualification routes.
 
-use peritus_journal::{SqliteJournal, SqliteJournalOptions, StoreId};
+use peritus_journal::{SqliteJournal, StoreId};
 
 use crate::instance::InstanceGuard;
 use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
@@ -16,7 +16,7 @@ pub fn open_journal(
     config: &DaemonConfig,
     store_id: StoreId,
 ) -> Result<SqliteJournal, DaemonError> {
-    SqliteJournal::open(config.paths().database(), store_id, SqliteJournalOptions::default())
+    SqliteJournal::open(config.paths().database(), store_id, config.limits().journal_options())
         .map_err(journal_error)
 }
 

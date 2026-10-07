@@ -1,6 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 2;
+pub(super) const SCHEMA_VERSION: i64 = 4;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 CREATE TABLE IF NOT EXISTS store_meta (
@@ -15,6 +15,17 @@ CREATE TABLE IF NOT EXISTS aggregate_heads (
     event_id BLOB NOT NULL CHECK (length(event_id) = 16),
     event_hash BLOB NOT NULL CHECK (length(event_hash) = 32),
     PRIMARY KEY (aggregate_kind, aggregate_id)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS journal_content (
+    content_digest BLOB PRIMARY KEY CHECK (length(content_digest) = 32),
+    byte_length INTEGER NOT NULL CHECK (byte_length BETWEEN 0 AND 1073741823),
+    chunk_count INTEGER NOT NULL CHECK (chunk_count BETWEEN 0 AND 16384)
+) STRICT, WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS journal_content_chunks (
+    content_digest BLOB NOT NULL REFERENCES journal_content(content_digest),
+    chunk_index INTEGER NOT NULL CHECK (chunk_index BETWEEN 0 AND 16383),
+    payload BLOB NOT NULL CHECK (length(payload) BETWEEN 1 AND 65536),
+    PRIMARY KEY (content_digest, chunk_index)
 ) STRICT, WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS events (
     global_position INTEGER PRIMARY KEY AUTOINCREMENT CHECK (global_position > 0),
@@ -32,6 +43,8 @@ CREATE TABLE IF NOT EXISTS events (
     revision_digest BLOB NOT NULL CHECK (length(revision_digest) = 32),
     causal_ids BLOB NOT NULL CHECK ((length(causal_ids) % 16) = 0),
     frame BLOB NOT NULL,
+    frame_byte_length INTEGER CHECK (frame_byte_length BETWEEN 1 AND 1073741823),
+    CHECK (frame_byte_length IS NULL OR length(frame) = 1),
     UNIQUE (aggregate_kind, aggregate_id, sequence)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS events_command ON events(command_id, global_position);
@@ -49,7 +62,11 @@ CREATE TABLE IF NOT EXISTS state_records (
     revision INTEGER NOT NULL CHECK (revision > 0),
     value_digest BLOB NOT NULL CHECK (length(value_digest) = 32),
     value BLOB NOT NULL,
+    root_digest BLOB CHECK (root_digest IS NULL OR length(root_digest) = 32),
+    value_bytes INTEGER CHECK (value_bytes BETWEEN 0 AND 16777216),
     producing_position INTEGER NOT NULL REFERENCES events(global_position),
+    CHECK ((root_digest IS NULL AND value_bytes IS NULL)
+        OR (root_digest IS NOT NULL AND value_bytes IS NOT NULL AND length(value) = 0)),
     PRIMARY KEY (namespace, record_key)
 ) STRICT, WITHOUT ROWID;
 CREATE TABLE IF NOT EXISTS state_record_history (
@@ -74,11 +91,16 @@ CREATE TABLE IF NOT EXISTS outbox (
     producing_position INTEGER NOT NULL REFERENCES events(global_position),
     destination TEXT NOT NULL CHECK (length(destination) BETWEEN 1 AND 512),
     payload BLOB NOT NULL,
+    payload_digest BLOB CHECK (payload_digest IS NULL OR length(payload_digest) = 32),
+    payload_byte_length INTEGER CHECK (payload_byte_length BETWEEN 0 AND 16777216),
     attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
     max_attempts INTEGER NOT NULL CHECK (max_attempts > 0),
     state INTEGER NOT NULL DEFAULT 1 CHECK (state BETWEEN 1 AND 4),
     fence INTEGER CHECK (fence IS NULL OR fence > 0),
-    lease_until INTEGER CHECK (lease_until IS NULL OR lease_until > 0)
+    lease_until INTEGER CHECK (lease_until IS NULL OR lease_until > 0),
+    CHECK ((payload_digest IS NULL AND payload_byte_length IS NULL)
+        OR (payload_digest IS NOT NULL AND payload_byte_length IS NOT NULL
+            AND length(payload) = 1))
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS outbox_delivery ON outbox(state, lease_until, outbox_id);
 CREATE TABLE IF NOT EXISTS authority_clock (
@@ -91,7 +113,14 @@ CREATE TABLE IF NOT EXISTS credential_registry (
     generation INTEGER NOT NULL CHECK (generation > 0),
     snapshot_digest BLOB NOT NULL CHECK (length(snapshot_digest) = 32),
     snapshot BLOB NOT NULL,
-    producing_position INTEGER NOT NULL REFERENCES events(global_position)
+    snapshot_content_digest BLOB CHECK (
+        snapshot_content_digest IS NULL OR length(snapshot_content_digest) = 32
+    ),
+    snapshot_byte_length INTEGER CHECK (snapshot_byte_length BETWEEN 1 AND 1073741823),
+    producing_position INTEGER NOT NULL REFERENCES events(global_position),
+    CHECK ((snapshot_content_digest IS NULL AND snapshot_byte_length IS NULL)
+        OR (snapshot_content_digest IS NOT NULL AND snapshot_byte_length IS NOT NULL
+            AND length(snapshot) = 1))
 ) STRICT;
 CREATE TABLE IF NOT EXISTS app_principals (
     principal_digest BLOB PRIMARY KEY CHECK (length(principal_digest) = 32),
@@ -117,7 +146,12 @@ CREATE TABLE IF NOT EXISTS app_commands (
     idempotency_key BLOB NOT NULL CHECK (length(idempotency_key) BETWEEN 1 AND 256),
     request_digest BLOB NOT NULL CHECK (length(request_digest) = 32),
     request_id BLOB NOT NULL CHECK (length(request_id) = 16),
+    envelope_digest BLOB CHECK (envelope_digest IS NULL OR length(envelope_digest) = 32),
+    envelope_byte_length INTEGER CHECK (envelope_byte_length BETWEEN 1 AND 1073741823),
     domain_command_digest BLOB NOT NULL CHECK (length(domain_command_digest) = 32),
+    domain_command_byte_length INTEGER CHECK (
+        domain_command_byte_length BETWEEN 1 AND 1073741823
+    ),
     command_id BLOB NOT NULL UNIQUE CHECK (length(command_id) = 16),
     state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 4),
     first_position INTEGER REFERENCES events(global_position),
@@ -126,6 +160,10 @@ CREATE TABLE IF NOT EXISTS app_commands (
     result_digest BLOB CHECK (result_digest IS NULL OR length(result_digest) = 32),
     PRIMARY KEY(actor_id, session_id, idempotency_key),
     FOREIGN KEY(session_id, actor_id) REFERENCES app_sessions(session_id, actor_id),
+    CHECK ((envelope_digest IS NULL AND envelope_byte_length IS NULL
+            AND domain_command_byte_length IS NULL)
+        OR (envelope_digest IS NOT NULL AND envelope_byte_length IS NOT NULL
+            AND domain_command_byte_length IS NOT NULL)),
     CHECK ((state IN (1, 2) AND first_position IS NULL AND last_position IS NULL
             AND error_code IS NULL AND result_digest IS NULL)
         OR (state = 3 AND first_position > 0 AND last_position >= first_position
@@ -151,6 +189,7 @@ CREATE TABLE IF NOT EXISTS app_prompt_targets (
     cancellation_generation INTEGER NOT NULL CHECK (cancellation_generation > 0),
     binding_digest BLOB NOT NULL CHECK (length(binding_digest) = 32),
     binding_bytes BLOB NOT NULL CHECK (length(binding_bytes) BETWEEN 1 AND 16777216),
+    binding_byte_length INTEGER CHECK (binding_byte_length BETWEEN 1 AND 16777216),
     maximum_answer_bytes INTEGER NOT NULL CHECK (maximum_answer_bytes BETWEEN 1 AND 1048576),
     state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3),
     settlement_kind INTEGER CHECK (settlement_kind IS NULL OR settlement_kind BETWEEN 1 AND 3),
@@ -161,6 +200,9 @@ CREATE TABLE IF NOT EXISTS app_prompt_targets (
     settlement_bytes BLOB CHECK (
         settlement_bytes IS NULL OR length(settlement_bytes) BETWEEN 1 AND 16777216
     ),
+    settlement_byte_length INTEGER CHECK (
+        settlement_byte_length IS NULL OR settlement_byte_length BETWEEN 1 AND 16777216
+    ),
     FOREIGN KEY(session_id, actor_id) REFERENCES app_sessions(session_id, actor_id),
     CHECK ((state = 1 AND settlement_kind IS NULL AND settlement_request_id IS NULL
             AND settlement_digest IS NULL AND settlement_bytes IS NULL)
@@ -170,14 +212,17 @@ CREATE TABLE IF NOT EXISTS app_prompt_targets (
             AND settlement_digest IS NOT NULL AND settlement_bytes IS NOT NULL)),
     CHECK ((target_kind = 1 AND settlement_kind IN (1, 3))
         OR (target_kind = 2 AND settlement_kind IN (2, 3))
-        OR settlement_kind IS NULL)
+        OR settlement_kind IS NULL),
+    CHECK (binding_byte_length IS NULL OR length(binding_bytes) = 1),
+    CHECK ((settlement_byte_length IS NULL)
+        OR (settlement_bytes IS NOT NULL AND length(settlement_bytes) = 1))
 ) STRICT, WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS app_prompt_targets_state ON app_prompt_targets(state, prompt_id);
 CREATE TABLE IF NOT EXISTS app_artifacts (
     artifact_id BLOB PRIMARY KEY CHECK (length(artifact_id) = 16),
     digest BLOB NOT NULL CHECK (length(digest) = 32),
     byte_size INTEGER NOT NULL CHECK (byte_size >= 0),
-    media_type TEXT NOT NULL CHECK (length(media_type) BETWEEN 1 AND 255),
+    media_type TEXT NOT NULL CHECK (length(media_type) >= 1),
     state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3),
     producing_position INTEGER REFERENCES events(global_position),
     CHECK ((state IN (1, 3) AND producing_position IS NULL)
@@ -187,6 +232,10 @@ CREATE TABLE IF NOT EXISTS app_workspaces (
     workspace_id BLOB PRIMARY KEY CHECK (length(workspace_id) = 16),
     registration_bytes BLOB NOT NULL CHECK (length(registration_bytes) BETWEEN 1 AND 1048576),
     registration_digest BLOB NOT NULL CHECK (length(registration_digest) = 32),
-    state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3)
+    registration_byte_length INTEGER CHECK (
+        registration_byte_length BETWEEN 1 AND 1048576
+    ),
+    state INTEGER NOT NULL CHECK (state BETWEEN 1 AND 3),
+    CHECK (registration_byte_length IS NULL OR length(registration_bytes) = 1)
 ) STRICT, WITHOUT ROWID;
 ";

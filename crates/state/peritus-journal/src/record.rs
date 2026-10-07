@@ -11,6 +11,9 @@ pub use committed::CommittedRecord;
 pub use state::{DurableStateRecord, StateInstall};
 pub use state::{MAX_STATE_BYTES, MAX_STATE_KEY_BYTES};
 
+/// Maximum exact canonical bytes in one journal event frame.
+pub const MAX_EVENT_FRAME_BYTES: usize = 32 * 1024 * 1024;
+
 /// Maximum exact records returned by one global event query.
 pub const MAX_GLOBAL_WINDOW_RECORDS: usize = 4_096;
 
@@ -52,9 +55,6 @@ impl GlobalEventWindow {
     }
 }
 
-/// Maximum causal parents on one event.
-pub const MAX_CAUSAL_PARENTS: usize = 4_096;
-
 /// A checked complete B3 canonical frame retained without reserialization.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct ExactFrame {
@@ -72,6 +72,13 @@ impl ExactFrame {
     /// Returns an invalid-input error when the complete B3 frame fails canonical framing or the
     /// production frame-size bound.
     pub fn new(bytes: Vec<u8>) -> Result<Self, JournalError> {
+        if bytes.len() > MAX_EVENT_FRAME_BYTES {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "validate event frame",
+                "frame exceeds the journal event-record bound",
+            ));
+        }
         let checked = decode_frame(&bytes, CodecLimits::PRODUCTION).map_err(|_| {
             JournalError::new(
                 JournalErrorKind::InvalidInput,
@@ -123,11 +130,12 @@ pub struct EventDraft {
 }
 
 impl EventDraft {
-    /// Creates a bounded event draft and validates canonical causal-parent ordering.
+    /// Creates an event draft and validates representable, canonical causal parents.
     ///
     /// # Errors
     ///
-    /// Returns a typed input error for too many, duplicate, or noncanonically ordered parents.
+    /// Returns a typed input error when the parent count cannot be encoded, or when parents are
+    /// duplicate or noncanonically ordered.
     #[allow(clippy::too_many_arguments, reason = "journal hash inputs remain explicit")]
     pub fn new(
         aggregate: AggregateKey,
@@ -138,11 +146,11 @@ impl EventDraft {
         revision_digest: Sha256Digest,
         causal_parents: Vec<EventId>,
     ) -> Result<Self, JournalError> {
-        if causal_parents.len() > MAX_CAUSAL_PARENTS {
+        if u32::try_from(causal_parents.len()).is_err() {
             return Err(JournalError::new(
                 JournalErrorKind::InvalidInput,
                 "validate event",
-                "too many causal parents",
+                "causal parent count exceeds the event-hash representation",
             ));
         }
         for pair in causal_parents.windows(2) {

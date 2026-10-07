@@ -4,7 +4,7 @@ use crate::{
     AggregateHead, AggregateKey, DurableStateRecord, JournalError, JournalErrorKind, SqliteJournal,
     StoreId,
 };
-use rusqlite::{Connection, OpenFlags, config::DbConfig};
+use rusqlite::{Connection, OpenFlags, config::DbConfig, limits::Limit};
 use std::{path::Path, sync::Arc};
 
 /// A read-only `SQLite` snapshot with no mutation or initialization methods.
@@ -30,6 +30,9 @@ impl JournalReader {
         connection
             .pragma_update(None, "trusted_schema", false)
             .map_err(|error| JournalError::sqlite("disable trusted schema", error))?;
+        connection
+            .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
+            .map_err(|error| JournalError::sqlite("disable attached databases", error))?;
         connection
             .execute_batch("BEGIN DEFERRED;")
             .map_err(|error| JournalError::sqlite("begin journal read snapshot", error))?;

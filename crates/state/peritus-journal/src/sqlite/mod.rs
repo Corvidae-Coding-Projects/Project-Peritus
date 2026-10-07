@@ -4,6 +4,8 @@ mod append;
 mod apply_rows;
 mod authority_store;
 mod connection;
+mod content;
+mod contention;
 pub mod history;
 mod observation;
 mod outbox_store;
@@ -19,6 +21,7 @@ use crate::CommittedBatch;
 use peritus_types::{CommandId, Sha256Digest};
 
 pub use connection::{SqliteJournal, SqliteJournalOptions, SqliteSettings, SqliteStoragePages};
+pub use contention::JournalCancellation;
 pub use observation::ReplayObservation;
 pub use reader::JournalReader;
 

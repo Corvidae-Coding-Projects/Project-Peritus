@@ -2,21 +2,61 @@
 
 use std::{path::Path, sync::Arc, time::Duration};
 
+use super::contention::{self, ContentionPolicy, JournalCancellation};
 use crate::{JournalError, JournalErrorKind, StoreId};
 use rusqlite::{
     Connection, OpenFlags, TransactionBehavior, config::DbConfig, limits::Limit, params,
 };
 
 /// `SQLite` connection configuration for a journal owner.
+///
+/// The default has no elapsed contention deadline. Callers that need to abandon a blocked open
+/// use [`SqliteJournal::open_waiting`] with a [`JournalCancellation`] they retain. A finite timeout
+/// is available only as an explicit policy for isolated diagnostics and bounded tests.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SqliteJournalOptions {
-    /// Maximum time `SQLite` waits for a competing writer.
-    pub busy_timeout: Duration,
+    contention: ContentionPolicy,
+    maximum_pages: Option<u64>,
 }
 
 impl Default for SqliteJournalOptions {
     fn default() -> Self {
-        Self { busy_timeout: Duration::from_secs(5) }
+        Self::native()
+    }
+}
+
+impl SqliteJournalOptions {
+    /// Selects SQLite's native database page ceiling.
+    #[must_use]
+    pub const fn native() -> Self {
+        Self { contention: ContentionPolicy::WaitForCancellation, maximum_pages: None }
+    }
+
+    /// Selects an explicit finite contention deadline.
+    ///
+    /// Production durable owners should normally use [`Self::default`] and establish cancellation
+    /// with [`SqliteJournal::open_waiting`]. This constructor exists for callers whose contract
+    /// deliberately bounds an isolated attempt, including deterministic contention fixtures.
+    #[must_use]
+    pub const fn with_timeout(busy_timeout: Duration) -> Self {
+        Self { contention: ContentionPolicy::Timeout(busy_timeout), maximum_pages: None }
+    }
+
+    /// Applies an explicit positive SQLite database page ceiling whenever the journal opens.
+    ///
+    /// The value is validated against SQLite's signed representation and the database's current
+    /// allocation during open. A ceiling may later be raised or lowered above current allocation
+    /// through [`SqliteJournal::limit_storage_pages`].
+    #[must_use]
+    pub const fn with_maximum_pages(mut self, maximum_pages: u64) -> Self {
+        self.maximum_pages = Some(maximum_pages);
+        self
+    }
+
+    /// Returns the selected page ceiling, or `None` for SQLite's native ceiling.
+    #[must_use]
+    pub const fn maximum_pages(self) -> Option<u64> {
+        self.maximum_pages
     }
 }
 
@@ -90,12 +130,65 @@ impl SqliteJournal {
         store_id: StoreId,
         options: SqliteJournalOptions,
     ) -> Result<Self, JournalError> {
+        Self::open_configured(path.as_ref(), store_id, options)
+    }
+
+    /// Opens a journal whose transient writer contention waits until release or cancellation.
+    ///
+    /// The supplied token applies to opening and schema reconciliation. Subsequent operations on
+    /// the returned journal wait without a deadline unless their caller establishes a different
+    /// [`JournalCancellation::run`] scope.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed busy failure when cancellation wins, or the same storage, schema, and
+    /// identity failures as [`Self::open`].
+    pub fn open_waiting(
+        path: impl AsRef<Path>,
+        store_id: StoreId,
+        cancellation: &JournalCancellation,
+    ) -> Result<Self, JournalError> {
+        Self::open_waiting_with_options(path, store_id, SqliteJournalOptions::native(), cancellation)
+    }
+
+    /// Opens with cancellation-aware contention and an explicit storage-ceiling policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same failures as [`Self::open_waiting`], including invalid or already-exceeded
+    /// page ceilings.
+    pub fn open_waiting_with_options(
+        path: impl AsRef<Path>,
+        store_id: StoreId,
+        options: SqliteJournalOptions,
+        cancellation: &JournalCancellation,
+    ) -> Result<Self, JournalError> {
+        cancellation.run(|| {
+            Self::open_configured(
+                path.as_ref(),
+                store_id,
+                SqliteJournalOptions {
+                    contention: ContentionPolicy::WaitForCancellation,
+                    maximum_pages: options.maximum_pages,
+                },
+            )
+        })
+    }
+
+    fn open_configured(
+        path: &Path,
+        store_id: StoreId,
+        options: SqliteJournalOptions,
+    ) -> Result<Self, JournalError> {
         let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
         let mut connection = Connection::open_with_flags(path, flags)
             .map_err(|error| JournalError::sqlite("open journal", error))?;
-        configure(&connection, options.busy_timeout)?;
+        configure(&connection, options.contention)?;
+        if let Some(maximum_pages) = options.maximum_pages {
+            apply_page_ceiling(&connection, maximum_pages)?;
+        }
         // Installation and identity/version checks are one transaction: rejecting an older store
         // must not leave new tables behind and prevent its explicit forward migration.
         let transaction = connection
@@ -170,7 +263,7 @@ impl SqliteJournal {
         storage_pages(&self.connection)
     }
 
-    /// Lowers this connection's `SQLite` database page ceiling without shrinking existing storage.
+    /// Adjusts this connection's `SQLite` database page ceiling without shrinking existing storage.
     ///
     /// Future transactions on this connection that require another page fail atomically with
     /// `SQLite`'s `SQLITE_FULL` result. Callers that require a process-lifetime budget must apply
@@ -184,14 +277,7 @@ impl SqliteJournal {
         &mut self,
         maximum_pages: u64,
     ) -> Result<SqliteStoragePages, JournalError> {
-        let current = storage_pages(&self.connection)?;
-        let maximum = i64::try_from(maximum_pages).map_err(|_| invalid_page_limit())?;
-        if maximum_pages == 0 || maximum_pages < current.page_count {
-            return Err(invalid_page_limit());
-        }
-        self.connection
-            .pragma_update(None, "max_page_count", maximum)
-            .map_err(|error| JournalError::sqlite("configure journal page ceiling", error))?;
+        apply_page_ceiling(&self.connection, maximum_pages)?;
         let observed = storage_pages(&self.connection)?;
         if observed.maximum_pages != maximum_pages {
             return Err(JournalError::new(
@@ -202,6 +288,36 @@ impl SqliteJournal {
         }
         Ok(observed)
     }
+}
+
+fn apply_page_ceiling(
+    connection: &Connection,
+    maximum_pages: u64,
+) -> Result<(), JournalError> {
+    let maximum = i64::try_from(maximum_pages).map_err(|_| invalid_page_limit())?;
+    if maximum_pages == 0 {
+        return Err(invalid_page_limit());
+    }
+    let current: i64 = connection
+        .pragma_query_value(None, "page_count", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("read journal page count", error))?;
+    if current < 0 || u64::try_from(current).ok().is_none_or(|pages| maximum_pages < pages) {
+        return Err(invalid_page_limit());
+    }
+    connection
+        .pragma_update(None, "max_page_count", maximum)
+        .map_err(|error| JournalError::sqlite("configure journal page ceiling", error))?;
+    let observed: i64 = connection
+        .pragma_query_value(None, "max_page_count", |row| row.get(0))
+        .map_err(|error| JournalError::sqlite("observe journal page ceiling", error))?;
+    if u64::try_from(observed).ok() != Some(maximum_pages) {
+        return Err(JournalError::new(
+            JournalErrorKind::Storage,
+            "configure journal page ceiling",
+            "SQLite did not retain the requested page ceiling",
+        ));
+    }
+    Ok(())
 }
 
 fn storage_pages(connection: &Connection) -> Result<SqliteStoragePages, JournalError> {
@@ -239,10 +355,8 @@ const fn invalid_page_limit() -> JournalError {
     )
 }
 
-fn configure(connection: &Connection, busy_timeout: Duration) -> Result<(), JournalError> {
-    connection
-        .busy_timeout(busy_timeout)
-        .map_err(|error| JournalError::sqlite("configure busy timeout", error))?;
+fn configure(connection: &Connection, contention: ContentionPolicy) -> Result<(), JournalError> {
+    contention::configure(connection, contention)?;
     let mode: String = connection
         .pragma_update_and_check(None, "journal_mode", "WAL", |row| row.get(0))
         .map_err(|error| JournalError::sqlite("configure WAL", error))?;
@@ -266,9 +380,6 @@ fn configure(connection: &Connection, busy_timeout: Duration) -> Result<(), Jour
         .set_db_config(DbConfig::SQLITE_DBCONFIG_TRUSTED_SCHEMA, false)
         .map_err(|error| JournalError::sqlite("disable trusted schema", error))?;
     connection
-        .set_limit(Limit::SQLITE_LIMIT_LENGTH, 32 * 1024 * 1024)
-        .map_err(|error| JournalError::sqlite("configure SQLite length limit", error))?;
-    connection
         .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
         .map_err(|error| JournalError::sqlite("disable attached databases", error))?;
     Ok(())
@@ -281,7 +392,7 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             params![store_id.as_bytes().as_slice(), super::schema::SCHEMA_VERSION],
         )
         .map_err(|error| JournalError::sqlite("bind store identity", error))?;
-    let (stored, version): (Vec<u8>, i64) = connection
+    let (stored, mut version): (Vec<u8>, i64) = connection
         .query_row(
             "SELECT store_id, schema_version FROM store_meta WHERE singleton = 1",
             [],
@@ -295,7 +406,7 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             "store identity does not match the existing database",
         ));
     }
-    if version == 1 {
+    if version < super::schema::SCHEMA_VERSION {
         let migration_owned: bool = connection.query_row(
             "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations')",
             [], |row| row.get(0),
@@ -307,22 +418,101 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
                 "run the application migration owner before opening this journal",
             ));
         }
-        // Logical attachments have independent identities and ownership even when their
-        // content-addressed bytes are shared. Keep every original receipt during migration.
+    }
+    if matches!(version, 1 | 2) {
+        // Rebuild the exact application-artifact catalog under exclusive ownership. Version 3
+        // removes only the legacy media-text ceiling; all existing identities and receipts must
+        // cross the replacement frontier byte-for-byte before the previous table is retired.
         connection
-            .execute_batch("ALTER TABLE app_artifacts RENAME TO app_artifacts_v1;")
-            .map_err(|error| JournalError::sqlite("begin artifact identity migration", error))?;
+            .execute_batch("ALTER TABLE app_artifacts RENAME TO app_artifacts_previous;")
+            .map_err(|error| JournalError::sqlite("begin artifact metadata migration", error))?;
         connection
             .execute_batch(super::schema::INSTALL_SCHEMA)
-            .map_err(|error| JournalError::sqlite("install artifact identity schema", error))?;
+            .map_err(|error| JournalError::sqlite("install artifact metadata schema", error))?;
         connection
             .execute_batch(
-                "INSERT INTO app_artifacts SELECT * FROM app_artifacts_v1;
-                 DROP TABLE app_artifacts_v1;
-                 UPDATE store_meta SET schema_version = 2 WHERE singleton = 1;",
+                "INSERT INTO app_artifacts(
+                    artifact_id, digest, byte_size, media_type, state, producing_position
+                 )
+                 SELECT artifact_id, digest, byte_size, media_type, state, producing_position
+                   FROM app_artifacts_previous;",
             )
-            .map_err(|error| JournalError::sqlite("migrate artifact identities", error))?;
-    } else if version != super::schema::SCHEMA_VERSION {
+            .map_err(|error| JournalError::sqlite("copy artifact metadata", error))?;
+        let replacement_complete: bool = connection
+            .query_row(
+                "SELECT
+                    NOT EXISTS(
+                        SELECT artifact_id, digest, byte_size, media_type, state, producing_position
+                          FROM app_artifacts_previous
+                        EXCEPT
+                        SELECT artifact_id, digest, byte_size, media_type, state, producing_position
+                          FROM app_artifacts
+                    )
+                    AND NOT EXISTS(
+                        SELECT artifact_id, digest, byte_size, media_type, state, producing_position
+                          FROM app_artifacts
+                        EXCEPT
+                        SELECT artifact_id, digest, byte_size, media_type, state, producing_position
+                          FROM app_artifacts_previous
+                    )",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| JournalError::sqlite("verify artifact metadata migration", error))?;
+        if !replacement_complete {
+            return Err(JournalError::new(
+                JournalErrorKind::CorruptJournal,
+                "migrate artifact metadata",
+                "replacement artifact metadata frontier is incomplete",
+            ));
+        }
+        connection
+            .execute_batch(
+                "DROP TABLE app_artifacts_previous;
+                 UPDATE store_meta SET schema_version = 3 WHERE singleton = 1;",
+            )
+            .map_err(|error| JournalError::sqlite("publish artifact metadata migration", error))?;
+        version = 3;
+    }
+    if version == 3 {
+        // Version four keeps every accepted legacy inline decoder but makes all new large journal
+        // content use bounded physical chunks. Nullable reference columns are the unambiguous
+        // representation discriminator; no existing bytes or canonical digests are rewritten.
+        connection
+            .execute_batch(
+                "ALTER TABLE events ADD COLUMN frame_byte_length INTEGER
+                    CHECK (frame_byte_length BETWEEN 1 AND 1073741823);
+                 ALTER TABLE state_records ADD COLUMN root_digest BLOB
+                    CHECK (root_digest IS NULL OR length(root_digest) = 32);
+                 ALTER TABLE state_records ADD COLUMN value_bytes INTEGER
+                    CHECK (value_bytes BETWEEN 0 AND 16777216);
+                 ALTER TABLE outbox ADD COLUMN payload_digest BLOB
+                    CHECK (payload_digest IS NULL OR length(payload_digest) = 32);
+                 ALTER TABLE outbox ADD COLUMN payload_byte_length INTEGER
+                    CHECK (payload_byte_length BETWEEN 0 AND 16777216);
+                 ALTER TABLE credential_registry ADD COLUMN snapshot_byte_length INTEGER
+                    CHECK (snapshot_byte_length BETWEEN 1 AND 1073741823);
+                 ALTER TABLE credential_registry ADD COLUMN snapshot_content_digest BLOB
+                    CHECK (snapshot_content_digest IS NULL
+                        OR length(snapshot_content_digest) = 32);
+                 ALTER TABLE app_commands ADD COLUMN envelope_digest BLOB
+                    CHECK (envelope_digest IS NULL OR length(envelope_digest) = 32);
+                 ALTER TABLE app_commands ADD COLUMN envelope_byte_length INTEGER
+                    CHECK (envelope_byte_length BETWEEN 1 AND 1073741823);
+                 ALTER TABLE app_commands ADD COLUMN domain_command_byte_length INTEGER
+                    CHECK (domain_command_byte_length BETWEEN 1 AND 1073741823);
+                 ALTER TABLE app_prompt_targets ADD COLUMN binding_byte_length INTEGER
+                    CHECK (binding_byte_length BETWEEN 1 AND 16777216);
+                 ALTER TABLE app_prompt_targets ADD COLUMN settlement_byte_length INTEGER
+                    CHECK (settlement_byte_length BETWEEN 1 AND 16777216);
+                 ALTER TABLE app_workspaces ADD COLUMN registration_byte_length INTEGER
+                    CHECK (registration_byte_length BETWEEN 1 AND 1048576);
+                 UPDATE store_meta SET schema_version = 4 WHERE singleton = 1;",
+            )
+            .map_err(|error| JournalError::sqlite("publish paged-content schema migration", error))?;
+        version = 4;
+    }
+    if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,
             "open journal",

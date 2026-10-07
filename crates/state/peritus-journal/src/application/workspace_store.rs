@@ -1,7 +1,7 @@
 //! Durable application workspace catalog and bounded recovery enumeration.
 
 use peritus_types::WorkspaceId;
-use rusqlite::{Connection, OptionalExtension, params};
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 
 use super::{
     rows::WorkspaceRow,
@@ -12,7 +12,8 @@ use super::{
 };
 use crate::{JournalError, JournalErrorKind, SqliteJournal};
 
-const WORKSPACE_COLUMNS: &str = "workspace_id, registration_bytes, registration_digest, state";
+const WORKSPACE_COLUMNS: &str =
+    "workspace_id, registration_bytes, registration_digest, state, registration_byte_length";
 
 impl SqliteJournal {
     /// Replaces a registration after its domain owner validates an authorized baseline refresh.
@@ -27,16 +28,31 @@ impl SqliteJournal {
         if expected.workspace_id() != replacement.workspace_id {
             return Err(conflict("workspace refresh cannot change identity"));
         }
-        let changed = self
+        let transaction = self
             .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|error| JournalError::sqlite("begin application workspace refresh", error))?;
+        let current = load_workspace(&transaction, expected.workspace_id())?
+            .ok_or_else(|| conflict("workspace refresh target is missing"))?;
+        if &current != expected {
+            return Err(conflict("workspace registration changed during refresh"));
+        }
+        let byte_length = crate::sqlite::content::install(
+            &transaction,
+            &replacement.registration_bytes,
+            replacement.registration_digest,
+            super::types::MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES,
+        )?;
+        let changed = transaction
             .execute(
-                "UPDATE app_workspaces SET registration_bytes = ?1, registration_digest = ?2
-             WHERE workspace_id = ?3 AND registration_bytes = ?4 AND registration_digest = ?5",
+                "UPDATE app_workspaces SET registration_bytes = ?1, registration_digest = ?2,
+                        registration_byte_length = ?3
+                  WHERE workspace_id = ?4 AND registration_digest = ?5",
                 params![
-                    replacement.registration_bytes,
+                    crate::sqlite::content::PAGED_INLINE_VALUE,
                     replacement.registration_digest.as_bytes().as_slice(),
+                    byte_length,
                     expected.workspace_id().as_bytes().as_slice(),
-                    expected.registration_bytes(),
                     expected.registration_digest().as_bytes().as_slice()
                 ],
             )
@@ -44,8 +60,12 @@ impl SqliteJournal {
         if changed != 1 {
             return Err(conflict("workspace registration changed during refresh"));
         }
-        load_workspace(&self.connection, replacement.workspace_id)?
-            .ok_or_else(|| corrupt("refreshed workspace disappeared"))
+        let refreshed = load_workspace(&transaction, replacement.workspace_id)?
+            .ok_or_else(|| corrupt("refreshed workspace disappeared"))?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("commit application workspace refresh", error))?;
+        Ok(refreshed)
     }
 
     /// Registers exact workspace configuration bytes.
@@ -63,7 +83,13 @@ impl SqliteJournal {
         &mut self,
         workspace: NewApplicationWorkspace,
     ) -> Result<ApplicationWorkspace, JournalError> {
-        if let Some(existing) = load_workspace(&self.connection, workspace.workspace_id)? {
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|error| {
+                JournalError::sqlite("begin application workspace registration", error)
+            })?;
+        if let Some(existing) = load_workspace(&transaction, workspace.workspace_id)? {
             if existing.registration_digest() == workspace.registration_digest
                 && existing.registration_bytes() == workspace.registration_bytes
             {
@@ -73,16 +99,27 @@ impl SqliteJournal {
                 "application workspace is already registered with different bytes",
             ));
         }
-        self.connection.execute(
-            "INSERT INTO app_workspaces(workspace_id, registration_bytes, registration_digest, state) VALUES (?1, ?2, ?3, 1)",
+        let byte_length = crate::sqlite::content::install(
+            &transaction,
+            &workspace.registration_bytes,
+            workspace.registration_digest,
+            super::types::MAX_APPLICATION_WORKSPACE_REGISTRATION_BYTES,
+        )?;
+        transaction.execute(
+            "INSERT INTO app_workspaces(workspace_id, registration_bytes, registration_digest, state, registration_byte_length) VALUES (?1, ?2, ?3, 1, ?4)",
             params![
                 workspace.workspace_id.as_bytes().as_slice(),
-                workspace.registration_bytes,
+                crate::sqlite::content::PAGED_INLINE_VALUE,
                 workspace.registration_digest.as_bytes().as_slice(),
+                byte_length,
             ],
         ).map_err(|error| JournalError::sqlite("register application workspace", error))?;
-        load_workspace(&self.connection, workspace.workspace_id)?
-            .ok_or_else(|| corrupt("registered application workspace is not observable"))
+        let registered = load_workspace(&transaction, workspace.workspace_id)?
+            .ok_or_else(|| corrupt("registered application workspace is not observable"))?;
+        transaction.commit().map_err(|error| {
+            JournalError::sqlite("commit application workspace registration", error)
+        })?;
+        Ok(registered)
     }
 
     /// Reads exact workspace registration bytes.
@@ -141,7 +178,7 @@ impl SqliteJournal {
         let mut workspaces = rows
             .map(|row| {
                 row.map_err(|error| JournalError::sqlite("read application workspace page", error))
-                    .and_then(WorkspaceRow::parse)
+                    .and_then(|row| row.parse(&self.connection))
             })
             .collect::<Result<Vec<_>, JournalError>>()?;
         let has_more = workspaces.len() > max_records;
@@ -187,7 +224,7 @@ fn load_workspace(
         .query_row(&sql, params![workspace.as_bytes().as_slice()], WorkspaceRow::read)
         .optional()
         .map_err(|error| JournalError::sqlite("read application workspace", error))?
-        .map(WorkspaceRow::parse)
+        .map(|row| row.parse(connection))
         .transpose()
 }
 

@@ -27,8 +27,10 @@ pub(super) async fn run(
     mut artifacts: ArtifactAuthority,
     mut prompts: PromptBroker,
     authority_clock: AuthorityClock,
+    sender: mpsc::WeakSender<AuthorityMessage>,
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
+    artifacts.reconcile_restart(&mut journal)?;
     let mut scheduler_session = peritus_scheduler::SchedulerSession::default();
     while let Some(message) = receiver.recv().await {
         match message {
@@ -155,16 +157,18 @@ pub(super) async fn run(
                 session_id,
                 request,
                 maximum_chunk_bytes,
+                maximum_media_type_bytes,
                 respond,
             } => {
                 let result = require_diagnostic(&lifecycle).and_then(|()| {
-                    artifacts.open_download(
+                    artifacts.open_download_with_media_type_limit(
                         &journal,
                         actor_id,
                         session_id,
                         request.transfer_id(),
                         request.artifact_id(),
                         maximum_chunk_bytes,
+                        maximum_media_type_bytes,
                     )
                 });
                 reply(respond, result);
@@ -223,6 +227,18 @@ pub(super) async fn run(
                 });
                 reply(respond, result);
             }
+            AuthorityMessage::AuthorizeScopedText { scope, artifact_id, respond } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    artifacts.authorize_scoped_text(&journal, scope, artifact_id)
+                });
+                reply(respond, result);
+            }
+            AuthorityMessage::AuthorizeScopedArtifact { scope, artifact_id, respond } => {
+                let result = require_diagnostic(&lifecycle).and_then(|()| {
+                    artifacts.authorize_scoped_artifact(&journal, scope, artifact_id)
+                });
+                reply(respond, result);
+            }
             AuthorityMessage::UploadArtifactChunk { actor_id, session_id, chunk, respond } => {
                 let result = require_mutation(&lifecycle)
                     .and_then(|()| artifacts.upload_chunk(actor_id, session_id, &chunk));
@@ -234,9 +250,40 @@ pub(super) async fn run(
                 completion,
                 respond,
             } => {
-                let result = require_mutation(&lifecycle).and_then(|()| {
-                    artifacts.complete_upload(&mut journal, actor_id, session_id, completion)
+                let Some(sender) = sender.upgrade() else {
+                    reply(respond, Err(artifact_worker_stopped()));
+                    continue;
+                };
+                let pending = require_mutation(&lifecycle).and_then(|()| {
+                    artifacts.prepare_complete_upload(
+                        &mut journal,
+                        actor_id,
+                        session_id,
+                        completion,
+                    )
                 });
+                match pending {
+                    Ok(pending) => {
+                        let owner = artifacts.store_owner();
+                        let _finalizer = tokio::task::spawn_blocking(move || {
+                            let completed = owner.finalize(pending);
+                            if let Err(error) = sender.blocking_send(
+                                AuthorityMessage::ArtifactUploadFinalized { completed, respond },
+                            ) {
+                                if let AuthorityMessage::ArtifactUploadFinalized {
+                                    respond, ..
+                                } = error.0
+                                {
+                                    reply(respond, Err(artifact_worker_stopped()));
+                                }
+                            }
+                        });
+                    }
+                    Err(error) => reply(respond, Err(error)),
+                }
+            }
+            AuthorityMessage::ArtifactUploadFinalized { completed, respond } => {
+                let result = artifacts.reconcile_complete_upload(&mut journal, completed);
                 reply(respond, result);
             }
             AuthorityMessage::CancelArtifactTransfer {
@@ -318,7 +365,13 @@ pub(super) async fn run(
                 respond,
             } => reply(
                 respond,
-                reconcile_command(&mut journal, command_id, request_digest, domain_command_digest),
+                reconcile_command(
+                    &mut journal,
+                    &mut scheduler_session,
+                    command_id,
+                    request_digest,
+                    domain_command_digest,
+                ),
             ),
             AuthorityMessage::RecoverCommands { maximum, respond } => reply(
                 respond,
@@ -361,6 +414,7 @@ pub(super) async fn run(
             }
             AuthorityMessage::Stop { respond } => {
                 lifecycle.unavailable();
+                artifacts.cancel_finalizations();
                 reply(respond, Ok(()));
                 return Ok(());
             }
@@ -371,4 +425,13 @@ pub(super) async fn run(
 
 fn reply<T>(respond: Response<T>, result: Result<T, DaemonError>) {
     let _ = respond.send(result);
+}
+
+fn artifact_worker_stopped() -> DaemonError {
+    DaemonError::new(
+        crate::DaemonErrorCode::Storage,
+        crate::DaemonRecovery::Retry,
+        "finalize artifact upload",
+        "artifact finalization owner stopped before reconciliation",
+    )
 }

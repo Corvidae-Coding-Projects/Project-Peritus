@@ -21,6 +21,12 @@ pub(super) fn migrate_existing(config: &DaemonConfig, database: &Path) -> Result
         64 * 1_024 * 1_024,
     )
     .map_err(migration_error)?;
+    let migration_config = match config.limits().journal_maximum_pages() {
+        Some(maximum_pages) => migration_config
+            .with_maximum_pages(maximum_pages)
+            .map_err(migration_error)?,
+        None => migration_config,
+    };
     let mut engine = MigrationEngine::open(migration_config, registry).map_err(migration_error)?;
     let operation = operation_id(registry)?;
     let _ = engine.adopt_current_install(operation).map_err(migration_error)?;

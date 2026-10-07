@@ -4,7 +4,10 @@ mod append;
 mod identity;
 mod inspection;
 mod location;
+mod ownership;
 pub(super) use inspection::inspect;
+pub(in crate::local_context) use inspection::open as open_inspection;
+pub use inspection::LocalContextInspection;
 #[cfg(test)]
 mod tests;
 
@@ -12,22 +15,23 @@ use super::error;
 use identity::StorageIdentity;
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{
-    ArtifactDigest, ArtifactStore, EncryptionMetadata, MediaType, StoreConfig, WriteRequest,
+    ArtifactCatalogCancellation, ArtifactDigest, ArtifactReadHandle, ArtifactStore, EncryptionMetadata, MediaType,
+    ReferenceOwner, StoreConfig, WriteRequest,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_context::working::WorkingBinding;
-use peritus_journal::{AggregateHead, SqliteJournal, SqliteJournalOptions};
+use peritus_journal::{AggregateHead, JournalCancellation, SqliteJournal};
+use peritus_provider_core::CancellationToken;
 use peritus_types::Sha256Digest;
 use std::{
     fs::{self, File, OpenOptions},
-    path::Path,
-    time::Duration,
+    path::{Path, PathBuf},
 };
 
 const FRAME_FAMILY: u16 = 3401;
 const STATE_NAMESPACE: u16 = 3401;
 const STATE_KEY: &[u8] = b"local-working-memory/checkpoint/v1";
-pub(super) const MAX_ARTIFACT_BYTES: u64 = 64 * 1024 * 1024;
+pub(super) const MAX_ARTIFACT_BYTES: u64 = i64::MAX as u64;
 
 /// Local artifact handle with exact verified size.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -39,13 +43,27 @@ pub(super) struct StoredArtifact {
 mod artifact_wire;
 
 pub(super) struct LocalStore {
+    root: PathBuf,
     journal: SqliteJournal,
     artifacts: ArtifactStore,
     identity: StorageIdentity,
     head: Option<AggregateHead>,
     generation: u64,
+    journal_cancellation: JournalCancellation,
+    catalog_cancellation: ArtifactCatalogCancellation,
     // The lock's lifetime covers both journal and artifact owners, including failed invocations.
     _owner: File,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct LocalAppendReceipt {
+    owner: Sha256Digest,
+}
+
+impl LocalAppendReceipt {
+    pub(super) const fn owner(self) -> Sha256Digest {
+        self.owner
+    }
 }
 
 impl LocalStore {
@@ -63,6 +81,16 @@ impl LocalStore {
         binding: WorkingBinding,
         protected: &[std::path::PathBuf],
     ) -> Result<Self, DeveloperLoopError> {
+        Self::open_folder_cancellable(root, workspace, binding, protected, &CancellationToken::new())
+    }
+
+    pub(super) fn open_folder_cancellable(
+        root: &Path,
+        workspace: &Path,
+        binding: WorkingBinding,
+        protected: &[PathBuf],
+        cancellation: &CancellationToken,
+    ) -> Result<Self, DeveloperLoopError> {
         location::validate(root, workspace, protected)?;
         fs::create_dir_all(root).map_err(|_| error("create storage root"))?;
         let root = root.canonicalize().map_err(|_| error("resolve storage root"))?;
@@ -73,28 +101,37 @@ impl LocalStore {
             .read(true)
             .write(true)
             .open(root.join("owner.lock"))
-            .map_err(|_| error("open lineage ownership lock"))?;
-        lock_owner(&owner)?;
+            .map_err(|failure| storage_failure(cancellation, "open lineage ownership lock", failure))?;
         let identity = StorageIdentity::new(binding)?;
+        ownership::acquire(&owner, &root, identity.scope, cancellation)?;
+        let journal_signal = cancellation.clone();
+        let catalog_signal = cancellation.clone();
+        let journal_cancellation = JournalCancellation::with_cancellation_check(move || journal_signal.is_cancelled());
+        let catalog_cancellation = ArtifactCatalogCancellation::with_cancellation_check(move || catalog_signal.is_cancelled());
         let database = root.join("journal.sqlite3");
-        let journal = SqliteJournal::open(
+        let journal = SqliteJournal::open_waiting_with_options(
             &database,
             identity.store,
-            SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+            peritus_journal::SqliteJournalOptions::native(),
+            &journal_cancellation,
         )
-        .map_err(|_| error("open C0 journal"))?;
-        let config =
-            StoreConfig::new(root.join("artifacts"), MAX_ARTIFACT_BYTES, 1024 * 1024 * 1024)
-                .and_then(|config| config.with_database_path(&database))
-                .map_err(|_| error("configure C0 artifact store"))?;
-        let artifacts = ArtifactStore::open(config).map_err(|_| error("open C0 artifact store"))?;
-        let head = journal.head(identity.aggregate).map_err(|_| error("read lineage head"))?;
-        let checkpoint = journal
-            .state_record(STATE_NAMESPACE, STATE_KEY)
-            .map_err(|_| error("read checkpoint root"))?;
+        .map_err(|failure| storage_failure(cancellation, "open C0 journal", failure))?;
+        let config = StoreConfig::for_available_space(root.join("artifacts"), MAX_ARTIFACT_BYTES)
+            .and_then(|config| config.with_database_path(&database))
+            .map_err(|_| error("configure C0 artifact store"))?;
+        let artifacts = catalog_cancellation.run(|| ArtifactStore::open(config))
+            .map_err(|failure| storage_failure(cancellation, "open C0 artifact store", failure))?;
+        let head = journal_cancellation.run(|| journal.head(identity.aggregate))
+            .map_err(|failure| storage_failure(cancellation, "read lineage head", failure))?;
+        let checkpoint = journal_cancellation.run(|| journal.state_record(STATE_NAMESPACE, STATE_KEY))
+            .map_err(|failure| storage_failure(cancellation, "read checkpoint root", failure))?;
         let generation =
             checkpoint.as_ref().map_or(0, peritus_journal::DurableStateRecord::revision);
-        Ok(Self { journal, artifacts, identity, head, generation, _owner: owner })
+        Ok(Self { root, journal, artifacts, identity, head, generation, journal_cancellation, catalog_cancellation, _owner: owner })
+    }
+
+    pub(super) fn root(&self) -> &Path {
+        &self.root
     }
 
     pub(super) const fn scope_digest(&self) -> Sha256Digest {
@@ -108,9 +145,36 @@ impl LocalStore {
     }
 
     pub(super) fn records(&self) -> Result<Vec<Vec<u8>>, DeveloperLoopError> {
-        self.journal
+        self.check_cancelled()?;
+        self.journal_cancellation.run(|| self.journal
             .records_for_aggregate(self.identity.aggregate)
-            .map_err(|_| error("verify journal chain"))?
+        )
+            .map_err(|failure| self.failure("verify journal chain", failure))?
+            .into_iter()
+            .map(|record| {
+                let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
+                    .map_err(|_| error("decode local event frame"))?;
+                if frame.header().family() != FRAME_FAMILY || frame.header().schema_version() != 1 {
+                    return Err(error("unsupported local event schema"));
+                }
+                Ok(frame.payload().to_vec())
+            })
+            .collect()
+    }
+
+    pub(super) fn record_page_after(
+        &self,
+        sequence: u64,
+    ) -> Result<Vec<Vec<u8>>, DeveloperLoopError> {
+        self.check_cancelled()?;
+        self.journal_cancellation.run(|| self.journal
+            .aggregate_events_after(
+                self.identity.aggregate,
+                sequence,
+                peritus_journal::MAX_GLOBAL_WINDOW_RECORDS,
+            )
+        )
+            .map_err(|failure| self.failure("verify journal suffix page", failure))?
             .into_iter()
             .map(|record| {
                 let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
@@ -124,13 +188,16 @@ impl LocalStore {
     }
 
     pub(super) fn checkpoint_root(&self) -> Result<Option<Vec<u8>>, DeveloperLoopError> {
-        self.journal
+        self.check_cancelled()?;
+        self.journal_cancellation.run(|| self.journal
             .state_record(STATE_NAMESPACE, STATE_KEY)
+        )
             .map(|record| record.map(|record| record.bytes().to_vec()))
-            .map_err(|_| error("read committed checkpoint"))
+            .map_err(|failure| self.failure("read committed checkpoint", failure))
     }
 
     pub(super) fn store(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
+        self.check_cancelled()?;
         let length = u64::try_from(bytes.len()).map_err(|_| error("artifact size overflow"))?;
         if length > MAX_ARTIFACT_BYTES {
             return Err(error("artifact capacity exceeded"));
@@ -147,44 +214,136 @@ impl LocalStore {
             EncryptionMetadata::unencrypted(),
             event,
         );
+        self.catalog_cancellation.run(|| {
         let mut writer =
-            self.artifacts.begin_write(request).map_err(|_| error("begin artifact write"))?;
-        writer.write_chunk(bytes).map_err(|_| error("write artifact bytes"))?;
-        let finalized = writer.finalize().map_err(|_| error("finalize artifact"))?;
+            self.artifacts.begin_write(request).map_err(|failure| self.failure("begin artifact write", failure))?;
+        writer.write_chunk(bytes).map_err(|failure| self.failure("write artifact bytes", failure))?;
+        let finalized = writer.finalize().map_err(|failure| self.failure("finalize artifact", failure))?;
         Ok(StoredArtifact { digest, bytes: finalized.size() })
+        })
+    }
+
+    pub(super) fn store_bundle(
+        &self,
+        bytes: &[u8],
+        children: &[StoredArtifact],
+    ) -> Result<StoredArtifact, DeveloperLoopError> {
+        let parent = self.store(bytes)?;
+        self.check_cancelled()?;
+        self.catalog_cancellation.run(|| {
+            self.artifacts.bind_dependencies(
+                ArtifactDigest::from_sha256(parent.digest),
+                children.iter().map(|child| {
+                    (ArtifactDigest::from_sha256(child.digest), child.bytes)
+                }),
+            )
+        })
+            .map_err(|failure| self.failure("bind artifact dependency bundle", failure))?;
+        Ok(parent)
     }
 
     pub(super) fn read(&self, artifact: StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError> {
+        self.check_cancelled()?;
         if artifact.bytes > MAX_ARTIFACT_BYTES {
             return Err(error("artifact read capacity exceeded"));
         }
-        let bytes = self
+        let bytes = self.catalog_cancellation.run(|| self
             .artifacts
             .read(ArtifactDigest::from_sha256(artifact.digest), artifact.bytes)
-            .map_err(|_| error("artifact unavailable or digest mismatch"))?;
+        )
+            .map_err(|failure| self.failure("artifact unavailable or digest mismatch", failure))?;
         if bytes.len() as u64 != artifact.bytes {
             return Err(error("artifact length mismatch"));
         }
         Ok(bytes)
     }
 
+    pub(super) fn open_artifact(
+        &self,
+        artifact: StoredArtifact,
+    ) -> Result<ArtifactReadHandle, DeveloperLoopError> {
+        self.check_cancelled()?;
+        if artifact.bytes > MAX_ARTIFACT_BYTES {
+            return Err(error("artifact read capacity exceeded"));
+        }
+        let digest = ArtifactDigest::from_sha256(artifact.digest);
+        let handle = self.catalog_cancellation.run(|| self
+            .artifacts
+            .open_read(digest)
+        )
+            .map_err(|failure| self.failure("open verified artifact reader", failure))?;
+        if handle.metadata().digest() != digest {
+            return Err(error("artifact reader digest mismatch"));
+        }
+        if handle.metadata().size() != artifact.bytes {
+            return Err(error("artifact reader length mismatch"));
+        }
+        Ok(handle)
+    }
+
     pub(super) fn read_digest(&self, digest: [u8; 32]) -> Result<Vec<u8>, DeveloperLoopError> {
-        self.artifacts
+        self.check_cancelled()?;
+        self.catalog_cancellation.run(|| self.artifacts
             .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_BYTES)
-            .map_err(|_| error("artifact unavailable or digest mismatch"))
+        )
+            .map_err(|failure| self.failure("artifact unavailable or digest mismatch", failure))
+    }
+
+    pub(super) fn checkpoint_owner(
+        &self,
+        sequence: u64,
+        payload: &[u8],
+    ) -> Result<Sha256Digest, DeveloperLoopError> {
+        self.check_cancelled()?;
+        let command = self.identity.command(sequence)?;
+        match self.journal_cancellation.run(|| self
+            .journal
+            .resolve_command(command, sha256(payload))
+        )
+            .map_err(|failure| self.failure("resolve checkpoint publication", failure))?
+        {
+            peritus_journal::CommandResolution::Committed(batch)
+                if batch.records().len() == 1
+                    && batch.records()[0].aggregate() == self.identity.aggregate
+                    && batch.records()[0].sequence().get() == sequence =>
+            {
+                Ok(batch.batch_hash())
+            }
+            _ => Err(error("checkpoint publication receipt is unavailable")),
+        }
+    }
+
+    pub(super) fn retire_checkpoint_owner(
+        &self,
+        owner: Sha256Digest,
+    ) -> Result<(), DeveloperLoopError> {
+        self.check_cancelled()?;
+        self.catalog_cancellation.run(|| self.artifacts
+            .retire_reference_owner(ReferenceOwner::journal(owner))
+        )
+            .map(|_| ())
+            .map_err(|failure| self.failure("retire obsolete checkpoint artifact roots", failure))
+    }
+
+    fn check_cancelled(&self) -> Result<(), DeveloperLoopError> {
+        if self.journal_cancellation.is_cancelled() || self.catalog_cancellation.is_cancelled() {
+            Err(DeveloperLoopError::Cancelled)
+        } else { Ok(()) }
+    }
+
+    fn failure(&self, operation: &str, failure: impl std::fmt::Display) -> DeveloperLoopError {
+        if self.journal_cancellation.is_cancelled() || self.catalog_cancellation.is_cancelled() {
+            DeveloperLoopError::Cancelled
+        } else {
+            DeveloperLoopError::Context(format!("local working memory: {operation}: {failure}"))
+        }
     }
 }
 
-fn lock_owner(owner: &File) -> Result<(), DeveloperLoopError> {
-    let started = std::time::Instant::now();
-    loop {
-        match owner.try_lock() {
-            Ok(()) => return Ok(()),
-            Err(fs::TryLockError::WouldBlock) if started.elapsed() < Duration::from_millis(250) => {
-                // Another thread's fork can briefly inherit a CLOEXEC descriptor before exec.
-                std::thread::sleep(Duration::from_millis(5));
-            }
-            Err(_) => return Err(error("lineage already has an owner or cannot be locked")),
-        }
+fn storage_failure(cancellation: &CancellationToken, operation: &str, failure: impl std::fmt::Display) -> DeveloperLoopError {
+    if cancellation.is_cancelled() {
+        DeveloperLoopError::Cancelled
+    } else {
+        DeveloperLoopError::Context(format!("local working memory: {operation}: {failure}"))
     }
 }
