@@ -134,7 +134,20 @@ impl ObligationError {
 #[cfg(not(verus_only))]
 impl core::fmt::Display for ObligationError {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(formatter, "obligation rejected: {:?}", self.kind())
+        write!(formatter, "obligation rejected: {:?}", self.kind())?;
+        if let Some(requirement_id) = self.requirement_id() {
+            formatter.write_str("; requirement=")?;
+            for byte in requirement_id.digest().as_bytes() {
+                write!(formatter, "{byte:02x}")?;
+            }
+        }
+        if let Some(expected) = self.expected() {
+            write!(formatter, "; expected={expected}")?;
+        }
+        if let Some(actual) = self.actual() {
+            write!(formatter, "; actual={actual}")?;
+        }
+        Ok(())
     }
 }
 

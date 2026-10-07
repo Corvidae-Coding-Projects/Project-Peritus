@@ -59,13 +59,15 @@ impl RunObligations {
         let mut drafts = spans
             .into_iter()
             .map(|(start, end)| {
-                let id = RequirementId::new(digest(
-                    b"peritus-product-obligation-v1",
+                let id = occurrence_id(
+                    &source,
+                    start,
+                    end,
                     &transcript.as_bytes()[start..end],
-                ));
-                RequirementDraft::new(id, start, end, ObligationSpec::Hard, Vec::new())
+                )?;
+                Ok(RequirementDraft::new(id, start, end, ObligationSpec::Hard, Vec::new()))
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, ProductRunnerError>>()?;
         drafts.sort_by_key(RequirementDraft::id);
         let ledger = RequirementLedger::extract(&source, drafts, limits).map_err(invalid)?;
         Ok(Self { ledger })
@@ -141,6 +143,29 @@ fn clause_spans(text: &str, maximum: usize) -> Vec<(usize, usize)> {
         start = end;
     }
     spans
+}
+
+/// Identify an occurrence without conflating repeated literal clauses.
+///
+/// The fixed-width source, revision, and span fields retain exact provenance.
+/// This domain applies only to newly derived ledgers; retained ledger and
+/// evidence encodings keep their original identities and canonical bytes.
+fn occurrence_id(
+    source: &PublicTaskSource,
+    start: usize,
+    end: usize,
+    clause: &[u8],
+) -> Result<RequirementId, ProductRunnerError> {
+    let start = u64::try_from(start).map_err(invalid)?;
+    let end = u64::try_from(end).map_err(invalid)?;
+    let mut hasher = Sha256::new();
+    hasher.update(b"peritus-product-obligation-occurrence-v2\0");
+    hasher.update(source.digest().as_bytes());
+    hasher.update(source.conversation_revision().to_le_bytes());
+    hasher.update(start.to_le_bytes());
+    hasher.update(end.to_le_bytes());
+    hasher.update(Sha256::digest(clause));
+    Ok(RequirementId::new(Sha256Digest::new(hasher.finalize().into())))
 }
 
 fn digest(domain: &[u8], bytes: &[u8]) -> Sha256Digest {
