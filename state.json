@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3827,
-        "tip_oid": "dd197c56b5156c4416ac7cebbde1cc4cd1664a39",
-        "prefix_sha256": "84cad3552c2dd7990b217d9327aa0521874cb03a99ca1378492beb2982d81696"
+        "sequence": 3828,
+        "tip_oid": "0777c3960b440940633bfdd7638f65b33d89c01c",
+        "prefix_sha256": "acf8549ba1cd54794c0b7df4bb57bf28889a885b6f39c631ca23ad276db8aeff"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3133,
+  "next_comment_id": 3134,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23575,11 +23575,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.233698590Z",
-      "updated_at": "2026-10-06T13:19:08.236202785Z",
+      "updated_at": "2026-10-07T16:12:00.547921381Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "686ccfe4-05fb-42fc-af5e-fc50416abd57": {
+          "display_id": 3133,
+          "author": "6ME5",
+          "content": "Adversarial source review found two concrete restart blockers in the no-network owner closure: direct exclusive request staging can leave partial immutable final files or conflict with a fresh retry nonce before C2 consumption; reopening a fully retired retained execution recreates Authorized from staging and then conflicts with its immutable terminal tombstone, preventing store open. Exact findings and systemic repair boundaries are recorded in .crosslink/code-batch-recovery/2026-10-07-root193-review/FINDINGS.md. Agent193 is repairing publication/reuse and retirement authority. Source reasoning only; no tests, builds, test edits, or issue closure.",
+          "created_at": "2026-10-07T16:12:00.544053Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcHtddfnXCuzlRB2EWM4ckF5VGCqk1s6HrXddYf4XRe6Ao4v9dXKS9WwLRg1L2t3r0aAjCfpXItask86r54ufBA=="
+        },
         "8d31a6a5-8dae-454c-a887-0a46a02c32ae": {
           "display_id": 2265,
           "author": "6ME5",
