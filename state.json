@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3822,
-        "tip_oid": "6c5bc762f4ff98caa11d8ef0a8da17dd097c1ebc",
-        "prefix_sha256": "23c8229da8e31505469f08e2d6039acddf78d86a39044565d81723706afefef6"
+        "sequence": 3823,
+        "tip_oid": "1885e76a17c3d592793924c5979451c78b5b9f23",
+        "prefix_sha256": "775bf6edda79effcb90b65311da8ef5c62dfc1a402a44deda0701f9adb8488b0"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3128,
+  "next_comment_id": 3129,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -36396,11 +36396,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.674065201Z",
-      "updated_at": "2026-10-07T15:30:27.743140025Z",
+      "updated_at": "2026-10-07T15:50:01.985706163Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "79381a17-782b-4c2b-b977-5a0f1476f9f3": {
+          "display_id": 3128,
+          "author": "6ME5",
+          "content": "Source successor retained at .crosslink/code-batch-recovery/2026-10-07-root224-exact-replay/HANDOFF.md; focused patch30e077b308d511baf43939da39982de71ae0b784a198ea699ed008c7fe22891f. Root fully read all nine context-independent trace/reviewer production files. Four-path correction requires an exact pending-field completion frontier and propagates matching accepted mutation replay/ack conflicts rather than silently dropping retained state and requesting a resend. Other exact handles remain unrelated. Existing canonical trace tags/payloads preserved; no new work quota or ledger. Static diff/whitespace/reverse-apply checks only. No tests/builds/lint/fmt or test edits; all runtime validation deferred until the entire batch code is finished. Issue remains open.",
+          "created_at": "2026-10-07T15:50:01.973733777Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALGa2W8lP7v/USawKGNAAf5b8MPeEiYYuw6BNcGV60ryH4ORhP5XBChPBWLDYZO+AS5feYDxJfqNoKBE6ZklkBA=="
+        },
         "8b4b46c0-f7ec-4bbb-90d3-ee6634869188": {
           "display_id": 3117,
           "author": "6ME5",
