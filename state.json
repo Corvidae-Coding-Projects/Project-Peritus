@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3771,
-        "tip_oid": "2b2425a9ad11cc18175eecd58ebcca86e7e499c9",
-        "prefix_sha256": "0bd2e430028a8003015e11b8686b8b241065a23961700909d9d235a651a63d95"
+        "sequence": 3772,
+        "tip_oid": "1af78e116a16fa4a1a7b4ea66d1c3973eba1a016",
+        "prefix_sha256": "0560f04b05bf2afc707fa5b99d7424212fd33e0e893c669f299aafc2b8f747de"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3077,
+  "next_comment_id": 3078,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -30390,7 +30390,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.167880174Z",
-      "updated_at": "2026-10-07T06:39:54.000978165Z",
+      "updated_at": "2026-10-07T06:58:23.908613661Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -30401,6 +30401,15 @@
           "content": "Systemic repair plan for L079: Memory updates have independent request/text/path admission gates.\n\nOwning contract and implementation boundary: tools/update.rs:65-90,124-162,196-198,224-262; tools/schema.rs:13-26,35-39; tools.rs:62-89; secret_text.rs:6-32. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nShare one explicit UTF-8 byte contract between context-update schemas and parsers, and page large deltas/file-link sets under one revision-bound update intent. Archive large text and dependencies by exact reference while validating that the successor prompt remains usable before commit. Preserve permission/source lineage and scoped secret-disclosure controls with an explicit route for authorized quoted source evidence.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "873f4be4-e75f-44ab-8d01-4b6e8c7368bd": {
+          "display_id": 3077,
+          "author": "6ME5",
+          "content": "Code-only linked-root slice implemented and frozen; issue remains open for parent integration and deferred validation. Schema-2 ContextUpdate now commits one authenticated root over ordered 255-entry reducer pages, a complete source-index binding, and streamed transcript file deltas. Normal deltas retain compact canonical event leaves; cumulative Refresh reducers use schema-4 paged successor states, and any delta that exceeds the legacy event frame falls back to a paged successor snapshot plus ordered proposal identity/status pages. Recovery streams every chain, reconstructs and reapplies every reducer, requires exact state equality for linked snapshots, and advances state/transcript/model revision only after full validation. Fresh Genesis now uses the same paged working-state root with an authenticated empty source index; legacy Genesis and schema-1 inline ContextUpdate decode/replay remain. The remaining duplicate replay-time call identity byte caps from #156 were also removed. Frozen artifact: /tmp/peritus-issue-178-linked-root-20261007T-W66ugz/issue-178-linked-root.patch. SHA-256: d89cc3765ae3f75945751bd6410a5a0a0b9dbaf483dadecdc22f04a68e3b3ac5. Static contiguous source and isolated-diff review only; all runners remain deferred by the active code-only batch.",
+          "created_at": "2026-10-07T06:58:23.885688465Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5acnWeOWLnFwu0FiiMbfbEROLx/qxZNgpZHVeGUB94QWJuUBGUMbVdUajeHsoqN8YT1tTMhyBUBCbfqUrDwkBw=="
         },
         "bedd0ab9-61c1-4ba4-aece-f540bbdc1291": {
           "display_id": 3073,
