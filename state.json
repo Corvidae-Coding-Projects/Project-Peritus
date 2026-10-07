@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3817,
-        "tip_oid": "6507eed104b47f2ee2393daa9ee78a2827d3efc7",
-        "prefix_sha256": "1326dbd805d67bb4b09140c3943c51005d66ca94a1b3a61a4321fdeb0e3838a0"
+        "sequence": 3818,
+        "tip_oid": "668214c22859c1f009490235326690d63448c2ba",
+        "prefix_sha256": "d52a07344037105cf553ab74ec49938d4edffb184011257161d817b49127c9cc"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3123,
+  "next_comment_id": 3124,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24053,7 +24053,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.665154046Z",
-      "updated_at": "2026-10-07T15:28:19.637341719Z",
+      "updated_at": "2026-10-07T15:31:45.388043559Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -24075,6 +24075,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQbFKHgrPch/MET9DRtkT+FukKeBekBoHSL4YFrYPSU/KbZv3z55P+Blq3xV0ulPZh//IWmvmRoZv4ZcMJnCBBQ=="
+        },
+        "76d8bdce-a97a-49b8-9388-e5f1e4d3136b": {
+          "display_id": 3123,
+          "author": "6ME5",
+          "content": "Delivered b37702a150b861688d2926c9182e5c1a8c6e5985 to PR112: design and target gate discovery now share the declared source/artifact workspace contract. A valid source declaration no longer incorrectly creates an artifact-only gate or silently changes product kind; malformed declared authority remains an explicit typed error. Six-path focused source and staged diff reviewed; whitespace clean. Runtime checks deferred until all batch code is done; source-grounding successor remains separate and issue stays open.",
+          "created_at": "2026-10-07T15:31:45.384231524Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhbYerLl2I7uvomyzIZkGhZETU9aSkpUr3x/I62QEuQuRBbmyAdPJPOmYGkXRyAe51X47vR2k+bC71rTF0eJ7Cg=="
         },
         "aef38c8f-ebf8-46bd-be6b-f58f843814e5": {
           "display_id": 2294,
