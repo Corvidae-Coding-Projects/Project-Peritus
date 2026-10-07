@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3800,
-        "tip_oid": "c3457c2c261c9ab7edf1ba9eca37ae0d11bbf8a9",
-        "prefix_sha256": "6641331589a3508dce2c9c652f5be3338c8b69b6e01dc0901a887251d7657d65"
+        "sequence": 3801,
+        "tip_oid": "791a4c9b0cbb192938843170e2845a5456c7773c",
+        "prefix_sha256": "e97a39da6cbbaf4e0b2c024a29e42480908c374dbecf6b2b8754ecab4b33c8b7"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3106,
+  "next_comment_id": 3107,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16409,7 +16409,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.284349145Z",
-      "updated_at": "2026-10-07T13:21:58.984078417Z",
+      "updated_at": "2026-10-07T13:38:22.007500152Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16420,6 +16420,15 @@
           "content": "Systemic repair plan for L105: Tool terminal/progress construction can fail after an effect because of rendering and output totals.\n\nOwning contract and implementation boundary: result.rs:327-351; identity.rs:6-8,20-22,141-158; progress.rs:48-56; peritus-tools-shell/src/execution/active.rs:111-119; execution/progress.rs:67-73; error.rs:117-138; envelope.rs:25-37; artifact.rs:67-74. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate archived artifact bytes, structured terminal metadata and display previews in result accounting. Prevalidate the final terminal representation before effect dispatch, and persist effect completion before fallible rendering. Page progress history and retain exact artifact provenance, so presentation or envelope pressure cannot erase a successful owned effect.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "934b5b77-7d7e-41bf-8e8f-baa6cab156a4": {
+          "display_id": 3106,
+          "author": "6ME5",
+          "content": "Expanded source-only progress on existing issue 204: fourteen production paths now separate selected archived process bytes from bounded terminal metadata; preserve selected nonprocess inline accounting; retain quality exact process/store/terminal/output and publication obligations through settlement_pending retries without redispatch; fit tiny/large selected previews with truthful omission; remove arbitrary 16Ki text/256-byte implementation/128-byte key and 8Ki/4Ki diagnostic caps through unchanged u64-length canonical representation; and support exact SHA256(empty) artifact references in both immediate and deferred authenticated readers. Full source/caller/canonical/replay reads plus independent read-only review found one deferred zero-size rejection seam, now fixed and reread. Exact old accepted receipt bytes and digests remain untouched. Fourteen-path preimages/final copies/checksums/focused diff and deferred verification obligations: .crosslink/code-batch-recovery/2026-10-07-root204/HANDOFF.md; focused patch SHA256 acc803aeabfbb6a8b9aa27ff3fd04e3ce82a822f1db8b37eba87ac3776af73b9. Static apply/whitespace checks pass; no compile/runtime evidence. Progress lifetime ceilings still require a compatible paged admission/receipt contract and remain unfinished; issue stays open. No tests/test edits/builds/checks/Cargo/toolchains/formatters/codegen/Verus/qualification/runners, commits, pushes, closures, installations or restarts; final validation only at the very end of the entire batch.",
+          "created_at": "2026-10-07T13:38:22.003464605Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAcTWbdV58tCSHyssuusmihu2w0fdAJuojbEu2NAgyRYVAy8TC90br5EtiQ9ESGQGG8j9S8G5xyfLt5bEr2bn2Cw=="
         },
         "a7041955-f233-46e9-9214-baeadcc3e339": {
           "display_id": 3103,
