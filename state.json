@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3720,
-        "tip_oid": "8d4cc13d3194b01dbf3c6f2225f9231601bb6c57",
-        "prefix_sha256": "3bd2f798de6acf3c70a2970f889325bb61daa2850f3d596bbe5531534ae096f7"
+        "sequence": 3721,
+        "tip_oid": "b64cc46e0e5bbdd91949aaa29f3ebcfbd7755298",
+        "prefix_sha256": "1773c1d6743f9b887a0415b93536659eb6ecbe05203781bf8f049bf5c8808cc2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3027,
+  "next_comment_id": 3028,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26375,11 +26375,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.917586495Z",
-      "updated_at": "2026-10-06T13:27:51.919785255Z",
+      "updated_at": "2026-10-07T03:41:23.326190044Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "30799664-61c6-48cf-8bf8-01373c252004": {
+          "display_id": 3027,
+          "author": "6ME5",
+          "content": "Code-only repairs are in progress across four owners. The text viewer now consumes bounded NDJSON slices and exposes its first preview page while the remaining source is read. An incremental full-source digest and verification pass retain exact editing preimages; no total file-size quota is added. Run snapshot/keyset pages are assigned to the settings agent after improvement paging; persistent Git ownership and independent cancellation are assigned to the service agent after consoles. Directory indexing remains pending. No manually initiated tests, builds, lint, formatting, or qualification; issue remains open and unverified.",
+          "created_at": "2026-10-07T03:41:23.311251825Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnZ5KRkXRK/F0vr9q9rIp406gI++QOcQ1XL3Dvnkbct2oM9ZgaM/vKYrvet6+9XR6w44XLVNL4P3DZadkCL7HDA=="
+        },
         "d94b3182-533e-4ab8-a0c5-2e50320b0370": {
           "display_id": 2881,
           "author": "6ME5",
