@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3760,
-        "tip_oid": "d974a38ed5fe2cab81756f8b6d3d74b9d0076a59",
-        "prefix_sha256": "5f52fdb3486f7cf626af9e2c8add261930919e888d1cafa3ddc20bd3a048945f"
+        "sequence": 3761,
+        "tip_oid": "09fc9cdbdd6d96440dc6c9b6d4caff51a51933b4",
+        "prefix_sha256": "7d1b0bca9406703907b64b99f202048512dadfbe291fcc112267dd21cd59ff12"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3066,
+  "next_comment_id": 3067,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40884,7 +40884,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.067749262Z",
-      "updated_at": "2026-10-06T13:19:08.069668352Z",
+      "updated_at": "2026-10-07T06:29:17.610765147Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -40895,6 +40895,15 @@
           "content": "Systemic repair plan for L056: Local-memory ownership has a separate 250 ms acquisition deadline.\n\nOwning contract and implementation boundary: peritus-product-runner/src/local_context/storage.rs:178-190; local_context/driver.rs. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nGive local-memory ownership an observable cancellable acquisition/handoff state with exact owner identity. Remove fixed 250 ms lock and SQLite patience deadlines; retry actual contention while retaining the same lineage. Preserve exclusive ownership and distinguish permission/I/O failure from a still-live owner so no recovery silently opens a fresh memory store.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "a44e185f-cd8f-4386-b2e3-0d75c01c6038": {
+          "display_id": 3066,
+          "author": "6ME5",
+          "content": "Code-only continuation: removed the separate 250 ms local-lineage owner deadline. Kernel lock contention now waits for release or the original caller cancellation, with one exact-scope owner-claim diagnostic; permission and I/O failures retain their error class and no new lineage is substituted. Journal and artifact-catalog ownership waits inherit the same provider cancellation through native adapters, including append/recovery reads. Production construction now passes ProductRunInput.provider_cancellation. Async-worker responsiveness and final behavioral verification remain pending; no manual tests, builds, lint, formatting, or test edits were performed. This issue remains open.",
+          "created_at": "2026-10-07T06:29:17.594533490Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALBgnU2vmdFMEGgVJD//Q4gFvoBFvYaJCpuQXyT8RNcxzcXxFb7rYYUv09Fwhcb9r7zrunlzaAGU+XojAufaXAw=="
         }
       }
     },
