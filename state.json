@@ -32,6 +32,11 @@
         "tip_oid": "1b4636355377f986b8050d28ffc775b45db2c59b",
         "prefix_sha256": "020430056763719b5871b32b73b6c1a0a86363a39372cdc7869d8419faf27576"
       },
+      "hoQk": {
+        "sequence": 1,
+        "tip_oid": "4ef4563f49d9227c8357a594664b5a71bec38f10",
+        "prefix_sha256": "68866030a2d7f32b719fda73f7ed942a19b1598a78df140350b057e33e4fac2a"
+      },
       "i0ox": {
         "sequence": 2,
         "tip_oid": "a6282cf89b44f6efa5f8df6f212d41bf97fb6348",
@@ -932,6 +937,10 @@
     "119": {
       "agent_id": "PhX0",
       "claimed_at": "2026-10-07T01:18:13.740254106Z"
+    },
+    "819": {
+      "agent_id": "hoQk",
+      "claimed_at": "2026-10-07T01:21:03.845724131Z"
     }
   },
   "issues": {
