@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3807,
-        "tip_oid": "d3d27272934b467aee73d562409c0228c6fc974b",
-        "prefix_sha256": "a20173a9afe48fe50ba938499366f7600e8694cc5788cb187f34e4de1990c89a"
+        "sequence": 3808,
+        "tip_oid": "9e299d1ef3b6185b98d6dff303cdfc05e49ee061",
+        "prefix_sha256": "9264cab2853fc9a9c6916bbf143b3b3d9afd19faefecc438f9b3cff71fdd2847"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3113,
+  "next_comment_id": 3114,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40036,11 +40036,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.650320487Z",
-      "updated_at": "2026-10-07T14:21:04.230385549Z",
+      "updated_at": "2026-10-07T14:21:44.043239173Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "37f475d5-3e15-4c2f-9da4-5de94b3627d1": {
+          "display_id": 3113,
+          "author": "6ME5",
+          "content": "Source-only implementation frozen at .crosslink/code-batch-recovery/2026-10-07-issue219-resource-telemetry/HANDOFF.md (SHA256 8aa3d5a9c61cf69d92174205780f4124a3f5e29f30e31b1afdd3791be7e7c1a4). Background resumable 4096-operation workspace traversal has no cumulative stop; caller cancellation owns the worker/native memory command; measured/partial/unavailable telemetry retains coverage and typed OS causes; daemon live status and strict v7/v6 durable migration carry availability. V1 goal scalars remain documented compatibility projections to preserve canonical schema. git diff --check on owned production paths was clean. Per user directive, no tests, test edits, builds, Cargo/compiler/Clippy/rustfmt/codegen/Verus/qualification/npm/browser runners were invoked; existing synchronous-growth tests require final-batch migration/verification.",
+          "created_at": "2026-10-07T14:21:44.039279054Z",
+          "kind": "handoff",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXdvpox2jP++dMyfudW2WZFabIRyReI3M8yuDYi9YqhL0aSmGcWNJAwewl88pwxsZGoDuox2JjGe+JrUnXzWOAw=="
+        },
         "96d76e20-a3d5-48a7-acfd-0f5d6bf473f3": {
           "display_id": 2291,
           "author": "6ME5",
