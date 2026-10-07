@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3777,
-        "tip_oid": "e7dfb7bb5847df3d6d11ffb39608cd2efc4dcfb1",
-        "prefix_sha256": "c3218f8e126a5eb888ccffbba1e3c085a6abeb4b45034dfcf6ccbe971303431a"
+        "sequence": 3778,
+        "tip_oid": "d26a08f502bec5d6593e1e5a9261231a2b17e683",
+        "prefix_sha256": "f25c0c45e9cc0fe29f293d661a3361b94c90dea095d66bcdf55afdf7b7c93b7c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3083,
+  "next_comment_id": 3084,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6435,7 +6435,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.256660900Z",
-      "updated_at": "2026-10-06T13:19:08.258983426Z",
+      "updated_at": "2026-10-07T07:43:00.888639124Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6446,6 +6446,15 @@
           "content": "Systemic repair plan for L099: Crash-watchdog identity reobservation has a 500-ms cutoff.\n\nOwning contract and implementation boundary: peritus-daemon/src/cli/process_watchdog.rs:12,31-49. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRetain owner-death identity reconciliation as a durable cancellable obligation without a 500 ms patience cutoff. Reobserve exact process birth/group facts until safely resolved or explicitly escalated, and record what is known about surviving descendants. Never kill a reused or unverifiable identity merely to clear a recovery barrier.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "eacc7f47-0cf2-4716-ae69-cc34aa1cfcb4": {
+          "display_id": 3083,
+          "author": "6ME5",
+          "content": "Code-only batch observation: removed the watchdog's 500 ms re-observation cutoff and 1 s helper-reap cutoff. Exact live identity is rechecked before termination; absent-root/live-group ambiguity remains owned and observed without signaling a potentially reused group. Watchdog child ownership is retained until actual exit, including disarmed Drop paths. This does not implement restart adoption (#193). No runners were invoked; issue stays open pending final validation.",
+          "created_at": "2026-10-07T07:43:00.755571728Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAupzRgoZvo7bGE9r8JM7ybAW2YIEQqQaZnrzumraWY5c53Gwdk3lHoJP/GUEA21kpgjvlGFRXs2Sfdjx4yb1sCw=="
         }
       }
     },
