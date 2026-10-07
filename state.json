@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3789,
-        "tip_oid": "269b2d4175cf1eddf12e82496791bde0fcda6d26",
-        "prefix_sha256": "f2ea6f881b38381d66cbaa724b550f839e19c4f622e950a488b63e2ec6f1fa94"
+        "sequence": 3790,
+        "tip_oid": "cdc52c91d5c2e9d8728fec2775ac7f57b4644b49",
+        "prefix_sha256": "12e86b17aa0255e8dd0c760fd80e8c22e1881a9a15f872121f247a47f08c3ce9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3095,
+  "next_comment_id": 3096,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22626,11 +22626,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.966659372Z",
-      "updated_at": "2026-10-06T13:27:51.968709988Z",
+      "updated_at": "2026-10-07T12:52:23.879746603Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "4b0228f1-57e2-4212-ba97-2c7b864e5964": {
+          "display_id": 3095,
+          "author": "6ME5",
+          "content": "Recovered the interrupted isolated service patch against the current shared branch. Main already retains the unbounded Linux restart policy and infinite graceful stop, macOS graceful stop template, and Windows retained supervisor recovery/stop protocol; newer installer migration-resume work is preserved. Source inspection found a missing std::fs::OpenOptions import after the instance handoff/records split; the assigned agent repaired that narrow error without invoking the toolchain. cli/server.rs has been snapshotted and released for #119 startup cancellation wiring. No services were installed/restarted or processes changed. No tests/build/check/lint/format runners; runtime/package qualification and issue closure remain pending the final batch.",
+          "created_at": "2026-10-07T12:52:23.876081748Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASWFeVp60w9h1m9zBcLAPPCE5z83oasV0qMWzR/BQFkZ+Ap6APOLaiJnNwK+GwcGB7ocTi8U/enPqlXCymWa7AA=="
+        },
         "a2374f0d-bf05-4c6e-9e07-3d06cfef53a3": {
           "display_id": 2892,
           "author": "6ME5",
