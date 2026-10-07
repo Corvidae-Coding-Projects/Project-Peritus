@@ -17,6 +17,11 @@
         "tip_oid": "e855a71364514cddbc39a0e1837a040e0057e4a8",
         "prefix_sha256": "1f1c5f55b07dafb1d16cad7f58a69feac0b3207fede62acb7da3eca11044a6b4"
       },
+      "PhX0": {
+        "sequence": 1,
+        "tip_oid": "42a80587d3bbd6f7cb554146646dcae2254c1d13",
+        "prefix_sha256": "f14f20eb4b42c0d02ad294b49d04c54f912de043e7ff2297af87eaa1e910aa92"
+      },
       "QWDj": {
         "sequence": 189,
         "tip_oid": "eefee33cb00632ffab74ce65d642a0e8424069bb",
@@ -923,6 +928,10 @@
       "agent_id": "6ME5",
       "branch": "fix/persistent-execution",
       "claimed_at": "2026-10-07T00:18:57.432298094Z"
+    },
+    "119": {
+      "agent_id": "PhX0",
+      "claimed_at": "2026-10-07T01:18:13.740254106Z"
     }
   },
   "issues": {
