@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3864,
-        "tip_oid": "e5c9af3911e041981ae961888300f60ec3224f5f",
-        "prefix_sha256": "ec4f1d775d0b2ba7e522821122859aeb5854083c31db51f71d527b528dd84122"
+        "sequence": 3865,
+        "tip_oid": "f4e4771b8dfdda2a2fc13a0e4679073dfc46f734",
+        "prefix_sha256": "798dedbee46a81f4654e01c107e5375108510802b5d447f97a131eff2892259a"
       },
       "NWAR": {
         "sequence": 39,
@@ -31688,12 +31688,13 @@
       "display_id": 650,
       "title": "[L593] macOS helper activation has blocking reads without cancellation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L593.\n\n- Evidence: `crates/runtime/peritus-sandbox-macos/src/exec_status.rs:18-65,114-136`; `src/manifest/codec.rs:142-163`; `src/helper.rs:34-65` in the same crate.\n- Behavior: The execution-status owner reads through EOF or a 33-byte upper bound with no production timeout, nonblocking readiness, or cancellation interface. Empty EOF means success. The helper synchronously reads its framed manifest and writes readiness/activation before replacing itself with the target. Unit tests add a one-second socket read timeout, but production preparation does not.\n- Consequence: A stalled status/manifest writer can lock activation without any synthetic deadline. The tests do not establish cancellation or recovery from that stalled handshake. The exact session ownership behavior remains a separate file-level audit item.\n- Repair direction: Use explicit framed execution acknowledgment and cancellable I/O under durable execution custody. Preserve exact helper identity and distinguish target exec success from helper disappearance.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.186667012Z",
-      "updated_at": "2026-10-07T23:26:56.679009919Z",
+      "updated_at": "2026-10-07T23:28:17.219788141Z",
+      "closed_at": "2026-10-07T23:28:17.216830433Z",
       "labels": [
         "daily-driving-limiter"
       ],
