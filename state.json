@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3702,
-        "tip_oid": "1a34b17123200a978baa4883b63e2d63572d160f",
-        "prefix_sha256": "e4b0eb785a0bf779b438507ded6a47ce38e41f578d57106bc429fb65da633f0b"
+        "sequence": 3703,
+        "tip_oid": "38eb9ca4d12021dc11a0c727a477a77959c4bd30",
+        "prefix_sha256": "c158873959148ed77e669ff2bd787d0d3e7a9f6d3c7f503efaa0cee4a464a57b"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3017,
+  "next_comment_id": 3018,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -29347,7 +29347,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.889560103Z",
-      "updated_at": "2026-10-06T13:27:51.891634836Z",
+      "updated_at": "2026-10-07T02:38:01.830023548Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -29358,6 +29358,15 @@
           "content": "Systemic repair plan for L805: Web operation capacity can be consumed forever by already reconciled transport children.\n\nOwning contract and implementation boundary: crates/app/peritus-web/src/state.rs:17,261-298; src/daemon/receipts.rs:253-345; src/operations.rs:13-75; src/files/edit.rs:46-85. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\natomically settle parent and transport disposition on proved recovery, retain durable identity tombstones independent of display history, and separate paging/storage policy from action admission.\n\nPreserve: durable logical session and run identity, exact command receipts, atomic snapshot/cursor binding, explicit authority, selected UI state, complete history retrieval and owned-effect reconciliation. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large histories and non-ASCII fields, queue/connection pressure, delayed acknowledgements, subscription gaps, disconnect/reconnect and daemon restart, proving snapshot recovery, preserved selection/context, responsive controls and no duplicate command. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "45d7260a-d263-4b45-804a-463d35bebfc5": {
+          "display_id": 3017,
+          "author": "6ME5",
+          "content": "Code-only batching: removed the 4096-record admission allowance and count-driven completed receipt eviction. Original operation identities and native requests remain durable deduplication evidence; proved native recovery now records its exact reconciled transport response. Manual review retains native request identities with an explicit unknown-acceptance disposition. Tests/build/lint are deferred until the coding pass ends; issue remains open.",
+          "created_at": "2026-10-07T02:38:01.824191704Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjMnzx4O+fKeYgbnZ6bfxd4qvpEhccPFE/YLxBpAqLbEbpqJr/jwPPHS5/khKzoqfGL5+Z6udiFOo1jTT2uhMBA=="
         }
       }
     },
