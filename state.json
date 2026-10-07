@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3739,
-        "tip_oid": "9c21cf1f58b4f0c87d2cdacd13c4d6e6455bf5fe",
-        "prefix_sha256": "2883c5dbad6ec5b9eab470524dd44b6abdc4c85b10fac03d6c15d276d99750ff"
+        "sequence": 3740,
+        "tip_oid": "344c6122ccf3ce8365c166c92eee25ed2c9974ea",
+        "prefix_sha256": "2f46e0b8de78e33902db93ca3ef0d4304dcc9b69635b0862292ed5904c0ee807"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3046,
+  "next_comment_id": 3047,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40652,7 +40652,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.949214954Z",
-      "updated_at": "2026-10-06T13:27:51.951487889Z",
+      "updated_at": "2026-10-07T05:10:56.995256973Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -40663,6 +40663,15 @@
           "content": "Systemic repair plan for L819: Browser improvement capacity claims and text counters disagree with daemon admission.\n\nOwning contract and implementation boundary: webui/src/lib/components/Improvements.svelte:1-52; webui/src/lib/components/Overlays.svelte:1-49. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nDerive visible capacity and validation from the authoritative schema and validate the exact encoded value while preserving drafts and unresolved effects. No tests run.\n\nPreserve: durable logical session and run identity, exact command receipts, atomic snapshot/cursor binding, explicit authority, selected UI state, complete history retrieval and owned-effect reconciliation. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large histories and non-ASCII fields, queue/connection pressure, delayed acknowledgements, subscription gaps, disconnect/reconnect and daemon restart, proving snapshot recovery, preserved selection/context, responsive controls and no duplicate command. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "f24774b2-467d-4f5e-9310-4658e929c94b": {
+          "display_id": 3046,
+          "author": "6ME5",
+          "content": "Current working frontend removes the stale 32-suggestion full-inbox declaration and the 4096-JavaScript-unit textarea admission ceiling; suggestions and evidence use daemon-owned paged metadata and out-of-line source bodies. Session title fields no longer impose the stale browser 256-unit cutoff, and large chat messages use scoped durable request-source admission. Relevant frontend source was read. This remains unverified code; no test/build/lint/format runners or issue closure during this phase.",
+          "created_at": "2026-10-07T05:10:56.991029571Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9NgKV39FkTJbEngn+HzOlx0h3ieFSi0uXBUsCBUQWmarEAHZdRqlxbHMJgoFQwLrBF0F9vfqrHwCPDn2ZprtBg=="
         }
       }
     },
