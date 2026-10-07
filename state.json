@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3759,
-        "tip_oid": "da19bf627b692a10a2bed7ad84cdddc2dc871966",
-        "prefix_sha256": "124c2eed7bcdb05b66c97ac081dd41057243c1562da51a0f46d9adec84a7b628"
+        "sequence": 3760,
+        "tip_oid": "d974a38ed5fe2cab81756f8b6d3d74b9d0076a59",
+        "prefix_sha256": "5f52fdb3486f7cf626af9e2c8add261930919e888d1cafa3ddc20bd3a048945f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3065,
+  "next_comment_id": 3066,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -30327,7 +30327,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.167880174Z",
-      "updated_at": "2026-10-06T13:19:08.169968405Z",
+      "updated_at": "2026-10-07T06:24:42.408522667Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -30338,6 +30338,15 @@
           "content": "Systemic repair plan for L079: Memory updates have independent request/text/path admission gates.\n\nOwning contract and implementation boundary: tools/update.rs:65-90,124-162,196-198,224-262; tools/schema.rs:13-26,35-39; tools.rs:62-89; secret_text.rs:6-32. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nShare one explicit UTF-8 byte contract between context-update schemas and parsers, and page large deltas/file-link sets under one revision-bound update intent. Archive large text and dependencies by exact reference while validating that the successor prompt remains usable before commit. Preserve permission/source lineage and scoped secret-disclosure controls with an explicit route for authorized quoted source evidence.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "d3545ae8-6c3c-4a67-80ec-152ec2fd0ab5": {
+          "display_id": 3065,
+          "author": "6ME5",
+          "content": "Code-only implementation for #178 is present in the shared tree. The update path now resolves the exact completed context_update tool call, re-observes predecessor file dependencies into a local successor, constructs an optional refresh followed by physically paged deltas, validates the complete successor and transcript, and durably appends one versioned ContextUpdate record before adopting state, transcript, or the single incremented model revision. Recovery decodes and validates every reducer into a cloned successor before adopting any of it. Large text, source, file, and dependency fields use exact archived references bound to call identity, arguments digest, archived source, JSON pointer, field digest, and byte length; authorized quoted credential-shaped evidence follows this archived-reference route. Schema descriptions and parser checks share explicit UTF-8 byte constants, while max_update_operations is treated as a physical reducer-page limit. Existing permission, role, source-lineage, freshness, malformed-input, and successor-capacity rejection remain in force. Live dispatch now passes CompletedToolCall so intent identity is available. The isolated patch is /tmp/peritus-issue-178-context-update-20261007T-6ndzxE/issue-178.patch with SHA-256 2c0d859abf629aa87bea1306c0569cf5817f041d875f806a5e20bcb8aa18d527; git apply --check succeeded against its saved baseline and the unrelated tools.rs entry_id work is excluded. No test, build, lint, format, code-generation, or qualification runner was invoked under the active code-only constraint. Leave the issue open for parent integration and deferred final validation.",
+          "created_at": "2026-10-07T06:24:42.381851440Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5Eu02RT977FNTRWYuVyDgT+c31Jw6rpI2LHAVW5W+PX70IXNwn1P4Ub92O9dFF1AMqsHtkM7HjOXU4jvWL9ACA=="
         }
       }
     },
