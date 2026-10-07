@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3683,
-        "tip_oid": "e086121db920a6b88948f8e08404e9a306ef2625",
-        "prefix_sha256": "7958295861b23f46a2a7d87cc097f634c6e3171439038c39f99e2c3e01e7c81d"
+        "sequence": 3684,
+        "tip_oid": "d0c5296e9b3ca4c23c4ed38b3ec8b0422900dd31",
+        "prefix_sha256": "4be396605893180a27e29eba30e1dbccb9252cfb061ad1a13d962c7c5aa7adba"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3009,
+  "next_comment_id": 3010,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20039,7 +20039,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:44:24.028824280Z",
+      "updated_at": "2026-10-07T01:50:49.799126152Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20176,6 +20176,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlbEeCB1CnUAXQJfF/fCX3uZbD0aEe5Vbb1fuKawczOwztIMf6h4T58sniCJen26Exoknh6xrLtYiWxSATKnVAQ=="
+        },
+        "e04b7325-07d1-409f-acc8-8eb4aa4612aa": {
+          "display_id": 3009,
+          "author": "6ME5",
+          "content": "[action] All code handoffs for #110/#119/#819/#820 integrated and reviewed, with agents code-only. Starting root-owned final combined validation in isolated review tree excluding user-owned changes. Previous test deadlocked on recursive control ownership during checkpoint fork; source corrected to reuse caller store, exact owned hung test terminated. No current batch test claimed passed yet.",
+          "created_at": "2026-10-07T01:50:49.792626086Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPY+tqHabTOK2GD+0jfwRTaRJeR6w3ZQBy2KTaENEaZzQfesL9+DtV8q1s+2INLmYwzSmgy6zmmvqQoX+nEE2Dg=="
         },
         "f0e38262-268f-408b-961a-068d5d52041e": {
           "display_id": 2992,
