@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3803,
-        "tip_oid": "3b8e4806c6f72d5eca26438c9126ba33ebc122cc",
-        "prefix_sha256": "95e8caf248dfecf6fb68485d9d69bb48aeb1615f7d1824dfedfbd4cd1436ffd2"
+        "sequence": 3804,
+        "tip_oid": "5598559c1ae45f915944cc84bc622f9861fa2d78",
+        "prefix_sha256": "327b37ef3c4fcd5d085869b6d1a2b3c4f44285b4b98f5797f3c3d8c09d7b1fc4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3109,
+  "next_comment_id": 3110,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31836,11 +31836,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.632818789Z",
-      "updated_at": "2026-10-06T13:21:37.635226201Z",
+      "updated_at": "2026-10-07T13:55:33.176216363Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "b449d6ad-790f-4c60-a600-e34724f3afb3": {
+          "display_id": 3109,
+          "author": "6ME5",
+          "content": "Source tranche frozen at .crosslink/code-batch-recovery/2026-10-07-root216/HANDOFF.md (focused patch SHA-256 c759a6de5557a54062f3f4630ce86e17455178cd4b4af2c350b7bb51cc498933). Budget no longer implies Deadline: selected actual expiry is typed separately from accounting representation, resource observation, and legacy unclassified Budget. Original accounting error survives the trace adapter; context classification is typed, provider acceptance metadata remains retained. Active admission/invariant failures now reach retained finalization; valid same-run resumes are preserved, foreign identities reject, failed candidate refresh/material cannot certify stale Accepted, and fallible durable handoff precedes consuming settlement. Compatibility kinds/tags, prior receipt bytes, and durable schema unchanged. Remaining poisoned-recorder, finding/knowledge serialization, initial changed-path, and missing-design fallback boundaries remain listed; no full-issue completion claimed. Static source/diff inspection only. No tests/builds/checks/linters/formatters/formal runners; all behavioral verification deferred until ALL batch code is done. Issue remains open.",
+          "created_at": "2026-10-07T13:55:33.172178934Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAW+wYTak7RWdE8oUN9obB2dKcAsID+zqUxK23iSEqLsWqtf4mT53nAVPycq/zsUCf4jYxn5XhVihfnKm8OC6NBw=="
+        },
         "d47a44e9-6d48-42a0-bd98-0e4e9f27236d": {
           "display_id": 2288,
           "author": "6ME5",
