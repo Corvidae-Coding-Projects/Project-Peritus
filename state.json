@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3674,
-        "tip_oid": "dda5efaed1cc799ff03ffbd02fceb1035c813c64",
-        "prefix_sha256": "b50603ea9e26b77de06b5df6a9cb9029bac2d8a9265b4e0d68cd054908c55b48"
+        "sequence": 3675,
+        "tip_oid": "ae8a100089d16b2ef2e3a4371a62088f6db5c206",
+        "prefix_sha256": "444c13e88721e9e79b07da89ec0a71beccb2a327ca96c4b4ee5549d1a1518ea4"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3000,
+  "next_comment_id": 3001,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,11 +20019,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T01:10:01.106381818Z",
+      "updated_at": "2026-10-07T01:12:57.910548755Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0773f808-02a1-4cde-ad83-b035fd227c1a": {
+          "display_id": 3000,
+          "author": "6ME5",
+          "content": "Executed checkpoint-flow-tests3: 45 passed, 0 failed, including native wide-name capture/run/restore/reopen/undo and exact receipt replay; actual legacy schema1 chunk-root restore; forged stable path/body presence/count/digest rejection;65536paths with operation+manifest over16MiB;16MiB+1name operation/projection continuation; all three control-page interruption boundaries. Workspace strict Clippy passed (clippy4) after correcting const/import/item placement errors without suppressions. Canonical protocol generation adds five extended-format fixtures; diff confirms every pre-existing compatibility fixture remains byte-identical. Source and generated assets remain uncommitted; latest socket regression additionally checks negotiated wide request identity and old-peer local rejection preserving same usable connection/session. Full affected all-target/all-feature suites currently building; final formatting, platform, policy and strict formal checks pending. #110 remains OPEN; no closure on partial evidence.",
+          "created_at": "2026-10-07T01:12:57.863888953Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA2ZOlPuSDP03Fboy73vv5Bm8iXAO5qi5rpjIMRYpy4PziIi5X808z70jW3cjbEPy59a7NbRRcYjxX7peZo196Bw=="
+        },
         "092d5920-d334-42c4-81ec-a7748b9c1848": {
           "display_id": 2999,
           "author": "6ME5",
