@@ -33,9 +33,9 @@
         "prefix_sha256": "020430056763719b5871b32b73b6c1a0a86363a39372cdc7869d8419faf27576"
       },
       "hoQk": {
-        "sequence": 3,
-        "tip_oid": "3522b11a022eb1af8810a4ec26231e5cc3095639",
-        "prefix_sha256": "6f7a61c0f98d72329517c99fa9835d8f0d485d349743ec1af08837d7bee65f8a"
+        "sequence": 4,
+        "tip_oid": "8074f0c258001a28c1dc8f215a1967f9e7610881",
+        "prefix_sha256": "153e38aff26518f05ddbdd6b6716c4413ea3fcb6cbbfefe00540f2975c823a41"
       },
       "i0ox": {
         "sequence": 2,
@@ -933,10 +933,6 @@
       "agent_id": "6ME5",
       "branch": "fix/persistent-execution",
       "claimed_at": "2026-10-07T00:18:57.432298094Z"
-    },
-    "819": {
-      "agent_id": "hoQk",
-      "claimed_at": "2026-10-07T01:21:03.845724131Z"
     }
   },
   "issues": {
