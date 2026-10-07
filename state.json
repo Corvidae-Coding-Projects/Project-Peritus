@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3721,
-        "tip_oid": "b64cc46e0e5bbdd91949aaa29f3ebcfbd7755298",
-        "prefix_sha256": "1773c1d6743f9b887a0415b93536659eb6ecbe05203781bf8f049bf5c8808cc2"
+        "sequence": 3722,
+        "tip_oid": "447a97a492e9b797b8e8a1be2f33069df9106283",
+        "prefix_sha256": "fcdafb0baed0bd910dbc5a15ab88067c9962a40c186e7770043be1db73841544"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3028,
+  "next_comment_id": 3029,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -29614,7 +29614,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.903256738Z",
-      "updated_at": "2026-10-06T13:27:51.905995508Z",
+      "updated_at": "2026-10-07T03:52:53.552504512Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -29625,6 +29625,15 @@
           "content": "Systemic repair plan for L808: Web consoles are process-local and counted even after the CLI exits.\n\nOwning contract and implementation boundary: crates/app/peritus-web/src/terminal.rs:29-131; src/state.rs:55-62,114-120; src/consoles.rs:19-88; src/api.rs:307-310,357-389. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nseparate display subscriptions from durable process ownership, persist console binding/output offsets with explicit close disposition, and make child/group lifecycle and input waits observable and cancelable without expiration.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "fc60fa36-75b7-4bc5-ac42-a81deefa8b0a": {
+          "display_id": 3028,
+          "author": "6ME5",
+          "content": "Code-only implementation integrated: process-local PTY map replaced by durable console registry, immutable launch metadata, independent owner process, exact OS birth/process-group bindings, append-only full output and decimal offsets, explicit terminate/dismiss records, streamed input and independent Unix interrupt. Arbitrary console count/argument/input/output/geometry quotas removed; actual portable-pty u16 geometry remains an OS representation constraint. Root corrections bind consoles to the retained daemon endpoint/native session instead of latest discovery and offload recovery probes. No manually initiated validation runners. Issue stays open: final checks and Windows independent interrupt/inherited Job ownership followup remain, and input effect receipts are tracked under #813.",
+          "created_at": "2026-10-07T03:52:53.545867472Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAF+8LOHTDXLb37LRa/3gltSQF+HmysdUEifdoMFRETnu6q6ukGT5Q7JNI+GM/5k2FnWMRNSkasPTPKXl0zRM/Dg=="
         }
       }
     },
