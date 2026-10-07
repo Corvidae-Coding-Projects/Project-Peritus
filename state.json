@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3797,
-        "tip_oid": "0cc8c88d29fc0f44488f6322a360ef9c4059b4c2",
-        "prefix_sha256": "10499644f067c1e294045a3e4b13a51ee532b6b4634f4214ea36bd3efb72cf2d"
+        "sequence": 3798,
+        "tip_oid": "3d9db228506e0693540c2e3b4286c572a48b25b3",
+        "prefix_sha256": "c7dc49bd18a8698fa49d16db584b3602a47054d35ef699f3748ffbe469431a5b"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3103,
+  "next_comment_id": 3104,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16400,7 +16400,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.284349145Z",
-      "updated_at": "2026-10-06T13:19:08.286497792Z",
+      "updated_at": "2026-10-07T13:21:58.984078417Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16411,6 +16411,15 @@
           "content": "Systemic repair plan for L105: Tool terminal/progress construction can fail after an effect because of rendering and output totals.\n\nOwning contract and implementation boundary: result.rs:327-351; identity.rs:6-8,20-22,141-158; progress.rs:48-56; peritus-tools-shell/src/execution/active.rs:111-119; execution/progress.rs:67-73; error.rs:117-138; envelope.rs:25-37; artifact.rs:67-74. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate archived artifact bytes, structured terminal metadata and display previews in result accounting. Prevalidate the final terminal representation before effect dispatch, and persist effect completion before fallible rendering. Page progress history and retain exact artifact provenance, so presentation or envelope pressure cannot erase a successful owned effect.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "a7041955-f233-46e9-9214-baeadcc3e339": {
+          "display_id": 3103,
+          "author": "6ME5",
+          "content": "Partial source-only progress on existing issue 204: fully read shell/quality progress producers and active consumers plus ToolProgress, CallLimits, identity/rendering, result/artifact framing and shell terminal projection. Corrected both progress producers to render within the actual selected model preview capacity, so valid tiny settings no longer reject generated started/event text after native process admission. Structured event identity and loss accounting stay intact; no protocol/canonical byte layout changed. Persistent preimages/final copies/hashes and reviewed patch are in .crosslink/code-batch-recovery/2026-10-07-root204/HANDOFF.md. Static patch/whitespace checks pass, not compile/runtime validation. Broader archived-byte/metadata accounting, complete progress continuation and terminal recovery remain unfinished under this issue; do not count this as completion. No tests/test edits/builds/toolchains/formatters/codegen/runners, commits, pushes or closure; final validation remains deferred until the very end of the entire batch.",
+          "created_at": "2026-10-07T13:21:58.980148608Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsLjUkdVFm/z+y5+VXcnSkF2VJtlNQ1ho1nud9NGyfpltRNIaeY1TCSI2HdDRW88iOLc6WKwbdQ2zkGBCP2O2Bg=="
         }
       }
     },
