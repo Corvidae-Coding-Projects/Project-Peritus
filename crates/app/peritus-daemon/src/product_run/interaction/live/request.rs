@@ -16,12 +16,10 @@ impl LiveConversation {
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
         if !self
-            .service
-            .permission_allows(
-                self.run_id,
-                peritus_product_runner::control::PermissionCapability::Network,
-            )
-            .map_err(|error| port_error("read effective network permission", error.into()))?
+            .refresh_governing_state()
+            .map_err(|error| port_error("read effective network permission", error))?
+            .permissions
+            .allows(peritus_product_runner::control::PermissionCapability::Network)
         {
             return Err(DeveloperLoopError::Trace(
                 "network permission is disabled for this workspace; inspect /permissions"
@@ -63,15 +61,6 @@ impl LiveConversation {
             }
         }
         let options = &identity.interaction;
-        if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-            return Err(super::port_internal(
-                "admit the provider request",
-                options
-                    .persistence_failure()
-                    .as_deref()
-                    .unwrap_or("the previous persistence operation failed"),
-            ));
-        }
         let start = &options.workbench;
         let continuation = identity
             .continuation_sources
@@ -93,8 +82,7 @@ impl LiveConversation {
             return Ok(DeveloperRequestAdmission::Stale);
         }
         let (admission, request_sources, control_inputs) = self
-            .service
-            .with_control_conversation(start.conversation(), |store| {
+            .with_governing_control("reserve the provider request in durable control state", |store| {
                 let captured = match continuation {
                     None => store.capture_execution(start)?,
                     Some(source) if continuation_incorporated => store
@@ -155,7 +143,7 @@ impl LiveConversation {
                 })
             })
             .map_err(|error| {
-                port_error("reserve the provider request in durable control state", error.into())
+                port_error("reserve the provider request in durable control state", error)
             })?;
         if admission != DeveloperRequestAdmission::Accepted {
             return Ok(admission);

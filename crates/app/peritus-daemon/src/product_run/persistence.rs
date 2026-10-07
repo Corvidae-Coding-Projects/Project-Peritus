@@ -88,7 +88,6 @@ pub(super) fn persist_record(
     let result = write_record(directory, record);
     if let Err(error) = &result {
         record.interaction.record_persistence_failure(error.describe());
-        record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         record.cancelled.store(true, std::sync::atomic::Ordering::Release);
         record.control_cancellation.cancel();
         let _ = record.provider_cancellation.cancel();

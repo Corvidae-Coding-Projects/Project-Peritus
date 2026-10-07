@@ -42,9 +42,7 @@ pub(super) fn capture(
 pub(in crate::product_run::interaction) fn pending(
     record: &crate::product_run::RunRecord,
 ) -> Option<Notice> {
-    if record.cancelled.load(Ordering::Acquire)
-        || record.interaction.persistence_failed.load(Ordering::Acquire)
-    {
+    if record.cancelled.load(Ordering::Acquire) {
         return None;
     }
     Some(Notice {

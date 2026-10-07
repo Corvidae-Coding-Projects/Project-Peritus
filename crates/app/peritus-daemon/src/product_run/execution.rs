@@ -104,10 +104,6 @@ impl ProductRunService {
                             .append(peritus_app_protocol::ProductActivityKind::Status, message, "")
                             .is_err()
                     {
-                        record.interaction.persistence_failed.store(
-                            true,
-                            std::sync::atomic::Ordering::Release,
-                        );
                         return Ok(None);
                     }
                 }
@@ -285,10 +281,6 @@ impl ProductRunService {
                 record.settlement_obligation = settlement_obligation;
                 record.interaction.record_persistence_failure(
                     "the runner emitted a finding ledger that was not fully externalized".to_owned(),
-                );
-                record.interaction.persistence_failed.store(
-                    true,
-                    std::sync::atomic::Ordering::Release,
                 );
                 let control = record.control_cancellation.clone();
                 let provider = record.provider_cancellation.clone();

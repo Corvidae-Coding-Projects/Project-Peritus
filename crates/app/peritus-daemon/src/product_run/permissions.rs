@@ -262,7 +262,7 @@ pub(super) const fn command_permissions(
     }
 }
 
-fn branch_permissions(
+pub(super) fn branch_permissions(
     host: HostPermissions,
     branch: Option<&peritus_product_runner::control::ConversationBranch>,
 ) -> HostPermissions {

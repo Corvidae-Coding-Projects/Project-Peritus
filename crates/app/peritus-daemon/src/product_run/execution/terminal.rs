@@ -907,7 +907,6 @@ impl ProductRunService {
             MutationDisposition::DurabilityRequired,
             |record| {
         record.interaction.record_persistence_failure(detail.to_owned());
-        record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         let accepted = result.as_ref().is_ok_and(|outcome| {
             outcome.settlement().disposition() == RunDisposition::Accepted
         });
@@ -1252,10 +1251,6 @@ impl ProductRunService {
                     ) {
                         fail_handoff(record);
                     }
-                    record
-                        .interaction
-                        .persistence_failed
-                        .store(true, std::sync::atomic::Ordering::Release);
                 }
                 if let Some(status) = goal_status
                     && let Ok(snapshot) = replace_snapshot(

@@ -247,8 +247,6 @@ impl ProductRunService {
         }
         if user_cancelled {
             record.user_cancelled = true;
-        } else {
-            record.interaction.persistence_failed.store(true, std::sync::atomic::Ordering::Release);
         }
         let binding = record.interaction.workbench.clone();
         let expected_input_generation = record.interaction.incorporated;

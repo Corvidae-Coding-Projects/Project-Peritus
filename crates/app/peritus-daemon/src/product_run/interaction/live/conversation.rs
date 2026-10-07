@@ -1,6 +1,6 @@
 //! Read-only conversation projection and daemon-owned source access.
 
-use super::{LiveConversation, ProductRunServiceError};
+use super::LiveConversation;
 #[cfg(not(verus_only))]
 use peritus_agent::DeveloperInteraction;
 use peritus_product_runner::{
@@ -15,32 +15,13 @@ use std::path::PathBuf;
 
 impl ConversationView for LiveConversation {
     fn uses_explicit_media(&self) -> bool {
-        // An unavailable control binding must not permit a fallback to ambient file discovery.
-        self.service.governed_run(self.run_id).unwrap_or(true)
+        true
     }
     fn stable_request_context(&self) -> String {
-        let result = (|| {
-            let record = self.attempt_record()?;
-            let start = record.interaction.workbench;
-            self.service.with_control_conversation(start.conversation(), |store| {
-                store.capture_execution(&start)?;
-                let record = store.load(start.conversation())?.ok_or(peritus_product_runner::control::ControlError::NotFound)?;
-                let text = record.inputs().incorporated_conversation()?;
-                Ok(if text.is_empty() { "Current user instructions are supplied by the host at the request admission boundary.".to_owned() } else { text })
-            }).map_err(ProductRunServiceError::from)
-        })();
-        result.unwrap_or_else(|_| {
-            "Governing conversation unavailable; execution must stop.".to_owned()
-        })
+        self.projected_governing_state().stable_context
     }
     fn reference_authority_context(&self) -> String {
-        let result = (|| {
-            let record = self.attempt_record()?;
-            self.service
-                .record_capture(&record)
-                .map(|capture| capture.reference_authority_context().to_owned())
-        })();
-        result.unwrap_or_default()
+        self.projected_governing_state().reference_authority
     }
     fn context_sources(&self, after: Option<u64>) -> Result<ContextSourcePage, String> {
         self.service
@@ -80,12 +61,10 @@ impl ConversationView for LiveConversation {
             .map_err(|error| error.describe())
     }
     fn request_source_binding(&self) -> [u8; 32] {
-        self.request_source_snapshot()
-            .map_or([0_u8; 32], |snapshot| snapshot.authority_binding())
+        self.projected_request_source_snapshot().authority_binding()
     }
     fn request_source_catalog_binding(&self) -> [u8; 32] {
-        self.request_source_snapshot()
-            .map_or([0_u8; 32], |snapshot| snapshot.catalog_binding())
+        self.projected_request_source_snapshot().catalog_binding()
     }
     fn read_request_source(
         &self,
@@ -97,38 +76,22 @@ impl ConversationView for LiveConversation {
             .map_err(|error| error.describe())
     }
     fn incorporated_revision(&self) -> u64 {
-        self.attempt_record()
-            .map(|record| record.interaction.incorporated)
-            .unwrap_or(0)
+        self.projected_governing_state().incorporated
     }
     fn revision(&self) -> u64 {
-        self.attempt_record()
-            .and_then(|record| self.service.record_input_revision(&record))
-            .unwrap_or(u64::MAX)
+        self.projected_governing_state().revision
     }
     fn render(&self) -> String {
-        self.attempt_record()
-            .and_then(|record| self.service.record_input(&record))
-            .map_or_else(
-                || "Governing conversation unavailable; execution must stop.".to_owned(),
-                |input| input.conversation,
-            )
+        self.projected_governing_state().conversation
     }
     fn protected_paths(&self) -> Vec<PathBuf> {
-        self.review_record()
-            // An unavailable narrowing record must prevent mutation while retaining read-only
-            // diagnosis. Empty relative path means the complete workspace mutation surface.
-            .map_or_else(|_| vec![PathBuf::new()], |record| record.reviews().protected_paths())
+        self.projected_governing_state().protected_paths
     }
     fn effective_permissions(&self) -> HostPermissions {
-        // Tool boundaries must not retain ambient authority when the durable policy cannot be
-        // read or its run/workspace binding is unavailable.
-        self.service.effective_permissions(self.run_id).unwrap_or_else(|_| HostPermissions::none())
+        self.projected_governing_state().permissions
     }
     fn permits_pipeline_handoff(&self) -> bool {
-        self.review_record().is_ok_and(|record| {
-            record.reviews().pending_pipeline_permission(record.inputs()).unwrap_or(true)
-        })
+        self.projected_governing_state().permits_pipeline_handoff
     }
     fn checkpoint_before_workspace_mutation(
         &self,

@@ -5,12 +5,91 @@ use peritus_app_protocol::{
     AppDiagnostic, AppErrorCode, AppProtocolError, AppResponsePayload, ResponsibleSubsystem,
     RetryDisposition,
 };
+use peritus_types::RunId;
+
+/// A live run temporarily cannot inspect the durable authority that governs its next effect.
+///
+/// The recovery owner is retained with the error so retrying never changes the run, start
+/// operation, conversation, or exclusive authority set.
+#[derive(Clone)]
+pub struct GoverningStateUnavailable {
+    run: RunId,
+    start: peritus_product_runner::control::ControlOperation,
+    authoritative_revision: u64,
+    operation: &'static str,
+    cause: std::sync::Arc<crate::product_control::ControlStoreError>,
+    recovery: std::sync::Arc<crate::product_control::ControlReconciliation>,
+}
+
+impl GoverningStateUnavailable {
+    pub(super) fn new(
+        run: RunId,
+        start: peritus_product_runner::control::ControlOperation,
+        authoritative_revision: u64,
+        operation: &'static str,
+        cause: crate::product_control::ControlStoreError,
+        recovery: std::sync::Arc<crate::product_control::ControlReconciliation>,
+    ) -> Self {
+        Self {
+            run,
+            start,
+            authoritative_revision,
+            operation,
+            cause: std::sync::Arc::new(cause),
+            recovery,
+        }
+    }
+
+    #[must_use]
+    pub const fn authoritative_revision(&self) -> u64 {
+        self.authoritative_revision
+    }
+
+}
+
+impl std::fmt::Debug for GoverningStateUnavailable {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("GoverningStateUnavailable")
+            .field("run", &self.run)
+            .field("start", &self.start.id())
+            .field("conversation", &self.start.conversation())
+            .field("authoritative_revision", &self.authoritative_revision)
+            .field("operation", &self.operation)
+            .field("cause", &self.cause)
+            .field("recovery_authorities", &self.recovery.authorities())
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for GoverningStateUnavailable {
+    fn eq(&self, other: &Self) -> bool {
+        self.run == other.run
+            && self.start == other.start
+            && self.authoritative_revision == other.authoritative_revision
+            && self.operation == other.operation
+            && self.cause.to_string() == other.cause.to_string()
+    }
+}
+
+impl Eq for GoverningStateUnavailable {}
+
+impl std::fmt::Display for GoverningStateUnavailable {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            formatter,
+            "{}: {}. Durable governing revision {} remains authoritative; recovery will retry the same run and control operation",
+            self.operation, self.cause, self.authoritative_revision,
+        )
+    }
+}
 
 const MAX_PUBLIC_DIAGNOSTIC_BYTES: usize = 1_024;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ProductRunServiceError {
     Control(peritus_product_runner::control::ControlError),
+    GoverningStateUnavailable(GoverningStateUnavailable),
     Duplicate,
     NotFound,
     ProviderUnavailable,
@@ -79,6 +158,7 @@ impl ProductRunServiceError {
 
     pub(super) fn describe(&self) -> String {
         match self {
+            Self::GoverningStateUnavailable(error) => error.to_string(),
             Self::Context { operation, detail, .. } => format!("{operation}: {detail}"),
             _ => self.default_diagnostic().to_owned(),
         }
@@ -87,6 +167,14 @@ impl ProductRunServiceError {
     pub(crate) fn response(self) -> AppResponsePayload {
         use peritus_product_runner::control::ControlError;
         let (code, retry, subsystem, diagnostic) = match self {
+            Self::GoverningStateUnavailable(error) => {
+                return AppResponsePayload::Error(AppProtocolError::classified(
+                    AppErrorCode::NotReady,
+                    RetryDisposition::AfterRecovery,
+                    ResponsibleSubsystem::Daemon,
+                    bounded_diagnostic(error.to_string()),
+                ));
+            }
             Self::Context { code, retry, subsystem, operation, detail } => {
                 let diagnostic = bounded_diagnostic(format!("{operation}: {detail}"));
                 return AppResponsePayload::Error(AppProtocolError::classified(
@@ -179,6 +267,9 @@ impl ProductRunServiceError {
     const fn default_diagnostic(&self) -> &'static str {
         use peritus_product_runner::control::ControlError;
         match self {
+            Self::GoverningStateUnavailable(_) => {
+                "The run's governing state is temporarily unavailable. Restore control storage and retry the same run."
+            }
             Self::Duplicate => "This run identifier is already in use. Start a new run.",
             Self::NotFound | Self::Control(ControlError::NotFound) => {
                 "The requested run no longer exists. Refresh the run list and try again."
@@ -233,6 +324,13 @@ impl From<crate::product_control::ControlStoreError> for ProductRunServiceError 
                 "access durable control storage",
                 format!("{error}. Check state-directory ownership and whether another daemon is running, then restart Peritus"),
             ),
+            ControlStoreError::ContentionCancelled => Self::Context {
+                code: AppErrorCode::Backpressure,
+                retry: RetryDisposition::NewRequest,
+                subsystem: ResponsibleSubsystem::Daemon,
+                operation: "wait for the durable control journal",
+                detail: "The journal owner cancelled this wait. The original command identity remains available for exact reconciliation".to_owned(),
+            },
             ControlStoreError::Workspace(error) => Self::internal(
                 "apply the workspace operation",
                 format!("{error}. Inspect the workspace and permissions before retrying"),
@@ -303,97 +401,4 @@ pub(super) fn invalid(detail: &'static str) -> DaemonError {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn unavailable_run_state_is_not_mislabeled_as_subscription_backpressure() {
-        let AppResponsePayload::Error(error) = ProductRunServiceError::Unavailable.response()
-        else {
-            panic!("error response");
-        };
-        assert_eq!(error.code(), AppErrorCode::Internal);
-        assert_eq!(error.subsystem(), ResponsibleSubsystem::Daemon);
-        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
-        assert!(error.diagnostic().unwrap().as_str().contains("daemon log"));
-    }
-
-    #[test]
-    fn persistence_error_keeps_operation_cause_and_recovery_action() {
-        let cause = std::io::Error::from_raw_os_error(13);
-        let cause_text = cause.to_string();
-        let error =
-            ProductRunServiceError::persistence("replace the durable product-run record", cause);
-        let message = error.describe();
-        assert!(message.contains("replace the durable product-run record"));
-        assert!(message.contains(&cause_text));
-        assert!(message.contains("Restore write access"));
-    }
-
-    #[test]
-    fn provider_and_workspace_failures_keep_distinct_public_ownership() {
-        for (failure, subsystem) in [
-            (ProductRunServiceError::ProviderUnavailable, ResponsibleSubsystem::Provider),
-            (ProductRunServiceError::WorkspaceUnavailable, ResponsibleSubsystem::Workspace),
-        ] {
-            let AppResponsePayload::Error(error) = failure.response() else {
-                panic!("error response");
-            };
-            assert_eq!(error.code(), AppErrorCode::InvalidIdentifier);
-            assert_eq!(error.retry(), RetryDisposition::NewRequest);
-            assert_eq!(error.subsystem(), subsystem);
-        }
-    }
-
-    #[test]
-    fn product_prerequisite_failures_keep_distinct_public_ownership() {
-        for (failure, subsystem, diagnostic) in [
-            (
-                ProductRunServiceError::GitRequired,
-                ResponsibleSubsystem::Workspace,
-                "requires a Git workspace",
-            ),
-            (
-                ProductRunServiceError::EffortUnsupported,
-                ResponsibleSubsystem::Provider,
-                "unsupported by this provider",
-            ),
-        ] {
-            let AppResponsePayload::Error(error) = failure.response() else {
-                panic!("error response");
-            };
-            assert_eq!(error.code(), AppErrorCode::MissingRequiredFeature);
-            assert_eq!(error.retry(), RetryDisposition::NewRequest);
-            assert_eq!(error.subsystem(), subsystem);
-            assert!(error.diagnostic().unwrap().as_str().contains(diagnostic));
-        }
-    }
-
-    #[test]
-    fn invalid_provider_output_is_not_mislabeled_as_command_input() {
-        let error = ProductRunServiceError::invalid_provider_output(
-            "decode streamed assistant text",
-            "source decoder rejected invalid bytes",
-        );
-        let AppResponsePayload::Error(error) = error.response() else {
-            panic!("error response");
-        };
-        assert_eq!(error.code(), AppErrorCode::MalformedFrame);
-        assert_eq!(error.retry(), RetryDisposition::AfterRecovery);
-        assert_eq!(error.subsystem(), ResponsibleSubsystem::Provider);
-        assert!(error.diagnostic().unwrap().as_str().contains("invalid UTF-8"));
-    }
-
-    #[test]
-    fn unsupported_control_schema_requires_a_new_protocol_relationship() {
-        let AppResponsePayload::Error(error) = ProductRunServiceError::Control(
-            peritus_product_runner::control::ControlError::UnsupportedSchema,
-        )
-        .response() else {
-            panic!("error response");
-        };
-        assert_eq!(error.code(), AppErrorCode::UnsupportedSchema);
-        assert_eq!(error.retry(), RetryDisposition::Reconnect);
-        assert_eq!(error.subsystem(), ResponsibleSubsystem::Negotiation);
-    }
-}
+mod tests;

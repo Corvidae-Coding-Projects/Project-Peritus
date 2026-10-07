@@ -64,9 +64,6 @@ impl ProductRunService {
                 {
                     return Err(ProductRunServiceError::InvalidState);
                 }
-                if prior.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-                    return Err(ProductRunServiceError::Unavailable);
-                }
                 let mut next = prior.clone();
                 next.models = requested_models;
                 next.append(

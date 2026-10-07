@@ -21,24 +21,6 @@ impl LiveConversation {
         &self,
     ) -> Result<peritus_product_runner::control::ControlOperation, ProductRunServiceError> {
         let record = self.attempt_record()?;
-        let options = &record.interaction;
-        if options.persistence_failed.load(std::sync::atomic::Ordering::Acquire) {
-            return Err(ProductRunServiceError::Unavailable);
-        }
-        Ok(options.workbench.clone())
-    }
-
-    pub(super) fn review_record(
-        &self,
-    ) -> Result<peritus_product_runner::control::ConversationRecord, ProductRunServiceError> {
-        let record = self.attempt_record()?;
-        let start = record.interaction.workbench;
-        self.service
-            .with_control_conversation(start.conversation(), |store| {
-                store
-                    .load(start.conversation())?
-                    .ok_or_else(|| peritus_product_runner::control::ControlError::NotFound.into())
-            })
-            .map_err(Into::into)
+        Ok(record.interaction.workbench)
     }
 }

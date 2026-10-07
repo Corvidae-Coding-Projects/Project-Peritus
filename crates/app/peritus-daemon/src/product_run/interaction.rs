@@ -1,8 +1,10 @@
 //! Conversation semantics, durable input acknowledgements, and public execution activity.
 
-use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
+use super::{
+    GoverningStateUnavailable, ProductRunService, ProductRunServiceError,
+    snapshot::live_snapshot,
+};
 use crate::product_control::{CapturedConversation, CapturedFileReaders};
-use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{
     MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS,
     MAX_PRODUCT_ACTIVITY_SEGMENT_BYTES, MAX_PRODUCT_RETAINED_ERRORS, ProductActivity,
@@ -30,6 +32,8 @@ mod tool_activity;
 #[derive(Clone)]
 pub(super) struct InteractionOptions {
     pub(super) workbench: peritus_product_runner::control::ControlOperation,
+    /// Legacy in-memory diagnostic latch retained for fixture compatibility. Live authority
+    /// admission is governed by typed control reconciliation and never consults this bit.
     pub(super) persistence_failed: Arc<std::sync::atomic::AtomicBool>,
     persistence_error: Arc<std::sync::RwLock<Option<String>>>,
     file_readers: Arc<std::sync::Mutex<Option<Arc<CapturedFileReaders>>>>,
@@ -212,22 +216,72 @@ impl InteractionOptions {
 }
 
 impl ProductRunService {
-    pub(super) fn pending_interactive_input(&self, run_id: RunId) -> bool {
+    pub(super) fn pending_interactive_input(
+        &self,
+        run_id: RunId,
+        attempt: &Arc<std::sync::atomic::AtomicBool>,
+    ) -> Result<bool, ProductRunServiceError> {
         let record = self
             .inner
             .records
             .read()
-            .ok()
-            .and_then(|records| records.get(&run_id).cloned());
-        record.is_some_and(|record| {
-            record.snapshot.phase() == peritus_app_protocol::ProductRunPhase::WaitingForUser
-                && !record.cancelled.load(std::sync::atomic::Ordering::Acquire)
-                && self.pending_record_input(&record).unwrap_or(false)
-                && !record
-                    .interaction
-                    .persistence_failed
-                    .load(std::sync::atomic::Ordering::Acquire)
-        })
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run_id)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        if record.snapshot.phase() != peritus_app_protocol::ProductRunPhase::WaitingForUser
+            || record.cancelled.load(std::sync::atomic::Ordering::Acquire)
+        {
+            return Ok(false);
+        }
+        let recovery = self.retained_control_reconciliation(run_id, attempt)?;
+        let start = record.interaction.workbench.clone();
+        let authoritative_revision = record.interaction.incorporated;
+        let mut reported = false;
+        loop {
+            match self.with_control_reconciliation(&recovery, |store| {
+                store.capture_execution(&start)
+            }) {
+                Ok(capture) => {
+                    if reported {
+                        crate::diagnostic::report(&format!(
+                            "peritusd: pending governing input for {run_id:?} is readable again under its retained owner",
+                        ));
+                    }
+                    return Ok(!capture.inputs().pending().is_empty());
+                }
+                Err(error)
+                    if matches!(
+                        &error,
+                        crate::product_control::ControlStoreError::Journal(_)
+                            | crate::product_control::ControlStoreError::Io(_)
+                            | crate::product_control::ControlStoreError::Corrupt(_)
+                    ) =>
+                {
+                    let unavailable = GoverningStateUnavailable::new(
+                        run_id,
+                        start.clone(),
+                        authoritative_revision,
+                        "inspect pending governing input",
+                        error,
+                        Arc::clone(&recovery),
+                    );
+                    if !reported {
+                        crate::diagnostic::report(&format!(
+                            "peritusd: {unavailable}; pending input remains unknown while the exact owner retries",
+                        ));
+                        reported = true;
+                    }
+                    if attempt.load(std::sync::atomic::Ordering::Acquire) {
+                        return Err(ProductRunServiceError::GoverningStateUnavailable(
+                            unavailable,
+                        ));
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(50));
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
     }
     pub(crate) fn query_interaction(
         &self,
@@ -392,20 +446,11 @@ impl ProductRunService {
         .map_err(|_| ProductRunServiceError::InvalidMessage)
     }
 
-    pub(super) fn live_conversation(&self, run_id: RunId) -> Arc<dyn ConversationView> {
-        let attempt_cancelled = self
-            .inner
-            .records
-            .read()
-            .ok()
-            .and_then(|records| records.get(&run_id).map(|record| Arc::clone(&record.cancelled)))
-            .unwrap_or_else(|| Arc::new(std::sync::atomic::AtomicBool::new(true)));
-        Arc::new(LiveConversation {
-            service: self.clone(),
-            run_id,
-            attempt_cancelled,
-            request_sources: std::sync::Mutex::new(None),
-        })
+    pub(super) fn live_conversation(
+        &self,
+        run_id: RunId,
+    ) -> Result<Arc<dyn ConversationView>, ProductRunServiceError> {
+        Ok(LiveConversation::open(self.clone(), run_id)?)
     }
 
     pub(super) fn record_input_revision(
@@ -425,18 +470,6 @@ impl ProductRunService {
         })
             .map(|capture| !capture.inputs().pending().is_empty())
             .map_err(Into::into)
-    }
-
-    fn record_input(
-        &self,
-        record: &super::RunRecord,
-    ) -> Result<DeveloperInput, ProductRunServiceError> {
-        let captured = self.record_capture(record)?;
-        Ok(DeveloperInput {
-            revision: captured.inputs().generation(),
-            conversation: captured.conversation_with_guidance()?,
-            images: captured.images().to_vec(),
-        })
     }
 
     fn record_capture(

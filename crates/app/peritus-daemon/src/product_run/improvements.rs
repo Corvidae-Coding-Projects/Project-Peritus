@@ -71,10 +71,6 @@ impl ProductRunService {
                     .cloned()
                     .ok_or(Error::NotFound)?;
                 if record.request.workspace_id() != workspace || !record.snapshot.phase().terminal()
-                    || record
-                        .interaction
-                        .persistence_failed
-                        .load(std::sync::atomic::Ordering::Acquire)
                 {
                     return Err(Error::InvalidState);
                 }

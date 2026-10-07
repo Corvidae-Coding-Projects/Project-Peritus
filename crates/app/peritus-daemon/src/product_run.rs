@@ -48,7 +48,7 @@ use tokio::{sync::Mutex, task::JoinHandle};
 
 use crate::{DaemonComponents, DaemonError, startup::workspace::WorkspaceCatalog};
 
-pub use error::ProductRunServiceError;
+pub use error::{GoverningStateUnavailable, ProductRunServiceError};
 use error::{filesystem, invalid};
 #[cfg(test)]
 use persistence::persist_record;
@@ -360,10 +360,6 @@ impl ProductRunService {
         })
     }
 
-    pub(super) fn governed_run(&self, run: RunId) -> Result<bool, ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        Ok(records.contains_key(&run))
-    }
 }
 
 fn recent_records(records: &BTreeMap<RunId, RunRecord>, offset: u64) -> Vec<&RunRecord> {

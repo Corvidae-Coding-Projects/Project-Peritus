@@ -179,16 +179,8 @@ impl crate::product_run::ProductRunService {
         path: &Path,
         kind: WorkspaceMutationKind,
     ) -> Result<(), String> {
-        let attempt_cancelled = self
-            .capture_run_identity(run_id)
+        LiveConversation::open(self.clone(), run_id)
             .map_err(|error| error.to_string())?
-            .cancelled;
-        LiveConversation {
-            service: self.clone(),
-            run_id,
-            attempt_cancelled,
-            request_sources: std::sync::Mutex::new(None),
-        }
             .capture_checkpoint_when_available(path, kind)
             .await
     }
