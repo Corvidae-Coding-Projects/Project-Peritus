@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3742,
-        "tip_oid": "7aff40493eb296c084919df0f4026237833f1301",
-        "prefix_sha256": "fccde81852989deae57a5fdd9b4a6de728b16908b8c345ad2f74a6fd88d4ab01"
+        "sequence": 3743,
+        "tip_oid": "56f138fec462bf1b09a3e4f09a7ef26ce52f708f",
+        "prefix_sha256": "84701232dfb7ad37655b0548c8310629b1ba3d0c4533eaf59fc942f83cb47195"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3049,
+  "next_comment_id": 3050,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31590,11 +31590,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.107275766Z",
-      "updated_at": "2026-10-06T13:19:08.109445205Z",
+      "updated_at": "2026-10-07T05:22:06.022348682Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "b890e7ff-ed6e-4934-88df-2a02e4c96eb8": {
+          "display_id": 3049,
+          "author": "6ME5",
+          "content": "[observation] Code-only admission repair staged in the shared tree. The synthetic default cumulative lifetime quota is removed from live default callers while explicit numeric quota configuration remains enforced. Writers observe available space, attempt exact-size preallocation, report ENOSPC and disk-quota failures as retryable typed storage pressure, and allow bounded streaming on Unsupported or PermissionDenied preallocation only under the zero-reserve default; explicit retained-free-space guarantees fail closed. Checked quota accounting remains available for explicit policy. Source inspection and selected-path git diff --check completed; no runners or test changes were performed. Issue remains open pending long-session, pressure-recovery, and compaction acceptance evidence.",
+          "created_at": "2026-10-07T05:22:06.016593591Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtagHiOWNDxznNecaGXvKLuguNjPGoEw2SYWk80bcQY48TMj21YCjrpPw7R1MtwnVwRVr4nwioUpn+vxx/tjMCQ=="
+        },
         "e3d25fd9-d6e9-4983-b7c4-daa619f2f3e2": {
           "display_id": 2236,
           "author": "6ME5",
