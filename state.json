@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3747,
-        "tip_oid": "26ef420c1e9d23f5940837e0505a1eae57206b30",
-        "prefix_sha256": "dfe5ee8329244abe1352270ac29f5dc48f6567519f450cae265bfac8e91b7c03"
+        "sequence": 3748,
+        "tip_oid": "e4cde82b92e5d3b505decf159b8ed7939fe43c08",
+        "prefix_sha256": "f3c03a798639545a92e336b954bafa3a326846dcb9bb42be5f963847e58e0192"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3054,
+  "next_comment_id": 3055,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25490,11 +25490,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.124378531Z",
-      "updated_at": "2026-10-06T13:19:08.126341803Z",
+      "updated_at": "2026-10-07T05:34:08.723133563Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "25522259-f47c-4bc1-ab32-6b1e0d56cdb5": {
+          "display_id": 3054,
+          "author": "6ME5",
+          "content": "[observation] Code-only per-object recovery repair is integrated in the shared tree. Restart recovery keyset-pages finalized catalog rows in batches of 256 and streams both digest trees instead of materializing the complete inventory. Missing or divergent records are made nonreferenceable while healthy objects remain usable; malformed unrelated entries and corrupt bytes move into durable identity-named recovery containers. Paged APIs expose exact digest, expected size, missing/corrupt reason, and every journal/evidence owner. Daemon startup now consumes those APIs and streams exact obligations plus containment/orphan observations to best-effort operator diagnostics; a diagnostic paging failure is reported but does not fence healthy store availability. Uploading application rows with missing or nonreferenceable bytes also emit exact artifact identity and state instead of remaining silent. Verified re-publication clears the integrity fence transactionally. Source inspection and selected-path git diff --check completed; no tests, builds, lint, formatting, code generation, runners, or test edits were performed. Issue remains open pending executed corruption, malformed-layout, fault-injection, and long-read evidence.",
+          "created_at": "2026-10-07T05:34:08.710569573Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUEdpXYX/ZHoLKX+WoJxHsGh1YKjYfnPBGCixZQrQIVC+dWWbsY1tChVgrl7lWJYaEm7YBwr57iXSQM0zrBcfAA=="
+        },
         "e6a8277f-802b-45a5-ba79-73251c010867": {
           "display_id": 2240,
           "author": "6ME5",
