@@ -10,7 +10,8 @@ pub use commit::{
     commit_debugger_claimed_transition, commit_debugger_settlement, commit_debugger_transition,
 };
 pub use directive::{
-    DebuggerDirectiveClaim, MODEL_ANALYSIS_DESTINATION, ModelDirective, ModelDirectiveClaim,
-    PUBLICATION_DESTINATION, PublicationDirective, PublicationDirectiveClaim,
+    DebuggerDirectiveClaim, DebuggerDirectiveDelivery, MODEL_ANALYSIS_DESTINATION, ModelDirective,
+    ModelDirectiveClaim, ModelDirectiveDelivery, PUBLICATION_DESTINATION, PublicationDirective,
+    PublicationDirectiveClaim, PublicationDirectiveDelivery,
 };
 pub use replay::{DebuggerReplay, load_debugger_replay};

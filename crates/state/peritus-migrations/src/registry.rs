@@ -4,6 +4,7 @@ mod v1;
 mod v2;
 mod v3;
 mod v4;
+mod v5;
 mod validation;
 
 use peritus_types::Sha256Digest;
@@ -17,7 +18,7 @@ use validation::{invalid_registry, reject_transaction_control};
 
 // The journal installs the complete initial schema directly. This descriptor records its
 // version for future released migrations; unshipped development revisions are not supported.
-const CURRENT_DESCRIPTORS: [MigrationDescriptor; 4] = [
+const CURRENT_DESCRIPTORS: [MigrationDescriptor; 5] = [
     MigrationDescriptor::new(
         MigrationVersion::FIRST,
         "0.0.1",
@@ -47,6 +48,14 @@ const CURRENT_DESCRIPTORS: [MigrationDescriptor; 4] = [
         "0.0.5",
         v4::SQL,
         Sha256Digest::new(v4::DIGEST),
+        BackupPolicy::Required,
+        4 * 1024 * 1024,
+    ),
+    MigrationDescriptor::new(
+        MigrationVersion::FIFTH,
+        "0.0.5",
+        v5::SQL,
+        Sha256Digest::new(v5::DIGEST),
         BackupPolicy::Required,
         4 * 1024 * 1024,
     ),

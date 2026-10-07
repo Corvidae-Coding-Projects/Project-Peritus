@@ -204,7 +204,7 @@ fn insert_outbox(
         )?;
         transaction
             .execute(
-                "INSERT INTO outbox(outbox_id, producing_position, destination, payload, payload_digest, payload_byte_length, max_attempts, state) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 1)",
+                "INSERT INTO outbox(outbox_id, producing_position, destination, payload, payload_digest, payload_byte_length, max_attempts, persistent, state) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1)",
                 params![
                     entry.id().as_bytes().as_slice(),
                     super::append::to_i64(position, "outbox producing position")?,
@@ -213,6 +213,11 @@ fn insert_outbox(
                     payload_digest.as_bytes().as_slice(),
                     payload_byte_length,
                     i64::from(entry.max_attempts()),
+                    if entry.delivery_policy().is_persistent() {
+                        1_i64
+                    } else {
+                        0_i64
+                    },
                 ],
             )
             .map_err(|error| JournalError::sqlite("insert outbox message", error))?;

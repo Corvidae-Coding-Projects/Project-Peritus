@@ -1,6 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 4;
+pub(super) const SCHEMA_VERSION: i64 = 5;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 CREATE TABLE IF NOT EXISTS store_meta (
@@ -95,6 +95,7 @@ CREATE TABLE IF NOT EXISTS outbox (
     payload_byte_length INTEGER CHECK (payload_byte_length BETWEEN 0 AND 16777216),
     attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
     max_attempts INTEGER NOT NULL CHECK (max_attempts > 0),
+    persistent INTEGER NOT NULL DEFAULT 0 CHECK (persistent IN (0, 1)),
     state INTEGER NOT NULL DEFAULT 1 CHECK (state BETWEEN 1 AND 4),
     fence INTEGER CHECK (fence IS NULL OR fence > 0),
     lease_until INTEGER CHECK (lease_until IS NULL OR lease_until > 0),

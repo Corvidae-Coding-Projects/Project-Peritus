@@ -7,7 +7,7 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use crate::{
     DebuggerCommand, DebuggerCommandKind, DebuggerError, DebuggerErrorKind, DebuggerOperation,
     DebuggerPhase, DebuggerRecovery, DebuggerState, ModelAnalysisPlan, ModelAttemptFailure,
-    ModelAttemptFailureCode, ModelAttemptResult, ModelDirectiveClaim, ModelPriorUsage,
+    ModelAttemptFailureCode, ModelAttemptResult, ModelDirective, ModelDirectiveClaim, ModelPriorUsage,
     ModelRunFailure, ModelRunSuccess, ModelWorkState, TraceSelectionManifest,
     ModelRetryPolicy, ModelRetrySchedule, ModelStartBasis, ValidatedModelProposal,
     commit_debugger_claimed_transition, commit_debugger_settlement, commit_debugger_transition,
@@ -48,6 +48,31 @@ pub struct ModelAttemptExecution {
     started: CommittedDebuggerTransition,
     settled: CommittedDebuggerTransition,
     outcome: ModelAttemptOutcome,
+}
+
+/// Settlement produced after reclaiming an attempt whose durable start already exists.
+#[derive(Debug)]
+pub struct ResumedModelAttemptExecution {
+    settled: CommittedDebuggerTransition,
+    outcome: ModelAttemptOutcome,
+}
+
+impl ResumedModelAttemptExecution {
+    /// Atomic result/failure/cancellation plus acknowledgement under the reclaimed fence.
+    #[must_use]
+    pub const fn settled(&self) -> &CommittedDebuggerTransition {
+        &self.settled
+    }
+    /// Durable semantic outcome for the same already-started attempt identity.
+    #[must_use]
+    pub const fn outcome(&self) -> &ModelAttemptOutcome {
+        &self.outcome
+    }
+    /// Consumes the complete reclaimed-attempt result.
+    #[must_use]
+    pub fn into_parts(self) -> (CommittedDebuggerTransition, ModelAttemptOutcome) {
+        (self.settled, self.outcome)
+    }
 }
 
 impl ModelAttemptExecution {
@@ -141,8 +166,97 @@ pub async fn execute_model_attempt(
         commit_debugger_claimed_transition(journal, &start_command, &start_transition, claim)?;
     let running = start_transition.state().clone();
     let started = CommittedDebuggerTransition::new(start_batch, running.clone());
+    let (settled, outcome) = settle_model_attempt_effect(
+        journal,
+        provider,
+        &running,
+        plan,
+        manifest,
+        debugger_limits,
+        claim,
+        ids.settlement,
+        cancellation,
+    )
+    .await?;
+    Ok(ModelAttemptExecution {
+        started,
+        settled,
+        outcome,
+    })
+}
+
+/// Re-executes and settles the same attempt after its committed start outlived a claim lease.
+///
+/// The caller must first reclaim the retained persistent directive and supply its new fence. This
+/// path does not append another start event; it binds the reclaimed directive to the existing
+/// running state, repeats the provider effect under the same semantic attempt, and atomically
+/// acknowledges the new fence with the result.
+///
+/// # Errors
+/// Rejects a state that is not the exact running attempt named by the directive, plan/request
+/// drift, a stale reclaim fence, provider/protocol failures that cannot be represented, or
+/// settlement failure.
+#[allow(clippy::too_many_arguments, reason = "effect owners and reclaimed fence stay explicit")]
+pub async fn resume_model_attempt(
+    journal: &mut SqliteJournal,
+    provider: &dyn ModelProvider,
+    state: &DebuggerState,
+    plan: &ModelAnalysisPlan,
+    manifest: &TraceSelectionManifest,
+    debugger_limits: crate::DebuggerLimits,
+    claim: ModelDirectiveClaim,
+    settlement_ids: TransitionIds,
+    cancellation: CancellationToken,
+) -> Result<ResumedModelAttemptExecution, DebuggerError> {
+    let directive = claim.directive();
+    let model = state
+        .model()
+        .ok_or_else(|| binding("reclaimed model directive has no durable model plan"))?;
+    if state.phase() != DebuggerPhase::ModelRunning
+        || directive.job_id() != state.job_id()
+        || directive.model_id() != plan.id()
+        || directive.plan_digest() != plan.digest()
+        || directive.request_digest() != plan.request_digest()
+        || model.id() != plan.id()
+        || model.plan_digest() != plan.digest()
+        || model.request_digest() != plan.request_digest()
+        || model.budget() != plan.budget()
+        || !running_directive_matches(model.state(), directive)
+    {
+        return Err(binding(
+            "running model state, plan, and reclaimed directive differ",
+        ));
+    }
+    let (settled, outcome) = settle_model_attempt_effect(
+        journal,
+        provider,
+        state,
+        plan,
+        manifest,
+        debugger_limits,
+        claim,
+        settlement_ids,
+        cancellation,
+    )
+    .await?;
+    Ok(ResumedModelAttemptExecution { settled, outcome })
+}
+
+#[allow(clippy::too_many_arguments, reason = "effect owners and exact fence stay explicit")]
+async fn settle_model_attempt_effect(
+    journal: &mut SqliteJournal,
+    provider: &dyn ModelProvider,
+    state: &DebuggerState,
+    plan: &ModelAnalysisPlan,
+    manifest: &TraceSelectionManifest,
+    debugger_limits: crate::DebuggerLimits,
+    claim: ModelDirectiveClaim,
+    settlement_ids: TransitionIds,
+    cancellation: CancellationToken,
+) -> Result<(CommittedDebuggerTransition, ModelAttemptOutcome), DebuggerError> {
+    let attempt = claim.directive().attempt();
     let prior_usage = accumulated_usage(state);
-    let continuation = retry_continuation(state, directive.attempt());
+    let continuation = retry_continuation(state, attempt);
     let result = run_model_analysis_with_usage(
         provider,
         plan,
@@ -154,32 +268,69 @@ pub async fn execute_model_attempt(
     )
     .await;
     let (settlement_kind, outcome) = match result {
-        Ok(success) => proposal_settlement(plan, directive.attempt(), &success),
+        Ok(success) => proposal_settlement(plan, attempt, &success),
         Err(error) => {
-            let failure = model_failure(plan, directive.attempt(), &error)?;
+            let failure = model_failure(plan, attempt, &error)?;
             let outcome = if failure.code() == ModelAttemptFailureCode::Cancelled {
                 ModelAttemptOutcome::Cancelled
             } else {
                 ModelAttemptOutcome::Failed(failure.clone())
             };
-            (
-                DebuggerCommandKind::RecordModelFailure { failure },
-                outcome,
-            )
+            (DebuggerCommandKind::RecordModelFailure { failure }, outcome)
         }
     };
-    let settlement_command = command(&running, ids.settlement, settlement_kind)?;
-    let settlement_transition = decide(Some(&running), &settlement_command)?;
+    let settlement_command = command(state, settlement_ids, settlement_kind)?;
+    let settlement_transition = decide(Some(state), &settlement_command)?;
     let settlement_batch =
         commit_debugger_settlement(journal, &settlement_command, &settlement_transition, claim)?;
-    Ok(ModelAttemptExecution {
-        started,
-        settled: CommittedDebuggerTransition::new(
+    Ok((
+        CommittedDebuggerTransition::new(
             settlement_batch,
             settlement_transition.state().clone(),
         ),
         outcome,
-    })
+    ))
+}
+
+fn running_directive_matches(state: &ModelWorkState, directive: ModelDirective) -> bool {
+    match state {
+        ModelWorkState::Running { attempt, started_at_tick } => {
+            *attempt == directive.attempt()
+                && directive.schedule().is_none()
+                && if *attempt == 1 {
+                    directive.not_before_tick() == 0
+                } else {
+                    *started_at_tick >= directive.not_before_tick()
+                }
+        }
+        ModelWorkState::RunningOnClock {
+            attempt,
+            started_at,
+            basis,
+            schedule,
+        } => {
+            let admitted = match (*basis, *schedule) {
+                (ModelStartBasis::Immediate, None) => {
+                    directive.attempt() == 1 && directive.not_before_tick() == 0
+                }
+                (ModelStartBasis::LegacyTick, None) => {
+                    directive.attempt() > 1
+                        && started_at.tick_millis() >= directive.not_before_tick()
+                }
+                (ModelStartBasis::Scheduled | ModelStartBasis::RestartRebased, Some(value)) => {
+                    directive.schedule() == Some(value)
+                        && value.admission(*started_at) == Some(*basis)
+                }
+                _ => false,
+            };
+            *attempt == directive.attempt() && directive.schedule() == *schedule && admitted
+        }
+        ModelWorkState::Pending { .. }
+        | ModelWorkState::PendingOnClock { .. }
+        | ModelWorkState::AwaitingRetry { .. }
+        | ModelWorkState::Validated { .. }
+        | ModelWorkState::Rejected { .. } => false,
+    }
 }
 
 /// Schedules the exact next attempt after a retryable durable failure.

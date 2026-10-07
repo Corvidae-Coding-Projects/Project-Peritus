@@ -1,7 +1,9 @@
 //! Stable opaque C0 outbox directives and exact claim fences.
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
-use peritus_journal::{OutboxId, OutboxMessage, OutboxState};
+use peritus_journal::{
+    OutboxDeliveryPolicy, OutboxDeliveryStatus, OutboxId, OutboxMessage, OutboxState,
+};
 use peritus_types::Sha256Digest;
 
 use crate::{
@@ -174,7 +176,11 @@ impl ModelDirective {
         Ok(value)
     }
 
-    pub(crate) fn outbox_id(self) -> Result<OutboxId, DebuggerError> {
+    /// Returns the stable C0 outbox identity for this exact model attempt.
+    ///
+    /// # Errors
+    /// Returns a binding error only if the derived nonzero identity is invalid.
+    pub fn outbox_id(self) -> Result<OutboxId, DebuggerError> {
         derived_outbox_id(MODEL_ID_DOMAIN, self.model_id.as_bytes(), self.attempt)
     }
 }
@@ -226,7 +232,11 @@ impl PublicationDirective {
         Ok(Self { job_id, report })
     }
 
-    pub(crate) fn outbox_id(self) -> Result<OutboxId, DebuggerError> {
+    /// Returns the stable C0 outbox identity for this exact report publication.
+    ///
+    /// # Errors
+    /// Returns a binding error only if the derived nonzero identity is invalid.
+    pub fn outbox_id(self) -> Result<OutboxId, DebuggerError> {
         derived_outbox_id(PUBLICATION_ID_DOMAIN, self.report.id().as_bytes(), 0)
     }
 }
@@ -236,6 +246,46 @@ impl PublicationDirective {
 pub struct ModelDirectiveClaim {
     directive: ModelDirective,
     fence: u64,
+}
+
+/// Exact model directive paired with its durable wait/reclaim observation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ModelDirectiveDelivery {
+    directive: ModelDirective,
+    status: OutboxDeliveryStatus,
+}
+
+impl ModelDirectiveDelivery {
+    /// Validates one retained model row without claiming or replacing it.
+    ///
+    /// # Errors
+    /// Rejects the wrong destination, payload, identity, delivery policy, or observation tick.
+    pub fn from_message(
+        message: &OutboxMessage,
+        observed_at: u64,
+    ) -> Result<Self, DebuggerError> {
+        ensure_persistent(message, MODEL_ANALYSIS_DESTINATION)?;
+        let directive = ModelDirective::decode(message.payload())?;
+        if message.id() != directive.outbox_id()? {
+            return Err(binding("model outbox identity differs from its payload"));
+        }
+        Ok(Self {
+            directive,
+            status: message.delivery_status(observed_at).map_err(journal)?,
+        })
+    }
+
+    /// Exact retained directive.
+    #[must_use]
+    pub const fn directive(self) -> ModelDirective {
+        self.directive
+    }
+
+    /// Current durable delivery state at the supplied observation tick.
+    #[must_use]
+    pub const fn status(self) -> OutboxDeliveryStatus {
+        self.status
+    }
 }
 
 impl ModelDirectiveClaim {
@@ -273,6 +323,67 @@ impl ModelDirectiveClaim {
 pub struct PublicationDirectiveClaim {
     directive: PublicationDirective,
     fence: u64,
+}
+
+/// Exact publication directive paired with its durable wait/reclaim observation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PublicationDirectiveDelivery {
+    directive: PublicationDirective,
+    status: OutboxDeliveryStatus,
+}
+
+impl PublicationDirectiveDelivery {
+    /// Validates one retained publication row without claiming or replacing it.
+    ///
+    /// # Errors
+    /// Rejects the wrong destination, payload, identity, delivery policy, or observation tick.
+    pub fn from_message(
+        message: &OutboxMessage,
+        observed_at: u64,
+    ) -> Result<Self, DebuggerError> {
+        ensure_persistent(message, PUBLICATION_DESTINATION)?;
+        let directive = PublicationDirective::decode(message.payload())?;
+        if message.id() != directive.outbox_id()? {
+            return Err(binding("publication outbox identity differs from its payload"));
+        }
+        Ok(Self {
+            directive,
+            status: message.delivery_status(observed_at).map_err(journal)?,
+        })
+    }
+
+    /// Exact retained directive.
+    #[must_use]
+    pub const fn directive(self) -> PublicationDirective {
+        self.directive
+    }
+
+    /// Current durable delivery state at the supplied observation tick.
+    #[must_use]
+    pub const fn status(self) -> OutboxDeliveryStatus {
+        self.status
+    }
+}
+
+/// One exact retained debugger directive paired with its durable delivery state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DebuggerDirectiveDelivery {
+    /// Optional model-analysis directive.
+    Model(ModelDirectiveDelivery),
+    /// Report publication directive.
+    Publication(PublicationDirectiveDelivery),
+}
+
+impl From<ModelDirectiveDelivery> for DebuggerDirectiveDelivery {
+    fn from(value: ModelDirectiveDelivery) -> Self {
+        Self::Model(value)
+    }
+}
+
+impl From<PublicationDirectiveDelivery> for DebuggerDirectiveDelivery {
+    fn from(value: PublicationDirectiveDelivery) -> Self {
+        Self::Publication(value)
+    }
 }
 
 impl PublicationDirectiveClaim {
@@ -342,8 +453,20 @@ impl From<PublicationDirectiveClaim> for DebuggerDirectiveClaim {
 }
 
 fn ensure_claimed(message: &OutboxMessage, destination: &str) -> Result<(), DebuggerError> {
-    if message.state() != OutboxState::Claimed || message.destination() != destination {
+    ensure_persistent(message, destination)?;
+    if message.state() != OutboxState::Claimed {
         return Err(binding("outbox message is not an exact claimed debugger directive"));
+    }
+    Ok(())
+}
+
+fn ensure_persistent(message: &OutboxMessage, destination: &str) -> Result<(), DebuggerError> {
+    if message.destination() != destination
+        || message.delivery_policy() != OutboxDeliveryPolicy::Persistent
+    {
+        return Err(binding(
+            "outbox message is not the expected persistent debugger directive",
+        ));
     }
     Ok(())
 }

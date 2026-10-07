@@ -2,7 +2,7 @@
 
 use crate::{
     AggregateHead, AggregateKey, DurableStateRecord, JournalError, JournalErrorKind, SqliteJournal,
-    StoreId,
+    OutboxId, OutboxMessage, StoreId,
 };
 use rusqlite::{Connection, OpenFlags, config::DbConfig, limits::Limit};
 use std::{path::Path, sync::Arc};
@@ -79,5 +79,16 @@ impl JournalReader {
     /// Rejects corrupt or unreadable journal data.
     pub fn head(&self, key: AggregateKey) -> Result<Option<AggregateHead>, JournalError> {
         self.journal.head(key)
+    }
+
+    /// Observes one exact outbox row in the same read snapshot without claiming it.
+    ///
+    /// # Errors
+    /// Rejects corrupt or unreadable retained metadata and payload bytes.
+    pub fn outbox_message(
+        &self,
+        id: OutboxId,
+    ) -> Result<Option<OutboxMessage>, JournalError> {
+        self.journal.outbox_message(id)
     }
 }

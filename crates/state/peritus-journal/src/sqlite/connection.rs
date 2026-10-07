@@ -512,6 +512,28 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             .map_err(|error| JournalError::sqlite("publish paged-content schema migration", error))?;
         version = 4;
     }
+    if version == 4 {
+        // Version five separates transport delivery from semantic retry budgets. Existing
+        // debugger model/report rows retain their exact identity, payload, producing position,
+        // attempt count, and fence; unacknowledged exhausted rows become reclaimable in place.
+        connection
+            .execute_batch(
+                "ALTER TABLE outbox ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0
+                    CHECK (persistent IN (0, 1));
+                 UPDATE outbox
+                    SET persistent = 1,
+                        state = CASE WHEN state = 4 THEN 1 ELSE state END
+                  WHERE destination IN (
+                    'peritus.debugger.model-analysis.v1',
+                    'peritus.debugger.publish-report.v1'
+                  );
+                 UPDATE store_meta SET schema_version = 5 WHERE singleton = 1;",
+            )
+            .map_err(|error| {
+                JournalError::sqlite("publish persistent-outbox schema migration", error)
+            })?;
+        version = 5;
+    }
     if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,

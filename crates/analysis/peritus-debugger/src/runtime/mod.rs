@@ -13,11 +13,14 @@ pub use artifact::{
     stage_and_commit_report,
 };
 pub use model::{
-    ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, amend_model_retry_policy,
-    execute_model_attempt, schedule_model_retry,
+    ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, ResumedModelAttemptExecution,
+    amend_model_retry_policy, execute_model_attempt, resume_model_attempt, schedule_model_retry,
 };
 pub use publication::{PublicationExecution, publish_claimed_report};
-pub use recovery::{DebuggerRecoveryDecision, decide_recovery, decide_recovery_on_clock};
+pub use recovery::{
+    DebuggerRecoveryDecision, decide_recovery, decide_recovery_on_clock,
+    decide_recovery_on_clock_with_delivery, decide_recovery_with_delivery,
+};
 
 use crate::DebuggerState;
 

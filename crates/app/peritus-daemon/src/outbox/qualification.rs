@@ -304,7 +304,7 @@ fn validate_claim(
         || message.destination() != DESTINATION
         || message.payload() != identity.payload.as_slice()
         || message.max_attempts() != MAX_ATTEMPTS
-        || message.attempts() != expected_attempt
+        || message.attempts() != u64::from(expected_attempt)
         || message.state() != OutboxState::Claimed
     {
         return Err(qualification_error(

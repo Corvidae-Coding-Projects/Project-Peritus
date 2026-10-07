@@ -86,7 +86,7 @@ async fn run(
             }
             Ok(false) => {}
             Err(error) => {
-                let terminal = message.attempts() >= message.max_attempts()
+                let terminal = message.delivery_attempts_exhausted()
                     || matches!(
                         error.recovery(),
                         DaemonRecovery::CorrectRequest

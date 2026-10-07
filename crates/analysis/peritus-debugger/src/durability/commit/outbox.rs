@@ -11,8 +11,6 @@ use super::super::{
     binding,
 };
 
-const OUTBOX_MAX_DELIVERY_ATTEMPTS: u16 = 16;
-
 pub(super) fn transition_outbox(
     command: &DebuggerCommand,
     state: &DebuggerState,
@@ -105,6 +103,6 @@ fn outbox_draft(
     destination: &str,
     payload: Vec<u8>,
 ) -> Result<OutboxDraft, DebuggerError> {
-    OutboxDraft::new(id, destination.to_owned(), payload, OUTBOX_MAX_DELIVERY_ATTEMPTS)
+    OutboxDraft::persistent(id, destination.to_owned(), payload)
         .map_err(binding::journal)
 }
