@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3818,
-        "tip_oid": "668214c22859c1f009490235326690d63448c2ba",
-        "prefix_sha256": "d52a07344037105cf553ab74ec49938d4edffb184011257161d817b49127c9cc"
+        "sequence": 3819,
+        "tip_oid": "051b66c3affe090f381b28ab23ce8391804aa9ed",
+        "prefix_sha256": "43552ae4fe095c45bbeab03b0423de1c3f6e548832e854f91b625d75382c3c79"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3124,
+  "next_comment_id": 3125,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -38669,11 +38669,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.622942673Z",
-      "updated_at": "2026-10-06T13:21:37.625222519Z",
+      "updated_at": "2026-10-07T15:33:20.620932721Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "607f81f3-51c3-4712-9923-e80e4f46eb3b": {
+          "display_id": 3124,
+          "author": "6ME5",
+          "content": "Delivered 64d54d7d9f6998579b90761a675eb0efc7dfc1fc to PR112: removes the separate whole-run JSON 16-MiB save/recovery ceiling. Writer streams unchanged pretty JSON, flushes before file sync and atomic rename; startup reader streams JSON without an encoded whole-file copy and preserves existing read-only access. Paged durable continuation successor is separately frozen and preserved unstaged. Full source/focused staged diff reviewed; whitespace clean. No tests/build/lint/formatting; final integrated verification deferred until all batch code is done. Issue remains open.",
+          "created_at": "2026-10-07T15:33:20.617091764Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7SwZnhpsOdDqmSDD8wYHaH2A0aFiOxE9G4kXUZ+JRvFmIWsBzUSIpVRGybx+FQNcgrWo/VcowoajQLuxypkRBw=="
+        },
         "a27885af-14dc-4500-a19e-2972db26a243": {
           "display_id": 2286,
           "author": "6ME5",
