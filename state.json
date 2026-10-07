@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3729,
-        "tip_oid": "f7806935cef2cd844bfd7cb3c8fc9707995e4a3b",
-        "prefix_sha256": "0fcb46c3ab7c26cc19c37a1e269f286c1e4a48dce55211f5746cb59582bf2d3f"
+        "sequence": 3730,
+        "tip_oid": "58f8586bc064aadd01e96660635c49c809a12185",
+        "prefix_sha256": "452434a9aaabb1970cd4e79f033b598d496fa78adaf9627cd32f83cc1a24bf35"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3036,
+  "next_comment_id": 3037,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22958,7 +22958,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.898843708Z",
-      "updated_at": "2026-10-07T04:21:09.302981693Z",
+      "updated_at": "2026-10-07T04:43:32.403259207Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -22971,6 +22971,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAV1lg7XCIqV18Xlu2MBj6lUI0kLqBqiokAB3u2/GQAclr41n+dwwc62wh5+soistqBvIDWiHwb7OT7qh00bFoDQ=="
+        },
+        "6687f77f-27ec-4159-9d86-592dea362f24": {
+          "display_id": 3036,
+          "author": "6ME5",
+          "content": "Code-only integration: browser messages now retain exact original user text and completed scoped source artifacts for bodies beyond an IPC frame. Selected files are streamed into workspace/state-file-bound immutable snapshots and uploaded independently as external context, without fabricated user captions or attachment concatenation. Fixed attachment count/cache/file-byte admission allowances are removed; retries retain original operation/body/digest and staged receipts. Typed assistant history uses immutable body descriptors and range readers. Remaining agent followups cover file-source intent negotiation, exact reply publication reconciliation, reader-cache reopening and incremental directory indexing. No validation runners were run; issue remains open for final batch verification.",
+          "created_at": "2026-10-07T04:43:32.399430337Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAGRMHa+/TOYsEcYetocyoGiof57Q/MYa7gqaqsw3+P2weAveeWK6wGVns4xgXKmcm7UQxxSVP7GxPmRBa7rfDDg=="
         },
         "cce1f56f-9fdf-451d-a077-d7386b5b57ab": {
           "display_id": 2877,
