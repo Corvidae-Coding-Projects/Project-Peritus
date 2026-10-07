@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3780,
-        "tip_oid": "9caac63e17fc81ebd2a8d85f2bcedbdbe7af9fa0",
-        "prefix_sha256": "c9ab3a1c04560611703b9143abdf26b5a3bed8df33b7a405cb1b5dc5fdad40e2"
+        "sequence": 3781,
+        "tip_oid": "cde4eda781a4265f00e80fb3e9cba88d4a0cd348",
+        "prefix_sha256": "14166c23c4274ba6d9a0557442ff4b7330ac8e28d46b33a39514c751680aec3d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3086,
+  "next_comment_id": 3087,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25056,7 +25056,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.215834636Z",
-      "updated_at": "2026-10-06T13:19:08.217876223Z",
+      "updated_at": "2026-10-07T08:09:21.427860278Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -25067,6 +25067,15 @@
           "content": "Systemic repair plan for L090: Output retention is a finite prefix, and its displayed tail freezes after quota exhaustion.\n\nOwning contract and implementation boundary: supervisor/io.rs:244-259; output.rs:96-107; output/window.rs:27-48; events.rs:155-160; control.rs:155-171; supervisor/artifact.rs:17-52. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nDecouple the live rolling output tail from the archived output allowance. Keep accepting observed bytes into a bounded rolling window even when archival pressure requires a recoverable spool wait or explicit retention policy. Store exact stream offsets, loss markers and terminal accounting; late errors must remain visible and artifact publication must be retryable with its original cause.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "8cf3fb91-7101-46da-adc4-b816eb314a95": {
+          "display_id": 3086,
+          "author": "6ME5",
+          "content": "Code-only integration observation for #189: bounded history loss now advances exact global/per-stream frontiers while preserving process controls and same-identity attachment. A negotiated app.terminal-output-gaps event replaces permanent replay/attachment rejection; pending delivery pressure compacts to an exact gap, preserves the retained frontier, and still delivers the exit fence. CLI consumes gaps and TUI offers the feature through its independent negotiation path; older peers receive explicit unavailable evidence and only their attachment is released. Raw output with no cumulative allowance is admitted from physical chunk/window/event capacity, not denied by a compatibility zero getter. Source review and static patch reproduction completed; no final tests/builds/lint/format/codegen were run. Parser carry-state review remains active. Issue stays open pending final validation.",
+          "created_at": "2026-10-07T08:09:20.957676705Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAMASNoZO6vHZ53hQR1O+hayCGHnvp7LEiHuKBqs22imZQtTCPDmfhT4YF/v5/Gsbs/0GhUG1mUwIhQd+jFTVAQ=="
         }
       }
     },
