@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3787,
-        "tip_oid": "1d882d5f31ebd3db04011cd3976992cf2c7413b2",
-        "prefix_sha256": "5c85a683eb439a23ba318178eef334db1492d8962061504bf7c10958cfbae661"
+        "sequence": 3788,
+        "tip_oid": "c77512834780463ced843786c8fc6ebca6223dfe",
+        "prefix_sha256": "165494915673527cf1256411abd3541a90ff20429237623e4d5ad0e60c5fe82d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3093,
+  "next_comment_id": 3094,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31503,7 +31503,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.261221230Z",
-      "updated_at": "2026-10-06T13:19:08.263342745Z",
+      "updated_at": "2026-10-07T12:37:35.406113506Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31514,6 +31514,15 @@
           "content": "Systemic repair plan for L100: Native observation histories have a hard 4,096-entry lifecycle gate.\n\nOwning contract and implementation boundary: native/observation.rs:88-124. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate immutable native lifecycle evidence from the bounded live telemetry view. Persist paged contiguous observations and validate lifecycle transitions incrementally against an exact frontier. Repeated legitimate resource observations must advance that frontier rather than become CancelAndReap at 4096 entries; binding or sequence conflicts remain integrity failures.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "d0d793ce-474c-42f7-8054-60059b4643c9": {
+          "display_id": 3093,
+          "author": "6ME5",
+          "content": "Implemented the code-only native observation persistence core without running validation: manifest V3 carries an optional exact native frontier while V2 decodes explicitly as LegacyUnrecorded; native lifecycle records use canonical bounded 256-record immutable pages chained by digest under native-observations-v1; ProcessStore publishes page then advances/re-observes the manifest frontier and acknowledges the producer only afterward. The public native-session compatibility path retains legacy snapshots with no 4096 cutoff, while Linux/macOS/Windows now expose stable unacknowledged deltas plus bounded non-gating common/rich diagnostic tails. Supervisor/gateway lifecycle integration remains pending release of the #191-owned seams; tests and all Rust runners remain intentionally deferred per user direction.",
+          "created_at": "2026-10-07T12:37:35.402386827Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAv7GxsL9abiY5mg5UyddYE6QcMHmri57ocsu/rivixS40lIbwdUi8tr4nP7XfcXdCZSFgZbQhM7aeH2zegHZSAQ=="
         }
       }
     },
