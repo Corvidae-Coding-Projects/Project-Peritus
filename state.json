@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3671,
-        "tip_oid": "328d1045c4275ab96feb5f8d2a2f02e8d8ea591a",
-        "prefix_sha256": "e8e39a5af303779fa0e2d860b418f31e25c9f77ddb4cfcc8ea407658211dcf26"
+        "sequence": 3672,
+        "tip_oid": "1ea681e9eb50fa057e8338a352130bf19a835558",
+        "prefix_sha256": "875da7b88d38cdd8db6c972a83a07a848fba638cc504f1441342053e7ba3687c"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2997,
+  "next_comment_id": 2998,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,7 +20019,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T00:52:32.707902440Z",
+      "updated_at": "2026-10-07T00:54:46.191286031Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20032,6 +20032,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYg+c2XqyyC+2Iq+ikLOuH3dYoS4GhfYZkGLfLa0lisrteAgp20v2tADGQkKEs263pJah3hVszTYJoHRDf9TyBQ=="
+        },
+        "634b35ca-22b0-4001-a95f-d8114b28a821": {
+          "display_id": 2997,
+          "author": "6ME5",
+          "content": "The full checkpoint suite after sharedreader migration passed40/40 (checkpoint-flow-tests1.log), including65536-path paged root over16MiB, native restore/fault/reopen and actualworkbench checkpoint flows. New isolated regression checkpoint_operation_and_projection_over_16_mib_reopen_and_continue_exactly executes a16MiB+1 name: terminal101 Control(Capacity) atpublication, confirming the remaining operation/projectioncodec ceiling rather thanassuming constructorrepair wascomplete; red-control-paging.log retained. Implementing separate checkpoint-only paged operation and projectioncomponents underexistingatomicC0owner, leaving111 noncheckpoint coreadmission unchanged. No110commit/closure; unrelatedhashes allOK.",
+          "created_at": "2026-10-07T00:54:46.183477634Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu2std7SrKGvBHXyMo3X6jlpx9BiwZrPZVWDgtsgg0Br5bXSe4jUQQoAFy4GaCVkydHMZ7y8a95XcaozqLigGBw=="
         },
         "814f7139-a9cb-437c-a782-c9944e4f42e4": {
           "display_id": 2995,
