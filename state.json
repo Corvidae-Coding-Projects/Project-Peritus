@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3669,
-        "tip_oid": "51056ebd7f1ea42483e57ec63fa366e3bd0a20dd",
-        "prefix_sha256": "7a3ac76a11a9722bbf5dc2dc912e7297a2a79060577e54be02950055947716b2"
+        "sequence": 3670,
+        "tip_oid": "cc47220edc52417c1966c2e22bdb926bc195c7f1",
+        "prefix_sha256": "ba051a8c30e443716d79ced654f651a1344bbf485bcc55040d3aeda1fb7ddcee"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2995,
+  "next_comment_id": 2996,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,11 +20019,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T00:28:17.696220813Z",
+      "updated_at": "2026-10-07T00:39:30.164785748Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "814f7139-a9cb-437c-a782-c9944e4f42e4": {
+          "display_id": 2995,
+          "author": "6ME5",
+          "content": "110 partial implementation remainsuncommitted/open. Main selectedfiles introduce uncapped inertCheckpointText and native-validated CheckpointPathText,remove u16manifest/conflictcounts,preservelegacy strings/reencodeexactly,stablepath_id digests,andtypedexclusionreason/source/explanation withrebuiltdisplay. Livecapture nowproducesstructuredexclusions. Checkpointdeserialization uses liveinvariants (sortedcoverage/nonzerorun/path/version); physicalpage sizeisnotfieldallowance. Isolated modeltests2:16passed0failed, including9originalredcases, exactlegacyJSON, structuredreopen andauthority/noninertguards. First expandedfixture expected a tagged absentenum; actual historical enum is stringabsent; correctedtestonly, originalfailure retained at model-tests1.log (15pass1fixturefailure). New nativebodyroot schema2 publishes completecheckpoint+stablepathbody associations in digestbound1MiBchunkstream, fixedjournalroot; schema1 bodyrootandlegacyu16bodykeysdecoderretained. Snapshot-tests1:4passed0failed includes >1024paths/8MiB restore,reopen andall3publicationfaultpoints plus >16MiBrestoreevidence. New65536path >16MiBmanifestpublication/reopen testqueued inisolatedroot /home/doll/.cache/peritus-issue110.DDj4tG log /tmp/peritus-issue110-manifest-pages1.log. Fullcontroloperation/projection encoding andpublicwire receipts remainpending,so no110commit/push/closure yet. Newcheckpoint-only storage must separate metadatafromchangingcore toavoidduplicatefullcheckpointdata eachordinaryedit;111generalcontrol/request ceiling remainsoutofscope. Unrelatedusage/audit hashcheckallOK.",
+          "created_at": "2026-10-07T00:39:30.154543602Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+6dvvPQET3l//VIlk7GZlsmpWpKvbKCAXuaOzKQ158Le06iCVxAC9Ofiqd9pWG36142I/TsHxQjVwHqiHxcPCA=="
+        },
         "8357a967-4411-4c0b-9e7e-027c67947c24": {
           "display_id": 2182,
           "author": "6ME5",
