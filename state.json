@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3795,
-        "tip_oid": "91739b032cd271c130d8491d4c318344edb1cdfd",
-        "prefix_sha256": "bb5e2c71c21bf506474eadc56b6b409a45c1bd13ccd268454b0c9387b9799eb9"
+        "sequence": 3796,
+        "tip_oid": "c67de39a3e1a429c171fa01ffc73502e4b10f3d4",
+        "prefix_sha256": "93c2423d52a3be35ed96e2eb2b3a512ab48506d7f0f32c523d20b19cbbd791ef"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3101,
+  "next_comment_id": 3102,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24275,11 +24275,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.604028073Z",
-      "updated_at": "2026-10-06T13:21:37.606295944Z",
+      "updated_at": "2026-10-07T13:19:32.947755008Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "355fcf92-29e1-4ee4-b110-c25719270b0f": {
+          "display_id": 3101,
+          "author": "6ME5",
+          "content": "Source-only resumed batch progress: implemented retained active invocation/replay ownership on poll/control/cancel/recovery failure, typed native/C4 pre-admission control rejection, same-handle product reconciliation receipts, monotonic terminal reconnect projections, and original run_command ownership/evidence/checkpoint settlement. An independent source reviewer found projection ordering, late command handoff, checkpoint evidence ordering, and pre-admission time metadata defects; all were repaired and reread. Durable 17-path preimages/final copies, hashes, complete focused patch, scope residuals, and final validation obligations are recorded in .crosslink/code-batch-recovery/2026-10-07-root210/HANDOFF.md. Focused static patch application and whitespace checks pass; this is not compile/runtime evidence. Native restart adoption (#193), projection retention (#185), and progress/result rendering (#204) remain separate. User explicitly prohibits tests/builds/toolchains/formatters/runners until the entire batch is finished. No validation runner, commit, push, install, restart, or closure occurred; issue stays open.",
+          "created_at": "2026-10-07T13:19:32.943742533Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAf/lkF1QGJ6Y3wLdpjXkwR5kCrC2YgQjUw07oITKhCXnU11d7gz5urJxhgpyNJWU6w13enZe5aJewtSehFOvhCA=="
+        },
         "98471f69-8db3-45a1-8620-6ade5609167b": {
           "display_id": 2282,
           "author": "6ME5",
