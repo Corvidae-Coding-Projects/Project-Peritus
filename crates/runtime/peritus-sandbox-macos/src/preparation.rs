@@ -281,10 +281,12 @@ impl MacosBackend {
             proxy_route,
         )
         .map_err(|error| owners.cleanup(error))?;
-        let resources = ResourceControlPlan::from_checked_plan(
+        let requested_resources = ResourceControlPlan::from_checked_plan(
             sandbox,
             self.descriptor.probe().evidence().resources.levels(),
         );
+        let resources = crate::runner::negotiate_resource_controls(&requested_resources)
+            .map_err(|error| owners.cleanup(error))?;
         let containment = ProcessContainment::from_checked_plan(sandbox);
         let terminal = TerminalMapping::from_checked_plan(sandbox)
             .map_err(|error| owners.cleanup(error))?;

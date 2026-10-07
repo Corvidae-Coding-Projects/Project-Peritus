@@ -7,7 +7,7 @@
 
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::{
-    io::{Read as _, Seek as _, Write as _},
+    io::{Read as _, Seek as _, Write},
     os::unix::fs::OpenOptionsExt as _,
 };
 
@@ -16,30 +16,55 @@ use zeroize::Zeroizing;
 
 use crate::{
     EnforcementLevel, HelperManifest, MacosError, MacosErrorKind, MacosOperation, RecoveryAction,
-    ResourceControlPlan,
+    NativeResourceCeiling, NativeResourceControlReport, ResourceControlPlan,
 };
+
+use super::materialized::MaterializedSecretFiles;
 
 pub(crate) struct NonblockingDescriptor {
     descriptor: c_int,
     original_flags: c_int,
 }
 
+impl NonblockingDescriptor {
+    fn restore(mut self) -> Result<(), MacosError> {
+        // SAFETY: this guard still owns restoration for the live helper descriptor.
+        if unsafe { libc::fcntl(self.descriptor, libc::F_SETFL, self.original_flags) } < 0 {
+            return Err(protected_error(
+                "helper status descriptor flags could not be restored",
+            ));
+        }
+        self.descriptor = -1;
+        Ok(())
+    }
+}
+
 impl Drop for NonblockingDescriptor {
     fn drop(&mut self) {
         // SAFETY: this guard is scoped inside the single-threaded helper while the descriptor is
         // live. Restoring the exact captured status flags also restores target stdin semantics.
-        let _ = unsafe { libc::fcntl(self.descriptor, libc::F_SETFL, self.original_flags) };
+        if self.descriptor >= 0 {
+            let _ = unsafe { libc::fcntl(self.descriptor, libc::F_SETFL, self.original_flags) };
+        }
     }
 }
 
 pub(crate) fn make_nonblocking(descriptor: c_int) -> Result<NonblockingDescriptor, MacosError> {
+    make_nonblocking_for(
+        descriptor,
+        "helper protocol input could not be made cancellable",
+    )
+}
+
+fn make_nonblocking_for(
+    descriptor: c_int,
+    detail: &'static str,
+) -> Result<NonblockingDescriptor, MacosError> {
     // SAFETY: F_GETFL and F_SETFL operate on the live helper-owned protocol descriptor.
     let flags = unsafe { libc::fcntl(descriptor, libc::F_GETFL) };
     if flags < 0 || unsafe { libc::fcntl(descriptor, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0
     {
-        return Err(protected_error(
-            "helper protocol input could not be made cancellable",
-        ));
+        return Err(protected_error(detail));
     }
     Ok(NonblockingDescriptor { descriptor, original_flags: flags })
 }
@@ -166,43 +191,111 @@ pub(super) fn mark_exec_status_close_on_exec(descriptor: u32) -> Result<(), Maco
     Ok(())
 }
 
-pub(crate) fn write_exec_status(descriptor: u32, mut bytes: &[u8]) -> Result<(), MacosError> {
+pub(crate) fn write_status_while(
+    descriptor: u32,
+    mut bytes: &[u8],
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), MacosError> {
     let descriptor = descriptor.cast_signed();
+    let nonblocking = make_nonblocking_for(
+        descriptor,
+        "helper status descriptor could not be made cancellable",
+    )?;
     while !bytes.is_empty() {
-        // SAFETY: the helper verified this manifest-bound descriptor before activation, and the
-        // slice remains live for the exact length supplied to the async-signal-safe write call.
+        if !should_continue() {
+            return Err(MacosError::new(
+                MacosErrorKind::SupervisorFailure,
+                MacosOperation::Cancel,
+                RecoveryAction::CancelAndReap,
+                "helper status delivery was cancelled by its execution owner",
+            ));
+        }
+        // SAFETY: the helper owns this live protocol/status descriptor, and the slice remains live
+        // for the exact length supplied to the async-signal-safe write call.
         let written = unsafe { libc::write(descriptor, bytes.as_ptr().cast(), bytes.len()) };
         if written < 0 {
             let error = std::io::Error::last_os_error();
             if error.kind() == std::io::ErrorKind::Interrupted {
                 continue;
             }
-            return Err(protected_error("helper exec failure status could not be reported"));
+            if error.kind() == std::io::ErrorKind::WouldBlock {
+                std::thread::yield_now();
+                continue;
+            }
+            return Err(protected_error("helper status could not be reported"));
         }
         let written = usize::try_from(written)
-            .map_err(|_| protected_error("helper exec failure status length is invalid"))?;
+            .map_err(|_| protected_error("helper status length is invalid"))?;
         if written == 0 {
-            return Err(protected_error("helper exec failure status channel closed"));
+            return Err(protected_error("helper status channel closed"));
         }
         bytes = &bytes[written..];
     }
-    Ok(())
+    nonblocking.restore()
 }
 
-pub(super) fn read_protected_payload(
+pub(super) fn read_protected_payload_while(
     descriptor: u32,
     expected_len: u32,
+    should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Vec<u8>, MacosError> {
     let mut file = std::fs::File::open(format!("/dev/fd/{descriptor}"))
         .map_err(|_| protected_error("protected payload descriptor cannot be opened"))?;
     file.seek(std::io::SeekFrom::Start(0))
         .map_err(|_| protected_error("protected payload descriptor cannot be rewound"))?;
-    let mut payload = Vec::with_capacity(usize::try_from(expected_len).unwrap_or(0));
-    file.take(u64::from(expected_len).saturating_add(1))
-        .read_to_end(&mut payload)
-        .map_err(|_| protected_error("protected payload descriptor cannot be read"))?;
-    if payload.len() != usize::try_from(expected_len).unwrap_or(usize::MAX) {
-        return Err(protected_error("protected payload length differs from manifest"));
+    let expected_len = usize::try_from(expected_len).unwrap_or(usize::MAX);
+    let mut payload = Vec::new();
+    payload
+        .try_reserve_exact(expected_len)
+        .map_err(|_| protected_error("protected payload cannot be represented in memory"))?;
+    let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
+    while payload.len() < expected_len {
+        ensure_staging_continues(should_continue)?;
+        let remaining = expected_len.saturating_sub(payload.len());
+        let capacity = remaining.min(buffer.len());
+        let count = match file.read(&mut buffer[..capacity]) {
+            Ok(count) => count,
+            Err(source) if source.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(_) => {
+                return Err(protected_error(
+                    "protected payload descriptor cannot be read",
+                ));
+            }
+        };
+        if count == 0 {
+            return Err(protected_error("protected payload length differs from manifest"));
+        }
+        payload.extend_from_slice(&buffer[..count]);
+    }
+    ensure_staging_continues(should_continue)?;
+    let mut trailing = [0_u8; 1];
+    match file.read(&mut trailing) {
+        Ok(0) => {}
+        Ok(_) => return Err(protected_error("protected payload length differs from manifest")),
+        Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {
+            loop {
+                ensure_staging_continues(should_continue)?;
+                match file.read(&mut trailing) {
+                    Ok(0) => break,
+                    Ok(_) => {
+                        return Err(protected_error(
+                            "protected payload length differs from manifest",
+                        ));
+                    }
+                    Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {}
+                    Err(_) => {
+                        return Err(protected_error(
+                            "protected payload descriptor cannot be read",
+                        ));
+                    }
+                }
+            }
+        }
+        Err(_) => {
+            return Err(protected_error(
+                "protected payload descriptor cannot be read",
+            ));
+        }
     }
     Ok(payload)
 }
@@ -211,53 +304,127 @@ pub(super) fn materialize_secret_file(
     descriptor: u32,
     expected_len: u32,
     destination: &str,
+    materialized: &mut MaterializedSecretFiles,
+    should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<(), MacosError> {
     let mut source = std::fs::File::open(format!("/dev/fd/{descriptor}"))
         .map_err(|_| protected_error("protected file payload descriptor cannot be opened"))?;
     source
         .seek(std::io::SeekFrom::Start(0))
         .map_err(|_| protected_error("protected file payload descriptor cannot be rewound"))?;
+    ensure_staging_continues(should_continue)?;
+    let registration = materialized.register(destination);
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true).mode(0o600).custom_flags(libc::O_NOFOLLOW);
-    let mut file = options
-        .open(destination)
-        .map_err(|_| protected_error("secret file destination cannot be created privately"))?;
+    let mut file = match options.open(destination) {
+        Ok(file) => {
+            materialized.created(registration);
+            file
+        }
+        Err(_) => {
+            materialized.cancel(registration);
+            return Err(protected_error(
+                "secret file destination cannot be created privately",
+            ));
+        }
+    };
     let result = (|| {
         let mut remaining = u64::from(expected_len);
         let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
         while remaining != 0 {
+            ensure_staging_continues(should_continue)?;
             let capacity = usize::try_from(
                 remaining.min(u64::try_from(buffer.len()).unwrap_or(u64::MAX)),
             )
                 .map_err(|_| protected_error("protected file payload length is invalid"))?;
-            let count = source
-                .read(&mut buffer[..capacity])
-                .map_err(|_| protected_error("protected file payload descriptor cannot be read"))?;
+            let count = match source.read(&mut buffer[..capacity]) {
+                Ok(count) => count,
+                Err(source) if source.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(_) => {
+                    return Err(protected_error(
+                        "protected file payload descriptor cannot be read",
+                    ));
+                }
+            };
             if count == 0 {
                 return Err(protected_error("protected file payload is truncated"));
             }
-            file.write_all(&buffer[..count]).map_err(|_| {
-                protected_error("secret file destination cannot be synchronized")
-            })?;
+            write_all_while(&mut file, &buffer[..count], should_continue)?;
             remaining = remaining.saturating_sub(u64::try_from(count).unwrap_or(u64::MAX));
         }
+        ensure_staging_continues(should_continue)?;
         let mut trailing = [0_u8; 1];
-        if source
-            .read(&mut trailing)
-            .map_err(|_| protected_error("protected file payload descriptor cannot be read"))?
-            != 0
-        {
-            return Err(protected_error("protected file payload exceeds its manifest length"));
+        loop {
+            match source.read(&mut trailing) {
+                Ok(0) => break,
+                Ok(_) => {
+                    return Err(protected_error(
+                        "protected file payload exceeds its manifest length",
+                    ));
+                }
+                Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {
+                    ensure_staging_continues(should_continue)?;
+                }
+                Err(_) => {
+                    return Err(protected_error(
+                        "protected file payload descriptor cannot be read",
+                    ));
+                }
+            }
         }
+        ensure_staging_continues(should_continue)?;
         file.sync_all()
-            .map_err(|_| protected_error("secret file destination cannot be synchronized"))
+            .map_err(|_| protected_error("secret file destination cannot be synchronized"))?;
+        ensure_staging_continues(should_continue)
     })();
     if let Err(error) = result {
         drop(file);
-        let _ = std::fs::remove_file(destination);
         return Err(error);
     }
     Ok(())
+}
+
+fn write_all_while(
+    writer: &mut impl Write,
+    mut bytes: &[u8],
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), MacosError> {
+    while !bytes.is_empty() {
+        ensure_staging_continues(should_continue)?;
+        match writer.write(bytes) {
+            Ok(0) => {
+                return Err(protected_error(
+                    "secret file destination cannot be synchronized",
+                ));
+            }
+            Ok(written) => bytes = &bytes[written..],
+            Err(source) if source.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(source) if source.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::yield_now();
+            }
+            Err(_) => {
+                return Err(protected_error(
+                    "secret file destination cannot be synchronized",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+pub(super) fn ensure_staging_continues(
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), MacosError> {
+    if should_continue() {
+        Ok(())
+    } else {
+        Err(MacosError::new(
+            MacosErrorKind::SupervisorFailure,
+            MacosOperation::Cancel,
+            RecoveryAction::CancelAndReap,
+            "protected helper staging was cancelled by its execution owner",
+        ))
+    }
 }
 
 pub(super) fn install_seatbelt(profile: &str) -> Result<(), MacosError> {
@@ -299,41 +466,145 @@ fn seatbelt_library_error() -> MacosError {
     )
 }
 
-pub(super) fn install_resource_controls(controls: &ResourceControlPlan) -> Result<(), MacosError> {
+pub(crate) fn negotiate_resource_controls(
+    controls: &ResourceControlPlan,
+) -> Result<ResourceControlPlan, MacosError> {
+    let mut effective = controls.clone();
     for control in controls.controls() {
         if !control.is_selected() || control.level() != EnforcementLevel::Hard {
             continue;
         }
-        let (resource, ceiling) = match control.kind() {
-            SandboxResourceKind::CpuTime => {
-                (libc::RLIMIT_CPU, control.ceiling().saturating_add(999) / 1_000)
-            }
-            SandboxResourceKind::Memory => (libc::RLIMIT_AS, control.ceiling()),
-            SandboxResourceKind::OpenHandles => (libc::RLIMIT_NOFILE, control.ceiling()),
-            SandboxResourceKind::Processes => (libc::RLIMIT_NPROC, control.ceiling()),
-            SandboxResourceKind::WallTime
-            | SandboxResourceKind::Disk
-            | SandboxResourceKind::Output
-            | SandboxResourceKind::Concurrency => continue,
+        let Some((resource, requested)) = native_rlimit(*control) else {
+            continue;
         };
-        install(resource, ceiling)?;
+        let mut inherited = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
+        // SAFETY: `inherited` is writable and resource is selected from the closed constants in
+        // `native_rlimit`. Negotiation only observes the preparing process and has no side effect.
+        if unsafe { libc::getrlimit(resource, &raw mut inherited) } != 0 {
+            return Err(resource_negotiation_error(
+                "macOS getrlimit could not negotiate a selected hard ceiling",
+            ));
+        }
+        let negotiated = requested.min(inherited.rlim_max);
+        if negotiated == 0 {
+            return Err(resource_negotiation_error(
+                "inherited macOS hard authority cannot represent a selected ceiling",
+            ));
+        }
+        effective.set_effective_ceiling(
+            control.kind(),
+            native_ceiling_in_plan_units(control.kind(), negotiated),
+        );
     }
-    Ok(())
+    Ok(effective)
 }
 
-fn install(resource: c_int, ceiling: u64) -> Result<(), MacosError> {
-    let mut current = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
-    // SAFETY: `current` is writable and resource is selected from the closed constants above.
-    if unsafe { libc::getrlimit(resource, &raw mut current) } != 0 {
-        return Err(resource_error("macOS getrlimit could not inspect a required hard ceiling"));
+pub(super) fn install_resource_controls(
+    controls: &ResourceControlPlan,
+) -> Result<NativeResourceControlReport, MacosError> {
+    let mut negotiated = Vec::new();
+    for control in controls.controls() {
+        if !control.is_selected() || control.level() != EnforcementLevel::Hard {
+            continue;
+        }
+        let Some((resource, ceiling)) = native_rlimit(*control) else {
+            continue;
+        };
+        let mut inherited = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
+        // SAFETY: `inherited` is writable and resource is selected from the closed constants
+        // above. All required authority is inspected before the first rlimit is changed.
+        if unsafe { libc::getrlimit(resource, &raw mut inherited) } != 0 {
+            return Err(resource_error(
+                "macOS getrlimit could not inspect a required hard ceiling",
+            ));
+        }
+        if ceiling > inherited.rlim_max {
+            return Err(resource_error(
+                "a selected resource ceiling exceeds inherited macOS hard authority",
+            ));
+        }
+        negotiated.push(NegotiatedRlimit {
+            kind: control.kind(),
+            resource,
+            ceiling,
+            effective_ceiling: control.ceiling(),
+            inherited_soft: inherited.rlim_cur,
+            inherited_hard: inherited.rlim_max,
+        });
     }
-    let effective = ceiling.min(current.rlim_cur).min(current.rlim_max);
-    let desired = libc::rlimit { rlim_cur: effective, rlim_max: effective };
-    // SAFETY: `desired` remains live and the helper is single-threaded before target exec.
-    if unsafe { libc::setrlimit(resource, &raw const desired) } == 0 {
-        Ok(())
-    } else {
-        Err(resource_error("macOS setrlimit rejected a required hard ceiling"))
+
+    let mut installed = Vec::with_capacity(negotiated.len());
+    for control in negotiated {
+        let desired = libc::rlimit {
+            rlim_cur: control.ceiling,
+            rlim_max: control.ceiling,
+        };
+        // SAFETY: `desired` remains live, preparation negotiated this exact ceiling against the
+        // inherited hard authority, and the helper is single-threaded before target exec. Setting
+        // both values prevents the target from raising its own soft ceiling after replacement.
+        if unsafe { libc::setrlimit(control.resource, &raw const desired) } != 0 {
+            return Err(resource_error("macOS setrlimit rejected a required hard ceiling"));
+        }
+        let mut observed = libc::rlimit { rlim_cur: 0, rlim_max: 0 };
+        // SAFETY: `observed` is writable and names the resource installed immediately above.
+        if unsafe { libc::getrlimit(control.resource, &raw mut observed) } != 0
+            || observed.rlim_cur != control.ceiling
+            || observed.rlim_max != control.ceiling
+        {
+            return Err(resource_error(
+                "macOS did not retain the exact installed resource ceiling",
+            ));
+        }
+        installed.push(NativeResourceCeiling::new(
+            control.kind,
+            control.effective_ceiling,
+            native_ceiling_in_plan_units(control.kind, control.inherited_soft),
+            native_ceiling_in_plan_units(control.kind, control.inherited_hard),
+        ));
+    }
+    Ok(NativeResourceControlReport::new(installed))
+}
+
+fn native_rlimit(
+    control: crate::ResourceControl,
+) -> Option<(c_int, libc::rlim_t)> {
+    match control.kind() {
+        SandboxResourceKind::CpuTime => Some((
+            libc::RLIMIT_CPU,
+            control.ceiling().saturating_add(999) / 1_000,
+        )),
+        SandboxResourceKind::Memory => Some((libc::RLIMIT_AS, control.ceiling())),
+        SandboxResourceKind::OpenHandles => Some((libc::RLIMIT_NOFILE, control.ceiling())),
+        SandboxResourceKind::Processes => Some((libc::RLIMIT_NPROC, control.ceiling())),
+        SandboxResourceKind::WallTime
+        | SandboxResourceKind::Disk
+        | SandboxResourceKind::Output
+        | SandboxResourceKind::Concurrency => None,
+    }
+}
+
+struct NegotiatedRlimit {
+    kind: SandboxResourceKind,
+    resource: c_int,
+    ceiling: libc::rlim_t,
+    effective_ceiling: u64,
+    inherited_soft: libc::rlim_t,
+    inherited_hard: libc::rlim_t,
+}
+
+fn native_ceiling_in_plan_units(
+    kind: SandboxResourceKind,
+    ceiling: libc::rlim_t,
+) -> u64 {
+    match kind {
+        SandboxResourceKind::CpuTime => ceiling.saturating_mul(1_000),
+        SandboxResourceKind::WallTime
+        | SandboxResourceKind::Memory
+        | SandboxResourceKind::Disk
+        | SandboxResourceKind::Output
+        | SandboxResourceKind::OpenHandles
+        | SandboxResourceKind::Processes
+        | SandboxResourceKind::Concurrency => ceiling,
     }
 }
 
@@ -359,6 +630,15 @@ fn resource_error(detail: &'static str) -> MacosError {
     MacosError::new(
         MacosErrorKind::ResourceLimit,
         MacosOperation::Activate,
+        RecoveryAction::SelectSupportedBackend,
+        detail,
+    )
+}
+
+fn resource_negotiation_error(detail: &'static str) -> MacosError {
+    MacosError::new(
+        MacosErrorKind::ResourceLimit,
+        MacosOperation::Prepare,
         RecoveryAction::SelectSupportedBackend,
         detail,
     )

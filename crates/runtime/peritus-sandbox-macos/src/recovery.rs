@@ -8,7 +8,8 @@ mod codec;
 
 const MAGIC: [u8; 8] = *b"PRTSMRC1";
 const LEGACY_VERSION: u16 = 1;
-const VERSION: u16 = 2;
+const PROCESS_BIRTH_VERSION: u16 = 2;
+const VERSION: u16 = 3;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 
 /// Exact nonsensitive native identity retained for safe recovery.
@@ -245,6 +246,7 @@ pub struct MacosRecoveryRecord {
     identity: RuntimeIdentity,
     activated: bool,
     cleanup: CleanupProgress,
+    materialized_secret_files: Vec<String>,
     canonical: Vec<u8>,
     digest: Sha256Digest,
 }
@@ -259,10 +261,20 @@ impl MacosRecoveryRecord {
         activated: bool,
         cleanup: CleanupProgress,
     ) -> Result<Self, MacosError> {
+        Self::new_with_materialized_secret_files(identity, activated, cleanup, Vec::new())
+    }
+
+    pub(crate) fn new_with_materialized_secret_files(
+        identity: RuntimeIdentity,
+        activated: bool,
+        cleanup: CleanupProgress,
+        materialized_secret_files: Vec<String>,
+    ) -> Result<Self, MacosError> {
         let mut record = Self {
             identity,
             activated,
             cleanup,
+            materialized_secret_files,
             canonical: Vec::new(),
             digest: Sha256Digest::new([0; 32]),
         };
@@ -288,6 +300,12 @@ impl MacosRecoveryRecord {
         self.cleanup
     }
 
+    /// Returns exact file-secret destinations still requiring idempotent removal.
+    #[must_use]
+    pub fn materialized_secret_files(&self) -> &[String] {
+        &self.materialized_secret_files
+    }
+
     /// Returns checksummed canonical record bytes.
     #[must_use]
     pub fn canonical_bytes(&self) -> &[u8] {
@@ -310,18 +328,23 @@ impl MacosRecoveryRecord {
         if !inspection_accessible {
             return RecoveryClassification::Indeterminate;
         }
+        let cleanup_complete =
+            self.cleanup.is_complete() && self.materialized_secret_files.is_empty();
         match observed {
             Some(identity)
                 if identity == self.identity
                     && exact_process_tree(identity)
-                    && !self.cleanup.is_complete() =>
+                    && !cleanup_complete =>
             {
                 RecoveryClassification::LiveOwned
             }
             Some(identity) if identity != self.identity => RecoveryClassification::Mismatched,
-            Some(_) if self.cleanup.is_complete() => RecoveryClassification::Mismatched,
+            Some(_) if cleanup_complete => RecoveryClassification::Mismatched,
             Some(_) => RecoveryClassification::Indeterminate,
-            None if self.cleanup.is_complete() => RecoveryClassification::AbsentClean,
+            None if cleanup_complete => RecoveryClassification::AbsentClean,
+            None if !self.materialized_secret_files.is_empty() => {
+                RecoveryClassification::Indeterminate
+            }
             None if self.identity.root_pid().is_some() => RecoveryClassification::Indeterminate,
             None => RecoveryClassification::AbsentClean,
         }
@@ -345,6 +368,27 @@ impl MacosRecoveryRecord {
     pub(crate) fn record_cleanup(&mut self, cleanup: CleanupProgress) -> Result<(), MacosError> {
         self.cleanup = cleanup;
         self.refresh()
+    }
+
+    pub(crate) fn record_materialized_secret_file_released(
+        &mut self,
+        path: &str,
+    ) -> Result<(), MacosError> {
+        let Some(index) = self
+            .materialized_secret_files
+            .iter()
+            .position(|candidate| candidate == path)
+        else {
+            return Ok(());
+        };
+        let obligation = self.materialized_secret_files.remove(index);
+        if let Err(error) = self.refresh() {
+            // `remove` retains the vector allocation, so restoring the exact obligation cannot
+            // allocate and the previously durable canonical record remains authoritative.
+            self.materialized_secret_files.insert(index, obligation);
+            return Err(error);
+        }
+        Ok(())
     }
 }
 

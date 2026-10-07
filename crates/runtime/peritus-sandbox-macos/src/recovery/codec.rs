@@ -8,8 +8,8 @@ use crate::{
 };
 
 use super::{
-    CHECKSUM_BYTES, CleanupProgress, LEGACY_VERSION, MAGIC, MacosRecoveryRecord, RuntimeIdentity,
-    VERSION,
+    CHECKSUM_BYTES, CleanupProgress, LEGACY_VERSION, MAGIC, MacosRecoveryRecord,
+    PROCESS_BIRTH_VERSION, RuntimeIdentity, VERSION,
 };
 
 impl MacosRecoveryRecord {
@@ -26,12 +26,12 @@ impl MacosRecoveryRecord {
         {
             return Err(recovery_error("runtime record checksum does not match"));
         }
-        let mut reader = Reader::new(&input[..checksum_offset])?;
+        let mut reader = Reader::native(&input[..checksum_offset]);
         if reader.fixed::<8>()? != MAGIC {
             return Err(recovery_error("unknown runtime record magic or version"));
         }
         let version = reader.u16()?;
-        if !matches!(version, LEGACY_VERSION | VERSION) {
+        if !matches!(version, LEGACY_VERSION | PROCESS_BIRTH_VERSION | VERSION) {
             return Err(recovery_error("unknown runtime record magic or version"));
         }
         let process_id = ProcessId::new(reader.fixed()?)
@@ -56,6 +56,19 @@ impl MacosRecoveryRecord {
             reader.boolean()?,
             reader.boolean()?,
         );
+        let materialized_secret_files = if version == VERSION {
+            let count = reader.native_count()?;
+            let mut paths = Vec::new();
+            for _ in 0..count {
+                paths.try_reserve(1).map_err(|_| {
+                    recovery_error("materialized secret cleanup paths cannot be represented")
+                })?;
+                paths.push(native_string(&mut reader)?);
+            }
+            paths
+        } else {
+            Vec::new()
+        };
         reader.finish()?;
         let mut identity = RuntimeIdentity::new(
             process_id,
@@ -72,6 +85,7 @@ impl MacosRecoveryRecord {
             identity,
             activated,
             cleanup,
+            materialized_secret_files,
             canonical: input.to_vec(),
             digest: peritus_codec::sha256(input),
         };
@@ -80,7 +94,7 @@ impl MacosRecoveryRecord {
     }
 
     pub(super) fn refresh(&mut self) -> Result<(), MacosError> {
-        let mut writer = Writer::new();
+        let mut writer = Writer::native();
         writer.fixed(&MAGIC)?;
         writer.u16(VERSION)?;
         writer.fixed(self.identity.process_id.as_bytes())?;
@@ -98,12 +112,27 @@ impl MacosRecoveryRecord {
         writer.boolean(self.cleanup.proxy_released)?;
         writer.boolean(self.cleanup.secrets_released)?;
         writer.boolean(self.cleanup.support_threads_joined)?;
+        writer.native_count(self.materialized_secret_files.len())?;
+        for path in &self.materialized_secret_files {
+            writer.native_bytes(path.as_bytes())?;
+        }
         let mut bytes = writer.finish();
         bytes.extend_from_slice(peritus_codec::sha256(&bytes).as_bytes());
         self.digest = peritus_codec::sha256(&bytes);
         self.canonical = bytes;
         Ok(())
     }
+}
+
+fn native_string(reader: &mut Reader<'_>) -> Result<String, MacosError> {
+    let encoded = reader.native_bytes()?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve(encoded.len()).map_err(|_| {
+        recovery_error("materialized secret cleanup path cannot be represented")
+    })?;
+    bytes.extend_from_slice(encoded);
+    String::from_utf8(bytes)
+        .map_err(|_| recovery_error("materialized secret cleanup path is not UTF-8"))
 }
 
 fn encode_optional_digest(

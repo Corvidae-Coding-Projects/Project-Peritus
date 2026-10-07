@@ -301,14 +301,16 @@ fn monitor_exec(
 }
 
 #[cfg(target_os = "macos")]
-pub(crate) fn report_helper_failure(
+pub(crate) fn report_helper_failure_while(
     descriptor: u32,
     manifest: Sha256Digest,
     preparation: Sha256Digest,
+    should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<(), MacosError> {
-    crate::runner::write_exec_status(
+    crate::runner::write_status_while(
         descriptor,
         &frame(EXEC_FAILED_TAG, failure_record(manifest, preparation)),
+        should_continue,
     )
 }
 

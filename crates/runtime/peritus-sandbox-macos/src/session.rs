@@ -217,7 +217,21 @@ impl MacosSession {
             None,
             None,
         );
-        let recovery = match MacosRecoveryRecord::new(identity, false, cleanup) {
+        let materialized_secret_files = manifest
+            .secrets()
+            .iter()
+            .filter_map(|secret| match secret.destination() {
+                crate::SecretHandleDestination::File(path) => Some(path.as_str().to_owned()),
+                crate::SecretHandleDestination::Environment(_)
+                | crate::SecretHandleDestination::Brokered(_) => None,
+            })
+            .collect();
+        let recovery = match MacosRecoveryRecord::new_with_materialized_secret_files(
+            identity,
+            false,
+            cleanup,
+            materialized_secret_files,
+        ) {
             Ok(recovery) => recovery,
             Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
         };

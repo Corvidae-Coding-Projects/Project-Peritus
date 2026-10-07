@@ -34,7 +34,7 @@ impl MacosSession {
         self.exec_status.finish()?;
         self.cleanup.mark_support_joined();
         self.recovery.record_cleanup(self.cleanup)?;
-        remove_materialized_secret_files(&self.manifest)?;
+        release_materialized_secret_files(&mut self.recovery)?;
         self.secrets.release().map_err(|_| cleanup_error("secret lease cleanup failed"))?;
         self.cleanup.mark_secrets_released();
         self.recovery.record_cleanup(self.cleanup)?;
@@ -73,18 +73,24 @@ impl MacosSession {
     }
 }
 
-fn remove_materialized_secret_files(manifest: &crate::HelperManifest) -> Result<(), MacosError> {
-    for secret in manifest.secrets() {
-        let crate::SecretHandleDestination::File(path) = secret.destination() else {
-            continue;
-        };
-        match std::fs::remove_file(path.as_str()) {
-            Ok(()) => {}
-            Err(source) if source.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(cleanup_error("materialized secret file cleanup failed")),
-        }
+fn release_materialized_secret_files(
+    recovery: &mut crate::MacosRecoveryRecord,
+) -> Result<(), MacosError> {
+    while let Some(path) = recovery.materialized_secret_files().first().cloned() {
+        remove_materialized_secret_file(&path)?;
+        recovery
+            .record_materialized_secret_file_released(&path)
+            .map_err(|_| cleanup_error("materialized secret cleanup evidence could not be retained"))?;
     }
     Ok(())
+}
+
+fn remove_materialized_secret_file(path: &str) -> Result<(), MacosError> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(cleanup_error("materialized secret file cleanup failed")),
+    }
 }
 
 fn cleanup_error(detail: &'static str) -> MacosError {
@@ -100,7 +106,7 @@ fn cleanup_error(detail: &'static str) -> MacosError {
 mod tests {
     use peritus_sandbox::SandboxPath;
 
-    use super::remove_materialized_secret_files;
+    use super::remove_materialized_secret_file;
 
     #[test]
     fn release_cleanup_removes_materialized_file_for_any_preterminal_phase() {
@@ -109,9 +115,9 @@ mod tests {
         std::fs::write(&path, b"material").unwrap();
         let logical_path = path.to_str().unwrap().replace('\\', "/");
         let sandbox_path = SandboxPath::new(logical_path).unwrap();
-        let manifest = crate::test_support::manifest_with_file_secret(sandbox_path);
-        remove_materialized_secret_files(&manifest).unwrap();
+        let _manifest = crate::test_support::manifest_with_file_secret(sandbox_path);
+        remove_materialized_secret_file(path.to_str().unwrap()).unwrap();
         assert!(!path.exists());
-        remove_materialized_secret_files(&manifest).unwrap();
+        remove_materialized_secret_file(path.to_str().unwrap()).unwrap();
     }
 }

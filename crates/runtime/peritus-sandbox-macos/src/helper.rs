@@ -5,15 +5,13 @@ use std::process::ExitCode;
 use crate::ReservedHelperExit;
 #[cfg(target_os = "macos")]
 use crate::{
-    HelperManifest, MacosErrorKind, activate_manifest_with_pty, execute_prepared_target,
-    prepare_target_command,
+    HelperManifest, MacosErrorKind, activate_manifest_with_pty_report, execute_prepared_target,
 };
 #[cfg(target_os = "macos")]
 use peritus_process::{NativePtyAttachment, native_activation_record, native_ready_record};
 #[cfg(target_os = "macos")]
 use std::{
     fs::File,
-    io::{self, Write},
     os::fd::AsRawFd as _,
 };
 
@@ -35,39 +33,48 @@ const fn run() -> Result<(), ReservedHelperExit> {
 fn run() -> Result<(), ReservedHelperExit> {
     let pty = NativePtyAttachment::from_environment()
         .map_err(|_| ReservedHelperExit::ProtectedChannel)?;
+    let owner = crate::runner::parent_process();
+    let mut owner_alive = || crate::runner::parent_process_is(owner);
     // The duplicate is opened before readiness and consumes only the bounded manifest frame.
     let mut input = File::open("/dev/fd/0").map_err(|_| ReservedHelperExit::Protocol)?;
-    let mut output = io::stdout().lock();
-    output
-        .write_all(native_ready_record().as_bytes())
-        .and_then(|()| output.flush())
+    crate::runner::write_status_while(
+        1,
+        native_ready_record().as_bytes(),
+        &mut owner_alive,
+    )
         .map_err(|_| ReservedHelperExit::Protocol)?;
 
-    let owner = crate::runner::parent_process();
     let manifest = {
         let _nonblocking = crate::runner::make_nonblocking(input.as_raw_fd())
             .map_err(|_| ReservedHelperExit::ProtectedChannel)?;
-        HelperManifest::read_framed_while(&mut input, || {
-            crate::runner::parent_process_is(owner)
-        })
+        HelperManifest::read_framed_while(&mut input, &mut owner_alive)
         .map_err(|_| ReservedHelperExit::Protocol)?
     };
-    let target = prepare_target_command(&manifest)
+    let target = crate::runner::prepare_target_command_while(&manifest, &mut owner_alive)
         .map_err(|error| classify_activation_kind(error.kind()))?;
-    activate_manifest_with_pty(&manifest, pty.as_ref())
-        .map_err(|error| classify_activation_kind(error.kind()))?;
+    let target = match activate_manifest_with_pty_report(&manifest, pty.as_ref()) {
+        Ok(_resources) => target,
+        Err(error) => {
+            let error = target.cleanup_after_failure(error);
+            return Err(classify_activation_kind(error.kind()));
+        }
+    };
 
     let activation = native_activation_record(manifest.digest(), manifest.preparation_digest());
-    output
-        .write_all(activation.as_bytes())
-        .and_then(|()| output.flush())
-        .map_err(|_| ReservedHelperExit::Protocol)?;
-    drop(output);
+    if let Err(error) = crate::runner::write_status_while(
+        1,
+        activation.as_bytes(),
+        &mut owner_alive,
+    ) {
+        let error = target.cleanup_after_failure(error);
+        return Err(classify_activation_kind(error.kind()));
+    }
     if execute_prepared_target(target, pty).is_err() {
-        crate::exec_status::report_helper_failure(
+        crate::exec_status::report_helper_failure_while(
             manifest.exec_status_descriptor(),
             manifest.digest(),
             manifest.preparation_digest(),
+            &mut owner_alive,
         )
         .map_err(|_| ReservedHelperExit::ProtectedChannel)?;
         return Err(ReservedHelperExit::TargetExec);

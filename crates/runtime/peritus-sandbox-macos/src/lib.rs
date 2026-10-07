@@ -62,10 +62,14 @@ pub use recovery::{CleanupProgress, MacosRecoveryRecord, RecoveryClassification,
 pub use resource::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 #[cfg(target_os = "macos")]
 pub use runner::{
-    PreparedTargetCommand, activate_manifest_with_pty, execute_manifest_with_pty,
-    execute_prepared_target, prepare_target_command,
+    PreparedTargetCommand, activate_manifest_with_pty, activate_manifest_with_pty_report,
+    execute_manifest_with_pty, execute_prepared_target, prepare_target_command,
+    prepare_target_command_while,
 };
-pub use runner::{ReservedHelperExit, activate_manifest, execute_manifest};
+pub use runner::{
+    ReservedHelperExit, activate_manifest, activate_manifest_report, execute_manifest,
+};
+pub use runner::{NativeResourceCeiling, NativeResourceControlReport};
 pub use secret::{
     ProtectedSecretHandle, SecretHandleDescriptor, SecretHandleDestination,
     canonical_secret_handles, secret_binding_digest, secret_reference_digest,

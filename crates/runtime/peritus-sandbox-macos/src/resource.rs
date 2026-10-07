@@ -58,7 +58,10 @@ impl ResourceControl {
         self.kind
     }
 
-    /// Returns the exact checked ceiling.
+    /// Returns the exact ceiling bound into the helper manifest.
+    ///
+    /// Selected native hard controls may be negotiated downward against inherited hard authority
+    /// during preparation. Inherited soft limits never change this value.
     #[must_use]
     pub const fn ceiling(self) -> u64 {
         self.ceiling
@@ -74,6 +77,12 @@ impl ResourceControl {
     #[must_use]
     pub const fn level(self) -> EnforcementLevel {
         self.level
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(crate) const fn with_effective_ceiling(mut self, ceiling: u64) -> Self {
+        self.ceiling = ceiling;
+        self
     }
 }
 
@@ -130,6 +139,16 @@ impl ResourceControlPlan {
     #[must_use]
     pub const fn control(&self, kind: SandboxResourceKind) -> ResourceControl {
         self.controls[resource_ordinal(kind) as usize]
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(crate) fn set_effective_ceiling(
+        &mut self,
+        kind: SandboxResourceKind,
+        ceiling: u64,
+    ) {
+        let index = resource_ordinal(kind) as usize;
+        self.controls[index] = self.controls[index].with_effective_ceiling(ceiling);
     }
 
     /// Reports whether every dimension has an enforcement owner.
