@@ -230,7 +230,12 @@ impl MacosConformanceSubject {
         )
         .map_err(|_| ())?;
         session
-            .record_activation(ProcessTreeIdentity::new(1701, Some(19), Some(1701), true))
+            .record_test_activation(ProcessTreeIdentity::new(
+                1701,
+                Some(19),
+                Some(1701),
+                true,
+            ))
             .map_err(|_| ())?;
         if outcome.cancellation {
             session.record_cancellation(CancellationReason::User).map_err(|_| ())?;

@@ -1,4 +1,4 @@
-//! Version-one durable runtime identity and cleanup records.
+//! Versioned durable runtime identity and cleanup records.
 
 use peritus_types::{ProcessId, Sha256Digest};
 
@@ -7,7 +7,8 @@ use crate::MacosError;
 mod codec;
 
 const MAGIC: [u8; 8] = *b"PRTSMRC1";
-const VERSION: u16 = 1;
+const LEGACY_VERSION: u16 = 1;
+const VERSION: u16 = 2;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 
 /// Exact nonsensitive native identity retained for safe recovery.
@@ -20,6 +21,7 @@ pub struct RuntimeIdentity {
     proxy_routing_digest: Option<Sha256Digest>,
     secret_binding_digest: Option<Sha256Digest>,
     root_pid: Option<u32>,
+    root_start_token: Option<u64>,
     process_group: Option<u32>,
 }
 
@@ -48,8 +50,16 @@ impl RuntimeIdentity {
             proxy_routing_digest,
             secret_binding_digest,
             root_pid,
+            root_start_token: None,
             process_group,
         }
+    }
+
+    /// Adds the observed platform birth token for exact PID-reuse protection.
+    #[must_use]
+    pub const fn with_root_start_token(mut self, root_start_token: Option<u64>) -> Self {
+        self.root_start_token = root_start_token;
+        self
     }
 
     /// Returns the C2 process identity.
@@ -94,14 +104,25 @@ impl RuntimeIdentity {
         self.root_pid
     }
 
+    /// Returns the platform birth token bound to the observed helper root.
+    #[must_use]
+    pub const fn root_start_token(self) -> Option<u64> {
+        self.root_start_token
+    }
+
     /// Returns the C2-owned process group when activated.
     #[must_use]
     pub const fn process_group(self) -> Option<u32> {
         self.process_group
     }
 
-    pub(crate) const fn activated(self, root_pid: u32, process_group: Option<u32>) -> Self {
-        Self { root_pid: Some(root_pid), process_group, ..self }
+    pub(crate) const fn spawned(self, tree: peritus_process::ProcessTreeIdentity) -> Self {
+        Self {
+            root_pid: Some(tree.root_pid()),
+            root_start_token: tree.start_token(),
+            process_group: tree.process_group(),
+            ..self
+        }
     }
 }
 
@@ -208,6 +229,14 @@ impl CleanupProgress {
     pub(crate) const fn mark_secrets_released(&mut self) {
         self.secrets_released = true;
     }
+
+    pub(crate) const fn mark_support_started(&mut self) {
+        self.support_threads_joined = false;
+    }
+
+    pub(crate) const fn mark_support_joined(&mut self) {
+        self.support_threads_joined = true;
+    }
 }
 
 /// Durable checksummed state supporting exact reopen and cleanup.
@@ -221,7 +250,7 @@ pub struct MacosRecoveryRecord {
 }
 
 impl MacosRecoveryRecord {
-    /// Creates and canonicalizes a version-one runtime record.
+    /// Creates and canonicalizes a current-version runtime record.
     ///
     /// # Errors
     /// Returns a bounded encoding failure.
@@ -282,24 +311,33 @@ impl MacosRecoveryRecord {
             return RecoveryClassification::Indeterminate;
         }
         match observed {
-            Some(identity) if identity == self.identity && !self.cleanup.is_complete() => {
+            Some(identity)
+                if identity == self.identity
+                    && exact_process_tree(identity)
+                    && !self.cleanup.is_complete() =>
+            {
                 RecoveryClassification::LiveOwned
             }
             Some(identity) if identity != self.identity => RecoveryClassification::Mismatched,
             Some(_) if self.cleanup.is_complete() => RecoveryClassification::Mismatched,
-            None if self.cleanup.is_complete() => RecoveryClassification::AbsentClean,
-            None if self.activated => RecoveryClassification::Indeterminate,
-            None => RecoveryClassification::AbsentClean,
             Some(_) => RecoveryClassification::Indeterminate,
+            None if self.cleanup.is_complete() => RecoveryClassification::AbsentClean,
+            None if self.identity.root_pid().is_some() => RecoveryClassification::Indeterminate,
+            None => RecoveryClassification::AbsentClean,
         }
     }
 
-    pub(crate) fn record_activation(
+    pub(crate) fn record_spawned(
         &mut self,
-        root_pid: u32,
-        process_group: Option<u32>,
+        tree: peritus_process::ProcessTreeIdentity,
+        cleanup: CleanupProgress,
     ) -> Result<(), MacosError> {
-        self.identity = self.identity.activated(root_pid, process_group);
+        self.identity = self.identity.spawned(tree);
+        self.cleanup = cleanup;
+        self.refresh()
+    }
+
+    pub(crate) fn record_activation(&mut self) -> Result<(), MacosError> {
         self.activated = true;
         self.refresh()
     }
@@ -308,6 +346,17 @@ impl MacosRecoveryRecord {
         self.cleanup = cleanup;
         self.refresh()
     }
+}
+
+const fn exact_process_tree(identity: RuntimeIdentity) -> bool {
+    matches!(
+        (
+            identity.root_pid(),
+            identity.root_start_token(),
+            identity.process_group(),
+        ),
+        (Some(root), Some(_), Some(group)) if root != 0 && group == root
+    )
 }
 
 /// Result of exact native resource classification during recovery.

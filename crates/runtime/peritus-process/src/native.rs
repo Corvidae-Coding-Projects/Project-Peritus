@@ -15,6 +15,9 @@ pub use protocol::{
     native_activation_record, native_ready_record, native_target_exec_failed_record,
     native_target_started_record,
 };
+pub use observation::{
+    native_observation_prefix_digest, native_observation_producer_binding,
+};
 #[cfg(unix)]
 pub use pty::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 #[cfg(windows)]
@@ -30,16 +33,117 @@ use peritus_types::Sha256Digest;
 
 use crate::{
     CancellationReason, CommandSpec, ErrorCode, ExecutionPlan, OsExitObservation, ProcessError,
-    ProcessOperation, ProcessTreeIdentity, RecoveryClass,
+    ProcessOperation, ProcessTreeIdentity, RecoveryClass, RetainedBackendFactoryRequest,
 };
 
 pub(crate) use observation::{
-    validate_activated_session, validate_prepared_session, validate_released_session,
-    validate_terminated_session,
+    capture_activated_session, capture_prepared_session, capture_released_session,
+    capture_released_pre_start_session, capture_terminated_session,
 };
 
 const MAX_HELPER_IDENTITY_BYTES: usize = 256;
-const MAX_HELPER_MANIFEST_BYTES: usize = 4 * 1_024 * 1_024;
+/// Maximum number of exact observations transferred in one physical page.
+pub const NATIVE_OBSERVATION_PAGE_RECORDS: usize = 256;
+
+/// Observation transport exposed by a native session.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum NativeObservationTransport {
+    /// Compatibility view for producers that still expose one in-memory snapshot.
+    LegacySnapshot,
+    /// Stable unacknowledged deltas retained until C2 durably adopts their receipt.
+    DurableDelta,
+}
+
+/// One bounded transfer from a native session's exact observation stream.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NativeObservationPage {
+    head_sequence: u64,
+    observations: Vec<EnforcementObservation>,
+}
+
+impl NativeObservationPage {
+    /// Creates a bounded page and declares the stable stream head observed with it.
+    ///
+    /// # Errors
+    /// Rejects a page larger than the physical transfer bound or a record beyond the declared
+    /// head. Sequence continuity and binding are checked by the durable C2 tracker.
+    pub fn new(
+        head_sequence: u64,
+        observations: Vec<EnforcementObservation>,
+    ) -> Result<Self, ProcessError> {
+        if observations.len() > NATIVE_OBSERVATION_PAGE_RECORDS
+            || observations.last().is_some_and(|value| value.sequence() > head_sequence)
+        {
+            return Err(native_mismatch("native observation page framing is invalid"));
+        }
+        Ok(Self { head_sequence, observations })
+    }
+
+    /// Returns the stable last sequence available from the producer.
+    #[must_use]
+    pub const fn head_sequence(&self) -> u64 {
+        self.head_sequence
+    }
+
+    /// Returns this physical page's records in producer order.
+    #[must_use]
+    pub fn observations(&self) -> &[EnforcementObservation] {
+        &self.observations
+    }
+
+    pub(crate) fn into_observations(self) -> Vec<EnforcementObservation> {
+        self.observations
+    }
+}
+
+/// Exact durable frontier C2 returns after adopting one native observation page.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeObservationReceipt {
+    through_sequence: u64,
+    page_digest: Sha256Digest,
+    producer_binding_digest: Sha256Digest,
+    producer_prefix_digest: Sha256Digest,
+}
+
+impl NativeObservationReceipt {
+    pub(crate) const fn new(
+        through_sequence: u64,
+        page_digest: Sha256Digest,
+        producer_binding_digest: Sha256Digest,
+        producer_prefix_digest: Sha256Digest,
+    ) -> Self {
+        Self {
+            through_sequence,
+            page_digest,
+            producer_binding_digest,
+            producer_prefix_digest,
+        }
+    }
+
+    /// Returns the last sequence durably adopted by C2.
+    #[must_use]
+    pub const fn through_sequence(self) -> u64 {
+        self.through_sequence
+    }
+
+    /// Returns the digest of the immutable page that established the frontier.
+    #[must_use]
+    pub const fn page_digest(self) -> Sha256Digest {
+        self.page_digest
+    }
+
+    /// Returns the exact prepared producer identity bound to the receipt.
+    #[must_use]
+    pub const fn producer_binding_digest(self) -> Sha256Digest {
+        self.producer_binding_digest
+    }
+
+    /// Returns the chained digest of every producer record through this receipt.
+    #[must_use]
+    pub const fn producer_prefix_digest(self) -> Sha256Digest {
+        self.producer_prefix_digest
+    }
+}
 
 /// Native operating-system family implemented by a restricted backend.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -109,8 +213,10 @@ impl NativeLaunchDescription {
         {
             return Err(native_mismatch("native helper identity is invalid or exceeds its bound"));
         }
-        if manifest.is_empty() || manifest.len() > MAX_HELPER_MANIFEST_BYTES {
-            return Err(native_mismatch("native helper manifest is empty or exceeds its bound"));
+        if manifest.is_empty() || u32::try_from(manifest.len()).is_err() {
+            return Err(native_mismatch(
+                "native helper manifest is empty or exceeds protected frame capacity",
+            ));
         }
         if peritus_codec::sha256(&manifest) != manifest_digest {
             return Err(native_mismatch("native helper manifest digest does not match its bytes"));
@@ -186,7 +292,7 @@ impl NativeLaunchDescription {
         &self.helper_identity
     }
 
-    /// Returns the bounded binary manifest written to the helper's inherited input stream.
+    /// Returns the binary manifest written to the helper's inherited input stream.
     ///
     /// The helper consumes the length-prefixed frame before forwarding any subsequent target
     /// input. Secret values are never part of this manifest.
@@ -195,7 +301,7 @@ impl NativeLaunchDescription {
         &self.manifest
     }
 
-    /// Returns the digest of the bounded helper manifest.
+    /// Returns the digest of the protected-frame helper manifest.
     #[must_use]
     pub const fn manifest_digest(&self) -> Sha256Digest {
         self.manifest_digest
@@ -285,6 +391,11 @@ impl<'a> AuthorizedPreparationContext<'a> {
 }
 
 /// Native backend called by the process gateway only after exact validation and durable consume.
+///
+/// Constructing a backend may perform transient support probes, but every probe-owned worker or
+/// process must be fully finished and joined before backend construction returns. Construction
+/// must not create a prepared session, start session support tasks, or retain live preparation
+/// ownership. Prepared-session resource ownership begins only in [`Self::prepare`].
 pub trait NativeSandboxBackend: Send + 'static {
     /// Prepared session retained by the process supervisor through teardown.
     type Session: NativeSandboxSession;
@@ -295,7 +406,33 @@ pub trait NativeSandboxBackend: Send + 'static {
     /// Returns the operating-system family this implementation enforces.
     fn platform(&self) -> NativePlatform;
 
+    /// Freezes the nonsensitive trusted-config identity needed to reconstruct this backend in the
+    /// retained service owner.
+    ///
+    /// Implementations must bind the supplied checked plan and exact admission, including the
+    /// descriptor, support, and preparation digests. The payload may identify approved helper,
+    /// controller, or resolver configuration, but must not contain live handles, routing tokens,
+    /// credential material, or secret values.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed pre-effect failure when this backend cannot be reconstructed by the
+    /// independently retained owner.
+    fn retained_factory_request(
+        &self,
+        _sandbox: &CheckedSandboxPlan,
+        _admission: &BackendAdmission,
+    ) -> Result<RetainedBackendFactoryRequest, ProcessError> {
+        Err(native_mismatch(
+            "native backend does not support retained owner reconstruction",
+        ))
+    }
+
     /// Prepares one session from the opaque authorized context.
+    ///
+    /// This is the first operation permitted to create session support tasks or other live
+    /// preparation resources. A backend that has not entered this method remains inert under the
+    /// trait contract above.
     ///
     /// # Errors
     ///
@@ -312,8 +449,85 @@ pub trait NativeSandboxSession: Send + 'static {
     /// Returns the exact helper/direct-child launch description.
     fn launch_description(&self) -> &NativeLaunchDescription;
 
-    /// Returns ordered, bounded, plan-bound native observations.
+    /// Retains the exact helper birth and process-tree identity before protocol delivery begins.
+    ///
+    /// The default is appropriate for backends whose durable state is owned entirely by C2.
+    /// Backends that keep their own recovery record override this to bind the one spawned helper
+    /// before any manifest bytes can permit activation.
+    ///
+    /// # Errors
+    /// Returns a typed fail-closed error when the exact spawned identity cannot be retained.
+    fn spawned(&mut self, _tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
+        Ok(())
+    }
+
+    /// Returns a bounded diagnostic tail of ordered, plan-bound native observations.
+    ///
+    /// This compatibility view does not establish a durable receipt. New implementations should
+    /// additionally expose [`NativeObservationTransport::DurableDelta`] through
+    /// [`Self::observation_page`] and [`Self::acknowledge_observations`].
     fn observations(&self) -> &[EnforcementObservation];
+
+    /// Returns how many common observations precede the retained diagnostic tail.
+    #[must_use]
+    fn observation_tail_dropped(&self) -> u64 {
+        0
+    }
+
+    /// Returns the latest exact durable receipt accepted by this producer.
+    #[must_use]
+    fn acknowledged_observation_receipt(&self) -> Option<NativeObservationReceipt> {
+        None
+    }
+
+    /// Selects exact delta persistence or the explicit legacy snapshot adapter.
+    #[must_use]
+    fn observation_transport(&self) -> NativeObservationTransport {
+        NativeObservationTransport::LegacySnapshot
+    }
+
+    /// Reads at most one physical page strictly after `after_sequence`.
+    ///
+    /// The default adapter traverses the complete legacy snapshot in bounded transfers and has no
+    /// cumulative observation ceiling. It remains explicitly legacy because the producer cannot
+    /// retain unacknowledged deltas after C2 returns.
+    ///
+    /// # Errors
+    /// Returns a typed failure when the page cannot be produced.
+    fn observation_page(
+        &self,
+        after_sequence: u64,
+    ) -> Result<NativeObservationPage, ProcessError> {
+        let observations = self.observations();
+        let head_sequence = observations.last().map_or(0, |value| value.sequence());
+        let page = observations
+            .iter()
+            .copied()
+            .filter(|value| value.sequence() > after_sequence)
+            .take(NATIVE_OBSERVATION_PAGE_RECORDS)
+            .collect();
+        NativeObservationPage::new(head_sequence, page)
+    }
+
+    /// Releases producer memory through one exact durable receipt.
+    ///
+    /// The legacy adapter intentionally performs no acknowledgement. Implementations selecting
+    /// durable deltas must override this method and reject receipts that do not match their pending
+    /// prefix.
+    ///
+    /// # Errors
+    /// Returns a typed failure when a durable producer cannot accept the receipt exactly.
+    fn acknowledge_observations(
+        &mut self,
+        _receipt: NativeObservationReceipt,
+    ) -> Result<(), ProcessError> {
+        if self.observation_transport() == NativeObservationTransport::DurableDelta {
+            return Err(native_mismatch(
+                "durable native observation producer lacks acknowledgement support",
+            ));
+        }
+        Ok(())
+    }
 
     /// Polls backend-owned supervisor resource dimensions for the live tree.
     ///
@@ -332,6 +546,29 @@ pub trait NativeSandboxSession: Send + 'static {
     /// # Errors
     /// Returns a typed fail-closed backend error.
     fn activated(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError>;
+
+    /// Records activation while the durable process owner continues to permit protocol I/O.
+    ///
+    /// Backends with a post-handshake execution acknowledgement override this method. The
+    /// default checks cancellation once and then uses the backend's immediate activation path.
+    ///
+    /// # Errors
+    /// Returns a typed fail-closed backend error or an owner-cancellation error.
+    fn activated_while(
+        &mut self,
+        tree: ProcessTreeIdentity,
+        should_continue: &mut dyn FnMut() -> bool,
+    ) -> Result<(), ProcessError> {
+        if !should_continue() {
+            return Err(ProcessError::new(
+                ErrorCode::Supervisor,
+                ProcessOperation::Wait,
+                RecoveryClass::CancelAndReap,
+                "native activation was cancelled by its durable owner",
+            ));
+        }
+        self.activated(tree)
+    }
 
     /// Records the first accepted cancellation request.
     ///

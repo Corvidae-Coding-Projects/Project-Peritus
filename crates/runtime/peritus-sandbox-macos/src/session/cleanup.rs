@@ -13,7 +13,7 @@ impl MacosSession {
     /// Releases all manifest/profile and closed-helper channel ownership idempotently.
     ///
     /// A prepared session may be abandoned before launch when C2 rejects its final validation.
-    /// That path performs complete cleanup without recording normal target lifecycle events.
+    /// That path records release without inventing activation or termination.
     ///
     /// # Errors
     /// Rejects an active process tree or cleanup that cannot be proven complete.
@@ -21,16 +21,19 @@ impl MacosSession {
         if self.phase == SessionPhase::Released {
             return Ok(ReleaseReport { cleanup: self.cleanup, already_released: true });
         }
-        let normal_completion = match self.phase {
-            SessionPhase::Terminated => true,
+        match self.phase {
+            SessionPhase::Terminated | SessionPhase::Prepared => {}
             SessionPhase::Active | SessionPhase::Cancelling => {
                 return Err(lifecycle_error("release requires observed termination"));
             }
-            SessionPhase::Prepared | SessionPhase::Released => false,
-        };
+            SessionPhase::Released => unreachable!("released session returned above"),
+        }
         // A helper can materialize file-delivered secrets and then fail before C2 accepts the
         // activation acknowledgement. Prepared abandonment must therefore clean the same exact
         // destinations as normal termination; absent paths remain an idempotent success.
+        self.exec_status.finish()?;
+        self.cleanup.mark_support_joined();
+        self.recovery.record_cleanup(self.cleanup)?;
         remove_materialized_secret_files(&self.manifest)?;
         self.secrets.release().map_err(|_| cleanup_error("secret lease cleanup failed"))?;
         self.cleanup.mark_secrets_released();
@@ -60,14 +63,12 @@ impl MacosSession {
             return Err(cleanup_error("one or more native resource families remain owned"));
         }
         self.phase = SessionPhase::Released;
-        if normal_completion {
-            self.push_lifecycle(
-                ObservationKind::Released,
-                ObservationEvent::Released,
-                ObservationDisposition::Completed,
-                ObservationStatus::Completed,
-            )?;
-        }
+        self.push_lifecycle(
+            ObservationKind::Released,
+            ObservationEvent::Released,
+            ObservationDisposition::Completed,
+            ObservationStatus::Completed,
+        )?;
         Ok(ReleaseReport { cleanup: self.cleanup, already_released: false })
     }
 }

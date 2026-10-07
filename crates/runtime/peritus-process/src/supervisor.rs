@@ -13,12 +13,16 @@ use peritus_types::EventId;
 use crate::{
     CancellationReason, ErrorCode, ExecutionPlan, LifecyclePhase, ProcessControl, ProcessError,
     ProcessEventKind, ProcessOperation, ProcessStore, RecoveryClass, TerminalResult,
-    control::{SharedExecution, SharedObservation},
+    control::{
+        CancellationOwner, InputLane, InputOwner, SharedExecution, SharedObservation,
+        cancellation_lane, input_lane,
+    },
     events::EventLog,
     gateway::AuthorizedLaunch,
     native::NativeSandboxSession,
     output::SpoolSet,
     platform,
+    retained_owner::{RetainedProcessKey, RetainedProcessTransport},
 };
 
 mod artifact;
@@ -26,12 +30,14 @@ mod finalization;
 mod io;
 mod owner;
 mod ownership;
+mod plan;
 mod resource;
 
 use artifact::publish_spools;
 use finalization::publish_spawn_failure;
-pub(crate) use finalization::record_preparation_failure;
+pub(crate) use finalization::{record_preparation_cancellation, record_preparation_failure};
 use owner::SpawnedOwner;
+pub(crate) use plan::SupervisorPlan;
 pub(crate) use resource::validate_launch;
 pub(crate) use resource::validate_native_launch;
 
@@ -44,8 +50,16 @@ const POLL_MILLIS: u64 = 5;
 pub struct OwnedProcess {
     store: ProcessStore,
     control: ProcessControl,
-    join: Option<JoinHandle<Result<TerminalResult, ProcessError>>>,
+    owner: Option<ProcessOwner>,
     spool_directory: PathBuf,
+}
+
+enum ProcessOwner {
+    Local(JoinHandle<Result<TerminalResult, ProcessError>>),
+    Retained {
+        transport: Arc<dyn RetainedProcessTransport>,
+        key: RetainedProcessKey,
+    },
 }
 
 impl OwnedProcess {
@@ -77,6 +91,85 @@ impl OwnedProcess {
         creating_event: EventId,
     ) -> Result<TerminalResult, WaitAndPublishError> {
         let result = self.join_owner().map_err(WaitAndPublishError::owner)?;
+        self.store
+            .refresh_authoritative_identity(result.process_id())
+            .map_err(|error| WaitAndPublishError::publication(result.clone(), error))?;
+        publish_spools(
+            &self.store,
+            result.process_id(),
+            &self.spool_directory,
+            artifacts,
+            creating_event,
+        )
+    }
+
+    /// Waits and publishes retained output while cooperatively observing caller cancellation.
+    ///
+    /// Once cancellation is observed, this queues an exact stop request and still joins the
+    /// owning supervisor. Cleanup failure therefore remains an honest unresolved durable process
+    /// state instead of being hidden by abandoning the owner.
+    ///
+    /// # Errors
+    /// Returns a typed owner or artifact-publication failure. A terminal result remains attached
+    /// when only artifact publication failed.
+    pub fn wait_and_publish_cancellable(
+        self,
+        artifacts: &ArtifactStore,
+        creating_event: EventId,
+        mut cancellation_requested: impl FnMut() -> bool,
+    ) -> Result<TerminalResult, WaitAndPublishError> {
+        self.wait_and_publish_with_cancellation(artifacts, creating_event, || {
+            cancellation_requested().then_some(CancellationReason::User)
+        })
+    }
+
+    /// Waits and publishes retained output while admitting the caller's exact cancellation cause.
+    ///
+    /// Returning `Some` admits that reason once and still joins the unique process owner. This
+    /// keeps authority revocation, service shutdown, and user cancellation distinct in the
+    /// durable terminal result.
+    ///
+    /// # Errors
+    /// Returns a typed owner or artifact-publication failure. A terminal result remains attached
+    /// when only artifact publication failed.
+    pub fn wait_and_publish_with_cancellation(
+        mut self,
+        artifacts: &ArtifactStore,
+        creating_event: EventId,
+        mut cancellation_requested: impl FnMut() -> Option<CancellationReason>,
+    ) -> Result<TerminalResult, WaitAndPublishError> {
+        let mut cancellation_sent = false;
+        loop {
+            if self
+                .control
+                .try_owner_finished()
+                .map_err(WaitAndPublishError::owner)?
+            {
+                break;
+            }
+            if !cancellation_sent
+                && let Some(reason) = cancellation_requested()
+            {
+                match self.control.cancel_while(reason, || true) {
+                    Ok(sent) => cancellation_sent = sent,
+                    Err(error) => {
+                        if self
+                            .control
+                            .try_owner_finished()
+                            .map_err(WaitAndPublishError::owner)?
+                        {
+                            break;
+                        }
+                        return Err(WaitAndPublishError::owner(error));
+                    }
+                }
+            }
+            thread::sleep(std::time::Duration::from_millis(POLL_MILLIS));
+        }
+        let result = self.join_owner().map_err(WaitAndPublishError::owner)?;
+        self.store
+            .refresh_authoritative_identity(result.process_id())
+            .map_err(|error| WaitAndPublishError::publication(result.clone(), error))?;
         publish_spools(
             &self.store,
             result.process_id(),
@@ -87,20 +180,49 @@ impl OwnedProcess {
     }
 
     fn join_owner(&mut self) -> Result<TerminalResult, ProcessError> {
-        let join =
-            self.join.take().ok_or_else(|| supervisor_error("process owner was already joined"))?;
-        join.join().map_err(|_| supervisor_error("process owner thread panicked"))?
+        match self
+            .owner
+            .take()
+            .ok_or_else(|| supervisor_error("process owner was already joined"))?
+        {
+            ProcessOwner::Local(join) => {
+                join.join().map_err(|_| supervisor_error("process owner thread panicked"))?
+            }
+            ProcessOwner::Retained { transport, key } => transport.wait(key),
+        }
     }
 }
 
 impl Drop for OwnedProcess {
     fn drop(&mut self) {
-        let Some(join) = self.join.take() else {
+        let Some(owner) = self.owner.take() else {
             return;
         };
-        let _ = self.control.cancel(CancellationReason::SupervisorShutdown);
-        let _ = join.join();
+        if let ProcessOwner::Local(join) = owner {
+            let _ = self.control.cancel_while(CancellationReason::SupervisorShutdown, || {
+                !join.is_finished()
+            });
+            let _ = join.join();
+        }
+        // Dropping a retained observer only detaches this daemon generation. The independent
+        // service owner continues the exact process and accepts a later same-key attachment.
     }
+}
+
+pub(crate) fn attach_retained(
+    store: &ProcessStore,
+    transport: Arc<dyn RetainedProcessTransport>,
+    key: RetainedProcessKey,
+    terminal: crate::TerminalCapabilities,
+) -> Result<OwnedProcess, ProcessError> {
+    let spool_directory = store.spool_directory(key.process_id())?;
+    let control = ProcessControl::new_retained(Arc::clone(&transport), key, terminal);
+    Ok(OwnedProcess {
+        store: store.clone(),
+        control,
+        owner: Some(ProcessOwner::Retained { transport, key }),
+        spool_directory,
+    })
 }
 
 pub(crate) fn start(
@@ -125,11 +247,14 @@ fn start_with_native(
     session: Option<Box<dyn NativeSandboxSession>>,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
 ) -> Result<OwnedProcess, ProcessError> {
-    let (plan, _action_digest) = launch.into_parts();
-    let process_id = plan.identity().process_id();
+    let (execution_plan, _action_digest) = launch.into_parts();
+    let process_id = execution_plan.identity().process_id();
+    let plan = SupervisorPlan::from_execution(&execution_plan);
     store.record_phase(process_id, LifecyclePhase::Starting)?;
     let spool_directory = store.spool_directory(process_id)?;
     let (control_tx, control_rx) = mpsc::sync_channel(CONTROL_QUEUE);
+    let (cancellation, cancellation_owner) = cancellation_lane();
+    let (input, input_owner) = input_lane(plan.stdin_policy());
     let shared = Arc::new(SharedObservation {
         state: std::sync::Mutex::new(SharedExecution {
             events: EventLog::new(plan.output_policy().event_count()),
@@ -144,8 +269,9 @@ fn start_with_native(
     emit(&shared, &plan, None, ProcessEventKind::IntentPersisted, Vec::new());
     let control = ProcessControl::new(
         control_tx,
+        cancellation,
+        input.clone(),
         Arc::clone(&shared),
-        plan.stdin_policy(),
         plan.terminal_capabilities(),
     );
     let pending_session = Arc::new(std::sync::Mutex::new(session));
@@ -163,6 +289,9 @@ fn start_with_native(
             &thread_plan,
             &thread_spool,
             control_rx,
+            cancellation_owner,
+            input_owner,
+            input,
             thread_shared,
             session,
             sandbox_digest,
@@ -170,6 +299,7 @@ fn start_with_native(
     }) else {
         let error = supervisor_error("process owner thread cannot be created");
         let cleanup_complete = release_pre_spawn_session(
+            store,
             &mut pending_session.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
             &plan,
             sandbox_digest,
@@ -178,7 +308,12 @@ fn start_with_native(
             publish_spawn_failure(store, &plan, &shared, Instant::now(), cleanup_complete, error);
         return Err(supervisor_error("process owner thread cannot be created"));
     };
-    Ok(OwnedProcess { store: store.clone(), control, join: Some(join), spool_directory })
+    Ok(OwnedProcess {
+        store: store.clone(),
+        control,
+        owner: Some(ProcessOwner::Local(join)),
+        spool_directory,
+    })
 }
 
 /// A wait or artifact-publication failure with any durable terminal result preserved.
@@ -238,6 +373,8 @@ impl ProcessStore {
         artifacts: &ArtifactStore,
         creating_event: EventId,
     ) -> Result<TerminalResult, WaitAndPublishError> {
+        self.refresh_authoritative_identity(process_id)
+            .map_err(WaitAndPublishError::owner)?;
         let directory = self.spool_directory(process_id).map_err(WaitAndPublishError::owner)?;
         publish_spools(self, process_id, &directory, artifacts, creating_event)
     }
@@ -245,9 +382,12 @@ impl ProcessStore {
 
 fn run_owner(
     store: &ProcessStore,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     spool_directory: &std::path::Path,
     control_rx: mpsc::Receiver<crate::control::ControlCommand>,
+    cancellation: CancellationOwner,
+    input_owner: InputOwner,
+    input_lane: InputLane,
     shared: Arc<SharedObservation>,
     mut native: Option<Box<dyn NativeSandboxSession>>,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
@@ -256,28 +396,34 @@ fn run_owner(
     emit(&shared, plan, None, ProcessEventKind::SpawnAttempt, Vec::new());
     let spools = match plan.io_mode() {
         crate::IoMode::Pipes => {
-            SpoolSet::pipes(spool_directory, plan.output_policy().spool_bytes())
+            SpoolSet::pipes(spool_directory, plan.output_policy().spool_segment_bytes())
         }
-        crate::IoMode::Pty(_) => SpoolSet::pty(spool_directory, plan.output_policy().spool_bytes()),
+        crate::IoMode::Pty(_) => {
+            SpoolSet::pty(spool_directory, plan.output_policy().spool_segment_bytes())
+        }
     };
     let spools = match spools {
         Ok(spools) => spools,
         Err(error) => {
-            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            let cleanup_complete =
+                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
     let resources = match resource::ResourceTracker::start(plan) {
         Ok(resources) => resources,
         Err(error) => {
-            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            let cleanup_complete =
+                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
     let launch_description = native.as_deref().map(NativeSandboxSession::launch_description);
-    let launch_command = launch_description.map_or_else(|| plan.command(), |value| value.command());
+    let launch_command = launch_description
+        .map_or_else(|| plan.command(), |value| value.command())
+        .clone();
     let handshake = launch_description.map(|value| platform::NativeHandshake {
-        manifest: value.manifest(),
+        manifest: value.manifest().to_vec(),
         ready: value.ready_record(),
         activated: value.activation_record(),
         #[cfg(windows)]
@@ -285,27 +431,81 @@ fn run_owner(
             value.manifest_digest(),
             value.preparation_digest(),
         ),
-        protected_handles: value.protected_handles(),
+        protected_handles: value.protected_handles().to_vec(),
         #[cfg(windows)]
-        windows_channels: value.windows_helper_channels(),
+        windows_channels: value.windows_helper_channels().cloned(),
     });
-    let process = match platform::launch(plan, launch_command, handshake, store.crash_watchdog()) {
-        Ok(process) => process,
+    let launch = {
+        let mut record_spawned = |tree| {
+            #[cfg(target_os = "macos")]
+            store.record_spawned(plan.process_id(), tree)?;
+            native
+                .as_deref_mut()
+                .map_or(Ok(()), |session| session.spawned(tree))
+        };
+        let mut should_continue = || cancellation.pending().is_none();
+        platform::launch(
+            plan,
+            &launch_command,
+            handshake,
+            store.crash_watchdog(),
+            &mut record_spawned,
+            &mut should_continue,
+        )
+    };
+    let launch = match launch {
+        Ok(launch) => launch,
         Err(error) => {
-            let cleanup_complete = release_pre_spawn_session(&mut native, plan, sandbox_digest);
+            let cleanup_complete =
+                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
-    let native_failed = native.as_deref_mut().is_some_and(|session| {
-        session.activated(process.identity()).is_err()
-            || crate::native::validate_activated_session(session, plan, plan.sandbox_digest())
-                .is_err()
-    });
-    let initial_failure = !process.identity().complete_containment() || native_failed;
+    let (process, handshake_status) = launch.into_parts();
+    let mut pre_start_reason = match handshake_status {
+        platform::NativeHandshakeStatus::Complete => None,
+        platform::NativeHandshakeStatus::Cancelled | platform::NativeHandshakeStatus::Failed => {
+            Some(cancellation.pending().unwrap_or(CancellationReason::BackendFailure))
+        }
+    };
+    let mut initial_failure = !process.identity().complete_containment()
+        || matches!(handshake_status, platform::NativeHandshakeStatus::Failed);
+    if !process.identity().complete_containment() {
+        pre_start_reason.get_or_insert(CancellationReason::BackendFailure);
+    }
+    if matches!(handshake_status, platform::NativeHandshakeStatus::Complete)
+        && let Some(session) = native.as_deref_mut()
+    {
+        let activation = {
+            let mut should_continue = || cancellation.pending().is_none();
+            session.activated_while(process.identity(), &mut should_continue)
+        };
+        if activation.is_ok() {
+            if crate::native::capture_activated_session(
+                store,
+                session,
+                plan,
+                plan.sandbox_digest(),
+            )
+            .is_err()
+            {
+                initial_failure = true;
+                pre_start_reason.get_or_insert(CancellationReason::BackendFailure);
+            }
+        } else if let Some(reason) = cancellation.pending() {
+            pre_start_reason = Some(reason);
+        } else {
+            initial_failure = true;
+            pre_start_reason = Some(CancellationReason::BackendFailure);
+        }
+    }
     SpawnedOwner::new(
         store.clone(),
         plan.clone(),
         control_rx,
+        cancellation,
+        input_owner,
+        input_lane,
         shared,
         process,
         spools,
@@ -313,12 +513,13 @@ fn run_owner(
         began,
         native,
     )
-    .run(initial_failure)
+    .run(initial_failure, pre_start_reason)
 }
 
 fn release_pre_spawn_session(
+    store: &ProcessStore,
     session: &mut Option<Box<dyn NativeSandboxSession>>,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
 ) -> bool {
     let Some(session) = session.as_deref_mut() else {
@@ -327,18 +528,20 @@ fn release_pre_spawn_session(
     let Some(sandbox_digest) = sandbox_digest else {
         return false;
     };
-    session.release().is_ok()
-        && crate::native::validate_released_session(session, plan, sandbox_digest).is_ok()
+    let release = session.release();
+    let capture =
+        crate::native::capture_released_session(store, session, plan, sandbox_digest);
+    release.is_ok() && capture.is_ok()
 }
 
 pub(super) fn publish_terminal(
     shared: &Arc<SharedObservation>,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     result: &TerminalResult,
 ) {
     let mut state = shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     state.events.push(
-        plan.identity().process_id(),
+        plan.process_id(),
         plan.digest(),
         None,
         ProcessEventKind::TerminalPublished,
@@ -351,14 +554,14 @@ pub(super) fn publish_terminal(
 
 pub(super) fn emit(
     shared: &Arc<SharedObservation>,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     offset: Option<u64>,
     kind: ProcessEventKind,
     data: Vec<u8>,
 ) -> u64 {
     let mut state = shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     let sequence =
-        state.events.push(plan.identity().process_id(), plan.digest(), offset, kind, data);
+        state.events.push(plan.process_id(), plan.digest(), offset, kind, data);
     drop(state);
     shared.changed.notify_all();
     sequence

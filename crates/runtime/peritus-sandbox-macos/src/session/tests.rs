@@ -36,11 +36,13 @@ pub(super) fn session(workspace: &Path) -> MacosSession {
 fn lifecycle_is_ordered_bounded_and_release_is_idempotent() {
     let workspace = tempfile::tempdir().unwrap();
     let mut session = session(workspace.path());
-    assert!(session.record_activation(ProcessTreeIdentity::new(44, Some(1), None, true)).is_err());
+    assert!(session.record_spawned(ProcessTreeIdentity::new(44, Some(1), None, true)).is_err());
     assert!(
-        session.record_activation(ProcessTreeIdentity::new(44, Some(1), Some(45), true)).is_err()
+        session.record_spawned(ProcessTreeIdentity::new(44, Some(1), Some(45), true)).is_err()
     );
-    session.record_activation(ProcessTreeIdentity::new(44, Some(1), Some(44), true)).unwrap();
+    session
+        .record_test_activation(ProcessTreeIdentity::new(44, Some(1), Some(44), true))
+        .unwrap();
     session.record_cancellation(CancellationReason::User).unwrap();
     session.record_cancellation(CancellationReason::User).unwrap();
     session.record_termination(&OsExitObservation::Code(0)).unwrap();
@@ -86,7 +88,9 @@ fn target_reserved_range_exit_remains_exact_after_activation() {
     for code in 120..=125 {
         let workspace = tempfile::tempdir().unwrap();
         let mut session = session(workspace.path());
-        session.record_activation(ProcessTreeIdentity::new(44, Some(1), Some(44), true)).unwrap();
+        session
+            .record_test_activation(ProcessTreeIdentity::new(44, Some(1), Some(44), true))
+            .unwrap();
         session.record_termination(&OsExitObservation::Code(code)).unwrap();
         assert_eq!(session.termination(), Some(TerminationReason::TargetExit(code)));
         assert_eq!(session.phase(), SessionPhase::Terminated);

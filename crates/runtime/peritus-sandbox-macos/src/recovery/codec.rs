@@ -8,11 +8,12 @@ use crate::{
 };
 
 use super::{
-    CHECKSUM_BYTES, CleanupProgress, MAGIC, MacosRecoveryRecord, RuntimeIdentity, VERSION,
+    CHECKSUM_BYTES, CleanupProgress, LEGACY_VERSION, MAGIC, MacosRecoveryRecord, RuntimeIdentity,
+    VERSION,
 };
 
 impl MacosRecoveryRecord {
-    /// Decodes and verifies a version-one runtime record.
+    /// Decodes, verifies, and migrates a supported runtime record.
     ///
     /// # Errors
     /// Returns a recovery-indeterminate error for malformed or checksummed data.
@@ -26,7 +27,11 @@ impl MacosRecoveryRecord {
             return Err(recovery_error("runtime record checksum does not match"));
         }
         let mut reader = Reader::new(&input[..checksum_offset])?;
-        if reader.fixed::<8>()? != MAGIC || reader.u16()? != VERSION {
+        if reader.fixed::<8>()? != MAGIC {
+            return Err(recovery_error("unknown runtime record magic or version"));
+        }
+        let version = reader.u16()?;
+        if !matches!(version, LEGACY_VERSION | VERSION) {
             return Err(recovery_error("unknown runtime record magic or version"));
         }
         let process_id = ProcessId::new(reader.fixed()?)
@@ -37,6 +42,11 @@ impl MacosRecoveryRecord {
         let proxy_routing_digest = optional_digest(&mut reader)?;
         let secret_binding_digest = optional_digest(&mut reader)?;
         let root_pid = decode_nonzero_u32(&mut reader)?;
+        let root_start_token = if version == LEGACY_VERSION {
+            None
+        } else {
+            decode_nonzero_u64(&mut reader)?
+        };
         let process_group = decode_nonzero_u32(&mut reader)?;
         let activated = reader.boolean()?;
         let cleanup = CleanupProgress::from_facts(
@@ -47,7 +57,7 @@ impl MacosRecoveryRecord {
             reader.boolean()?,
         );
         reader.finish()?;
-        let identity = RuntimeIdentity::new(
+        let mut identity = RuntimeIdentity::new(
             process_id,
             preparation_digest,
             profile_digest,
@@ -57,6 +67,7 @@ impl MacosRecoveryRecord {
             root_pid,
             process_group,
         );
+        identity.root_start_token = root_start_token;
         let mut record = Self {
             identity,
             activated,
@@ -64,11 +75,7 @@ impl MacosRecoveryRecord {
             canonical: input.to_vec(),
             digest: peritus_codec::sha256(input),
         };
-        let expected = record.canonical.clone();
         record.refresh()?;
-        if record.canonical != expected {
-            return Err(recovery_error("runtime record is not canonical"));
-        }
         Ok(record)
     }
 
@@ -83,6 +90,7 @@ impl MacosRecoveryRecord {
         encode_optional_digest(&mut writer, self.identity.proxy_routing_digest)?;
         encode_optional_digest(&mut writer, self.identity.secret_binding_digest)?;
         encode_nonzero_u32(&mut writer, self.identity.root_pid)?;
+        encode_nonzero_u64(&mut writer, self.identity.root_start_token)?;
         encode_nonzero_u32(&mut writer, self.identity.process_group)?;
         writer.boolean(self.activated)?;
         writer.boolean(self.cleanup.helper_quiescent)?;
@@ -131,6 +139,28 @@ fn decode_nonzero_u32(reader: &mut Reader<'_>) -> Result<Option<u32>, MacosError
     let value = reader.u32()?;
     if value == 0 {
         return Err(recovery_error("runtime PID or process group is zero"));
+    }
+    Ok(Some(value))
+}
+
+fn encode_nonzero_u64(writer: &mut Writer, value: Option<u64>) -> Result<(), MacosError> {
+    writer.boolean(value.is_some())?;
+    if let Some(value) = value {
+        if value == 0 {
+            return Err(recovery_error("runtime process birth token is zero"));
+        }
+        writer.u64(value)?;
+    }
+    Ok(())
+}
+
+fn decode_nonzero_u64(reader: &mut Reader<'_>) -> Result<Option<u64>, MacosError> {
+    if !reader.boolean()? {
+        return Ok(None);
+    }
+    let value = reader.u64()?;
+    if value == 0 {
+        return Err(recovery_error("runtime process birth token is zero"));
     }
     Ok(Some(value))
 }

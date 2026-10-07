@@ -190,7 +190,8 @@ fn recovery_classification_never_claims_mismatched_ownership() {
         None,
         Some(44),
         Some(44),
-    );
+    )
+    .with_root_start_token(Some(1));
     let record =
         MacosRecoveryRecord::new(identity, true, CleanupProgress::prepared(false, false)).unwrap();
     assert_eq!(record.classify(Some(identity), true), RecoveryClassification::LiveOwned);
@@ -203,7 +204,8 @@ fn recovery_classification_never_claims_mismatched_ownership() {
         None,
         Some(44),
         Some(44),
-    );
+    )
+    .with_root_start_token(Some(1));
     assert_eq!(record.classify(Some(mismatch), true), RecoveryClassification::Mismatched);
     assert_eq!(record.classify(Some(identity), false), RecoveryClassification::Indeterminate);
     assert_eq!(MacosRecoveryRecord::decode(record.canonical_bytes()).unwrap(), record);

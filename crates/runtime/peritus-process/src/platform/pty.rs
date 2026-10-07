@@ -2,7 +2,8 @@
 
 #[cfg(unix)]
 use std::{
-    io::Write,
+    fs::File,
+    os::fd::{AsRawFd, FromRawFd},
     process::{Command, Stdio},
 };
 
@@ -17,8 +18,8 @@ use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, P
 use process_wrap::std::{ChildWrapper, CommandWrap, ProcessSession};
 
 use crate::{
-    CommandSpec, ErrorCode, ExecutionPlan, ProcessError, ProcessOperation, RecoveryClass,
-    TerminalSize,
+    CommandSpec, ErrorCode, ProcessError, ProcessOperation, RecoveryClass, TerminalSize,
+    supervisor::SupervisorPlan,
 };
 #[cfg(unix)]
 use crate::{GracefulAction, OutputStream, StdinPolicy};
@@ -26,16 +27,19 @@ use crate::{GracefulAction, OutputStream, StdinPolicy};
 use super::PlatformProcess;
 #[cfg(unix)]
 use super::{
-    NativeHandshake, OutputReader, PlatformExit, ProcessTreeIdentity, current_start_token,
+    NativeHandshake, OutputReader, PlatformExit, ProcessInput, ProcessTreeIdentity,
+    current_start_token,
 };
 
 #[cfg(windows)]
 pub(super) fn launch(
-    _plan: &ExecutionPlan,
+    _plan: &SupervisorPlan,
     _command: &CommandSpec,
-    _handshake: Option<super::NativeHandshake<'_>>,
+    _handshake: Option<super::NativeHandshake>,
     _size: TerminalSize,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
+    _spawned: &mut dyn FnMut(super::ProcessTreeIdentity) -> Result<(), ProcessError>,
+    _should_continue: &mut dyn FnMut() -> bool,
+) -> Result<super::PlatformLaunch, ProcessError> {
     Err(ProcessError::new(
         ErrorCode::Unsupported,
         ProcessOperation::Spawn,
@@ -46,28 +50,39 @@ pub(super) fn launch(
 
 #[cfg(unix)]
 pub(super) fn launch(
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     launch_command: &CommandSpec,
-    handshake: Option<NativeHandshake<'_>>,
+    handshake: Option<NativeHandshake>,
     size: TerminalSize,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
+    spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<super::PlatformLaunch, ProcessError> {
     let pty_system = NativePtySystem::default();
     let pair =
         pty_system.openpty(to_pty_size(size)).map_err(|_| pty_error("PTY allocation failed"))?;
+    let needs_writer = !matches!(plan.stdin_policy(), StdinPolicy::Closed);
     let reader =
         pair.master.try_clone_reader().map_err(|_| pty_error("PTY reader cannot be cloned"))?;
-    let needs_writer = matches!(plan.stdin_policy(), StdinPolicy::Bounded { .. });
     let input = if needs_writer {
-        Some(pair.master.take_writer().map_err(|_| pty_error("PTY writer cannot be opened"))?)
+        Some(pty_input(&*pair.master)?)
     } else {
         None
     };
     if let Some(handshake) = handshake {
-        return launch_native(plan, launch_command, &handshake, pair, reader, input);
+        return launch_native(
+            plan,
+            launch_command,
+            &handshake,
+            pair,
+            reader,
+            input,
+            spawned,
+            should_continue,
+        );
     }
     let mut command = CommandBuilder::new(launch_command.executable());
     command.args(launch_command.arguments());
-    command.cwd(plan.working_directory().path());
+    command.cwd(plan.working_directory());
     command.env_clear();
     for variable in plan.environment().variables() {
         command.env(variable.name(), variable.value());
@@ -88,24 +103,30 @@ pub(super) fn launch(
         Some(process_group),
         true,
     );
-    Ok(Box::new(PtyProcess {
+    let process = Box::new(PtyProcess {
         child: PtyChild::Portable(child),
         master: pair.master,
         identity,
         input,
         readers: vec![OutputReader { stream: OutputStream::Terminal, reader }],
-    }))
+    });
+    Ok(super::PlatformLaunch::new(
+        process,
+        super::NativeHandshakeStatus::Complete,
+    ))
 }
 
 #[cfg(unix)]
 fn launch_native(
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     launch_command: &CommandSpec,
-    handshake: &NativeHandshake<'_>,
+    handshake: &NativeHandshake,
     pair: portable_pty::PtyPair,
     terminal_reader: Box<dyn std::io::Read + Send>,
-    input: Option<Box<dyn Write + Send>>,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
+    input: Option<ProcessInput>,
+    spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<super::PlatformLaunch, ProcessError> {
     let slave_path = pair
         .master
         .tty_name()
@@ -113,7 +134,7 @@ fn launch_native(
     let mut command = Command::new(launch_command.executable());
     command
         .args(launch_command.arguments())
-        .current_dir(plan.working_directory().path())
+        .current_dir(plan.working_directory())
         .env_clear()
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -126,53 +147,71 @@ fn launch_native(
     command.env(crate::NATIVE_PTY_SLAVE_ENV, slave_path);
     let child = {
         let _inheritance =
-            super::configure_protected_inheritance(&mut command, handshake.protected_handles)?;
+            super::configure_protected_inheritance(&mut command, &handshake.protected_handles)?;
         let mut wrapped = CommandWrap::from(command);
         wrapped.wrap(ProcessSession);
         wrapped.spawn()
     };
     let mut child = child.map_err(|_| pty_error("native PTY helper creation failed"))?;
     let root_pid = child.id();
-    let mut protocol_input =
-        child.stdin().take().ok_or_else(|| pty_error("native PTY helper has no protocol input"))?;
-    let protocol_output = child
-        .stdout()
-        .take()
-        .map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>)
-        .ok_or_else(|| pty_error("native PTY helper has no protocol output"))?;
-    let protocol_output =
-        match super::verify_helper_record(protocol_output, handshake.ready, || {
-            let _ = child.start_kill();
-        }) {
-            Ok(reader) => reader,
-            Err(error) => {
-                let _ = child.start_kill();
-                return Err(error);
-            }
-        };
-    super::write_helper_manifest(&mut protocol_input, handshake.manifest)?;
-    let protocol_output =
-        match super::verify_helper_record(protocol_output, handshake.activated, || {
-            let _ = child.start_kill();
-        }) {
-            Ok(reader) => reader,
-            Err(error) => {
-                let _ = child.start_kill();
-                return Err(error);
-            }
-        };
+    let identity =
+        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), Some(root_pid), true);
+    let mut protocol_input = child.stdin().take();
+    let mut protocol_output = child.stdout().take();
+    let descriptors_ready = protocol_input
+        .as_ref()
+        .is_some_and(|writer| super::set_protocol_nonblocking(writer.as_raw_fd()).is_ok())
+        && protocol_output
+            .as_ref()
+            .is_some_and(|reader| super::set_protocol_nonblocking(reader.as_raw_fd()).is_ok());
+    let mut handshake_status = if spawned(identity).is_ok() && descriptors_ready {
+        super::NativeHandshakeStatus::Complete
+    } else {
+        super::NativeHandshakeStatus::Failed
+    };
+    if matches!(handshake_status, super::NativeHandshakeStatus::Complete) {
+        let exchange = (|| {
+            let protocol_output = protocol_output
+                .take()
+                .map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>)
+                .ok_or_else(|| {
+                    super::HandshakeError::Failed(pty_error(
+                        "native PTY helper has no protocol output",
+                    ))
+                })?;
+            let protocol_output = super::verify_helper_record(
+                protocol_output,
+                handshake.ready,
+                should_continue,
+            )?;
+            let protocol_input = protocol_input.as_mut().ok_or_else(|| {
+                super::HandshakeError::Failed(pty_error(
+                    "native PTY helper has no protocol input",
+                ))
+            })?;
+            super::write_helper_manifest(protocol_input, &handshake.manifest, should_continue)?;
+            super::verify_helper_record(
+                protocol_output,
+                handshake.activated,
+                should_continue,
+            )
+        })();
+        match exchange {
+            Ok(output) => drop(output),
+            Err(error) => handshake_status = error.status(),
+        }
+    }
     drop(protocol_input);
     drop(protocol_output);
     drop(pair.slave);
-    let identity =
-        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), Some(root_pid), true);
-    Ok(Box::new(PtyProcess {
+    let process = Box::new(PtyProcess {
         child: PtyChild::Native(child),
         master: pair.master,
         identity,
         input,
         readers: vec![OutputReader { stream: OutputStream::Terminal, reader: terminal_reader }],
-    }))
+    });
+    Ok(super::PlatformLaunch::new(process, handshake_status))
 }
 
 #[cfg(unix)]
@@ -180,7 +219,7 @@ struct PtyProcess {
     child: PtyChild,
     master: Box<dyn MasterPty + Send>,
     identity: ProcessTreeIdentity,
-    input: Option<Box<dyn Write + Send>>,
+    input: Option<ProcessInput>,
     readers: Vec<OutputReader>,
 }
 
@@ -236,7 +275,7 @@ impl PlatformProcess for PtyProcess {
     fn identity(&self) -> ProcessTreeIdentity {
         self.identity
     }
-    fn take_input(&mut self) -> Option<Box<dyn Write + Send>> {
+    fn take_input(&mut self) -> Option<ProcessInput> {
         self.input.take()
     }
     fn take_readers(&mut self) -> Vec<OutputReader> {
@@ -276,6 +315,30 @@ impl PlatformProcess for PtyProcess {
     fn resize(&mut self, size: TerminalSize) -> Result<(), ProcessError> {
         self.master.resize(to_pty_size(size)).map_err(|_| pty_error("PTY resize failed"))
     }
+}
+
+#[cfg(unix)]
+#[allow(
+    unsafe_code,
+    reason = "the PTY input task needs one close-on-exec duplicate of the owned raw master descriptor"
+)]
+fn pty_input(master: &dyn MasterPty) -> Result<ProcessInput, ProcessError> {
+    let fd = master
+        .as_raw_fd()
+        .ok_or_else(|| pty_error("PTY input descriptor is unavailable"))?;
+    // SAFETY: F_DUPFD_CLOEXEC duplicates the live master descriptor into independent ownership.
+    let input_fd = unsafe { libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, 0) };
+    if input_fd == -1 {
+        return Err(pty_error("PTY input descriptor cannot be duplicated"));
+    }
+    if let Err(error) = super::set_input_nonblocking(input_fd) {
+        // SAFETY: `input_fd` is the uniquely owned duplicate returned immediately above.
+        unsafe { libc::close(input_fd) };
+        return Err(error);
+    }
+    // SAFETY: ownership of the unique duplicated descriptor moves into File exactly once.
+    let writer = unsafe { File::from_raw_fd(input_fd) };
+    Ok(ProcessInput::pty(Box::new(writer), input_fd))
 }
 
 #[cfg(unix)]

@@ -14,6 +14,7 @@ use peritus_process::{NativePtyAttachment, native_activation_record, native_read
 use std::{
     fs::File,
     io::{self, Write},
+    os::fd::AsRawFd as _,
 };
 
 /// Runs the native helper protocol and returns its reserved process exit.
@@ -35,14 +36,22 @@ fn run() -> Result<(), ReservedHelperExit> {
     let pty = NativePtyAttachment::from_environment()
         .map_err(|_| ReservedHelperExit::ProtectedChannel)?;
     // The duplicate is opened before readiness and consumes only the bounded manifest frame.
-    let input = File::open("/dev/fd/0").map_err(|_| ReservedHelperExit::Protocol)?;
+    let mut input = File::open("/dev/fd/0").map_err(|_| ReservedHelperExit::Protocol)?;
     let mut output = io::stdout().lock();
     output
         .write_all(native_ready_record().as_bytes())
         .and_then(|()| output.flush())
         .map_err(|_| ReservedHelperExit::Protocol)?;
 
-    let manifest = HelperManifest::read_framed(input).map_err(|_| ReservedHelperExit::Protocol)?;
+    let owner = crate::runner::parent_process();
+    let manifest = {
+        let _nonblocking = crate::runner::make_nonblocking(input.as_raw_fd())
+            .map_err(|_| ReservedHelperExit::ProtectedChannel)?;
+        HelperManifest::read_framed_while(&mut input, || {
+            crate::runner::parent_process_is(owner)
+        })
+        .map_err(|_| ReservedHelperExit::Protocol)?
+    };
     let target = prepare_target_command(&manifest)
         .map_err(|error| classify_activation_kind(error.kind()))?;
     activate_manifest_with_pty(&manifest, pty.as_ref())

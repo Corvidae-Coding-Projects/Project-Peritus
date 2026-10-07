@@ -4,6 +4,8 @@ use std::{
     io::Write,
     process::{Command, Stdio},
 };
+#[cfg(unix)]
+use std::os::fd::AsRawFd;
 
 #[cfg(windows)]
 use process_wrap::std::JobObject;
@@ -12,13 +14,14 @@ use process_wrap::std::ProcessSession;
 use process_wrap::std::{ChildWrapper, CommandWrap};
 
 use crate::{
-    CommandSpec, ErrorCode, ExecutionPlan, GracefulAction, OutputStream, ProcessError,
+    CommandSpec, ErrorCode, GracefulAction, OutputStream, ProcessError,
     ProcessOperation, RecoveryClass, StdinPolicy, TerminalSize,
+    supervisor::SupervisorPlan,
 };
 
 use super::{
-    NativeHandshake, OutputReader, PlatformExit, PlatformProcess, ProcessTreeIdentity,
-    current_start_token,
+    HandshakeError, NativeHandshake, NativeHandshakeStatus, OutputReader, PlatformExit,
+    PlatformLaunch, PlatformProcess, ProcessInput, ProcessTreeIdentity, current_start_token,
 };
 
 #[cfg(windows)]
@@ -29,19 +32,24 @@ mod windows_reap;
     reason = "the direct-child spawn and bounded native handshake are one rollback transaction"
 )]
 pub(super) fn launch(
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     launch_command: &CommandSpec,
-    handshake: Option<NativeHandshake<'_>>,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
+    handshake: Option<NativeHandshake>,
+    spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<PlatformLaunch, ProcessError> {
     #[cfg(windows)]
     let native_windows_pty = matches!(plan.io_mode(), crate::IoMode::Pty(_))
-        && handshake.as_ref().and_then(|value| value.windows_channels).is_some();
+        && handshake
+            .as_ref()
+            .and_then(|value| value.windows_channels.as_ref())
+            .is_some();
     #[cfg(not(windows))]
     let native_windows_pty = false;
     let mut command = Command::new(launch_command.executable());
     command
         .args(launch_command.arguments())
-        .current_dir(plan.working_directory().path())
+        .current_dir(plan.working_directory())
         .env_clear()
         .stdout(Stdio::piped())
         .stderr(if native_windows_pty { Stdio::null() } else { Stdio::piped() });
@@ -51,22 +59,28 @@ pub(super) fn launch(
     #[cfg(target_os = "linux")]
     super::configure_parent_death(&mut command);
     #[cfg(windows)]
-    if let Some(channels) = handshake.as_ref().and_then(|value| value.windows_channels) {
+    if let Some(channels) = handshake
+        .as_ref()
+        .and_then(|value| value.windows_channels.as_ref())
+    {
         command.env(crate::NATIVE_WINDOWS_STATUS_HANDLE_ENV, channels.status_handle().to_string());
         command
             .env(crate::NATIVE_WINDOWS_CONTROL_HANDLE_ENV, channels.control_handle().to_string());
     }
-    let protected_handles = handshake.as_ref().map_or(&[][..], |value| value.protected_handles);
+    let protected_handles =
+        handshake.as_ref().map_or(&[][..], |value| value.protected_handles.as_slice());
     match (handshake.is_some(), plan.stdin_policy()) {
         (false, StdinPolicy::Closed) => {
             command.stdin(Stdio::null());
         }
-        (false, StdinPolicy::Bounded { .. }) | (true, _) => {
+        (false, StdinPolicy::Bounded { .. } | StdinPolicy::Streaming { .. }) | (true, _) => {
             command.stdin(Stdio::piped());
         }
     }
     #[cfg(windows)]
-    let windows_channels = handshake.as_ref().and_then(|value| value.windows_channels).cloned();
+    let windows_channels = handshake
+        .as_ref()
+        .and_then(|value| value.windows_channels.clone());
     #[cfg(windows)]
     let status_reader = windows_channels
         .as_ref()
@@ -83,57 +97,85 @@ pub(super) fn launch(
     };
     let mut child = child.map_err(|_| spawn_error("pipe process creation failed"))?;
     let root_pid = child.id();
-    let mut input = child.stdin().take().map(|input| Box::new(input) as Box<dyn Write + Send>);
-    let stdout =
-        child.stdout().take().map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>);
-    let stdout = if let Some(handshake) = handshake {
-        let reader =
-            stdout.ok_or_else(|| spawn_error("native helper has no activation output stream"))?;
-        let reader = match super::verify_helper_record(reader, handshake.ready, || {
-            let _ = child.start_kill();
-        }) {
-            Ok(reader) => reader,
-            Err(error) => {
-                let _ = child.start_kill();
-                return Err(error);
+    #[cfg(unix)]
+    let process_group = Some(root_pid);
+    #[cfg(windows)]
+    let process_group = None;
+    let identity =
+        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), process_group, true);
+    let mut input = child.stdin().take();
+    let child_stdout = child.stdout().take();
+    #[cfg(unix)]
+    let protocol_descriptors_ready = handshake.is_none()
+        || (child_stdout
+            .as_ref()
+            .is_some_and(|reader| super::set_protocol_nonblocking(reader.as_raw_fd()).is_ok())
+            && input
+                .as_ref()
+                .is_some_and(|writer| super::set_protocol_nonblocking(writer.as_raw_fd()).is_ok()));
+    #[cfg(not(unix))]
+    let protocol_descriptors_ready = true;
+    let mut stdout =
+        child_stdout.map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>);
+    let mut handshake_status = NativeHandshakeStatus::Complete;
+    if let Some(handshake) = handshake {
+        if spawned(identity).is_err() {
+            handshake_status = NativeHandshakeStatus::Failed;
+            stdout.take();
+        }
+        if matches!(handshake_status, NativeHandshakeStatus::Complete)
+            && !protocol_descriptors_ready
+        {
+            handshake_status = NativeHandshakeStatus::Failed;
+            stdout.take();
+        }
+        if matches!(handshake_status, NativeHandshakeStatus::Complete) {
+            let exchange = (|| {
+                let reader = stdout.take().ok_or_else(|| {
+                    HandshakeError::Failed(spawn_error(
+                        "native helper has no activation output stream",
+                    ))
+                })?;
+                let reader =
+                    super::verify_helper_record(reader, handshake.ready, should_continue)?;
+                let writer = input
+                    .as_mut()
+                    .map(|writer| writer as &mut dyn Write)
+                    .ok_or_else(|| {
+                        HandshakeError::Failed(spawn_error(
+                            "native helper has no manifest input stream",
+                        ))
+                    })?;
+                super::write_helper_manifest(writer, &handshake.manifest, should_continue)?;
+                super::verify_helper_record(reader, handshake.activated, should_continue)
+            })();
+            match exchange {
+                Ok(reader) => stdout = Some(reader),
+                Err(error) => handshake_status = error.status(),
             }
-        };
-        let writer = input
-            .as_deref_mut()
-            .ok_or_else(|| spawn_error("native helper has no manifest input stream"))?;
-        super::write_helper_manifest(writer, handshake.manifest)?;
-        let reader = match super::verify_helper_record(reader, handshake.activated, || {
-            let _ = child.start_kill();
-        }) {
-            Ok(reader) => reader,
-            Err(error) => {
-                let _ = child.start_kill();
-                return Err(error);
-            }
-        };
+        }
         #[cfg(windows)]
-        if let Some(status_reader) = status_reader {
-            let _status = match super::verify_helper_record(
+        if matches!(handshake_status, NativeHandshakeStatus::Complete)
+            && let Some(status_reader) = status_reader
+            && let Err(error) = super::verify_helper_record(
                 Box::new(status_reader),
                 handshake.started,
-                || {
-                    let _ = child.start_kill();
-                },
-            ) {
-                Ok(reader) => reader,
-                Err(error) => {
-                    let _ = child.start_kill();
-                    return Err(error);
-                }
-            };
+                should_continue,
+            )
+        {
+            handshake_status = error.status();
         }
         if plan.stdin_policy() == StdinPolicy::Closed {
             input.take();
         }
-        Some(reader)
-    } else {
-        stdout
-    };
+    }
+    #[cfg(unix)]
+    if let Some(writer) = input.as_ref()
+        && super::set_input_nonblocking(writer.as_raw_fd()).is_err()
+    {
+        handshake_status = NativeHandshakeStatus::Failed;
+    }
+    let input = input.map(|writer| ProcessInput::pipe(Box::new(writer)));
     let stdout = stdout.map(|reader| OutputReader {
         stream: if matches!(plan.io_mode(), crate::IoMode::Pty(_)) {
             OutputStream::Terminal
@@ -153,13 +195,7 @@ pub(super) fn launch(
     if let Some(stderr) = stderr {
         readers.push(stderr);
     }
-    #[cfg(unix)]
-    let process_group = Some(root_pid);
-    #[cfg(windows)]
-    let process_group = None;
-    let identity =
-        ProcessTreeIdentity::new(root_pid, current_start_token(root_pid), process_group, true);
-    Ok(Box::new(PipeProcess {
+    let process = Box::new(PipeProcess {
         #[cfg(unix)]
         child,
         #[cfg(windows)]
@@ -177,7 +213,8 @@ pub(super) fn launch(
         windows_channels,
         #[cfg(windows)]
         windows_terminal: matches!(plan.io_mode(), crate::IoMode::Pty(_)),
-    }))
+    });
+    Ok(PlatformLaunch::new(process, handshake_status))
 }
 
 struct PipeProcess {
@@ -186,7 +223,7 @@ struct PipeProcess {
     #[cfg(windows)]
     child: Option<Box<dyn ChildWrapper>>,
     identity: ProcessTreeIdentity,
-    input: Option<Box<dyn Write + Send>>,
+    input: Option<ProcessInput>,
     readers: Vec<OutputReader>,
     #[cfg(windows)]
     termination_requested: bool,
@@ -204,7 +241,7 @@ impl PlatformProcess for PipeProcess {
     fn identity(&self) -> ProcessTreeIdentity {
         self.identity
     }
-    fn take_input(&mut self) -> Option<Box<dyn Write + Send>> {
+    fn take_input(&mut self) -> Option<ProcessInput> {
         self.input.take()
     }
     fn take_readers(&mut self) -> Vec<OutputReader> {

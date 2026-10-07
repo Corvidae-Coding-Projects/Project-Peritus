@@ -102,6 +102,22 @@ pub fn prepare_target_command(
     native::verify_protected_channels(manifest)?;
     let mut command = Command::new(manifest.target_executable());
     let mut materialized_secret_files = materialized::MaterializedSecretFiles::new();
+    let admitted_command = peritus_process::CommandSpec::new(
+        manifest.target_executable().to_owned(),
+        manifest.target_arguments().to_vec(),
+    )
+    .map_err(|_| protected_delivery_error("target command failed native helper validation"))?;
+    let mut admitted_variables = manifest
+        .environment()
+        .iter()
+        .map(|entry| {
+            peritus_process::EnvironmentVariable::new(
+                entry.name().to_owned(),
+                entry.value().to_owned(),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| protected_delivery_error("target environment failed native validation"))?;
     command.args(manifest.target_arguments()).current_dir(manifest.working_directory()).env_clear();
     for entry in manifest.environment() {
         command.env(entry.name(), entry.value());
@@ -120,6 +136,14 @@ pub fn prepare_target_command(
         let mut proxy_url = format!("http://peritus:{token_hex}@{}", proxy.route().endpoint());
         token_hex.zeroize();
         command.env("HTTP_PROXY", &proxy_url).env("HTTPS_PROXY", &proxy_url);
+        admitted_variables.push(
+            peritus_process::EnvironmentVariable::new("HTTP_PROXY", proxy_url.clone())
+                .map_err(|_| protected_delivery_error("proxy environment is invalid"))?,
+        );
+        admitted_variables.push(
+            peritus_process::EnvironmentVariable::new("HTTPS_PROXY", proxy_url.clone())
+                .map_err(|_| protected_delivery_error("proxy environment is invalid"))?,
+        );
         proxy_url.zeroize();
     }
     let mut brokered = Vec::new();
@@ -134,7 +158,12 @@ pub fn prepare_target_command(
                         "secret environment payload contains NUL",
                     ));
                 }
-                command.env(name.as_str(), OsString::from_vec(payload.clone()));
+                let value = OsString::from_vec(payload.clone());
+                command.env(name.as_str(), &value);
+                admitted_variables.push(
+                    peritus_process::EnvironmentVariable::new(name.as_str(), value)
+                        .map_err(|_| protected_delivery_error("secret environment is invalid"))?,
+                );
                 payload.zeroize();
             }
             crate::SecretHandleDestination::File(path) => {
@@ -155,8 +184,20 @@ pub fn prepare_target_command(
         }
     }
     if !brokered.is_empty() {
-        command.env(SECRET_HANDLES_ENV, brokered.join(","));
+        let value = brokered.join(",");
+        command.env(SECRET_HANDLES_ENV, &value);
+        admitted_variables.push(
+            peritus_process::EnvironmentVariable::new(SECRET_HANDLES_ENV, value)
+                .map_err(|_| protected_delivery_error("secret handle environment is invalid"))?,
+        );
     }
+    let admitted_environment = peritus_process::EnvironmentPlan::cleared(admitted_variables)
+        .map_err(|_| protected_delivery_error("target environment failed native validation"))?;
+    peritus_process::validate_native_command_environment(
+        &admitted_command,
+        &admitted_environment,
+    )
+    .map_err(|_| protected_delivery_error("target exceeds current native exec capacity"))?;
     Ok(PreparedTargetCommand {
         command,
         pty_required: matches!(manifest.terminal(), crate::TerminalMapping::Pty { .. }),
@@ -301,4 +342,4 @@ pub fn activate_manifest(_manifest: &HelperManifest) -> Result<(), MacosError> {
 #[cfg(target_os = "macos")]
 mod native;
 #[cfg(target_os = "macos")]
-pub(crate) use native::write_exec_status;
+pub(crate) use native::{make_nonblocking, parent_process, parent_process_is, write_exec_status};

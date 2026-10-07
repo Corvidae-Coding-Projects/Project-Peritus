@@ -18,6 +18,40 @@ use crate::{
     ResourceControlPlan,
 };
 
+pub(crate) struct NonblockingDescriptor {
+    descriptor: c_int,
+    original_flags: c_int,
+}
+
+impl Drop for NonblockingDescriptor {
+    fn drop(&mut self) {
+        // SAFETY: this guard is scoped inside the single-threaded helper while the descriptor is
+        // live. Restoring the exact captured status flags also restores target stdin semantics.
+        let _ = unsafe { libc::fcntl(self.descriptor, libc::F_SETFL, self.original_flags) };
+    }
+}
+
+pub(crate) fn make_nonblocking(descriptor: c_int) -> Result<NonblockingDescriptor, MacosError> {
+    // SAFETY: F_GETFL and F_SETFL operate on the live helper-owned protocol descriptor.
+    let flags = unsafe { libc::fcntl(descriptor, libc::F_GETFL) };
+    if flags < 0 || unsafe { libc::fcntl(descriptor, libc::F_SETFL, flags | libc::O_NONBLOCK) } < 0
+    {
+        return Err(protected_error(
+            "helper protocol input could not be made cancellable",
+        ));
+    }
+    Ok(NonblockingDescriptor { descriptor, original_flags: flags })
+}
+
+pub(crate) fn parent_process() -> libc::pid_t {
+    // SAFETY: getppid has no pointer arguments and only observes this process identity.
+    unsafe { libc::getppid() }
+}
+
+pub(crate) fn parent_process_is(expected: libc::pid_t) -> bool {
+    expected > 1 && parent_process() == expected
+}
+
 type SandboxInit = unsafe extern "C" fn(*const c_char, u64, *mut *mut c_char) -> c_int;
 type SandboxFreeError = unsafe extern "C" fn(*mut c_char);
 
@@ -227,11 +261,10 @@ fn seatbelt_library_error() -> MacosError {
 
 pub(super) fn install_resource_controls(controls: &ResourceControlPlan) -> Result<(), MacosError> {
     for control in controls.controls() {
-        if control.level() != EnforcementLevel::Hard {
+        if !control.is_selected() || control.level() != EnforcementLevel::Hard {
             continue;
         }
         let (resource, ceiling) = match control.kind() {
-            SandboxResourceKind::CpuTime if control.ceiling() == 0 => continue,
             SandboxResourceKind::CpuTime => {
                 (libc::RLIMIT_CPU, control.ceiling().saturating_add(999) / 1_000)
             }
@@ -243,7 +276,7 @@ pub(super) fn install_resource_controls(controls: &ResourceControlPlan) -> Resul
             | SandboxResourceKind::Output
             | SandboxResourceKind::Concurrency => continue,
         };
-        install(resource, ceiling.max(1))?;
+        install(resource, ceiling)?;
     }
     Ok(())
 }
