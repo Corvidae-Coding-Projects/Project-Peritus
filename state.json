@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3741,
-        "tip_oid": "c5ec4c02a8650e390309f36ed50ab27ad8f714de",
-        "prefix_sha256": "f2d5f1df9ccb432738601cdb9015f909fb3a2e0ac472bd0d411b6c623f291840"
+        "sequence": 3742,
+        "tip_oid": "7aff40493eb296c084919df0f4026237833f1301",
+        "prefix_sha256": "fccde81852989deae57a5fdd9b4a6de728b16908b8c345ad2f74a6fd88d4ab01"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3048,
+  "next_comment_id": 3049,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -30773,7 +30773,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.095039252Z",
-      "updated_at": "2026-10-06T13:19:08.097138555Z",
+      "updated_at": "2026-10-07T05:21:32.539298378Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -30784,6 +30784,15 @@
           "content": "Systemic repair plan for L062: Generic artifact quota admission and storage-location fences.\n\nOwning contract and implementation boundary: peritus-artifact-store/src/config.rs:28-43; local_context/storage/location.rs:12-31. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMake storage quota a visible explicitly configured physical policy with adjustable capacity and recoverable pressure handling. Keep reference-safe collection and protected storage ownership outside editable workspaces. Replace narrow aggregate accounting with checked segmented totals if needed; never reinterpret a storage location fence as a reason to create another context lineage.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "c8413780-1e0b-401f-a5e7-3626e679d631": {
+          "display_id": 3048,
+          "author": "6ME5",
+          "content": "[observation] Code-only policy migration staged in the shared tree. StoreConfig now distinguishes explicit logical quota from available-space policy, retains the signed SQLite per-row representation bound, supports an explicit retained-free-space setting, and leaves the protected local-context storage-location fence unchanged. Default retained-free reserve is zero. Daemon, local-context, command-output, checkpoint, and public-reply live callers use available-space policy unless an operator explicitly supplies a numeric daemon quota. Source inspection and selected-path git diff --check completed; no tests, builds, lint, formatting, code generation, runners, or test edits were performed. Issue remains open pending executed acceptance and fault-injection evidence.",
+          "created_at": "2026-10-07T05:21:32.524800547Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE1hmgqQmidDoACgdcKPoQ1wF301QLSdrMwsORFYnSYeKK8l0Fcq80rk4pEiRFDjQI280+i1VVgWhsqll23QXCQ=="
         }
       }
     },
