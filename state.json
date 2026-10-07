@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3765,
-        "tip_oid": "a3a15393aac5b6f19b91fab1a5ac916a670e6129",
-        "prefix_sha256": "8ac049949b3e857ef766e4d5eac96b4c71442e97c2d120da1684705f14ce4476"
+        "sequence": 3766,
+        "tip_oid": "7d38eccd97470209316317d2fdf9ba0a5d065863",
+        "prefix_sha256": "279b86a0f2c4f00cc4dc56f614ea8009e7e12282decd45024f4347e5a6f37b17"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3071,
+  "next_comment_id": 3072,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6223,11 +6223,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.172119862Z",
-      "updated_at": "2026-10-07T06:19:50.944146887Z",
+      "updated_at": "2026-10-07T06:38:35.867933344Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "5c73d245-3e21-42e6-87f7-adae003fa4c6": {
+          "display_id": 3071,
+          "author": "6ME5",
+          "content": "Code-only integration with L059/#158: each dispatched optional inference attempt now binds the prepared executable/model content, sandbox/backend, authority and resource proposal digest in the durable schema-v2 intent before the consuming prepared value can dispatch. Receipt and head readers retain canonical schema-v1 compatibility; intent-only recovery still records unknown without re-dispatch. Preparation or optional receipt failure remains local and cannot veto mandatory provider-context admission. No manual test/build/lint/format/codegen runners or test edits were performed. Final verification and remaining #178 integration are deferred; issue remains open.",
+          "created_at": "2026-10-07T06:38:35.857529196Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASd8BEYE/jg/OOG2pp01Ajkf3cW4NhAX9GblhgKeopOzfhB7l+/1ThappGBKVc4r/51PEq9nHMSdrZNnDvTMzCQ=="
+        },
         "9d4099d0-beb2-419e-af3c-31ff8cda4a00": {
           "display_id": 2251,
           "author": "6ME5",
