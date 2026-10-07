@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3815,
-        "tip_oid": "d2287dedf2bc0021519a2bf0f520db0b6347ed9c",
-        "prefix_sha256": "6adf1a15389c426f543baf72515e0ef614ae99f02534d0dd489016aa82b0a074"
+        "sequence": 3816,
+        "tip_oid": "e97eba420a8fbd37a4f64f07c0c93f06292669f0",
+        "prefix_sha256": "e833145eff4b66b017591c1f2b57392aec0cbef900611d9421351a9a822f5063"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3121,
+  "next_comment_id": 3122,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32736,7 +32736,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.644052049Z",
-      "updated_at": "2026-10-07T13:46:18.110524164Z",
+      "updated_at": "2026-10-07T15:28:56.722854617Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32747,6 +32747,15 @@
           "content": "Systemic repair plan for L119: Repeated conversation chunks collide as obligation identities and abort admission.\n\nOwning contract and implementation boundary: crates/app/peritus-product-runner/src/execution/obligations.rs:58-70,131-143; peritus-obligations/src/ledger/validation.rs:43-52; peritus-obligations/src/error.rs:134-138. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nDefine obligation occurrence identity from source lineage, message/span offset and content digest; equal text at distinct positions has distinct provenance. Keep content deduplication separate from occurrence identity and canonical ordering. Share migration/extraction/replay validation and return actionable typed expected/actual errors while preserving legitimate repeated clauses.\n\nPreserve: durable logical session and run identity, exact command receipts, atomic snapshot/cursor binding, explicit authority, selected UI state, complete history retrieval and owned-effect reconciliation. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large histories and non-ASCII fields, queue/connection pressure, delayed acknowledgements, subscription gaps, disconnect/reconnect and daemon restart, proving snapshot recovery, preserved selection/context, responsive controls and no duplicate command. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:21:37.467Z",
           "kind": "decision"
+        },
+        "5c416186-a1ae-4ca8-93eb-cb35c6d1caf9": {
+          "display_id": 3121,
+          "author": "6ME5",
+          "content": "Delivered 15dec3e2a7954863680459ffa615f0690d9b8918 to PR112: repeated requirement text is retained as distinct source occurrences using exact complete-source digest, revision, byte span and clause digest in the new identity derivation domain. Diagnostics retain obligation identity and expected/actual values; existing canonical receipt layouts preserved. Full source/focused diff reviewed; whitespace clean. Tests/builds/lint/formatting are deferred until all batch code is complete. Issue remains open pending integrated final verification.",
+          "created_at": "2026-10-07T15:28:56.718940368Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7iRVPDVEOmVc3Z7doOGo2JkrXIiycZJlttdXn2NsRFpB1hkY84lKy6R7ZvQ5alRfPPwmNIv4DdOOA6d/C2SFDg=="
         },
         "f517f644-51bf-4346-9082-f8971752d129": {
           "display_id": 3107,
