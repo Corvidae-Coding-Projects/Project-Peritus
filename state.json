@@ -18,9 +18,9 @@
         "prefix_sha256": "1f1c5f55b07dafb1d16cad7f58a69feac0b3207fede62acb7da3eca11044a6b4"
       },
       "PhX0": {
-        "sequence": 1,
-        "tip_oid": "42a80587d3bbd6f7cb554146646dcae2254c1d13",
-        "prefix_sha256": "f14f20eb4b42c0d02ad294b49d04c54f912de043e7ff2297af87eaa1e910aa92"
+        "sequence": 2,
+        "tip_oid": "8938bbf410e15cbb7ff4b9218bad2e7fae95803e",
+        "prefix_sha256": "e5fd4ef2478dca63271ee88d3ffac16c44591317bd9698b587eb09de6ea69ff0"
       },
       "QWDj": {
         "sequence": 189,
@@ -933,10 +933,6 @@
       "agent_id": "6ME5",
       "branch": "fix/persistent-execution",
       "claimed_at": "2026-10-07T00:18:57.432298094Z"
-    },
-    "119": {
-      "agent_id": "PhX0",
-      "claimed_at": "2026-10-07T01:18:13.740254106Z"
     },
     "819": {
       "agent_id": "hoQk",
