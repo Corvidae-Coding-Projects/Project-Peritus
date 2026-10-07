@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3770,
-        "tip_oid": "814c6f3df508754ea144f7a95554b66e6c27699a",
-        "prefix_sha256": "4a00c09a2238aae3d2cf0ddb605e570e60c844a37bc13578cb7835a2c6dabdf0"
+        "sequence": 3771,
+        "tip_oid": "2b2425a9ad11cc18175eecd58ebcca86e7e499c9",
+        "prefix_sha256": "0bd2e430028a8003015e11b8686b8b241065a23961700909d9d235a651a63d95"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3076,
+  "next_comment_id": 3077,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6223,7 +6223,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.172119862Z",
-      "updated_at": "2026-10-07T06:38:35.867933344Z",
+      "updated_at": "2026-10-07T06:56:12.431405014Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6243,6 +6243,15 @@
           "content": "Systemic repair plan for L080: Optional local inference still depends on durable-capacity admission.\n\nOwning contract and implementation boundary: local_context/semantic.rs:13-60. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nKeep optional compactor proposal/failure receipts separate from mandatory provider-context admission. Stream a task-relevant semantic input frontier with referenced evidence, and reconcile storage pressure without losing the prior deterministic working state. Failed optional inference must remain a recoverable recorded attempt even if its diagnostic artifact cannot be written immediately.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "b9239cf4-c178-45a5-b778-d3f47be7ce23": {
+          "display_id": 3076,
+          "author": "6ME5",
+          "content": "Code-only refinement: after an optional attempt has a durable intent, runtime errors now complete it as Unknown rather than Unavailable. The prepared runtime commits process authority internally, so an error return cannot establish that no process ran or that tree quiescence was proved. Exact proposal/input/receipt lineage remains retained and reopening never redispatches that intent. Cancellation is being threaded through the prepared runtime separately. No tests or manual runners have run; issue remains open.",
+          "created_at": "2026-10-07T06:56:12.402775646Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEXRhVWF4zfBk4wvYHKmWOI1dfec21YZLsJZcQ/L6/9ZVzKaaQOx43S8zUitMPmxvrUb3wdfav+hBpitK28biAA=="
         },
         "d735b15d-9f80-44fe-b195-f3401f5b78ae": {
           "display_id": 3063,
