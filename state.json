@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3744,
-        "tip_oid": "4ad75bf512da2c5dbd0fba737a423f6f40657c16",
-        "prefix_sha256": "fd47288337d7599e4055861cecec19d3f43bb35241a6a55a6349338402cded78"
+        "sequence": 3745,
+        "tip_oid": "b8715df6e991484bcab1f27d7bb6940a9f8c02ff",
+        "prefix_sha256": "bc2390b05ad42da1d567c2503dfbec7ff5f665ff9014d2df72c05132429a9347"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3051,
+  "next_comment_id": 3052,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15088,7 +15088,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.953588245Z",
-      "updated_at": "2026-10-07T04:53:28.193966295Z",
+      "updated_at": "2026-10-07T05:24:47.632802395Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15117,6 +15117,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQ2KeOEUoCUY/8i02vW86z+KnlLTwvC3+OaLA5G8vMfHxUhqhDzPZR3dhHhdmnQRdFQTv4uD49mFvs3S/P/DnCw=="
+        },
+        "c9825cb4-a298-426f-ace7-55f594087645": {
+          "display_id": 3051,
+          "author": "6ME5",
+          "content": "Code-only continuation: gateway file saves now receive and validate UTF-8 through physical disk windows rather than collecting the whole HTTP body. Accepted saves and explicit retries keep their operation/file guards and durable receipt inside the owned writer until settlement, even if the HTTP observation disappears. Recovery hashes the disk preimage incrementally off the control loop. Browser drafts now publish immutable content pages and exact edit/history links before adopting a small IndexedDB head; cursor-only persistence reuses the retained roots. Recovery verifies each page and exact edit preimage, uses a balanced span tree to avoid a whole-document copy per replayed delta, preserves the complete undo/redo chain, and still reads legacy records. Failed prerequisite writes cannot publish the replacement head. Whole live JS draft strings, native final assembly, other collection rendering and remaining editor behavior are still implementation/review work; this does not claim the entire issue is fixed. No manual tests/build/lint/format/codegen runners or test edits were performed, and the issue remains open until final validation.",
+          "created_at": "2026-10-07T05:24:47.619289521Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfnQ/8b5CJfMrZKYOeTA9Bje9lgzYU7DlRBz0pJB+UGMXOHA8RM15aq82ABQi1nqyKDlLDKAXifqC3HGKZ9KNAg=="
         }
       }
     },
