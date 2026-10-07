@@ -67,6 +67,12 @@ impl OperationAcknowledgement {
 pub enum AppResponsePayload {
     /// Durable evidence-backed harness suggestion inbox.
     Improvements(crate::ImprovementInbox),
+    /// Revision-fenced candidate metadata without whole retained text or evidence history.
+    ImprovementPage(crate::ImprovementPage),
+    /// Revision-fenced observation metadata for one exact candidate.
+    ImprovementEvidencePage(crate::ImprovementEvidencePage),
+    /// Exact immutable UTF-8 body slice with its original source query.
+    ImprovementTextPage(crate::ImprovementTextPage),
     /// Durable checkpoint publication with exact visible coverage and exclusions.
     WorkbenchCheckpoint(crate::WorkbenchCheckpointReceipt),
     /// Non-mutating exact restore plan awaiting confirmation.
@@ -111,12 +117,16 @@ pub enum AppResponsePayload {
     Workbench(crate::WorkbenchSnapshot),
     /// Authorized conversation metadata and optional execution binding.
     WorkbenchExecution(crate::WorkbenchExecutionState),
+    /// Exact accepted-continuation launch ownership, distinct from receipt acceptance.
+    WorkbenchContinuationAdmission(crate::WorkbenchContinuationAdmission),
     /// Durable original acceptance receipt, distinct from socket acknowledgement.
     WorkbenchReceipt(crate::WorkbenchReceipt),
     /// Scoped read-only diagnostic findings.
     Doctor(crate::DoctorReport),
     /// Conversation status and public activity.
     Interaction(crate::ProductInteractionSnapshot),
+    /// Bounded live interaction state and one exact page of complete activity segments.
+    InteractionPage(crate::ProductInteractionPage),
     /// Read-only run observation with an explicit durable input destination, if governed.
     InteractionBinding(crate::ProductInteractionBinding),
     /// Provider-discovered catalog, including explicit unavailable/cache metadata.
@@ -145,6 +155,8 @@ pub enum AppResponsePayload {
     ProductRunAccepted(ProductRunSnapshot),
     /// Bounded mixed active and settled runs with per-run qualification evidence.
     ProductRunObservations(Vec<crate::ProductRunObservation>),
+    /// Stable keyset page from one immutable durable run-catalog snapshot.
+    ProductRunPage(crate::ProductRunPage),
     /// One exact product run paired with its verified terminal settlement.
     ProductRunSettled(ProductRunSettlementSnapshot),
 }

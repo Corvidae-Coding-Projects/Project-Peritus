@@ -280,6 +280,9 @@ pub(super) fn empty_detail() -> Text<'static> {
 
 pub(super) fn conversation_text(
     conversation: Option<&ProductInteractionSnapshot>,
+    activities: Option<&[peritus_app_protocol::ProductActivity]>,
+    complete: bool,
+    unavailable: u64,
 ) -> Text<'static> {
     let Some(conversation) = conversation else {
         return Text::from(vec![
@@ -287,9 +290,33 @@ pub(super) fn conversation_text(
             Line::from("Press Enter or m to send a message."),
         ]);
     };
-    let start = conversation.activities().len().saturating_sub(12);
     let mut lines = Vec::new();
-    for activity in &conversation.activities()[start..] {
+    let activities = activities.unwrap_or_else(|| conversation.activities());
+    if unavailable != 0 {
+        lines.push(Line::styled(
+            format!("{unavailable} earliest activities predate complete history retention"),
+            Style::default().fg(MUTED),
+        ));
+        lines.push(Line::from(""));
+    }
+    if let Some(window) = conversation.activity_window().filter(|_| !complete) {
+        lines.push(Line::styled(
+            format!(
+                "Loading complete history · {} earlier activities omitted from this live view",
+                window.omitted()
+            ),
+            Style::default().fg(MUTED),
+        ));
+        if window.omitted_errors() != 0 {
+            lines.push(Line::styled(
+                format!("{} earlier errors are outside this live view", window.omitted_errors()),
+                Style::default().fg(Color::Red),
+            ));
+        }
+        lines.push(Line::from(""));
+    }
+    let start = activities.len().saturating_sub(12);
+    for activity in &activities[start..] {
         let (speaker, style) = match activity.kind() {
             ProductActivityKind::User => ("You", Style::default().fg(Color::White)),
             ProductActivityKind::Assistant => ("Peritus", Style::default().fg(ACCENT)),
@@ -306,6 +333,22 @@ pub(super) fn conversation_text(
                     .map(|line| Line::styled(line.to_owned(), Style::default().fg(MUTED))),
             );
         }
+        lines.push(Line::from(""));
+    }
+    if let Some(activity) = conversation
+        .activity_window()
+        .and_then(peritus_app_protocol::ProductActivityWindow::terminal_error)
+    {
+        lines.push(Line::styled(
+            "Error",
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        ));
+        lines.extend(safe(activity.text()).lines().map(|line| Line::from(line.to_owned())));
+        lines.extend(
+            safe(activity.detail())
+                .lines()
+                .map(|line| Line::styled(line.to_owned(), Style::default().fg(MUTED))),
+        );
         lines.push(Line::from(""));
     }
     if lines.is_empty() {

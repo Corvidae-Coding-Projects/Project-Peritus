@@ -53,6 +53,7 @@ impl AppModel {
     }
 
     pub(in crate::model) fn abandon_chat_observations(&mut self) {
+        self.abandon_activity_pages();
         let requests: Vec<_> = self
             .pending
             .iter()

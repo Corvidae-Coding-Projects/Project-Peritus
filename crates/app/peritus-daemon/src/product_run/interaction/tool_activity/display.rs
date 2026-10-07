@@ -30,7 +30,7 @@ pub(super) fn summary(name: &str, arguments: &str) -> String {
         .as_str()
         .map_or_else(|| rendered.clone(), |cwd| format!("{rendered} (cwd {})", quote(cwd)));
     // File replacement bodies, stdin, and memory payloads are deliberately not command labels.
-    super::super::bounded(&safe(&rendered).replace('\n', " "))
+    safe(&rendered).replace('\n', " ")
 }
 
 pub(super) fn result(name: &str, output: &str) -> String {
@@ -100,7 +100,7 @@ fn sensitive_key(key: &str) -> bool {
 }
 
 // Accidental-disclosure defense, not a complete credential detector. Never reads secret stores.
-// Raw authorized tool bytes remain in the existing protected trace; the public preview is bounded.
+// Raw authorized tool bytes remain in the existing protected trace.
 fn safe(text: &str) -> String {
     let mut private_key = false;
     let mut lines = Vec::new();
@@ -120,23 +120,5 @@ fn safe(text: &str) -> String {
         lines.push(if sensitive { "[credential-like content redacted]" } else { line });
         private_key = (private_key || begin) && !end;
     }
-    bounded_preview(&lines.join("\n"))
-}
-
-fn bounded_preview(text: &str) -> String {
-    const MAXIMUM: usize = peritus_app_protocol::MAX_PRODUCT_ACTIVITY_BYTES;
-    const MARKER: &str = "\n… preview truncated …\n";
-    if text.len() <= MAXIMUM {
-        return text.to_owned();
-    }
-    let half = (MAXIMUM - MARKER.len()) / 2;
-    let mut head = half;
-    let mut tail = text.len() - half;
-    while !text.is_char_boundary(head) {
-        head -= 1;
-    }
-    while !text.is_char_boundary(tail) {
-        tail += 1;
-    }
-    format!("{}{MARKER}{}", &text[..head], &text[tail..])
+    lines.join("\n")
 }

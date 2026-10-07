@@ -261,22 +261,28 @@ impl AppModel {
     }
 
     pub(super) fn select_previous_product(&mut self) -> bool {
-        let Some(product) = &mut self.product else { return false };
-        product.selected = product.selected.saturating_sub(1);
-        product.conversation = None;
-        product.confirmation = None;
-        product.detail_scroll = 0;
-        product.review.clear();
+        {
+            let Some(product) = &mut self.product else { return false };
+            product.selected = product.selected.saturating_sub(1);
+            product.conversation = None;
+            product.confirmation = None;
+            product.detail_scroll = 0;
+            product.review.clear();
+        }
+        self.abandon_activity_pages();
         true
     }
 
     pub(super) fn select_next_product(&mut self) -> bool {
-        let Some(product) = &mut self.product else { return false };
-        product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
-        product.conversation = None;
-        product.confirmation = None;
-        product.detail_scroll = 0;
-        product.review.clear();
+        {
+            let Some(product) = &mut self.product else { return false };
+            product.selected = (product.selected + 1).min(product.runs.len().saturating_sub(1));
+            product.conversation = None;
+            product.confirmation = None;
+            product.detail_scroll = 0;
+            product.review.clear();
+        }
+        self.abandon_activity_pages();
         true
     }
 }

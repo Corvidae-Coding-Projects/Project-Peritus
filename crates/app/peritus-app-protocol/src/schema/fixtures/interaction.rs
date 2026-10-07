@@ -3,12 +3,13 @@
 use super::{FixtureClass, GeneratedFixtureCase};
 use crate::{
     AppRequestPayload, AppResponseEnvelope, AppResponsePayload, ProductActivity,
-    ProductActivityKind, ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog,
-    ProductModelInfo, ProductModelQuery, ProductProviderSelection, ProductRoleModels,
-    ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
+    ProductActivityKind, ProductActivityPageQuery, ProductActivitySegment, ProductActivityWindow,
+    ProductInteractionMode, ProductInteractionPage, ProductInteractionSnapshot,
+    ProductModelCatalog, ProductModelInfo, ProductModelQuery, ProductProviderSelection,
+    ProductRoleModels, ProductRunOperationState, ProductRunPhase, ProductRunSnapshot,
 };
 use peritus_codec::{CodecError, CodecLimits};
-use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
+use peritus_types::{ProviderProfileId, RunId, Sha256Digest, WorkspaceId};
 
 pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
     use super::values::{context, encoded, id, request};
@@ -74,6 +75,33 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         )
     };
     let mut cases = binding_cases(interaction.clone(), limits)?;
+    let history = Sha256Digest::new([41; 32]);
+    let history_interaction = interaction
+        .clone()
+        .with_activity_window(
+            ProductActivityWindow::new(history, 1, 0, Vec::new(), 0, None)
+                .expect("activity window"),
+        )
+        .expect("history interaction");
+    let page_query = ProductActivityPageQuery::first(run_id);
+    let page = ProductInteractionPage::new(
+        page_query,
+        history_interaction,
+        vec![ProductActivitySegment::new(
+            1,
+            0,
+            ProductActivityKind::Assistant,
+            0,
+            "This is a coding assistant.".to_owned(),
+            27,
+            0,
+            String::new(),
+            0,
+        )
+        .expect("activity segment")],
+        None,
+    )
+    .expect("interaction page");
     cases.extend([
         model_update(run_id, limits)?,
         model_update_with_effort(run_id, limits)?,
@@ -81,6 +109,18 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
             "realistic-interaction-response",
             FixtureClass::Realistic,
             &response(AppResponsePayload::Interaction(interaction)),
+            limits,
+        )?,
+        encoded(
+            "minimal-interaction-page-query",
+            FixtureClass::Minimal,
+            &request(AppRequestPayload::QueryInteractionPage(page_query)),
+            limits,
+        )?,
+        encoded(
+            "realistic-interaction-page-response",
+            FixtureClass::Realistic,
+            &response(AppResponsePayload::InteractionPage(page)),
             limits,
         )?,
         encoded(

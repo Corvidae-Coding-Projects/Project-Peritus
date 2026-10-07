@@ -6,15 +6,16 @@ use crate::{
 };
 use peritus_app_client::Client;
 use peritus_app_protocol::{
-    AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId, ConversationTitle,
+    AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId,
     ProductInteractionMode, ProductInteractionQuery, ProductModelChoice, ProductModelEffort,
     ProductModelQuery, ProductProviderSelection, ProductRoleModels, ProductRunControl,
-    ProductRunControlAction, ProductRunQuery, ProductRunSnapshot, WorkbenchQuery,
+    ProductRunControlAction, ProductRunPageCursor, ProductRunPageQuery, ProductRunSnapshot,
+    ProductRunStoreId, WorkbenchQuery,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn bytes(text: &str) -> Result<[u8; 16]> {
     if text.len() != 32 || !text.bytes().all(|b| b.is_ascii_hexdigit()) {
@@ -26,110 +27,29 @@ pub fn bytes(text: &str) -> Result<[u8; 16]> {
     }
     Ok(bytes)
 }
-fn latest(root: &Path, prefix: &str, extension: &str) -> Result<PathBuf> {
-    let mut paths = std::fs::read_dir(root)?
-        .map(|entry| entry.map(|entry| entry.path()))
-        .collect::<std::io::Result<Vec<_>>>()?
-        .into_iter()
-        .filter(|path| {
-            path.file_name().is_some_and(|name| name.to_string_lossy().starts_with(prefix))
-                && path.extension().is_some_and(|ext| ext == extension)
-        })
-        .collect::<Vec<_>>();
-    paths.sort();
-    paths.pop().ok_or_else(|| problem("Peritus has not been configured. Open Setup console to configure a provider and workspace."))
-}
-fn configuration(app: &App) -> Result<toml::Value> {
-    let path = match &app.options.daemon_config {
-        Some(path) => path.clone(),
-        None => latest(&app.options.daemon_config_root, "peritus-", "toml")?,
-    };
-    toml::from_str(&std::fs::read_to_string(path)?).map_err(problem)
-}
 pub fn endpoint(app: &App) -> Result<PathBuf> {
-    if let Some(path) = &app.options.endpoint {
-        return Ok(path.clone());
-    }
-    let config = configuration(app)?;
-    let store =
-        config["store_id"].as_str().ok_or_else(|| problem("Daemon store identity unavailable"))?;
-    let mut hash = Sha256::new();
-    hash.update(b"peritus/daemon-endpoint/v1\0");
-    hash.update(bytes(store)?);
-    let name = format!("peritus-{}", hex(&hash.finalize()[..16]));
-    #[cfg(unix)]
-    {
-        let root = config
-            .get("paths")
-            .and_then(|v| v.get("state_root"))
-            .and_then(toml::Value::as_str)
-            .ok_or_else(|| problem("Daemon state directory unavailable"))?;
-        peritus_local_socket::bounded_path(
-            &PathBuf::from(root).join(format!("{name}.sock")),
-            peritus_local_socket::NATIVE_MAX_PATH_BYTES,
-        )
-        .map_err(problem)
-    }
-    #[cfg(windows)]
-    {
-        Ok(PathBuf::from(format!(r"\\.\pipe\{name}")))
-    }
+    Ok(current_target(app)?.endpoint().to_owned())
 }
 pub fn facts(app: &App, project: &Project) -> Result<Value> {
-    let config = configuration(app)?;
-    let providers = config
-        .get("providers")
-        .and_then(toml::Value::as_array)
-        .map(|providers| {
-            providers.iter().map(|p| json!({
-        "id":p.get("profile").and_then(|v|v.get("profile_id")).and_then(toml::Value::as_str),
-        "kind":p.get("kind").and_then(toml::Value::as_str),
-        "model":p.get("profile").and_then(|v|v.get("model")).and_then(toml::Value::as_str)
-    })).collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let state: Value = serde_json::from_slice(&std::fs::read(latest(
-        &app.options.product_state_root,
-        "state-",
-        "json",
-    )?)?)?;
-    let workspace = state["workspaces"]["recent"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .chain(state["workspaces"]["retained_registrations"].as_array().into_iter().flatten())
-        .find(|w| {
-            w["repository_root"].as_str().is_some_and(|root| {
-                Path::new(root)
-                    .canonicalize()
-                    .ok()
-                    .is_some_and(|root| root == project.root || root == project.repository)
-            })
-        });
-    Ok(
-        json!({"providers":providers,"workspace":workspace.map(|w|json!({"id":w["workspace_id"],"root":w["repository_root"],"execution":w["managed_root"].as_str().unwrap_or_else(|| w["repository_root"].as_str().unwrap_or("")),"trust":w["trust"]})),"endpoint":endpoint(app)?}),
-    )
+    discovery::current_facts(app, project)
 }
 
 mod chat;
+mod connection;
 mod conversation;
+mod discovery;
+mod prepared;
+use prepared::PreparedChat;
 pub mod improvements;
 mod readiness;
 pub mod receipts;
 #[cfg(all(test, unix))]
 mod tests;
 pub use readiness::ready_facts;
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct PreparedChat {
-    query: WorkbenchQuery,
-    run: RunId,
-    title: ConversationTitle,
-    providers: ProductProviderSelection,
-    mode: ProductInteractionMode,
-    models: ProductRoleModels,
-    text: String,
-}
+pub(crate) use discovery::{
+    NativeOwner, connect_owned, current_target, current_target_async, owner_for_project, raw_request_owned,
+    raw_request_target,
+};
 
 async fn request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
     let response = raw_request(app, payload).await?;
@@ -138,14 +58,20 @@ async fn request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePay
     }
     Ok(response)
 }
+pub(crate) async fn request_owned(
+    app: &App,
+    owner: &NativeOwner,
+    payload: AppRequestPayload,
+) -> Result<AppResponsePayload> {
+    let response = raw_request_owned(app, owner, payload).await?;
+    if let AppResponsePayload::Error(error) = &response {
+        return Err(problem(format!("Daemon rejected the request: {error}")));
+    }
+    Ok(response)
+}
 pub async fn raw_request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
-    let endpoint = endpoint(app)?;
-    let required = payload.required_workbench_feature().into_iter().collect::<Vec<_>>();
-    let mut client =
-        Client::connect(endpoint.as_os_str(), None, None, &required).await.map_err(problem)?;
-    let identity = Client::new_request_identity().map_err(problem)?;
-    let response = client.request(identity, payload).await.map_err(problem)?;
-    Ok(response.payload().clone())
+    let target = current_target_async(app).await?;
+    raw_request_target(app, &target, payload).await.map(|(response, _)| response)
 }
 pub async fn status(app: &App) -> Result<Value> {
     match request(app, AppRequestPayload::DaemonStatus).await? {
@@ -191,82 +117,62 @@ fn interaction_mode(value: &str) -> Result<ProductInteractionMode> {
         _ => Err(problem("Unknown conversation mode")),
     }
 }
-impl PreparedChat {
-    fn retained(&self) -> Value {
+pub(super) fn interaction_response(
+    value: &peritus_app_protocol::ProductInteractionSnapshot,
+    activities: &[peritus_app_protocol::ProductActivity],
+) -> Value {
+    let history = value.activity_window().map(|window| {
+        let unavailable = activities
+            .first()
+            .map_or(0, |activity| activity.sequence().saturating_sub(1));
         json!({
-            "version":1,
-            "conversation":hex(self.query.conversation().as_bytes()),
-            "workspace":hex(self.query.workspace().as_bytes()),
-            "run":hex(self.run.as_bytes()),
-            "title":self.title.as_str(),
-            "providers":{
-                "writer":hex(self.providers.writer().as_bytes()),
-                "reviewer":hex(self.providers.reviewer().as_bytes()),
-                "fixer":hex(self.providers.fixer().as_bytes())
-            },
-            "mode":format!("{:?}",self.mode).to_lowercase(),
-            "models":model_values(&self.models),
-            "text":self.text
+            "digest": hex(window.history().as_bytes()),
+            "total": window.total().to_string(),
+            "unavailable": unavailable.to_string(),
+            "liveOmitted": window.omitted().to_string(),
+            "retainedErrors": window.retained_errors().iter().map(|activity| json!({
+                "id": activity.sequence().to_string(),
+                "kind": format!("{:?}", activity.kind()).to_lowercase(),
+                "text": activity.text(),
+                "detail": activity.detail(),
+            })).collect::<Vec<_>>(),
+            "omittedErrors": window.omitted_errors().to_string(),
+            "terminalError": window.terminal_error().map(|activity| json!({
+                "id": activity.sequence().to_string(),
+                "kind": format!("{:?}", activity.kind()).to_lowercase(),
+                "text": activity.text(),
+                "detail": activity.detail(),
+            })),
         })
-    }
-    fn from_retained(value: &Value) -> Result<Self> {
-        if value["version"] != 1 {
-            return Err(problem("Unsupported prepared message context"));
-        }
-        let identity = |name: &str| -> Result<[u8; 16]> {
-            bytes(
-                value[name]
-                    .as_str()
-                    .ok_or_else(|| problem("Incomplete prepared message context"))?,
-            )
-        };
-        let provider = |role: &str| -> Result<ProviderProfileId> {
-            ProviderProfileId::new(bytes(
-                value["providers"][role]
-                    .as_str()
-                    .ok_or_else(|| problem("Incomplete prepared provider context"))?,
-            )?)
-            .map_err(|error| problem(format!("{error:?}")))
-        };
-        Ok(Self {
-            query: WorkbenchQuery::new(
-                ConversationId::new(identity("conversation")?)
-                    .map_err(|error| problem(format!("{error:?}")))?,
-                WorkspaceId::new(identity("workspace")?)
-                    .map_err(|error| problem(format!("{error:?}")))?,
-            ),
-            run: RunId::new(identity("run")?).map_err(|error| problem(format!("{error:?}")))?,
-            title: ConversationTitle::new(
-                value["title"]
-                    .as_str()
-                    .ok_or_else(|| problem("Incomplete prepared message title"))?
-                    .to_owned(),
-            )
-            .map_err(problem)?,
-            providers: ProductProviderSelection::new(
-                provider("writer")?,
-                provider("reviewer")?,
-                provider("fixer")?,
-            ),
-            mode: interaction_mode(
-                value["mode"]
-                    .as_str()
-                    .ok_or_else(|| problem("Incomplete prepared message mode"))?,
-            )?,
-            models: role_models(&value["models"])?,
-            text: value["text"]
-                .as_str()
-                .ok_or_else(|| problem("Incomplete prepared message text"))?
-                .to_owned(),
-        })
-    }
+    });
+    json!({
+        "run": snapshot(value.snapshot()),
+        "models": model_values(value.models()),
+        "mode": format!("{:?}", value.mode()).to_lowercase(),
+        "received": value.received().to_string(),
+        "incorporated": value.incorporated().to_string(),
+        "history": history,
+        "activities": activities.iter().map(|activity| json!({
+            "id": activity.sequence().to_string(),
+            "kind": format!("{:?}", activity.kind()).to_lowercase(),
+            "text": activity.text(),
+            "detail": activity.detail(),
+        })).collect::<Vec<_>>(),
+    })
 }
 pub fn response(value: AppResponsePayload) -> Result<Value> {
     match value {
         AppResponsePayload::Improvements(inbox) => Ok(improvements::projection(&inbox)),
-        AppResponsePayload::Interaction(value) => Ok(
-            json!({"run":snapshot(value.snapshot()),"models":model_values(value.models()),"mode":format!("{:?}", value.mode()).to_lowercase(),"received":value.received().to_string(),"incorporated":value.incorporated().to_string(),"activities":value.activities().iter().map(|a|json!({"id":a.sequence().to_string(),"kind":format!("{:?}",a.kind()).to_lowercase(),"text":a.text(),"detail":a.detail()})).collect::<Vec<_>>()}),
-        ),
+        AppResponsePayload::ImprovementPage(page) => Ok(improvements::page_projection(&page)),
+        AppResponsePayload::ImprovementEvidencePage(page) => {
+            Ok(improvements::evidence_projection(&page))
+        }
+        AppResponsePayload::ImprovementTextPage(page) => {
+            Ok(improvements::text_projection(&page))
+        }
+        AppResponsePayload::Interaction(value) => {
+            Ok(interaction_response(&value, value.activities()))
+        }
         AppResponsePayload::ProductRunAccepted(value) => Ok(json!({"run":snapshot(&value)})),
         AppResponsePayload::ProductRunSettled(value) => {
             Ok(json!({"run":snapshot(value.snapshot())}))
@@ -278,10 +184,17 @@ pub fn response(value: AppResponsePayload) -> Result<Value> {
 pub async fn conversation(app: &App, session: &str) -> Result<Value> {
     conversation::observe(app, session).await
 }
-fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
+async fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
     let session = app.session(input["session"].as_str().unwrap_or(""))?;
     let project = app.project(&session.project)?;
-    let facts = facts(app, &project)?;
+    let (owner, facts) = match app.session_owner(&session.id)? {
+        Some(owner) => {
+            let facts = owner.facts_async(&project).await?;
+            (owner, facts)
+        }
+        None => owner_for_project(app, &project).await?,
+    };
+    app.bind_session_owner(&session.id, owner.clone())?;
     let mut input = input.clone();
     if input.get("models").is_none() {
         input["models"] = serde_json::to_value(&session.settings.models)?;
@@ -310,7 +223,7 @@ fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
             workspace,
         ),
         run: RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?,
-        title: ConversationTitle::new(session.title).map_err(problem)?,
+        title: crate::sessions::title(&session.title)?,
         providers: ProductProviderSelection::new(
             provider("writer")?,
             provider("reviewer")?,
@@ -319,16 +232,29 @@ fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
         mode,
         models: role_models(&input["models"])?,
         text: input["text"].as_str().unwrap_or("").to_owned(),
+        attachments: crate::files::attachments::selected(app, &input)?,
+        owner: Some(owner),
     })
 }
 pub async fn send(app: &App, input: &Value) -> Result<Value> {
     chat::send(app, input).await
 }
+pub(crate) async fn send_owned(app: &App, input: &Value, owner: &crate::state::OperationOwner) -> Result<Value> {
+    chat::send_owned(app, input, owner).await
+}
 pub async fn recover_send(app: &App, operation: &str) -> Result<Option<Value>> {
-    chat::recover(app, operation).await
+    chat::inspect(app, operation).await
+}
+pub async fn retry_send(app: &App, operation: &str) -> Result<Value> {
+    chat::retry(app, operation).await
 }
 pub async fn control(app: &App, session: &str, action: &str, operation: &str) -> Result<Value> {
     let session = app.session(session)?;
+    let owner = app.session_owner(&session.id)?.ok_or_else(|| {
+        crate::error::uncertain(
+            "This legacy browser session has no retained native owner. Reopen its exact run before sending a control.",
+        )
+    })?;
     let action = match action {
         "stop" => ProductRunControlAction::Cancel,
         "retry" => ProductRunControlAction::Retry,
@@ -341,9 +267,11 @@ pub async fn control(app: &App, session: &str, action: &str, operation: &str) ->
             ));
         }
     };
+    app.bind_session_owner(&session.id, owner.clone())?;
     response(
         receipts::recorded(
             app,
+            &owner,
             operation,
             AppRequestPayload::ControlProductRun(ProductRunControl::new(
                 RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?,
@@ -369,24 +297,114 @@ pub async fn models(app: &App, profile: &str) -> Result<Value> {
         _ => Err(problem("Unexpected model catalog response")),
     }
 }
-pub async fn runs(app: &App) -> Result<Value> {
-    let mut values = Vec::new();
-    loop {
-        let offset = u64::try_from(values.len()).map_err(|_| problem("Run offset overflowed"))?;
-        match request(
-            app,
-            AppRequestPayload::QueryProductRunObservations(ProductRunQuery::page(offset)),
-        )
-        .await?
-        {
-            AppResponsePayload::ProductRunObservations(runs) => {
-                let complete = runs.len() < peritus_app_protocol::MAX_PRODUCT_RUN_PAGE;
-                values.extend(runs.iter().map(|run| snapshot(run.snapshot())));
-                if complete {
-                    return Ok(json!(values));
-                }
-            }
-            _ => return Err(problem("Unexpected runs response")),
-        }
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct RetainedRunCursor {
+    version: u16,
+    target: discovery::NativeTarget,
+    store: String,
+    highwater_sequence: String,
+    highwater_run: String,
+    after_sequence: String,
+    after_run: String,
+}
+
+impl RetainedRunCursor {
+    fn encode(target: discovery::NativeTarget, cursor: ProductRunPageCursor) -> Result<String> {
+        serde_json::to_string(&Self {
+            version: 1,
+            target,
+            store: hex(cursor.store().as_bytes()),
+            highwater_sequence: cursor.highwater_sequence().to_string(),
+            highwater_run: hex(cursor.highwater_run().as_bytes()),
+            after_sequence: cursor.after_sequence().to_string(),
+            after_run: hex(cursor.after_run().as_bytes()),
+        })
+        .map_err(Into::into)
     }
+
+    fn decode(value: &str, target: &discovery::NativeTarget) -> Result<ProductRunPageCursor> {
+        if value.len() > 64 * 1024 {
+            return Err(problem("Run page cursor is too large"));
+        }
+        let retained: Self = serde_json::from_str(value).map_err(problem)?;
+        if retained.version != 1 || retained.target != *target {
+            return Err(problem(
+                "This run page belongs to another daemon target. Refresh run history.",
+            ));
+        }
+        if retained.store != target.store() {
+            return Err(problem(
+                "This run page belongs to another durable store. Refresh run history.",
+            ));
+        }
+        let store = ProductRunStoreId::new(canonical_identity(&retained.store)?)
+            .map_err(|error| problem(format!("{error:?}")))?;
+        let highwater_sequence = canonical_u64(&retained.highwater_sequence)?;
+        let highwater_run = RunId::new(canonical_identity(&retained.highwater_run)?)
+            .map_err(|error| problem(format!("{error:?}")))?;
+        let after_sequence = canonical_u64(&retained.after_sequence)?;
+        let after_run = RunId::new(canonical_identity(&retained.after_run)?)
+            .map_err(|error| problem(format!("{error:?}")))?;
+        ProductRunPageCursor::new(
+            store,
+            highwater_sequence,
+            highwater_run,
+            after_sequence,
+            after_run,
+        )
+        .map_err(problem)
+    }
+}
+
+fn canonical_identity(value: &str) -> Result<[u8; 16]> {
+    let decoded = bytes(value)?;
+    if hex(&decoded) != value {
+        return Err(problem("Run page cursor identity is not canonical"));
+    }
+    Ok(decoded)
+}
+
+fn canonical_u64(value: &str) -> Result<u64> {
+    let decoded = value.parse::<u64>().map_err(problem)?;
+    if decoded.to_string() != value {
+        return Err(problem("Run page cursor position is not canonical"));
+    }
+    Ok(decoded)
+}
+
+pub async fn runs(app: &App, cursor: Option<&str>) -> Result<Value> {
+    let target = current_target_async(app).await?;
+    let query = match cursor {
+        Some(value) => ProductRunPageQuery::after(RetainedRunCursor::decode(value, &target)?),
+        None => ProductRunPageQuery::first(),
+    };
+    let (payload, _) = raw_request_target(
+        app,
+        &target,
+        AppRequestPayload::QueryProductRunPage(query),
+    )
+    .await?;
+    let page = match payload {
+        AppResponsePayload::ProductRunPage(page) => page,
+        AppResponsePayload::Error(error) => {
+            return Err(problem(format!("Daemon rejected the request: {error}")));
+        }
+        _ => return Err(problem("Unexpected run page response")),
+    };
+    let store = hex(page.store().as_bytes());
+    if store != target.store() {
+        return Err(problem(
+            "The daemon returned run history for another durable store. Refresh the target.",
+        ));
+    }
+    let next = page
+        .next()
+        .map(|cursor| RetainedRunCursor::encode(target.clone(), cursor))
+        .transpose()?;
+    Ok(json!({
+        "runs":page.entries().iter().map(|entry| snapshot(entry.observation().snapshot())).collect::<Vec<_>>(),
+        "cursor":next,
+        "store":store,
+    }))
 }

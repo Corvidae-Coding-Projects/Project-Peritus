@@ -85,18 +85,27 @@ impl AppModel {
         if !self
             .pending
             .values()
-            .any(|pending| matches!(pending, PendingRequest::ProductInteractionQuery))
+            .any(|pending| {
+                matches!(
+                    pending,
+                    PendingRequest::ProductInteractionQuery
+                        | PendingRequest::ProductActivityPage(_)
+                )
+            })
             && let Some(run_id) = self
                 .product
                 .as_ref()
                 .and_then(ProductUi::selected_run)
                 .map(ProductRunSnapshot::run_id)
-            && let Some(effect) = self.request(
+        {
+            if self.supports_activity_pages() {
+                effects.extend(self.request_activity_history(run_id));
+            } else if let Some(effect) = self.request(
                 AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run_id)),
                 PendingRequest::ProductInteractionQuery,
-            )
-        {
-            effects.push(effect);
+            ) {
+                effects.push(effect);
+            }
         }
         effects
     }

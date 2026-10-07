@@ -17,7 +17,10 @@ use super::{
     },
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
-    product::{read_settlement_snapshot, read_snapshot, write_settlement_snapshot, write_snapshot},
+    product::{
+        read_run_page, read_settlement_snapshot, read_snapshot, write_run_page,
+        write_settlement_snapshot, write_snapshot,
+    },
     terminal::{read_terminal_binding, write_terminal_binding},
 };
 
@@ -45,6 +48,9 @@ fn write_payload(
 ) -> Result<(), CodecError> {
     match payload {
         AppResponsePayload::Improvements(value) => super::improvements::write_inbox(writer, value),
+        AppResponsePayload::ImprovementPage(value) => super::improvements::write_page(writer, value),
+        AppResponsePayload::ImprovementEvidencePage(value) => super::improvements::write_evidence_page(writer, value),
+        AppResponsePayload::ImprovementTextPage(value) => super::improvements::write_text_page(writer, value),
         AppResponsePayload::WorkbenchCheckpoint(value) => {
             super::workbench_checkpoints::write_checkpoint_receipt(writer, value)
         }
@@ -108,12 +114,18 @@ fn write_payload(
         AppResponsePayload::WorkbenchExecution(value) => {
             super::workbench::write_execution(writer, value)
         }
+        AppResponsePayload::WorkbenchContinuationAdmission(value) => {
+            super::workbench::write_continuation_admission(writer, *value)
+        }
         AppResponsePayload::Workbench(value) => super::workbench::write_snapshot(writer, value),
         AppResponsePayload::WorkbenchReceipt(value) => {
             super::workbench::write_receipt(writer, value)
         }
         AppResponsePayload::Doctor(value) => super::doctor::write_report(writer, value),
         AppResponsePayload::Interaction(value) => super::interaction::write_snapshot(writer, value),
+        AppResponsePayload::InteractionPage(value) => {
+            super::interaction::write_page(writer, value)
+        }
         AppResponsePayload::InteractionBinding(value) => {
             super::interaction::write_binding(writer, value)
         }
@@ -134,6 +146,7 @@ fn write_payload(
         AppResponsePayload::ProductRunObservations(value) => {
             super::product::observations::write_observations(writer, value)
         }
+        AppResponsePayload::ProductRunPage(value) => write_run_page(writer, value),
         AppResponsePayload::ProductRunSettled(value) => write_settlement_snapshot(writer, value),
     }
 }
@@ -141,9 +154,30 @@ fn write_payload(
 fn payload_tag(payload: &AppResponsePayload) -> u16 {
     match payload {
         AppResponsePayload::Improvements(_) => 180,
-        AppResponsePayload::WorkbenchCheckpoint(_) => 120,
-        AppResponsePayload::WorkbenchRewindPreview(_) => 121,
-        AppResponsePayload::WorkbenchRestore(_) => 122,
+        AppResponsePayload::ImprovementPage(_) => 46,
+        AppResponsePayload::ImprovementEvidencePage(_) => 47,
+        AppResponsePayload::ImprovementTextPage(_) => 48,
+        AppResponsePayload::WorkbenchCheckpoint(value) => {
+            if value.requires_manifest_feature() {
+                123
+            } else {
+                120
+            }
+        }
+        AppResponsePayload::WorkbenchRewindPreview(value) => {
+            if value.requires_manifest_feature() {
+                124
+            } else {
+                121
+            }
+        }
+        AppResponsePayload::WorkbenchRestore(value) => {
+            if value.requires_manifest_feature() {
+                125
+            } else {
+                122
+            }
+        }
         AppResponsePayload::WorkbenchMemory(_) => 161,
         AppResponsePayload::InitProposal(_) => 162,
         AppResponsePayload::WorkbenchPermissions(_) => 160,
@@ -164,6 +198,8 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::Error(_) => 9,
         AppResponsePayload::ProductRunAccepted(_) => 10,
         AppResponsePayload::ProductRunObservations(_) => 102,
+        AppResponsePayload::ProductRunPage(_) => 103,
+        AppResponsePayload::InteractionPage(_) => 104,
         AppResponsePayload::ProductRunSettled(_) => 13,
         AppResponsePayload::Interaction(value) => {
             if value.models().has_effort() {
@@ -175,6 +211,7 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::Models(_) => 16,
         AppResponsePayload::Doctor(_) => 18,
         AppResponsePayload::WorkbenchExecution(_) => 43,
+        AppResponsePayload::WorkbenchContinuationAdmission(_) => 45,
         AppResponsePayload::InteractionBinding(_) => 44,
         AppResponsePayload::Workbench(_) => 19,
         AppResponsePayload::WorkbenchReceipt(_) => 20,
@@ -221,11 +258,23 @@ pub(super) fn read_response(
         122 => AppResponsePayload::WorkbenchRestore(
             super::workbench_checkpoints::read_restore_receipt(reader)?,
         ),
+        123 => AppResponsePayload::WorkbenchCheckpoint(
+            super::workbench_checkpoints::read_checkpoint_receipt_as(reader, true)?,
+        ),
+        124 => AppResponsePayload::WorkbenchRewindPreview(
+            super::workbench_checkpoints::read_preview_as(reader, true)?,
+        ),
+        125 => AppResponsePayload::WorkbenchRestore(
+            super::workbench_checkpoints::read_restore_receipt_as(reader, true)?,
+        ),
         140 => {
             AppResponsePayload::ConversationLibrary(super::workbench_library::read_page(reader)?)
         }
         161 => AppResponsePayload::WorkbenchMemory(super::workbench_memory::read_memory(reader)?),
         180 => AppResponsePayload::Improvements(super::improvements::read_inbox(reader)?),
+        46 => AppResponsePayload::ImprovementPage(super::improvements::read_page(reader)?),
+        47 => AppResponsePayload::ImprovementEvidencePage(super::improvements::read_evidence_page(reader)?),
+        48 => AppResponsePayload::ImprovementTextPage(super::improvements::read_text_page(reader)?),
         162 => AppResponsePayload::InitProposal(super::workbench_init::read_proposal(reader)?),
         160 => AppResponsePayload::WorkbenchPermissions(
             super::workbench_permissions::read_permissions(reader)?,
@@ -247,12 +296,17 @@ pub(super) fn read_response(
         102 => AppResponsePayload::ProductRunObservations(
             super::product::observations::read_observations(reader)?,
         ),
+        103 => AppResponsePayload::ProductRunPage(read_run_page(reader)?),
+        104 => AppResponsePayload::InteractionPage(super::interaction::read_page(reader)?),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
         15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),
         16 => AppResponsePayload::Models(super::interaction::read_catalog(reader)?),
         17 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, true)?),
         18 => AppResponsePayload::Doctor(super::doctor::read_report(reader)?),
         43 => AppResponsePayload::WorkbenchExecution(super::workbench::read_execution(reader)?),
+        45 => AppResponsePayload::WorkbenchContinuationAdmission(
+            super::workbench::read_continuation_admission(reader)?,
+        ),
         44 => AppResponsePayload::InteractionBinding(super::interaction::read_binding(reader)?),
         19 => AppResponsePayload::Workbench(super::workbench::read_snapshot(reader)?),
         20 => AppResponsePayload::WorkbenchReceipt(super::workbench::read_receipt(reader)?),

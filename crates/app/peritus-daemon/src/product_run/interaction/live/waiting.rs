@@ -3,7 +3,7 @@
 use super::{ProductRunService, ProductRunServiceError};
 #[cfg(not(verus_only))]
 use peritus_agent::DeveloperLoopError;
-use peritus_app_protocol::{MAX_PRODUCT_ACTIVITIES, ProductActivity, ProductActivityKind};
+use peritus_app_protocol::{ProductActivity, ProductActivityKind};
 use peritus_types::RunId;
 use serde::{Deserialize, Serialize};
 use std::{fs, io::Write as _, path::PathBuf, sync::atomic::Ordering};
@@ -127,9 +127,6 @@ pub(in crate::product_run::interaction) fn project(
             format!("Still waiting for public provider output ({}s so far).", notice.elapsed_seconds),
             "Durable host status; no new provider result is available.".to_owned(),
         ).map_err(|error| ProductRunServiceError::invalid_data("project waiting status", error))?;
-        if activities.len() == MAX_PRODUCT_ACTIVITIES {
-            activities.remove(0);
-        }
         activities.push(activity);
         Ok(())
     })();

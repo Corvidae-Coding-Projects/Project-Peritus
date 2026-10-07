@@ -1,13 +1,16 @@
 //! Interaction and model-discovery codecs.
 
 use super::{
-    primitive::{invalid, read_id, write_id},
+    primitive::{invalid, read_digest, read_id, write_digest, write_id},
     product,
 };
 use crate::{
-    MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_MODELS, ProductActivity, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionSnapshot, ProductModelCatalog, ProductModelChoice,
-    ProductModelEffort, ProductModelInfo, ProductModelQuery, ProductRoleModels,
+    MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS,
+    MAX_PRODUCT_MODELS, MAX_PRODUCT_RETAINED_ERRORS, ProductActivity, ProductActivityKind,
+    ProductActivityPageCursor, ProductActivityPageQuery, ProductActivitySegment,
+    ProductActivityWindow, ProductInteractionMode, ProductInteractionPage,
+    ProductInteractionSnapshot, ProductModelCatalog, ProductModelChoice, ProductModelEffort,
+    ProductModelInfo, ProductModelQuery, ProductRoleModels,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ProviderProfileId;
@@ -121,12 +124,265 @@ pub(super) fn write_snapshot(
     w.write_u64(value.incorporated())?;
     w.write_collection_len(value.activities().len())?;
     for activity in value.activities() {
-        w.write_u64(activity.sequence())?;
-        w.write_u16(activity.kind().tag())?;
-        w.write_str(activity.text())?;
-        w.write_str(activity.detail())?;
+        write_legacy_activity(w, activity)?;
     }
     Ok(())
+}
+
+fn write_legacy_activity(
+    w: &mut CanonicalWriter,
+    activity: &ProductActivity,
+) -> Result<(), CodecError> {
+    w.write_u64(activity.sequence())?;
+    w.write_u16(activity.kind().tag())?;
+    w.write_str(&legacy_field(activity.text(), activity.text_bytes()))?;
+    w.write_str(&legacy_field(activity.detail(), activity.detail_bytes()))
+}
+
+fn legacy_field(value: &str, total: u64) -> String {
+    if usize::try_from(total).ok() == Some(value.len()) {
+        return value.to_owned();
+    }
+    let suffix = format!("\n[… {} total UTF-8 bytes; complete history requires activity paging]", total);
+    let mut end = value.len().min(MAX_PRODUCT_ACTIVITY_BYTES.saturating_sub(suffix.len()));
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}{suffix}", &value[..end])
+}
+
+fn write_activity(
+    w: &mut CanonicalWriter,
+    activity: &ProductActivity,
+) -> Result<(), CodecError> {
+    w.write_u64(activity.sequence())?;
+    w.write_u16(activity.kind().tag())?;
+    w.write_str(activity.text())?;
+    w.write_u64(activity.text_bytes())?;
+    w.write_str(activity.detail())?;
+    w.write_u64(activity.detail_bytes())
+}
+
+fn read_activity(r: &mut CanonicalReader<'_>) -> Result<ProductActivity, CodecError> {
+    let offset = r.offset();
+    let sequence = r.read_u64()?;
+    let tag_offset = r.offset();
+    let kind = ProductActivityKind::from_tag(r.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, tag_offset))?;
+    let text = r.read_str()?.to_owned();
+    let text_bytes = r.read_u64()?;
+    let detail = r.read_str()?.to_owned();
+    let detail_bytes = r.read_u64()?;
+    invalid(
+        offset,
+        ProductActivity::preview(sequence, kind, text, text_bytes, detail, detail_bytes),
+    )
+}
+
+fn write_snapshot_with_window(
+    w: &mut CanonicalWriter,
+    value: &ProductInteractionSnapshot,
+) -> Result<(), CodecError> {
+    w.write_option_tag(value.settlement().is_some())?;
+    if let Some(settlement) = value.settlement() {
+        let settled = invalid(
+            w.len(),
+            crate::ProductRunSettlementSnapshot::new(value.snapshot().clone(), *settlement),
+        )?;
+        product::write_settlement_snapshot(w, &settled)?;
+    } else {
+        product::write_snapshot(w, value.snapshot())?;
+    }
+    w.write_u16(value.mode().tag())?;
+    write_models(w, value.models())?;
+    w.write_u64(value.received())?;
+    w.write_u64(value.incorporated())?;
+    w.write_collection_len(value.activities().len())?;
+    for activity in value.activities() {
+        write_activity(w, activity)?;
+    }
+    let window = value.activity_window().ok_or_else(|| {
+        CodecError::at(CodecErrorKind::InvalidDomainValue, w.len())
+    })?;
+    write_digest(w, window.history())?;
+    w.write_u64(window.total())?;
+    w.write_u64(window.omitted())?;
+    w.write_u64(window.omitted_errors())?;
+    w.write_collection_len(window.retained_errors().len())?;
+    for activity in window.retained_errors() {
+        write_activity(w, activity)?;
+    }
+    w.write_option_tag(window.terminal_error().is_some())?;
+    if let Some(activity) = window.terminal_error() {
+        write_activity(w, activity)?;
+    }
+    Ok(())
+}
+
+fn read_snapshot_with_window(
+    r: &mut CanonicalReader<'_>,
+) -> Result<ProductInteractionSnapshot, CodecError> {
+    let offset = r.offset();
+    let (snapshot, settlement) = if r.read_option_tag()? {
+        let settled = product::read_settlement_snapshot(r)?;
+        (settled.snapshot().clone(), Some(*settled.settlement()))
+    } else {
+        (product::read_snapshot(r)?, None)
+    };
+    let mode = read_mode(r)?;
+    let models = read_models(r, true)?;
+    let received = r.read_u64()?;
+    let incorporated = r.read_u64()?;
+    let length = bounded_length(r, MAX_PRODUCT_ACTIVITIES, 8 + 2 + 4 + 8 + 4 + 8)?;
+    let mut activities = r.reserve_collection(length)?;
+    for _ in 0..length {
+        activities.push(read_activity(r)?);
+    }
+    let history = read_digest(r)?;
+    let total = r.read_u64()?;
+    let omitted = r.read_u64()?;
+    let omitted_errors = r.read_u64()?;
+    let retained_length = bounded_length(r, MAX_PRODUCT_RETAINED_ERRORS, 8 + 2 + 4 + 8 + 4 + 8)?;
+    let mut retained_errors = r.reserve_collection(retained_length)?;
+    for _ in 0..retained_length {
+        retained_errors.push(read_activity(r)?);
+    }
+    let terminal_error = if r.read_option_tag()? { Some(read_activity(r)?) } else { None };
+    let window = invalid(
+        offset,
+        ProductActivityWindow::new(
+            history,
+            total,
+            omitted,
+            retained_errors,
+            omitted_errors,
+            terminal_error,
+        ),
+    )?;
+    invalid(
+        offset,
+        ProductInteractionSnapshot::new(
+            snapshot,
+            mode,
+            models,
+            received,
+            incorporated,
+            activities,
+            settlement,
+        )
+        .and_then(|snapshot| snapshot.with_activity_window(window)),
+    )
+}
+
+pub(super) fn write_page_query(
+    w: &mut CanonicalWriter,
+    value: ProductActivityPageQuery,
+) -> Result<(), CodecError> {
+    write_id(w, value.run_id().as_bytes())?;
+    w.write_option_tag(value.cursor().is_some())?;
+    if let Some(cursor) = value.cursor() {
+        write_cursor(w, cursor)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_page_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<ProductActivityPageQuery, CodecError> {
+    let offset = r.offset();
+    let run_id = read_id(r, peritus_types::RunId::new)?;
+    if r.read_option_tag()? {
+        let cursor = read_cursor(r)?;
+        if cursor.run_id() != run_id {
+            return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
+        }
+        Ok(ProductActivityPageQuery::after(cursor))
+    } else {
+        Ok(ProductActivityPageQuery::first(run_id))
+    }
+}
+
+fn write_cursor(
+    w: &mut CanonicalWriter,
+    value: ProductActivityPageCursor,
+) -> Result<(), CodecError> {
+    write_id(w, value.run_id().as_bytes())?;
+    write_digest(w, value.history())?;
+    w.write_u64(value.after_sequence())?;
+    w.write_u64(value.after_segment())
+}
+
+fn read_cursor(r: &mut CanonicalReader<'_>) -> Result<ProductActivityPageCursor, CodecError> {
+    let offset = r.offset();
+    invalid(
+        offset,
+        ProductActivityPageCursor::new(
+            read_id(r, peritus_types::RunId::new)?,
+            read_digest(r)?,
+            r.read_u64()?,
+            r.read_u64()?,
+        ),
+    )
+}
+
+pub(super) fn write_page(
+    w: &mut CanonicalWriter,
+    value: &ProductInteractionPage,
+) -> Result<(), CodecError> {
+    write_page_query(w, value.query())?;
+    write_snapshot_with_window(w, value.interaction())?;
+    w.write_collection_len(value.segments().len())?;
+    for segment in value.segments() {
+        w.write_u64(segment.sequence())?;
+        w.write_u64(segment.segment())?;
+        w.write_u16(segment.kind().tag())?;
+        w.write_u64(segment.text_offset())?;
+        w.write_str(segment.text())?;
+        w.write_u64(segment.text_bytes())?;
+        w.write_u64(segment.detail_offset())?;
+        w.write_str(segment.detail())?;
+        w.write_u64(segment.detail_bytes())?;
+    }
+    w.write_option_tag(value.next().is_some())?;
+    if let Some(cursor) = value.next() {
+        write_cursor(w, cursor)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_page(r: &mut CanonicalReader<'_>) -> Result<ProductInteractionPage, CodecError> {
+    let offset = r.offset();
+    let query = read_page_query(r)?;
+    let interaction = read_snapshot_with_window(r)?;
+    let length = bounded_length(
+        r,
+        MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS,
+        8 + 8 + 2 + 8 + 4 + 8 + 8 + 4 + 8,
+    )?;
+    let mut segments = r.reserve_collection(length)?;
+    for _ in 0..length {
+        let sequence = r.read_u64()?;
+        let segment = r.read_u64()?;
+        let tag_offset = r.offset();
+        let kind = ProductActivityKind::from_tag(r.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, tag_offset))?;
+        segments.push(invalid(
+            offset,
+            ProductActivitySegment::new(
+                sequence,
+                segment,
+                kind,
+                r.read_u64()?,
+                r.read_str()?.to_owned(),
+                r.read_u64()?,
+                r.read_u64()?,
+                r.read_str()?.to_owned(),
+                r.read_u64()?,
+            ),
+        )?);
+    }
+    let next = if r.read_option_tag()? { Some(read_cursor(r)?) } else { None };
+    invalid(offset, ProductInteractionPage::new(query, interaction, segments, next))
 }
 
 pub(super) fn write_binding(

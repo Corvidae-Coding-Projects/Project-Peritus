@@ -3,7 +3,7 @@
 //! The stored activity and private trace remain exact. This projection grants no acceptance;
 //! the runner's typed settlement remains the authority for success.
 
-use super::{ProductActivity, ProductActivityKind, bounded};
+use super::{ProductActivity, ProductActivityKind};
 use serde::Deserialize;
 use std::fmt::Write as _;
 
@@ -75,7 +75,7 @@ pub(super) fn pipeline_activity(activity: &ProductActivity) -> ProductActivity {
     ProductActivity::new(
         activity.sequence(),
         activity.kind(),
-        bounded(&rendered),
+        rendered,
         activity.detail().to_owned(),
     )
     .unwrap_or_else(|_| activity.clone())

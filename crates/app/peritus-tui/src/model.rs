@@ -1,6 +1,7 @@
 //! Deterministic application state and update reducer.
 
 pub mod chat;
+mod activity_history;
 mod editor;
 mod interaction;
 mod product;
@@ -38,7 +39,6 @@ use product::ProductUi;
 pub use product::ReviewFocus;
 
 const EVENT_CAPACITY: usize = 4_096;
-const NOTICE_TICKS: u16 = 24;
 
 /// Primary full-screen presentation selected by the user.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -92,7 +92,7 @@ pub enum ConnectionStatus {
     Disconnected(String),
 }
 
-/// Severity of one bounded transient status message.
+/// Severity of one bounded status message.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NoticeLevel {
     Info,
@@ -100,12 +100,11 @@ pub enum NoticeLevel {
     Error,
 }
 
-/// A bounded transient user-visible status message.
+/// The latest bounded user-visible status message, retained until a later notice replaces it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Notice {
     pub(crate) level: NoticeLevel,
     pub(crate) text: String,
-    ticks_remaining: u16,
 }
 
 /// One exact delivered B3 frame summarized without executing its content.
@@ -192,18 +191,15 @@ enum PendingRequest {
     WorkbenchReview(peritus_app_protocol::WorkbenchReviewQuery),
     WorkbenchImageUpload {
         transfer: peritus_app_protocol::TransferId,
-        step: crate::image_import::UploadStep,
+        step: crate::image_import::ImageUploadStep,
     },
     WorkbenchQuery(peritus_app_protocol::WorkbenchQuery),
     WorkbenchExecution(peritus_app_protocol::WorkbenchQuery),
     WorkbenchChatContinue {
         run: RunId,
         goal: bool,
-        mode: peritus_app_protocol::ProductInteractionMode,
     },
-    WorkbenchChatStarted {
-        run: RunId,
-    },
+    WorkbenchContinuationAdmission(peritus_app_protocol::WorkbenchCommand),
     ConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     ResumeConversationLibrary(peritus_app_protocol::ConversationLibraryQuery),
     WorkbenchQueue(peritus_app_protocol::WorkbenchQueueQuery),
@@ -240,6 +236,7 @@ enum PendingRequest {
     ProductExactQuery(RunId),
     ProductControl,
     ProductInteractionQuery,
+    ProductActivityPage(peritus_app_protocol::ProductActivityPageQuery),
 }
 
 impl PendingRequest {
@@ -331,7 +328,8 @@ pub struct AppModel {
     pub(crate) help_scroll: u16,
     pub(crate) prompts: Vec<PromptItem>,
     pub(crate) selected_prompt: usize,
-    pub(crate) prompt_scroll: u16,
+    pub(crate) prompt_scroll: usize,
+    pub(crate) status_scroll: usize,
     pub(crate) terminal: Option<TerminalSession>,
     pub(crate) notice: Option<Notice>,
     pub(crate) editor: Option<Editor>,
@@ -346,6 +344,7 @@ pub struct AppModel {
     pending: HashMap<RequestId, PendingRequest>,
     pending_started: HashMap<RequestId, u64>,
     pending_editor_drafts: HashMap<RequestId, Editor>,
+    activity_histories: HashMap<RunId, activity_history::ActivityHistory>,
     cancelled_imports: Vec<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)>,
     ids: IdFactory,
     pub(super) product: Option<ProductUi>,
@@ -372,6 +371,7 @@ impl AppModel {
             prompts: Vec::new(),
             selected_prompt: 0,
             prompt_scroll: 0,
+            status_scroll: 0,
             terminal: None,
             notice: None,
             editor: None,
@@ -386,6 +386,7 @@ impl AppModel {
             pending: HashMap::new(),
             pending_started: HashMap::new(),
             pending_editor_drafts: HashMap::new(),
+            activity_histories: HashMap::new(),
             cancelled_imports: Vec::new(),
             ids: IdFactory::new(seed),
             product: product.map(ProductUi::new),
@@ -413,7 +414,16 @@ impl AppModel {
             Action::NegotiatedFeatures { context, features } => {
                 if self.context == Some(context) {
                     self.features = features;
-                    self.recover_workbench_receipt()
+                    let mut effects = self.recover_workbench_receipt();
+                    if let Some(run_id) = self.chat.run_id.or_else(|| {
+                        self.product
+                            .as_ref()
+                            .and_then(ProductUi::selected_run)
+                            .map(|run| run.run_id())
+                    }) {
+                        effects.extend(self.request_activity_history(run_id));
+                    }
+                    effects
                 } else {
                     Vec::new()
                 }
@@ -447,12 +457,6 @@ impl AppModel {
             Action::TerminalEvent(event) => self.handle_terminal_event(event),
             Action::Tick(_) => {
                 self.tick_count = self.tick_count.saturating_add(1);
-                if let Some(notice) = &mut self.notice {
-                    notice.ticks_remaining = notice.ticks_remaining.saturating_sub(1);
-                    if notice.ticks_remaining == 0 {
-                        self.notice = None;
-                    }
-                }
                 if self.tick_count.is_multiple_of(4) {
                     self.poll_product_runs()
                 } else {

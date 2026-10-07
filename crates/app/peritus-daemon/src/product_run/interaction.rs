@@ -4,11 +4,15 @@ use super::{ProductRunService, ProductRunServiceError, snapshot::live_snapshot};
 use crate::product_control::{CapturedConversation, CapturedFileReaders};
 use peritus_agent::DeveloperInput;
 use peritus_app_protocol::{
-    MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, ProductActivity, ProductActivityKind,
-    ProductInteractionMode, ProductInteractionQuery, ProductInteractionSnapshot, ProductRoleModels,
+    MAX_PRODUCT_ACTIVITIES, MAX_PRODUCT_ACTIVITY_BYTES, MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS,
+    MAX_PRODUCT_ACTIVITY_SEGMENT_BYTES, MAX_PRODUCT_RETAINED_ERRORS, ProductActivity,
+    ProductActivityKind, ProductActivityPageCursor, ProductActivityPageQuery,
+    ProductActivitySegment, ProductActivityWindow, ProductInteractionMode, ProductInteractionPage,
+    ProductInteractionQuery, ProductInteractionSnapshot, ProductRoleModels,
 };
 use peritus_product_runner::ConversationView;
-use peritus_types::RunId;
+use peritus_types::{RunId, Sha256Digest};
+use sha2::{Digest as _, Sha256};
 use std::sync::Arc;
 
 use super::publication::{MutationDisposition, RunMutationKind};
@@ -115,8 +119,12 @@ impl InteractionOptions {
         text: &str,
         detail: &str,
     ) -> Result<(), ProductRunServiceError> {
-        let text = bounded(text);
-        let activity = ProductActivity::new(self.next_sequence, kind, text, bounded(detail))
+        let activity = ProductActivity::new(
+            self.next_sequence,
+            kind,
+            text.to_owned(),
+            detail.to_owned(),
+        )
             .map_err(|error| {
                 ProductRunServiceError::invalid_data(
                     "construct public conversation activity",
@@ -125,9 +133,6 @@ impl InteractionOptions {
             })?;
         self.next_sequence =
             self.next_sequence.checked_add(1).ok_or(ProductRunServiceError::Unavailable)?;
-        if self.activities.len() == MAX_PRODUCT_ACTIVITIES {
-            self.activities.remove(0);
-        }
         self.activities.push(activity);
         self.streaming_text = false;
         Ok(())
@@ -147,7 +152,7 @@ impl InteractionOptions {
         kind: ProductActivityKind,
         detail: &str,
     ) -> Result<(), ProductRunServiceError> {
-        let mut streaming = if kind == ProductActivityKind::Assistant {
+        let streaming = if kind == ProductActivityKind::Assistant {
             self.streaming_text
         } else {
             self.activities
@@ -170,18 +175,6 @@ impl InteractionOptions {
                 ));
             }
         };
-        if !streaming
-            && std::str::from_utf8(&pending[..valid])
-                .is_ok_and(|text| text.chars().all(char::is_whitespace))
-        {
-            // Some compatible providers begin a post-tool response with standalone whitespace.
-            // Keep a small prefix so it can join the first real text delta, but never let an
-            // unbounded whitespace stream consume memory or create an invalid empty activity.
-            if valid > 256 {
-                pending.drain(..valid);
-            }
-            return Ok(());
-        }
         let text = String::from_utf8(pending.drain(..valid).collect()).map_err(|error| {
             ProductRunServiceError::invalid_provider_output(
                 "assemble streamed assistant text",
@@ -191,48 +184,29 @@ impl InteractionOptions {
         if text.is_empty() {
             return Ok(());
         }
-        let mut remaining = text.as_str();
-        while !remaining.is_empty() {
-            let last = self.activities.last();
-            let merge = streaming
-                && last.is_some_and(|last| {
-                    last.kind() == kind
-                        && last.detail() == detail
-                        && last.text().len() < MAX_PRODUCT_ACTIVITY_BYTES.saturating_sub(4)
-                });
-            let available = if merge {
-                MAX_PRODUCT_ACTIVITY_BYTES - last.map_or(0, |last| last.text().len())
-            } else {
-                MAX_PRODUCT_ACTIVITY_BYTES
-            };
-            let mut count = remaining.len().min(available);
-            while !remaining.is_char_boundary(count) {
-                count -= 1;
-            }
-            let piece = &remaining[..count];
-            if merge {
-                let last = self.activities.pop().ok_or(ProductRunServiceError::Unavailable)?;
-                self.activities.push(
-                    ProductActivity::new(
-                        last.sequence(),
-                        kind,
-                        format!("{}{piece}", last.text()),
-                        detail.to_owned(),
+        let last = self.activities.last();
+        let merge = streaming
+            && last.is_some_and(|last| last.kind() == kind && last.detail() == detail);
+        if merge {
+            let last = self.activities.pop().ok_or(ProductRunServiceError::Unavailable)?;
+            self.activities.push(
+                ProductActivity::new(
+                    last.sequence(),
+                    kind,
+                    format!("{}{text}", last.text()),
+                    detail.to_owned(),
+                )
+                .map_err(|error| {
+                    ProductRunServiceError::invalid_data(
+                        "extend public assistant activity",
+                        error,
                     )
-                    .map_err(|error| {
-                        ProductRunServiceError::invalid_data(
-                            "extend public assistant activity",
-                            error,
-                        )
-                    })?,
-                );
-            } else {
-                self.append(kind, piece, detail)?;
-            }
-            streaming = true;
-            self.streaming_text = kind == ProductActivityKind::Assistant;
-            remaining = &remaining[count..];
+                })?,
+            );
+        } else {
+            self.append(kind, &text, detail)?;
         }
+        self.streaming_text = kind == ProductActivityKind::Assistant;
         Ok(())
     }
 }
@@ -268,46 +242,143 @@ impl ProductRunService {
             .get(&query.run_id())
             .cloned()
             .ok_or(ProductRunServiceError::NotFound)?;
-        let options = &record.interaction;
-        let persistence_failure = options.persistence_failure();
-        let mut snapshot = live_snapshot(&self.inner.directory, &record)?;
-        let mut activities = if record.checkpoint.is_some() {
-            options.activities.iter().map(presentation::pipeline_activity).collect()
+        self.project_interaction(&record)
+    }
+
+    pub(crate) fn query_activity_page(
+        &self,
+        query: ProductActivityPageQuery,
+    ) -> Result<ProductInteractionPage, ProductRunServiceError> {
+        self.synchronize_public_inputs(query.run_id())?;
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&query.run_id())
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        let public = public_activities(self, &record);
+        let interaction = self.project_interaction_from(&record, &public)?;
+        let window = interaction
+            .activity_window()
+            .ok_or(ProductRunServiceError::InvalidState)?;
+        if query.cursor().is_some_and(|cursor| cursor.history() != window.history()) {
+            return Err(ProductRunServiceError::InvalidState);
+        }
+        let (segments, more, cursor_seen) = activity_page_segments(&public, query.cursor())?;
+        if query.cursor().is_some() && !cursor_seen {
+            return Err(ProductRunServiceError::InvalidState);
+        }
+        let next = if more {
+            let last = segments.last().ok_or(ProductRunServiceError::InvalidState)?;
+            Some(
+                ProductActivityPageCursor::new(
+                    query.run_id(),
+                    window.history(),
+                    last.sequence(),
+                    last.segment(),
+                )
+                .map_err(|_| ProductRunServiceError::InvalidState)?,
+            )
         } else {
-            options.activities.clone()
+            None
         };
-        let input_revision = if let Some(detail) = persistence_failure {
+        ProductInteractionPage::new(query, interaction, segments, next)
+            .map_err(|_| ProductRunServiceError::InvalidState)
+    }
+
+    fn project_interaction(
+        &self,
+        record: &super::RunRecord,
+    ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
+        let public = public_activities(self, record);
+        self.project_interaction_from(record, &public)
+    }
+
+    fn project_interaction_from(
+        &self,
+        record: &super::RunRecord,
+        public: &[ProductActivity],
+    ) -> Result<ProductInteractionSnapshot, ProductRunServiceError> {
+        let options = &record.interaction;
+        let sequence_base = public
+            .first()
+            .map_or(0, |activity| activity.sequence().saturating_sub(1));
+        if public.iter().enumerate().any(|(index, activity)| {
+            u64::try_from(index)
+                .ok()
+                .and_then(|index| sequence_base.checked_add(index + 1))
+                != Some(activity.sequence())
+        }) {
+            return Err(ProductRunServiceError::InvalidState);
+        }
+        let persistence_failure = options.persistence_failure();
+        let mut snapshot = live_snapshot(&self.inner.directory, record)?;
+        let input_revision = if let Some(detail) = persistence_failure.as_ref() {
             snapshot = super::snapshot::replace_snapshot(
                 &snapshot,
                 peritus_app_protocol::ProductRunPhase::RecoveryRequired,
                 "Stopped because run history could not be saved",
                 &detail,
             )?;
-            if activities.len() == MAX_PRODUCT_ACTIVITIES {
-                activities.remove(0);
-            }
-            activities.push(
+            self.record_input_revision(record).unwrap_or(options.incorporated)
+        } else {
+            self.record_input_revision(record)?
+        };
+        let start = public.len().saturating_sub(MAX_PRODUCT_ACTIVITIES);
+        let activities = public[start..]
+            .iter()
+            .map(activity_preview)
+            .collect::<Result<Vec<_>, _>>()?;
+        let older_errors = public[..start]
+            .iter()
+            .filter(|activity| activity.kind() == ProductActivityKind::Error)
+            .collect::<Vec<_>>();
+        let error_start = older_errors.len().saturating_sub(MAX_PRODUCT_RETAINED_ERRORS);
+        let retained_errors = older_errors[error_start..]
+            .iter()
+            .map(|activity| activity_preview(activity))
+            .collect::<Result<Vec<_>, _>>()?;
+        let terminal_error = persistence_failure
+            .map(|detail| {
+                let sequence = public
+                    .last()
+                    .map_or(1, |activity| activity.sequence().saturating_add(1));
                 ProductActivity::new(
-                    options.next_sequence,
+                    sequence,
                     ProductActivityKind::Error,
                     "Peritus stopped this run because its conversation history was not durable"
                         .to_owned(),
-                    bounded(&detail),
+                    detail,
                 )
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?,
-            );
-            self.record_input_revision(&record).unwrap_or(options.incorporated)
-        } else {
-            self.record_input_revision(&record)?
-        };
-        let waiting = live::waiting::pending(&record);
+                .map_err(|_| ProductRunServiceError::InvalidMessage)
+                .and_then(|activity| activity_preview(&activity))
+            })
+            .transpose()?;
+        let total = sequence_base
+            .checked_add(
+                u64::try_from(public.len()).map_err(|_| ProductRunServiceError::Unavailable)?,
+            )
+            .ok_or(ProductRunServiceError::Unavailable)?;
+        let omitted = sequence_base
+            .checked_add(u64::try_from(start).map_err(|_| ProductRunServiceError::Unavailable)?)
+            .ok_or(ProductRunServiceError::Unavailable)?;
+        let omitted_errors =
+            u64::try_from(error_start).map_err(|_| ProductRunServiceError::Unavailable)?;
+        let window = ProductActivityWindow::new(
+            activity_history_digest(record.request.run_id(), public),
+            total,
+            omitted,
+            retained_errors,
+            omitted_errors,
+            terminal_error,
+        )
+        .map_err(|_| ProductRunServiceError::InvalidState)?;
         let mode = options.mode;
         let models = options.models.clone();
         let incorporated = options.incorporated;
-        let settlement = super::snapshot::delivery_settlement(&record);
-        if let Some(waiting) = waiting {
-            live::waiting::project(self, &waiting, &mut activities);
-        }
+        let settlement = super::snapshot::delivery_settlement(record);
         ProductInteractionSnapshot::new(
             snapshot,
             mode,
@@ -317,6 +388,7 @@ impl ProductRunService {
             activities,
             settlement,
         )
+        .and_then(|snapshot| snapshot.with_activity_window(window))
         .map_err(|_| ProductRunServiceError::InvalidMessage)
     }
 
@@ -620,15 +692,126 @@ pub(super) fn terminal_activity(record: &mut super::RunRecord) {
         detail,
     );
 }
-fn bounded(text: &str) -> String {
-    if text.len() <= MAX_PRODUCT_ACTIVITY_BYTES {
-        return text.to_owned();
+
+fn public_activities(
+    service: &ProductRunService,
+    record: &super::RunRecord,
+) -> Vec<ProductActivity> {
+    let mut activities = if record.checkpoint.is_some() {
+        record
+            .interaction
+            .activities
+            .iter()
+            .map(presentation::pipeline_activity)
+            .collect()
+    } else {
+        record.interaction.activities.clone()
+    };
+    if let Some(waiting) = live::waiting::pending(record) {
+        live::waiting::project(service, &waiting, &mut activities);
     }
-    let mut end = MAX_PRODUCT_ACTIVITY_BYTES - 3;
+    activities
+}
+
+fn activity_preview(
+    activity: &ProductActivity,
+) -> Result<ProductActivity, ProductRunServiceError> {
+    ProductActivity::preview(
+        activity.sequence(),
+        activity.kind(),
+        utf8_prefix(activity.text(), MAX_PRODUCT_ACTIVITY_BYTES).to_owned(),
+        u64::try_from(activity.text().len()).map_err(|_| ProductRunServiceError::Unavailable)?,
+        utf8_prefix(activity.detail(), MAX_PRODUCT_ACTIVITY_BYTES).to_owned(),
+        u64::try_from(activity.detail().len()).map_err(|_| ProductRunServiceError::Unavailable)?,
+    )
+    .map_err(|error| {
+        ProductRunServiceError::invalid_data("project bounded conversation activity", error)
+    })
+}
+
+fn utf8_prefix(text: &str, maximum: usize) -> &str {
+    let mut end = text.len().min(maximum);
     while !text.is_char_boundary(end) {
         end -= 1;
     }
-    format!("{}...", &text[..end])
+    &text[..end]
+}
+
+fn activity_history_digest(run_id: RunId, activities: &[ProductActivity]) -> Sha256Digest {
+    let mut hasher = Sha256::new();
+    hasher.update(b"peritus-product-activity-history/v1\0");
+    hasher.update(run_id.as_bytes());
+    hasher.update(u64::try_from(activities.len()).unwrap_or(u64::MAX).to_le_bytes());
+    for activity in activities {
+        hasher.update(activity.sequence().to_le_bytes());
+        hasher.update(activity.kind().tag().to_le_bytes());
+        hasher.update(u64::try_from(activity.text().len()).unwrap_or(u64::MAX).to_le_bytes());
+        hasher.update(activity.text().as_bytes());
+        hasher.update(u64::try_from(activity.detail().len()).unwrap_or(u64::MAX).to_le_bytes());
+        hasher.update(activity.detail().as_bytes());
+    }
+    Sha256Digest::new(hasher.finalize().into())
+}
+
+fn activity_page_segments(
+    activities: &[ProductActivity],
+    cursor: Option<ProductActivityPageCursor>,
+) -> Result<(Vec<ProductActivitySegment>, bool, bool), ProductRunServiceError> {
+    let after = cursor.map(|cursor| (cursor.after_sequence(), cursor.after_segment()));
+    let mut cursor_seen = after.is_none();
+    let mut segments = Vec::with_capacity(MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS + 1);
+    'activities: for activity in activities {
+        let mut text_offset = 0;
+        let mut detail_offset = 0;
+        let mut segment = 0_u64;
+        while text_offset < activity.text().len() || detail_offset < activity.detail().len() {
+            let text = utf8_prefix(
+                &activity.text()[text_offset..],
+                MAX_PRODUCT_ACTIVITY_SEGMENT_BYTES,
+            );
+            let detail = utf8_prefix(
+                &activity.detail()[detail_offset..],
+                MAX_PRODUCT_ACTIVITY_SEGMENT_BYTES,
+            );
+            let key = (activity.sequence(), segment);
+            if after == Some(key) {
+                cursor_seen = true;
+            } else if cursor_seen {
+                segments.push(
+                    ProductActivitySegment::new(
+                        activity.sequence(),
+                        segment,
+                        activity.kind(),
+                        u64::try_from(text_offset)
+                            .map_err(|_| ProductRunServiceError::Unavailable)?,
+                        text.to_owned(),
+                        activity.text_bytes(),
+                        u64::try_from(detail_offset)
+                            .map_err(|_| ProductRunServiceError::Unavailable)?,
+                        detail.to_owned(),
+                        activity.detail_bytes(),
+                    )
+                    .map_err(|error| {
+                        ProductRunServiceError::invalid_data(
+                            "segment complete conversation activity",
+                            error,
+                        )
+                    })?,
+                );
+                if segments.len() > MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS {
+                    break 'activities;
+                }
+            }
+            text_offset += text.len();
+            detail_offset += detail.len();
+            segment = segment
+                .checked_add(1)
+                .ok_or(ProductRunServiceError::Unavailable)?;
+        }
+    }
+    let more = segments.len() > MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS;
+    segments.truncate(MAX_PRODUCT_ACTIVITY_PAGE_SEGMENTS);
+    Ok((segments, more, cursor_seen))
 }
 
 #[cfg(test)]

@@ -2,8 +2,8 @@
 
 use super::super::{ProductRunServiceError, interaction::InteractionOptions};
 use peritus_app_protocol::{
-    MAX_PRODUCT_ACTIVITIES, ProductActivity, ProductActivityKind, ProductInteractionMode,
-    ProductModelChoice, ProductModelEffort, ProductRoleModels,
+    ProductActivity, ProductActivityKind, ProductInteractionMode, ProductModelChoice,
+    ProductModelEffort, ProductRoleModels,
 };
 use serde::Deserialize;
 use serde::Serialize;
@@ -77,7 +77,7 @@ impl PersistedInteraction {
             mode,
             ProductRoleModels::new(writer?, reviewer?, fixer?),
         );
-        if self.activities.len() > MAX_PRODUCT_ACTIVITIES || self.next_sequence == 0 {
+        if self.next_sequence == 0 {
             return Err(invalid());
         }
         value.activities = self
@@ -93,8 +93,14 @@ impl PersistedInteraction {
                 .map_err(|_| invalid())
             })
             .collect::<Result<_, _>>()?;
-        if value.activities.windows(2).any(|pair| pair[0].sequence() >= pair[1].sequence())
-            || value.activities.last().is_some_and(|last| last.sequence() >= self.next_sequence)
+        if value.activities.windows(2).any(|pair| {
+            pair[0].sequence().checked_add(1) != Some(pair[1].sequence())
+        })
+            || value
+                .activities
+                .last()
+                .is_some_and(|last| last.sequence().checked_add(1) != Some(self.next_sequence))
+            || value.activities.is_empty() && self.next_sequence != 1
         {
             return Err(invalid());
         }

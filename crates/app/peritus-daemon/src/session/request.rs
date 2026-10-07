@@ -41,7 +41,7 @@ where
     let checkpoint_coverage = context
         .supports(peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointCoverage);
     let payload = if let Err(error) =
-        product_runs.authorize_workbench_request(actor_id, request.payload())
+        blocking::authorize(product_runs, actor_id, request.payload()).await
     {
         AppResponsePayload::Error(error)
     } else {
@@ -53,47 +53,81 @@ where
             | AppRequestPayload::QueryWorkbenchImages(_)
             | AppRequestPayload::BeginWorkbenchImageUpload(_)
             | AppRequestPayload::PreviewWorkbenchImage(_) => {
-                media::respond(authority, artifacts, product_runs, actor_id, limits, &request).await
+                media::respond(
+                    authority,
+                    artifacts,
+                    product_runs,
+                    actor_id,
+                    limits,
+                    context.supports(
+                        peritus_app_protocol::WellKnownProtocolFeature::WorkbenchRequestSources,
+                    ),
+                    &request,
+                )
+                .await
             }
             AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
-                product_runs.inspect_workbench_checkpoint(actor_id, *value)
+                query::respond(product_runs, actor_id, query::Request::Checkpoint(*value)).await
             }
             AppRequestPayload::PreviewWorkbenchRewind(value) => {
                 product_runs.preview_workbench_rewind(actor_id, value).await
             }
             AppRequestPayload::QueryWorkbenchMemory(query) => {
-                product_runs.workbench_memory(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Memory(*query)).await
             }
-            AppRequestPayload::DiscoverInit(value) => product_runs.discover_init(actor_id, *value),
+            AppRequestPayload::DiscoverInit(value) => {
+                query::respond(product_runs, actor_id, query::Request::Init(*value)).await
+            }
             AppRequestPayload::QueryWorkbenchPermissions(query) => {
-                product_runs.workbench_permissions(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Permissions(*query)).await
             }
             AppRequestPayload::PreviewWorkbenchCompaction(value) => {
-                product_runs.preview_workbench_compaction(actor_id, value)
+                query::respond(product_runs, actor_id, query::Request::Compaction(value.clone()))
+                    .await
             }
             AppRequestPayload::QueryWorkbenchPreview(query) => {
-                product_runs.workbench_preview(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Preview(*query)).await
             }
             AppRequestPayload::QueryWorkbenchResult(query) => {
-                product_runs.workbench_result(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Result(*query)).await
             }
             AppRequestPayload::QueryWorkbenchReview(query) => {
-                product_runs.workbench_review(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Review(*query)).await
             }
             AppRequestPayload::QueryConversationLibrary(query) => {
-                product_runs.conversation_library(actor_id, query)
+                query::respond(product_runs, actor_id, query::Request::Library(query.clone())).await
             }
             AppRequestPayload::QueryWorkbenchContext(query) => {
-                product_runs.workbench_context(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Context(*query)).await
             }
             AppRequestPayload::QueryWorkbenchBrief(query) => {
-                product_runs.workbench_brief(actor_id, *query)
+                query::respond(
+                    product_runs,
+                    actor_id,
+                    query::Request::Brief(
+                        *query,
+                        context.supports(
+                            peritus_app_protocol::WellKnownProtocolFeature::WorkbenchRequestSources,
+                        ),
+                    ),
+                )
+                .await
             }
             AppRequestPayload::QueryWorkbenchGoal(query) => {
-                product_runs.workbench_goal(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Goal(*query)).await
             }
             AppRequestPayload::QueryWorkbenchQueue(query) => {
-                product_runs.workbench_queue(actor_id, *query)
+                query::respond(
+                    product_runs,
+                    actor_id,
+                    query::Request::Queue(
+                        *query,
+                        context.supports(
+                            peritus_app_protocol::WellKnownProtocolFeature::WorkbenchRequestSources,
+                        ),
+                    ),
+                )
+                .await
             }
             AppRequestPayload::WorkbenchCommand(command) => {
                 workbench::respond(
@@ -103,29 +137,40 @@ where
                     limits,
                     &request,
                     command,
-                    checkpoint_coverage,
+                    context,
                 )
                 .await?
             }
-            AppRequestPayload::ContinueWorkbenchExecution(query) => {
-                product_runs.continue_workbench_execution(actor_id, *query).await
+            AppRequestPayload::ContinueWorkbenchExecution(_) => {
+                AppResponsePayload::Error(AppProtocolError::new(
+                    AppErrorCode::MissingRequiredFeature,
+                    None,
+                ))
+            }
+            AppRequestPayload::QueryWorkbenchContinuationAdmission(command) => {
+                query::respond(
+                    product_runs,
+                    actor_id,
+                    query::Request::ContinuationAdmission(command.clone()),
+                )
+                .await
             }
             AppRequestPayload::QueryWorkbenchExecution(query) => {
-                product_runs.workbench_execution(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Execution(*query)).await
             }
-            AppRequestPayload::QueryInteractionBinding(query) => product_runs
-                .query_interaction_binding(actor_id, *query)
-                .map_or_else(product_run_error, AppResponsePayload::InteractionBinding),
+            AppRequestPayload::QueryInteractionBinding(query) => {
+                query::respond(product_runs, actor_id, query::Request::Binding(*query)).await
+            }
             AppRequestPayload::QueryWorkbench(query) => {
-                product_runs.workbench_query(actor_id, *query)
+                query::respond(product_runs, actor_id, query::Request::Workbench(*query)).await
             }
             AppRequestPayload::QueryWorkbenchReceipt(command) => {
-                product_runs.workbench_receipt(actor_id, command)
+                query::respond(product_runs, actor_id, query::Request::Receipt(command.clone()))
+                    .await
             }
-            AppRequestPayload::Doctor(value) => match product_runs.doctor(*value) {
-                Ok(report) => AppResponsePayload::Doctor(report),
-                Err(error) => product_run_error(error),
-            },
+            AppRequestPayload::Doctor(value) => {
+                query::respond(product_runs, actor_id, query::Request::Doctor(*value)).await
+            }
             AppRequestPayload::SubmitCommand(value) => AppResponsePayload::CommandResult(
                 command::submit(authority, actor_id, value).await?,
             ),
@@ -141,11 +186,12 @@ where
             },
             AppRequestPayload::OpenArtifact(value) => {
                 match authority
-                    .open_artifact(
+                    .open_artifact_with_media_type_limit(
                         actor_id,
                         request.context().session_id(),
                         *value,
                         limits.max_artifact_chunk_bytes(),
+                        limits.codec().max_string_bytes,
                     )
                     .await
                 {
@@ -208,8 +254,14 @@ where
                 }
             }
             AppRequestPayload::Improvements(value) => {
-                match product_runs.improvements(actor_id, value).await {
-                    Ok(inbox) => AppResponsePayload::Improvements(inbox),
+                let paged_response = context.supports(
+                    peritus_app_protocol::WellKnownProtocolFeature::HarnessImprovementPages,
+                );
+                match product_runs
+                    .improvements_with_representation(actor_id, value, paged_response)
+                    .await
+                {
+                    Ok(payload) => payload,
                     Err(error) => product_run_error(error),
                 }
             }
@@ -220,10 +272,10 @@ where
                 }
             }
             AppRequestPayload::QueryInteraction(value) => {
-                match product_runs.query_interaction(*value) {
-                    Ok(snapshot) => AppResponsePayload::Interaction(snapshot),
-                    Err(error) => product_run_error(error),
-                }
+                query::respond(product_runs, actor_id, query::Request::Interaction(*value)).await
+            }
+            AppRequestPayload::QueryInteractionPage(value) => {
+                query::respond(product_runs, actor_id, query::Request::ActivityPage(*value)).await
             }
             AppRequestPayload::QueryModels(value) => {
                 match product_runs.query_models(*value).await {
@@ -235,7 +287,10 @@ where
                 product_runs.control_authenticated(actor_id, request.request_id(), *value).await
             }
             AppRequestPayload::QueryProductRunObservations(value) => {
-                response::product_run_observations(product_runs, *value)
+                query::respond(product_runs, actor_id, query::Request::Observations(*value)).await
+            }
+            AppRequestPayload::QueryProductRunPage(value) => {
+                query::respond(product_runs, actor_id, query::Request::RunPage(*value)).await
             }
             AppRequestPayload::AnswerPrompt(answer) => {
                 let prompt_id = answer.correlation().prompt_id();
@@ -298,6 +353,7 @@ where
             }
             AppRequestPayload::AttachTerminal(binding) => {
                 attachment::attach(product_runs, terminals, context, *binding, terminal_bindings)
+                    .await
             }
             AppRequestPayload::TerminalInput(input) => terminal_operation(
                 request.request_id(),
@@ -338,6 +394,11 @@ where
         _ => (None, None),
     };
     let payload = checkpoint_coverage::response(payload, checkpoint_coverage);
+    let payload = checkpoint_manifests::response(
+        payload,
+        context
+            .supports(peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointManifests),
+    );
     let payload = constrain_error_diagnostic(payload, limits.max_diagnostic_bytes());
     let response = AppResponseEnvelope::new(
         request.context(),
@@ -361,8 +422,11 @@ where
 }
 
 mod attachment;
+mod blocking;
 mod checkpoint_coverage;
+mod checkpoint_manifests;
 mod media;
+mod query;
 mod response;
 mod workbench;
 use response::terminal_error_payload;

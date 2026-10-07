@@ -27,8 +27,8 @@ use super::{
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation_query, read_run_control, read_run_query, write_conversation_query,
-        write_run_control, write_run_query,
+        read_conversation_query, read_run_control, read_run_page_query, read_run_query,
+        write_conversation_query, write_run_control, write_run_page_query, write_run_query,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -85,7 +85,8 @@ fn write_payload(
             unreachable!("inspection payload handled above")
         }
         AppRequestPayload::WorkbenchCommand(value)
-        | AppRequestPayload::QueryWorkbenchReceipt(value) => {
+        | AppRequestPayload::QueryWorkbenchReceipt(value)
+        | AppRequestPayload::QueryWorkbenchContinuationAdmission(value) => {
             super::workbench::write_command(writer, value)
         }
         AppRequestPayload::ContinueWorkbenchExecution(value) => {
@@ -104,6 +105,9 @@ fn write_payload(
         AppRequestPayload::Doctor(value) => super::doctor::write_query(writer, *value),
         AppRequestPayload::QueryInteractionBinding(value)
         | AppRequestPayload::QueryInteraction(value) => write_conversation_query(writer, *value),
+        AppRequestPayload::QueryInteractionPage(value) => {
+            super::interaction::write_page_query(writer, *value)
+        }
         AppRequestPayload::QueryModels(value) => {
             super::interaction::write_model_query(writer, *value)
         }
@@ -127,6 +131,7 @@ fn write_payload(
         }
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
         AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
+        AppRequestPayload::QueryProductRunPage(value) => write_run_page_query(writer, *value),
         AppRequestPayload::UpdateModels(value) => {
             super::interaction::write_model_update(writer, value)
         }
@@ -157,6 +162,7 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::QueryWorkbenchBrief(_) => 34,
         AppRequestPayload::WorkbenchCommand(_) => 29,
         AppRequestPayload::ContinueWorkbenchExecution(_) => 44,
+        AppRequestPayload::QueryWorkbenchContinuationAdmission(_) => 46,
         AppRequestPayload::QueryWorkbenchExecution(_) => 43,
         AppRequestPayload::QueryInteractionBinding(_) => 45,
         AppRequestPayload::QueryWorkbench(_) => 30,
@@ -180,6 +186,8 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::CompleteArtifactUpload(_) => 16,
         AppRequestPayload::ControlProductRun(_) => 18,
         AppRequestPayload::QueryProductRunObservations(_) => 102,
+        AppRequestPayload::QueryProductRunPage(_) => 103,
+        AppRequestPayload::QueryInteractionPage(_) => 104,
         AppRequestPayload::QueryInteraction(_) => 23,
         AppRequestPayload::QueryModels(_) => 24,
         AppRequestPayload::UpdateModels(value) => {
@@ -263,6 +271,10 @@ fn read_payload(
         16 => AppRequestPayload::CompleteArtifactUpload(read_artifact_completion(reader)?),
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
         102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
+        103 => AppRequestPayload::QueryProductRunPage(read_run_page_query(reader)?),
+        104 => AppRequestPayload::QueryInteractionPage(
+            super::interaction::read_page_query(reader)?,
+        ),
         23 => AppRequestPayload::QueryInteraction(read_conversation_query(reader)?),
         24 => AppRequestPayload::QueryModels(super::interaction::read_model_query(reader)?),
         25 => {
@@ -275,6 +287,9 @@ fn read_payload(
         44 => AppRequestPayload::ContinueWorkbenchExecution(super::workbench::read_continuation(
             reader,
         )?),
+        46 => AppRequestPayload::QueryWorkbenchContinuationAdmission(
+            super::workbench::read_command(reader)?,
+        ),
         101 => {
             AppRequestPayload::QueryWorkbenchPreview(super::workbench_launch::read_query(reader)?)
         }

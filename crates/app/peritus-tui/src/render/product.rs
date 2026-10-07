@@ -106,8 +106,15 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             .scroll((product.detail_scroll.min(maximum), 0)),
         areas.detail,
     );
+    let conversation = product.selected_conversation();
+    let activities = conversation.map(|conversation| model.interaction_activities(conversation));
+    let complete = conversation.is_some_and(|conversation| {
+        model.interaction_history_is_complete(conversation)
+    });
+    let unavailable =
+        conversation.map_or(0, |conversation| model.unavailable_activity_prefix(conversation));
     frame.render_widget(
-        Paragraph::new(conversation_text(product.selected_conversation()))
+        Paragraph::new(conversation_text(conversation, activities, complete, unavailable))
             .block(
                 Block::default()
                     .borders(Borders::ALL)

@@ -148,8 +148,10 @@ pub enum AppRequestPayload {
     QueryWorkbenchExecution(crate::WorkbenchQuery),
     /// Reads a run and its exact durable conversation destination without starting work.
     QueryInteractionBinding(ProductInteractionQuery),
-    /// Incorporates already receipted pending inputs in a non-goal execution.
+    /// Legacy unfenced continuation retained for decoding compatibility; current daemons reject it.
     ContinueWorkbenchExecution(crate::WorkbenchContinuation),
+    /// Observes whether an accepted exact continuation owns launch preparation, without effects.
+    QueryWorkbenchContinuationAdmission(crate::WorkbenchCommand),
     /// Resolves the original receipt for an exact actor-bound operation without reapplying it.
     QueryWorkbenchReceipt(crate::WorkbenchCommand),
     /// Inspects bounded local prerequisites without inference, repair, or network probes.
@@ -158,6 +160,8 @@ pub enum AppRequestPayload {
     UpdateModels(crate::ProductModelUpdate),
     /// Reads public activity and exact input incorporation status.
     QueryInteraction(ProductInteractionQuery),
+    /// Reads one digest-bound page of complete public activity history.
+    QueryInteractionPage(crate::ProductActivityPageQuery),
     /// Discovers models from one configured provider route.
     QueryModels(crate::ProductModelQuery),
     /// Submits one exact, idempotent B3 command binding.
@@ -178,6 +182,8 @@ pub enum AppRequestPayload {
     ControlProductRun(ProductRunControl),
     /// Queries recent or exact runs while retaining every candidate's qualification evidence.
     QueryProductRunObservations(ProductRunQuery),
+    /// Reads one stable keyset page from an immutable product-run catalog snapshot.
+    QueryProductRunPage(crate::ProductRunPageQuery),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.
@@ -203,7 +209,11 @@ impl AppRequestPayload {
     #[must_use]
     pub const fn required_workbench_feature(&self) -> Option<crate::WellKnownProtocolFeature> {
         match self {
-            Self::Improvements(_) => Some(crate::WellKnownProtocolFeature::HarnessImprovements),
+            Self::Improvements(request) => Some(if request.requires_paging() {
+                crate::WellKnownProtocolFeature::HarnessImprovementPages
+            } else {
+                crate::WellKnownProtocolFeature::HarnessImprovements
+            }),
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)
             }
@@ -246,11 +256,20 @@ impl AppRequestPayload {
             Self::WorkbenchCommand(command) | Self::QueryWorkbenchReceipt(command) => {
                 Some(required_workbench_intent_feature(command.intent()))
             }
+            Self::QueryWorkbenchContinuationAdmission(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchContinuationReceipts)
+            }
             Self::ContinueWorkbenchExecution(_) | Self::QueryWorkbenchExecution(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchConversation)
             }
             Self::QueryInteractionBinding(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchRunBinding)
+            }
+            Self::QueryProductRunPage(_) => {
+                Some(crate::WellKnownProtocolFeature::ProductRunPages)
+            }
+            Self::QueryInteractionPage(_) => {
+                Some(crate::WellKnownProtocolFeature::ProductActivityPages)
             }
             Self::QueryWorkbench(_) => Some(crate::WellKnownProtocolFeature::WorkbenchControl),
             _ => None,
@@ -272,6 +291,7 @@ const fn required_workbench_intent_feature(
         | Intent::ForgetGuidance(_) => Feature::WorkbenchMemory,
         Intent::ApplyInitDiff(_) => Feature::WorkbenchInit,
         Intent::ForkConversation(_) => Feature::ConversationForks,
+        Intent::AttachFileSource { .. } => Feature::WorkbenchFileSources,
         Intent::AttachFile { .. } | Intent::AttachFileImport { .. } | Intent::SelectFile { .. } => {
             Feature::WorkbenchFiles
         }
@@ -279,8 +299,15 @@ const fn required_workbench_intent_feature(
         Intent::SetBrief { .. } | Intent::AcceptBriefProposal { .. } => Feature::WorkbenchBrief,
         Intent::SetContext { .. } => Feature::WorkbenchContext,
         Intent::ApplyCompaction(_) => Feature::WorkbenchCompaction,
+        Intent::Queue(crate::WorkbenchQueueIntent::Move { .. }) => Feature::WorkbenchInputMoves,
+        Intent::Queue(
+            crate::WorkbenchQueueIntent::EnqueueSource { .. }
+            | crate::WorkbenchQueueIntent::EditSource { .. }
+            | crate::WorkbenchQueueIntent::CorrectSource { .. },
+        ) => Feature::WorkbenchRequestSources,
         Intent::Queue(_) => Feature::WorkbenchInputs,
         Intent::StartExecution(_) => Feature::WorkbenchExecution,
+        Intent::ContinueExecution(_) => Feature::WorkbenchContinuationReceipts,
         Intent::StartGoal { .. }
         | Intent::PauseGoal { .. }
         | Intent::ResumeGoal { .. }

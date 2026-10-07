@@ -48,6 +48,12 @@ impl AppModel {
             self.fail_latest_resume(&error.actionable_message());
             return Vec::new();
         }
+        if let Some(PendingRequest::ProductActivityPage(query)) = pending
+            && query.cursor().is_some()
+        {
+            self.activity_histories.remove(&query.run_id());
+            return Vec::new();
+        }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
         if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {
@@ -59,7 +65,6 @@ impl AppModel {
             Some(
                 PendingRequest::WorkbenchExecution(_)
                     | PendingRequest::WorkbenchChatContinue { .. }
-                    | PendingRequest::WorkbenchChatStarted { .. }
             )
         ) {
             self.reset_workbench_submission();
@@ -165,15 +170,35 @@ impl AppModel {
     ) -> Vec<Effect> {
         match payload {
             AppResponsePayload::InteractionBinding(binding) => {
-                return self.accept_chat_binding(binding, pending);
+                let run_id = binding.interaction().snapshot().run_id();
+                let mut effects = self.accept_chat_binding(binding, pending);
+                effects.extend(self.request_activity_history(run_id));
+                return effects;
             }
             AppResponsePayload::Improvements(inbox) => {
                 self.notice(NoticeLevel::Info, format!("{} harness improvement suggestions. Inspect them in the GUI inbox or with peritus improvements list.", inbox.candidates().len()));
+            }
+            AppResponsePayload::ImprovementPage(page) => {
+                self.notice(
+                    NoticeLevel::Info,
+                    format!(
+                        "{} harness improvement suggestions in this page. Inspect them in the GUI inbox or with peritus improvements list.",
+                        page.candidates().len()
+                    ),
+                );
+            }
+            AppResponsePayload::ImprovementEvidencePage(_)
+            | AppResponsePayload::ImprovementTextPage(_) => {
+                self.notice(
+                    NoticeLevel::Error,
+                    "received an improvement detail page without an inbox view",
+                );
             }
             AppResponsePayload::WorkbenchCheckpoint(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
             | AppResponsePayload::WorkbenchExecution(_)
+            | AppResponsePayload::WorkbenchContinuationAdmission(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
@@ -195,11 +220,17 @@ impl AppModel {
             | AppResponsePayload::WorkbenchReceipt(_)
             | AppResponsePayload::Doctor(_) => unreachable!("handled above"),
             AppResponsePayload::Interaction(snapshot) => {
+                let run_id = snapshot.snapshot().run_id();
                 if matches!(pending, Some(PendingRequest::ProductInteractionQuery)) {
                     self.accept_product_interaction(snapshot.clone());
-                    return Vec::new();
+                    return self.request_activity_history(run_id);
                 }
-                return self.interaction_response(snapshot, pending);
+                let mut effects = self.interaction_response(snapshot, pending);
+                effects.extend(self.request_activity_history(run_id));
+                return effects;
+            }
+            AppResponsePayload::InteractionPage(page) => {
+                return self.accept_activity_page(page, pending);
             }
             AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
             AppResponsePayload::SubscriptionStarted(started) => {
@@ -270,11 +301,8 @@ impl AppModel {
             self.view = View::Conversation;
         }
         self.accept_chat(snapshot.clone());
-        if let Some(PendingRequest::WorkbenchChatContinue { run, goal, mode }) = pending {
-            return self.continue_workbench_chat(*run, *goal, *mode);
-        }
-        if let Some(PendingRequest::WorkbenchChatStarted { run }) = pending {
-            return self.workbench_chat_started(*run);
+        if let Some(PendingRequest::WorkbenchChatContinue { run, goal }) = pending {
+            return self.continue_workbench_chat(*run, *goal);
         }
         if matches!(pending, Some(PendingRequest::ModelUpdate { run_id }) if *run_id == snapshot.snapshot().run_id())
         {
@@ -359,6 +387,7 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
             | AppResponsePayload::WorkbenchExecution(_)
+            | AppResponsePayload::WorkbenchContinuationAdmission(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchPermissions(_)

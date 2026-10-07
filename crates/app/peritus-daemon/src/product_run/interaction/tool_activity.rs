@@ -1,6 +1,6 @@
-//! Bounded observations of actual tool calls, not model prose or raw provider events.
+//! Public observations of actual tool calls, not model prose or raw provider events.
 
-use super::{InteractionOptions, ProductRunServiceError, bounded};
+use super::{InteractionOptions, ProductRunServiceError};
 use peritus_app_protocol::{ProductActivity, ProductActivityKind};
 use serde_json::Value;
 
@@ -57,7 +57,7 @@ pub(super) fn finished(
         *activity = ProductActivity::new(
             pending.sequence,
             ProductActivityKind::Tool,
-            bounded(&format!("{verb} {}", pending.summary)),
+            format!("{verb} {}", pending.summary),
             detail,
         )
         .map_err(|error| {

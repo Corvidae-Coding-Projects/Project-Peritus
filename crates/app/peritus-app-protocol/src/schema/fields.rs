@@ -27,6 +27,9 @@ pub enum CanonicalWireType {
     Sequence,
     /// An option tag followed by the value when present.
     Option,
+    /// A value emitted only when a preceding discriminant selects its extended layout. There is
+    /// no independent option tag.
+    Conditional,
     /// An ordered aggregate with no implicit padding.
     Struct,
 }
@@ -48,6 +51,7 @@ impl CanonicalWireType {
             Self::Bytes => "len+bytes",
             Self::Sequence => "len+items",
             Self::Option => "option+value",
+            Self::Conditional => "conditional-by-prior-discriminant",
             Self::Struct => "ordered-fields",
         }
     }
@@ -129,8 +133,6 @@ pub enum FieldBound {
     WorkbenchCheckpointTextBytes,
     /// Maximum UTF-8 bytes in one terminal restore path or diagnostic.
     WorkbenchRestoreTextBytes,
-    /// At most 256 UTF-8 bytes in a nonempty inert conversation title.
-    ConversationTitleBytes,
     /// Maximum literal local conversation-search text.
     ConversationSearchBytes,
     /// Maximum exact source-linked conversation snippet.
@@ -139,6 +141,10 @@ pub enum FieldBound {
     ConversationHandoffBytes,
     /// Maximum conversations in one library page.
     ConversationLibraryPage,
+    /// Maximum candidate or evidence metadata rows in one improvement page.
+    ImprovementPage,
+    /// Maximum UTF-8 bytes in one independently verified improvement text slice.
+    ImprovementTextChunkBytes,
     /// At most 32 unique classified findings.
     DoctorFindings,
     /// At most 64 UTF-8 bytes in an inert check label.
@@ -189,6 +195,12 @@ pub enum FieldBound {
     ProductActivities,
     /// Interactive activity text and detail byte ceiling.
     ProductActivityBytes,
+    /// Exact UTF-8 bytes carried by one paged activity segment field.
+    ProductActivitySegmentBytes,
+    /// Exact activity segments returned by one history page.
+    ProductActivityPageSegments,
+    /// Older error previews retained outside the live activity window.
+    ProductRetainedErrors,
     /// Provider catalog entry ceiling.
     ProductModels,
     /// Model identifier or label byte ceiling.
@@ -244,11 +256,12 @@ impl FieldBound {
             Self::WorkbenchCheckpointNameBytes => "workbench.max-checkpoint-name-bytes (256)",
             Self::WorkbenchCheckpointTextBytes => "workbench.max-checkpoint-text-bytes (512)",
             Self::WorkbenchRestoreTextBytes => "workbench.max-restore-text-bytes (4096)",
-            Self::ConversationTitleBytes => "workbench.max-title-bytes (256)",
             Self::ConversationSearchBytes => "workbench.max-conversation-search-bytes (256)",
             Self::ConversationSnippetBytes => "workbench.max-conversation-snippet-bytes (512)",
             Self::ConversationHandoffBytes => "workbench.max-conversation-handoff-bytes (1024)",
             Self::ConversationLibraryPage => "workbench.max-conversation-library-page (64)",
+            Self::ImprovementPage => "improvements.max-page-items (128)",
+            Self::ImprovementTextChunkBytes => "improvements.max-text-chunk-bytes (32768)",
             Self::DoctorFindings => "wire.u16-count",
             Self::DoctorCheckBytes => "doctor.max-check-bytes (64)",
             Self::DoctorTextBytes => "doctor.max-text-bytes (1024)",
@@ -274,6 +287,9 @@ impl FieldBound {
             Self::ProductDeliverableCommands => "product.max-deliverable-commands",
             Self::ProductActivities => "product.max-activities (256)",
             Self::ProductActivityBytes => "product.max-activity-bytes (8192)",
+            Self::ProductActivitySegmentBytes => "product.max-activity-segment-bytes (4096)",
+            Self::ProductActivityPageSegments => "product.max-activity-page-segments (64)",
+            Self::ProductRetainedErrors => "product.max-retained-errors (32)",
             Self::ProductModels => "product.max-models (4096)",
             Self::ProductModelBytes => "product.max-model-bytes (512)",
             Self::SortedUnique => "strictly-sorted-unique",

@@ -10,6 +10,12 @@ pub struct ProtocolFeatureName(CapabilityName);
 impl ProtocolFeatureName {
     /// Evidence-backed suggestion collection and explicit patch evaluation.
     pub const HARNESS_IMPROVEMENTS: &'static str = "app.harness-improvements";
+    /// Indexed history metadata and independent immutable body slices.
+    pub const HARNESS_IMPROVEMENT_PAGES: &'static str = "app.harness-improvement-pages";
+    /// Stable keyset pages over one durable product-run catalog snapshot.
+    pub const PRODUCT_RUN_PAGES: &'static str = "app.product-run-pages";
+    /// Digest-bound UTF-8 segment pages over complete public interaction history.
+    pub const PRODUCT_ACTIVITY_PAGES: &'static str = "app.product-activity-pages";
     /// Version-one event subscription feature name.
     pub const EVENT_SUBSCRIPTIONS: &'static str = "app.event-subscriptions";
     /// Version-one artifact transfer feature name.
@@ -22,6 +28,8 @@ impl ProtocolFeatureName {
     pub const TERMINAL_STREAMING: &'static str = "app.terminal-streaming";
     /// Attachment-local output failure without a process-exit or connection-loss claim.
     pub const TERMINAL_FAILURE: &'static str = "app.terminal-failure";
+    /// Exact unavailable terminal ranges followed by resumable retained output.
+    pub const TERMINAL_OUTPUT_GAPS: &'static str = "app.terminal-output-gaps";
     /// Bounded pipe attachments with explicit line-input semantics.
     pub const TERMINAL_PIPES: &'static str = "app.terminal-pipes";
     /// Version-one read-only diagnostics feature name.
@@ -32,8 +40,15 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_CONTROL: &'static str = "app.workbench-control";
     /// Immutable input queue and exact request-incorporation controls.
     pub const WORKBENCH_INPUTS: &'static str = "app.workbench-inputs";
+    /// Exact-revision indexed queue moves with wide durable ordinals.
+    pub const WORKBENCH_INPUT_MOVES: &'static str = "app.workbench-input-moves";
+    /// Atomic complete-source admission for governing user messages.
+    pub const WORKBENCH_REQUEST_SOURCES: &'static str = "app.workbench-request-sources";
     /// Explicit execution over a durable queue, separate from non-running queue management.
     pub const WORKBENCH_CONVERSATION: &'static str = "app.workbench-conversation";
+    /// Durable continuation commands, exact receipts, and launch-admission observation.
+    pub const WORKBENCH_CONTINUATION_RECEIPTS: &'static str =
+        "app.workbench-continuation-receipts";
     /// Explicit run-to-conversation binding for reopening existing work.
     pub const WORKBENCH_RUN_BINDING: &'static str = "app.workbench-run-binding";
     /// Explicit execution over a durable queue.
@@ -48,6 +63,8 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_IMAGES: &'static str = "app.workbench-images";
     /// Authorized explicit file preview and immutable source selection.
     pub const WORKBENCH_FILES: &'static str = "app.workbench-files";
+    /// Uploaded immutable file sources retained outside the control journal and input queue.
+    pub const WORKBENCH_FILE_SOURCES: &'static str = "app.workbench-file-sources";
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
     /// Structured candidate review with content-bound conversational feedback.
@@ -60,6 +77,8 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_CHECKPOINTS: &'static str = "app.workbench-checkpoints";
     /// Typed directory and selected-range checkpoint coverage and confirmation.
     pub const WORKBENCH_CHECKPOINT_COVERAGE: &'static str = "app.workbench-checkpoint-coverage";
+    /// Complete checkpoint metadata and wide counts with exact legacy message preservation.
+    pub const WORKBENCH_CHECKPOINT_MANIFESTS: &'static str = "app.workbench-checkpoint-manifests";
     /// Local literal search and durable conversation navigation.
     pub const CONVERSATION_LIBRARY: &'static str = "app.conversation-library";
     /// Non-running forks with explicit workspace and budget bindings.
@@ -111,6 +130,12 @@ impl ProtocolFeatureName {
 pub enum WellKnownProtocolFeature {
     /// Evidence-backed suggestion inbox and explicit evaluation.
     HarnessImprovements,
+    /// Paged candidate/evidence metadata and independently readable source text.
+    HarnessImprovementPages,
+    /// Snapshot-bound keyset pages over durable product runs.
+    ProductRunPages,
+    /// Digest-bound segment pages over complete public activity history.
+    ProductActivityPages,
     /// Replayable event subscriptions.
     EventSubscriptions,
     /// Chunked artifact transfer.
@@ -123,6 +148,8 @@ pub enum WellKnownProtocolFeature {
     TerminalStreaming,
     /// Attachment-local output failure events.
     TerminalFailure,
+    /// Explicit resumable terminal output gaps.
+    TerminalOutputGaps,
     /// Explicit pipe attachment responses without PTY resize capability.
     TerminalPipes,
     /// Read-only diagnostics.
@@ -133,10 +160,16 @@ pub enum WellKnownProtocolFeature {
     WorkbenchControl,
     /// Immutable input queue and exact request-incorporation controls.
     WorkbenchInputs,
+    /// Exact-revision indexed queue moves with wide durable ordinals.
+    WorkbenchInputMoves,
+    /// Atomic complete-source admission for governing user messages.
+    WorkbenchRequestSources,
     /// Explicit execution over a durable queue.
     WorkbenchExecution,
     /// Durable conversation execution discovery and composer binding.
     WorkbenchConversation,
+    /// Durable continuation commands, exact receipts, and launch-admission observation.
+    WorkbenchContinuationReceipts,
     /// Explicit run-to-conversation binding for reopening existing work.
     WorkbenchRunBinding,
     /// Read-only eligible-input and sealed request-manifest inspection.
@@ -149,6 +182,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchImages,
     /// Authorized explicit file preview and immutable source selection.
     WorkbenchFiles,
+    /// Uploaded immutable file sources retained outside the control journal and input queue.
+    WorkbenchFileSources,
     /// Persistent goal lifecycle and safe-boundary pause/resume controls.
     WorkbenchGoals,
     /// Structured candidate review and exact anchored feedback.
@@ -161,6 +196,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchCheckpoints,
     /// Typed directory and selected-range restore scope.
     WorkbenchCheckpointCoverage,
+    /// Complete manifest metadata and counts independent of old field allowances.
+    WorkbenchCheckpointManifests,
     /// Local searchable conversation library.
     ConversationLibrary,
     /// Checked conversation fork creation.
@@ -181,18 +218,27 @@ impl WellKnownProtocolFeature {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::HarnessImprovements => ProtocolFeatureName::HARNESS_IMPROVEMENTS,
+            Self::HarnessImprovementPages => ProtocolFeatureName::HARNESS_IMPROVEMENT_PAGES,
+            Self::ProductRunPages => ProtocolFeatureName::PRODUCT_RUN_PAGES,
+            Self::ProductActivityPages => ProtocolFeatureName::PRODUCT_ACTIVITY_PAGES,
             Self::EventSubscriptions => ProtocolFeatureName::EVENT_SUBSCRIPTIONS,
             Self::ArtifactTransfer => ProtocolFeatureName::ARTIFACT_TRANSFER,
             Self::ApprovalPrompts => ProtocolFeatureName::APPROVAL_PROMPTS,
             Self::UserInput => ProtocolFeatureName::USER_INPUT,
             Self::TerminalStreaming => ProtocolFeatureName::TERMINAL_STREAMING,
             Self::TerminalFailure => ProtocolFeatureName::TERMINAL_FAILURE,
+            Self::TerminalOutputGaps => ProtocolFeatureName::TERMINAL_OUTPUT_GAPS,
             Self::TerminalPipes => ProtocolFeatureName::TERMINAL_PIPES,
             Self::ReadOnlyDiagnostics => ProtocolFeatureName::READ_ONLY_DIAGNOSTICS,
             Self::ProductDiagnostics => ProtocolFeatureName::PRODUCT_DIAGNOSTICS,
             Self::WorkbenchControl => ProtocolFeatureName::WORKBENCH_CONTROL,
             Self::WorkbenchInputs => ProtocolFeatureName::WORKBENCH_INPUTS,
+            Self::WorkbenchInputMoves => ProtocolFeatureName::WORKBENCH_INPUT_MOVES,
+            Self::WorkbenchRequestSources => ProtocolFeatureName::WORKBENCH_REQUEST_SOURCES,
             Self::WorkbenchConversation => ProtocolFeatureName::WORKBENCH_CONVERSATION,
+            Self::WorkbenchContinuationReceipts => {
+                ProtocolFeatureName::WORKBENCH_CONTINUATION_RECEIPTS
+            }
             Self::WorkbenchRunBinding => ProtocolFeatureName::WORKBENCH_RUN_BINDING,
             Self::WorkbenchExecution => ProtocolFeatureName::WORKBENCH_EXECUTION,
             Self::WorkbenchContext => ProtocolFeatureName::WORKBENCH_CONTEXT,
@@ -200,12 +246,16 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchBrief => ProtocolFeatureName::WORKBENCH_BRIEF,
             Self::WorkbenchImages => ProtocolFeatureName::WORKBENCH_IMAGES,
             Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
+            Self::WorkbenchFileSources => ProtocolFeatureName::WORKBENCH_FILE_SOURCES,
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,
             Self::WorkbenchCheckpointCoverage => ProtocolFeatureName::WORKBENCH_CHECKPOINT_COVERAGE,
+            Self::WorkbenchCheckpointManifests => {
+                ProtocolFeatureName::WORKBENCH_CHECKPOINT_MANIFESTS
+            }
             Self::ConversationLibrary => ProtocolFeatureName::CONVERSATION_LIBRARY,
             Self::ConversationForks => ProtocolFeatureName::CONVERSATION_FORKS,
             Self::WorkbenchPermissions => ProtocolFeatureName::WORKBENCH_PERMISSIONS,
