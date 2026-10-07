@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3734,
-        "tip_oid": "502fddd58828f92b7aea223b21acfcb3001a0fac",
-        "prefix_sha256": "c41fed764d9d1cd7492964e9b0e3feec0f28a687d6f741e0f1ad97195760e6c7"
+        "sequence": 3735,
+        "tip_oid": "1091962aa9e8c4c95ecd9a1a27c2c1b5b2a1c55d",
+        "prefix_sha256": "4b8d8a714fb06cbff71354c1f1010f8f79f6cf08a00dc660edd791ecb6b57192"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3041,
+  "next_comment_id": 3042,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -30833,11 +30833,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.058963250Z",
-      "updated_at": "2026-10-06T13:19:08.061203603Z",
+      "updated_at": "2026-10-07T04:54:45.086411693Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "87169642-6044-4a2a-b1ee-af94656022df": {
+          "display_id": 3041,
+          "author": "6ME5",
+          "content": "Code-only implementation: removed the proportional phase-finalization reserve and its one-second/minute clamps. The owned cancellation timer now fires at the actual caller-selected remaining deadline, and Design/Writer/Reviewer/Fixer admission rejects only an elapsed explicit deadline, preserving the mismatch integrity check. Terminal settlement continues after the active future has stopped. No default horizon is introduced. Reserve-specific existing test fixtures are deferred to the final validation phase, along with every test/build/lint/format runner; this issue remains open and unverified.",
+          "created_at": "2026-10-07T04:54:45.074639814Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAtEU88mYVUm7IFDkqT26iDp3Vg6JML2AFjjAf5c/hsE4pk42OqxVhS4a/aqcFJ6LzXtKvWyYtmiUgMRU+Er4yCw=="
+        },
         "d4ab0c08-ea75-47bd-b3e1-b4eb1fa4a95e": {
           "display_id": 2225,
           "author": "6ME5",
