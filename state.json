@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3745,
-        "tip_oid": "b8715df6e991484bcab1f27d7bb6940a9f8c02ff",
-        "prefix_sha256": "bc2390b05ad42da1d567c2503dfbec7ff5f665ff9014d2df72c05132429a9347"
+        "sequence": 3746,
+        "tip_oid": "b80b43ddb98ac9574a197eae0b9df92210cfb932",
+        "prefix_sha256": "00708fa284cb40ae62295c3851d74f4abc42300c23f1f0d808eec034d4208f88"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3052,
+  "next_comment_id": 3053,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31608,11 +31608,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.107275766Z",
-      "updated_at": "2026-10-07T05:22:06.022348682Z",
+      "updated_at": "2026-10-07T05:31:01.999180849Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "66050401-b7be-456d-b2a2-1e0b481b61f0": {
+          "display_id": 3052,
+          "author": "6ME5",
+          "content": "[correction] The prior observation described the zero-reserve fallback too narrowly. The integrated source treats every preallocation failure as advisory when minimum_free_bytes is zero and does not reject a declared logical size from statvfs at that default. Actual write ENOSPC and disk-quota failures remain typed retryable storage pressure. statvfs admission, strict preallocation, and the retained-free postcheck apply only when an operator configures a nonzero reserve. Issue remains open pending executed pressure and filesystem evidence.",
+          "created_at": "2026-10-07T05:31:01.993313717Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqcCfdhYqxGBqYobFyXMJiAcORUgk/hY7PEoR8BMfs7v3wHCc7lYS2Ayyrv1JvD44DqMV2wl6hQxOssv9FAIdAg=="
+        },
         "b890e7ff-ed6e-4934-88df-2a02e4c96eb8": {
           "display_id": 3049,
           "author": "6ME5",
