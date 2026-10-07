@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3860,
-        "tip_oid": "3eb650424c261df4834a3290ade57b899e3d5c0f",
-        "prefix_sha256": "159ebf567d2f7e1769f165547b80fda7fa149500f0e43d7cb60eea2faffd9050"
+        "sequence": 3861,
+        "tip_oid": "167631a023f134dc34f83ec9939fcf580c6c8e37",
+        "prefix_sha256": "eb128aa7844ef009a5fd3c3296fc39bdd0e400256b4dae7345467852941c7261"
       },
       "NWAR": {
         "sequence": 39,
@@ -26803,12 +26803,13 @@
       "display_id": 122,
       "title": "[L023] Synchronous global control ownership and run-state publication barriers",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L023.\n\n- `product_run/workbench.rs:298-321` holds one synchronous mutex for the whole ControlStore operation across every conversation. Current workbench queries at lines 229-245 call full replay directly; the async command path also performs synchronous control work at lines 157-175.\n- `product_run/execution.rs:22-103,106-151,340-347` holds the run registry's write lock across observation/finish work, durable persistence, checkpoint sealing, goal settlement, and reply publication. This can compose L021's full-history/file verification with blocking state/owner locks.\n- `execution.rs:25-27,113-115` drops future updates/terminal processing for a run already marked RecoveryRequired. Failed checkpoint sealing at line 133 and several persist_record calls discard the concrete error; public-reply publication failure sets persistence_failed and fails handoff.\n- Daily-driving effect: growing replay or storage work can delay unrelated UI queries/controls even without an elapsed timeout, and some failure causes are hidden. Lock order across other callers and recovery of the frozen state remain pending; no deadlock is asserted from this file alone.\n- `execution/launch.rs:96-112` explicitly sets ordinary-run `max_elapsed: None` and supplies retained resume/live-conversation handles. Its goal-clock wrapper and task recovery are separate pending paths.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.922748188Z",
-      "updated_at": "2026-10-07T23:17:56.632438214Z",
+      "updated_at": "2026-10-07T23:19:23.608169899Z",
+      "closed_at": "2026-10-07T23:19:23.605336048Z",
       "labels": [
         "daily-driving-limiter"
       ],
