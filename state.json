@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3733,
-        "tip_oid": "70b4057408d3b4b07e2b4d21f1f30bb14fc2e91b",
-        "prefix_sha256": "91d2ce71f9b7db261e807bd75289c67e31f2d573cb435744f9c9780d7a0a4166"
+        "sequence": 3734,
+        "tip_oid": "502fddd58828f92b7aea223b21acfcb3001a0fac",
+        "prefix_sha256": "c41fed764d9d1cd7492964e9b0e3feec0f28a687d6f741e0f1ad97195760e6c7"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3040,
+  "next_comment_id": 3041,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15061,11 +15061,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.953588245Z",
-      "updated_at": "2026-10-07T04:03:14.883821941Z",
+      "updated_at": "2026-10-07T04:53:28.193966295Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "3108b5a3-deab-4101-945b-957821582a79": {
+          "display_id": 3040,
+          "author": "6ME5",
+          "content": "Code-only continuation: the text editor now binds its textarea to a physical draft window rather than the entire retained document. Edits map back to global offsets, cursor and window position survive draft restoration, and find, replacement, undo, and line navigation retain complete-draft semantics. No logical file-length or edit-count admission ceiling is introduced. Whole-document storage and other frontend work still require remaining implementation; this is not a claim that the entire issue is fixed. Tests and all validation runners remain deferred until the complete code batch is finished; the issue remains open.",
+          "created_at": "2026-10-07T04:53:28.186994352Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEOYxthB/uaQUYE8TgfeT/Xb26jCAZaNAV+Pu03cejN0BIMXsiZRrsxO2Ut3UZeC2548tGuhxpCUPfTCyNIWuDg=="
+        },
         "8c881e6e-b5e3-449a-8b9f-fc8ffb5ba613": {
           "display_id": 2889,
           "author": "6ME5",
