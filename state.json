@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3754,
-        "tip_oid": "6a30e99b9e22296c880c6369f5d747f868c3fef0",
-        "prefix_sha256": "588dddbe6f6342ab7a2e86fdacddbb80b7af7469e75dc8e291c2bb7b0659717d"
+        "sequence": 3755,
+        "tip_oid": "d2f3c219c16cd6d06be9daa95bad9ddb1fbb7349",
+        "prefix_sha256": "3059587287d8924084706e8915509565eb20c36402d13998568c0e8bb3562afa"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3060,
+  "next_comment_id": 3061,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -39862,7 +39862,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-06T12:23:33.773454366Z",
+      "updated_at": "2026-10-07T06:10:07.385245669Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -40097,6 +40097,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvQV8BLM4AKf50VsAtvxBP69feoxweEfQn17Fiwz9sj7Y0RLuLqXdKjk0TwWRhD/kdRpRb7MI1REeJ0gf5ZZrDQ=="
+        },
+        "562da393-6205-459e-b444-542533d8b7e4": {
+          "display_id": 3060,
+          "author": "6ME5",
+          "content": "[action] Code-only batch ongoing: agents162/163 and173 memory roots/invocation indexes;175/177 streamed hashing/retrieval with178 queued;149/150 exact retry cache/Claude markers/explicit model-selection supersession. Root179 independent optional attempt receipts +cursor evidence,180 paged inspection/O1 source lookup,817 document selections/navigation. No manual test/build/lint/format/codegen/qualification runners, no test edits, no new closure/commit/push/install/service action; final validation is deferred until the code batch ends.",
+          "created_at": "2026-10-07T06:10:07.380913001Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASukruLipWh3AjiNBYS9ZihfkYfKAJsUaCwz1LTTslkU6ckx+UnU1TDyQ8KGJd1Lq4YoqJGi9Oh9k3SPxd5CGBg=="
         },
         "578426e1-0507-4793-9357-cf0cc1e74e26": {
           "display_id": 2138,
