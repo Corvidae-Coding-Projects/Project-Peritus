@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3755,
-        "tip_oid": "d2f3c219c16cd6d06be9daa95bad9ddb1fbb7349",
-        "prefix_sha256": "3059587287d8924084706e8915509565eb20c36402d13998568c0e8bb3562afa"
+        "sequence": 3756,
+        "tip_oid": "29498c77d9df560cb6c582340b9721b29c57f512",
+        "prefix_sha256": "c34b358f80dcd4d2f22c006dc037bc5bcf333c47f7e876a79bc04bcf386d738c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3061,
+  "next_comment_id": 3062,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -33535,7 +33535,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.154879608Z",
-      "updated_at": "2026-10-06T13:19:08.156980363Z",
+      "updated_at": "2026-10-07T06:10:40.353322548Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -33546,6 +33546,15 @@
           "content": "Systemic repair plan for L076: Remembered-file hashing has a 64-MiB synthetic stop.\n\nOwning contract and implementation boundary: local_context/memory/environment.rs:73-87. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRemove the total byte stop from streaming remembered-file hashing. Use cancellable chunked reads with exact identity checks and progress receipts; large dependencies remain part of the same context refresh. Distinguish inaccessible/changed files from protected omissions and preserve the prior usable memory frontier on failure.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "93583c4d-a439-4cc9-b362-819965cea3cd": {
+          "display_id": 3061,
+          "author": "6ME5",
+          "content": "Implemented the L076 source repair in the shared tree. Remembered-file hashing now uses exact no-follow FolderInspection.copy_snapshot streaming with complete digest/byte receipts and invocation cancellation, without the 64 MiB cumulative stop. Policy exclusions are typed omissions; missing paths remain omissions for stale-file invalidation, while invalid, inaccessible, symlinked, changed, cancelled, or otherwise failed inspections return an error before Refresh adoption, preserving the predecessor frontier. Startup, live refresh, and update proposal callers carry the token. No durable schema changed.\n\nImmutable review artifact: /tmp/peritus-issue-175-remembered-hash-20261007T-qs6WpX/issue-175.patch\nSHA-256: 5ae16f3ed1c1c99fbb3236e093e50558c780a6fcad96e58b017adc66874f483f\nManifest: /tmp/peritus-issue-175-remembered-hash-20261007T-qs6WpX/MANIFEST.md\n\nStatic contiguous source review completed. Per assignment, no tests, builds, lint, format, codegen, or qualification commands were run. Keep open for the decision's independent large-file, race, cancellation, restart, and ordinary-input validation.",
+          "created_at": "2026-10-07T06:10:40.348670820Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+vwNKQKT4Nel53NrkGJyhIdt1/QjPiyVn6BmiYzKBHmp3SFgvhSXjgerUEcYLDuuOge1IKH0ylMJly2MEU2LCA=="
         }
       }
     },
