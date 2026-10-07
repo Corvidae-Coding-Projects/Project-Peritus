@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3731,
-        "tip_oid": "8b066e1adbde066c0dd79c69930e2029ffc97e39",
-        "prefix_sha256": "e4f01bea9e097766e11032872ee5134267702a7a94d9486cb6716751e39652a9"
+        "sequence": 3732,
+        "tip_oid": "dd5a9ac34d32430bafa57f5d337ab768d3e1ac07",
+        "prefix_sha256": "6fa774d6912b2b211a3c8d86809ee410c341b783321d521669e70e6e44e962d7"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3038,
+  "next_comment_id": 3039,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23187,11 +23187,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.878590704Z",
-      "updated_at": "2026-10-06T13:19:07.880674054Z",
+      "updated_at": "2026-10-07T04:44:49.500830215Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "652c0c08-7a90-452d-82d0-3ed7dc2fb038": {
+          "display_id": 3038,
+          "author": "6ME5",
+          "content": "Prepared code-only #112 integration on fix/batch-derived-title-capacity-112, based on the current root title contract. Added one shared ConversationTitle::derived_label path that validates complete derived text before byte-safe shortening, marks every shortened label with an ellipsis, and keeps exact source text in its authoritative record. TUI fork/automatic conversation labels, logical rewind labels, adopted-run browser labels, and derived harness-console labels now use it. The existing current-root #112 checkpoint repair already stores exclusion label/path/reason separately, retains legacy string decoding, and records new empty directories as typed checkpoint paths; this patch does not overwrite that work. Exact user titles still use the unbounded logical ConversationTitle/ControlTitle contract with canonical codec/journal physical limits, and invalid control content, path safety, scope, revision, and authority checks remain. Source-only review and git diff --check completed. No test, build, lint, formatter, codegen, or qualification runner was invoked; issue remains open for final batch verification.",
+          "created_at": "2026-10-07T04:44:49.496844573Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUCzYrpPfxkD59brEYJ0Gx30w9aK/e3peG7KfhP891YvUABk8fxE80qM59nuJeCe0hX8MI7gfaRskbdLYeB5RCA=="
+        },
         "84463f68-38a1-4e79-9b10-9abf5085eb83": {
           "display_id": 2184,
           "author": "6ME5",
