@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3735,
-        "tip_oid": "1091962aa9e8c4c95ecd9a1a27c2c1b5b2a1c55d",
-        "prefix_sha256": "4b8d8a714fb06cbff71354c1f1010f8f79f6cf08a00dc660edd791ecb6b57192"
+        "sequence": 3736,
+        "tip_oid": "b8fade81c61d272c099626c3da92e6459baa3e56",
+        "prefix_sha256": "0e997f98358b870bf59c1567ad3f9ff30b4b3e516ac32549ae49eb884a79aaab"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3042,
+  "next_comment_id": 3043,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37248,7 +37248,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.111514851Z",
-      "updated_at": "2026-10-06T13:19:08.113497926Z",
+      "updated_at": "2026-10-07T05:01:24.526370313Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -37259,6 +37259,15 @@
           "content": "Systemic repair plan for L066: Artifact catalog adds a separate five-second lock deadline.\n\nOwning contract and implementation boundary: peritus-artifact-store/src/catalog.rs:38-45; catalog.rs:387-389; error.rs:141-148. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSerialize catalog operations through a cancellable owner queue and retry SQLite busy/locked without a fixed five-second patience cutoff. Preserve SQLite error classes and whether publication already committed. Catalog availability recovery must reattach the existing artifact and reservation rather than returning a generic initialization failure and abandoning it.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "44664b52-d385-46e5-ba88-67d0243835b4": {
+          "display_id": 3042,
+          "author": "6ME5",
+          "content": "[observation] Code-only repair staged in the shared tree. Artifact catalog connections now use explicit cancellation-aware contention handling without a fixed timeout and retain Busy/Locked categories. Owned completion persists a Partial reservation before publication, retains verified writer/publication state across retries, and startup promotes verified reserved objects before reconciling matching Uploading application artifacts from their exact accepted event. Daemon completion runs through a FIFO store-owner queue on a blocking worker while the serialized authority retains the original transfer and response. Source inspection and git diff --check completed; no tests, builds, lint, formatting, code generation, or runners were invoked under the active constraint. Issue intentionally remains open pending the required executed acceptance evidence.",
+          "created_at": "2026-10-07T05:01:24.518959537Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAG77TboyByCNs1jAk8QONl8MR1f2Dlxkx+WL6xuI7Twzr2Qstr6vqpKoQ/pZLnHUd1IBgn8WDXuWDGj9aJSiPCw=="
         }
       }
     },
