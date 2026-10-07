@@ -33,9 +33,9 @@
         "prefix_sha256": "020430056763719b5871b32b73b6c1a0a86363a39372cdc7869d8419faf27576"
       },
       "hoQk": {
-        "sequence": 1,
-        "tip_oid": "4ef4563f49d9227c8357a594664b5a71bec38f10",
-        "prefix_sha256": "68866030a2d7f32b719fda73f7ed942a19b1598a78df140350b057e33e4fac2a"
+        "sequence": 2,
+        "tip_oid": "2bfd7fd80a61df148de3b9543e5b60e34108d069",
+        "prefix_sha256": "0934b52761da145f80cd454003871116dc96f66ea21e3bcf5424640a8280354d"
       },
       "i0ox": {
         "sequence": 2,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3005,
+  "next_comment_id": 3006,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23712,11 +23712,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.962379690Z",
-      "updated_at": "2026-10-06T13:27:51.964480884Z",
+      "updated_at": "2026-10-07T01:30:04.350904955Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2bc52f17-3cea-4a37-9fec-096e718bf970": {
+          "display_id": 3005,
+          "author": "hoQk",
+          "content": "Implementation prepared in fix/batch-settings-drafts-819 and intentionally left uncommitted/open for batch integration. The patch separates persisted configuration from editable drafts, carries immutable preference/source revisions with the exact operation ID, preserves edits across view changes/import/reset/modal unmount, releases UI ownership when receipt recovery settles before an HTTP promise, ignores late stale acknowledgements, exposes configuration recovery independently of Git/session busy state, serializes config and preferences through one gateway mutation owner, blocks sibling settings writes while the original result is unresolved, and recovers accepted local config effects from their exact persisted postcondition without replay. Regression source covers delayed acknowledgement, later edits, reset without duplicate dispatch, oversized import admission, modal close/reopen, recovery before the original promise resolves, late-response rejection, response loss, non-ASCII content, exact postcondition recovery, and action-level configuration ownership with unrelated action availability. Per the user batching instruction, no tests, builds, formatters, Clippy, npm, Vitest, Playwright, or commit hooks were run; final batch should run cargo fmt --all -- --check, cargo test -p peritus-web with the shared target dir, cargo clippy --locked -p peritus-web --all-targets --no-deps -j 2 -- -D warnings, npm --prefix webui run check, npm --prefix webui run test:unit, npm --prefix webui run build, and the focused workspace Playwright settings regressions after integration.",
+          "created_at": "2026-10-07T01:30:04.344357090Z",
+          "kind": "note",
+          "signed_by": "SHA256:Rew+33PQWiacHUuyRkylGAnQBekp5xH7gMfvFEJn7uc",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAg6e9I8LahfTOGZjEyfce5cAOBtK1XYW9vKFBQoAkjx0AAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1z9mglftP+DFPTkNen509loL+AjwCpTzAy6qkrDRpLN3RguJU19lc1OPR9bViLGBsQuNaaDEfrYmh7FUaIpjDw=="
+        },
         "c887dfd4-6a00-4e50-b25d-112f41c08ab8": {
           "display_id": 2891,
           "author": "6ME5",
