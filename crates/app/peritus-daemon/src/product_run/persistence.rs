@@ -77,19 +77,6 @@ pub(super) fn write_record(
     })?;
     let directory = workbench_directory.as_path();
     let persisted = PersistedRecord::from_record(record)?;
-    let bytes = serde_json::to_vec_pretty(&persisted).map_err(|error| {
-        ProductRunServiceError::persistence("serialize the product-run record", error)
-    })?;
-    if bytes.len() as u64 > workbench::MAX_RUN_RECORD_BYTES {
-        return Err(ProductRunServiceError::persistence(
-            "serialize the workbench run record",
-            format!(
-                "record is {} bytes; the durable limit is {} bytes",
-                bytes.len(),
-                workbench::MAX_RUN_RECORD_BYTES
-            ),
-        ));
-    }
     let path = directory.join(format!("{}.json", persisted.run_id));
     let temporary = path.with_extension("json.new");
     let mut file = fs::File::create(&temporary).map_err(|error| {
@@ -101,9 +88,17 @@ pub(super) fn write_record(
         record.request.run_id(),
         PersistenceFaultPoint::BeforeWrite,
     )?;
-    file.write_all(&bytes).map_err(|error| {
-        ProductRunServiceError::persistence("write the product-run temporary record", error)
-    })?;
+    // One physical I/O buffer never limits the logical retained record. Stream the existing
+    // JSON layout instead of allocating a second, arbitrarily capped complete encoding.
+    {
+        let mut writer = std::io::BufWriter::with_capacity(32 * 1024, &mut file);
+        serde_json::to_writer_pretty(&mut writer, &persisted).map_err(|error| {
+            ProductRunServiceError::persistence("write the product-run temporary record", error)
+        })?;
+        writer.flush().map_err(|error| {
+            ProductRunServiceError::persistence("flush the product-run temporary record", error)
+        })?;
+    }
     #[cfg(test)]
     check_persistence_fault(
         fault_directory,

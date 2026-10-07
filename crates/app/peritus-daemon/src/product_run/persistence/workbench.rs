@@ -10,8 +10,6 @@ use std::{
     time::SystemTime,
 };
 
-pub(super) const MAX_RUN_RECORD_BYTES: u64 = 16 * 1024 * 1024;
-
 pub(in crate::product_run) fn load_workbench_records(
     root: &Path,
     controls: Option<&ControlStore>,
@@ -47,27 +45,16 @@ pub(in crate::product_run) fn load_workbench_records(
                 continue;
             }
         };
-        if !metadata.file_type().is_file() || metadata.len() > MAX_RUN_RECORD_BYTES {
-            quarantine_record(&path, "workbench run projection exceeds its file bounds", None);
+        if !metadata.file_type().is_file() {
+            quarantine_record(&path, "workbench run projection is not a regular file", None);
             continue;
         }
-        let bytes = match fs::read(&path) {
-            Ok(bytes) => bytes,
-            Err(error) => {
-                quarantine_record(
-                    &path,
-                    "workbench execution projection is unreadable",
-                    Some(&error),
-                );
-                continue;
-            }
-        };
-        let persisted: PersistedRecord = match serde_json::from_slice(&bytes) {
+        let persisted = match read_record(&path) {
             Ok(persisted) => persisted,
             Err(error) => {
                 quarantine_record(
                     &path,
-                    "workbench execution projection is malformed",
+                    "workbench execution projection is unreadable or malformed",
                     Some(&error),
                 );
                 continue;
@@ -233,6 +220,21 @@ fn projection_paths(directory: &Path) -> Vec<PathBuf> {
         .collect::<Vec<_>>();
     paths.sort_by(|left, right| modified(right).cmp(&modified(left)).then_with(|| left.cmp(right)));
     paths
+}
+
+fn read_record(path: &Path) -> std::io::Result<PersistedRecord> {
+    let file = fs::File::open(path)?;
+    if !file.metadata()?.file_type().is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "workbench run record is not a regular file",
+        ));
+    }
+    // Decode unchanged JSON through one physical buffer without a work-size quota or a
+    // second complete encoded copy. Opening recovery preserves its existing read-only access.
+    let reader = std::io::BufReader::with_capacity(32 * 1024, file);
+    serde_json::from_reader(reader)
+        .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidData, error))
 }
 
 fn modified(path: &Path) -> SystemTime {
