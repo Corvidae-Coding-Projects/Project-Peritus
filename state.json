@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3687,
-        "tip_oid": "02565613066de121fb76634769a82cc790cb5834",
-        "prefix_sha256": "a14db5f1acb4b419d6072c79ac71b69960917645037340a17abf4863c3823ded"
+        "sequence": 3688,
+        "tip_oid": "b6725da54f2ac836885505bdfe59e35ee9cd1e02",
+        "prefix_sha256": "95ec3c9429cdc19c7cfc06f570cec62bf1f4b599dc9e3499e855d4be3dc25dea"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3012,
+  "next_comment_id": 3013,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20044,7 +20044,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T02:05:43.255472510Z",
+      "updated_at": "2026-10-07T02:07:56.673094022Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20075,6 +20075,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhlJ6aMuKy48HhWTvOQetVrgu0Qf28SKEqGzsQWvGryOKySPmrCnyfdsHIavONYti+GL4iGztnIQdf4TAyaITDA=="
+        },
+        "145e5b4e-8438-4adf-bd86-37bb4055dd96": {
+          "display_id": 3012,
+          "author": "6ME5",
+          "content": "[action] Final browser run passes all18 scenarios. Full Rust run has two restart/shutdown failures; code-only journal worker is tracing terminal reconciliation, assertions retained. Batch issues stay open and commits remain blocked until fixes pass root validation.",
+          "created_at": "2026-10-07T02:07:56.668342747Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAe/v2DBuGZHcRodGXBg8QtX9ioqM6QkLBwMXAkcsI3cnasvGuBxC9s9ZFjeW12saqw2UtdF5dAiYZiLA1PsltDg=="
         },
         "16ade33a-5f12-49db-a86d-ca0831ecb859": {
           "display_id": 2996,
