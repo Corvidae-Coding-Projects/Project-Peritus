@@ -13,7 +13,6 @@ use crate::{
 
 const MAX_SECRET_HANDLES: usize = 128;
 const MAX_HANDLE_LABEL_BYTES: usize = 256;
-const MAX_PAYLOAD_BYTES: u32 = 1_024 * 1_024;
 
 /// Nonsensitive destination bound to one protected anonymous payload handle.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -51,7 +50,6 @@ impl SecretHandleDescriptor {
             || !label.is_ascii()
             || label.bytes().any(|byte| byte.is_ascii_control())
             || payload_len == 0
-            || payload_len > MAX_PAYLOAD_BYTES
             || reference_digest == Sha256Digest::new([0; 32])
         {
             return Err(secret_error("secret handle manifest metadata is invalid"));
@@ -71,7 +69,7 @@ impl SecretHandleDescriptor {
         &self.label
     }
 
-    /// Returns the exact bounded payload length.
+    /// Returns the exact finite payload length.
     #[must_use]
     pub const fn payload_len(&self) -> u32 {
         self.payload_len

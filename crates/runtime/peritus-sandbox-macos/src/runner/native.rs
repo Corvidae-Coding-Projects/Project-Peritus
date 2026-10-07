@@ -12,6 +12,7 @@ use std::{
 };
 
 use peritus_sandbox::SandboxResourceKind;
+use zeroize::Zeroizing;
 
 use crate::{
     EnforcementLevel, HelperManifest, MacosError, MacosErrorKind, MacosOperation, RecoveryAction,
@@ -206,16 +207,55 @@ pub(super) fn read_protected_payload(
     Ok(payload)
 }
 
-pub(super) fn materialize_secret_file(destination: &str, payload: &[u8]) -> Result<(), MacosError> {
+pub(super) fn materialize_secret_file(
+    descriptor: u32,
+    expected_len: u32,
+    destination: &str,
+) -> Result<(), MacosError> {
+    let mut source = std::fs::File::open(format!("/dev/fd/{descriptor}"))
+        .map_err(|_| protected_error("protected file payload descriptor cannot be opened"))?;
+    source
+        .seek(std::io::SeekFrom::Start(0))
+        .map_err(|_| protected_error("protected file payload descriptor cannot be rewound"))?;
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create_new(true).mode(0o600).custom_flags(libc::O_NOFOLLOW);
     let mut file = options
         .open(destination)
         .map_err(|_| protected_error("secret file destination cannot be created privately"))?;
-    if file.write_all(payload).and_then(|()| file.sync_all()).is_err() {
+    let result = (|| {
+        let mut remaining = u64::from(expected_len);
+        let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
+        while remaining != 0 {
+            let capacity = usize::try_from(
+                remaining.min(u64::try_from(buffer.len()).unwrap_or(u64::MAX)),
+            )
+                .map_err(|_| protected_error("protected file payload length is invalid"))?;
+            let count = source
+                .read(&mut buffer[..capacity])
+                .map_err(|_| protected_error("protected file payload descriptor cannot be read"))?;
+            if count == 0 {
+                return Err(protected_error("protected file payload is truncated"));
+            }
+            file.write_all(&buffer[..count]).map_err(|_| {
+                protected_error("secret file destination cannot be synchronized")
+            })?;
+            remaining = remaining.saturating_sub(u64::try_from(count).unwrap_or(u64::MAX));
+        }
+        let mut trailing = [0_u8; 1];
+        if source
+            .read(&mut trailing)
+            .map_err(|_| protected_error("protected file payload descriptor cannot be read"))?
+            != 0
+        {
+            return Err(protected_error("protected file payload exceeds its manifest length"));
+        }
+        file.sync_all()
+            .map_err(|_| protected_error("secret file destination cannot be synchronized"))
+    })();
+    if let Err(error) = result {
         drop(file);
         let _ = std::fs::remove_file(destination);
-        return Err(protected_error("secret file destination cannot be synchronized"));
+        return Err(error);
     }
     Ok(())
 }

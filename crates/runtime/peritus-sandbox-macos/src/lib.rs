@@ -40,7 +40,10 @@ mod verified;
 pub use activation::{ACTIVATION_RECORD_BYTES, ActivationRecord};
 pub use descriptor::{BACKEND_NAME, BACKEND_VERSION, MacosDescriptor};
 pub use environment::EnvironmentEntry;
-pub use error::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction};
+pub use error::{
+    MacosError, MacosErrorKind, MacosErrorSource, MacosOperation, PreparationCleanup,
+    RecoveryAction,
+};
 pub use exec_status::EXEC_STATUS_LABEL;
 pub use filesystem::{CompiledSeatbeltProfile, ProfileCompiler, ProfileDecision};
 pub use helper::run_helper_process;
@@ -49,7 +52,10 @@ pub use manifest::{
 };
 pub use network::{ProtectedProxyRoute, ProxyHandleDescriptor, ProxyRoute};
 pub use observation::{MacosObservation, ObservationEvent, ObservationStatus};
-pub use preparation::{MacosBackend, PreparationConfig, PreparedMacosSandbox};
+pub use preparation::{
+    MacosBackend, PreparationConfig, PreparationProgress, PreparedMacosSandbox,
+    RetainedMacosBackendFactory,
+};
 pub use probe::{MacosHostProbe, ProbeEvidence, ProbeRequest, ResourceProbe, SystemProbe};
 pub use process::{HelperLaunch, InheritedDescriptor, ProcessContainment, TerminalMapping};
 pub use recovery::{CleanupProgress, MacosRecoveryRecord, RecoveryClassification, RuntimeIdentity};

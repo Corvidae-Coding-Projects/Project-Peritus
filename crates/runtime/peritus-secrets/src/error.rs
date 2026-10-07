@@ -29,6 +29,8 @@ pub enum SecretErrorKind {
     Io,
     /// A recovery record is malformed or mismatched.
     Recovery,
+    /// Authorized preparation was cancelled by its owner.
+    Cancelled,
 }
 
 impl SecretErrorKind {
@@ -45,6 +47,7 @@ impl SecretErrorKind {
             Self::Corrupt => "PERITUS-SECRETS-007",
             Self::Revoked => "PERITUS-SECRETS-008",
             Self::Delivery => "PERITUS-SECRETS-009",
+            Self::Cancelled => "PERITUS-SECRETS-013",
             Self::Cleanup => "PERITUS-SECRETS-010",
             Self::Io => "PERITUS-SECRETS-011",
             Self::Recovery => "PERITUS-SECRETS-012",

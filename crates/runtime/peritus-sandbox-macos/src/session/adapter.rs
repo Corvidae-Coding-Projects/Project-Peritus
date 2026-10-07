@@ -169,7 +169,7 @@ pub(super) fn lifecycle_error(detail: &'static str) -> MacosError {
     )
 }
 
-pub(crate) const fn process_error(error: &MacosError) -> ProcessError {
+pub(crate) fn process_error(error: &MacosError) -> ProcessError {
     let (code, operation, recovery) = match error.kind() {
         MacosErrorKind::InvalidInput | MacosErrorKind::LimitExceeded => {
             (ErrorCode::InvalidInput, ProcessOperation::Validate, ProcessRecovery::CorrectRequest)
@@ -186,6 +186,11 @@ pub(crate) const fn process_error(error: &MacosError) -> ProcessError {
         MacosErrorKind::RecoveryIndeterminate => {
             (ErrorCode::Indeterminate, ProcessOperation::Reconcile, ProcessRecovery::Quarantine)
         }
+        MacosErrorKind::CleanupIncomplete => (
+            ErrorCode::Supervisor,
+            ProcessOperation::Reconcile,
+            ProcessRecovery::ReopenAndReconcile,
+        ),
         _ => (ErrorCode::Supervisor, ProcessOperation::Wait, ProcessRecovery::CancelAndReap),
     };
     let detail = match error.kind() {
@@ -205,5 +210,10 @@ pub(crate) const fn process_error(error: &MacosError) -> ProcessError {
         MacosErrorKind::RecoveryIndeterminate => "macOS native recovery is indeterminate",
         MacosErrorKind::Io => "macOS native I/O failed",
     };
-    ProcessError::new(code, operation, recovery, detail)
+    let process = ProcessError::with_source(code, operation, recovery, detail, error.clone());
+    if error.operation() == MacosOperation::Prepare {
+        process.with_preparation_cleanup(error.preparation_cleanup().is_complete())
+    } else {
+        process
+    }
 }

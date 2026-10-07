@@ -267,7 +267,7 @@ fn stage_file(
 ) -> Result<PathBuf, SecretError> {
     fs::create_dir_all(root)
         .map_err(|_| delivery_error("secret staging root cannot be created"))?;
-    let path = root.join(format!("{}.secret", hex(lease_id.as_bytes())));
+    let path = staging_path(root, lease_id);
     let mut options = OpenOptions::new();
     options.write(true).create_new(true);
     #[cfg(unix)]
@@ -283,6 +283,10 @@ fn stage_file(
         return Err(delivery_error("private secret file cannot be synchronized"));
     }
     Ok(path)
+}
+
+pub(crate) fn staging_path(root: &Path, lease_id: SecretLeaseId) -> PathBuf {
+    root.join(format!("{}.secret", hex(lease_id.as_bytes())))
 }
 
 fn hex(bytes: &[u8]) -> String {

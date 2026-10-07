@@ -167,11 +167,11 @@ pub fn prepare_target_command(
                 payload.zeroize();
             }
             crate::SecretHandleDestination::File(path) => {
-                let mut payload =
-                    native::read_protected_payload(secret.descriptor(), secret.payload_len())?;
-                let result = native::materialize_secret_file(path.as_str(), &payload);
-                payload.zeroize();
-                result?;
+                native::materialize_secret_file(
+                    secret.descriptor(),
+                    secret.payload_len(),
+                    path.as_str(),
+                )?;
                 materialized_secret_files.record(path.as_str());
             }
             crate::SecretHandleDestination::Brokered(label) => {

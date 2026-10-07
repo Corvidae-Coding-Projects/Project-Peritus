@@ -3,11 +3,11 @@
 use core::fmt;
 use std::{
     fs::File,
-    io::{Seek, SeekFrom, Write},
+    io::{Read, Seek, SeekFrom, Write},
     sync::Arc,
 };
 
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::{ErrorCode, ProcessError, ProcessOperation, RecoveryClass};
 
@@ -67,6 +67,61 @@ impl NativeProtectedHandle {
         result
     }
 
+    /// Streams a finite protected payload into an anonymous operating-system object.
+    ///
+    /// This path has a fixed-size transfer buffer rather than a cumulative material allocation.
+    /// `should_continue` is checked before every source read and `observe_bytes` receives the
+    /// monotonically increasing byte count after every committed chunk. The returned handle owns
+    /// the copied payload and truncates it on final drop.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an invalid label, an empty or unrepresentable stream, caller cancellation, or any
+    /// anonymous-file read/write/flush/rewind failure.
+    pub fn from_reader(
+        label: impl Into<String>,
+        mut reader: impl Read,
+        mut should_continue: impl FnMut() -> bool,
+        mut observe_bytes: impl FnMut(usize),
+    ) -> Result<Self, ProcessError> {
+        let label = label.into();
+        if !valid_label(&label) {
+            return Err(handle_error("native protected handle label is invalid"));
+        }
+        let mut file = tempfile::tempfile()
+            .map_err(|_| handle_error("native protected anonymous handle creation failed"))?;
+        let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
+        let mut payload_len = 0_usize;
+        loop {
+            if !should_continue() {
+                return Err(stream_error("native protected payload staging was cancelled"));
+            }
+            let count = reader
+                .read(&mut *buffer)
+                .map_err(|_| handle_error("native protected payload source could not be read"))?;
+            if count == 0 {
+                break;
+            }
+            file.write_all(&buffer[..count])
+                .map_err(|_| handle_error("native protected anonymous handle staging failed"))?;
+            payload_len = payload_len.checked_add(count).ok_or_else(|| {
+                handle_error("native protected payload length is not representable")
+            })?;
+            observe_bytes(payload_len);
+        }
+        if payload_len == 0 {
+            return Err(handle_error("native protected payload is empty"));
+        }
+        file.flush()
+            .and_then(|()| file.seek(SeekFrom::Start(0)).map(drop))
+            .map_err(|_| handle_error("native protected anonymous handle staging failed"))?;
+        Ok(Self {
+            label,
+            payload_len: Some(payload_len),
+            inner: Arc::new(ProtectedHandleInner { file, truncate_on_drop: true }),
+        })
+    }
+
     /// Retains a pre-opened protected operating-system object for exact child inheritance.
     ///
     /// This is used for bidirectional broker channels whose content is not a finite staged
@@ -94,7 +149,7 @@ impl NativeProtectedHandle {
         &self.label
     }
 
-    /// Returns the bounded payload length without exposing its bytes.
+    /// Returns the finite payload length without exposing its bytes.
     #[must_use]
     pub const fn payload_len(&self) -> Option<usize> {
         self.payload_len
@@ -155,6 +210,15 @@ const fn handle_error(detail: &'static str) -> ProcessError {
         ErrorCode::InvalidInput,
         ProcessOperation::Spawn,
         RecoveryClass::CorrectRequest,
+        detail,
+    )
+}
+
+const fn stream_error(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::Supervisor,
+        ProcessOperation::Spawn,
+        RecoveryClass::RetryPreparation,
         detail,
     )
 }

@@ -129,6 +129,17 @@ pub enum RecoveryClass {
     Terminal,
 }
 
+/// Reason a control was rejected before entering the process owner.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ControlRejection {
+    /// No control was accepted; the same request may be retried when capacity becomes available.
+    Backpressure,
+    /// No control was accepted; the request must be corrected before retry.
+    InvalidRequest,
+    /// No control was accepted; observe the original invocation instead of resending this control.
+    AdmissionClosed,
+}
+
 /// Bounded typed process failure.
 #[derive(Debug)]
 pub struct ProcessError {
@@ -136,6 +147,9 @@ pub struct ProcessError {
     operation: ProcessOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    control_rejection: Option<ControlRejection>,
+    preparation_cleanup_complete: Option<bool>,
+    source: Option<Box<dyn std::error::Error + Send + Sync + 'static>>,
 }
 
 impl ProcessError {
@@ -147,7 +161,88 @@ impl ProcessError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { code, operation, recovery, detail }
+        Self {
+            code,
+            operation,
+            recovery,
+            detail,
+            control_rejection: None,
+            preparation_cleanup_complete: None,
+            source: None,
+        }
+    }
+
+    /// Creates a bounded failure while retaining one typed, non-content-bearing local cause.
+    ///
+    /// Source text is never serialized across the retained-owner protocol. Callers must keep the
+    /// public detail static and safe independently of the supplied source.
+    #[must_use]
+    pub fn with_source(
+        code: ErrorCode,
+        operation: ProcessOperation,
+        recovery: RecoveryClass,
+        detail: &'static str,
+        source: impl std::error::Error + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            code,
+            operation,
+            recovery,
+            detail,
+            control_rejection: None,
+            preparation_cleanup_complete: None,
+            source: Some(Box::new(source)),
+        }
+    }
+
+    /// Records whether a failed authorized preparation proved every started resource released.
+    ///
+    /// This is local lifecycle evidence, not permission to redispatch a consumed authorization.
+    #[must_use]
+    pub const fn with_preparation_cleanup(mut self, complete: bool) -> Self {
+        self.preparation_cleanup_complete = Some(complete);
+        self
+    }
+
+    pub(crate) const fn rejecting_control(mut self, rejection: ControlRejection) -> Self {
+        self.control_rejection = Some(rejection);
+        self
+    }
+
+    /// Reconstructs a bounded error received from the authenticated retained service owner.
+    ///
+    /// The transport carries stable enums only. Local source chains and dynamic text never cross
+    /// the owner boundary, so this uses one fixed diagnostic while preserving retry semantics.
+    #[must_use]
+    pub const fn from_retained_owner(
+        code: ErrorCode,
+        operation: ProcessOperation,
+        recovery: RecoveryClass,
+        control_rejection: Option<ControlRejection>,
+    ) -> Self {
+        Self {
+            code,
+            operation,
+            recovery,
+            detail: "retained process owner reported a failure",
+            control_rejection,
+            preparation_cleanup_complete: None,
+            source: None,
+        }
+    }
+
+    /// Returns retry guidance only when the control failed before admission.
+    ///
+    /// An untagged error does not establish that an effectful control is safe to repeat.
+    #[must_use]
+    pub const fn control_rejection(&self) -> Option<ControlRejection> {
+        self.control_rejection
+    }
+
+    /// Returns exact cleanup evidence for a failed authorized preparation, when supplied.
+    #[must_use]
+    pub const fn preparation_cleanup_complete(&self) -> Option<bool> {
+        self.preparation_cleanup_complete
     }
 
     /// Returns the stable error category.
@@ -173,6 +268,12 @@ impl ProcessError {
     pub const fn detail(&self) -> &'static str {
         self.detail
     }
+
+    /// Returns the exact typed local cause when one was available.
+    #[must_use]
+    pub fn cause(&self) -> Option<&(dyn std::error::Error + Send + Sync + 'static)> {
+        self.source.as_deref()
+    }
 }
 
 impl fmt::Display for ProcessError {
@@ -181,7 +282,13 @@ impl fmt::Display for ProcessError {
     }
 }
 
-impl std::error::Error for ProcessError {}
+impl std::error::Error for ProcessError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source
+            .as_deref()
+            .map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
 
 pub(crate) const fn invalid(detail: &'static str) -> ProcessError {
     ProcessError::new(

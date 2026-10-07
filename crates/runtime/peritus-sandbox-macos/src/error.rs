@@ -2,6 +2,17 @@
 
 use core::fmt;
 
+use peritus_network::{
+    NetworkError, NetworkErrorKind, NetworkOperation, RecoveryClass as NetworkRecovery,
+};
+use peritus_process::{
+    ErrorCode as ProcessErrorCode, ProcessError, ProcessOperation,
+    RecoveryClass as ProcessRecovery,
+};
+use peritus_secrets::{
+    RecoveryClass as SecretRecovery, SecretError, SecretErrorKind, SecretOperation,
+};
+
 const MAX_DETAIL_BYTES: usize = 512;
 
 /// Stable macOS backend failure category.
@@ -109,6 +120,104 @@ pub enum RecoveryAction {
     Quarantine,
 }
 
+/// Stable typed cause retained beneath one macOS backend failure.
+///
+/// The snapshots contain only machine-readable categories and never resource names, paths, secret
+/// material, or provider diagnostics.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MacosErrorSource {
+    /// Operating-system I/O category.
+    Io(std::io::ErrorKind),
+    /// Managed-network preparation or teardown failure.
+    Network {
+        /// Underlying network category.
+        kind: NetworkErrorKind,
+        /// Underlying network operation.
+        operation: NetworkOperation,
+        /// Underlying network recovery requirement.
+        recovery: NetworkRecovery,
+    },
+    /// Secret lookup, delivery, or cleanup failure.
+    Secret {
+        /// Underlying secret category.
+        kind: SecretErrorKind,
+        /// Underlying secret operation.
+        operation: SecretOperation,
+        /// Underlying secret recovery requirement.
+        recovery: SecretRecovery,
+    },
+    /// Protected-handle or process integration failure.
+    Process {
+        /// Underlying process category.
+        code: ProcessErrorCode,
+        /// Underlying process operation.
+        operation: ProcessOperation,
+        /// Underlying process recovery requirement.
+        recovery: ProcessRecovery,
+    },
+}
+
+impl fmt::Display for MacosErrorSource {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(kind) => write!(formatter, "operating-system I/O category {kind:?}"),
+            Self::Network { kind, operation, recovery } => {
+                write!(formatter, "network {kind:?} during {operation:?}; recovery {recovery:?}")
+            }
+            Self::Secret { kind, operation, recovery } => {
+                write!(formatter, "secret {kind:?} during {operation:?}; recovery {recovery:?}")
+            }
+            Self::Process { code, operation, recovery } => {
+                write!(formatter, "process {code:?} during {operation:?}; recovery {recovery:?}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for MacosErrorSource {}
+
+/// Exact resource families whose cleanup could not be proven after preparation failed.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PreparationCleanup {
+    support_join: bool,
+    proxy_shutdown: bool,
+    secret_release: bool,
+}
+
+impl PreparationCleanup {
+    pub(crate) const fn new(
+        support_join: bool,
+        proxy_shutdown: bool,
+        secret_release: bool,
+    ) -> Self {
+        Self { support_join, proxy_shutdown, secret_release }
+    }
+
+    /// Reports whether the helper-support channel still requires reconciliation.
+    #[must_use]
+    pub const fn support_join(self) -> bool {
+        self.support_join
+    }
+
+    /// Reports whether managed-proxy shutdown still requires reconciliation.
+    #[must_use]
+    pub const fn proxy_shutdown(self) -> bool {
+        self.proxy_shutdown
+    }
+
+    /// Reports whether exact secret delivery cleanup still requires reconciliation.
+    #[must_use]
+    pub const fn secret_release(self) -> bool {
+        self.secret_release
+    }
+
+    /// Reports whether preparation proved every started resource family clean.
+    #[must_use]
+    pub const fn is_complete(self) -> bool {
+        !self.support_join && !self.proxy_shutdown && !self.secret_release
+    }
+}
+
 /// Typed backend error with bounded, non-sensitive detail.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MacosError {
@@ -116,6 +225,8 @@ pub struct MacosError {
     operation: MacosOperation,
     recovery: RecoveryAction,
     detail: String,
+    source: Option<MacosErrorSource>,
+    cleanup: PreparationCleanup,
 }
 
 impl MacosError {
@@ -137,7 +248,24 @@ impl MacosError {
                 .unwrap_or(0);
             detail.truncate(boundary);
         }
-        Self { kind, operation, recovery, detail }
+        Self {
+            kind,
+            operation,
+            recovery,
+            detail,
+            source: None,
+            cleanup: PreparationCleanup::new(false, false, false),
+        }
+    }
+
+    pub(crate) fn with_source(mut self, source: MacosErrorSource) -> Self {
+        self.source = Some(source);
+        self
+    }
+
+    pub(crate) fn with_cleanup(mut self, cleanup: PreparationCleanup) -> Self {
+        self.cleanup = cleanup;
+        self
     }
 
     /// Returns the stable failure category.
@@ -169,6 +297,18 @@ impl MacosError {
     pub fn detail(&self) -> &str {
         &self.detail
     }
+
+    /// Returns the stable typed underlying failure, when one was available.
+    #[must_use]
+    pub const fn cause(&self) -> Option<MacosErrorSource> {
+        self.source
+    }
+
+    /// Returns exact incomplete resource-family cleanup after preparation failure.
+    #[must_use]
+    pub const fn preparation_cleanup(&self) -> PreparationCleanup {
+        self.cleanup
+    }
 }
 
 impl fmt::Display for MacosError {
@@ -177,7 +317,35 @@ impl fmt::Display for MacosError {
     }
 }
 
-impl std::error::Error for MacosError {}
+impl std::error::Error for MacosError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_ref().map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
+
+pub(crate) const fn network_source(error: &NetworkError) -> MacosErrorSource {
+    MacosErrorSource::Network {
+        kind: error.kind(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
+
+pub(crate) const fn secret_source(error: &SecretError) -> MacosErrorSource {
+    MacosErrorSource::Secret {
+        kind: error.kind(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
+
+pub(crate) const fn process_source(error: &ProcessError) -> MacosErrorSource {
+    MacosErrorSource::Process {
+        code: error.code(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
 
 pub(crate) fn invalid(operation: MacosOperation, detail: impl Into<String>) -> MacosError {
     MacosError::new(MacosErrorKind::InvalidInput, operation, RecoveryAction::CorrectRequest, detail)
@@ -204,4 +372,5 @@ pub(crate) fn io_error(operation: MacosOperation, error: &std::io::Error) -> Mac
         RecoveryAction::Reconcile,
         format!("operating-system I/O failure ({kind:?})"),
     )
+    .with_source(MacosErrorSource::Io(kind))
 }
