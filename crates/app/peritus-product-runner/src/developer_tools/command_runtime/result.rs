@@ -115,15 +115,30 @@ const fn status_name(status: ResultStatus) -> &'static str {
 
 fn bounded_stream(bytes: &[u8], externally_truncated: bool) -> String {
     let text = String::from_utf8_lossy(bytes);
-    if bytes.len() <= MODEL_STREAM_BYTES && !externally_truncated {
+    if text.len() <= MODEL_STREAM_BYTES && !externally_truncated {
         return text.into_owned();
     }
-    if bytes.len() <= MODEL_STREAM_BYTES {
-        return format!("{text}\n[output truncated by the C2 stream ceiling]\n");
+    let incomplete_marker = "\n[output incomplete]\n";
+    if externally_truncated && text.len() <= MODEL_STREAM_BYTES - incomplete_marker.len() {
+        return format!("{text}{incomplete_marker}");
     }
-    let head_end = text.floor_char_boundary(HALF_STREAM_BYTES);
-    let tail_start = text.ceil_char_boundary(text.len().saturating_sub(HALF_STREAM_BYTES));
-    format!("{}\n[output truncated]\n{}", &text[..head_end], &text[tail_start..])
+    let marker = if externally_truncated {
+        "\n[output truncated; stream incomplete]\n"
+    } else {
+        "\n[output truncated]\n"
+    };
+    join_stream_preview(&text, &text, marker)
+}
+
+fn join_stream_preview(head: &str, tail: &str, marker: &str) -> String {
+    let available = MODEL_STREAM_BYTES - marker.len();
+    let head_end = head.floor_char_boundary(available.div_ceil(2).min(head.len()));
+    let tail_start = tail.ceil_char_boundary(tail.len().saturating_sub(available / 2));
+    let mut preview = String::with_capacity(head_end + marker.len() + tail.len() - tail_start);
+    preview.push_str(&head[..head_end]);
+    preview.push_str(marker);
+    preview.push_str(&tail[tail_start..]);
+    preview
 }
 
 #[cfg(test)]
