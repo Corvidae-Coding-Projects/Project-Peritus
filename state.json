@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3799,
-        "tip_oid": "a972bb7999ddf00554a9fdf93bc2b4d9590d7190",
-        "prefix_sha256": "4271a1c38d8f85dc0be0e01e79034f66f627a2d4b23167f2d65e4a39594d8546"
+        "sequence": 3800,
+        "tip_oid": "c3457c2c261c9ab7edf1ba9eca37ae0d11bbf8a9",
+        "prefix_sha256": "6641331589a3508dce2c9c652f5be3338c8b69b6e01dc0901a887251d7657d65"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3105,
+  "next_comment_id": 3106,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32212,11 +32212,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.613459918Z",
-      "updated_at": "2026-10-06T13:21:37.616052091Z",
+      "updated_at": "2026-10-07T13:29:58.582599649Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2698d974-261a-4c0f-8d71-0f5d260ae16c": {
+          "display_id": 3105,
+          "author": "6ME5",
+          "content": "Source-only implementation complete and issue left open. Registered-folder authority now uses purpose-specific C0 construction: zero model-token/provider-cost/active-effect budget dimensions with finite lifecycle fields, plus a lease acquired at logical tick 10, used at tick 20, and expiring at the exclusive tick 21 boundary. C1 consumes the exact durable Used receipt before its folder transaction; settlement/restart recovery relies on the durable action marker, exact digest, transaction manifest, and pre/postimages rather than lease time. Existing real-command wall-derived budgets/leases and receipt encodings are unchanged. Full production-path/source coverage and exact hashes are in .crosslink/code-batch-recovery/2026-10-07-issue212/HANDOFF.md. Per batch directive, no tests, builds, Cargo/Rust toolchains, formatting, code generation, Verus, qualification runners, or test edits were used; runtime validation remains deferred to final batch validation.",
+          "created_at": "2026-10-07T13:29:58.576734033Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1rrULTXnos74EdJDGSLuXCjrXEyB7hT3GeDUXNIYuR18vfQUA0VkM3IWwKH3S70zhtTBBzMECj3qo4QaYP5CDQ=="
+        },
         "d4a22aa5-24ba-4a8e-91cd-5e66ba049c79": {
           "display_id": 2284,
           "author": "6ME5",
