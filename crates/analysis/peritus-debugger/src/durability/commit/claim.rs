@@ -14,6 +14,7 @@ pub(super) fn validate_mode(
     match mode {
         CommitMode::Ordinary => match command.kind() {
             DebuggerCommandKind::MarkModelAttemptStarted { .. }
+            | DebuggerCommandKind::MarkModelAttemptStartedOnClock { .. }
             | DebuggerCommandKind::RecordModelProposal { .. }
             | DebuggerCommandKind::RecordModelFailure { .. }
             | DebuggerCommandKind::RecordPublication { .. } => {
@@ -23,27 +24,70 @@ pub(super) fn validate_mode(
         },
         CommitMode::Claimed(DebuggerDirectiveClaim::Model(claim)) => {
             let directive = claim.directive();
-            let DebuggerCommandKind::MarkModelAttemptStarted { model_id, attempt, started_at_tick } =
-                command.kind()
-            else {
-                return Err(binding::binding("claim-fenced commit is not a model-attempt start"));
-            };
             let model = state.model().ok_or_else(|| {
                 binding::binding("model-attempt start successor has no model state")
             })?;
+            let semantics_match = match command.kind() {
+                DebuggerCommandKind::MarkModelAttemptStarted {
+                    model_id,
+                    attempt,
+                    started_at_tick,
+                } => {
+                    directive.schedule().is_none()
+                        && directive.model_id() == *model_id
+                        && directive.attempt() == *attempt
+                        && *started_at_tick >= directive.not_before_tick()
+                        && matches!(
+                            model.state(),
+                            ModelWorkState::Running {
+                                attempt: current,
+                                ..
+                            } if *current == *attempt
+                        )
+                }
+                DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+                    model_id,
+                    attempt,
+                    started_at,
+                    basis,
+                } => {
+                    let expected_basis = if let Some(schedule) = directive.schedule() {
+                        schedule.admission(*started_at)
+                    } else if directive.attempt() == 1 && directive.not_before_tick() == 0 {
+                        Some(crate::ModelStartBasis::Immediate)
+                    } else if directive.attempt() > 1
+                        && started_at.tick_millis() >= directive.not_before_tick()
+                    {
+                        Some(crate::ModelStartBasis::LegacyTick)
+                    } else {
+                        None
+                    };
+                    directive.model_id() == *model_id
+                        && directive.attempt() == *attempt
+                        && expected_basis == Some(*basis)
+                        && matches!(
+                            model.state(),
+                            ModelWorkState::RunningOnClock {
+                                attempt: current,
+                                started_at: current_time,
+                                basis: current_basis,
+                                schedule: current_schedule,
+                            } if *current == *attempt
+                                && current_time == started_at
+                                && current_basis == basis
+                                && *current_schedule == directive.schedule()
+                        )
+                }
+                _ => {
+                    return Err(binding::binding(
+                        "claim-fenced commit is not a model-attempt start",
+                    ));
+                }
+            };
             if directive.job_id() != command.job_id()
-                || directive.model_id() != *model_id
-                || directive.attempt() != *attempt
                 || directive.plan_digest() != model.plan_digest()
                 || directive.request_digest() != model.request_digest()
-                || *started_at_tick < directive.not_before_tick()
-                || !matches!(
-                    model.state(),
-                    ModelWorkState::Running {
-                        attempt: current,
-                        ..
-                    } if *current == *attempt
-                )
+                || !semantics_match
             {
                 return Err(binding::binding("claimed model directive differs from attempt start"));
             }

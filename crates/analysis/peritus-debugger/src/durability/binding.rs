@@ -133,6 +133,25 @@ fn semantic_match(command: &DebuggerCommandKind, event: &DebuggerEventKind) -> b
             },
         ) => left_id == right_id && left_attempt == right_attempt && left_tick == right_tick,
         (
+            DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+                model_id: left_id,
+                attempt: left_attempt,
+                started_at: left_time,
+                basis: left_basis,
+            },
+            DebuggerEventKind::ModelAttemptStartedOnClock {
+                model_id: right_id,
+                attempt: right_attempt,
+                started_at: right_time,
+                basis: right_basis,
+            },
+        ) => {
+            left_id == right_id
+                && left_attempt == right_attempt
+                && left_time == right_time
+                && left_basis == right_basis
+        }
+        (
             DebuggerCommandKind::RecordModelProposal {
                 model_id: left_id,
                 attempt: left_attempt,
@@ -184,6 +203,32 @@ fn semantic_match(command: &DebuggerCommandKind, event: &DebuggerEventKind) -> b
                 not_before_tick: right_tick,
             },
         ) => left_id == right_id && left_attempt == right_attempt && left_tick == right_tick,
+        (
+            DebuggerCommandKind::ScheduleModelRetryOnClock {
+                model_id: left_id,
+                next_attempt: left_attempt,
+                schedule: left_schedule,
+            },
+            DebuggerEventKind::ModelRetryScheduledOnClock {
+                model_id: right_id,
+                next_attempt: right_attempt,
+                schedule: right_schedule,
+            },
+        ) => {
+            left_id == right_id
+                && left_attempt == right_attempt
+                && left_schedule == right_schedule
+        }
+        (
+            DebuggerCommandKind::AmendModelRetryPolicy {
+                model_id: left_id,
+                retry_policy: left_policy,
+            },
+            DebuggerEventKind::ModelRetryPolicyAmended {
+                model_id: right_id,
+                retry_policy: right_policy,
+            },
+        ) => left_id == right_id && left_policy == right_policy,
         (
             DebuggerCommandKind::CancelJob { reason_digest: left },
             DebuggerEventKind::JobCancelled { reason_digest: right },

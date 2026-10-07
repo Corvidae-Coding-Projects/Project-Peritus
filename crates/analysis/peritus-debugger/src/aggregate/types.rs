@@ -10,7 +10,8 @@ pub use model::{
     ModelAcceptanceCertainty, ModelAttemptFailure, ModelAttemptFailureCode,
     ModelAttemptObservation, ModelAttemptResult, ModelBudget, ModelFailureContext,
     ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery, ModelProgress,
-    ModelProviderFailureCause, ModelRetryPolicy, ModelWorkState,
+    ModelProviderFailureCause, ModelRetryPolicy, ModelRetrySchedule, ModelStartBasis,
+    ModelWorkState,
 };
 pub use phase::DebuggerPhase;
 pub use records::{AnalysisCounts, PublicationRecord, ReportRecord, SelectionRecord};

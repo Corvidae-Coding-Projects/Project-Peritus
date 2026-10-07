@@ -1,6 +1,7 @@
 //! Commit-before-provider model attempt execution and caller-controlled retry scheduling.
 
 use peritus_journal::SqliteJournal;
+use peritus_policy::AuthorityInstant;
 use peritus_provider_core::{CancellationToken, ModelProvider};
 
 use crate::{
@@ -8,8 +9,9 @@ use crate::{
     DebuggerPhase, DebuggerRecovery, DebuggerState, ModelAnalysisPlan, ModelAttemptFailure,
     ModelAttemptFailureCode, ModelAttemptResult, ModelDirectiveClaim, ModelPriorUsage,
     ModelRunFailure, ModelRunSuccess, ModelWorkState, TraceSelectionManifest,
-    ValidatedModelProposal, commit_debugger_claimed_transition, commit_debugger_settlement,
-    commit_debugger_transition, decide, run_model_analysis_with_usage,
+    ModelRetryPolicy, ModelRetrySchedule, ModelStartBasis, ValidatedModelProposal,
+    commit_debugger_claimed_transition, commit_debugger_settlement, commit_debugger_transition,
+    decide, run_model_analysis_with_usage,
 };
 
 use super::{CommittedDebuggerTransition, TransitionIds};
@@ -81,7 +83,7 @@ pub async fn execute_model_attempt(
     manifest: &TraceSelectionManifest,
     debugger_limits: crate::DebuggerLimits,
     claim: ModelDirectiveClaim,
-    started_at_tick: u64,
+    started_at: AuthorityInstant,
     ids: ModelAttemptIds,
     cancellation: CancellationToken,
 ) -> Result<ModelAttemptExecution, DebuggerError> {
@@ -97,17 +99,41 @@ pub async fn execute_model_attempt(
         || model.plan_digest() != plan.digest()
         || model.request_digest() != plan.request_digest()
         || model.budget() != plan.budget()
-        || model.retry_policy() != plan.retry_policy()
+        || !match model.state() {
+            ModelWorkState::PendingOnClock { attempt, schedule } => {
+                *attempt == directive.attempt() && directive.schedule() == Some(*schedule)
+            }
+            ModelWorkState::Pending { attempt, not_before_tick } => {
+                *attempt == directive.attempt()
+                    && directive.schedule().is_none()
+                    && *not_before_tick == directive.not_before_tick()
+            }
+            _ => false,
+        }
     {
         return Err(binding("model state, plan, and claimed directive differ"));
     }
+    let basis = if let Some(schedule) = directive.schedule() {
+        schedule
+            .admission(started_at)
+            .ok_or_else(|| binding("claimed model retry is not yet authority-clock eligible"))?
+    } else if directive.attempt() == 1 && directive.not_before_tick() == 0 {
+        ModelStartBasis::Immediate
+    } else if directive.attempt() > 1
+        && started_at.tick_millis() >= directive.not_before_tick()
+    {
+        ModelStartBasis::LegacyTick
+    } else {
+        return Err(binding("claimed legacy model retry is not yet eligible"));
+    };
     let start_command = command(
         state,
         ids.start,
-        DebuggerCommandKind::MarkModelAttemptStarted {
+        DebuggerCommandKind::MarkModelAttemptStartedOnClock {
             model_id: plan.id(),
             attempt: directive.attempt(),
-            started_at_tick,
+            started_at,
+            basis,
         },
     )?;
     let start_transition = decide(Some(state), &start_command)?;
@@ -159,40 +185,67 @@ pub async fn execute_model_attempt(
 /// Schedules the exact next attempt after a retryable durable failure.
 ///
 /// # Errors
-/// Rejects non-retry state, zero/excess delay, monotonic-tick overflow, or C0 conflict.
+/// Rejects non-retry state, zero/excess delay, authority-clock overflow, or C0 conflict.
 pub fn schedule_model_retry(
     journal: &mut SqliteJournal,
     state: &DebuggerState,
-    now_tick: u64,
-    delay_ticks: u64,
+    scheduled_at: AuthorityInstant,
+    delay_millis: u64,
     ids: TransitionIds,
 ) -> Result<CommittedDebuggerTransition, DebuggerError> {
     let model = state.model().ok_or_else(|| binding("retry has no model plan"))?;
     let ModelWorkState::AwaitingRetry { attempt, .. } = model.state() else {
         return Err(binding("retry scheduling requires a retryable settled failure"));
     };
-    if delay_ticks == 0 || delay_ticks > model.retry_policy().max_delay_ticks() {
+    if delay_millis == 0 || delay_millis > model.retry_policy().max_delay_millis() {
         return Err(DebuggerError::numbers(
             DebuggerErrorKind::Budget,
             DebuggerOperation::RunModelAnalysis,
             DebuggerRecovery::CorrectInput,
             "model retry delay is zero or exceeds the frozen policy",
-            model.retry_policy().max_delay_ticks(),
-            delay_ticks,
+            model.retry_policy().max_delay_millis(),
+            delay_millis,
         ));
     }
     let next_attempt =
         (*attempt).checked_add(1).ok_or_else(|| binding("model retry attempt overflowed"))?;
-    let not_before_tick = now_tick
-        .checked_add(delay_ticks)
-        .ok_or_else(|| binding("model retry scheduling tick overflowed"))?;
+    let schedule = ModelRetrySchedule::new(scheduled_at, delay_millis)?;
     let command = command(
         state,
         ids,
-        DebuggerCommandKind::ScheduleModelRetry {
+        DebuggerCommandKind::ScheduleModelRetryOnClock {
             model_id: model.id(),
             next_attempt,
-            not_before_tick,
+            schedule,
+        },
+    )?;
+    let transition = decide(Some(state), &command)?;
+    let batch = commit_debugger_transition(journal, &command, &transition)?;
+    Ok(CommittedDebuggerTransition::new(batch, transition.state().clone()))
+}
+
+/// Replaces caller-owned retry stopping and delay bounds without replacing model work.
+///
+/// A broader policy can reopen a recoverable rejection with its exact failure and native
+/// continuation intact. A narrower stopping policy settles an unscheduled retry. An amendment
+/// cannot invalidate a directive that is already durable.
+///
+/// # Errors
+/// Rejects an unrelated model, an illegal lifecycle point, an invalidation of an existing
+/// directive, or a C0 conflict.
+pub fn amend_model_retry_policy(
+    journal: &mut SqliteJournal,
+    state: &DebuggerState,
+    retry_policy: ModelRetryPolicy,
+    ids: TransitionIds,
+) -> Result<CommittedDebuggerTransition, DebuggerError> {
+    let model = state.model().ok_or_else(|| binding("retry amendment has no model plan"))?;
+    let command = command(
+        state,
+        ids,
+        DebuggerCommandKind::AmendModelRetryPolicy {
+            model_id: model.id(),
+            retry_policy,
         },
     )?;
     let transition = decide(Some(state), &command)?;

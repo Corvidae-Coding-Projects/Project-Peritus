@@ -175,6 +175,17 @@ fn event_to_command(
         DebuggerEventKind::ModelAttemptStarted { model_id, attempt, started_at_tick } => {
             DebuggerCommandKind::MarkModelAttemptStarted { model_id, attempt, started_at_tick }
         }
+        DebuggerEventKind::ModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        } => DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        },
         DebuggerEventKind::ModelProposalRecorded {
             model_id,
             attempt,
@@ -201,6 +212,18 @@ fn event_to_command(
         }
         DebuggerEventKind::ModelRetryScheduled { model_id, next_attempt, not_before_tick } => {
             DebuggerCommandKind::ScheduleModelRetry { model_id, next_attempt, not_before_tick }
+        }
+        DebuggerEventKind::ModelRetryScheduledOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        } => DebuggerCommandKind::ScheduleModelRetryOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        },
+        DebuggerEventKind::ModelRetryPolicyAmended { model_id, retry_policy } => {
+            DebuggerCommandKind::AmendModelRetryPolicy { model_id, retry_policy }
         }
         DebuggerEventKind::JobCancelled { reason_digest } => {
             DebuggerCommandKind::CancelJob { reason_digest }
@@ -242,6 +265,17 @@ fn command_to_event(kind: DebuggerCommandKind) -> DebuggerEventKind {
         DebuggerCommandKind::MarkModelAttemptStarted { model_id, attempt, started_at_tick } => {
             DebuggerEventKind::ModelAttemptStarted { model_id, attempt, started_at_tick }
         }
+        DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        } => DebuggerEventKind::ModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        },
         DebuggerCommandKind::RecordModelProposal {
             model_id,
             attempt,
@@ -268,6 +302,18 @@ fn command_to_event(kind: DebuggerCommandKind) -> DebuggerEventKind {
         }
         DebuggerCommandKind::ScheduleModelRetry { model_id, next_attempt, not_before_tick } => {
             DebuggerEventKind::ModelRetryScheduled { model_id, next_attempt, not_before_tick }
+        }
+        DebuggerCommandKind::ScheduleModelRetryOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        } => DebuggerEventKind::ModelRetryScheduledOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        },
+        DebuggerCommandKind::AmendModelRetryPolicy { model_id, retry_policy } => {
+            DebuggerEventKind::ModelRetryPolicyAmended { model_id, retry_policy }
         }
         DebuggerCommandKind::CancelJob { reason_digest } => {
             DebuggerEventKind::JobCancelled { reason_digest }

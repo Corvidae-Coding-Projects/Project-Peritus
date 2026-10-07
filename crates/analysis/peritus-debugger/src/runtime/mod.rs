@@ -13,11 +13,11 @@ pub use artifact::{
     stage_and_commit_report,
 };
 pub use model::{
-    ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, execute_model_attempt,
-    schedule_model_retry,
+    ModelAttemptExecution, ModelAttemptIds, ModelAttemptOutcome, amend_model_retry_policy,
+    execute_model_attempt, schedule_model_retry,
 };
 pub use publication::{PublicationExecution, publish_claimed_report};
-pub use recovery::{DebuggerRecoveryDecision, decide_recovery};
+pub use recovery::{DebuggerRecoveryDecision, decide_recovery, decide_recovery_on_clock};
 
 use crate::DebuggerState;
 

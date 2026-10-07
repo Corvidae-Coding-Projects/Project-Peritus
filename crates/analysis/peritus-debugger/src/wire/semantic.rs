@@ -81,6 +81,21 @@ pub(super) fn decode(bytes: &[u8]) -> Result<DebuggerCommandKind, DebuggerError>
         13 => DebuggerCommandKind::RecordModelFailure {
             failure: rich_model_failure(&mut reader)?,
         },
+        14 => DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+            model_id: crate::ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
+            attempt: reader.read_u16().map_err(codec)?,
+            started_at: crate::aggregate::decode_authority_instant(&mut reader)?,
+            basis: crate::ModelStartBasis::from_tag(reader.read_u8().map_err(codec)?)?,
+        },
+        15 => DebuggerCommandKind::ScheduleModelRetryOnClock {
+            model_id: crate::ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
+            next_attempt: reader.read_u16().map_err(codec)?,
+            schedule: crate::aggregate::decode_retry_schedule(&mut reader)?,
+        },
+        16 => DebuggerCommandKind::AmendModelRetryPolicy {
+            model_id: crate::ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
+            retry_policy: retry_policy(&mut reader)?,
+        },
         _ => return Err(protocol("unknown debugger semantic tag")),
     };
     reader.finish().map_err(codec)?;

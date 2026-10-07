@@ -53,6 +53,28 @@ pub(super) fn transition_outbox(
                 directive.canonical_bytes()?,
             ))
         }
+        DebuggerCommandKind::ScheduleModelRetryOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        } => {
+            let model = state
+                .model()
+                .ok_or_else(|| binding::binding("retry successor has no frozen model state"))?;
+            let directive = ModelDirective::scheduled(
+                command.job_id(),
+                *model_id,
+                *next_attempt,
+                model.plan_digest(),
+                model.request_digest(),
+                *schedule,
+            )?;
+            Some(outbox_draft(
+                directive.outbox_id()?,
+                MODEL_ANALYSIS_DESTINATION,
+                directive.canonical_bytes()?,
+            ))
+        }
         DebuggerCommandKind::CompleteReport { report } => {
             let directive = PublicationDirective::new(command.job_id(), *report);
             Some(outbox_draft(

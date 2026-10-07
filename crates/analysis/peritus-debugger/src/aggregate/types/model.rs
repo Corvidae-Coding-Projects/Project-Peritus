@@ -1,6 +1,7 @@
 //! Frozen model budgets, retries, work state, and attempt history.
 
 use crate::{DebuggerError, ModelAnalysisId};
+use peritus_policy::AuthorityInstant;
 use peritus_model_protocol::Continuation;
 use peritus_types::{ProviderProfileId, Sha256Digest};
 
@@ -71,11 +72,11 @@ impl ModelBudget {
         self.max_total_tokens
     }
 }
-/// Frozen retry policy for optional model analysis.
+/// Caller-owned retry stopping and millisecond-delay policy for optional model analysis.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ModelRetryPolicy {
     stop_after_attempts: Option<u16>,
-    max_delay_ticks: u64,
+    max_delay_millis: u64,
 }
 
 impl ModelRetryPolicy {
@@ -84,11 +85,11 @@ impl ModelRetryPolicy {
     /// # Errors
     ///
     /// Rejects zero attempts or zero scheduling delay.
-    pub fn new(max_attempts: u16, max_delay_ticks: u64) -> Result<Self, DebuggerError> {
-        if max_attempts == 0 || max_delay_ticks == 0 {
+    pub fn new(max_attempts: u16, max_delay_millis: u64) -> Result<Self, DebuggerError> {
+        if max_attempts == 0 || max_delay_millis == 0 {
             return Err(super::invalid("model retry policy has a zero bound"));
         }
-        Ok(Self { stop_after_attempts: Some(max_attempts), max_delay_ticks })
+        Ok(Self { stop_after_attempts: Some(max_attempts), max_delay_millis })
     }
     /// Constructs a persistent retry policy with no synthetic attempt exhaustion.
     ///
@@ -98,11 +99,11 @@ impl ModelRetryPolicy {
     /// # Errors
     ///
     /// Rejects a zero scheduling delay.
-    pub fn persistent(max_delay_ticks: u64) -> Result<Self, DebuggerError> {
-        if max_delay_ticks == 0 {
+    pub fn persistent(max_delay_millis: u64) -> Result<Self, DebuggerError> {
+        if max_delay_millis == 0 {
             return Err(super::invalid("model retry policy has a zero delay bound"));
         }
-        Ok(Self { stop_after_attempts: None, max_delay_ticks })
+        Ok(Self { stop_after_attempts: None, max_delay_millis })
     }
     pub(crate) fn from_encoded(
         max_attempts: u16,
@@ -128,10 +129,108 @@ impl ModelRetryPolicy {
                 None => true,
             }
     }
-    /// Maximum scheduling delay in caller monotonic ticks.
+    /// Maximum scheduling delay in milliseconds.
+    #[must_use]
+    pub const fn max_delay_millis(self) -> u64 {
+        self.max_delay_millis
+    }
+    /// Legacy name for the millisecond delay bound retained for source compatibility.
     #[must_use]
     pub const fn max_delay_ticks(self) -> u64 {
-        self.max_delay_ticks
+        self.max_delay_millis
+    }
+}
+
+/// Durable proof of one caller-selected retry delay on the authority millisecond clock.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct ModelRetrySchedule {
+    scheduled_at: AuthorityInstant,
+    delay_millis: u64,
+    not_before: AuthorityInstant,
+}
+
+impl ModelRetrySchedule {
+    /// Binds a nonzero delay to one exact authority-clock epoch and observation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects zero delay or an unrepresentable same-epoch deadline.
+    pub fn new(
+        scheduled_at: AuthorityInstant,
+        delay_millis: u64,
+    ) -> Result<Self, DebuggerError> {
+        if delay_millis == 0 {
+            return Err(super::invalid("model retry delay is zero"));
+        }
+        let Some(tick_millis) = scheduled_at.tick_millis().checked_add(delay_millis) else {
+            return Err(super::invalid("model retry deadline overflowed its clock epoch"));
+        };
+        Ok(Self {
+            scheduled_at,
+            delay_millis,
+            not_before: AuthorityInstant::new(scheduled_at.epoch(), tick_millis),
+        })
+    }
+    /// Exact authority-clock observation at scheduling.
+    #[must_use]
+    pub const fn scheduled_at(self) -> AuthorityInstant {
+        self.scheduled_at
+    }
+    /// Proven bounded relative delay in milliseconds.
+    #[must_use]
+    pub const fn delay_millis(self) -> u64 {
+        self.delay_millis
+    }
+    /// Same-epoch inclusive eligibility threshold.
+    #[must_use]
+    pub const fn not_before(self) -> AuthorityInstant {
+        self.not_before
+    }
+    /// Classifies a current authority observation against the durable schedule.
+    #[must_use]
+    pub const fn admission(self, now: AuthorityInstant) -> Option<ModelStartBasis> {
+        if now.epoch().get() == self.scheduled_at.epoch().get() {
+            if now.tick_millis() >= self.not_before.tick_millis() {
+                Some(ModelStartBasis::Scheduled)
+            } else {
+                None
+            }
+        } else if now.epoch().get() > self.scheduled_at.epoch().get()
+            && now.tick_millis() >= self.delay_millis
+        {
+            Some(ModelStartBasis::RestartRebased)
+        } else {
+            None
+        }
+    }
+}
+
+/// Durable reason an authority-clock observation admitted an attempt start.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ModelStartBasis {
+    /// The first attempt had no retry delay.
+    Immediate,
+    /// An accepted legacy bare-tick record admitted the start.
+    LegacyTick,
+    /// The original authority epoch reached its same-epoch deadline.
+    Scheduled,
+    /// A later authority epoch observed the complete delay after restart.
+    RestartRebased,
+}
+
+impl ModelStartBasis {
+    pub(crate) const fn tag(self) -> u8 {
+        self as u8 + 1
+    }
+
+    pub(crate) fn from_tag(tag: u8) -> Result<Self, DebuggerError> {
+        match tag {
+            1 => Ok(Self::Immediate),
+            2 => Ok(Self::LegacyTick),
+            3 => Ok(Self::Scheduled),
+            4 => Ok(Self::RestartRebased),
+            _ => Err(super::invalid("unknown model start-basis tag")),
+        }
     }
 }
 
@@ -790,12 +889,30 @@ pub enum ModelWorkState {
         /// Caller monotonic tick before which the attempt is ineligible.
         not_before_tick: u64,
     },
+    /// A retry is bound to an epoch-scoped authority clock and relative-delay proof.
+    PendingOnClock {
+        /// Exact one-based attempt.
+        attempt: u16,
+        /// Durable epoch, origin, unit, and delay contract.
+        schedule: ModelRetrySchedule,
+    },
     /// The exact directive was claimed and attempt start committed.
     Running {
         /// Exact one-based attempt.
         attempt: u16,
         /// Positive caller monotonic tick at attempt start.
         started_at_tick: u64,
+    },
+    /// The exact directive started after authority-clock admission.
+    RunningOnClock {
+        /// Exact one-based attempt.
+        attempt: u16,
+        /// Authority-clock observation that admitted execution.
+        started_at: AuthorityInstant,
+        /// Whether the original epoch or an explicit restart rebase admitted it.
+        basis: ModelStartBasis,
+        /// Exact retry schedule admitted by the start, absent for immediate and legacy work.
+        schedule: Option<ModelRetrySchedule>,
     },
     /// One retryable failure awaits a separate scheduling transition.
     AwaitingRetry {
@@ -868,7 +985,7 @@ impl ModelProgress {
     pub const fn budget(&self) -> ModelBudget {
         self.budget
     }
-    /// Frozen retry policy.
+    /// Current caller-owned retry policy.
     #[must_use]
     pub const fn retry_policy(&self) -> ModelRetryPolicy {
         self.retry_policy
@@ -880,6 +997,10 @@ impl ModelProgress {
     }
     pub(crate) fn with_state(mut self, state: ModelWorkState) -> Self {
         self.state = state;
+        self
+    }
+    pub(crate) fn with_retry_policy(mut self, retry_policy: ModelRetryPolicy) -> Self {
+        self.retry_policy = retry_policy;
         self
     }
 }

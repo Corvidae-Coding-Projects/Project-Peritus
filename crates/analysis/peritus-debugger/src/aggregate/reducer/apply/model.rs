@@ -1,5 +1,6 @@
 //! Optional model-attempt transitions kept separate from deterministic job phases.
 
+use peritus_policy::AuthorityInstant;
 use peritus_types::Sha256Digest;
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
 use super::super::super::{
     DebuggerCommand, DebuggerEventKind, DebuggerPhase, DebuggerState, ModelAttemptFailure,
     ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult, ModelBudget,
-    ModelProgress, ModelRetryPolicy, ModelWorkState,
+    ModelProgress, ModelRetryPolicy, ModelRetrySchedule, ModelStartBasis, ModelWorkState,
 };
 use super::{advance, conflict, illegal, require_phase};
 
@@ -67,6 +68,66 @@ pub(super) fn start(
     state.phase = DebuggerPhase::ModelRunning;
     advance(&mut state, command, sequence);
     Ok((DebuggerEventKind::ModelAttemptStarted { model_id, attempt, started_at_tick }, state))
+}
+
+pub(super) fn start_on_clock(
+    prior: &DebuggerState,
+    command: &DebuggerCommand,
+    sequence: u64,
+    model_id: ModelAnalysisId,
+    attempt: u16,
+    started_at: AuthorityInstant,
+    basis: ModelStartBasis,
+) -> Result<(DebuggerEventKind, DebuggerState), DebuggerError> {
+    require_phase(prior, DebuggerPhase::ModelPending)?;
+    let model = prior.model().ok_or_else(|| illegal("model-pending state has no model plan"))?;
+    if model.id() != model_id {
+        return Err(conflict("model attempt belongs to another analysis"));
+    }
+    let (expected_basis, admitted_schedule) = match model.state() {
+        ModelWorkState::PendingOnClock { attempt: expected, schedule }
+            if *expected == attempt => (
+                schedule
+                    .admission(started_at)
+                    .ok_or_else(|| conflict("model attempt is not yet eligible on the authority clock"))?,
+                Some(*schedule),
+            ),
+        ModelWorkState::Pending { attempt: expected, not_before_tick }
+            if *expected == attempt && attempt == 1 && *not_before_tick == 0 =>
+        {
+            (ModelStartBasis::Immediate, None)
+        }
+        ModelWorkState::Pending { attempt: expected, not_before_tick }
+            if *expected == attempt && attempt > 1 && started_at.tick_millis() >= *not_before_tick =>
+        {
+            (ModelStartBasis::LegacyTick, None)
+        }
+        ModelWorkState::Pending { .. } | ModelWorkState::PendingOnClock { .. } => {
+            return Err(conflict("model attempt identity or schedule differs"));
+        }
+        _ => return Err(illegal("model attempt cannot start before retry scheduling")),
+    };
+    if basis != expected_basis {
+        return Err(conflict("model attempt authority-clock admission basis differs"));
+    }
+    let mut state = prior.clone();
+    state.model = Some(model.clone().with_state(ModelWorkState::RunningOnClock {
+        attempt,
+        started_at,
+        basis,
+        schedule: admitted_schedule,
+    }));
+    state.phase = DebuggerPhase::ModelRunning;
+    advance(&mut state, command, sequence);
+    Ok((
+        DebuggerEventKind::ModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        },
+        state,
+    ))
 }
 
 #[allow(clippy::too_many_arguments, reason = "model settlement accounting remains explicit")]
@@ -233,6 +294,113 @@ pub(super) fn schedule_retry(
     Ok((DebuggerEventKind::ModelRetryScheduled { model_id, next_attempt, not_before_tick }, state))
 }
 
+pub(super) fn schedule_retry_on_clock(
+    prior: &DebuggerState,
+    command: &DebuggerCommand,
+    sequence: u64,
+    model_id: ModelAnalysisId,
+    next_attempt: u16,
+    schedule: ModelRetrySchedule,
+) -> Result<(DebuggerEventKind, DebuggerState), DebuggerError> {
+    require_phase(prior, DebuggerPhase::ModelPending)?;
+    let model = prior.model().ok_or_else(|| illegal("retry scheduling has no model plan"))?;
+    let ModelWorkState::AwaitingRetry { attempt, .. } = model.state() else {
+        return Err(illegal("retry scheduling requires a retryable settled failure"));
+    };
+    if model.id() != model_id
+        || attempt.checked_add(1) != Some(next_attempt)
+        || !model.retry_policy().permits(next_attempt)
+        || schedule.delay_millis() > model.retry_policy().max_delay_millis()
+    {
+        return Err(conflict("retry identity, attempt, or bounded delay is inconsistent"));
+    }
+    let mut state = prior.clone();
+    state.model = Some(model.clone().with_state(ModelWorkState::PendingOnClock {
+        attempt: next_attempt,
+        schedule,
+    }));
+    advance(&mut state, command, sequence);
+    Ok((
+        DebuggerEventKind::ModelRetryScheduledOnClock { model_id, next_attempt, schedule },
+        state,
+    ))
+}
+
+pub(super) fn amend_retry_policy(
+    prior: &DebuggerState,
+    command: &DebuggerCommand,
+    sequence: u64,
+    model_id: ModelAnalysisId,
+    retry_policy: ModelRetryPolicy,
+) -> Result<(DebuggerEventKind, DebuggerState), DebuggerError> {
+    if !matches!(prior.phase(), DebuggerPhase::ModelPending | DebuggerPhase::DeterministicComplete)
+    {
+        return Err(illegal("retry policy can change only around settled or scheduled model work"));
+    }
+    let model = prior.model().ok_or_else(|| illegal("retry policy amendment has no model plan"))?;
+    if model.id() != model_id {
+        return Err(conflict("retry policy amendment belongs to another analysis"));
+    }
+    let (next_state, next_phase) = match model.state() {
+        ModelWorkState::AwaitingRetry { attempt, failure } => {
+            let can_retry = attempt.checked_add(1).is_some_and(|next| retry_policy.permits(next))
+                && failure.retryable()
+                && !accumulated_accounting(prior).exceeds(model.budget());
+            if can_retry {
+                (model.state().clone(), DebuggerPhase::ModelPending)
+            } else {
+                (
+                    ModelWorkState::Rejected {
+                        attempt: *attempt,
+                        failure: failure.clone(),
+                    },
+                    DebuggerPhase::DeterministicComplete,
+                )
+            }
+        }
+        ModelWorkState::Rejected { attempt, failure } => {
+            let can_retry = attempt.checked_add(1).is_some_and(|next| retry_policy.permits(next))
+                && failure.retryable()
+                && !accumulated_accounting(prior).exceeds(model.budget());
+            if can_retry {
+                (
+                    ModelWorkState::AwaitingRetry {
+                        attempt: *attempt,
+                        failure: failure.clone(),
+                    },
+                    DebuggerPhase::ModelPending,
+                )
+            } else {
+                (model.state().clone(), DebuggerPhase::DeterministicComplete)
+            }
+        }
+        ModelWorkState::Pending { attempt, .. } if retry_policy.permits(*attempt) => {
+            (model.state().clone(), DebuggerPhase::ModelPending)
+        }
+        ModelWorkState::PendingOnClock { attempt, schedule }
+            if retry_policy.permits(*attempt)
+                && schedule.delay_millis() <= retry_policy.max_delay_millis() =>
+        {
+            (model.state().clone(), DebuggerPhase::ModelPending)
+        }
+        ModelWorkState::Pending { .. } | ModelWorkState::PendingOnClock { .. } => {
+            return Err(conflict(
+                "retry policy amendment would invalidate an already durable directive",
+            ));
+        }
+        ModelWorkState::Running { .. }
+        | ModelWorkState::RunningOnClock { .. }
+        | ModelWorkState::Validated { .. } => {
+            return Err(illegal("retry policy cannot change during or after successful model work"));
+        }
+    };
+    let mut state = prior.clone();
+    state.model = Some(model.clone().with_retry_policy(retry_policy).with_state(next_state));
+    state.phase = next_phase;
+    advance(&mut state, command, sequence);
+    Ok((DebuggerEventKind::ModelRetryPolicyAmended { model_id, retry_policy }, state))
+}
+
 fn running_model(
     state: &DebuggerState,
     model_id: ModelAnalysisId,
@@ -243,6 +411,9 @@ fn running_model(
         || !matches!(
             model.state(),
             ModelWorkState::Running {
+                attempt: current,
+                ..
+            } | ModelWorkState::RunningOnClock {
                 attempt: current,
                 ..
             } if *current == attempt

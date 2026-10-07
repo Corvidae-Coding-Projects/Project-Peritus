@@ -1,12 +1,13 @@
 //! Accepted debugger events and exact successor-state transitions.
 
 use peritus_types::{CommandId, EventId, Sha256Digest};
+use peritus_policy::AuthorityInstant;
 
 use crate::{DebuggerJobId, ModelAnalysisId};
 
 use super::{
     AnalysisCounts, DebuggerState, JobFailure, ModelAttemptFailure, ModelBudget, ModelRetryPolicy,
-    PublicationRecord, ReportRecord, SelectionRecord,
+    ModelRetrySchedule, ModelStartBasis, PublicationRecord, ReportRecord, SelectionRecord,
 };
 
 /// Closed family-83 semantic event vocabulary.
@@ -55,6 +56,17 @@ pub enum DebuggerEventKind {
         /// Positive caller monotonic tick at attempt start.
         started_at_tick: u64,
     },
+    /// An authority-clock proof admitted an exact claimed attempt.
+    ModelAttemptStartedOnClock {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Exact one-based attempt.
+        attempt: u16,
+        /// Exact admission observation.
+        started_at: AuthorityInstant,
+        /// Admission path, including restart rebasing when used.
+        basis: ModelStartBasis,
+    },
     /// One strict proposal passed complete validation.
     ModelProposalRecorded {
         /// Stable model-analysis identity.
@@ -89,6 +101,22 @@ pub enum DebuggerEventKind {
         next_attempt: u16,
         /// Caller monotonic tick before which the attempt is ineligible.
         not_before_tick: u64,
+    },
+    /// The next attempt was scheduled with an epoch-bound relative-delay proof.
+    ModelRetryScheduledOnClock {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Exact next one-based attempt.
+        next_attempt: u16,
+        /// Durable authority-clock schedule.
+        schedule: ModelRetrySchedule,
+    },
+    /// Caller-owned retry policy changed without replacing model work or context.
+    ModelRetryPolicyAmended {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Replacement caller policy.
+        retry_policy: ModelRetryPolicy,
     },
     /// Durable cancellation won.
     JobCancelled {

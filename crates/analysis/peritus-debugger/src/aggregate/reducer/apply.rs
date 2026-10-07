@@ -91,6 +91,23 @@ pub(super) fn command(
         ) => model::start(prior, command, sequence, *model_id, *attempt, *started_at_tick),
         (
             Some(prior),
+            DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+                model_id,
+                attempt,
+                started_at,
+                basis,
+            },
+        ) => model::start_on_clock(
+            prior,
+            command,
+            sequence,
+            *model_id,
+            *attempt,
+            *started_at,
+            *basis,
+        ),
+        (
+            Some(prior),
             DebuggerCommandKind::RecordModelProposal {
                 model_id,
                 attempt,
@@ -129,6 +146,31 @@ pub(super) fn command(
             *model_id,
             *next_attempt,
             *not_before_tick,
+        ),
+        (
+            Some(prior),
+            DebuggerCommandKind::ScheduleModelRetryOnClock {
+                model_id,
+                next_attempt,
+                schedule,
+            },
+        ) => model::schedule_retry_on_clock(
+            prior,
+            command,
+            sequence,
+            *model_id,
+            *next_attempt,
+            *schedule,
+        ),
+        (
+            Some(prior),
+            DebuggerCommandKind::AmendModelRetryPolicy { model_id, retry_policy },
+        ) => model::amend_retry_policy(
+            prior,
+            command,
+            sequence,
+            *model_id,
+            *retry_policy,
         ),
         (Some(prior), DebuggerCommandKind::CancelJob { reason_digest }) => {
             let mut state = prior.clone();

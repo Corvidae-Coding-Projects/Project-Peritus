@@ -19,8 +19,8 @@ pub use types::{
     AnalysisCounts, DebuggerPhase, JobFailure, JobFailureCode, ModelAcceptanceCertainty,
     ModelAttemptFailure, ModelAttemptFailureCode, ModelAttemptObservation, ModelAttemptResult,
     ModelBudget, ModelFailureContext, ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery,
-    ModelProgress, ModelProviderFailureCause, ModelRetryPolicy, ModelWorkState, PublicationRecord,
-    ReportRecord, SelectionRecord,
+    ModelProgress, ModelProviderFailureCause, ModelRetryPolicy, ModelRetrySchedule,
+    ModelStartBasis, ModelWorkState, PublicationRecord, ReportRecord, SelectionRecord,
 };
 
 pub(super) fn encode_kind(
@@ -56,6 +56,32 @@ pub(super) fn encode_retry_policy(
     policy: ModelRetryPolicy,
 ) -> Result<(), crate::DebuggerError> {
     command::codec::encode_retry_policy(writer, policy)
+}
+
+pub(super) fn encode_authority_instant(
+    writer: &mut peritus_codec::CanonicalWriter,
+    instant: peritus_policy::AuthorityInstant,
+) -> Result<(), crate::DebuggerError> {
+    command::codec::encode_authority_instant(writer, instant)
+}
+
+pub(super) fn encode_retry_schedule(
+    writer: &mut peritus_codec::CanonicalWriter,
+    schedule: ModelRetrySchedule,
+) -> Result<(), crate::DebuggerError> {
+    command::codec::encode_retry_schedule(writer, schedule)
+}
+
+pub(super) fn decode_authority_instant(
+    reader: &mut peritus_codec::CanonicalReader<'_>,
+) -> Result<peritus_policy::AuthorityInstant, crate::DebuggerError> {
+    command::codec::decode_authority_instant(reader)
+}
+
+pub(super) fn decode_retry_schedule(
+    reader: &mut peritus_codec::CanonicalReader<'_>,
+) -> Result<ModelRetrySchedule, crate::DebuggerError> {
+    command::codec::decode_retry_schedule(reader)
 }
 
 pub(super) fn encode_model_failure(

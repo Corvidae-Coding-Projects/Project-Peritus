@@ -3,6 +3,7 @@
 pub(super) mod codec;
 
 use peritus_codec::{CanonicalWriter, CodecLimits};
+use peritus_policy::AuthorityInstant;
 use peritus_types::{CommandId, EventId, RevisionTuple, Sha256Digest};
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
 
 use super::{
     AnalysisCounts, JobFailure, ModelAttemptFailure, ModelBudget, ModelRetryPolicy,
-    PublicationRecord, ReportRecord, SelectionRecord,
+    ModelRetrySchedule, ModelStartBasis, PublicationRecord, ReportRecord, SelectionRecord,
 };
 
 const COMMAND_DOMAIN: &[u8] = b"peritus.debugger.command.v1\0";
@@ -65,6 +66,17 @@ pub enum DebuggerCommandKind {
         /// Positive caller monotonic tick observed after claiming the directive.
         started_at_tick: u64,
     },
+    /// Records an attempt start admitted by an epoch-bound authority-clock observation.
+    MarkModelAttemptStartedOnClock {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Exact one-based attempt.
+        attempt: u16,
+        /// Exact authority epoch and millisecond tick at admission.
+        started_at: AuthorityInstant,
+        /// Admission path proven against the pending state.
+        basis: ModelStartBasis,
+    },
     /// Records a proposal that passed strict E2 validation.
     RecordModelProposal {
         /// Stable model-analysis identity.
@@ -99,6 +111,22 @@ pub enum DebuggerCommandKind {
         next_attempt: u16,
         /// Caller monotonic tick before which the directive is ineligible.
         not_before_tick: u64,
+    },
+    /// Creates the next directive from a durable epoch-bound relative-delay proof.
+    ScheduleModelRetryOnClock {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Exact next one-based attempt.
+        next_attempt: u16,
+        /// Exact authority-clock schedule and bounded delay.
+        schedule: ModelRetrySchedule,
+    },
+    /// Amends caller-owned retry stopping/backoff policy without replacing model context.
+    AmendModelRetryPolicy {
+        /// Stable model-analysis identity.
+        model_id: ModelAnalysisId,
+        /// Replacement caller policy.
+        retry_policy: ModelRetryPolicy,
     },
     /// Durably cancels a nonterminal job.
     CancelJob {
@@ -244,6 +272,11 @@ fn validate_kind(kind: &DebuggerCommandKind) -> Result<(), DebuggerError> {
         {
             Err(invalid("model attempt or start tick is zero"))
         }
+        DebuggerCommandKind::MarkModelAttemptStartedOnClock { attempt, .. }
+            if *attempt == 0 =>
+        {
+            Err(invalid("model attempt is zero"))
+        }
         DebuggerCommandKind::RecordModelProposal { attempt, .. } if *attempt == 0 => {
             Err(invalid("model attempt is zero"))
         }
@@ -251,6 +284,11 @@ fn validate_kind(kind: &DebuggerCommandKind) -> Result<(), DebuggerError> {
             if *next_attempt < 2 || *not_before_tick == 0 =>
         {
             Err(invalid("retry attempt or scheduling tick is invalid"))
+        }
+        DebuggerCommandKind::ScheduleModelRetryOnClock { next_attempt, .. }
+            if *next_attempt < 2 =>
+        {
+            Err(invalid("retry attempt is invalid"))
         }
         _ => Ok(()),
     }

@@ -6,7 +6,7 @@ use peritus_types::Sha256Digest;
 
 use crate::{
     DebuggerError, DebuggerErrorKind, DebuggerJobId, DebuggerOperation, DebuggerRecovery,
-    ModelAnalysisId, ReportRecord,
+    ModelAnalysisId, ModelRetrySchedule, ReportRecord,
 };
 
 /// Destination for provider-neutral optional model-analysis effects.
@@ -15,6 +15,7 @@ pub const MODEL_ANALYSIS_DESTINATION: &str = "peritus.debugger.model-analysis.v1
 pub const PUBLICATION_DESTINATION: &str = "peritus.debugger.publish-report.v1";
 
 const MODEL_DOMAIN: &[u8] = b"peritus.debugger.model-directive.v1\0";
+const MODEL_CLOCK_DOMAIN: &[u8] = b"peritus.debugger.model-directive.v2\0";
 const PUBLICATION_DOMAIN: &[u8] = b"peritus.debugger.publication-directive.v1\0";
 const MODEL_ID_DOMAIN: &[u8] = b"peritus.debugger.model-outbox.v1\0";
 const PUBLICATION_ID_DOMAIN: &[u8] = b"peritus.debugger.publication-outbox.v1\0";
@@ -28,6 +29,7 @@ pub struct ModelDirective {
     plan_digest: Sha256Digest,
     request_digest: Sha256Digest,
     not_before_tick: u64,
+    schedule: Option<ModelRetrySchedule>,
 }
 
 impl ModelDirective {
@@ -46,7 +48,41 @@ impl ModelDirective {
         if attempt == 0 {
             return Err(invalid("model directive attempt is zero"));
         }
-        Ok(Self { job_id, model_id, attempt, plan_digest, request_digest, not_before_tick })
+        Ok(Self {
+            job_id,
+            model_id,
+            attempt,
+            plan_digest,
+            request_digest,
+            not_before_tick,
+            schedule: None,
+        })
+    }
+
+    /// Creates an epoch-bound directive carrying the exact durable retry schedule.
+    ///
+    /// # Errors
+    /// Rejects an attempt before the first retry.
+    pub fn scheduled(
+        job_id: DebuggerJobId,
+        model_id: ModelAnalysisId,
+        attempt: u16,
+        plan_digest: Sha256Digest,
+        request_digest: Sha256Digest,
+        schedule: ModelRetrySchedule,
+    ) -> Result<Self, DebuggerError> {
+        if attempt < 2 {
+            return Err(invalid("scheduled model directive is not a retry"));
+        }
+        Ok(Self {
+            job_id,
+            model_id,
+            attempt,
+            plan_digest,
+            request_digest,
+            not_before_tick: schedule.not_before().tick_millis(),
+            schedule: Some(schedule),
+        })
     }
 
     /// Owning debugger job.
@@ -79,32 +115,61 @@ impl ModelDirective {
     pub const fn not_before_tick(self) -> u64 {
         self.not_before_tick
     }
+    /// Epoch-bound retry schedule, absent only for immediate or accepted legacy directives.
+    #[must_use]
+    pub const fn schedule(self) -> Option<ModelRetrySchedule> {
+        self.schedule
+    }
 
     pub(crate) fn canonical_bytes(self) -> Result<Vec<u8>, DebuggerError> {
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
-        writer.write_bytes(MODEL_DOMAIN).map_err(codec)?;
+        writer
+            .write_bytes(if self.schedule.is_some() { MODEL_CLOCK_DOMAIN } else { MODEL_DOMAIN })
+            .map_err(codec)?;
         writer.write_fixed(self.job_id.as_bytes()).map_err(codec)?;
         writer.write_fixed(self.model_id.as_bytes()).map_err(codec)?;
         writer.write_u16(self.attempt).map_err(codec)?;
         writer.write_fixed(self.plan_digest.as_bytes()).map_err(codec)?;
         writer.write_fixed(self.request_digest.as_bytes()).map_err(codec)?;
-        writer.write_u64(self.not_before_tick).map_err(codec)?;
+        if let Some(schedule) = self.schedule {
+            crate::aggregate::encode_retry_schedule(&mut writer, schedule)?;
+        } else {
+            writer.write_u64(self.not_before_tick).map_err(codec)?;
+        }
         Ok(writer.into_bytes())
     }
 
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, DebuggerError> {
         let mut reader = CanonicalReader::new(bytes, CodecLimits::PRODUCTION);
-        if reader.read_bytes().map_err(codec)? != MODEL_DOMAIN {
+        let domain = reader.read_bytes().map_err(codec)?;
+        if domain != MODEL_DOMAIN && domain != MODEL_CLOCK_DOMAIN {
             return Err(corrupt("unsupported model directive domain"));
         }
-        let value = Self::new(
-            DebuggerJobId::new(reader.read_fixed().map_err(codec)?)?,
-            ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?,
-            reader.read_u16().map_err(codec)?,
-            Sha256Digest::new(reader.read_fixed().map_err(codec)?),
-            Sha256Digest::new(reader.read_fixed().map_err(codec)?),
-            reader.read_u64().map_err(codec)?,
-        )?;
+        let clock_schedule = domain == MODEL_CLOCK_DOMAIN;
+        let job_id = DebuggerJobId::new(reader.read_fixed().map_err(codec)?)?;
+        let model_id = ModelAnalysisId::new(reader.read_fixed().map_err(codec)?)?;
+        let attempt = reader.read_u16().map_err(codec)?;
+        let plan_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+        let request_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+        let value = if clock_schedule {
+            Self::scheduled(
+                job_id,
+                model_id,
+                attempt,
+                plan_digest,
+                request_digest,
+                crate::aggregate::decode_retry_schedule(&mut reader)?,
+            )?
+        } else {
+            Self::new(
+                job_id,
+                model_id,
+                attempt,
+                plan_digest,
+                request_digest,
+                reader.read_u64().map_err(codec)?,
+            )?
+        };
         reader.finish().map_err(codec)?;
         Ok(value)
     }

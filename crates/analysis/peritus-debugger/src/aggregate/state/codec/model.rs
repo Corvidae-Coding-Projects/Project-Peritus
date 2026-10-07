@@ -6,7 +6,7 @@ use crate::{DebuggerError, ModelAnalysisId};
 
 use super::super::super::{
     ModelAttemptObservation, ModelAttemptResult, ModelBudget, ModelProgress, ModelRetryPolicy,
-    ModelWorkState,
+    ModelStartBasis, ModelWorkState,
 };
 use super::{codec, corrupt, digest};
 
@@ -48,6 +48,22 @@ pub(super) fn encode_model(
             writer.write_u8(if failure.is_legacy() { 5 } else { 7 }).map_err(codec)?;
             writer.write_u16(*attempt).map_err(codec)?;
             crate::aggregate::encode_model_failure(writer, failure)
+        }
+        ModelWorkState::PendingOnClock { attempt, schedule } => {
+            writer.write_u8(8).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
+            crate::aggregate::encode_retry_schedule(writer, *schedule)
+        }
+        ModelWorkState::RunningOnClock { attempt, started_at, basis, schedule } => {
+            writer.write_u8(9).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
+            crate::aggregate::encode_authority_instant(writer, *started_at)?;
+            writer.write_u8(basis.tag()).map_err(codec)?;
+            writer.write_option_tag(schedule.is_some()).map_err(codec)?;
+            if let Some(value) = schedule {
+                crate::aggregate::encode_retry_schedule(writer, *value)?;
+            }
+            Ok(())
         }
     }
 }
@@ -107,6 +123,20 @@ pub(super) fn decode_model(
                 failure: crate::aggregate::decode_model_failure(reader, true)?,
             }
         }
+        8 => ModelWorkState::PendingOnClock {
+            attempt: nonzero_attempt(reader.read_u16().map_err(codec)?)?,
+            schedule: crate::aggregate::decode_retry_schedule(reader)?,
+        },
+        9 => ModelWorkState::RunningOnClock {
+            attempt: nonzero_attempt(reader.read_u16().map_err(codec)?)?,
+            started_at: crate::aggregate::decode_authority_instant(reader)?,
+            basis: ModelStartBasis::from_tag(reader.read_u8().map_err(codec)?)?,
+            schedule: if reader.read_option_tag().map_err(codec)? {
+                Some(crate::aggregate::decode_retry_schedule(reader)?)
+            } else {
+                None
+            },
+        },
         _ => return Err(corrupt("unknown model-work state tag")),
     };
     let progress =
@@ -186,10 +216,37 @@ pub(super) fn decode_model_attempts(
 }
 
 fn validate_model_state(model: &ModelProgress) -> Result<(), DebuggerError> {
-    let (attempt, nested, retry_state_valid) = match model.state() {
+    let (attempt, nested, state_valid) = match model.state() {
         ModelWorkState::Pending { attempt, .. }
         | ModelWorkState::Running { attempt, .. }
-        | ModelWorkState::Validated { attempt, .. } => (*attempt, None, true),
+        | ModelWorkState::Validated { attempt, .. } => {
+            (*attempt, None, model.retry_policy().permits(*attempt))
+        }
+        ModelWorkState::PendingOnClock { attempt, schedule } => (
+            *attempt,
+            None,
+            *attempt >= 2
+                && model.retry_policy().permits(*attempt)
+                && schedule.delay_millis() <= model.retry_policy().max_delay_millis(),
+        ),
+        ModelWorkState::RunningOnClock {
+            attempt,
+            started_at,
+            basis,
+            schedule,
+        } => {
+            let clock_valid = match (*basis, schedule) {
+                (ModelStartBasis::Immediate, None) => *attempt == 1,
+                (ModelStartBasis::LegacyTick, None) => *attempt > 1,
+                (ModelStartBasis::Scheduled | ModelStartBasis::RestartRebased, Some(value)) => {
+                    *attempt >= 2
+                        && value.delay_millis() <= model.retry_policy().max_delay_millis()
+                        && value.admission(*started_at) == Some(*basis)
+                }
+                _ => false,
+            };
+            (*attempt, None, model.retry_policy().permits(*attempt) && clock_valid)
+        }
         ModelWorkState::AwaitingRetry { attempt, failure } => (
             *attempt,
             Some(failure),
@@ -200,8 +257,7 @@ fn validate_model_state(model: &ModelProgress) -> Result<(), DebuggerError> {
         ),
         ModelWorkState::Rejected { attempt, failure } => (*attempt, Some(failure), true),
     };
-    if !retry_state_valid
-        || !model.retry_policy().permits(attempt)
+    if !state_valid
         || nested
             .is_some_and(|failure| failure.model_id() != model.id() || failure.attempt() != attempt)
     {

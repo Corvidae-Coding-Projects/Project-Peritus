@@ -2,14 +2,16 @@
 
 use peritus_codec::{CanonicalReader, CanonicalWriter};
 use peritus_model_protocol::{Continuation, EventId as ProviderEventId, ResponseId};
-use peritus_types::{RevisionTuple, Sha256Digest};
+use peritus_policy::AuthorityInstant;
+use peritus_types::{Generation, RevisionTuple, Sha256Digest};
 
 use crate::{DebuggerError, DebuggerErrorKind, DebuggerOperation, DebuggerRecovery};
 
 use super::super::{
     AnalysisCounts, ModelAcceptanceCertainty, ModelAttemptFailure, ModelAttemptFailureCode,
     ModelBudget, ModelFailureContext, ModelFailureOrigin, ModelFailurePhase, ModelFailureRecovery,
-    ModelProviderFailureCause, ModelRetryPolicy, PublicationRecord, ReportRecord,
+    ModelProviderFailureCause, ModelRetryPolicy, ModelRetrySchedule, PublicationRecord,
+    ReportRecord,
 };
 use super::DebuggerCommandKind;
 
@@ -112,6 +114,33 @@ pub(in crate::aggregate) fn encode_kind(
             writer.write_u8(failure.code().tag()).map_err(codec)?;
             writer.write_fixed(failure.diagnostic_digest().as_bytes()).map_err(codec)
         }
+        DebuggerCommandKind::MarkModelAttemptStartedOnClock {
+            model_id,
+            attempt,
+            started_at,
+            basis,
+        } => {
+            writer.write_u8(14).map_err(codec)?;
+            writer.write_fixed(model_id.as_bytes()).map_err(codec)?;
+            writer.write_u16(*attempt).map_err(codec)?;
+            encode_authority_instant(writer, *started_at)?;
+            writer.write_u8(basis.tag()).map_err(codec)
+        }
+        DebuggerCommandKind::ScheduleModelRetryOnClock {
+            model_id,
+            next_attempt,
+            schedule,
+        } => {
+            writer.write_u8(15).map_err(codec)?;
+            writer.write_fixed(model_id.as_bytes()).map_err(codec)?;
+            writer.write_u16(*next_attempt).map_err(codec)?;
+            encode_retry_schedule(writer, *schedule)
+        }
+        DebuggerCommandKind::AmendModelRetryPolicy { model_id, retry_policy } => {
+            writer.write_u8(16).map_err(codec)?;
+            writer.write_fixed(model_id.as_bytes()).map_err(codec)?;
+            encode_retry_policy(writer, *retry_policy)
+        }
     }
 }
 
@@ -153,7 +182,40 @@ pub(in crate::aggregate) fn encode_retry_policy(
     policy: ModelRetryPolicy,
 ) -> Result<(), DebuggerError> {
     writer.write_u16(policy.max_attempts().unwrap_or(0)).map_err(codec)?;
-    writer.write_u64(policy.max_delay_ticks()).map_err(codec)
+    writer.write_u64(policy.max_delay_millis()).map_err(codec)
+}
+
+pub(in crate::aggregate) fn encode_authority_instant(
+    writer: &mut CanonicalWriter,
+    instant: AuthorityInstant,
+) -> Result<(), DebuggerError> {
+    writer.write_u64(instant.epoch().get()).map_err(codec)?;
+    writer.write_u64(instant.tick_millis()).map_err(codec)
+}
+
+pub(in crate::aggregate) fn encode_retry_schedule(
+    writer: &mut CanonicalWriter,
+    schedule: ModelRetrySchedule,
+) -> Result<(), DebuggerError> {
+    encode_authority_instant(writer, schedule.scheduled_at())?;
+    writer.write_u64(schedule.delay_millis()).map_err(codec)
+}
+
+pub(in crate::aggregate) fn decode_authority_instant(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<AuthorityInstant, DebuggerError> {
+    let epoch = Generation::new(reader.read_u64().map_err(codec)?)
+        .map_err(|_| corrupt("invalid model authority-clock epoch"))?;
+    Ok(AuthorityInstant::new(epoch, reader.read_u64().map_err(codec)?))
+}
+
+pub(in crate::aggregate) fn decode_retry_schedule(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ModelRetrySchedule, DebuggerError> {
+    ModelRetrySchedule::new(
+        decode_authority_instant(reader)?,
+        reader.read_u64().map_err(codec)?,
+    )
 }
 
 pub(in crate::aggregate) fn encode_model_failure(

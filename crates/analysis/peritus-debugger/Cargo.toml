@@ -21,6 +21,7 @@ peritus-harness = { version = "=0.0.5", path = "../../orchestration/peritus-harn
 peritus-journal = { version = "=0.0.5", path = "../../state/peritus-journal" }
 peritus-model-protocol = { version = "=0.0.5", path = "../../model/peritus-model-protocol" }
 peritus-orchestrator = { version = "=0.0.5", path = "../../orchestration/peritus-orchestrator" }
+peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
 peritus-provider-core = { version = "=0.0.5", path = "../../model/peritus-provider-core" }
 peritus-trace = { version = "=0.0.5", path = "../../observe/peritus-trace" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
@@ -31,7 +32,6 @@ vstd.workspace = true
 
 [dev-dependencies]
 peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
 peritus-role = { version = "=0.0.5", path = "../../orchestration/peritus-role" }
 peritus-test-support = { version = "=0.0.5", path = "../../app/testing/peritus-test-support" }
 tempfile.workspace = true
