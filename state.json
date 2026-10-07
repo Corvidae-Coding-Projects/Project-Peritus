@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3806,
-        "tip_oid": "92fb778ba7df2764fb8a360f195b207e2555812a",
-        "prefix_sha256": "e6f687fa03e5d39309e9c95fcf90aca13de13377e7c73d0f5307930fb2313dd4"
+        "sequence": 3807,
+        "tip_oid": "d3d27272934b467aee73d562409c0228c6fc974b",
+        "prefix_sha256": "a20173a9afe48fe50ba938499366f7600e8694cc5788cb187f34e4de1990c89a"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3112,
+  "next_comment_id": 3113,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40036,7 +40036,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.650320487Z",
-      "updated_at": "2026-10-06T13:21:37.652963780Z",
+      "updated_at": "2026-10-07T14:21:04.230385549Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -40047,6 +40047,15 @@
           "content": "Systemic repair plan for L120: Resource observation scans the whole managed tree and stops measuring at two million entries.\n\nOwning contract and implementation boundary: crates/app/peritus-product-runner/src/resource_probe.rs:10,47-82; budget.rs:122-130; budget/folder.rs:7-18; resource_probe.rs:30-34; resource_probe.rs:101-108. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRepresent resource observations as measured, partial or unavailable values with exact coverage and cause. Use resumable incremental workspace accounting rather than full-tree scans and u64::MAX/zero sentinels. Keep telemetry separate from selected resource enforcement and settlement deadlines; controls and active execution should not wait behind synchronous inventory or ps output.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:21:37.467Z",
           "kind": "decision"
+        },
+        "df162578-f400-4f9c-8857-6d3ae6159199": {
+          "display_id": 3112,
+          "author": "6ME5",
+          "content": "Source-only implementation frozen at .crosslink/code-batch-recovery/2026-10-07-issue219-resource-telemetry/HANDOFF.md (SHA256 8aa3d5a9c61cf69d92174205780f4124a3f5e29f30e31b1afdd3791be7e7c1a4). Background resumable 4096-operation workspace traversal has no cumulative stop; caller cancellation owns the worker/native memory command; measured/partial/unavailable telemetry retains coverage and typed OS causes; daemon live status and strict v7/v6 durable migration carry availability. V1 goal scalars remain documented compatibility projections to preserve canonical schema. git diff --check on owned production paths was clean. Per user directive, no tests, test edits, builds, Cargo/compiler/Clippy/rustfmt/codegen/Verus/qualification/npm/browser runners were invoked; existing synchronous-growth tests require final-batch migration/verification.",
+          "created_at": "2026-10-07T14:21:04.226005038Z",
+          "kind": "progress",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXdvpox2jP++dMyfudW2WZFabIRyReI3M8yuDYi9YqhL0aSmGcWNJAwewl88pwxsZGoDuox2JjGe+JrUnXzWOAw=="
         }
       }
     },
