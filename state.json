@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3764,
-        "tip_oid": "bfd883135ee21bfd760bc69ee47cd6a3f53c5642",
-        "prefix_sha256": "bd7b7dbcab142bc22c0e5d22857b5111882fab2aaa5c16e42de7294c89235502"
+        "sequence": 3765,
+        "tip_oid": "a3a15393aac5b6f19b91fab1a5ac916a670e6129",
+        "prefix_sha256": "8ac049949b3e857ef766e4d5eac96b4c71442e97c2d120da1684705f14ce4476"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3070,
+  "next_comment_id": 3071,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -14398,11 +14398,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.071691854Z",
-      "updated_at": "2026-10-06T13:19:08.074041729Z",
+      "updated_at": "2026-10-07T06:37:52.454525812Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2cb93bc2-d9c0-4df3-9de2-33c30bab563e": {
+          "display_id": 3070,
+          "author": "6ME5",
+          "content": "Code-only systemic storage slice implemented and frozen; issue remains open for host adoption plus deferred validation. Added an immutable ordered artifact dependency graph (maximum 256 direct children) with exact child digest/length and active-state checks, idempotent exact-list rebinding, duplicate/self-edge rejection, and bottom-up parent admission: a referenced digest or one already used as a child cannot later acquire edges. The catalog transaction and schema trigger preserve that invariant, making cycles impossible and freezing subgraphs before publication. Journal append now validates and materializes the complete reachable graph as flat owner rows inside the existing append transaction using 256-row writes and a scalar rowid keyset over those final rows; invalid/missing descendants roll back the append. Flat rows preserve existing readers, owner retirement, and GC: uncommitted nodes remain independently collectable while committed/shared descendants are referenced. LocalStore::store_bundle(bytes, children) finalizes the parent and binds edges through the existing catalog cancellation owner; cancellation is rechecked between publication and binding. Agent119 adopted the seam bottom-up for PWPD/PWPR. Frozen artifact: /tmp/peritus-issue-156-bundles-20261007T-8Dzdvv/issue-156-bundles.patch sha256 9e521e00cb0c0942f810f299eb3169da9115c0cc91571c56b95a5a408ce3866e. Static source/diff review only; no tests, build, lint, format, codegen, or qualification runner was invoked under the active batch constraint.",
+          "created_at": "2026-10-07T06:37:52.446989711Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUHR4yclqBO/368R2DBCJTMQIieFMmaw8VXUYX8PoQbHeBImys0nl3GI/L/GzpyRD64hlJdx8qrcIgicrGjgcCA=="
+        },
         "eab02665-ec86-4286-9e99-c74f2312f6b5": {
           "display_id": 2228,
           "author": "6ME5",
