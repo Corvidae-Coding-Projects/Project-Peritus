@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3667,
-        "tip_oid": "8247bb5070fcbb92fd67aeaf03eba3c3b3e32d35",
-        "prefix_sha256": "250c4fc8ac281d5aa935fede762c0013a658feae836701359c3975fefc4a7d2e"
+        "sequence": 3668,
+        "tip_oid": "b620937ba3323d7a44a107fa16e88c5fadca5f97",
+        "prefix_sha256": "41235c8775c7fcbed09e86cfda2c5e6c07d5b6c8b79f51b14ae05a0bf13806c1"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2993,
+  "next_comment_id": 2994,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20019,7 +20019,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.869927038Z",
-      "updated_at": "2026-10-07T00:23:14.471352025Z",
+      "updated_at": "2026-10-07T00:26:13.647649673Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20030,6 +20030,15 @@
           "content": "Systemic repair plan for L010: Checkpoint manifest count and text-field ceilings.\n\nOwning contract and implementation boundary: crates/app/peritus-product-runner/src/control/checkpoint.rs:114,156-160,178-182,313-319; control/text.rs:20-25,36-39; checkpoint/restore.rs:31,132-138. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nStore checkpoint entries in a digest-bound paged manifest with stable path identities. Separate exclusion reason codes and display explanations from path fields, so a valid path never becomes invalid when a label is appended. Derive restore coverage from the same manifest contract and remove narrow u16 counts from lifetime snapshot identity.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "8f7db37a-8b87-4465-b4aa-64f1bfb0ef8c": {
+          "display_id": 2993,
+          "author": "6ME5",
+          "content": "Executable baseline reproduction on exact HEADa26 archived at /home/doll/.cache/peritus-issue110.DDj4tG, with only isolated checkpoint unit regressions added viaapply_patch: CARGO_TARGET_DIR=/home/doll/.cache/peritus-issue108-check-target cargo test -p peritus-product-runner --lib control::checkpoint::manifest_limits -- --nocapture exited101;0passed9failed, log /tmp/peritus-issue110-red-manifest-limits.log. Cases:65536 paths/exclusions/effects rejectedCapacity,258byte Unicode name and600byteeffect rejectedInvalidInput,authority-safe4210bytepath rejectedInvalidInput thoughWorkspacePath acceptsit,validlonglabel+directoryexplanation rejectedInvalidInput,65536conflicts and4210byteconflict rejectedInvalidInput. These are executed constructor/settlement failures;not proof of historical live incident. Full current automatic capture reads shownewEmptyDirectory capture alreadyretains typedCheckpointPath andnoexclusion;legacyvalidation stillreproducesexactoldstring. Thereforederivedexclusion test reproduceslegacy/generalmanifest field mismatch,not currentautomaticdirectory producer. Complete reads include controlstore/replay/library andspecialwriters,checkpointbodypublication/reader,runner transition/replay/intent/projection,livecapture/seal/rewind/plan andpubliccheckpoint/rewindwire consumers. Largebodyrestore >1024paths/>8MiB alreadyusesfrom_snapshot with existingregression;113originalcount description partlyhistorical, no113work begun. Remaining110repairmust page checkpoint-specificmetadata andbodyrootcoverage,retainlegacy exactcanonicalbytes/receipts,preservefullpreimage/ownership/atomicadoption;111generalcontrol/request and113genericrestorecontracts stayseparate. Mainworktree has no110sourceedits yet;unrelatedusage/audit untouched.",
+          "created_at": "2026-10-07T00:26:13.635179347Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABASWX1SmBcmghSmIL/7Xb8gGZ8guNFP3n28XjEYOpoKl5wuiPmz0DqWrTZGnu6nW9HxXLMYO9Zug9SrCv9ujrTDQ=="
         },
         "abd85fda-3530-4603-bc1d-d965ada52396": {
           "display_id": 2991,
