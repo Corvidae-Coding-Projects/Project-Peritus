@@ -1,24 +1,28 @@
-//! Validated protocol identities and bounded text.
+//! Validated protocol identities and rendering text.
 
 use crate::{ProtocolError, ProtocolErrorKind};
 use peritus_types::Sha256Digest;
 
-const MAX_TEXT_BYTES: usize = 16 * 1024;
-const MAX_IDENTITY_BYTES: usize = 256;
-const MAX_KEY_BYTES: usize = 128;
-
-/// UTF-8 diagnostic/rendering text with a protocol-wide byte bound.
+/// Nonempty, NUL-free UTF-8 diagnostic/rendering text.
+///
+/// Rendering capacities belong to the prepared call or transport page. Identity text is not
+/// a cumulative work allowance; its canonical representation uses an exact u64 byte length.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct BoundedText(String);
 
 impl BoundedText {
-    /// Validates nonempty bounded text.
+    /// Native allocation bound of the underlying Rust string.
+    ///
+    /// This retained compatibility constant is not an application rendering ceiling.
+    pub const MAX_BYTES: usize = isize::MAX as usize;
+
+    /// Validates nonempty rendering text.
     ///
     /// # Errors
     ///
-    /// Rejects empty text, NUL, or more than 16 KiB.
+    /// Rejects empty text or NUL. The prepared call validates its selected display capacity.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        validate_text(&value, MAX_TEXT_BYTES, "text")?;
+        validate_text(&value, "text")?;
         Ok(Self(value))
     }
 
@@ -34,13 +38,13 @@ impl BoundedText {
 pub struct ImplementationIdentity(String);
 
 impl ImplementationIdentity {
-    /// Creates a bounded stable identity.
+    /// Creates an exact stable identity.
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized identities.
+    /// Rejects empty or control-containing identities.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        validate_identity(&value, MAX_IDENTITY_BYTES, "implementation_identity")?;
+        validate_identity(&value, "implementation_identity")?;
         Ok(Self(value))
     }
 
@@ -51,7 +55,7 @@ impl ImplementationIdentity {
     }
 }
 
-/// Caller-supplied bounded idempotency identity.
+/// Caller-supplied exact idempotency identity.
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct IdempotencyKey(String);
 
@@ -60,9 +64,9 @@ impl IdempotencyKey {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized keys.
+    /// Rejects empty or control-containing keys.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        validate_identity(&value, MAX_KEY_BYTES, "idempotency_key")?;
+        validate_identity(&value, "idempotency_key")?;
         Ok(Self(value))
     }
 
@@ -138,19 +142,19 @@ impl SchemaDigest {
     }
 }
 
-fn validate_text(value: &str, max: usize, path: &str) -> Result<(), ProtocolError> {
-    if value.is_empty() || value.len() > max || value.contains('\0') {
+fn validate_text(value: &str, path: &str) -> Result<(), ProtocolError> {
+    if value.is_empty() || value.contains('\0') {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidText,
             path,
-            "text is empty, contains NUL, or exceeds its byte bound",
+            "text is empty or contains NUL",
         ));
     }
     Ok(())
 }
 
-fn validate_identity(value: &str, max: usize, path: &str) -> Result<(), ProtocolError> {
-    validate_text(value, max, path)?;
+fn validate_identity(value: &str, path: &str) -> Result<(), ProtocolError> {
+    validate_text(value, path)?;
     if value.chars().any(char::is_control) {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidText,

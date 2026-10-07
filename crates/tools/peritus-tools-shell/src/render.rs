@@ -1,8 +1,6 @@
 //! Control-safe independently bounded render windows.
 
-use core::fmt::Write;
-
-use peritus_tool_protocol::{BoundedText, Truncation};
+use peritus_tool_protocol::{BoundedText, Truncation, render_output_tail};
 
 use crate::error::truncate_utf8;
 
@@ -14,12 +12,11 @@ pub struct RenderedOutput {
 }
 
 pub fn output(bytes: &[u8], model_limit: u32, human_limit: u32) -> RenderedOutput {
-    let escaped = escape(bytes);
-    let (model, model_truncation) = bounded_tail(&escaped, model_limit as usize);
-    let (human, human_truncation) = bounded_tail(&escaped, human_limit as usize);
+    let (model, model_truncation) = render_output_tail(bytes, model_limit);
+    let (human, human_truncation) = render_output_tail(bytes, human_limit);
     RenderedOutput {
-        model: checked_text(model),
-        human: checked_text(human),
+        model,
+        human,
         model_truncation,
         human_truncation,
     }
@@ -30,35 +27,8 @@ pub fn checked_text(mut value: String) -> BoundedText {
     if value.is_empty() {
         value.push_str("(no output)");
     }
-    truncate_utf8(&mut value, 16 * 1_024);
+    truncate_utf8(&mut value, BoundedText::MAX_BYTES);
     BoundedText::new(value).expect("sanitized nonempty bounded rendering")
-}
-
-fn escape(bytes: &[u8]) -> String {
-    let mut rendered = String::with_capacity(bytes.len().min(16 * 1_024));
-    for &byte in bytes {
-        match byte {
-            b'\n' => rendered.push('\n'),
-            b'\r' => rendered.push_str("\\r"),
-            b'\t' => rendered.push_str("\\t"),
-            0x20..=0x7e => rendered.push(char::from(byte)),
-            _ => write!(rendered, "\\x{byte:02x}").expect("writing to a string cannot fail"),
-        }
-    }
-    rendered
-}
-
-fn bounded_tail(value: &str, maximum: usize) -> (String, Truncation) {
-    if value.len() <= maximum {
-        return (value.to_owned(), Truncation::Complete);
-    }
-    let marker = "[earlier output omitted]\n";
-    if maximum <= marker.len() {
-        return (marker[..maximum].to_owned(), Truncation::HeadDropped);
-    }
-    let keep = maximum - marker.len();
-    let start = value.len() - keep;
-    (format!("{marker}{}", &value[start..]), Truncation::HeadDropped)
 }
 
 #[cfg(test)]

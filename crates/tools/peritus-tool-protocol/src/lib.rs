@@ -13,6 +13,7 @@ mod identity;
 mod limits;
 mod prepared;
 mod progress;
+mod render;
 mod result;
 mod schema;
 mod verified;
@@ -33,6 +34,7 @@ pub use identity::{
 pub use limits::JsonLimits;
 pub use prepared::{PreparedToolCall, ReplayIdentity, prepare_call};
 pub use progress::{ProgressKind, ToolProgress};
+pub use render::render_output_tail;
 pub use result::{
     FailureCategory, RecoveryRoute, ResponsibleSubsystem, ResultStatus, Retryability, ToolFailure,
     ToolResult, ToolTiming, Truncation, TruncationMetadata,
