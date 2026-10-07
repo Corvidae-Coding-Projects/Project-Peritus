@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3785,
-        "tip_oid": "7b76d27a63e7bdf01a6e8fbf3f6cb555975786d3",
-        "prefix_sha256": "04992af85eb54e27762689e06127aa5c58f6915cb746e3edcf7f0bc7a536f9ae"
+        "sequence": 3786,
+        "tip_oid": "1ebb6e077dab066d8f2d95e5099044371a5c174f",
+        "prefix_sha256": "e82d311cd231eed3e1c882f56671addc3fcf261e574f55812ccb0a6a96c06ed2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3091,
+  "next_comment_id": 3092,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25050,7 +25050,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.193982283Z",
-      "updated_at": "2026-10-07T08:24:10.752278563Z",
+      "updated_at": "2026-10-07T12:35:34.279602512Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -25070,6 +25070,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAS8airxb9dQhFSIe44IYrfzXBzQRORuslXAKh0I9+OQfbt00tQErmSqqXkghBUwcYy7flheLkyrqXbU6g46r1DQ=="
+        },
+        "cd78e9d4-458e-4299-8741-73db6076c3e7": {
+          "display_id": 3091,
+          "author": "6ME5",
+          "content": "Code-only recovery follow-up: exact command-handle job admission deduplicates observer cleanup; retry/spawn-failure transfers keep the same ownership marker and retire it only after actual runtime/replay settlement. Removed the unused authorized-cancellation API, mode, extra admission worker, and dead_code allowance; explicit cancel still directly admits its User intent while observer jobs never cancel accepted work. Cheap gating distinguishes a live C2 owner from completed/error/unwound ownership. Integrated the #206 render-free reconcile_observer API so stalled replay publication cannot repeatedly reopen/hash complete output artifacts. Full source and focused patches reviewed, static whitespace checks clean; receipts saved in .crosslink/code-batch-recovery/2026-10-07-root184. No tests/build/check/lint/fmt/codegen/formal/qualification runners or test edits. Final verification deferred, issue open.",
+          "created_at": "2026-10-07T12:35:34.275927051Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhEaoZu/0N6xIvCylPJbQoIJJO81p3LOIgkeFM/ydRtnJUIn70mKylB5gapBX/bEFRHVVb5nRgTyuCVex6h0rCQ=="
         }
       }
     },
