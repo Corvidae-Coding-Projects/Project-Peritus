@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3732,
-        "tip_oid": "dd5a9ac34d32430bafa57f5d337ab768d3e1ac07",
-        "prefix_sha256": "6fa774d6912b2b211a3c8d86809ee410c341b783321d521669e70e6e44e962d7"
+        "sequence": 3733,
+        "tip_oid": "70b4057408d3b4b07e2b4d21f1f30bb14fc2e91b",
+        "prefix_sha256": "91d2ce71f9b7db261e807bd75289c67e31f2d573cb435744f9c9780d7a0a4166"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3039,
+  "next_comment_id": 3040,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -26456,11 +26456,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.917586495Z",
-      "updated_at": "2026-10-07T03:41:23.326190044Z",
+      "updated_at": "2026-10-07T04:47:30.793383616Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0b6d543d-99b2-4197-b520-a5a58d24c73f": {
+          "display_id": 3039,
+          "author": "6ME5",
+          "content": "Code-only integration: Git mutations use durable sidecar owners and exact inner command containment, while repository inventory and complete command output are progressively paged. Output page proofs bind count/index/offset/length/content; cancellation is recorded durably and handled by the retained-child owner so it preserves the terminal receipt writer. Unix exit observation leaves the direct helper unreaped until group termination, pipe drainage and owned reaping, avoiding zombie-count loops and stale-PGID cancellation. Current source integration is unverified; all validation runners remain deferred and this issue stays open.",
+          "created_at": "2026-10-07T04:47:30.789438504Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA1S/H0X34o7vJ4Cs2o4FcAJymhcm0KUXa0v6p/u2Z3YOHCl+e5EeT5Nu69FCE191awiFQBAdteWAfpR/RDbhYAA=="
+        },
         "30799664-61c6-48cf-8bf8-01373c252004": {
           "display_id": 3027,
           "author": "6ME5",
