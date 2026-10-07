@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3775,
-        "tip_oid": "dd6915eb53626d5125ccfa7eb833502dfc05d1eb",
-        "prefix_sha256": "ba483802f4d368a462a24e18590cbe489bbd03e63e23205939eefb5a88047184"
+        "sequence": 3776,
+        "tip_oid": "bb9c91bda02da53f21371759778ae727a537bfb9",
+        "prefix_sha256": "50e70c75122e41971b77dcd864895d8795eab9a496f9d38004cade0e82257291"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3081,
+  "next_comment_id": 3082,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15566,11 +15566,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.180700696Z",
-      "updated_at": "2026-10-06T13:19:08.182918314Z",
+      "updated_at": "2026-10-07T07:34:03.517564105Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2c105eff-cbeb-4489-8903-c68bbb09263f": {
+          "display_id": 3081,
+          "author": "6ME5",
+          "content": "Code-only #181 implementation is frozen as /tmp/peritus-issue-181-freeze-xo7yiXRw/issue-181-durable-replay-focused.patch (sha256 fb6b43a8c614fe966d3b10140d5c619ed102a79b1939e28df61816ec790b175b; 1,709 lines; 65,232 bytes; 8 paths). It is an overlay on corrected #184 artifact 08e7167f72e9164ff7b7835ac15138fbd0d9f3af6e7116b5b708f4d807e15365 and preserves the neighboring StoreConfig and compactor seams. Fresh baseline apply-check and byte-for-byte reproduction against the live eight files passed; focused diff-check passed. The former 64 active and 4,096 replay values now seed physical HashMap allocation only, active and live replay maps grow, durable one-use reservation precedes dispatch, SQLite v1 immutable receipts validate complete transition history and digest, contention waits outside RuntimeState with cancellation/reporting, and a failed terminal receipt remains router-owned until publication proof is acknowledged. No tests were added or changed. Per explicit restriction, no test, build, lint, format, codegen, or qualification runner was invoked; automated apply_patch hooks emitted only unrelated preexisting warnings. Issue remains open pending full acceptance and nonregression evidence.",
+          "created_at": "2026-10-07T07:34:03.502839825Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAg8jX8sINF00iF5TdzYXFT4qmDB7Oth6Qoq/lL7kcJ2KfvF2bwB9V6duEYpxnI36yHCMx+TDrDllbYoxUmgk5Cw=="
+        },
         "9bc1609b-d651-49bc-b919-fd9847ba577e": {
           "display_id": 2253,
           "author": "6ME5",
