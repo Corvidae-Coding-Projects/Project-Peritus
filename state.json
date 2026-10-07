@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3872,
-        "tip_oid": "bb9a66e290c07e734dff7c4a850fb961c8a87053",
-        "prefix_sha256": "8067ec1d6e0efa80bd906fa018728302f2750520463c9bd22acb37f3c895f5d8"
+        "sequence": 3873,
+        "tip_oid": "aa33b16526547f718895de8859404ffd6285ae8b",
+        "prefix_sha256": "9c983d057f16e5ba075fe86aa4ff47c82c1a1a7bb967e28149f292a8e78ce3a2"
       },
       "NWAR": {
         "sequence": 39,
@@ -13661,12 +13661,13 @@
       "display_id": 501,
       "title": "[L420] E2 retry eligibility is persisted as a bare clock tick without epoch or bounded-delay proof",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L420.\n\n- Evidence: `crates/analysis/peritus-debugger/src/aggregate/types/model.rs:73-102,298-400`, `src/runtime/model.rs:150-187`, `src/aggregate/reducer/apply/model.rs:48-68,164-187`, `src/aggregate/command.rs:240-256`, `src/model/runner.rs:73-167` in the same crate.\n- Behavior: Retry scheduling requires delay_ticks > 0 and <= the immutable maximum, then stores now_tick + delay_ticks as a u64 not-before tick. The aggregate only checks a positive not-before tick and next attempt identity, so direct command admission cannot validate the runtime's delay ceiling. Start compares caller start ticks to the saved tick. No epoch, tick unit, origin, rebase transition, or elapsed-time clock is carried by these records. The runner and durable attempt executor read here have no E2 wall-time watchdog; the compiled 24-hour resource label in L415 is not enforced by these paths.\n- Consequence: If a caller changes/reset its tick origin while retaining the job, an old pending eligibility tick can block a restarted attempt until the new clock catches up. Actual caller clock behavior is not established here. Conversely, the reducer can admit an arbitrarily distant positive retry tick despite a smaller frozen delay policy. The positive delay/finite attempt policy cannot be amended on the job, while provider hangs depend on the provider's cancellation responsiveness. Do not describe the 24-hour label as an observed running deadline.\n- Repair direction: Bind scheduling to an explicit durable clock contract with epoch handling, and validate the same scheduling policy at every admission boundary. Make backoff and stopping an explicit user policy while preserving job/context identity. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.471255562Z",
-      "updated_at": "2026-10-07T23:39:08.856993856Z",
+      "updated_at": "2026-10-07T23:40:28.624000901Z",
+      "closed_at": "2026-10-07T23:40:28.621179813Z",
       "labels": [
         "daily-driving-limiter"
       ],
