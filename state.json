@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3658,
-        "tip_oid": "1610c86d802367d191d80e782c15c58492e8f0bb",
-        "prefix_sha256": "1b0d226c681711f22bcbf0d50e58851b8fbc24e80c516c77f7871808906961bd"
+        "sequence": 3659,
+        "tip_oid": "d5296dd7a210cd36ba98d6fc3a4374f82e497fe7",
+        "prefix_sha256": "ce6c755cbe8ac37dcbc3137b1a96a5161fdd0e74b20a78311255d188b5ce1a9e"
       },
       "NWAR": {
         "sequence": 39,
@@ -55,7 +55,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 2987,
+  "next_comment_id": 2988,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22222,7 +22222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T22:11:51.674351471Z",
-      "updated_at": "2026-10-07T00:08:05.701614539Z",
+      "updated_at": "2026-10-07T00:10:58.722213036Z",
       "labels": [
         "ci"
       ],
@@ -22370,6 +22370,15 @@
           "kind": "decision",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA8DcD2u3pr/eETlOV+PQhYsxz9Jf/HpxlCPIaiRUMZby8YArnWovoyaW7ONoA4L5ekwa68xCsNdTPVopBwXN+BQ=="
+        },
+        "76568c9f-3776-419d-8cb2-cf98a01b176d": {
+          "display_id": 2987,
+          "author": "6ME5",
+          "content": "Observation process, not CI, terminated: full PR watcher70938 exited1 because its GraphQL TCP read was reset by peer; original /tmp/peritus-pr112-issue825-followup-ci-watch.log is retained. Direct job APIs confirm Windows provider112560352091 and Mac conformance112560348606 are still executing Run reviewed package shard; native observer36823 remains live and records4 accepted final shards with no native failure. Replacing only the terminal read-only PR monitor; no job, test, service or workflow is restarted. No new source edits and825 remainsOPEN pending final two native regression logs.",
+          "created_at": "2026-10-07T00:10:58.709656961Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvj+Sml1EWBygD+tI1MLJu7A0zgzy/Vi0+NDT9FiNuz8oBHfOCYwyWSSsCCDKHj/uAIALFlwbnmS4Yb++GOD3AA=="
         },
         "7b71a5cb-12e5-4ee4-aa4d-9190ba6471b9": {
           "display_id": 2962,
