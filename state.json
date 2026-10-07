@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3728,
-        "tip_oid": "470861a53934e063805d265a07354646bc5c5821",
-        "prefix_sha256": "08eb04327f27dee3d1aee551eb00f1e175e68f61e7c366d2794c10c839b0137e"
+        "sequence": 3729,
+        "tip_oid": "f7806935cef2cd844bfd7cb3c8fc9707995e4a3b",
+        "prefix_sha256": "0fcb46c3ab7c26cc19c37a1e269f286c1e4a48dce55211f5746cb59582bf2d3f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3035,
+  "next_comment_id": 3036,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -2176,7 +2176,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.050242472Z",
-      "updated_at": "2026-10-06T13:19:08.052374156Z",
+      "updated_at": "2026-10-07T04:42:08.717088231Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -2187,6 +2187,15 @@
           "content": "Systemic repair plan for L052: Candidate freshness capture retries exactly three times.\n\nOwning contract and implementation boundary: peritus-product-runner/src/execution/checkpoint.rs:244-257. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse a cancellable consistency observation state that waits for a stable exact workspace revision or a snapshot-capable backend. Retain the capture intent and original contention cause rather than failing after three probes. Never accept mismatched before/after hashes; only confirmed consistency can publish the candidate baseline.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "dd9fff0a-663e-4ac4-bf2a-7cf2d21cbe69": {
+          "display_id": 3035,
+          "author": "6ME5",
+          "content": "Code-only repair: candidate identity capture no longer fails after three consistency probes. The recorder owns the original run cancellation signals and waits with a short retry cadence for an exact matching before/after workspace observation. Contention does not publish a mismatched checkpoint, advance its sequence, discard evidence, or change run identity; cancellation retains the previous checkpoint. Full production constructor/caller and finalization paths were read. No tests/build/lint/format/codegen were run; final batch validation and constructor fixture migrations remain deferred, and this issue stays open.",
+          "created_at": "2026-10-07T04:42:08.703334469Z",
+          "kind": "observation",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPj7KoULugbGJEhRh2+zMA3SAMVh6Xq2eEdgkQ7MnJMrXpie50vqps050uOeHi0hQ9atGu5+iiW5GqRPex4NUAg=="
         }
       }
     },
