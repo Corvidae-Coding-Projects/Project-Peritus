@@ -103,10 +103,10 @@ pub struct ProductFinding {
 }
 
 impl ProductFinding {
-    /// Creates a bounded finding and derives its stable normalized identity.
+    /// Creates a finding and derives its stable normalized identity.
     ///
     /// # Errors
-    /// Rejects missing primary text or oversized model fields.
+    /// Rejects missing primary text or fields containing a NUL character.
     #[allow(clippy::too_many_arguments, reason = "typed finding fields remain explicit")]
     pub fn new(
         category: ProductFindingCategory,
@@ -123,9 +123,9 @@ impl ProductFinding {
         }
         if [&title, &description, &location, &reproduction, &remediation]
             .iter()
-            .any(|value| value.len() > 64 * 1024 || value.contains('\0'))
+            .any(|value| value.contains('\0'))
         {
-            return Err(ProductReviewError::new("review finding exceeds its text bound"));
+            return Err(ProductReviewError::new("review finding contains a NUL character"));
         }
         let id = finding_id(category, &title);
         Ok(Self {
@@ -306,16 +306,16 @@ pub struct ProductReviewSubmission {
 }
 
 impl ProductReviewSubmission {
-    /// Creates a bounded reviewer submission.
+    /// Creates a reviewer submission conserving all supplied findings.
     ///
     /// # Errors
-    /// Rejects an empty summary, too many findings, or duplicate normalized identities.
+    /// Rejects an empty summary or duplicate normalized identities.
     pub fn new(
         summary: String,
         mut findings: Vec<ProductFinding>,
     ) -> Result<Self, ProductReviewError> {
-        if summary.trim().is_empty() || summary.len() > 128 * 1024 || findings.len() > 128 {
-            return Err(ProductReviewError::new("review submission exceeds its bounds"));
+        if summary.trim().is_empty() {
+            return Err(ProductReviewError::new("review submission summary is empty"));
         }
         findings.sort_by_key(ProductFinding::id);
         if findings.windows(2).any(|pair| pair[0].id == pair[1].id) {
