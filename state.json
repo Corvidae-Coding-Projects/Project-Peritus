@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3871,
-        "tip_oid": "41fb429f6f526d5078fe2916f9167186ed545b40",
-        "prefix_sha256": "f57e1cbc9530f54f34cd13db039dd63ee3e3e2ad70942f96b92f6de36b46cb4f"
+        "sequence": 3872,
+        "tip_oid": "bb9a66e290c07e734dff7c4a850fb961c8a87053",
+        "prefix_sha256": "8067ec1d6e0efa80bd906fa018728302f2750520463c9bd22acb37f3c895f5d8"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3139,
+  "next_comment_id": 3140,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -13666,11 +13666,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.471255562Z",
-      "updated_at": "2026-10-06T13:27:50.473505772Z",
+      "updated_at": "2026-10-07T23:39:08.856993856Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "4af70f14-d194-42fb-9af6-132d80e1e23d": {
+          "display_id": 3139,
+          "author": "6ME5",
+          "content": "Code complete in commit d39843e45. Added durable retry scheduling with explicit authority epoch, relative delay, same-epoch admission and restart rebase. Reducer, runtime, outbox and recovery share the admission contract. Caller retry policy can be amended while retaining exact job/failure/continuation identity; accepted legacy state and directives remain decodable. Closing at the code-complete stage as explicitly directed by the user. No tests, builds, lint, formatting, reviews, or validation checks were run; validation remains deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-07T23:39:08.846233319Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAryB9gAQeQCKTSWeqTE98SNASneZunEZTIQnmYI7aBYhr/ALHObBb2VGiZZME7yYvbjLL+NCRT35MVznbedVMDQ=="
+        },
         "c875403b-793e-44a6-809f-892c6b37db75": {
           "display_id": 2573,
           "author": "6ME5",
