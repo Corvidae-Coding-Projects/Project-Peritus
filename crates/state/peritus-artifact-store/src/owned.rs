@@ -24,6 +24,25 @@ pub struct ArtifactReadChunk {
 }
 
 impl ArtifactReadChunk {
+    /// Wraps bytes already authenticated by a caller-owned durable page index.
+    ///
+    /// This constructor is for storage layers that authenticate independently stored physical
+    /// chunks against an accepted root before exposing them through the common read interface.
+    ///
+    /// # Errors
+    /// Rejects an empty result or an offset whose end cannot be represented.
+    pub fn from_authenticated(
+        offset: u64,
+        bytes: Vec<u8>,
+    ) -> Result<Self, ArtifactStoreError> {
+        if bytes.is_empty()
+            || offset.checked_add(u64::try_from(bytes.len()).map_err(|_| overflow())?).is_none()
+        {
+            return Err(invalid_request("authenticated read chunk is empty or overflows"));
+        }
+        Ok(Self { offset, bytes })
+    }
+
     /// Returns the exact zero-based byte offset.
     #[must_use]
     pub const fn offset(&self) -> u64 {

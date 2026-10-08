@@ -3,10 +3,12 @@
 use super::{
     error,
     record::{
-        CHECKPOINT_SCHEMA_VERSION, CheckpointManifest, INDEXED_CHECKPOINT_SCHEMA_VERSION,
+        CHECKPOINT_SCHEMA_VERSION, CheckpointInspectionRoot, CheckpointManifest,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION, INDEXED_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_CHECKPOINT_SCHEMA_VERSION, PAGED_CHECKPOINT_SCHEMA_VERSION,
         SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, ViewValidation, encode,
     },
+    storage::StoredArtifact,
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_codec::{CanonicalWriter, CodecLimits, sha256};
@@ -52,6 +54,7 @@ pub(super) fn tool_policy(tools: &[ToolDefinition]) -> Result<[u8; 32], Develope
 }
 
 /// Binds exact provider-view bytes to their canonical selection, policy, and accounting record.
+#[cfg(test)]
 pub(super) fn checkpoint(
     scope: [u8; 32],
     generation: u64,
@@ -61,7 +64,7 @@ pub(super) fn checkpoint(
     validation: &ViewValidation,
 ) -> Result<[u8; 32], DeveloperLoopError> {
     checkpoint_for_schema(
-        CHECKPOINT_SCHEMA_VERSION,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION,
         scope,
         generation,
         through_event,
@@ -69,6 +72,46 @@ pub(super) fn checkpoint(
         view,
         validation,
     )
+}
+
+/// Binds current checkpoint artifact references and their authenticated physical inspection roots.
+pub(super) fn checkpoint_indexed(
+    scope: [u8; 32],
+    generation: u64,
+    through_event: u64,
+    render_policy: [u8; 32],
+    view: StoredArtifact,
+    validation_artifact: StoredArtifact,
+    inspection: &CheckpointInspectionRoot,
+    validation: &ViewValidation,
+) -> Result<[u8; 32], DeveloperLoopError> {
+    let validation_bytes = encode(validation)?;
+    if sha256(&validation_bytes) != validation_artifact.digest
+        || u64::try_from(validation_bytes.len()).ok() != Some(validation_artifact.bytes)
+    {
+        return Err(error("checkpoint validation artifact binding mismatch"));
+    }
+    let inspection_bytes = encode(inspection)?;
+    let mut encoded = writer();
+    encoded.write_fixed(VIEW_BINDING_MAGIC).map_err(binding_error)?;
+    encoded.write_u16(CHECKPOINT_SCHEMA_VERSION).map_err(binding_error)?;
+    encoded.write_fixed(&scope).map_err(binding_error)?;
+    encoded.write_u64(generation).map_err(binding_error)?;
+    encoded.write_u64(through_event).map_err(binding_error)?;
+    encoded.write_fixed(&render_policy).map_err(binding_error)?;
+    write_artifact(&mut encoded, view)?;
+    write_artifact(&mut encoded, validation_artifact)?;
+    encoded.write_bytes(&inspection_bytes).map_err(binding_error)?;
+    encoded.write_bytes(&validation_bytes).map_err(binding_error)?;
+    Ok(sha256(&encoded.into_bytes()).into_bytes())
+}
+
+fn write_artifact(
+    writer: &mut CanonicalWriter,
+    artifact: StoredArtifact,
+) -> Result<(), DeveloperLoopError> {
+    writer.write_fixed(artifact.digest.as_bytes()).map_err(binding_error)?;
+    writer.write_u64(artifact.bytes).map_err(binding_error)
 }
 
 fn checkpoint_for_schema(
@@ -108,7 +151,7 @@ pub(super) fn verify(
         SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
         | INDEXED_CHECKPOINT_SCHEMA_VERSION
         | PAGED_CHECKPOINT_SCHEMA_VERSION
-        | CHECKPOINT_SCHEMA_VERSION
+        | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
             if validation.tool_policy.is_some() =>
         {
             let expected = checkpoint_for_schema(
@@ -118,6 +161,25 @@ pub(super) fn verify(
                 manifest.through_event,
                 manifest.render_policy,
                 view,
+                validation,
+            )?;
+            if manifest.view_binding == Some(expected) {
+                Ok(())
+            } else {
+                Err(error("checkpoint provider-view binding mismatch"))
+            }
+        }
+        CHECKPOINT_SCHEMA_VERSION if validation.tool_policy.is_some() => {
+            let inspection = manifest.inspection.as_ref()
+                .ok_or_else(|| error("checkpoint inspection root is missing"))?;
+            let expected = checkpoint_indexed(
+                manifest.scope,
+                manifest.generation,
+                manifest.through_event,
+                manifest.render_policy,
+                manifest.view,
+                manifest.validation,
+                inspection,
                 validation,
             )?;
             if manifest.view_binding == Some(expected) {

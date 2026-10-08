@@ -49,12 +49,13 @@ pub use wire::{
     EncodedWorkingStateDescriptorPage, EncodedWorkingStatePage, EncodedWorkingStatePart,
     EncodedWorkingStateSnapshot, ReusableWorkingStateHistory, WorkingCodecError,
     WorkingStateArtifact, WorkingStatePageKind, WorkingStatePageReference,
-    WorkingStateReadError, WorkingStateWriteError, decode_paged_working_state,
+    WorkingStateReadError, WorkingStateRootInspection, WorkingStateWriteError,
+    decode_paged_working_state,
     decode_paged_working_state_from, decode_paged_working_state_with_history_from,
     decode_working_event, decode_working_state, decode_working_state_core,
     encode_paged_working_state, encode_paged_working_state_reusing_with,
     encode_paged_working_state_with, encode_working_event, encode_working_state,
-    encode_working_state_core,
+    encode_working_state_core, inspect_paged_working_state_root,
 };
 
 #[cfg(not(verus_only))]

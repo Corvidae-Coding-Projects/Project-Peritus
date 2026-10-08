@@ -6,11 +6,12 @@ use super::super::{
         CHECKPOINT_SCHEMA_VERSION, CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION,
         CONTEXT_UPDATE_FILE_PAGE_SCHEMA_VERSION,
         CONTEXT_UPDATE_PAGE_SCHEMA_VERSION, CONTEXT_UPDATE_REDUCER_SCHEMA_VERSION,
-        CONTEXT_UPDATE_SCHEMA_VERSION, CheckpointManifest, ContextUpdateEntryPage,
-        ContextUpdateEntryIdentity, ContextUpdateEntryStatus, ContextUpdateRecord,
-        ContextUpdateReducer, ContextUpdateReducerPage, ContextUpdateRoot,
-        ContextUpdateTranscriptPage, MemoryRecord, RootContextUpdate, TranscriptManifest, decode,
-        encode,
+        CONTEXT_UPDATE_SCHEMA_VERSION, CheckpointInspectionRoot, CheckpointManifest,
+        ContextUpdateEntryPage, ContextUpdateEntryIdentity, ContextUpdateEntryStatus,
+        ContextUpdateRecord, ContextUpdateReducer, ContextUpdateReducerPage, ContextUpdateRoot,
+        ContextUpdateTranscriptPage, INSPECTION_INDEX_SCHEMA_VERSION, MemoryRecord,
+        MessageInspectionIndexPage, MessageInspectionPageReference, RootContextUpdate,
+        TranscriptManifest, ViewInspectionChunkReference, ViewInspectionIndexPage, decode, encode,
     },
     storage::{LocalStore, StoredArtifact},
     view_binding,
@@ -23,7 +24,10 @@ use peritus_context::working::{
     WorkingReplayFrontier, WorkingState, WorkingStateArtifact, WorkingStateWriteError,
     encode_paged_working_state_reusing_with, encode_working_event,
 };
-use peritus_model_protocol::{Message, ProtocolLimits, encode_messages};
+use peritus_model_protocol::{
+    HistoryArchiveIdentity, Message, PhysicalPageCapacity, ProtocolLimits,
+    encode_message_archive_page, encode_messages,
+};
 use peritus_types::Sha256Digest;
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
@@ -31,6 +35,9 @@ use std::io::Write as _;
 use std::path::Path;
 
 const CONTEXT_UPDATE_PAGE_ENTRIES: usize = 255;
+const INSPECTION_INDEX_PAGE_ENTRIES: usize = 255;
+const INSPECTION_MESSAGE_PAGE_ENTRIES: usize = 16;
+const INSPECTION_VIEW_CHUNK_BYTES: usize = 64 * 1024;
 
 pub(super) fn reconcile_checkpoint_trace(
     path: &Path,
@@ -105,20 +112,28 @@ impl LocalMemory {
         let view_bytes = encode_messages(messages, ProtocolLimits::PRODUCTION)?;
         let view = self.store.store(&view_bytes)?;
         let validation_artifact = self.store.store(&encode(&validation)?)?;
-        let previous = self
-            .last_checkpoint
-            .as_ref()
-            .map(|manifest| encode(manifest).map(|bytes| sha256(&bytes).into_bytes()))
-            .transpose()?;
+        let previous_manifest = self.last_checkpoint.as_ref().map(|manifest| {
+            let bytes = encode(manifest)?;
+            self.store.store(&bytes)
+        }).transpose()?;
+        let previous = previous_manifest.map(|artifact| artifact.digest.into_bytes());
         let generation =
             self.store.generation().checked_add(1).ok_or_else(|| error("generation overflow"))?;
         let scope = self.store.scope_digest().into_bytes();
-        let view_binding = view_binding::checkpoint(
+        let inspection = self.store_inspection_indexes(
+            messages,
+            &view_bytes,
+            validation.profile,
+            previous_manifest,
+        )?;
+        let view_binding = view_binding::checkpoint_indexed(
             scope,
             generation,
             through_event,
             render_policy,
-            &view_bytes,
+            view,
+            validation_artifact,
+            &inspection,
             &validation,
         )?;
         let manifest = CheckpointManifest {
@@ -134,12 +149,20 @@ impl LocalMemory {
             render_policy,
             validation: validation_artifact,
             view_binding: Some(view_binding),
+            inspection: Some(inspection.clone()),
         };
         let bytes = encode(&manifest)?;
-        let artifact = self.store.store_bundle(
-            &bytes,
-            &[working_state, transcript_manifest, view, validation_artifact],
-        )?;
+        let mut children = vec![
+            working_state,
+            transcript_manifest,
+            source_index,
+            view,
+            validation_artifact,
+        ];
+        children.extend(inspection.message_index_tail);
+        children.extend(inspection.view_index_tail);
+        children.extend(inspection.previous_manifest);
+        let artifact = self.store.store_bundle(&bytes, &children)?;
         let event = encode(&MemoryRecord::Checkpoint { manifest: artifact })?;
         let roots = [artifact.digest];
         let previous_owner = self.last_checkpoint_owner;
@@ -175,6 +198,125 @@ impl LocalMemory {
             );
         }
         Ok(())
+    }
+
+    fn store_inspection_indexes(
+        &self,
+        messages: &[Message],
+        view: &[u8],
+        profile: [u8; 16],
+        previous_manifest: Option<StoredArtifact>,
+    ) -> Result<CheckpointInspectionRoot, DeveloperLoopError> {
+        let identity = HistoryArchiveIdentity::new(
+            self.binding.task().into_bytes(),
+            profile,
+            self.binding.run().into_bytes(),
+        )
+        .map_err(|_| error("invalid inspection message identity"))?;
+        let capacity = PhysicalPageCapacity::new(u32::MAX as usize)
+            .map_err(|_| error("invalid inspection message page capacity"))?;
+        let mut message_tail = None;
+        let mut message_references = Vec::with_capacity(INSPECTION_INDEX_PAGE_ENTRIES);
+        let mut first_indexed_page = 0_u64;
+        let mut previous_digest = None;
+        let mut message_page_count = 0_u64;
+        for messages in messages.chunks(INSPECTION_MESSAGE_PAGE_ENTRIES) {
+            let first_message = message_page_count
+                .checked_mul(INSPECTION_MESSAGE_PAGE_ENTRIES as u64)
+                .ok_or_else(|| error("inspection message ordinal overflow"))?;
+            let page = encode_message_archive_page(
+                identity,
+                message_page_count,
+                first_message,
+                previous_digest,
+                messages,
+                ProtocolLimits::PRODUCTION,
+                capacity,
+            )?;
+            let artifact = self.store.store(page.encoded_page())?;
+            message_references.push(MessageInspectionPageReference {
+                page_index: page.page_index(),
+                first_message: page.first_message(),
+                message_count: u64::try_from(page.messages().len())
+                    .map_err(|_| error("inspection message count overflow"))?,
+                previous_page_digest: page.previous_page_digest()
+                    .map(|digest| digest.into_bytes()),
+                page_digest: page.digest().into_bytes(),
+                artifact,
+            });
+            previous_digest = Some(page.digest());
+            message_page_count = message_page_count
+                .checked_add(1)
+                .ok_or_else(|| error("inspection message page count overflow"))?;
+            if message_references.len() == INSPECTION_INDEX_PAGE_ENTRIES {
+                message_tail = Some(store_message_inspection_page(
+                    &self.store,
+                    message_tail,
+                    first_indexed_page,
+                    &message_references,
+                )?);
+                first_indexed_page = message_page_count;
+                message_references.clear();
+            }
+        }
+        if !message_references.is_empty() {
+            message_tail = Some(store_message_inspection_page(
+                &self.store,
+                message_tail,
+                first_indexed_page,
+                &message_references,
+            )?);
+        }
+
+        let mut view_tail = None;
+        let mut view_references = Vec::with_capacity(INSPECTION_INDEX_PAGE_ENTRIES);
+        let mut first_indexed_chunk = 0_u64;
+        let mut view_chunk_count = 0_u64;
+        for chunk in view.chunks(INSPECTION_VIEW_CHUNK_BYTES) {
+            let artifact = self.store.store(chunk)?;
+            let first_byte = view_chunk_count
+                .checked_mul(INSPECTION_VIEW_CHUNK_BYTES as u64)
+                .ok_or_else(|| error("inspection view offset overflow"))?;
+            view_references.push(ViewInspectionChunkReference {
+                chunk_index: view_chunk_count,
+                first_byte,
+                artifact,
+            });
+            view_chunk_count = view_chunk_count
+                .checked_add(1)
+                .ok_or_else(|| error("inspection view chunk count overflow"))?;
+            if view_references.len() == INSPECTION_INDEX_PAGE_ENTRIES {
+                view_tail = Some(store_view_inspection_page(
+                    &self.store,
+                    view_tail,
+                    first_indexed_chunk,
+                    &view_references,
+                )?);
+                first_indexed_chunk = view_chunk_count;
+                view_references.clear();
+            }
+        }
+        if !view_references.is_empty() {
+            view_tail = Some(store_view_inspection_page(
+                &self.store,
+                view_tail,
+                first_indexed_chunk,
+                &view_references,
+            )?);
+        }
+        Ok(CheckpointInspectionRoot {
+            schema_version: INSPECTION_INDEX_SCHEMA_VERSION,
+            source_count: u64::try_from(self.sources.len())
+                .map_err(|_| error("inspection source count overflow"))?,
+            message_count: u64::try_from(messages.len())
+                .map_err(|_| error("inspection message count overflow"))?,
+            message_page_count,
+            message_index_tail: message_tail,
+            last_message_page_digest: previous_digest.map(|digest| digest.into_bytes()),
+            view_chunk_count,
+            view_index_tail: view_tail,
+            previous_manifest,
+        })
     }
 
     pub(super) fn commit_context_update_root(
@@ -257,6 +399,40 @@ impl LocalMemory {
             &validation,
         )
     }
+}
+
+fn store_message_inspection_page(
+    store: &LocalStore,
+    previous: Option<StoredArtifact>,
+    first_page: u64,
+    pages: &[MessageInspectionPageReference],
+) -> Result<StoredArtifact, DeveloperLoopError> {
+    let page = MessageInspectionIndexPage {
+        schema_version: INSPECTION_INDEX_SCHEMA_VERSION,
+        previous,
+        first_page,
+        pages: pages.to_vec(),
+    };
+    let mut children = previous.into_iter().collect::<Vec<_>>();
+    children.extend(pages.iter().map(|page| page.artifact));
+    store.store_bundle(&encode(&page)?, &children)
+}
+
+fn store_view_inspection_page(
+    store: &LocalStore,
+    previous: Option<StoredArtifact>,
+    first_chunk: u64,
+    chunks: &[ViewInspectionChunkReference],
+) -> Result<StoredArtifact, DeveloperLoopError> {
+    let page = ViewInspectionIndexPage {
+        schema_version: INSPECTION_INDEX_SCHEMA_VERSION,
+        previous,
+        first_chunk,
+        chunks: chunks.to_vec(),
+    };
+    let mut children = previous.into_iter().collect::<Vec<_>>();
+    children.extend(chunks.iter().map(|chunk| chunk.artifact));
+    store.store_bundle(&encode(&page)?, &children)
 }
 
 pub(super) fn store_working_snapshot(

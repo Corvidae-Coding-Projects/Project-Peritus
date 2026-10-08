@@ -4,8 +4,9 @@ use super::super::{
     checkpoint_validation,
     error,
     record::{
-        ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, HOST_INDEX_SCHEMA_VERSION,
-        HostIndexRoot, INDEX_PAGE_SCHEMA_VERSION, MemoryRecord, ObservedFileIndexPage,
+        ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION, HOST_INDEX_SCHEMA_VERSION, HostIndexRoot,
+        INDEX_PAGE_SCHEMA_VERSION, MemoryRecord, ObservedFileIndexPage,
         PENDING_EFFECT_REFERENCE_SCHEMA_VERSION, PendingDescriptor, PendingEffectIdentity,
         PendingIndexPage, SourceIndexPage, TranscriptDeltaPage, TranscriptManifest, decode, encode,
         pending_effect_key,
@@ -48,7 +49,10 @@ pub(in crate::local_context) fn read_complete_checkpoint_indexes(
     DeveloperLoopError,
 > {
     let sources = read_source_chain(source, None, 0, &mut read)?;
-    let (transcript, invocations) = if schema_version == CHECKPOINT_SCHEMA_VERSION {
+    let (transcript, invocations) = if matches!(
+        schema_version,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+    ) {
         read_host_index_chain(host_index, &mut read)?
     } else {
         read_transcript_chain(
@@ -306,7 +310,10 @@ impl LocalMemory {
         self.transcript = restored_transcript.clone();
         self.source_index_tail = Some(source);
         self.indexed_source_count = source_count;
-        if schema_version == CHECKPOINT_SCHEMA_VERSION {
+        if matches!(
+            schema_version,
+            HOST_INDEX_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        ) {
             let root: HostIndexRoot = decode(&self.store.read(host_index)?)?;
             self.transcript_index_tail = Some(root.transcript);
             self.pending_index_tail = Some(root.pending);

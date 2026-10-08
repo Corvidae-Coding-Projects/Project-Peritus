@@ -10,6 +10,7 @@ use std::{path::Path, sync::Arc};
 /// A read-only `SQLite` snapshot with no mutation or initialization methods.
 pub struct JournalReader {
     journal: SqliteJournal,
+    history: SqliteJournal,
 }
 
 impl JournalReader {
@@ -19,6 +20,7 @@ impl JournalReader {
     /// # Errors
     /// Rejects absent stores, identity/schema drift, and invalid database state.
     pub fn open(path: impl AsRef<Path>, store_id: StoreId) -> Result<Self, JournalError> {
+        let path = path.as_ref();
         let connection = Connection::open_with_flags(
             path,
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
@@ -56,8 +58,52 @@ impl JournalReader {
                 "store identity or schema does not match",
             ));
         }
+        let history_connection = Connection::open_with_flags(
+            path,
+            OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+        )
+        .map_err(|error| JournalError::sqlite("open read-only journal history", error))?;
+        history_connection
+            .set_db_config(DbConfig::SQLITE_DBCONFIG_DEFENSIVE, true)
+            .map_err(|error| JournalError::sqlite("harden read-only journal history", error))?;
+        history_connection
+            .pragma_update(None, "trusted_schema", false)
+            .map_err(|error| JournalError::sqlite("disable trusted history schema", error))?;
+        history_connection
+            .set_limit(Limit::SQLITE_LIMIT_ATTACHED, 0)
+            .map_err(|error| JournalError::sqlite("disable attached history databases", error))?;
+        let (history_store, history_version): (Vec<u8>, i64) = history_connection
+            .query_row(
+                "SELECT store_id,schema_version FROM store_meta WHERE singleton=1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|error| JournalError::sqlite("read journal history identity", error))?;
+        let history_migration: i64 = history_connection
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .map_err(|error| JournalError::sqlite("read history migration version", error))?;
+        if history_store != store_id.as_bytes()
+            || history_version != super::schema::SCHEMA_VERSION
+            || history_migration != history_version
+        {
+            return Err(JournalError::new(
+                JournalErrorKind::CorruptJournal,
+                "inspect existing journal history",
+                "store identity or schema does not match",
+            ));
+        }
+        let history_store_id = store_id;
         Ok(Self {
-            journal: SqliteJournal { connection, store_id, replay_generation: Arc::new(()) },
+            journal: SqliteJournal {
+                connection,
+                store_id,
+                replay_generation: Arc::new(()),
+            },
+            history: SqliteJournal {
+                connection: history_connection,
+                store_id: history_store_id,
+                replay_generation: Arc::new(()),
+            },
         })
     }
 
@@ -71,6 +117,20 @@ impl JournalReader {
         key: &[u8],
     ) -> Result<Option<DurableStateRecord>, JournalError> {
         self.journal.state_record(namespace, key)
+    }
+
+    /// Reads and authenticates one immutable historical state revision from append-only history.
+    ///
+    /// # Errors
+    /// Rejects invalid keys/revisions, corrupt history, or a history root that conflicts with the
+    /// accepted current state.
+    pub fn state_record_revision(
+        &self,
+        namespace: u16,
+        key: &[u8],
+        revision: u64,
+    ) -> Result<Option<DurableStateRecord>, JournalError> {
+        self.history.state_record_revision(namespace, key, revision)
     }
 
     /// Reads one exact aggregate head in the same snapshot.

@@ -12,9 +12,11 @@ pub use paged_state::{
     EncodedWorkingStateDescriptorPage, EncodedWorkingStatePage, EncodedWorkingStatePart,
     EncodedWorkingStateSnapshot, ReusableWorkingStateHistory, WorkingStateArtifact,
     WorkingStatePageKind, WorkingStatePageReference, WorkingStateReadError,
+    WorkingStateRootInspection,
     WorkingStateWriteError, decode_paged_working_state, decode_paged_working_state_from,
     decode_paged_working_state_with_history_from, encode_paged_working_state,
     encode_paged_working_state_reusing_with, encode_paged_working_state_with,
+    inspect_paged_working_state_root,
 };
 pub use state::{
     decode_working_state, decode_working_state_core, encode_working_state,

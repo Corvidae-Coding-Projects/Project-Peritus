@@ -9,7 +9,8 @@ use super::super::{
         CheckpointManifest, ContextUpdateEntryPage, ContextUpdateEntryStatus,
         ContextUpdateRecord, ContextUpdateReducer, ContextUpdateReducerPage,
         ContextUpdateRoot, ContextUpdateTranscriptPage, INDEXED_CHECKPOINT_SCHEMA_VERSION,
-        INDEX_PAGE_SCHEMA_VERSION, InlineContextUpdate, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION, INDEX_PAGE_SCHEMA_VERSION, InlineContextUpdate,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION, MemoryRecord, PAGED_GENESIS_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
         PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, SourceIndexPage,
@@ -27,7 +28,7 @@ use peritus_context::working::{
     WorkingEntryStatus, WorkingEvent, WorkingReplayFrontier, WorkingState,
     WorkingStateArtifact, WorkingStateReadError, apply_working_event,
     decode_paged_working_state_with_history_from, decode_working_event, decode_working_state,
-    decode_working_state_core,
+    decode_working_state_core, inspect_paged_working_state_root,
 };
 use peritus_model_protocol::{ProtocolLimits, decode_messages};
 use peritus_types::Sha256Digest;
@@ -101,6 +102,7 @@ impl LocalMemory {
                 | SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
                 | INDEXED_CHECKPOINT_SCHEMA_VERSION
                 | PAGED_CHECKPOINT_SCHEMA_VERSION
+                | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
                 | CHECKPOINT_SCHEMA_VERSION
         ) || manifest.scope != self.store.scope_digest().into_bytes()
             || manifest.generation != self.store.generation()
@@ -111,10 +113,18 @@ impl LocalMemory {
         checkpoint_validation::validate_schema_lineage(manifest, |digest| {
             self.store.read_digest(digest)
         })?;
+        if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION
+            && let Some(reference) = manifest.inspection.as_ref()
+                .and_then(|inspection| inspection.previous_manifest)
+        {
+            let prior: CheckpointManifest = decode(&self.store.read(reference)?)?;
+            checkpoint_validation::validate_predecessor(manifest, &prior)?;
+        }
         if matches!(
             manifest.schema_version,
             INDEXED_CHECKPOINT_SCHEMA_VERSION
                 | PAGED_CHECKPOINT_SCHEMA_VERSION
+                | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
                 | CHECKPOINT_SCHEMA_VERSION
         ) {
             self.restore_checkpoint_indexes(
@@ -139,9 +149,34 @@ impl LocalMemory {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let working = self.store.read(manifest.working_state)?;
+            if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION {
+                let source_index = WorkingStateArtifact::new(
+                    manifest.source_index.digest.into_bytes(),
+                    manifest.source_index.bytes,
+                )
+                .map_err(|_| error("invalid inspection source-index reference"))?;
+                let inspection = manifest.inspection.as_ref()
+                    .ok_or_else(|| error("current checkpoint lacks inspection root"))?;
+                let state_root = inspect_paged_working_state_root(
+                    &working,
+                    source_index,
+                    inspection.source_count,
+                    self.binding,
+                    self.limits,
+                )
+                .map_err(|_| error("invalid inspection working-state root"))?;
+                checkpoint_validation::validate_inspection_root(
+                    manifest,
+                    &decode(&self.store.read(manifest.validation)?)?,
+                    inspection,
+                    state_root,
+                )?;
+            }
             self.state = if matches!(
                 manifest.schema_version,
-                PAGED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+                PAGED_CHECKPOINT_SCHEMA_VERSION
+                    | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
+                    | CHECKPOINT_SCHEMA_VERSION
             ) {
                 let source_index = WorkingStateArtifact::new(
                     manifest.source_index.digest.into_bytes(),
@@ -222,6 +257,7 @@ impl LocalMemory {
             manifest.schema_version,
             INDEXED_CHECKPOINT_SCHEMA_VERSION
                 | PAGED_CHECKPOINT_SCHEMA_VERSION
+                | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
                 | CHECKPOINT_SCHEMA_VERSION
         ) {
             self.retry_previous_checkpoint_retirement(manifest);

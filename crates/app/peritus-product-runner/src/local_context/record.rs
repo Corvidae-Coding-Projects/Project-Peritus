@@ -12,9 +12,11 @@ pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
 pub(super) const SNAPSHOT_CHECKPOINT_SCHEMA_VERSION: u16 = 2;
 pub(super) const INDEXED_CHECKPOINT_SCHEMA_VERSION: u16 = 3;
 pub(super) const PAGED_CHECKPOINT_SCHEMA_VERSION: u16 = 4;
-pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 5;
+pub(super) const HOST_INDEX_CHECKPOINT_SCHEMA_VERSION: u16 = 5;
+pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 6;
 pub(super) const INDEX_PAGE_SCHEMA_VERSION: u16 = 1;
 pub(super) const HOST_INDEX_SCHEMA_VERSION: u16 = 1;
+pub(super) const INSPECTION_INDEX_SCHEMA_VERSION: u16 = 1;
 pub(super) const LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 1;
 pub(super) const TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 2;
 pub(super) const CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 3;
@@ -246,6 +248,59 @@ pub(super) struct SourceIndexPage {
     pub(super) observations: Vec<ArchivedObservation>,
 }
 
+/// Root-authenticated physical indexes used only for read-only checkpoint inspection.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct CheckpointInspectionRoot {
+    pub(super) schema_version: u16,
+    pub(super) source_count: u64,
+    pub(super) message_count: u64,
+    pub(super) message_page_count: u64,
+    pub(super) message_index_tail: Option<StoredArtifact>,
+    pub(super) last_message_page_digest: Option<[u8; 32]>,
+    pub(super) view_chunk_count: u64,
+    pub(super) view_index_tail: Option<StoredArtifact>,
+    /// Retains the prior checkpoint and its dependency closure while this root is current.
+    pub(super) previous_manifest: Option<StoredArtifact>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct MessageInspectionIndexPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) first_page: u64,
+    pub(super) pages: Vec<MessageInspectionPageReference>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct MessageInspectionPageReference {
+    pub(super) page_index: u64,
+    pub(super) first_message: u64,
+    pub(super) message_count: u64,
+    pub(super) previous_page_digest: Option<[u8; 32]>,
+    pub(super) page_digest: [u8; 32],
+    pub(super) artifact: StoredArtifact,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ViewInspectionIndexPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) first_chunk: u64,
+    pub(super) chunks: Vec<ViewInspectionChunkReference>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ViewInspectionChunkReference {
+    pub(super) chunk_index: u64,
+    pub(super) first_byte: u64,
+    pub(super) artifact: StoredArtifact,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct TranscriptDeltaPage {
@@ -417,6 +472,8 @@ pub(super) struct CheckpointManifest {
     pub(super) validation: StoredArtifact,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) view_binding: Option<[u8; 32]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) inspection: Option<CheckpointInspectionRoot>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]

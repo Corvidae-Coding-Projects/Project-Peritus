@@ -2,13 +2,27 @@
 
 use peritus_role::HarnessRole;
 use peritus_types::{RunId, WorkspaceId};
-use std::{ffi::OsString, path::PathBuf, process::ExitCode};
+use std::{ffi::OsString, io::Write, path::PathBuf, process::ExitCode};
+
+#[derive(Clone, Copy)]
+enum Section {
+    Complete,
+    Summary,
+    Sources,
+    Messages,
+    Lineage,
+    View,
+    Archive,
+}
 
 pub(super) struct Inspection {
     trace: PathBuf,
     run: RunId,
     workspace: WorkspaceId,
     role: HarnessRole,
+    section: Section,
+    offset: u64,
+    maximum: Option<usize>,
 }
 
 pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<Inspection> {
@@ -16,6 +30,9 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<In
     let mut run = None;
     let mut workspace = None;
     let mut role = None;
+    let mut section = None;
+    let mut offset = None;
+    let mut maximum = None;
     while let Some(flag) = arguments.next() {
         let value = arguments.next()?;
         match flag.to_str()? {
@@ -32,10 +49,37 @@ pub(super) fn parse(arguments: &mut impl Iterator<Item = OsString>) -> Option<In
                     _ => return None,
                 });
             }
+            "--section" if section.is_none() => {
+                section = Some(match value.to_str()? {
+                    "complete" => Section::Complete,
+                    "summary" => Section::Summary,
+                    "sources" => Section::Sources,
+                    "messages" => Section::Messages,
+                    "lineage" => Section::Lineage,
+                    "view" => Section::View,
+                    "archive" => Section::Archive,
+                    _ => return None,
+                });
+            }
+            "--offset" if offset.is_none() => offset = Some(value.to_str()?.parse().ok()?),
+            "--limit" if maximum.is_none() => {
+                let count = value.to_str()?.parse::<usize>().ok()?;
+                if count == 0 { return None; }
+                maximum = Some(count);
+            }
             _ => return None,
         }
     }
-    Some(Inspection { trace: trace?, run: run?, workspace: workspace?, role: role? })
+    let section = section.unwrap_or(Section::Complete);
+    if matches!(section, Section::Complete | Section::Summary)
+        && (offset.is_some() || maximum.is_some())
+    {
+        return None;
+    }
+    Some(Inspection {
+        trace: trace?, run: run?, workspace: workspace?, role: role?,
+        section, offset: offset.unwrap_or(0), maximum,
+    })
 }
 
 fn identity(value: &str) -> Option<[u8; 16]> {
@@ -50,20 +94,61 @@ fn identity(value: &str) -> Option<[u8; 16]> {
 }
 
 pub(super) fn run(arguments: Inspection) -> ExitCode {
-    match peritus_product_runner::inspect_local_context(
+    match write_inspection(arguments) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            super::write_error(&error);
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn write_inspection(arguments: Inspection) -> Result<(), String> {
+    if matches!(arguments.section, Section::Complete) {
+        let output = peritus_product_runner::inspect_local_context(
+            &arguments.trace,
+            arguments.run,
+            arguments.workspace,
+            arguments.role,
+        ).map_err(|error| error.to_string())?;
+        return super::write_output(&output).map_err(|error| error.to_string());
+    }
+    let mut inspection = peritus_product_runner::open_local_context_inspection(
         &arguments.trace,
         arguments.run,
         arguments.workspace,
         arguments.role,
-    ) {
-        Ok(output) => {
-            super::write_output(&output).map_or_else(super::output_failure, |()| ExitCode::SUCCESS)
+    ).map_err(|error| error.to_string())?;
+    let output = match arguments.section {
+        Section::Summary => inspection.summary(),
+        Section::Sources => inspection.source_page(
+            usize::try_from(arguments.offset).map_err(|error| error.to_string())?,
+            arguments.maximum.unwrap_or(256),
+        ),
+        Section::Messages => inspection.message_page(
+            usize::try_from(arguments.offset).map_err(|error| error.to_string())?,
+            arguments.maximum.unwrap_or(16),
+        ),
+        Section::Lineage => inspection.lineage_page(
+            usize::try_from(arguments.offset).map_err(|error| error.to_string())?,
+            arguments.maximum.unwrap_or(256),
+        ),
+        Section::View | Section::Archive => {
+            let mut offset = arguments.offset;
+            let mut stdout = std::io::stdout().lock();
+            while let Some(chunk) = inspection.read_view(offset, arguments.maximum.unwrap_or(64 * 1024))
+                .map_err(|error| error.to_string())?
+            {
+                stdout.write_all(chunk.bytes()).map_err(|error| error.to_string())?;
+                offset = offset.checked_add(u64::try_from(chunk.bytes().len()).map_err(|error| error.to_string())?)
+                    .ok_or_else(|| "inspection archive offset overflow".to_owned())?;
+                if matches!(arguments.section, Section::View) { break; }
+            }
+            return stdout.flush().map_err(|error| error.to_string());
         }
-        Err(error) => {
-            super::write_error(&error.to_string());
-            ExitCode::FAILURE
-        }
-    }
+        Section::Complete => return Err("complete inspection was already handled".to_owned()),
+    }.map_err(|error| error.to_string())?;
+    super::write_output(&output).map_err(|error| error.to_string())
 }
 
 #[cfg(test)]

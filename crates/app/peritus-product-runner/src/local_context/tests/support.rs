@@ -250,6 +250,7 @@ pub(in crate::local_context) fn publish_legacy_v1(memory: &mut LocalMemory, mess
         render_policy,
         validation,
         view_binding: None,
+        inspection: None,
     };
     let bytes = record::encode(&manifest).expect("encode legacy manifest");
     assert!(!String::from_utf8_lossy(&bytes).contains("view_binding"));

@@ -45,6 +45,62 @@ impl WorkingStateArtifact {
     pub const fn bytes(self) -> u64 { self.bytes }
 }
 
+/// Authenticated fixed-root facts for a paged working snapshot.
+///
+/// This deliberately does not claim that descriptor or data pages have been read. It lets an
+/// inspection owner establish the exact state/source binding and publish a truthful resumable
+/// verification frontier without materializing the logical state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkingStateRootInspection {
+    revision: u64,
+    through_observation: u64,
+    active_entries: usize,
+    requirements: usize,
+    pending_operations: usize,
+    environment_files: usize,
+    retired_entries: usize,
+    descriptor_count: usize,
+    descriptor_page_count: usize,
+}
+
+impl WorkingStateRootInspection {
+    /// Exact working-state revision declared by the authenticated root.
+    #[must_use]
+    pub const fn revision(self) -> u64 { self.revision }
+
+    /// Exact source observation frontier declared by the authenticated root.
+    #[must_use]
+    pub const fn through_observation(self) -> u64 { self.through_observation }
+
+    /// Current nonretired entry count declared by the root.
+    #[must_use]
+    pub const fn active_entries(self) -> usize { self.active_entries }
+
+    /// Governing requirement count declared by the root.
+    #[must_use]
+    pub const fn requirements(self) -> usize { self.requirements }
+
+    /// Unresolved operation count declared by the root.
+    #[must_use]
+    pub const fn pending_operations(self) -> usize { self.pending_operations }
+
+    /// Current environment-file count declared by the root.
+    #[must_use]
+    pub const fn environment_files(self) -> usize { self.environment_files }
+
+    /// Immutable retired-entry count declared by the root.
+    #[must_use]
+    pub const fn retired_entries(self) -> usize { self.retired_entries }
+
+    /// Data-page descriptor count declared by the root.
+    #[must_use]
+    pub const fn descriptor_count(self) -> usize { self.descriptor_count }
+
+    /// Linked descriptor-page count declared by the root.
+    #[must_use]
+    pub const fn descriptor_page_count(self) -> usize { self.descriptor_page_count }
+}
+
 /// Failure while following a paged root through caller-owned artifact storage.
 #[derive(Debug)]
 pub enum WorkingStateReadError<E> {
@@ -834,6 +890,84 @@ pub fn decode_paged_working_state_with_history_from<E>(
     let (_, retired_entries) = partition_entries(&state.entries);
     let history = reusable_history(&retired_entries, &descriptors)?;
     Ok((state, history))
+}
+
+/// Inspects only the authenticated fixed PWP2 root and its exact source-index reference.
+///
+/// The returned counts are root declarations. Descriptor and data pages remain unverified until
+/// a caller follows their authenticated tail with a paged reader.
+///
+/// # Errors
+/// Rejects a malformed root, a different binding/source index, an observation-count conflict, or
+/// counts and descriptor geometry outside the canonical paged-state representation.
+pub fn inspect_paged_working_state_root(
+    root_bytes: &[u8],
+    observation_index: WorkingStateArtifact,
+    observation_count: u64,
+    expected: WorkingBinding,
+    maximum: WorkingLimits,
+) -> Result<WorkingStateRootInspection, WorkingCodecError> {
+    if !root_bytes.get(..4).is_some_and(|bytes| bytes == b"PWP2") {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    let mut root = reader(root_bytes, *b"PWP2")?;
+    let limits = super::state::read_limits(&mut root, maximum)?;
+    let binding = fields::read_binding(&mut root)?;
+    let candidate = Sha256Digest::new(root.read_fixed()?);
+    if !expected.same_lineage(binding) {
+        return Err(WorkingError::BindingMismatch.into());
+    }
+    let revision = root.read_u64()?;
+    let through_observation = root.read_u64()?;
+    if read_artifact(&mut root)? != observation_index
+        || through_observation != observation_count
+    {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    let active_entries = logical_usize(root.read_u64()?)?;
+    let requirements = logical_usize(root.read_u64()?)?;
+    let pending_operations = logical_usize(root.read_u64()?)?;
+    let environment_files = logical_usize(root.read_u64()?)?;
+    let retired_entries = logical_usize(root.read_u64()?)?;
+    let entry_pages = page_count(active_entries, ENTRY_PAGE_ITEMS)?;
+    let requirement_pages = page_count(requirements, PROTOCOL_PAGE_ITEMS)?;
+    let pending_pages = page_count(pending_operations, PROTOCOL_PAGE_ITEMS)?;
+    let file_pages = page_count(environment_files, ENVIRONMENT_PAGE_ITEMS)?;
+    let retired_pages = page_count(retired_entries, ENTRY_PAGE_ITEMS)?;
+    let expected_descriptors = entry_pages
+        .checked_add(requirement_pages)
+        .and_then(|count| count.checked_add(pending_pages))
+        .and_then(|count| count.checked_add(file_pages))
+        .and_then(|count| count.checked_add(retired_pages))
+        .ok_or(WorkingCodecError::InvalidValue)?;
+    let descriptor_count = logical_usize(root.read_u64()?)?;
+    let descriptor_page_count = logical_usize(root.read_u64()?)?;
+    let descriptor_tail = if root.read_option_tag()? {
+        Some(read_artifact(&mut root)?)
+    } else {
+        None
+    };
+    root.finish()?;
+    if descriptor_count != expected_descriptors
+        || descriptor_page_count != page_count(descriptor_count, DESCRIPTOR_PAGE_ITEMS)?
+        || descriptor_tail.is_some() != (descriptor_count != 0)
+    {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    // Exercise the same domain validation as full decoding without adopting observations or pages.
+    let environment = WorkingEnvironment::new(binding, candidate, Vec::new(), limits)?;
+    let _ = WorkingState::new(environment, limits)?;
+    Ok(WorkingStateRootInspection {
+        revision,
+        through_observation,
+        active_entries,
+        requirements,
+        pending_operations,
+        environment_files,
+        retired_entries,
+        descriptor_count,
+        descriptor_page_count,
+    })
 }
 
 fn decode_paged_root(

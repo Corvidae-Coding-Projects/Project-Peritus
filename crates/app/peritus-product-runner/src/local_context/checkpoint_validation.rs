@@ -5,7 +5,8 @@ use super::{
     memory::environment,
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        HOST_INDEX_CHECKPOINT_SCHEMA_VERSION, INDEXED_CHECKPOINT_SCHEMA_VERSION,
+        INSPECTION_INDEX_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
         PAGED_CHECKPOINT_SCHEMA_VERSION, PENDING_EFFECT_REFERENCE_SCHEMA_VERSION,
         PendingEffectIdentity, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest,
@@ -13,7 +14,10 @@ use super::{
     },
 };
 use peritus_agent::DeveloperLoopError;
-use peritus_context::working::{ObservationId, WorkingEntryStatus, WorkingLimits, WorkingState};
+use peritus_context::working::{
+    ObservationId, WorkingEntryStatus, WorkingLimits, WorkingState,
+    WorkingStateRootInspection,
+};
 
 pub(super) fn validate_schema_lineage(
     manifest: &CheckpointManifest,
@@ -34,16 +38,97 @@ pub(super) fn validate_schema_lineage(
         let digest =
             current.previous.ok_or_else(|| error("legacy checkpoint predecessor is missing"))?;
         let prior: CheckpointManifest = decode(&read(digest)?)?;
-        if prior.schema_version != LEGACY_CHECKPOINT_SCHEMA_VERSION {
-            return Err(error("checkpoint schema downgrade"));
-        }
-        if prior.scope != current.scope
-            || prior.generation.checked_add(1) != Some(current.generation)
-        {
-            return Err(error("legacy checkpoint predecessor mismatch"));
-        }
+        validate_predecessor(&current, &prior)?;
         current = prior;
     }
+}
+
+pub(super) fn validate_predecessor(
+    current: &CheckpointManifest,
+    prior: &CheckpointManifest,
+) -> Result<(), DeveloperLoopError> {
+    if prior.schema_version > current.schema_version {
+        return Err(error("checkpoint schema downgrade"));
+    }
+    if prior.scope != current.scope
+        || prior.generation.checked_add(1) != Some(current.generation)
+    {
+        return Err(error("checkpoint predecessor mismatch"));
+    }
+    Ok(())
+}
+
+/// Validates facts available from the accepted manifest and fixed working-state root only.
+/// Descriptor/data pages and semantic source relationships deliberately remain outside this gate.
+pub(super) fn validate_inspection_root(
+    manifest: &CheckpointManifest,
+    validation: &ViewValidation,
+    inspection: &super::record::CheckpointInspectionRoot,
+    state: WorkingStateRootInspection,
+) -> Result<(), DeveloperLoopError> {
+    let message_pages = inspection.message_count
+        .checked_add(15)
+        .map(|count| count / 16)
+        .ok_or_else(|| error("inspection message page count overflow"))?;
+    let view_chunks = manifest.view.bytes
+        .checked_add((64 * 1024) - 1)
+        .map(|count| count / (64 * 1024))
+        .ok_or_else(|| error("inspection view chunk count overflow"))?;
+    let selected_are_canonical = validation.selected_observations
+        .windows(2)
+        .all(|pair| pair[0] < pair[1]);
+    let selected_in_bounds = validation.selected_observations
+        .iter()
+        .all(|sequence| *sequence > 0 && *sequence <= inspection.source_count);
+    let entry_count = state.active_entries().checked_add(state.retired_entries())
+        .ok_or_else(|| error("inspection state entry count overflow"))?;
+    let frontier_counts_match = validation.working_selection_frontier.as_ref().is_none_or(|frontier| {
+        frontier.schema_version == WORKING_SELECTION_FRONTIER_SCHEMA_VERSION
+            && frontier.state_revision == state.revision()
+            && frontier.available_tokens <= validation.max_input_tokens
+            && frontier.required_digest != [0; 32]
+            && frontier.required_entries > 0
+            && frontier.required_entries <= state.active_entries()
+            && frontier.referenced_entries.len() <= frontier.required_entries
+            && frontier.referenced_entries.len().checked_add(validation.omitted_entries)
+                == Some(state.active_entries())
+            && frontier.referenced_entries.windows(2).all(|pair| pair[0] < pair[1])
+    });
+    let predecessor_shape = if manifest.generation == 1 {
+        manifest.previous.is_none() && inspection.previous_manifest.is_none()
+    } else {
+        manifest.previous.is_some()
+            && inspection.previous_manifest.is_some_and(|prior| {
+                manifest.previous == Some(prior.digest.into_bytes())
+            })
+    };
+    if manifest.schema_version != CHECKPOINT_SCHEMA_VERSION
+        || inspection.schema_version != INSPECTION_INDEX_SCHEMA_VERSION
+        || usize::try_from(inspection.source_count).is_err()
+        || usize::try_from(inspection.message_count).is_err()
+        || inspection.source_count != state.through_observation()
+        || validation.state_revision != state.revision()
+        || validation.through_observation != inspection.source_count
+        || validation.pending_operations != state.pending_operations()
+        || validation.estimated_input_tokens > validation.max_input_tokens
+        || validation.max_input_tokens == 0
+        || validation.input_tokens_saved
+            != validation.uncompacted_input_tokens.saturating_sub(validation.estimated_input_tokens)
+        || validation.omitted_entries > entry_count
+        || !selected_are_canonical
+        || !selected_in_bounds
+        || !frontier_counts_match
+        || validation.tool_policy.is_none()
+        || inspection.message_page_count != message_pages
+        || inspection.message_index_tail.is_some() != (message_pages != 0)
+        || inspection.last_message_page_digest.is_some() != (message_pages != 0)
+        || inspection.view_chunk_count != view_chunks
+        || inspection.view_index_tail.is_some() != (view_chunks != 0)
+        || !predecessor_shape
+    {
+        return Err(error("checkpoint inspection root conflicts with its accepted state"));
+    }
+    Ok(())
 }
 
 pub(super) fn validate_checkpoint(
@@ -117,7 +202,9 @@ pub(super) fn validate_checkpoint(
     let segment_valid = validation.segment_continuation.as_ref().is_none_or(|segment| {
         let common = matches!(
             schema_version,
-            PAGED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+            PAGED_CHECKPOINT_SCHEMA_VERSION
+                | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
+                | CHECKPOINT_SCHEMA_VERSION
         )
             && segment.invocation == transcript.invocation
             && segment.request_prefix == transcript.request_prefix
@@ -175,6 +262,7 @@ pub(super) fn validate_checkpoint(
             SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
             | INDEXED_CHECKPOINT_SCHEMA_VERSION
             | PAGED_CHECKPOINT_SCHEMA_VERSION
+            | HOST_INDEX_CHECKPOINT_SCHEMA_VERSION
             | CHECKPOINT_SCHEMA_VERSION => {
                 validation.tool_policy.is_none()
             }
