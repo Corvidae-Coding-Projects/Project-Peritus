@@ -7,7 +7,7 @@ use super::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
         INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
-        SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
+        PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
         TranscriptManifest, ViewValidation, decode,
     },
 };
@@ -67,9 +67,15 @@ pub(super) fn validate_checkpoint(
     let selected_exist = validation
         .selected_observations
         .iter()
-        .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
+        .all(|sequence| {
+            *sequence > 0
+                && u64::try_from(sources.len()).is_ok_and(|count| *sequence <= count)
+        });
     let segment_valid = validation.segment_continuation.as_ref().is_none_or(|segment| {
-        let common = schema_version == CHECKPOINT_SCHEMA_VERSION
+        let common = matches!(
+            schema_version,
+            PAGED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        )
             && segment.invocation == transcript.invocation
             && segment.request_prefix == transcript.request_prefix
             && segment.segment_sequence > 0
@@ -124,6 +130,7 @@ pub(super) fn validate_checkpoint(
             LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
             SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
             | INDEXED_CHECKPOINT_SCHEMA_VERSION
+            | PAGED_CHECKPOINT_SCHEMA_VERSION
             | CHECKPOINT_SCHEMA_VERSION => {
                 validation.tool_policy.is_none()
             }
@@ -141,7 +148,9 @@ pub(super) fn validate_index(
     transcript: &TranscriptManifest,
     limits: WorkingLimits,
 ) -> Result<(), DeveloperLoopError> {
-    if sources.len() as u64 != state.through_observation() {
+    let source_count =
+        u64::try_from(sources.len()).map_err(|_| error("source index size overflow"))?;
+    if source_count != state.through_observation() {
         return Err(error("source index size mismatch"));
     }
     for (index, source) in sources.iter().enumerate() {
@@ -219,7 +228,11 @@ pub(super) fn validate_transcript(
     }
     for pending in &transcript.pending {
         let source = archived(sources, pending.source)?;
-        if pending.invocation != source.invocation {
+        if pending.invocation != source.invocation
+            || pending.source_artifact_sha256.is_some_and(|digest| {
+                digest != source.artifact.digest.into_bytes()
+            })
+        {
             return Err(error("pending projection invocation mismatch"));
         }
         let expected_key = if let Some(handle) = &pending.handle {

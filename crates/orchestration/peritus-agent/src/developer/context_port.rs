@@ -260,6 +260,15 @@ impl DeveloperContextResume {
 pub enum DeveloperContextEvent<'a> {
     /// Exact visible message, including proposed calls, result views, and host corrections.
     Message(&'a Message),
+    /// Exact tool effect whose permission admission completed and whose executor is about to be
+    /// entered. Persistence of this boundary makes a missing result an unresolved effect; it does
+    /// not claim that the executor accepted or completed the effect.
+    ToolEffectUncertain {
+        /// Exact provider proposal about to cross the executor boundary.
+        call: &'a CompletedToolCall,
+        /// One-based contiguous tool identity within the complete logical invocation.
+        sequence: u32,
+    },
     /// Complete tool output, after trace persistence and before model-visible limiting.
     ToolObservation {
         /// Associated proposal; its identifier is scoped to the current invocation.

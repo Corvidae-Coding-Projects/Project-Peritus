@@ -4,6 +4,7 @@ use super::super::{
     checkpoint_validation, error,
     record::{
         CHECKPOINT_SCHEMA_VERSION, CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION,
+        CONTEXT_UPDATE_FILE_PAGE_SCHEMA_VERSION,
         CONTEXT_UPDATE_PAGE_SCHEMA_VERSION, CONTEXT_UPDATE_REDUCER_SCHEMA_VERSION,
         CONTEXT_UPDATE_SCHEMA_VERSION, CheckpointManifest, ContextUpdateEntryPage,
         ContextUpdateEntryIdentity, ContextUpdateEntryStatus, ContextUpdateRecord,
@@ -187,8 +188,8 @@ impl LocalMemory {
             store_context_reducer_pages(&self.store, &self.state, events, source_index)?;
         let reducer_count = u64::try_from(events.len())
             .map_err(|_| error("context update reducer count overflow"))?;
-        let transcript_before = transcript_digest(&self.transcript)?;
-        let transcript_after = transcript_digest(transcript)?;
+        let transcript_before = observed_file_digest(&self.transcript.files)?;
+        let transcript_after = observed_file_digest(&transcript.files)?;
         let (transcript_head, transcript_change_count) =
             store_context_transcript_pages(
                 &self.store,
@@ -501,7 +502,7 @@ fn store_context_transcript_pages(
     before: &TranscriptManifest,
     after: &TranscriptManifest,
 ) -> Result<(Option<StoredArtifact>, u64), DeveloperLoopError> {
-    let mut pages = plan_context_transcript_pages(before, after)?;
+        let mut pages = plan_context_transcript_pages(before, after)?;
     let change_count = if let Some(page) = pages.last() {
         let page_count = page
             .files_removed
@@ -578,16 +579,16 @@ fn plan_context_transcript_pages(
         if files_removed.is_empty() && files_added.is_empty() {
             continue;
         }
-        let before_digest = transcript_digest(&current)?;
+        let before_digest = observed_file_digest(&current.files)?;
         apply_context_file_changes(&mut current, &files_removed, &files_added)?;
-        let after_digest = transcript_digest(&current)?;
+        let after_digest = observed_file_digest(&current.files)?;
         let count = files_removed
             .len()
             .checked_add(files_added.len())
             .and_then(|count| u64::try_from(count).ok())
             .ok_or_else(|| error("context update transcript change count overflow"))?;
         pages.push(ContextUpdateTranscriptPage {
-            schema_version: CONTEXT_UPDATE_PAGE_SCHEMA_VERSION,
+            schema_version: CONTEXT_UPDATE_FILE_PAGE_SCHEMA_VERSION,
             next: None,
             first_change,
             before: before_digest,
@@ -609,22 +610,46 @@ pub(super) fn apply_context_transcript_page(
     transcript: &mut TranscriptManifest,
     page: &ContextUpdateTranscriptPage,
     expected_first_change: u64,
+    context_schema_version: u16,
 ) -> Result<u64, DeveloperLoopError> {
     let count = page
         .files_removed
         .len()
         .checked_add(page.files_added.len())
         .ok_or_else(|| error("context update transcript change count overflow"))?;
-    if page.schema_version != CONTEXT_UPDATE_PAGE_SCHEMA_VERSION
+    let expected_page_schema = if context_schema_version
+        == super::super::record::TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION
+    {
+        CONTEXT_UPDATE_PAGE_SCHEMA_VERSION
+    } else if context_schema_version == CONTEXT_UPDATE_SCHEMA_VERSION {
+        CONTEXT_UPDATE_FILE_PAGE_SCHEMA_VERSION
+    } else {
+        return Err(error("unsupported context update file index"));
+    };
+    let before = if context_schema_version
+        == super::super::record::TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION
+    {
+        transcript_digest(transcript)?
+    } else {
+        observed_file_digest(&transcript.files)?
+    };
+    if page.schema_version != expected_page_schema
         || page.first_change != expected_first_change
         || count == 0
         || count > CONTEXT_UPDATE_PAGE_ENTRIES
-        || transcript_digest(transcript)? != page.before
+        || before != page.before
     {
         return Err(error("invalid context update transcript page"));
     }
     apply_context_file_changes(transcript, &page.files_removed, &page.files_added)?;
-    if transcript_digest(transcript)? != page.after {
+    let after = if context_schema_version
+        == super::super::record::TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION
+    {
+        transcript_digest(transcript)?
+    } else {
+        observed_file_digest(&transcript.files)?
+    };
+    if after != page.after {
         return Err(error("context update transcript page digest mismatch"));
     }
     expected_first_change
@@ -684,5 +709,28 @@ pub(super) fn transcript_digest(
     writer
         .flush()
         .map_err(|_| error("hash context update transcript"))?;
+    Ok(writer.0.finalize().into())
+}
+
+pub(super) fn observed_file_digest(
+    files: &[String],
+) -> Result<[u8; 32], DeveloperLoopError> {
+    struct DigestWriter(Sha256);
+    impl std::io::Write for DigestWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.update(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = DigestWriter(Sha256::new());
+    serde_json::to_writer(&mut writer, files)
+        .map_err(|_| error("hash observed-file context index"))?;
+    writer
+        .flush()
+        .map_err(|_| error("hash observed-file context index"))?;
     Ok(writer.0.finalize().into())
 }

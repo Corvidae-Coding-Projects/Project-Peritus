@@ -399,6 +399,7 @@ impl LocalMemory {
                 pending.invocation == segment.invocation
                     && pending.call == identity
                     && pending.handle.is_none()
+                    && pending.state == super::record::PendingState::Proposed
             });
             let observed = self.sources.iter().any(|source| {
                 source.invocation == segment.invocation

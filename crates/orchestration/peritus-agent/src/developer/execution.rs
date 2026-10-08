@@ -583,6 +583,10 @@ async fn execute_tool_batch(
                     arguments: &call.arguments().to_wire_string(),
                 })?;
             }
+            context.observe(DeveloperContextEvent::ToolEffectUncertain {
+                call: &call,
+                sequence,
+            })?;
             let observation = tools.execute_async(&call).await?;
             if request.cancellation.is_cancelled() {
                 return Err(DeveloperLoopError::Cancelled);

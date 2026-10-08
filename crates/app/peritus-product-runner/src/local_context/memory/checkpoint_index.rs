@@ -4,8 +4,10 @@ use super::super::{
     checkpoint_validation,
     error,
     record::{
-        ArchiveKind, ArchivedObservation, INDEX_PAGE_SCHEMA_VERSION, MemoryRecord,
-        PendingDescriptor, SourceIndexPage, TranscriptDeltaPage, TranscriptManifest, decode, encode,
+        ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, HOST_INDEX_SCHEMA_VERSION,
+        HostIndexRoot, INDEX_PAGE_SCHEMA_VERSION, MemoryRecord, ObservedFileIndexPage,
+        PendingDescriptor, PendingIndexPage, SourceIndexPage, TranscriptDeltaPage,
+        TranscriptManifest, decode, encode,
     },
     storage::StoredArtifact,
 };
@@ -21,9 +23,18 @@ const SOURCE_PAGE_ENTRIES: usize = 255;
 const LEGACY_SOURCE_PAGE_ENTRIES: usize = 256;
 const TRANSCRIPT_PAGE_ENTRIES: usize = 256;
 
-pub(in crate::local_context) fn read_complete_checkpoint_indexes(
-    source: StoredArtifact,
+struct StoredHostIndex {
+    root: StoredArtifact,
     transcript: StoredArtifact,
+    pending: StoredArtifact,
+    observed_files: StoredArtifact,
+    changed: bool,
+}
+
+pub(in crate::local_context) fn read_complete_checkpoint_indexes(
+    schema_version: u16,
+    source: StoredArtifact,
+    host_index: StoredArtifact,
     mut read: impl FnMut(StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError>,
 ) -> Result<
     (
@@ -34,13 +45,17 @@ pub(in crate::local_context) fn read_complete_checkpoint_indexes(
     DeveloperLoopError,
 > {
     let sources = read_source_chain(source, None, 0, &mut read)?;
-    let (transcript, invocations) = read_transcript_chain(
-        transcript,
-        None,
-        TranscriptManifest::default(),
-        BTreeMap::new(),
-        &mut read,
-    )?;
+    let (transcript, invocations) = if schema_version == CHECKPOINT_SCHEMA_VERSION {
+        read_host_index_chain(host_index, &mut read)?
+    } else {
+        read_transcript_chain(
+            host_index,
+            None,
+            TranscriptManifest::default(),
+            BTreeMap::new(),
+            &mut read,
+        )?
+    };
     validate_transcript_invocation_frontier(&invocations, &transcript)?;
     if sources
         .iter()
@@ -96,36 +111,79 @@ impl LocalMemory {
             source_changed = true;
         }
 
-        let (transcript_tail, transcript_changed) = self.store_transcript_pages()?;
+        let stored = self.store_host_index_pages()?;
         let source = source_tail.ok_or_else(|| error("source index tail is missing"))?;
-        let transcript =
-            transcript_tail.ok_or_else(|| error("transcript index tail is missing"))?;
-        if source_changed || transcript_changed {
+        if source_changed || stored.changed {
             self.commit(
-                &MemoryRecord::CheckpointIndex { source, transcript },
-                &[source.digest, transcript.digest],
+                &MemoryRecord::CheckpointHostIndex { source, root: stored.root },
+                &[source.digest, stored.root.digest],
             )?;
         }
         self.source_index_tail = Some(source);
-        self.transcript_index_tail = Some(transcript);
-        self.indexed_source_count = self.sources.len() as u64;
-        self.indexed_transcript.clone_from(&self.transcript);
+        self.adopt_stored_host_index(&stored);
+        self.indexed_source_count = u64::try_from(self.sources.len())
+            .map_err(|_| error("indexed source count overflow"))?;
         self.indexed_invocation_count = self.transcript.invocation;
-        Ok((source, transcript))
+        Ok((source, stored.root))
     }
 
     pub(super) fn publish_transcript_index(&mut self) -> Result<(), DeveloperLoopError> {
-        let (tail, changed) = self.store_transcript_pages()?;
-        let Some(transcript) = tail else {
-            return Err(error("transcript index tail is missing"));
-        };
-        if changed {
-            self.commit(&MemoryRecord::TranscriptIndex { transcript }, &[transcript.digest])?;
+        let stored = self.store_host_index_pages()?;
+        if stored.changed {
+            self.commit(&MemoryRecord::HostIndex { root: stored.root }, &[stored.root.digest])?;
         }
-        self.transcript_index_tail = Some(transcript);
-        self.indexed_transcript.clone_from(&self.transcript);
+        self.adopt_stored_host_index(&stored);
         self.indexed_invocation_count = self.transcript.invocation;
         Ok(())
+    }
+
+    fn store_host_index_pages(&self) -> Result<StoredHostIndex, DeveloperLoopError> {
+        let (transcript, transcript_changed) = self.store_transcript_pages()?;
+        let (pending, pending_changed) = self.store_pending_pages()?;
+        let (observed_files, files_changed) = self.store_observed_file_pages()?;
+        let transcript = transcript.ok_or_else(|| error("transcript index tail is missing"))?;
+        let pending = pending.ok_or_else(|| error("pending index tail is missing"))?;
+        let observed_files =
+            observed_files.ok_or_else(|| error("observed-file index tail is missing"))?;
+        let projection = prompt_projection(&self.transcript);
+        let root_record = HostIndexRoot {
+            schema_version: HOST_INDEX_SCHEMA_VERSION,
+            invocation: projection.invocation,
+            request_prefix: projection.request_prefix.clone(),
+            transcript,
+            pending,
+            observed_files,
+            message_count: u64::try_from(projection.message_ids.len())
+                .map_err(|_| error("transcript message count overflow"))?,
+            pending_count: u64::try_from(self.transcript.pending.len())
+                .map_err(|_| error("pending index count overflow"))?,
+            observed_file_count: u64::try_from(self.transcript.files.len())
+                .map_err(|_| error("observed-file index count overflow"))?,
+        };
+        let root = self.store.store_bundle(
+            &encode(&root_record)?,
+            &[transcript, pending, observed_files],
+        )?;
+        Ok(StoredHostIndex {
+            root,
+            transcript,
+            pending,
+            observed_files,
+            changed: transcript_changed
+                || pending_changed
+                || files_changed
+                || self.pending_index_tail.is_none()
+                || self.observed_file_index_tail.is_none(),
+        })
+    }
+
+    fn adopt_stored_host_index(&mut self, stored: &StoredHostIndex) {
+        self.transcript_index_tail = Some(stored.transcript);
+        self.pending_index_tail = Some(stored.pending);
+        self.observed_file_index_tail = Some(stored.observed_files);
+        self.indexed_transcript = prompt_projection(&self.transcript);
+        self.indexed_pending.clone_from(&self.transcript.pending);
+        self.indexed_observed_files.clone_from(&self.transcript.files);
     }
 
     fn store_transcript_pages(
@@ -139,10 +197,11 @@ impl LocalMemory {
             self.indexed_invocation_count,
             &current,
         )?;
+        let target = prompt_projection(&self.transcript);
         validate_invocation_frontier(
             &self.invocations,
-            self.transcript.invocation,
-            &self.transcript,
+            target.invocation,
+            &target,
         )?;
         for (&invocation, request_prefix) in self.invocations.range((
             std::ops::Bound::Excluded(self.indexed_invocation_count),
@@ -160,7 +219,7 @@ impl LocalMemory {
             current = marker;
             changed = true;
         }
-        while let Some(next) = next_transcript_step(&current, &self.transcript)? {
+        while let Some(next) = next_transcript_step(&current, &target)? {
             let page = transcript_delta(tail, &current, &next)?;
             let children = tail.into_iter().collect::<Vec<_>>();
             let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
@@ -177,14 +236,60 @@ impl LocalMemory {
         Ok((tail, changed))
     }
 
+    fn store_pending_pages(
+        &self,
+    ) -> Result<(Option<StoredArtifact>, bool), DeveloperLoopError> {
+        let mut tail = self.pending_index_tail;
+        let mut current = self.indexed_pending.clone();
+        let mut changed = false;
+        while let Some(next) = next_pending_step(&current, &self.transcript.pending)? {
+            let page = pending_delta(tail, &current, &next)?;
+            let children = tail.into_iter().collect::<Vec<_>>();
+            let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
+            tail = Some(artifact);
+            current = next;
+            changed = true;
+        }
+        if tail.is_none() {
+            let page = pending_delta(None, &current, &current)?;
+            tail = Some(self.store.store_bundle(&encode(&page)?, &[])?);
+            changed = true;
+        }
+        Ok((tail, changed))
+    }
+
+    fn store_observed_file_pages(
+        &self,
+    ) -> Result<(Option<StoredArtifact>, bool), DeveloperLoopError> {
+        let mut tail = self.observed_file_index_tail;
+        let mut current = self.indexed_observed_files.clone();
+        let mut changed = false;
+        while let Some(next) = next_observed_file_step(&current, &self.transcript.files)? {
+            let page = observed_file_delta(tail, &current, &next)?;
+            let children = tail.into_iter().collect::<Vec<_>>();
+            let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
+            tail = Some(artifact);
+            current = next;
+            changed = true;
+        }
+        if tail.is_none() {
+            let page = observed_file_delta(None, &current, &current)?;
+            tail = Some(self.store.store_bundle(&encode(&page)?, &[])?);
+            changed = true;
+        }
+        Ok((tail, changed))
+    }
+
     pub(super) fn restore_checkpoint_indexes(
         &mut self,
+        schema_version: u16,
         source: StoredArtifact,
-        transcript: StoredArtifact,
+        host_index: StoredArtifact,
     ) -> Result<(), DeveloperLoopError> {
         let (sources, restored_transcript, invocations) = read_complete_checkpoint_indexes(
+            schema_version,
             source,
-            transcript,
+            host_index,
             |artifact| self.store.read(artifact),
         )?;
         let source_count = u64::try_from(sources.len())
@@ -192,9 +297,23 @@ impl LocalMemory {
         self.sources = sources;
         self.transcript = restored_transcript.clone();
         self.source_index_tail = Some(source);
-        self.transcript_index_tail = Some(transcript);
         self.indexed_source_count = source_count;
-        self.indexed_transcript = restored_transcript;
+        if schema_version == CHECKPOINT_SCHEMA_VERSION {
+            let root: HostIndexRoot = decode(&self.store.read(host_index)?)?;
+            self.transcript_index_tail = Some(root.transcript);
+            self.pending_index_tail = Some(root.pending);
+            self.observed_file_index_tail = Some(root.observed_files);
+            self.indexed_transcript = prompt_projection(&restored_transcript);
+            self.indexed_pending.clone_from(&restored_transcript.pending);
+            self.indexed_observed_files.clone_from(&restored_transcript.files);
+        } else {
+            self.transcript_index_tail = Some(host_index);
+            self.pending_index_tail = None;
+            self.observed_file_index_tail = None;
+            self.indexed_transcript = restored_transcript;
+            self.indexed_pending.clear();
+            self.indexed_observed_files.clear();
+        }
         self.invocation_ranges = invocation_ranges(&invocations);
         self.invocations = invocations;
         self.indexed_invocation_count = self.transcript.invocation;
@@ -207,6 +326,9 @@ impl LocalMemory {
         source: StoredArtifact,
         transcript: StoredArtifact,
     ) -> Result<(), DeveloperLoopError> {
+        if self.pending_index_tail.is_some() || self.observed_file_index_tail.is_some() {
+            return Err(error("combined checkpoint index followed a separated host index"));
+        }
         let indexed_sources = read_source_chain(
             source,
             self.source_index_tail,
@@ -242,10 +364,71 @@ impl LocalMemory {
         Ok(())
     }
 
+    pub(super) fn replay_checkpoint_host_index(
+        &mut self,
+        source: StoredArtifact,
+        root: StoredArtifact,
+    ) -> Result<(), DeveloperLoopError> {
+        let indexed_sources = read_source_chain(
+            source,
+            self.source_index_tail,
+            self.indexed_source_count,
+            &mut |artifact| self.store.read(artifact),
+        )?;
+        let start = usize::try_from(self.indexed_source_count)
+            .map_err(|_| error("indexed source count overflow"))?;
+        let end = start
+            .checked_add(indexed_sources.len())
+            .ok_or_else(|| error("indexed source range overflow"))?;
+        if self.sources.get(start..end) != Some(indexed_sources.as_slice()) {
+            return Err(error("checkpoint source page differs from replayed observations"));
+        }
+        self.replay_host_index(root)?;
+        self.source_index_tail = Some(source);
+        self.indexed_source_count =
+            u64::try_from(end).map_err(|_| error("indexed source count overflow"))?;
+        Ok(())
+    }
+
+    pub(super) fn replay_host_index(
+        &mut self,
+        root: StoredArtifact,
+    ) -> Result<(), DeveloperLoopError> {
+        let (mut transcript, pending, files, root_record, indexed_invocation_count) =
+            read_host_index_extension(
+                root,
+                self.transcript_index_tail,
+                self.pending_index_tail,
+                self.observed_file_index_tail,
+                self.indexed_transcript.clone(),
+                self.indexed_pending.clone(),
+                self.indexed_observed_files.clone(),
+                self.indexed_invocation_count,
+                &self.invocations,
+                &mut |artifact| self.store.read(artifact),
+            )?;
+        transcript.pending.clone_from(&pending);
+        transcript.files.clone_from(&files);
+        if transcript != self.transcript || indexed_invocation_count != self.transcript.invocation {
+            return Err(error("host index differs from replayed projection"));
+        }
+        self.transcript_index_tail = Some(root_record.transcript);
+        self.pending_index_tail = Some(root_record.pending);
+        self.observed_file_index_tail = Some(root_record.observed_files);
+        self.indexed_transcript = prompt_projection(&transcript);
+        self.indexed_pending = pending;
+        self.indexed_observed_files = files;
+        self.indexed_invocation_count = indexed_invocation_count;
+        Ok(())
+    }
+
     pub(super) fn replay_transcript_index(
         &mut self,
         transcript: StoredArtifact,
     ) -> Result<(), DeveloperLoopError> {
+        if self.pending_index_tail.is_some() || self.observed_file_index_tail.is_some() {
+            return Err(error("combined transcript index followed a separated host index"));
+        }
         let (restored, indexed_invocation_count) = read_transcript_extension(
             transcript,
             self.transcript_index_tail,
@@ -666,6 +849,371 @@ fn next_transcript_step(
         return Ok(Some(next));
     }
     Err(error("transcript page plan cannot reach the exact projection"))
+}
+
+fn prompt_projection(transcript: &TranscriptManifest) -> TranscriptManifest {
+    let mut projection = transcript.clone();
+    projection.pending.clear();
+    projection.files.clear();
+    projection
+}
+
+fn next_pending_step(
+    before: &[PendingDescriptor],
+    after: &[PendingDescriptor],
+) -> Result<Option<Vec<PendingDescriptor>>, DeveloperLoopError> {
+    if before == after {
+        return Ok(None);
+    }
+    let after_index = after
+        .iter()
+        .map(|value| (value.key, value))
+        .collect::<BTreeMap<_, _>>();
+    let removals = before
+        .iter()
+        .filter(|value| !after_index.contains_key(&value.key))
+        .map(|value| value.key)
+        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .collect::<Vec<_>>();
+    if !removals.is_empty() {
+        return Ok(Some(
+            before
+                .iter()
+                .filter(|value| !removals.contains(&value.key))
+                .cloned()
+                .collect(),
+        ));
+    }
+    let before_index = before
+        .iter()
+        .map(|value| (value.key, value))
+        .collect::<BTreeMap<_, _>>();
+    let upserts = after
+        .iter()
+        .filter(|value| before_index.get(&value.key).is_none_or(|old| *old != *value))
+        .cloned()
+        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .collect::<Vec<_>>();
+    if upserts.is_empty() {
+        return Err(error("pending page plan cannot reach the exact index"));
+    }
+    let replacements = upserts
+        .iter()
+        .map(|value| (value.key, value.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let mut next = before
+        .iter()
+        .filter(|value| !replacements.contains_key(&value.key))
+        .cloned()
+        .collect::<Vec<_>>();
+    next.extend(replacements.into_values());
+    next.sort_by_key(|value| value.key);
+    Ok(Some(next))
+}
+
+fn pending_delta(
+    previous: Option<StoredArtifact>,
+    before: &[PendingDescriptor],
+    after: &[PendingDescriptor],
+) -> Result<PendingIndexPage, DeveloperLoopError> {
+    let old = before.iter().map(|value| (value.key, value)).collect::<BTreeMap<_, _>>();
+    let new = after.iter().map(|value| (value.key, value)).collect::<BTreeMap<_, _>>();
+    Ok(PendingIndexPage {
+        schema_version: INDEX_PAGE_SCHEMA_VERSION,
+        previous,
+        before: index_digest(before, "hash pending index")?,
+        after: index_digest(after, "hash pending index")?,
+        upserts: new
+            .iter()
+            .filter(|(key, value)| old.get(key).is_none_or(|prior| *prior != *value))
+            .map(|(_, value)| (*value).clone())
+            .collect(),
+        removed: old.keys().filter(|key| !new.contains_key(key)).copied().collect(),
+    })
+}
+
+fn next_observed_file_step(
+    before: &[String],
+    after: &[String],
+) -> Result<Option<Vec<String>>, DeveloperLoopError> {
+    if before == after {
+        return Ok(None);
+    }
+    let after_set = after.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    let removals = before
+        .iter()
+        .filter(|path| !after_set.contains(path.as_str()))
+        .cloned()
+        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .collect::<Vec<_>>();
+    if !removals.is_empty() {
+        return Ok(Some(
+            before.iter().filter(|path| !removals.contains(path)).cloned().collect(),
+        ));
+    }
+    let before_set = before.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    let additions = after
+        .iter()
+        .filter(|path| !before_set.contains(path.as_str()))
+        .cloned()
+        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .collect::<Vec<_>>();
+    if additions.is_empty() {
+        return Err(error("observed-file page plan cannot reach the exact index"));
+    }
+    let mut next = before.to_vec();
+    next.extend(additions);
+    next.sort();
+    Ok(Some(next))
+}
+
+fn observed_file_delta(
+    previous: Option<StoredArtifact>,
+    before: &[String],
+    after: &[String],
+) -> Result<ObservedFileIndexPage, DeveloperLoopError> {
+    let old = before.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    let new = after.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    Ok(ObservedFileIndexPage {
+        schema_version: INDEX_PAGE_SCHEMA_VERSION,
+        previous,
+        before: index_digest(before, "hash observed-file index")?,
+        after: index_digest(after, "hash observed-file index")?,
+        added: new.difference(&old).map(|value| (*value).to_owned()).collect(),
+        removed: old.difference(&new).map(|value| (*value).to_owned()).collect(),
+    })
+}
+
+fn read_host_index_chain(
+    root_artifact: StoredArtifact,
+    read: &mut impl FnMut(StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError>,
+) -> Result<(TranscriptManifest, BTreeMap<u64, String>), DeveloperLoopError> {
+    let root: HostIndexRoot = decode(&read(root_artifact)?)?;
+    let (mut transcript, invocations) = read_transcript_chain(
+        root.transcript,
+        None,
+        TranscriptManifest::default(),
+        BTreeMap::new(),
+        read,
+    )?;
+    if !transcript.pending.is_empty() || !transcript.files.is_empty() {
+        return Err(error("separated prompt transcript contains host indexes"));
+    }
+    let pending = read_pending_chain(root.pending, None, Vec::new(), read)?;
+    let files = read_observed_file_chain(root.observed_files, None, Vec::new(), read)?;
+    validate_host_index_root(&root, &transcript, &pending, &files)?;
+    transcript.pending = pending;
+    transcript.files = files;
+    Ok((transcript, invocations))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn read_host_index_extension(
+    root_artifact: StoredArtifact,
+    transcript_stop: Option<StoredArtifact>,
+    pending_stop: Option<StoredArtifact>,
+    files_stop: Option<StoredArtifact>,
+    transcript: TranscriptManifest,
+    pending: Vec<PendingDescriptor>,
+    files: Vec<String>,
+    invocation_count: u64,
+    invocations: &BTreeMap<u64, String>,
+    read: &mut impl FnMut(StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError>,
+) -> Result<
+    (TranscriptManifest, Vec<PendingDescriptor>, Vec<String>, HostIndexRoot, u64),
+    DeveloperLoopError,
+> {
+    let root: HostIndexRoot = decode(&read(root_artifact)?)?;
+    let (transcript, invocation_count) = read_transcript_extension(
+        root.transcript,
+        transcript_stop,
+        transcript,
+        invocation_count,
+        invocations,
+        read,
+    )?;
+    if !transcript.pending.is_empty() || !transcript.files.is_empty() {
+        return Err(error("separated prompt transcript contains host indexes"));
+    }
+    let pending = read_pending_chain(root.pending, pending_stop, pending, read)?;
+    let files = read_observed_file_chain(root.observed_files, files_stop, files, read)?;
+    validate_host_index_root(&root, &transcript, &pending, &files)?;
+    Ok((transcript, pending, files, root, invocation_count))
+}
+
+fn validate_host_index_root(
+    root: &HostIndexRoot,
+    transcript: &TranscriptManifest,
+    pending: &[PendingDescriptor],
+    files: &[String],
+) -> Result<(), DeveloperLoopError> {
+    let messages = u64::try_from(transcript.message_ids.len())
+        .map_err(|_| error("transcript message count overflow"))?;
+    let pending_count =
+        u64::try_from(pending.len()).map_err(|_| error("pending index count overflow"))?;
+    let file_count =
+        u64::try_from(files.len()).map_err(|_| error("observed-file index count overflow"))?;
+    if root.schema_version != HOST_INDEX_SCHEMA_VERSION
+        || root.invocation != transcript.invocation
+        || root.request_prefix != transcript.request_prefix
+        || root.message_count != messages
+        || root.pending_count != pending_count
+        || root.observed_file_count != file_count
+    {
+        return Err(error("host index root identity or count mismatch"));
+    }
+    Ok(())
+}
+
+fn read_pending_chain(
+    tail: StoredArtifact,
+    stop: Option<StoredArtifact>,
+    mut pending: Vec<PendingDescriptor>,
+    read: &mut impl FnMut(StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError>,
+) -> Result<Vec<PendingDescriptor>, DeveloperLoopError> {
+    let mut pages = Vec::new();
+    let mut current = Some(tail);
+    let mut seen = BTreeSet::new();
+    while current != stop {
+        let artifact = current.ok_or_else(|| error("pending page chain is truncated"))?;
+        if !seen.insert(artifact.digest) {
+            return Err(error("pending page chain contains a cycle"));
+        }
+        let page: PendingIndexPage = decode(&read(artifact)?)?;
+        if page.schema_version != INDEX_PAGE_SCHEMA_VERSION
+            || page.upserts.len() > TRANSCRIPT_PAGE_ENTRIES
+            || page.removed.len() > TRANSCRIPT_PAGE_ENTRIES
+            || (page.before == page.after && page.previous.is_some())
+        {
+            return Err(error("unsupported pending page schema"));
+        }
+        current = page.previous;
+        pages.push(page);
+    }
+    pages.reverse();
+    for page in pages {
+        apply_pending_page(&mut pending, &page)?;
+    }
+    Ok(pending)
+}
+
+fn apply_pending_page(
+    pending: &mut Vec<PendingDescriptor>,
+    page: &PendingIndexPage,
+) -> Result<(), DeveloperLoopError> {
+    if index_digest(pending, "hash pending index")? != page.before
+        || page.removed.windows(2).any(|pair| pair[0] >= pair[1])
+        || page.upserts.windows(2).any(|pair| pair[0].key >= pair[1].key)
+        || page
+            .removed
+            .iter()
+            .any(|key| page.upserts.iter().any(|value| value.key == *key))
+    {
+        return Err(error("pending page predecessor or canonical order mismatch"));
+    }
+    let mut index = pending
+        .iter()
+        .cloned()
+        .map(|value| (value.key, value))
+        .collect::<BTreeMap<_, _>>();
+    for key in &page.removed {
+        if index.remove(key).is_none() {
+            return Err(error("pending page removes an absent operation"));
+        }
+    }
+    for value in &page.upserts {
+        if index.get(&value.key) == Some(value) {
+            return Err(error("pending page repeats an unchanged operation"));
+        }
+        index.insert(value.key, value.clone());
+    }
+    *pending = index.into_values().collect();
+    if index_digest(pending, "hash pending index")? != page.after {
+        return Err(error("pending page does not reach its committed identity"));
+    }
+    Ok(())
+}
+
+fn read_observed_file_chain(
+    tail: StoredArtifact,
+    stop: Option<StoredArtifact>,
+    mut files: Vec<String>,
+    read: &mut impl FnMut(StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError>,
+) -> Result<Vec<String>, DeveloperLoopError> {
+    let mut pages = Vec::new();
+    let mut current = Some(tail);
+    let mut seen = BTreeSet::new();
+    while current != stop {
+        let artifact = current.ok_or_else(|| error("observed-file page chain is truncated"))?;
+        if !seen.insert(artifact.digest) {
+            return Err(error("observed-file page chain contains a cycle"));
+        }
+        let page: ObservedFileIndexPage = decode(&read(artifact)?)?;
+        if page.schema_version != INDEX_PAGE_SCHEMA_VERSION
+            || page.added.len() > TRANSCRIPT_PAGE_ENTRIES
+            || page.removed.len() > TRANSCRIPT_PAGE_ENTRIES
+            || (page.before == page.after && page.previous.is_some())
+        {
+            return Err(error("unsupported observed-file page schema"));
+        }
+        current = page.previous;
+        pages.push(page);
+    }
+    pages.reverse();
+    for page in pages {
+        apply_observed_file_page(&mut files, &page)?;
+    }
+    Ok(files)
+}
+
+fn apply_observed_file_page(
+    files: &mut Vec<String>,
+    page: &ObservedFileIndexPage,
+) -> Result<(), DeveloperLoopError> {
+    if index_digest(files, "hash observed-file index")? != page.before
+        || page.added.windows(2).any(|pair| pair[0] >= pair[1])
+        || page.removed.windows(2).any(|pair| pair[0] >= pair[1])
+        || page.removed.iter().any(|path| page.added.binary_search(path).is_ok())
+    {
+        return Err(error("observed-file page predecessor or canonical order mismatch"));
+    }
+    let mut index = files.iter().cloned().collect::<BTreeSet<_>>();
+    for path in &page.removed {
+        if !index.remove(path) {
+            return Err(error("observed-file page removes an absent path"));
+        }
+    }
+    for path in &page.added {
+        if path.is_empty() || !index.insert(path.clone()) {
+            return Err(error("observed-file page repeats an invalid path"));
+        }
+    }
+    *files = index.into_iter().collect();
+    if index_digest(files, "hash observed-file index")? != page.after {
+        return Err(error("observed-file page does not reach its committed identity"));
+    }
+    Ok(())
+}
+
+fn index_digest<T: serde::Serialize + ?Sized>(
+    value: &T,
+    operation: &'static str,
+) -> Result<[u8; 32], DeveloperLoopError> {
+    struct DigestWriter(Sha256);
+    impl std::io::Write for DigestWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.update(bytes);
+            Ok(bytes.len())
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = DigestWriter(Sha256::new());
+    serde_json::to_writer(&mut writer, value).map_err(|_| error(operation))?;
+    writer.flush().map_err(|_| error(operation))?;
+    Ok(writer.0.finalize().into())
 }
 
 fn read_source_chain(

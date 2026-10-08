@@ -42,11 +42,6 @@ impl LocalMemory {
         self.transcript.current_inputs.clear();
         self.transcript.message_ids.clear();
         self.segment_continuation = None;
-        for pending in &mut self.transcript.pending {
-            if pending.state == PendingState::Proposed {
-                pending.state = PendingState::Unknown;
-            }
-        }
         self.persist_transcript()?;
         for message in initial {
             let id = self.observe_message(message)?;
@@ -123,6 +118,83 @@ impl LocalMemory {
             return Ok(prior.sequence);
         }
         self.observe_tool_in(self.transcript.invocation, self.next_tool_sequence()?, call, output)
+    }
+
+    pub(in crate::local_context) fn mark_tool_effect_uncertain(
+        &mut self,
+        tool_sequence: u64,
+        call: &CompletedToolCall,
+    ) -> Result<(), DeveloperLoopError> {
+        let identity = call_identity(call);
+        if tool_sequence != self.next_tool_sequence()? {
+            return Err(error("tool effect boundary sequence is not contiguous"));
+        }
+        let pending = self
+            .transcript
+            .pending
+            .iter()
+            .find(|pending| {
+                pending.invocation == self.transcript.invocation
+                    && pending.call == identity
+                    && pending.handle.is_none()
+            })
+            .ok_or_else(|| error("tool effect boundary has no exact durable proposal"))?;
+        if pending.state != PendingState::Proposed {
+            return Err(error("tool effect boundary is already unresolved"));
+        }
+        let invocation = self.transcript.invocation;
+        let request_prefix = self.transcript.request_prefix.clone();
+        self.commit(
+            &MemoryRecord::ToolEffectUncertain {
+                invocation,
+                request_prefix: request_prefix.clone(),
+                tool_sequence,
+                call: identity.clone(),
+            },
+            &[],
+        )?;
+        self.apply_tool_effect_uncertain(
+            invocation,
+            &request_prefix,
+            tool_sequence,
+            &identity,
+        )?;
+        self.sync_protocol()
+    }
+
+    pub(super) fn apply_tool_effect_uncertain(
+        &mut self,
+        invocation: u64,
+        request_prefix: &str,
+        tool_sequence: u64,
+        call: &CallIdentity,
+    ) -> Result<(), DeveloperLoopError> {
+        if invocation != self.transcript.invocation
+            || request_prefix != self.transcript.request_prefix
+            || tool_sequence != self.next_tool_sequence()?
+        {
+            return Err(error("tool effect boundary identity is not current"));
+        }
+        let mut matched = 0_usize;
+        for pending in &mut self.transcript.pending {
+            if pending.invocation == invocation
+                && &pending.call == call
+                && pending.handle.is_none()
+            {
+                if pending.state != PendingState::Proposed {
+                    return Err(error("tool effect boundary conflicts with pending state"));
+                }
+                pending.state = PendingState::Unknown;
+                matched = matched
+                    .checked_add(1)
+                    .ok_or_else(|| error("tool effect boundary match count overflow"))?;
+            }
+        }
+        if matched != 1 {
+            return Err(error("tool effect boundary does not identify one proposal"));
+        }
+        self.prepared = None;
+        Ok(())
     }
 
     fn next_tool_sequence(&self) -> Result<u64, DeveloperLoopError> {

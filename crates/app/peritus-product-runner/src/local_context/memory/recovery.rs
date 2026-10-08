@@ -12,8 +12,9 @@ use super::super::{
         INDEX_PAGE_SCHEMA_VERSION, InlineContextUpdate, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION, MemoryRecord, PAGED_GENESIS_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
-        SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, SourceIndexPage, TranscriptManifest, ViewValidation,
-        decode, encode,
+        PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, SourceIndexPage,
+        TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
+        encode,
     },
     storage::StoredArtifact,
     view_binding,
@@ -98,6 +99,7 @@ impl LocalMemory {
             LEGACY_CHECKPOINT_SCHEMA_VERSION
                 | SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
                 | INDEXED_CHECKPOINT_SCHEMA_VERSION
+                | PAGED_CHECKPOINT_SCHEMA_VERSION
                 | CHECKPOINT_SCHEMA_VERSION
         ) || manifest.scope != self.store.scope_digest().into_bytes()
             || manifest.generation != self.store.generation()
@@ -110,9 +112,12 @@ impl LocalMemory {
         })?;
         if matches!(
             manifest.schema_version,
-            INDEXED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+            INDEXED_CHECKPOINT_SCHEMA_VERSION
+                | PAGED_CHECKPOINT_SCHEMA_VERSION
+                | CHECKPOINT_SCHEMA_VERSION
         ) {
             self.restore_checkpoint_indexes(
+                manifest.schema_version,
                 manifest.source_index,
                 manifest.transcript_manifest,
             )?;
@@ -133,7 +138,10 @@ impl LocalMemory {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let working = self.store.read(manifest.working_state)?;
-            self.state = if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION {
+            self.state = if matches!(
+                manifest.schema_version,
+                PAGED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+            ) {
                 let source_index = WorkingStateArtifact::new(
                     manifest.source_index.digest.into_bytes(),
                     manifest.source_index.bytes,
@@ -211,7 +219,9 @@ impl LocalMemory {
         )?);
         if matches!(
             manifest.schema_version,
-            INDEXED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+            INDEXED_CHECKPOINT_SCHEMA_VERSION
+                | PAGED_CHECKPOINT_SCHEMA_VERSION
+                | CHECKPOINT_SCHEMA_VERSION
         ) {
             self.retry_previous_checkpoint_retirement(manifest);
         }
@@ -340,11 +350,6 @@ impl LocalMemory {
                 self.transcript.current_inputs.clear();
                 self.transcript.message_ids.clear();
                 self.segment_continuation = None;
-                for pending in &mut self.transcript.pending {
-                    if pending.state == super::super::record::PendingState::Proposed {
-                        pending.state = super::super::record::PendingState::Unknown;
-                    }
-                }
             }
             MemoryRecord::InvocationCompleted {
                 schema_version,
@@ -371,6 +376,19 @@ impl LocalMemory {
                     return Err(error("segment completion identity mismatch"));
                 }
                 self.segment_continuation = None;
+            }
+            MemoryRecord::ToolEffectUncertain {
+                invocation,
+                request_prefix,
+                tool_sequence,
+                call,
+            } => {
+                self.apply_tool_effect_uncertain(
+                    invocation,
+                    &request_prefix,
+                    tool_sequence,
+                    &call,
+                )?;
             }
             MemoryRecord::Observation { observation, reducer } => {
                 self.validate_observation(&observation)?;
@@ -415,6 +433,12 @@ impl LocalMemory {
             MemoryRecord::CheckpointIndex { source, transcript } => {
                 self.replay_checkpoint_index(source, transcript)?;
             }
+            MemoryRecord::HostIndex { root } => {
+                self.replay_host_index(root)?;
+            }
+            MemoryRecord::CheckpointHostIndex { source, root } => {
+                self.replay_checkpoint_host_index(source, root)?;
+            }
             MemoryRecord::Checkpoint { manifest } => {
                 let bytes = self.store.read(manifest)?;
                 if self.last_checkpoint.as_ref().map(encode).transpose()?.as_deref()
@@ -445,7 +469,10 @@ impl LocalMemory {
         match record {
             ContextUpdateRecord::Inline(update) => self.replay_inline_context_update(update),
             ContextUpdateRecord::Root(update) => {
-                if update.schema_version != CONTEXT_UPDATE_SCHEMA_VERSION {
+                if !matches!(
+                    update.schema_version,
+                    TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION | CONTEXT_UPDATE_SCHEMA_VERSION
+                ) {
                     return Err(error("unsupported context update root record"));
                 }
                 let root: ContextUpdateRoot = decode(&self.store.read(update.root)?)?;
@@ -497,7 +524,10 @@ impl LocalMemory {
     ) -> Result<(), DeveloperLoopError> {
         let source_count = u64::try_from(self.sources.len())
             .map_err(|_| error("context update source count overflow"))?;
-        if root.schema_version != CONTEXT_UPDATE_SCHEMA_VERSION
+        if !matches!(
+            root.schema_version,
+            TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION | CONTEXT_UPDATE_SCHEMA_VERSION
+        )
             || root.base_model_revision != self.model_revision
             || root.reducer_count == 0
             || self.source_index_tail != Some(root.source_index)
@@ -753,7 +783,12 @@ impl LocalMemory {
         root: &ContextUpdateRoot,
     ) -> Result<TranscriptManifest, DeveloperLoopError> {
         let mut transcript = self.transcript.clone();
-        if super::checkpoint::transcript_digest(&transcript)? != root.transcript_before {
+        let before = if root.schema_version == TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION {
+            super::checkpoint::transcript_digest(&transcript)?
+        } else {
+            super::checkpoint::observed_file_digest(&transcript.files)?
+        };
+        if before != root.transcript_before {
             return Err(error("context update transcript predecessor mismatch"));
         }
         let mut expected_change = 0_u64;
@@ -764,15 +799,19 @@ impl LocalMemory {
                 &mut transcript,
                 &page,
                 expected_change,
+                root.schema_version,
             )?;
             if expected_change > root.transcript_change_count {
                 return Err(error("context update transcript exceeds declared changes"));
             }
             next = page.next;
         }
-        if expected_change != root.transcript_change_count
-            || super::checkpoint::transcript_digest(&transcript)? != root.transcript_after
-        {
+        let after = if root.schema_version == TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION {
+            super::checkpoint::transcript_digest(&transcript)?
+        } else {
+            super::checkpoint::observed_file_digest(&transcript.files)?
+        };
+        if expected_change != root.transcript_change_count || after != root.transcript_after {
             return Err(error("context update transcript chain is incomplete"));
         }
         Ok(transcript)
@@ -805,7 +844,11 @@ impl LocalMemory {
     }
 
     fn validate_observation(&self, source: &ArchivedObservation) -> Result<(), DeveloperLoopError> {
-        if source.sequence != self.sources.len() as u64 + 1
+        let expected = u64::try_from(self.sources.len())
+            .ok()
+            .and_then(|count| count.checked_add(1))
+            .ok_or_else(|| error("source index sequence overflow"))?;
+        if source.sequence != expected
             || source.invocation != self.transcript.invocation
             || source.invocation == 0
         {

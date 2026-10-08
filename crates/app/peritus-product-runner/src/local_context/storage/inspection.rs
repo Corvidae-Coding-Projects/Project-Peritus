@@ -6,7 +6,7 @@ use super::super::{
     record::{
         ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
         INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
-        SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
+        PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
         TranscriptManifest, ViewValidation, decode,
     },
     tools::hex,
@@ -144,6 +144,7 @@ pub(in crate::local_context) fn open(
         LEGACY_CHECKPOINT_SCHEMA_VERSION
             | SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
             | INDEXED_CHECKPOINT_SCHEMA_VERSION
+            | PAGED_CHECKPOINT_SCHEMA_VERSION
             | CHECKPOINT_SCHEMA_VERSION
     ) || manifest.scope != identity.scope.into_bytes()
         || manifest.generation != row.revision()
@@ -186,16 +187,23 @@ pub(in crate::local_context) fn open(
     let validation: ViewValidation = decode(&validation_bytes)?;
     let limits = WorkingLimits::standard();
     let (sources, transcript, state) = if matches!(
-        manifest.schema_version, INDEXED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        manifest.schema_version,
+        INDEXED_CHECKPOINT_SCHEMA_VERSION
+            | PAGED_CHECKPOINT_SCHEMA_VERSION
+            | CHECKPOINT_SCHEMA_VERSION
     ) {
         let (sources, transcript, _) = read_complete_checkpoint_indexes(
+            manifest.schema_version,
             manifest.source_index,
             manifest.transcript_manifest,
             &read,
         )?;
         let observations = observation_sources(&sources)?;
         let working = read(manifest.working_state)?;
-        let state = if manifest.schema_version == CHECKPOINT_SCHEMA_VERSION {
+        let state = if matches!(
+            manifest.schema_version,
+            PAGED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
+        ) {
             let source_index = WorkingStateArtifact::new(
                 manifest.source_index.digest.into_bytes(), manifest.source_index.bytes,
             ).map_err(|_| error("invalid inspection paged source-index reference"))?;

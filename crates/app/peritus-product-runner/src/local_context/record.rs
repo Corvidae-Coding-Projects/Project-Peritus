@@ -10,11 +10,15 @@ use serde::de::DeserializeOwned;
 pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
 pub(super) const SNAPSHOT_CHECKPOINT_SCHEMA_VERSION: u16 = 2;
 pub(super) const INDEXED_CHECKPOINT_SCHEMA_VERSION: u16 = 3;
-pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 4;
+pub(super) const PAGED_CHECKPOINT_SCHEMA_VERSION: u16 = 4;
+pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 5;
 pub(super) const INDEX_PAGE_SCHEMA_VERSION: u16 = 1;
+pub(super) const HOST_INDEX_SCHEMA_VERSION: u16 = 1;
 pub(super) const LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 1;
-pub(super) const CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 2;
+pub(super) const TRANSCRIPT_CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 2;
+pub(super) const CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 3;
 pub(super) const CONTEXT_UPDATE_PAGE_SCHEMA_VERSION: u16 = 1;
+pub(super) const CONTEXT_UPDATE_FILE_PAGE_SCHEMA_VERSION: u16 = 2;
 pub(super) const CONTEXT_UPDATE_REDUCER_SCHEMA_VERSION: u16 = 1;
 pub(super) const CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION: u16 = 1;
 pub(super) const PAGED_GENESIS_SCHEMA_VERSION: u16 = 2;
@@ -108,12 +112,20 @@ pub(super) enum MemoryRecord {
         request_prefix: String,
         segment_sequence: u64,
     },
+    ToolEffectUncertain {
+        invocation: u64,
+        request_prefix: String,
+        tool_sequence: u64,
+        call: CallIdentity,
+    },
     Observation { observation: ArchivedObservation, reducer: StoredArtifact },
     StateEvent { reducer: StoredArtifact },
     ContextUpdate(ContextUpdateRecord),
     Transcript { manifest: TranscriptManifest },
     TranscriptIndex { transcript: StoredArtifact },
     CheckpointIndex { source: StoredArtifact, transcript: StoredArtifact },
+    HostIndex { root: StoredArtifact },
+    CheckpointHostIndex { source: StoredArtifact, root: StoredArtifact },
     Checkpoint { manifest: StoredArtifact },
     Compactor { input: Option<StoredArtifact>, output: Option<StoredArtifact>, failed: bool },
 }
@@ -250,6 +262,42 @@ pub(super) struct TranscriptDeltaPage {
     pub(super) facts_through: u64,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct PendingIndexPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) before: [u8; 32],
+    pub(super) after: [u8; 32],
+    pub(super) upserts: Vec<PendingDescriptor>,
+    pub(super) removed: Vec<[u8; 16]>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ObservedFileIndexPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) before: [u8; 32],
+    pub(super) after: [u8; 32],
+    pub(super) added: Vec<String>,
+    pub(super) removed: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct HostIndexRoot {
+    pub(super) schema_version: u16,
+    pub(super) invocation: u64,
+    pub(super) request_prefix: String,
+    pub(super) transcript: StoredArtifact,
+    pub(super) pending: StoredArtifact,
+    pub(super) observed_files: StoredArtifact,
+    pub(super) message_count: u64,
+    pub(super) pending_count: u64,
+    pub(super) observed_file_count: u64,
+}
+
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub(super) struct TranscriptManifest {
@@ -299,6 +347,8 @@ pub(super) struct PendingDescriptor {
     pub(super) invocation: u64,
     pub(super) call: CallIdentity,
     pub(super) source: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) source_artifact_sha256: Option<[u8; 32]>,
     pub(super) handle: Option<String>,
     pub(super) state: PendingState,
 }

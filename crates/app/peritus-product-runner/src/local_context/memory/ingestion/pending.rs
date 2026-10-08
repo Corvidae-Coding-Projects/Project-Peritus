@@ -55,6 +55,9 @@ impl LocalMemory {
                                     invocation: source.invocation,
                                     call: identity,
                                     source: source.sequence,
+                                    source_artifact_sha256: Some(
+                                        source.artifact.digest.into_bytes(),
+                                    ),
                                     handle: None,
                                     state: PendingState::Proposed,
                                 });
@@ -72,11 +75,15 @@ impl LocalMemory {
     fn project_tool(&mut self, source: &ArchivedObservation) -> Result<(), DeveloperLoopError> {
         let call =
             source.call.as_ref().ok_or_else(|| error("tool observation has no call identity"))?;
+        let before = self.transcript.pending.len();
         self.transcript.pending.retain(|pending| {
             !(pending.invocation == source.invocation
-                && pending.call.id == call.id
+                && pending.call == *call
                 && pending.handle.is_none())
         });
+        if self.transcript.pending.len().checked_add(1) != Some(before) {
+            return Err(error("tool observation does not settle one exact durable proposal"));
+        }
         if !matches!(
             call.name.as_str(),
             "command_start"
@@ -108,6 +115,7 @@ impl LocalMemory {
                     invocation: source.invocation,
                     call: call.clone(),
                     source: source.sequence,
+                    source_artifact_sha256: Some(source.artifact.digest.into_bytes()),
                     handle: Some(handle.to_owned()),
                     state,
                 });
@@ -119,7 +127,7 @@ impl LocalMemory {
     pub(in crate::local_context) fn sync_protocol(&mut self) -> Result<(), DeveloperLoopError> {
         let requirements = self
             .transcript
-            .message_ids
+            .current_inputs
             .iter()
             .filter_map(|id| self.sources.iter().find(|source| source.sequence == *id))
             .filter(|source| matches!(source.kind, ArchiveKind::Policy | ArchiveKind::User))

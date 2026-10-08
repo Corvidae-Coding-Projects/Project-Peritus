@@ -335,6 +335,9 @@ impl DeveloperContextPort for LocalContextHandle {
             DeveloperContextEvent::Message(message) => {
                 memory.observe_message(message)?;
             }
+            DeveloperContextEvent::ToolEffectUncertain { call, sequence } => {
+                memory.mark_tool_effect_uncertain(u64::from(sequence), call)?;
+            }
             DeveloperContextEvent::ToolObservation { call, observation } => {
                 memory.observe_tool(call, observation)?;
             }
