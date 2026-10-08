@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3963,
-        "tip_oid": "bd1f1a123c5e8e20d3e40f2aa8a758f47a2b23be",
-        "prefix_sha256": "7308adec2f1a1bc4c963a898b8515b497a3c0eaa6fa37adaf2f42b4c690663f9"
+        "sequence": 3964,
+        "tip_oid": "88cfb7a8f7be419c207aca625e9240f49f02e863",
+        "prefix_sha256": "a4ccfb1654e53487e12cd471b2ebf3cbecb61b0f9f48c1a46246e40e6a558969"
       },
       "NWAR": {
         "sequence": 39,
@@ -6168,12 +6168,13 @@
       "display_id": 135,
       "title": "[L036] Command preflight checkpoints every enrolled file",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L036.\n\n- `executor.rs:243-257` calls `prepare_effect_checkpoint` before dispatching the command. `executor/checkpoint_observer.rs:213-230` reads every current in-place scope path and invokes the pre-mutation observer for each, rejecting directory targets and scope changes.\n- Combined with the daemon live hook (L003), a build/verification command is refused when an enrolled file cannot be checkpointed, even before its actual mutation set is known. `execution/checkpoint.rs:89-133` now verifies forwarding into the daemon live ConversationView; `turn.rs:280-291` installs this observer on writer/fixer tools. The full precommand chain is verified.\n- Post-effect receipt recovery at lines 64-107 requires exact unchanged write/patch/delete results; reappearance or divergent contents require reconciliation. These effect-identity fences are recorded separately from the size limits.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.980257654Z",
-      "updated_at": "2026-10-08T01:59:39.690573905Z",
+      "updated_at": "2026-10-08T02:01:13.296783114Z",
+      "closed_at": "2026-10-08T02:01:13.293932951Z",
       "labels": [
         "daily-driving-limiter"
       ],
