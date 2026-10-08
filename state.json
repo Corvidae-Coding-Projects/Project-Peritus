@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4036,
-        "tip_oid": "9c811d5bf636be4d44e5066f928b944cc0e87493",
-        "prefix_sha256": "4f9fd0311df3a387690e2dc7b60fe359fd1b2817455e9aee9bba8b39c0dab3d4"
+        "sequence": 4037,
+        "tip_oid": "1eee34f96ae64d528b62ea7148e8c9d878592cd7",
+        "prefix_sha256": "7cb278898fc68a859ec3efcfa3856a1052bee33a0c990281f072c8a98d14312d"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3221,
+  "next_comment_id": 3222,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40305,11 +40305,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.312354044Z",
-      "updated_at": "2026-10-06T13:27:51.315804012Z",
+      "updated_at": "2026-10-08T04:03:02.295390502Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "1e646922-1418-426e-b7dd-8684523e342f": {
+          "display_id": 3221,
+          "author": "6ME5",
+          "content": "Code complete in commit a7fe41396. Versioned bundle manifests distinguish requested current authority from full historical causal closure, preserving ancestor revision/provenance and rejecting durable invalidation. Planning and offline verification share exact reachable closure, authority revision and earlier-position semantics; legacy all-authority bytes remain canonical and export/cursor identity covers new bytes. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T04:03:02.287102801Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAE+qjopcodouqDElhF6YsRdvBhu8VprZwzv0nxaANNqea9IuAtEQmjwMeOhEgS/yMzaiSAE65YwsNcqCImJ7pDQ=="
+        },
         "5201d642-8dcd-42ab-b898-090871361799": {
           "display_id": 2749,
           "author": "6ME5",
