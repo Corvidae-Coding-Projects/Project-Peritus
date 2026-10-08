@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L047] Writer/fixer loop parameters and error-to-budget mapping (#146)
 - [L461] C5 nested admission and persistence checks can disagree under selected limits (#539)
 - [L626] Projection storage repeats the five-second SQLite contention cutoff (#680)
 - [L624] Evidence startup holds a write transaction for a full catalog scan and has no quarantine reconciliation operation (#679)
