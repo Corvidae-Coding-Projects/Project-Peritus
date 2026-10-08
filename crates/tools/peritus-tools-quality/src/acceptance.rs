@@ -103,7 +103,7 @@ impl CheckDefinition {
         let parser = ContentReference::new(parser_digest(self.parser()));
         let resources = ContentReference::new(component_digest(b"resources", |hash| {
             hash.update(self.timeout_millis().unwrap_or(0).to_be_bytes());
-            hash.update(self.output_bytes().to_be_bytes());
+            hash.update(self.output_limit().unwrap_or(0).to_be_bytes());
         }));
         let success = match (self.expected_success(), self.parser()) {
             (ExpectedSuccess::ExitCode(0), OutputParser::JsonSuccess { .. }) => {

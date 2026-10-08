@@ -156,7 +156,7 @@ fn result_digest(
     outcome: GateOutcome,
 ) -> Sha256Digest {
     let mut hash = Sha256::new();
-    hash.update(b"peritus-c4-quality-result-v1");
+    hash.update(b"peritus-c4-quality-result-v2");
     hash.update(definition.gate_id().as_bytes());
     hash.update(terminal.plan_digest().as_bytes());
     hash.update([disposition_tag(terminal.disposition())]);
@@ -169,6 +169,16 @@ fn result_digest(
         hash.update(stream.retained().to_le_bytes());
         hash.update(stream.dropped().to_le_bytes());
         hash.update([completeness_tag(stream.completeness())]);
+    }
+    let mut artifacts = terminal.artifacts().to_vec();
+    artifacts.sort_by_key(|artifact| stream_tag(artifact.stream()));
+    for artifact in artifacts {
+        hash.update([stream_tag(artifact.stream())]);
+        hash.update(artifact.digest().as_bytes());
+        hash.update(artifact.size().to_le_bytes());
+        hash.update(artifact.start_offset().to_le_bytes());
+        hash.update(artifact.end_offset().to_le_bytes());
+        hash.update([completeness_tag(artifact.completeness())]);
     }
     Sha256Digest::new(hash.finalize().into())
 }

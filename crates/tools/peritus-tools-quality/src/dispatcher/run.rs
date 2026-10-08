@@ -142,8 +142,8 @@ where
             || plan.deadline_policy().wall_timeout_millis() != definition.timeout_millis()
             || plan.deadline_policy().wall_timeout_millis()
                 != prepared.call().limits().timeout_millis()
-            || plan.output_policy().spool_bytes() < definition.output_bytes()
-            || plan.output_policy().spool_bytes() > prepared.call().limits().output_bytes()
+            || definition.output_limit() != prepared.call().limits().output_limit()
+            || !output_policy_matches(plan.output_policy(), definition.output_limit())
         {
             return Err(adapter_failure(
                 "quality-plan-mismatch",
@@ -193,6 +193,8 @@ where
         let artifacts = self.artifacts.take().ok_or_else(|| {
             adapter_failure("quality-run-consumed", "quality artifact store was already consumed")
         })?;
+        let process_id = plan.identity().process_id();
+        let process_store = self.gateway.store().clone();
         let owner = self
             .gateway
             .launch_with_backend(self.authorization, plan, &self.sandbox, &self.admission, backend)
@@ -201,6 +203,8 @@ where
             prepared,
             definition,
             owner,
+            process_store,
+            process_id,
             artifacts,
             creating_event,
             started_at,
@@ -210,4 +214,14 @@ where
 
 fn mismatch(detail: &'static str) -> QualityError {
     QualityError::new(QualityErrorKind::InvocationMismatch, detail)
+}
+
+fn output_policy_matches(
+    output: peritus_process::OutputPolicy,
+    selected: Option<u64>,
+) -> bool {
+    output.spool_limit() == selected
+        && output.stdout_limit() == selected
+        && output.stderr_limit() == selected
+        && output.terminal_limit() == selected
 }

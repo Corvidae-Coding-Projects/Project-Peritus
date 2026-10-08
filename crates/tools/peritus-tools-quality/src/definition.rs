@@ -107,7 +107,7 @@ pub struct CheckDefinition {
     working_directory: Option<WorkspacePath>,
     environment_profile: EnvironmentProfile,
     timeout_millis: Option<u64>,
-    output_bytes: u64,
+    output_limit: Option<u64>,
     parser: OutputParser,
     expected_success: ExpectedSuccess,
 }
@@ -168,6 +168,44 @@ impl CheckDefinition {
         parser: OutputParser,
         expected_success: ExpectedSuccess,
     ) -> Result<Self, QualityError> {
+        Self::with_optional_limits(
+            gate_name,
+            gate_id,
+            source,
+            requirement,
+            executable,
+            arguments,
+            working_directory,
+            environment_profile,
+            timeout_millis,
+            Some(output_bytes),
+            parser,
+            expected_success,
+        )
+    }
+
+    /// Creates a check with independently optional execution and cumulative output limits.
+    ///
+    /// Parser bounds remain finite. An absent output limit selects segmented C2 retention without
+    /// introducing a lifetime output allowance.
+    ///
+    /// # Errors
+    /// Rejects invalid names, declarations, argv, or selected zero limits.
+    #[allow(clippy::too_many_arguments, reason = "each immutable check binding remains explicit")]
+    pub fn with_optional_limits(
+        gate_name: impl Into<String>,
+        gate_id: GateId,
+        source: CheckSource,
+        requirement: CheckRequirement,
+        executable: impl Into<String>,
+        arguments: Vec<String>,
+        working_directory: Option<WorkspacePath>,
+        environment_profile: EnvironmentProfile,
+        timeout_millis: Option<u64>,
+        output_limit: Option<u64>,
+        parser: OutputParser,
+        expected_success: ExpectedSuccess,
+    ) -> Result<Self, QualityError> {
         let gate_name = gate_name.into();
         let executable = executable.into();
         validate_definition(
@@ -175,7 +213,7 @@ impl CheckDefinition {
             &source,
             requirement,
             timeout_millis,
-            output_bytes,
+            output_limit,
             parser,
         )?;
         CommandSpec::new(executable.clone(), arguments.clone())?;
@@ -189,7 +227,7 @@ impl CheckDefinition {
             working_directory,
             environment_profile,
             timeout_millis,
-            output_bytes,
+            output_limit,
             parser,
             expected_success,
         })
@@ -240,10 +278,18 @@ impl CheckDefinition {
     pub const fn timeout_millis(&self) -> Option<u64> {
         self.timeout_millis
     }
-    /// Returns the output/parser byte ceiling.
+    /// Returns the selected cumulative output ceiling, or zero when absent.
     #[must_use]
     pub const fn output_bytes(&self) -> u64 {
-        self.output_bytes
+        match self.output_limit {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional cumulative output ceiling.
+    #[must_use]
+    pub const fn output_limit(&self) -> Option<u64> {
+        self.output_limit
     }
     /// Returns the complete-output parser.
     #[must_use]
@@ -266,7 +312,7 @@ fn validate_definition(
     source: &CheckSource,
     requirement: CheckRequirement,
     timeout: Option<u64>,
-    output: u64,
+    output: Option<u64>,
     parser: OutputParser,
 ) -> Result<(), QualityError> {
     if !valid_name(name, MAX_GATE_NAME_BYTES) {
@@ -281,12 +327,14 @@ fn validate_definition(
         return Err(invalid("discovered definitions cannot claim B2 required/optional policy"));
     }
     if matches!(timeout, Some(0))
-        || output == 0
+        || output == Some(0)
         || parser.maximum_bytes().is_some_and(|bound| bound == 0)
     {
         return Err(invalid("timeout, output, and selected parser bounds must be nonzero"));
     }
-    if parser.maximum_bytes().is_some_and(|bound| u64::from(bound) > output) {
+    if output.is_some_and(|output| {
+        parser.maximum_bytes().is_some_and(|bound| u64::from(bound) > output)
+    }) {
         return Err(invalid("parser bound exceeds the retained output bound"));
     }
     Ok(())

@@ -23,7 +23,8 @@ pub fn discover_descriptor() -> Result<ToolDescriptor, QualityError> {
         SideEffectClass::None,
         IdempotencySemantics::ReplayTerminal,
         ControlSet::NONE,
-        "peritus-tools-quality/quality.discover/v1",
+        3,
+        "peritus-tools-quality/quality.discover/v3",
         "Discover explicit and known project quality checks without asserting acceptance policy.",
     )
 }
@@ -44,7 +45,51 @@ pub fn run_descriptor() -> Result<ToolDescriptor, QualityError> {
         SideEffectClass::Process,
         IdempotencySemantics::ReportPriorOutcome,
         ControlSet::new(false, false, false, true, true),
-        "peritus-tools-quality/quality.run/v1",
+        3,
+        "peritus-tools-quality/quality.run/v3",
+        "Run one exact cataloged check through C2/C3 and return candidate B2 evidence inputs.",
+    )
+}
+
+/// Reconstructs the frozen v2 discovery descriptor for historical receipt decoding.
+///
+/// This descriptor is not included in the production catalog and cannot admit new work.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_discover_descriptor() -> Result<ToolDescriptor, QualityError> {
+    legacy_descriptor(
+        "quality.discover",
+        Schema::object(Vec::new(), false)?,
+        OperationClass::Inspection,
+        vec![RiskClass::Read],
+        SideEffectClass::None,
+        IdempotencySemantics::ReplayTerminal,
+        ControlSet::NONE,
+        "peritus-tools-quality/quality.discover/v2",
+        "Discover explicit and known project quality checks without asserting acceptance policy.",
+    )
+}
+
+/// Reconstructs the frozen v2 run descriptor for historical terminal decoding.
+///
+/// This descriptor is not included in the production catalog and cannot admit new work.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_run_descriptor() -> Result<ToolDescriptor, QualityError> {
+    legacy_descriptor(
+        "quality.run",
+        Schema::object(
+            vec![SchemaProperty::new("gate".into(), Schema::string(1, 128)?, true)?],
+            false,
+        )?,
+        OperationClass::Execution,
+        vec![RiskClass::Execution],
+        SideEffectClass::Process,
+        IdempotencySemantics::ReportPriorOutcome,
+        ControlSet::new(false, false, false, true, true),
+        "peritus-tools-quality/quality.run/v2",
         "Run one exact cataloged check through C2/C3 and return candidate B2 evidence inputs.",
     )
 }
@@ -58,7 +103,74 @@ fn descriptor(
     side_effect: SideEffectClass,
     idempotency: IdempotencySemantics,
     controls: ControlSet,
+    version: u16,
     implementation: &str,
+    description: &str,
+) -> Result<ToolDescriptor, QualityError> {
+    build_descriptor(
+        name,
+        schema,
+        operation_class,
+        risks,
+        side_effect,
+        idempotency,
+        controls,
+        version,
+        implementation,
+        ToolLimits::with_optional_output(None, None, 32_768, 32_768, 65_536, 3, 4_096)?
+            .with_paged_progress(),
+        description,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn legacy_descriptor(
+    name: &str,
+    schema: Schema,
+    operation_class: OperationClass,
+    risks: Vec<RiskClass>,
+    side_effect: SideEffectClass,
+    idempotency: IdempotencySemantics,
+    controls: ControlSet,
+    implementation: &str,
+    description: &str,
+) -> Result<ToolDescriptor, QualityError> {
+    build_descriptor(
+        name,
+        schema,
+        operation_class,
+        risks,
+        side_effect,
+        idempotency,
+        controls,
+        2,
+        implementation,
+        ToolLimits::with_optional_timeout(
+            None,
+            8 * 1_024 * 1_024,
+            32_768,
+            32_768,
+            65_536,
+            3,
+            4_096,
+        )?
+        .with_paged_progress(),
+        description,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_descriptor(
+    name: &str,
+    schema: Schema,
+    operation_class: OperationClass,
+    risks: Vec<RiskClass>,
+    side_effect: SideEffectClass,
+    idempotency: IdempotencySemantics,
+    controls: ControlSet,
+    version: u16,
+    implementation: &str,
+    limits: ToolLimits,
     description: &str,
 ) -> Result<ToolDescriptor, QualityError> {
     let name = CapabilityName::new(name.to_owned())
@@ -68,24 +180,16 @@ fn descriptor(
         .map_err(|error| internal(format!("{error:?}")))?;
     ToolDescriptor::new(
         name,
-        SemanticVersion::new(1, 0, 0)?,
+        SemanticVersion::new(version, 0, 0)?,
         schema,
         operation,
         side_effect,
         LeaseRequirement::None,
         idempotency,
         ImplementationIdentity::new(implementation.to_owned())?,
-        ToolLimits::with_optional_timeout(
-            None,
-            8 * 1_024 * 1_024,
-            32_768,
-            32_768,
-            4_096,
-            3,
-            65_536,
-        )?,
+        limits,
         controls,
-        ProtocolCompatibility::V1,
+        ProtocolCompatibility::V2,
         BoundedText::new(description.to_owned())?,
     )
     .map_err(Into::into)

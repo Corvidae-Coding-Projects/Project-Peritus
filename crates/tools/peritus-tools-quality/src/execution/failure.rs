@@ -8,6 +8,18 @@ use peritus_tool_router::DispatchFailure;
 
 use crate::dispatcher::dispatch_failure;
 
+pub fn artifact(error: &peritus_artifact_store::ArtifactStoreError) -> DispatchFailure {
+    dispatch_failure(
+        ResultStatus::Failed,
+        FailureCategory::Artifact,
+        error.code().as_str(),
+        ResponsibleSubsystem::ArtifactStore,
+        Retryability::AfterRecovery,
+        RecoveryRoute::RepublishArtifact,
+        &error.to_string(),
+    )
+}
+
 pub fn process(error: &ProcessError) -> DispatchFailure {
     let (status, category, retryability, recovery) = match error.recovery() {
         RecoveryClass::CorrectRequest => (
@@ -52,5 +64,23 @@ pub fn process(error: &ProcessError) -> DispatchFailure {
         retryability,
         recovery,
         &error.to_string(),
+    )
+}
+
+/// Retains a completed effect for publication/projection retry, never a new process action.
+pub fn settlement_projection(source: &DispatchFailure) -> DispatchFailure {
+    let failure = source.failure();
+    dispatch_failure(
+        source.status(),
+        failure.category(),
+        failure.code().as_str(),
+        failure.subsystem(),
+        Retryability::AfterRecovery,
+        if failure.recovery() == RecoveryRoute::RepublishArtifact {
+            RecoveryRoute::RepublishArtifact
+        } else {
+            RecoveryRoute::ReconcileProcess
+        },
+        failure.detail().as_str(),
     )
 }

@@ -127,7 +127,7 @@ pub fn discovered_definition(
     executable: &str,
     arguments: Vec<String>,
 ) -> Result<CheckDefinition, QualityError> {
-    CheckDefinition::with_optional_timeout(
+    CheckDefinition::with_optional_limits(
         gate_name.to_owned(),
         derived_gate_id(gate_name, executable, &arguments),
         source,
@@ -137,7 +137,7 @@ pub fn discovered_definition(
         None,
         EnvironmentProfile::new("quality-default")?,
         None,
-        8 * 1024 * 1024,
+        None,
         OutputParser::None,
         ExpectedSuccess::ExitCode(0),
     )

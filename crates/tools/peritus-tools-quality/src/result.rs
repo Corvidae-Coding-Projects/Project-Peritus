@@ -9,7 +9,7 @@ use peritus_tool_protocol::{
 };
 use peritus_types::{ActionId, GateId, ProcessId, Sha256Digest};
 
-use crate::{QualityError, QualityErrorKind, run_descriptor};
+use crate::{QualityError, QualityErrorKind, legacy_run_descriptor, run_descriptor};
 use structured::{DecodedOutcome, DecodedStructured, decode_structured};
 
 /// Exact invocation identities expected from one authorized `quality.run` dispatch.
@@ -73,7 +73,7 @@ pub enum QualityTerminalKind {
     TimedOut,
     /// The quality-owned structured terminal was missing, invalid, or self-contradictory.
     MalformedOutput,
-    /// The candidate result was present but output, progress, cleanup, or artifacts were partial.
+    /// The candidate result was present but output, cleanup, or artifacts were partial.
     IncompleteEvidence,
 }
 
@@ -84,6 +84,8 @@ pub struct QualityArtifact {
     size: u64,
     media_type: String,
     label: String,
+    start_offset: u64,
+    end_offset: u64,
 }
 
 impl QualityArtifact {
@@ -110,6 +112,18 @@ impl QualityArtifact {
     pub fn label(&self) -> &str {
         &self.label
     }
+
+    /// Returns the inclusive offset of the exact retrievable artifact range.
+    #[must_use]
+    pub const fn start_offset(&self) -> u64 {
+        self.start_offset
+    }
+
+    /// Returns the exclusive offset of the exact retrievable artifact range.
+    #[must_use]
+    pub const fn end_offset(&self) -> u64 {
+        self.end_offset
+    }
 }
 
 /// Strict normalized observation derived from one exact `quality.run` result.
@@ -122,6 +136,7 @@ pub struct QualityTerminal {
     execution_plan_digest: Option<Sha256Digest>,
     process_id: Option<ProcessId>,
     artifacts: Vec<QualityArtifact>,
+    progress_truncated: Option<bool>,
     retryability: Retryability,
     recovery: RecoveryRoute,
 }
@@ -169,6 +184,14 @@ impl QualityTerminal {
         &self.artifacts
     }
 
+    /// Returns whether informational progress history omitted rows, when decoded.
+    ///
+    /// This telemetry fact is independent of parser, output, cleanup, and artifact evidence.
+    #[must_use]
+    pub const fn progress_truncated(&self) -> Option<bool> {
+        self.progress_truncated
+    }
+
     /// Returns whether a fresh authorized action may retry this terminal.
     #[must_use]
     pub const fn retryability(&self) -> Retryability {
@@ -196,8 +219,10 @@ pub fn decode_quality_result(
     binding: QualityResultBinding,
 ) -> Result<QualityTerminal, QualityError> {
     let descriptor = run_descriptor()?;
+    let legacy_descriptor = legacy_run_descriptor()?;
     if result.action_id() != binding.action_id
-        || result.descriptor_digest() != descriptor.descriptor_digest()
+        || (result.descriptor_digest() != descriptor.descriptor_digest()
+            && result.descriptor_digest() != legacy_descriptor.descriptor_digest())
         || result.prepared_digest() != binding.prepared_digest
         || result.replay_identity() != binding.replay_identity
     {
@@ -232,6 +257,8 @@ pub fn decode_quality_result(
             size: artifact.size(),
             media_type: artifact.media_type().as_str().to_owned(),
             label: artifact.label().as_str().to_owned(),
+            start_offset: 0,
+            end_offset: artifact.size(),
         })
         .collect::<Vec<_>>();
     let incomplete_artifact = result
@@ -252,7 +279,6 @@ pub fn decode_quality_result(
     );
     let incomplete = decoded.as_ref().is_some_and(|decoded| {
         !decoded.execution_complete
-            || decoded.progress_truncated
             || incomplete_artifact
             || incomplete_envelope
     });
@@ -272,6 +298,7 @@ pub fn decode_quality_result(
         execution_plan_digest: decoded.as_ref().map(|value| value.plan_digest),
         process_id: decoded.as_ref().map(|value| value.process_id),
         artifacts,
+        progress_truncated: decoded.as_ref().map(|decoded| decoded.progress_truncated),
         retryability,
         recovery,
     })

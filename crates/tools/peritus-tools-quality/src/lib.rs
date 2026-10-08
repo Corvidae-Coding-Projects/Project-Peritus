@@ -17,7 +17,9 @@ mod result;
 mod snapshot;
 
 pub use acceptance::QualityAcceptanceBinding;
-pub use catalog::{discover_descriptor, run_descriptor};
+pub use catalog::{
+    discover_descriptor, legacy_discover_descriptor, legacy_run_descriptor, run_descriptor,
+};
 pub use definition::{
     CheckDefinition, CheckRequirement, CheckSource, EnvironmentProfile, ExpectedSuccess,
     OutputParser,

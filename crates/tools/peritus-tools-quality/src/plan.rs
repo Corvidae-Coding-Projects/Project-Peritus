@@ -54,8 +54,15 @@ impl QualityPlanInputs {
         if self.deadlines.wall_timeout_millis() != definition.timeout_millis() {
             return Err(invalid("execution deadline differs from the check definition"));
         }
-        if self.output.spool_bytes() < definition.output_bytes() {
-            return Err(invalid("execution output retention is below the check definition bound"));
+        if prepared.call().limits().timeout_millis() != definition.timeout_millis() {
+            return Err(invalid("prepared call deadline differs from the check definition"));
+        }
+        if prepared.call().limits().output_limit() != definition.output_limit()
+            || !output_policy_matches(self.output, definition.output_limit())
+        {
+            return Err(invalid(
+                "prepared call, definition, and C2 cumulative output limits differ",
+            ));
         }
         if sandbox.isolation() != IsolationRequirement::Restricted
             || sandbox.operation_class() != SandboxOperationClass::Execution
@@ -91,6 +98,13 @@ impl QualityPlanInputs {
         )?;
         plan.bind_caller(caller_binding).map_err(Into::into)
     }
+}
+
+fn output_policy_matches(output: OutputPolicy, selected: Option<u64>) -> bool {
+    output.spool_limit() == selected
+        && output.stdout_limit() == selected
+        && output.stderr_limit() == selected
+        && output.terminal_limit() == selected
 }
 
 fn invalid(detail: &'static str) -> QualityError {

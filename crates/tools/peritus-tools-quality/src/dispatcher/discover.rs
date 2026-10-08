@@ -146,7 +146,12 @@ fn catalog_json(
                 ),
                 ("gate_id", serde_json::Value::String(hex(check.gate_id().as_bytes()))),
                 ("gate_name", serde_json::Value::String(check.gate_name().to_owned())),
-                ("output_bytes", serde_json::Value::String(check.output_bytes().to_string())),
+                (
+                    "output_bytes",
+                    check.output_limit().map_or(serde_json::Value::Null, |output| {
+                        serde_json::Value::String(output.to_string())
+                    }),
+                ),
                 ("parser", serde_json::Value::String(parser_name(check.parser()).to_owned())),
                 (
                     "requirement",
