@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4061,
-        "tip_oid": "09984d8a5ebae3c3f603f1d13120c3591b3f56d9",
-        "prefix_sha256": "3e6e54ab395090eae195d8989d34d44d3f4eb8295e600c10ec31401d98795ccd"
+        "sequence": 4062,
+        "tip_oid": "ea9386d6f2e90aa6a20321f14d929972a4a6a8b1",
+        "prefix_sha256": "5801c545d39f691fb23e4a095d7457bdf04b598ba545a2aefc28b937f0d443b8"
       },
       "NWAR": {
         "sequence": 39,
@@ -32284,12 +32284,13 @@
       "display_id": 147,
       "title": "[L048] File ownership can require a new run for deletion",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L048.\n\n- `developer_tools/ownership.rs:101-111` refuses removal of a file outside the starting baseline/direct creation/observed command creation sets and tells the user to start a new run explicitly requesting deletion. Direct-folder reads enroll exact file ownership at lines 46-50.\n- Baseline tree enumeration at lines 151-176 skips ignored directories and child errors, while untracked Git paths that are non-UTF-8 are skipped at lines 139-146. These omissions affect ownership/admission, even though no numeric inventory cap appears here.\n- This is an authority/evidence restriction rather than a session expiry timer. Whether durable resumed ownership and explicit same-session user authorization can resolve it remains pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.032728602Z",
-      "updated_at": "2026-10-08T04:47:00.018787628Z",
+      "updated_at": "2026-10-08T04:48:45.105459955Z",
+      "closed_at": "2026-10-08T04:48:45.103084454Z",
       "labels": [
         "daily-driving-limiter"
       ],
