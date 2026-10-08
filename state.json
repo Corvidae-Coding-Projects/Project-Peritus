@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4015,
-        "tip_oid": "60c98d83dfff295ad8524725df40b1ba88384c7d",
-        "prefix_sha256": "fe3dcb59befb371d0053182562a7edda5ee6ee7c29955d4d257ed5190f221d9a"
+        "sequence": 4016,
+        "tip_oid": "54a827a7d606bc47be4b80c3d5770d1b4c486e97",
+        "prefix_sha256": "f9ed7c8b76520be068b8d994300d76e4b6a804f5cb783cf16daf04aa668f2edc"
       },
       "NWAR": {
         "sequence": 39,
@@ -17614,12 +17614,13 @@
       "display_id": 530,
       "title": "[L451] F0 recovery can report terminal completion without checking retained artifact/evidence observations",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L451.\n\n- Evidence: `crates/analysis/peritus-evolution/src/runtime/recovery.rs:11-19,48-68`, `src/durability/directive.rs:224-247`, `src/runtime/publication.rs:46-85` in the same crate.\n- Behavior: Recovery checks artifact_verified and evidence_admitted only when publication_directive is true. With an Active pointer and terminal campaign, false publication_directive yields Complete even when both owner observations are false. Promotion/rollback activation creates a separate publication directive; publication ACK occurs after evidence admission, but ACK status alone is not a check that the owners still retain matching content.\n- Consequence: The F0 classifier alone cannot distinguish a fully published terminal activation from one with acknowledged/absent pending delivery but missing referenced owner records. A pending directive still produces the appropriate reconciliation decision. Higher-level integrity scans may catch owner loss; this is a recovery-contract gap, not proof that the current daemon ignored corruption or deleted context.\n- Repair direction: Derive required publication obligations from durable activation/evidence state and verify their owner receipts before declaring completion. Treat delivery state as transport progress rather than the complete publication truth. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.611145187Z",
-      "updated_at": "2026-10-08T03:26:46.484953582Z",
+      "updated_at": "2026-10-08T03:28:21.530887921Z",
+      "closed_at": "2026-10-08T03:28:21.528149230Z",
       "labels": [
         "daily-driving-limiter"
       ],
