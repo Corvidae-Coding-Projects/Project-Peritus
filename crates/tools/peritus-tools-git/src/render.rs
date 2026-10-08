@@ -4,11 +4,12 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use peritus_git::{
     DiffChange, GitDiffObservation, GitHistoryObservation, StatusKind, StatusObservation,
 };
-use peritus_tool_protocol::{BoundedJson, BoundedText, JsonLimits};
+use peritus_tool_protocol::{BoundedJson, BoundedText, JsonLimits, Truncation};
 
 use crate::{
-    GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass, RetainedSnapshotObservation,
-    SnapshotObservation,
+    DiffObservationPage, GitToolError, GitToolErrorKind, GitToolOperation,
+    HistoryObservationPage, RecoveryClass, RetainedSnapshotObservation, SnapshotObservation,
+    StatusObservationPage,
 };
 
 const MAX_RENDER_ITEMS: usize = 500;
@@ -21,10 +22,42 @@ pub struct RenderedOutput {
     structured: BoundedJson,
     model: BoundedText,
     human: BoundedText,
-    truncated: bool,
+    output_truncation: Truncation,
 }
 
 impl RenderedOutput {
+    /// Returns the exact canonical JSON byte length charged to the selected output envelope.
+    #[must_use]
+    pub fn encoded_bytes(&self) -> usize {
+        self.structured.canonical_bytes().len()
+    }
+
+    /// Renders a bounded continuation when one indivisible record needs a larger envelope.
+    ///
+    /// # Errors
+    /// Returns a typed protocol-bound failure.
+    pub fn deferred(
+        operation: &'static str,
+        cursor: &str,
+        minimum_output_bytes: usize,
+    ) -> Result<Self, GitToolError> {
+        let structured = object(vec![
+            ("coverage_complete", Ok(BoundedJson::boolean(false))),
+            ("minimum_output_bytes", unsigned_usize(minimum_output_bytes)),
+            ("next_cursor", string(cursor.to_owned())),
+            ("operation", string(operation.to_owned())),
+            ("retry_same_page", Ok(BoundedJson::boolean(true))),
+            ("truncated", Ok(BoundedJson::boolean(true))),
+        ])?;
+        finish_with_truncation(
+            structured,
+            format!(
+                "{operation} requires at least {minimum_output_bytes} output bytes for its next physical record."
+            ),
+            Truncation::Indeterminate,
+        )
+    }
+
     /// Renders an authorized candidate-plus-snapshot outcome.
     ///
     /// # Errors
@@ -71,7 +104,7 @@ impl RenderedOutput {
         )
     }
 
-    /// Renders exact status identities and a bounded entry window.
+    /// Renders exact status identities and a bounded legacy entry window.
     ///
     /// # Errors
     /// Returns a typed protocol-bound failure.
@@ -112,7 +145,63 @@ impl RenderedOutput {
         )
     }
 
-    /// Renders structured changed paths plus an exact bounded patch window.
+    /// Renders one exact bounded page of immutable status.
+    ///
+    /// # Errors
+    /// Returns a typed protocol-bound failure.
+    pub fn status_page(value: &StatusObservationPage) -> Result<Self, GitToolError> {
+        let observation = value.observation();
+        let entries = value
+            .entries()
+            .iter()
+            .map(|entry| {
+                object(vec![
+                    ("kind", string(status_kind(entry.kind()).to_owned())),
+                    ("path", string(entry.path().to_owned())),
+                ])
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let has_prior = value.entry_start() > 0;
+        let has_next = value.next_cursor().is_some();
+        let structured = object(vec![
+            ("coverage_complete", Ok(BoundedJson::boolean(!has_next))),
+            ("cursor", string(value.cursor().to_owned())),
+            ("detached", Ok(BoundedJson::boolean(observation.is_detached()))),
+            ("digest", string(digest_hex(observation.digest()))),
+            ("entries", array(entries)),
+            ("entry_count", unsigned_usize(observation.entries().len())),
+            ("entry_range_end", Ok(BoundedJson::unsigned(value.entry_end()))),
+            ("entry_range_start", Ok(BoundedJson::unsigned(value.entry_start()))),
+            ("head", string(observation.head().to_string())),
+            (
+                "index_tree",
+                observation
+                    .index_tree()
+                    .map_or_else(|| Ok(BoundedJson::null()), |tree| string(tree.to_string())),
+            ),
+            ("next_cursor", optional_string(value.next_cursor())),
+            (
+                "repository_digest",
+                string(digest_hex(observation.repository_digest())),
+            ),
+            ("returned_entry_count", unsigned_usize(value.entries().len())),
+            ("truncated", Ok(BoundedJson::boolean(has_prior || has_next))),
+        ])?;
+        finish_page(
+            structured,
+            format!(
+                "Git status entries {}..{} of {}; detached={}.",
+                value.entry_start(),
+                value.entry_end(),
+                observation.entries().len(),
+                observation.is_detached()
+            ),
+            has_prior,
+            has_next,
+        )
+    }
+
+    /// Renders structured changed paths plus a bounded legacy patch prefix.
     ///
     /// # Errors
     /// Returns a typed protocol-bound failure.
@@ -151,7 +240,64 @@ impl RenderedOutput {
         )
     }
 
-    /// Renders bounded commit and parent identities.
+    /// Renders one exact changed-path or patch-byte page of an immutable diff.
+    ///
+    /// # Errors
+    /// Returns a typed protocol-bound failure.
+    pub fn diff_page(value: &DiffObservationPage) -> Result<Self, GitToolError> {
+        let observation = value.observation();
+        let entries = value
+            .entries()
+            .iter()
+            .map(|entry| {
+                object(vec![
+                    ("change", string(change_name(entry.change()).to_owned())),
+                    ("path", string(entry.path().to_owned())),
+                ])
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let has_prior = value.entry_start() > 0 || value.patch_start() > 0;
+        let has_next = value.next_cursor().is_some();
+        let structured = object(vec![
+            ("base", string(observation.base().to_string())),
+            ("coverage_complete", Ok(BoundedJson::boolean(!has_next))),
+            ("cursor", string(value.cursor().to_owned())),
+            ("digest", string(digest_hex(observation.digest()))),
+            ("entries", array(entries)),
+            ("entry_count", unsigned_usize(observation.entries().len())),
+            ("entry_range_end", Ok(BoundedJson::unsigned(value.entry_end()))),
+            ("entry_range_start", Ok(BoundedJson::unsigned(value.entry_start()))),
+            ("next_cursor", optional_string(value.next_cursor())),
+            ("patch_base64", string(STANDARD.encode(value.patch()))),
+            ("patch_bytes", unsigned_usize(observation.patch().len())),
+            ("patch_range_end", Ok(BoundedJson::unsigned(value.patch_end()))),
+            ("patch_range_start", Ok(BoundedJson::unsigned(value.patch_start()))),
+            (
+                "repository_digest",
+                string(digest_hex(observation.repository_digest())),
+            ),
+            ("returned_entry_count", unsigned_usize(value.entries().len())),
+            ("returned_patch_bytes", unsigned_usize(value.patch().len())),
+            ("target", string(observation.target().to_string())),
+            ("truncated", Ok(BoundedJson::boolean(has_prior || has_next))),
+        ])?;
+        finish_page(
+            structured,
+            format!(
+                "Git diff paths {}..{} of {}; patch bytes {}..{} of {}.",
+                value.entry_start(),
+                value.entry_end(),
+                observation.entries().len(),
+                value.patch_start(),
+                value.patch_end(),
+                observation.patch().len()
+            ),
+            has_prior,
+            has_next,
+        )
+    }
+
+    /// Renders a bounded legacy commit and parent prefix.
     ///
     /// # Errors
     /// Returns a typed protocol-bound failure.
@@ -186,6 +332,73 @@ impl RenderedOutput {
             structured,
             format!("Git history contains {} observed commits.", value.commits().len()),
             truncated,
+        )
+    }
+
+    /// Renders one exact commit/parent page of immutable history.
+    ///
+    /// # Errors
+    /// Returns a typed protocol-bound failure.
+    pub fn history_page(value: &HistoryObservationPage) -> Result<Self, GitToolError> {
+        let observation = value.observation();
+        let commits = value
+            .commit()
+            .map(|commit| {
+                let parents = value
+                    .parents()
+                    .iter()
+                    .map(|parent| string(parent.to_string()))
+                    .collect::<Result<Vec<_>, _>>()?;
+                object(vec![
+                    ("commit", string(commit.commit().to_string())),
+                    ("commit_index", Ok(BoundedJson::unsigned(value.commit_index()))),
+                    ("parent_count", unsigned_usize(commit.parents().len())),
+                    ("parent_range_end", Ok(BoundedJson::unsigned(value.parent_end()))),
+                    ("parent_range_start", Ok(BoundedJson::unsigned(value.parent_start()))),
+                    ("parents", array(parents)),
+                    ("subject", string(commit.subject().to_owned())),
+                    (
+                        "timestamp_seconds",
+                        Ok(BoundedJson::unsigned(commit.timestamp_seconds())),
+                    ),
+                ])
+            })
+            .transpose()?
+            .into_iter()
+            .collect::<Vec<_>>();
+        let has_prior = value.commit_index() > 0 || value.parent_start() > 0;
+        let has_next = value.next_cursor().is_some();
+        let returned = if value.commit().is_some() { 1_u64 } else { 0 };
+        let new_commits = if value.parent_start() == 0 { returned } else { 0 };
+        let structured = object(vec![
+            ("commit_count", unsigned_usize(observation.commits().len())),
+            ("commit_range_end", Ok(BoundedJson::unsigned(value.commit_index() + returned))),
+            ("commit_range_start", Ok(BoundedJson::unsigned(value.commit_index()))),
+            ("commits", array(commits)),
+            ("coverage_complete", Ok(BoundedJson::boolean(!has_next))),
+            ("cursor", string(value.cursor().to_owned())),
+            ("digest", string(digest_hex(observation.digest()))),
+            ("next_cursor", optional_string(value.next_cursor())),
+            (
+                "repository_digest",
+                string(digest_hex(observation.repository_digest())),
+            ),
+            ("returned_commit_count", Ok(BoundedJson::unsigned(new_commits))),
+            ("returned_parent_count", unsigned_usize(value.parents().len())),
+            ("start", string(observation.start().to_string())),
+            ("truncated", Ok(BoundedJson::boolean(has_prior || has_next))),
+        ])?;
+        finish_page(
+            structured,
+            format!(
+                "Git history commit {} of {}; parent identities {}..{}.",
+                value.commit_index(),
+                observation.commits().len(),
+                value.parent_start(),
+                value.parent_end()
+            ),
+            has_prior,
+            has_next,
         )
     }
 
@@ -248,10 +461,15 @@ impl RenderedOutput {
     pub const fn human(&self) -> &BoundedText {
         &self.human
     }
-    /// Returns whether a structured output window was truncated.
+    /// Returns whether the structured output omits any part of the complete observation.
     #[must_use]
     pub const fn truncated(&self) -> bool {
-        self.truncated
+        !matches!(self.output_truncation, Truncation::Complete)
+    }
+    /// Returns truthful placement of this output in the complete observation.
+    #[must_use]
+    pub const fn output_truncation(&self) -> Truncation {
+        self.output_truncation
     }
 }
 
@@ -260,9 +478,36 @@ fn finish(
     text: String,
     truncated: bool,
 ) -> Result<RenderedOutput, GitToolError> {
+    finish_with_truncation(
+        structured,
+        text,
+        if truncated { Truncation::TailDropped } else { Truncation::Complete },
+    )
+}
+
+fn finish_page(
+    structured: BoundedJson,
+    text: String,
+    has_prior: bool,
+    has_next: bool,
+) -> Result<RenderedOutput, GitToolError> {
+    let truncation = match (has_prior, has_next) {
+        (false, false) => Truncation::Complete,
+        (false, true) => Truncation::TailDropped,
+        (true, false) => Truncation::HeadDropped,
+        (true, true) => Truncation::Windowed,
+    };
+    finish_with_truncation(structured, text, truncation)
+}
+
+fn finish_with_truncation(
+    structured: BoundedJson,
+    text: String,
+    output_truncation: Truncation,
+) -> Result<RenderedOutput, GitToolError> {
     let model = BoundedText::new(text.clone()).map_err(|_| protocol_error())?;
     let human = BoundedText::new(text).map_err(|_| protocol_error())?;
-    Ok(RenderedOutput { structured, model, human, truncated })
+    Ok(RenderedOutput { structured, model, human, output_truncation })
 }
 
 fn object(
@@ -283,8 +528,18 @@ fn string(value: String) -> Result<BoundedJson, GitToolError> {
     BoundedJson::string(value, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
 }
 
+fn optional_string(value: Option<&str>) -> Result<BoundedJson, GitToolError> {
+    value.map_or_else(|| Ok(BoundedJson::null()), |value| string(value.to_owned()))
+}
+
 fn integer(value: i64) -> BoundedJson {
     BoundedJson::integer(value)
+}
+
+fn unsigned_usize(value: usize) -> Result<BoundedJson, GitToolError> {
+    u64::try_from(value)
+        .map(BoundedJson::unsigned)
+        .map_err(|_| protocol_error())
 }
 
 const fn status_kind(value: &StatusKind) -> &'static str {

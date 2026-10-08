@@ -11,7 +11,8 @@ use peritus_workspace::{
 };
 
 use crate::{
-    GitReadService, GitToolError, GitToolOperation, RenderedOutput, SnapshotInput, StatusInput,
+    GitReadService, GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass,
+    RenderedOutput, SnapshotInput,
     decoder, descriptor_catalog,
     dispatch_support::{
         caller_binding, finish, minimum_result_capacity, protocol_failure, tool_failure,
@@ -225,7 +226,13 @@ impl ToolDispatcher for GitDispatcher<'_> {
         }
         let rendered = match &mut self.context {
             DispatchContext::Read { workspace, retained } => {
-                execute_read(self.kind, workspace, *retained, prepared.arguments())
+                execute_read(
+                    self.kind,
+                    workspace,
+                    *retained,
+                    prepared.arguments(),
+                    prepared.call().limits().output_bytes(),
+                )
             }
             DispatchContext::Candidate { gateway, authorization, mutation, artifacts } => {
                 let input = decoder::candidate(prepared.arguments())
@@ -286,14 +293,23 @@ fn execute_read(
     workspace: &ReadOnlyWorkspace,
     retained: Option<&CandidateSnapshot>,
     arguments: &peritus_tool_protocol::BoundedJson,
+    maximum_output_bytes: u64,
 ) -> Result<RenderedOutput, GitToolError> {
     let service = GitReadService::new(workspace);
+    let maximum_output_bytes = usize::try_from(maximum_output_bytes).unwrap_or(usize::MAX);
     match kind {
-        GitDispatchKind::Status => RenderedOutput::status(&service.status(StatusInput)?),
-        GitDispatchKind::Diff => RenderedOutput::diff(&service.diff(&decoder::diff(arguments)?)?),
-        GitDispatchKind::History => {
-            RenderedOutput::history(&service.history(decoder::history(arguments)?)?)
-        }
+        GitDispatchKind::Status => render_status_page(
+            service.status_page(decoder::status(arguments)?)?,
+            maximum_output_bytes,
+        ),
+        GitDispatchKind::Diff => render_diff_page(
+            service.diff_page(&decoder::diff(arguments)?)?,
+            maximum_output_bytes,
+        ),
+        GitDispatchKind::History => render_history_page(
+            service.history_page(decoder::history(arguments)?)?,
+            maximum_output_bytes,
+        ),
         GitDispatchKind::Snapshot => match decoder::snapshot(arguments)? {
             SnapshotInput::Current => RenderedOutput::snapshot(&service.current_snapshot()),
             input @ SnapshotInput::Retained(_) => {
@@ -310,6 +326,102 @@ fn execute_read(
             GitToolOperation::Catalog,
             "effectful kind reached immutable Git dispatcher",
         )),
+    }
+}
+
+fn render_status_page(
+    mut page: crate::StatusObservationPage,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, GitToolError> {
+    loop {
+        let rendered = RenderedOutput::status_page(&page);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => {
+                return Ok(rendered);
+            }
+            rendered => {
+                if page.narrow_result_page() {
+                    continue;
+                }
+                return final_or_deferred(
+                    "git.status",
+                    page.cursor(),
+                    rendered,
+                    maximum_output_bytes,
+                );
+            }
+        }
+    }
+}
+
+fn render_diff_page(
+    mut page: crate::DiffObservationPage,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, GitToolError> {
+    loop {
+        let rendered = RenderedOutput::diff_page(&page);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => {
+                return Ok(rendered);
+            }
+            rendered => {
+                if page.narrow_result_page() {
+                    continue;
+                }
+                return final_or_deferred(
+                    "git.diff",
+                    page.cursor(),
+                    rendered,
+                    maximum_output_bytes,
+                );
+            }
+        }
+    }
+}
+
+fn render_history_page(
+    mut page: crate::HistoryObservationPage,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, GitToolError> {
+    loop {
+        let rendered = RenderedOutput::history_page(&page);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => {
+                return Ok(rendered);
+            }
+            rendered => {
+                if page.narrow_result_page() {
+                    continue;
+                }
+                return final_or_deferred(
+                    "git.history",
+                    page.cursor(),
+                    rendered,
+                    maximum_output_bytes,
+                );
+            }
+        }
+    }
+}
+
+fn final_or_deferred(
+    operation: &'static str,
+    cursor: &str,
+    rendered: Result<RenderedOutput, GitToolError>,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, GitToolError> {
+    let rendered = rendered?;
+    let minimum_output_bytes = rendered.encoded_bytes();
+    let deferred = RenderedOutput::deferred(operation, cursor, minimum_output_bytes)?;
+    if deferred.encoded_bytes() <= maximum_output_bytes {
+        Ok(deferred)
+    } else {
+        Err(GitToolError::new(
+            GitToolErrorKind::Protocol,
+            GitToolOperation::Catalog,
+            RecoveryClass::CorrectInput,
+            "selected output capacity cannot carry a Git continuation",
+        ))
     }
 }
 

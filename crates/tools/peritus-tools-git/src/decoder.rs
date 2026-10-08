@@ -5,19 +5,32 @@ use peritus_types::SnapshotId;
 
 use crate::{
     CandidateInput, DiffInput, GitToolError, GitToolOperation, HistoryInput, RollbackInput,
-    SnapshotInput,
+    SnapshotInput, StatusPageInput,
 };
 
-pub fn diff(value: &BoundedJson) -> Result<DiffInput, GitToolError> {
-    DiffInput::new(
-        string(value, "base_revision", GitToolOperation::Diff)?,
-        number(value, "maximum_entries", GitToolOperation::Diff)?,
-        number(value, "maximum_patch_bytes", GitToolOperation::Diff)?,
+pub fn status(value: &BoundedJson) -> Result<StatusPageInput, GitToolError> {
+    optional_string(value, "cursor", GitToolOperation::Status)?.map_or_else(
+        || Ok(StatusPageInput::new()),
+        StatusPageInput::resume,
     )
 }
 
+pub fn diff(value: &BoundedJson) -> Result<DiffInput, GitToolError> {
+    let base = string(value, "base_revision", GitToolOperation::Diff)?;
+    let entries = number(value, "maximum_entries", GitToolOperation::Diff)?;
+    let patch = number(value, "maximum_patch_bytes", GitToolOperation::Diff)?;
+    match optional_string(value, "cursor", GitToolOperation::Diff)? {
+        Some(cursor) => DiffInput::resume(base, entries, patch, cursor),
+        None => DiffInput::new(base, entries, patch),
+    }
+}
+
 pub fn history(value: &BoundedJson) -> Result<HistoryInput, GitToolError> {
-    HistoryInput::new(number(value, "maximum_commits", GitToolOperation::History)?)
+    let maximum = number(value, "maximum_commits", GitToolOperation::History)?;
+    optional_string(value, "cursor", GitToolOperation::History)?.map_or_else(
+        || HistoryInput::new(maximum),
+        |cursor| HistoryInput::resume(maximum, cursor),
+    )
 }
 
 pub fn snapshot(value: &BoundedJson) -> Result<SnapshotInput, GitToolError> {
@@ -60,6 +73,17 @@ fn string(
         .property(name)
         .and_then(|value| value.as_str().map(str::to_owned))
         .ok_or_else(|| invalid(operation))
+}
+
+fn optional_string(
+    value: &BoundedJson,
+    name: &str,
+    operation: GitToolOperation,
+) -> Result<Option<String>, GitToolError> {
+    value
+        .property(name)
+        .map(|value| value.as_str().map(str::to_owned).ok_or_else(|| invalid(operation)))
+        .transpose()
 }
 
 fn number<T>(

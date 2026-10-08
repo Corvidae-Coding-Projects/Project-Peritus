@@ -1,23 +1,27 @@
-//! Exact version-one Git schemas.
+//! Exact version-two Git schemas with optional immutable continuations.
 
 use peritus_tool_protocol::{BoundedJson, JsonLimits, Schema, SchemaProperty};
 
 use crate::{GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass};
 
 pub fn status_schema() -> Result<Schema, GitToolError> {
-    object(Vec::new())
+    object(vec![property("cursor", cursor()?, false)?])
 }
 
 pub fn diff_schema() -> Result<Schema, GitToolError> {
     object(vec![
         property("base_revision", Schema::string(1, 1_024).map_err(|_| schema_error())?, true)?,
+        property("cursor", cursor()?, false)?,
         property("maximum_entries", integer(1, 100_000)?, true)?,
         property("maximum_patch_bytes", integer(1, 8 * 1_024 * 1_024)?, true)?,
     ])
 }
 
 pub fn history_schema() -> Result<Schema, GitToolError> {
-    object(vec![property("maximum_commits", integer(1, 1_024)?, true)?])
+    object(vec![
+        property("cursor", cursor()?, false)?,
+        property("maximum_commits", integer(1, 1_024)?, true)?,
+    ])
 }
 
 pub fn candidate_schema() -> Result<Schema, GitToolError> {
@@ -52,6 +56,10 @@ fn identifier() -> Result<Schema, GitToolError> {
 
 fn object_id() -> Result<Schema, GitToolError> {
     Schema::string(40, 64).map_err(|_| schema_error())
+}
+
+fn cursor() -> Result<Schema, GitToolError> {
+    Schema::string(1, 4_096).map_err(|_| schema_error())
 }
 
 fn enumeration(values: &[&str]) -> Result<Schema, GitToolError> {

@@ -25,9 +25,15 @@ pub fn caller_binding(invocation: &AuthorizedInvocation) -> WorkspaceCallerBindi
     )
 }
 
-pub const fn minimum_result_capacity(prepared: &peritus_tool_protocol::PreparedToolCall) -> bool {
+pub fn minimum_result_capacity(prepared: &peritus_tool_protocol::PreparedToolCall) -> bool {
     let limits = prepared.call().limits();
-    limits.output_bytes() >= 512 && limits.model_bytes() >= 128 && limits.human_bytes() >= 128
+    let minimum_output = match prepared.descriptor().name().as_str() {
+        "git.diff" | "git.history" | "git.status" => 1_024,
+        _ => 512,
+    };
+    limits.output_bytes() >= minimum_output
+        && limits.model_bytes() >= 128
+        && limits.human_bytes() >= 128
 }
 
 pub fn finish(
@@ -35,9 +41,9 @@ pub fn finish(
     rendered: &RenderedOutput,
     completed_at: AuthorityInstant,
 ) -> Result<ToolResult, DispatchFailure> {
-    if rendered.structured().canonical_bytes().len() as u64
-        > prepared.call().limits().output_bytes()
-    {
+    let encoded_bytes = u64::try_from(rendered.structured().canonical_bytes().len())
+        .map_err(|_| protocol_failure("structured result size is not representable"))?;
+    if encoded_bytes > prepared.call().limits().output_bytes() {
         return Err(protocol_failure("structured result exceeds the selected call output bound"));
     }
     let timing = ToolTiming::new(completed_at, completed_at)
@@ -50,11 +56,7 @@ pub fn finish(
         Vec::new(),
         timing,
         TruncationMetadata {
-            output: if rendered.truncated() {
-                Truncation::TailDropped
-            } else {
-                Truncation::Complete
-            },
+            output: rendered.output_truncation(),
             model: Truncation::Complete,
             human: Truncation::Complete,
         },

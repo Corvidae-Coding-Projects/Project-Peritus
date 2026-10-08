@@ -2,11 +2,39 @@
 
 use peritus_types::SnapshotId;
 
-use crate::{GitToolError, GitToolOperation};
+use crate::{
+    GitToolError, GitToolOperation,
+    cursor::{PageCursor, PageKind},
+};
 
 /// Status requires no caller-selected Git arguments.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct StatusInput;
+
+/// Immutable status-page selector. An absent cursor starts at the first physical page.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct StatusPageInput {
+    pub(crate) cursor: Option<PageCursor>,
+}
+
+impl StatusPageInput {
+    /// Starts a complete status observation at its first physical page.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { cursor: None }
+    }
+
+    /// Resumes the exact snapshot and observation named by an opaque cursor.
+    ///
+    /// # Errors
+    /// Rejects corrupt, non-canonical, or wrong-operation cursors.
+    pub fn resume(cursor: String) -> Result<Self, GitToolError> {
+        let cursor = PageCursor::decode(&cursor, PageKind::Status).map_err(|()| {
+            GitToolError::invalid(GitToolOperation::Status, "status cursor is invalid")
+        })?;
+        Ok(Self { cursor: Some(cursor) })
+    }
+}
 
 /// Bounded immutable commit-diff request.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -14,6 +42,7 @@ pub struct DiffInput {
     pub(crate) base_revision: String,
     pub(crate) maximum_entries: u32,
     pub(crate) maximum_patch_bytes: u64,
+    pub(crate) cursor: Option<PageCursor>,
 }
 
 impl DiffInput {
@@ -39,7 +68,24 @@ impl DiffInput {
                 "revision or diff bounds are invalid",
             ));
         }
-        Ok(Self { base_revision, maximum_entries, maximum_patch_bytes })
+        Ok(Self { base_revision, maximum_entries, maximum_patch_bytes, cursor: None })
+    }
+
+    /// Resumes an exact diff observation without changing its total observation bounds.
+    ///
+    /// # Errors
+    /// Rejects invalid request fields or a corrupt/wrong-operation cursor.
+    pub fn resume(
+        base_revision: String,
+        maximum_entries: u32,
+        maximum_patch_bytes: u64,
+        cursor: String,
+    ) -> Result<Self, GitToolError> {
+        let mut input = Self::new(base_revision, maximum_entries, maximum_patch_bytes)?;
+        input.cursor = Some(PageCursor::decode(&cursor, PageKind::Diff).map_err(|()| {
+            GitToolError::invalid(GitToolOperation::Diff, "diff cursor is invalid")
+        })?);
+        Ok(input)
     }
 }
 
@@ -47,6 +93,7 @@ impl DiffInput {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct HistoryInput {
     pub(crate) maximum_commits: u16,
+    pub(crate) cursor: Option<PageCursor>,
 }
 
 impl HistoryInput {
@@ -61,7 +108,19 @@ impl HistoryInput {
                 "history count is outside its bound",
             ));
         }
-        Ok(Self { maximum_commits })
+        Ok(Self { maximum_commits, cursor: None })
+    }
+
+    /// Resumes an exact history observation.
+    ///
+    /// # Errors
+    /// Rejects an invalid count or corrupt/wrong-operation cursor.
+    pub fn resume(maximum_commits: u16, cursor: String) -> Result<Self, GitToolError> {
+        let mut input = Self::new(maximum_commits)?;
+        input.cursor = Some(PageCursor::decode(&cursor, PageKind::History).map_err(|()| {
+            GitToolError::invalid(GitToolOperation::History, "history cursor is invalid")
+        })?);
+        Ok(input)
     }
 }
 

@@ -32,8 +32,16 @@ const SPECS: &[DescriptorSpec] = &[
         "Create an authorized candidate and retained snapshot",
         candidate_schema,
     ),
-    read_spec("git.diff", "Observe a bounded immutable structured Git diff", diff_schema),
-    read_spec("git.history", "Observe bounded immutable structured Git history", history_schema),
+    read_spec(
+        "git.diff",
+        "Page complete immutable changed paths and exact patch byte ranges",
+        diff_schema,
+    ),
+    read_spec(
+        "git.history",
+        "Page complete immutable commit and parent observations",
+        history_schema,
+    ),
     DescriptorSpec {
         name: "git.merge",
         description: "Request separately authorized branch delivery when C1 supports it",
@@ -50,7 +58,11 @@ const SPECS: &[DescriptorSpec] = &[
         rollback_schema,
     ),
     read_spec("git.snapshot", "Inspect current or retained snapshot identity", snapshot_schema),
-    read_spec("git.status", "Observe exact structured immutable Git status", status_schema),
+    read_spec(
+        "git.status",
+        "Page complete exact structured immutable Git status",
+        status_schema,
+    ),
 ];
 
 const fn read_spec(
@@ -101,8 +113,9 @@ pub fn descriptor_catalog() -> Result<Vec<ToolDescriptor>, GitToolError> {
 /// Returns a typed construction failure if the frozen catalog is invalid.
 pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
     let catalog = descriptor_catalog()?;
-    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V1\0".to_vec();
-    bytes.extend_from_slice(&(catalog.len() as u64).to_be_bytes());
+    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V2\0".to_vec();
+    let catalog_length = u64::try_from(catalog.len()).expect("bounded Git catalog length fits u64");
+    bytes.extend_from_slice(&catalog_length.to_be_bytes());
     for descriptor in catalog {
         put_bytes(&mut bytes, &descriptor.canonical_bytes());
     }
@@ -110,6 +123,8 @@ pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
 }
 
 fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolError> {
+    let paged_observation = matches!(spec.name, "git.diff" | "git.history" | "git.status");
+    let version = if paged_observation { 2 } else { 1 };
     let operation = OperationDescriptor::new(
         capability(spec.name)?,
         spec.class,
@@ -118,13 +133,13 @@ fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolErro
     .map_err(|_| catalog_error())?;
     ToolDescriptor::new(
         capability(spec.name)?,
-        SemanticVersion::new(1, 0, 0).map_err(|_| catalog_error())?,
+        SemanticVersion::new(version, 0, 0).map_err(|_| catalog_error())?,
         (spec.schema)()?,
         operation,
         spec.effect,
         spec.lease,
         spec.replay,
-        ImplementationIdentity::new(format!("peritus.tools.git.{}/v1", spec.name))
+        ImplementationIdentity::new(format!("peritus.tools.git.{}/v{version}", spec.name))
             .map_err(|_| catalog_error())?,
         ToolLimits::with_optional_timeout(None, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
             .map_err(|_| catalog_error())?,
@@ -140,7 +155,8 @@ fn capability(value: &str) -> Result<CapabilityName, GitToolError> {
 }
 
 fn put_bytes(target: &mut Vec<u8>, value: &[u8]) {
-    target.extend_from_slice(&(value.len() as u64).to_be_bytes());
+    let length = u64::try_from(value.len()).expect("bounded Git descriptor length fits u64");
+    target.extend_from_slice(&length.to_be_bytes());
     target.extend_from_slice(value);
 }
 
