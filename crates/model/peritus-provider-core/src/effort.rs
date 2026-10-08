@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use peritus_model_protocol::{
-    ModelName, ModelRequest, ProviderProfile, ReasoningEffort, ResponseId,
+    Capability, ModelName, ModelRequest, NegotiatedCapabilities, ProviderProfile, ReasoningEffort,
+    ReasoningPolicy, ResponseId, SummaryPolicy,
 };
 
 use crate::{
@@ -28,6 +29,22 @@ pub fn select_reasoning_effort(
         ));
     }
     Ok(Arc::new(EffortSelection { provider, effort }))
+}
+
+pub(crate) fn qualification_reasoning_policy(
+    provider: &dyn ModelProvider,
+    negotiated: NegotiatedCapabilities,
+    unselected: ReasoningPolicy,
+) -> Result<ReasoningPolicy, ProviderCoreError> {
+    let Some(effort) = provider.reasoning_effort() else { return Ok(unselected) };
+    if !negotiated.includes(Capability::ReasoningControls)
+        || !provider.supports_reasoning_effort(effort)
+    {
+        return Err(ProviderCoreError::unsupported_capability(
+            "the selected reasoning effort is not supported by the qualified provider profile",
+        ));
+    }
+    Ok(ReasoningPolicy::Effort { effort, summary: SummaryPolicy::None })
 }
 
 struct EffortSelection {

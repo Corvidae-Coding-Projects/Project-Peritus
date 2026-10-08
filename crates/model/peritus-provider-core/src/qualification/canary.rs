@@ -1,13 +1,15 @@
 //! Minimal live-canary request construction and explicit capability negotiation.
 use super::ProviderCanaryError;
+use crate::{ModelProvider, effort::qualification_reasoning_policy};
 use peritus_model_protocol::{
     BoundedText, CachePolicy, Capability, ContentBlock, GenerationConfig, Message, ModelRequest,
-    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ProviderProfile, ReasoningEffort,
-    ReasoningPolicy, RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput,
-    SummaryPolicy, ToolChoice, negotiate,
+    ParallelToolPolicy, PersistencePolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy,
+    RequestId, RequestOptions, RequestedCapabilities, Role, StructuredOutput, SummaryPolicy,
+    ToolChoice, negotiate,
 };
 
-pub(super) fn request(profile: &ProviderProfile) -> Result<ModelRequest, ProviderCanaryError> {
+pub(super) fn request(provider: &dyn ModelProvider) -> Result<ModelRequest, ProviderCanaryError> {
+    let profile = provider.profile();
     let optional = [Capability::Streaming, Capability::ReasoningControls, Capability::UsageDetail];
     let negotiated =
         negotiate(profile, RequestedCapabilities::new(&[], &optional, profile.limits())?)?;
@@ -17,11 +19,13 @@ pub(super) fn request(profile: &ProviderProfile) -> Result<ModelRequest, Provide
         limits,
     )?;
     let messages = vec![Message::new(Role::User, vec![ContentBlock::Text(prompt)], limits)?];
-    let reasoning = if negotiated.includes(Capability::ReasoningControls) {
+    let unselected_reasoning = if negotiated.includes(Capability::ReasoningControls) {
         ReasoningPolicy::Effort { effort: ReasoningEffort::Low, summary: SummaryPolicy::None }
     } else {
         ReasoningPolicy::Disabled
     };
+    let reasoning =
+        qualification_reasoning_policy(provider, negotiated, unselected_reasoning)?;
     let options = RequestOptions::new(
         StructuredOutput::Text,
         reasoning,

@@ -4,6 +4,7 @@ use crate::{
     CancellationToken, ModelProvider, ProviderCanaryError, ProviderCoreError, ProviderRequirement,
     verify_live_provider,
 };
+use crate::effort::qualification_reasoning_policy;
 use crate::qualification::{accepted_terminal, reduce_response, terminal_error};
 use core::fmt;
 use peritus_model_protocol::{
@@ -123,6 +124,8 @@ fn request(
             profile.limits(),
         )?,
     )?;
+    let reasoning =
+        qualification_reasoning_policy(provider, negotiated, ReasoningPolicy::Disabled)?;
     let name = ToolName::new("peritus_connection_check".to_owned())?;
     let schema = JsonSchema::parse(
         r#"{"type":"object","properties":{},"additionalProperties":false}"#,
@@ -132,7 +135,7 @@ fn request(
     let tool = ToolDefinition::new(name.clone(), None, schema, false);
     let options = RequestOptions::new(
         StructuredOutput::Text,
-        ReasoningPolicy::Disabled,
+        reasoning,
         GenerationConfig::new(
             512.min(profile.limits().max_output_tokens()),
             Vec::new(),

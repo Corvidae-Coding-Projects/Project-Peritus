@@ -323,7 +323,7 @@ pub async fn verify_live_provider(
     cancellation: CancellationToken,
 ) -> Result<ProviderQualification, ProviderCanaryError> {
     validate_capabilities(provider.profile(), requirement)?;
-    let request = canary::request(provider.profile())?;
+    let request = canary::request(provider)?;
     let reducer = reduce_response(provider, request, cancellation).await?;
     if !accepted_terminal(reducer.terminal()) {
         return Err(terminal_error(reducer.terminal()));
