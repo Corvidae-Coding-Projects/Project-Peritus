@@ -235,6 +235,11 @@ impl WindowsBackend {
         }
         let resources = selected.resources();
         let job = JobPlan::from_checked_plan(sandbox);
+        let job_identity = crate::identity::job(
+            execution.identity().process_id(),
+            admission.preparation_digest(),
+            job,
+        );
         let process = ProcessPolicy::from_checked_plan(sandbox);
         let channel_plan = crate::channels::PreparedChannelPlan::preflight(
             &self.config,
@@ -280,7 +285,14 @@ impl WindowsBackend {
         )?;
         #[cfg(target_os = "windows")]
         let native_helper_channels = if install_native {
-            Some(peritus_process::NativeWindowsHelperChannels::new().map_err(|source| {
+            let object_name =
+                crate::identity::job_name(execution.identity().process_id(), job_identity);
+            let containment_job = crate::native::prepare_containment_job(job, &object_name)?;
+            Some(peritus_process::NativeWindowsHelperChannels::new_with_containment(
+                containment_job,
+                job_identity,
+                object_name,
+            ).map_err(|source| {
                 WindowsError::new(
                     WindowsErrorKind::Handle,
                     WindowsOperation::Prepare,
@@ -381,7 +393,7 @@ impl WindowsBackend {
             execution.identity().process_id(),
             admission.preparation_digest(),
             helper_digest,
-            crate::identity::job(admission.preparation_digest(), job),
+            job_identity,
             crate::identity::profile(&self.config.token),
             acl.digest(),
         );
@@ -498,6 +510,8 @@ impl WindowsBackend {
             ));
         }
         let _resources = selected.resources();
+        JobPlan::from_checked_plan(sandbox)
+            .validate_native_capacity(WindowsOperation::Prepare)?;
         #[cfg(target_os = "windows")]
         {
             self.validate_configured_native_paths()?;

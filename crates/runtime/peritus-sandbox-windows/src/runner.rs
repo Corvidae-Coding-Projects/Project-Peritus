@@ -208,15 +208,20 @@ impl ReservedHelperExit {
 /// Returns a typed fail-closed error if any required native control is unavailable or mismatched.
 #[cfg(target_os = "windows")]
 pub fn activate_manifest(manifest: &HelperManifest) -> Result<WindowsActivation, WindowsError> {
-    activate_manifest_while(manifest, &mut || true)
+    let _ = manifest;
+    Err(helper_error(
+        "Windows activation requires the independently retained helper channels",
+    ))
 }
 
 #[cfg(target_os = "windows")]
 pub(crate) fn activate_manifest_while(
     manifest: &HelperManifest,
+    inherited_job: std::fs::File,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<WindowsActivation, WindowsError> {
-    crate::native::activate(manifest, should_continue).map(|inner| WindowsActivation { inner })
+    crate::native::activate(manifest, inherited_job, should_continue)
+        .map(|inner| WindowsActivation { inner })
 }
 
 /// Launches and waits for the literal target under the installed Windows controls.

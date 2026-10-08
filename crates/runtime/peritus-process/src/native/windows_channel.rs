@@ -7,24 +7,37 @@
 
 use std::{
     fs::File,
-    io::Write,
+    io::{Read, Write},
     os::windows::io::{AsRawHandle, FromRawHandle, RawHandle},
     sync::{Arc, Mutex},
 };
 
 use windows_sys::Win32::{
-    Foundation::HANDLE,
-    System::Pipes::{CreatePipe, PIPE_NOWAIT, PeekNamedPipe, SetNamedPipeHandleState},
+    Foundation::{GetHandleInformation, HANDLE},
+    System::{
+        JobObjects::IsProcessInJob,
+        Pipes::{CreatePipe, PIPE_NOWAIT, PeekNamedPipe, SetNamedPipeHandleState},
+        Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
+    },
 };
 
 use crate::{
-    ErrorCode, NativeProtectedHandle, ProcessError, ProcessOperation, RecoveryClass, TerminalSize,
+    ErrorCode, NativeProtectedHandle, NativeWindowsContainmentIdentity, ProcessError,
+    ProcessOperation, ProcessTreeIdentity, RecoveryClass, TerminalSize,
 };
+use peritus_types::Sha256Digest;
 
 /// Reserved child environment key carrying the digest-bound started-status writer.
 pub const NATIVE_WINDOWS_STATUS_HANDLE_ENV: &str = "PERITUS_NATIVE_WINDOWS_STATUS_V1";
 /// Reserved child environment key carrying the terminal resize-control reader.
 pub const NATIVE_WINDOWS_CONTROL_HANDLE_ENV: &str = "PERITUS_NATIVE_WINDOWS_CONTROL_V1";
+/// Reserved child environment key carrying the independently retained Job Object handle.
+pub const NATIVE_WINDOWS_JOB_HANDLE_ENV: &str = "PERITUS_NATIVE_WINDOWS_JOB_V1";
+/// Exact protected-handle role used for the independently retained Job Object.
+pub const NATIVE_WINDOWS_JOB_HANDLE_LABEL: &str = "windows-containment-job-v1";
+
+const TARGET_ADOPTION_BYTES: usize = Sha256Digest::LENGTH + 4 + 8;
+const TARGET_ADOPTION_ACK: u8 = 5;
 
 /// C2-owned parent endpoints and their exact protected helper endpoints.
 #[derive(Clone, Debug)]
@@ -34,6 +47,16 @@ pub struct NativeWindowsHelperChannels {
     child_handles: Vec<NativeProtectedHandle>,
     status_handle: u64,
     control_handle: u64,
+    containment_job_handle: Option<u64>,
+    containment_job_identity: Option<Sha256Digest>,
+    containment_job_name: Option<String>,
+    adoption: Arc<Mutex<Option<ContainmentAdoption>>>,
+}
+
+#[derive(Debug)]
+struct ContainmentAdoption {
+    identity: NativeWindowsContainmentIdentity,
+    _target: File,
 }
 
 impl NativeWindowsHelperChannels {
@@ -44,6 +67,7 @@ impl NativeWindowsHelperChannels {
     pub fn new() -> Result<Self, ProcessError> {
         let (status_reader, status_writer) = pipe()?;
         let (control_reader, control_writer) = pipe()?;
+        set_nonblocking(&status_reader)?;
         set_nonblocking(&control_writer)?;
         let status = NativeProtectedHandle::from_file("windows-helper-status-v1", status_writer)?;
         let control =
@@ -56,7 +80,36 @@ impl NativeWindowsHelperChannels {
             child_handles: vec![status, control],
             status_handle,
             control_handle,
+            containment_job_handle: None,
+            containment_job_identity: None,
+            containment_job_name: None,
+            adoption: Arc::new(Mutex::new(None)),
         })
+    }
+
+    /// Creates protected helper channels with one parent-owned authority-bound Job Object.
+    ///
+    /// # Errors
+    /// Rejects a staged object with the wrong role or a malformed native object name.
+    pub fn new_with_containment(
+        containment_job: NativeProtectedHandle,
+        job_identity: Sha256Digest,
+        object_name: String,
+    ) -> Result<Self, ProcessError> {
+        if containment_job.label() != NATIVE_WINDOWS_JOB_HANDLE_LABEL
+            || containment_job.payload_len().is_some()
+        {
+            return Err(channel_error("Windows containment Job Object role is invalid"));
+        }
+        let provisional = ProcessTreeIdentity::new(1, Some(1), None, true);
+        NativeWindowsContainmentIdentity::new(job_identity, object_name.clone(), provisional)?;
+        let job_handle = containment_job.raw_handle();
+        let mut channels = Self::new()?;
+        channels.child_handles.push(containment_job);
+        channels.containment_job_handle = Some(job_handle);
+        channels.containment_job_identity = Some(job_identity);
+        channels.containment_job_name = Some(object_name);
+        Ok(channels)
     }
 
     pub(crate) fn take_child_handles(&mut self) -> Vec<NativeProtectedHandle> {
@@ -71,10 +124,131 @@ impl NativeWindowsHelperChannels {
         self.control_handle
     }
 
+    pub(crate) const fn containment_job_handle(&self) -> Option<u64> {
+        self.containment_job_handle
+    }
+
+    pub(crate) const fn containment_job_identity(&self) -> Option<Sha256Digest> {
+        self.containment_job_identity
+    }
+
     pub(crate) fn status_reader(&self) -> Result<File, ProcessError> {
         self.status_reader
             .try_clone()
             .map_err(|_| channel_error("Windows helper status reader cannot be cloned"))
+    }
+
+    pub(crate) fn verify_target_adoption(
+        &self,
+        mut reader: Box<dyn Read + Send>,
+        expected: Sha256Digest,
+        helper: ProcessTreeIdentity,
+        should_continue: &mut dyn FnMut() -> bool,
+    ) -> Result<Box<dyn Read + Send>, crate::platform::HandshakeError> {
+        let mut frame = [0_u8; TARGET_ADOPTION_BYTES];
+        read_exact_while(&mut *reader, &mut frame, should_continue)?;
+        if &frame[..Sha256Digest::LENGTH] != expected.as_bytes() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target adoption record mismatched",
+            )));
+        }
+        let pid = u32::from_le_bytes(
+            frame[Sha256Digest::LENGTH..Sha256Digest::LENGTH + 4]
+                .try_into()
+                .map_err(|_| crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows target adoption process identity is malformed",
+                )))?,
+        );
+        let start_token = u64::from_le_bytes(
+            frame[Sha256Digest::LENGTH + 4..]
+                .try_into()
+                .map_err(|_| crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows target adoption birth identity is malformed",
+                )))?,
+        );
+        if pid == 0 || pid == helper.root_pid() || start_token == 0 {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target adoption identity aliases or omits its birth",
+            )));
+        }
+        let job_handle = self.raw_containment_job().map_err(
+            crate::platform::HandshakeError::Failed,
+        )?;
+        // SAFETY: access is query-only and handle inheritance is disabled for this C2 handle.
+        let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+        if process.is_null() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target cannot be opened for adoption",
+            )));
+        }
+        // SAFETY: the non-null query handle transfers to File and is closed with the adoption.
+        let target = unsafe { File::from_raw_handle(process.cast()) };
+        if process_start_token(&target) != Some(start_token) {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target PID was reused before adoption",
+            )));
+        }
+        let mut member = 0;
+        // SAFETY: both handles remain live and `member` is writable for the duration of the call.
+        if unsafe {
+            IsProcessInJob(
+                target.as_raw_handle().cast(),
+                job_handle,
+                &raw mut member,
+            )
+        } == 0
+            || member == 0
+        {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target is not contained by the retained Job Object",
+            )));
+        }
+        let target_identity = ProcessTreeIdentity::new(pid, Some(start_token), None, true);
+        let identity = NativeWindowsContainmentIdentity::new(
+            self.containment_job_identity.ok_or_else(|| {
+                crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows containment Job Object identity is missing",
+                ))
+            })?,
+            self.containment_job_name.clone().ok_or_else(|| {
+                crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows containment Job Object name is missing",
+                ))
+            })?,
+            target_identity,
+        )
+        .map_err(crate::platform::HandshakeError::Failed)?;
+        let mut adoption = self.adoption.lock().map_err(|_| {
+            crate::platform::HandshakeError::Failed(channel_error(
+                "Windows containment adoption state was poisoned",
+            ))
+        })?;
+        if adoption.is_some() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows target adoption was already published",
+            )));
+        }
+        *adoption = Some(ContainmentAdoption { identity, _target: target });
+        drop(adoption);
+        Ok(reader)
+    }
+
+    pub(crate) fn acknowledge_target_adoption(&self) -> Result<(), ProcessError> {
+        self.write_control(&[TARGET_ADOPTION_ACK])
+    }
+
+    pub(crate) fn containment_identity(
+        &self,
+    ) -> Result<Option<NativeWindowsContainmentIdentity>, ProcessError> {
+        self.adoption
+            .lock()
+            .map(|adoption| adoption.as_ref().map(|value| value.identity.clone()))
+            .map_err(|_| channel_error("Windows containment adoption state was poisoned"))
+    }
+
+    #[must_use]
+    pub(crate) fn retains_containment_job(&self, expected: Sha256Digest) -> bool {
+        self.containment_job_identity == Some(expected) && self.raw_containment_job().is_ok()
     }
 
     pub(crate) fn resize(&self, size: TerminalSize) -> Result<(), ProcessError> {
@@ -106,6 +280,21 @@ impl NativeWindowsHelperChannels {
             }
         }
     }
+
+    fn raw_containment_job(&self) -> Result<HANDLE, ProcessError> {
+        let raw = self
+            .containment_job_handle
+            .and_then(|value| usize::try_from(value).ok())
+            .filter(|value| *value != 0 && *value != usize::MAX)
+            .ok_or_else(|| channel_error("Windows containment Job Object handle is missing"))?
+            as HANDLE;
+        let mut flags = 0;
+        // SAFETY: the raw value remains owned by the protected launch handle while queried.
+        if unsafe { GetHandleInformation(raw, &raw mut flags) } == 0 {
+            return Err(channel_error("Windows containment Job Object handle is no longer live"));
+        }
+        Ok(raw)
+    }
 }
 
 /// Helper-owned inherited status/control endpoints opened from C2-reserved environment values.
@@ -113,6 +302,7 @@ impl NativeWindowsHelperChannels {
 pub struct NativeWindowsHelperAttachment {
     status: File,
     control: Option<File>,
+    containment_job: Option<File>,
 }
 
 impl NativeWindowsHelperAttachment {
@@ -123,7 +313,8 @@ impl NativeWindowsHelperAttachment {
     pub fn from_environment() -> Result<Self, ProcessError> {
         let status = inherited_file(NATIVE_WINDOWS_STATUS_HANDLE_ENV)?;
         let control = inherited_file(NATIVE_WINDOWS_CONTROL_HANDLE_ENV)?;
-        Ok(Self { status, control: Some(control) })
+        let containment_job = inherited_optional_file(NATIVE_WINDOWS_JOB_HANDLE_ENV)?;
+        Ok(Self { status, control: Some(control), containment_job })
     }
 
     /// Writes the digest-bound record proving that the target was successfully resumed.
@@ -135,6 +326,47 @@ impl NativeWindowsHelperAttachment {
             .write_all(&record)
             .and_then(|()| self.status.flush())
             .map_err(|_| channel_error("Windows target-started record cannot be written"))
+    }
+
+    /// Publishes one suspended target birth identity before C2 permits it to resume.
+    pub fn signal_target_adoption(
+        &mut self,
+        record: [u8; Sha256Digest::LENGTH],
+        target: ProcessTreeIdentity,
+    ) -> Result<(), ProcessError> {
+        let start_token = target.start_token().ok_or_else(|| {
+            channel_error("Windows target adoption birth token is missing")
+        })?;
+        if target.root_pid() == 0
+            || target.process_group().is_some()
+            || !target.complete_containment()
+        {
+            return Err(channel_error("Windows target adoption identity is incomplete"));
+        }
+        let mut frame = [0_u8; TARGET_ADOPTION_BYTES];
+        frame[..Sha256Digest::LENGTH].copy_from_slice(&record);
+        frame[Sha256Digest::LENGTH..Sha256Digest::LENGTH + 4]
+            .copy_from_slice(&target.root_pid().to_le_bytes());
+        frame[Sha256Digest::LENGTH + 4..].copy_from_slice(&start_token.to_le_bytes());
+        self.status
+            .write_all(&frame)
+            .and_then(|()| self.status.flush())
+            .map_err(|_| channel_error("Windows target adoption record cannot be written"))
+    }
+
+    /// Waits for C2 to publish its retained Job and target handles before target resume.
+    pub fn await_target_adoption(&mut self) -> Result<(), ProcessError> {
+        let control = self.control.as_mut().ok_or_else(|| {
+            channel_error("Windows target adoption control channel is unavailable")
+        })?;
+        let mut acknowledgement = [0_u8; 1];
+        control
+            .read_exact(&mut acknowledgement)
+            .map_err(|_| channel_error("Windows target adoption owner disconnected"))?;
+        if acknowledgement != [TARGET_ADOPTION_ACK] {
+            return Err(channel_error("Windows target adoption acknowledgement mismatched"));
+        }
+        Ok(())
     }
 
     /// Reports whether the C2 owner still retains the paired control endpoint.
@@ -160,6 +392,65 @@ impl NativeWindowsHelperAttachment {
     pub const fn take_control_reader(&mut self) -> Option<File> {
         self.control.take()
     }
+
+    /// Transfers the exact inherited Job Object handle into helper activation.
+    #[must_use]
+    pub const fn take_containment_job(&mut self) -> Option<File> {
+        self.containment_job.take()
+    }
+}
+
+fn read_exact_while(
+    reader: &mut dyn Read,
+    bytes: &mut [u8],
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), crate::platform::HandshakeError> {
+    let mut offset = 0_usize;
+    while offset < bytes.len() {
+        if !should_continue() {
+            return Err(crate::platform::HandshakeError::Cancelled);
+        }
+        match reader.read(&mut bytes[offset..]) {
+            Ok(0) => {
+                return Err(crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows target adoption stream closed",
+                )));
+            }
+            Ok(count) => offset += count,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::yield_now();
+            }
+            Err(_) => {
+                return Err(crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows target adoption stream cannot be read",
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn process_start_token(process: &File) -> Option<u64> {
+    let mut creation = windows_sys::Win32::Foundation::FILETIME {
+        dwLowDateTime: 0,
+        dwHighDateTime: 0,
+    };
+    let mut exit = creation;
+    let mut kernel = creation;
+    let mut user = creation;
+    // SAFETY: the File owns a query-capable process handle and every FILETIME is writable.
+    let observed = unsafe {
+        GetProcessTimes(
+            process.as_raw_handle().cast(),
+            &raw mut creation,
+            &raw mut exit,
+            &raw mut kernel,
+            &raw mut user,
+        )
+    };
+    (observed != 0)
+        .then(|| (u64::from(creation.dwHighDateTime) << 32) | u64::from(creation.dwLowDateTime))
 }
 
 fn pipe() -> Result<(File, File), ProcessError> {
@@ -209,6 +500,13 @@ fn inherited_file(key: &'static str) -> Result<File, ProcessError> {
     // SAFETY: C2 supplies an exact uniquely inherited child HANDLE and removes the environment
     // identity before any target command is created; this attachment assumes its ownership.
     Ok(unsafe { File::from_raw_handle(handle) })
+}
+
+fn inherited_optional_file(key: &'static str) -> Result<Option<File>, ProcessError> {
+    if std::env::var_os(key).is_none() {
+        return Ok(None);
+    }
+    inherited_file(key).map(Some)
 }
 
 const fn channel_error(detail: &'static str) -> ProcessError {

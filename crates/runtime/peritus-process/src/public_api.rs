@@ -31,17 +31,18 @@ pub use crate::native::{
     AuthorizedPreparationContext, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
     NativeObservationPage, NativeObservationReceipt, NativeObservationTransport, NativePlatform,
     NativePoll, NativeProcessProbe, NativeProtectedHandle, NativeRecoveryPhase,
-    NativeSandboxBackend, NativeSandboxSession, NativeSessionRecovery, NATIVE_MANIFEST_FRAME_BYTES,
-    NATIVE_MANIFEST_STREAM_MARKER,
+    NativeSandboxBackend, NativeSandboxSession, NativeSessionRecovery,
+    NativeWindowsContainmentIdentity, NATIVE_MANIFEST_FRAME_BYTES, NATIVE_MANIFEST_STREAM_MARKER,
     native_activation_record, native_ready_record,
     native_observation_prefix_digest, native_observation_producer_binding,
-    native_target_exec_failed_record, native_target_started_record,
+    native_target_adoption_record, native_target_exec_failed_record, native_target_started_record,
 };
 #[cfg(unix)]
 pub use crate::native::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 #[cfg(windows)]
 pub use crate::native::{
-    NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
+    NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
+    NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
     NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
 };
 pub use crate::output::{OutputCompleteness, OutputStream, StreamAccounting};

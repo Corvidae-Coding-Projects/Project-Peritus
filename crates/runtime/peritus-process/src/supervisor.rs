@@ -438,6 +438,8 @@ fn run_owner(
             value.manifest_digest(),
             value.preparation_digest(),
         ),
+        #[cfg(windows)]
+        adoption: value.windows_target_adoption_record(),
         protected_handles: value.protected_handles().to_vec(),
         #[cfg(windows)]
         windows_channels: value.windows_helper_channels().cloned(),

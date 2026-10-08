@@ -117,8 +117,14 @@ impl WindowsSession {
             if filter.is_managed() { CleanupState::Pending } else { CleanupState::Complete };
         let secret_cleanup =
             if secrets.is_some() { CleanupState::Pending } else { CleanupState::Complete };
+        #[cfg(target_os = "windows")]
+        let containment_required =
+            native_launch.retains_windows_job(runtime_identity.job_identity());
+        #[cfg(not(target_os = "windows"))]
+        let containment_required = false;
         let recovery = WindowsRecoveryRecord::prepared_owned(
             runtime_identity,
+            containment_required,
             acl.transaction_digest(),
             acl.receipt(),
             acl.owner_operation_digest(),
@@ -268,17 +274,28 @@ impl NativeSandboxSession for WindowsSession {
             ))
         })?;
         record.extend_from_slice(bytes);
-        NativeSessionRecovery::new(
+        #[cfg(target_os = "windows")]
+        let custody_complete = self.recovery.custody_complete()
+            && self
+                .native_launch
+                .retains_windows_job(self.recovery.identity().job_identity());
+        #[cfg(not(target_os = "windows"))]
+        let custody_complete = self.recovery.custody_complete();
+        let snapshot = NativeSessionRecovery::new(
             NativePlatform::Windows,
             self.recovery.identity().process_id(),
             phase,
             self.recovery.tree_identity(),
             self.recovery.owner_operation_digest(),
             self.recovery.service_owner_digest(),
-            self.recovery.custody_complete(),
+            custody_complete,
             record,
-        )
-        .map(Some)
+        )?;
+        let snapshot = match self.recovery.containment_identity() {
+            Some(containment) => snapshot.with_windows_containment(containment.clone())?,
+            None => snapshot,
+        };
+        Ok(Some(snapshot))
     }
 
     fn spawned(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
@@ -380,6 +397,23 @@ impl NativeSandboxSession for WindowsSession {
                 WindowsRecovery::CancelAndReap,
                 "C2 helper/target tree differs from the retained Windows birth identity",
             )));
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let containment = self
+                .native_launch
+                .windows_containment_identity()?
+                .ok_or_else(|| {
+                    process_error(&WindowsError::new(
+                        WindowsErrorKind::Job,
+                        WindowsOperation::Activate,
+                        WindowsRecovery::CancelAndReap,
+                        "C2 retained no exact Job Object and target adoption identity",
+                    ))
+                })?;
+            self.recovery
+                .adopted(containment)
+                .map_err(|error| process_error(&error))?;
         }
         self.transition(WindowsPhase::Activated, ObservationDisposition::Completed)
             .map_err(|error| process_error(&error))?;

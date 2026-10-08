@@ -4,8 +4,9 @@ use std::io::{Read, Write};
 
 use peritus_process::{
     CancellationReason, ControlRejection, ErrorCode, ProcessCursor, ProcessError, ProcessEvent,
-    NativePlatform, NativeRecoveryPhase, NativeSessionRecovery, OutputStream, ProcessOperation,
-    ProcessSignal, ProcessTreeIdentity, RecoveryClass, RetainedOwnerNonce,
+    NativePlatform, NativeRecoveryPhase, NativeSessionRecovery, NativeWindowsContainmentIdentity,
+    OutputStream, ProcessOperation, ProcessSignal, ProcessTreeIdentity, RecoveryClass,
+    RetainedOwnerNonce,
     RetainedOwnerObservation, RetainedProcessKey, RetainedStreamPage, TerminalResult, TerminalSize,
 };
 use peritus_types::{ProcessId, Sha256Digest};
@@ -250,6 +251,7 @@ fn encode_native_recovery(
     optional_digest(writer, recovery.owner_operation_digest());
     optional_digest(writer, recovery.service_owner_digest());
     writer.boolean(recovery.custody_complete());
+    encode_windows_containment(writer, recovery.windows_containment())?;
     writer.frame(recovery.record())
 }
 fn decode_native_recovery(
@@ -257,18 +259,67 @@ fn decode_native_recovery(
 ) -> std::io::Result<Option<NativeSessionRecovery>> {
     match reader.u8()? {
         0 => Ok(None),
-        1 => NativeSessionRecovery::new(
-            decode_platform(reader.u8()?)?,
-            ProcessId::new(reader.array()?).map_err(|_| invalid_data())?,
-            decode_native_phase(reader.u8()?)?,
-            decode_tree(reader)?,
-            decode_optional_digest(reader)?,
-            decode_optional_digest(reader)?,
-            reader.boolean()?,
-            reader.frame()?.to_vec(),
-        )
-        .map(Some)
-        .map_err(|_| invalid_data()),
+        1 => {
+            let platform = decode_platform(reader.u8()?)?;
+            let process_id = ProcessId::new(reader.array()?).map_err(|_| invalid_data())?;
+            let phase = decode_native_phase(reader.u8()?)?;
+            let tree = decode_tree(reader)?;
+            let owner = decode_optional_digest(reader)?;
+            let service = decode_optional_digest(reader)?;
+            let custody = reader.boolean()?;
+            let containment = decode_windows_containment(reader)?;
+            let record = reader.frame()?.to_vec();
+            let recovery = NativeSessionRecovery::new(
+                platform,
+                process_id,
+                phase,
+                tree,
+                owner,
+                service,
+                custody,
+                record,
+            )
+            .map_err(|_| invalid_data())?;
+            let recovery = match containment {
+                Some(identity) => recovery
+                    .with_windows_containment(identity)
+                    .map_err(|_| invalid_data())?,
+                None => recovery,
+            };
+            Ok(Some(recovery))
+        }
+        _ => Err(invalid_data()),
+    }
+}
+fn encode_windows_containment(
+    writer: &mut Writer,
+    containment: Option<&NativeWindowsContainmentIdentity>,
+) -> std::io::Result<()> {
+    let Some(containment) = containment else {
+        writer.u8(0);
+        return Ok(());
+    };
+    writer.u8(1);
+    writer.digest(containment.job_identity());
+    writer.frame(containment.object_name().as_bytes())?;
+    encode_tree(writer, Some(containment.target_identity()));
+    Ok(())
+}
+fn decode_windows_containment(
+    reader: &mut Reader<'_>,
+) -> std::io::Result<Option<NativeWindowsContainmentIdentity>> {
+    match reader.u8()? {
+        0 => Ok(None),
+        1 => {
+            let job_identity = reader.digest()?;
+            let object_name = std::str::from_utf8(reader.frame()?)
+                .map_err(|_| invalid_data())?
+                .to_owned();
+            let target = decode_tree(reader)?.ok_or_else(invalid_data)?;
+            NativeWindowsContainmentIdentity::new(job_identity, object_name, target)
+                .map(Some)
+                .map_err(|_| invalid_data())
+        }
         _ => Err(invalid_data()),
     }
 }

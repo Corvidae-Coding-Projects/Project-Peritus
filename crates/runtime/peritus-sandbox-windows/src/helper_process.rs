@@ -31,8 +31,15 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .map_err(|_| ReservedHelperExit::Protocol)?;
     let manifest = read_manifest_while_owned(&helper_channels)?;
     let activation = {
+        let inherited_job = helper_channels
+            .take_containment_job()
+            .ok_or(ReservedHelperExit::JobOrResource)?;
         let mut owner_connected = || helper_channels.owner_connected();
-        crate::runner::activate_manifest_while(&manifest, &mut owner_connected)
+        crate::runner::activate_manifest_while(
+            &manifest,
+            inherited_job,
+            &mut owner_connected,
+        )
             .map_err(|error| classify_activation_error(&error))?
     };
     let activation_record =

@@ -104,12 +104,14 @@ impl JobPlan {
                 "legacy job policy is incomplete or has a zero hard ceiling",
             ));
         }
-        Ok(Self {
+        let plan = Self {
             kill_on_close,
             active_process_limit: Some(active_process_limit),
             job_memory_bytes: Some(job_memory_bytes),
             cpu_time_millis: (cpu_time_millis != 0).then_some(cpu_time_millis),
-        })
+        };
+        plan.validate_native_capacity(WindowsOperation::Manifest)?;
+        Ok(plan)
     }
 
     pub(crate) fn from_native_manifest(
@@ -128,7 +130,39 @@ impl JobPlan {
                 "native job policy has an invalid selected ceiling",
             ));
         }
-        Ok(Self { kill_on_close, active_process_limit, job_memory_bytes, cpu_time_millis })
+        let plan = Self { kill_on_close, active_process_limit, job_memory_bytes, cpu_time_millis };
+        plan.validate_native_capacity(WindowsOperation::Manifest)?;
+        Ok(plan)
+    }
+
+    pub(crate) fn validate_native_capacity(
+        self,
+        operation: WindowsOperation,
+    ) -> Result<(), WindowsError> {
+        if let Some(bytes) = self.job_memory_bytes
+            && usize::try_from(bytes).is_err()
+        {
+            return Err(WindowsError::new(
+                crate::WindowsErrorKind::Resource,
+                operation,
+                crate::WindowsRecovery::CorrectRequest,
+                "selected job-memory bytes exceed the native pointer-width representation",
+            ));
+        }
+        if let Some(milliseconds) = self.cpu_time_millis
+            && milliseconds
+                .checked_mul(10_000)
+                .and_then(|ticks| i64::try_from(ticks).ok())
+                .is_none()
+        {
+            return Err(WindowsError::new(
+                crate::WindowsErrorKind::Resource,
+                operation,
+                crate::WindowsRecovery::CorrectRequest,
+                "selected CPU-time milliseconds exceed signed Windows 100ns job time",
+            ));
+        }
+        Ok(())
     }
 
     /// Reports kill-on-close ownership.

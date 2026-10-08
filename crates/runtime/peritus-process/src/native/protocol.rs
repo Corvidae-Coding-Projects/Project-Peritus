@@ -26,6 +26,21 @@ pub fn native_target_started_record(
     protocol_digest(b"peritus-native-target-started-v1", manifest_digest, preparation_digest)
 }
 
+/// Computes the authority-bound record that introduces one suspended target for adoption.
+#[must_use]
+pub fn native_target_adoption_record(
+    manifest_digest: Sha256Digest,
+    preparation_digest: Sha256Digest,
+    job_identity: Sha256Digest,
+) -> Sha256Digest {
+    let mut bytes = Vec::with_capacity(88);
+    bytes.extend_from_slice(b"peritus-native-target-adoption-v1");
+    bytes.extend_from_slice(manifest_digest.as_bytes());
+    bytes.extend_from_slice(preparation_digest.as_bytes());
+    bytes.extend_from_slice(job_identity.as_bytes());
+    peritus_codec::sha256(&bytes)
+}
+
 /// Computes the close-on-exec helper record proving target creation failed before replacement.
 #[must_use]
 pub fn native_target_exec_failed_record(

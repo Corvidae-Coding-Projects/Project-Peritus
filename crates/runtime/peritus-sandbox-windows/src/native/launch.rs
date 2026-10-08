@@ -1,16 +1,18 @@
 //! Literal suspended target creation, Job Object assignment, and exact exit observation.
 
 use core::{ffi::c_void, mem::size_of, ptr};
+use std::ffi::OsStr;
+use std::os::windows::ffi::OsStrExt;
 
 use windows_sys::Win32::{
-    Foundation::{CloseHandle, HANDLE, WAIT_OBJECT_0},
+    Foundation::{CloseHandle, FILETIME, HANDLE, WAIT_OBJECT_0},
     System::{
         Console::{GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
         JobObjects::AssignProcessToJobObject,
         Threading::{
             CREATE_NO_WINDOW, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateProcessAsUserW,
-            EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, INFINITE, PROCESS_INFORMATION,
-            ResumeThread, STARTF_USESTDHANDLES, STARTUPINFOEXW, TerminateProcess,
+            EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, GetProcessTimes, INFINITE,
+            PROCESS_INFORMATION, ResumeThread, STARTF_USESTDHANDLES, STARTUPINFOEXW, TerminateProcess,
             WaitForSingleObject,
         },
     },
@@ -20,6 +22,7 @@ use crate::{
     EnvironmentEntry, HelperManifest, TerminalMapping, WindowsError, WindowsErrorKind,
     WindowsOperation, WindowsRecovery,
 };
+use peritus_process::ProcessTreeIdentity;
 
 use super::{Activation, handle::AttributeList};
 
@@ -43,11 +46,15 @@ fn launch_and_wait_inner(
     activation: &Activation,
     mut channels: Option<&mut peritus_process::NativeWindowsHelperAttachment>,
 ) -> Result<i32, WindowsError> {
+    validate_native_admission(manifest, activation.secrets.environment())?;
+    let channels = channels.as_deref_mut().ok_or_else(|| {
+        launch_error("independent Windows containment adoption channel is unavailable")
+    })?;
     let attributes =
         AttributeList::create(manifest, activation.app_container.as_ref(), &activation.terminal)?;
     let application = wide_nul(manifest.executable());
     let mut command_line = command_line(manifest.executable(), manifest.arguments());
-    let directory = wide_nul(manifest.working_directory().as_str());
+    let directory = wide_nul(manifest.working_directory().as_os_str());
     let mut environment =
         environment_block(manifest.environment(), activation.secrets.environment());
     let mut startup = STARTUPINFOEXW::default();
@@ -88,15 +95,30 @@ fn launch_and_wait_inner(
     if created == 0 {
         return Err(launch_error("restricted literal target cannot be created"));
     }
-    let process_handle = OwnedHandle(process.hProcess);
-    let thread_handle = OwnedHandle(process.hThread);
+    let mut process_handle = OwnedHandle::target(process.hProcess);
+    let thread_handle = OwnedHandle::ordinary(process.hThread);
     // SAFETY: both handles are valid and the target remains suspended.
     if unsafe { AssignProcessToJobObject(activation.job.raw(), process_handle.raw()) } == 0 {
         // SAFETY: termination is confined to the just-created suspended target.
         unsafe { TerminateProcess(process_handle.raw(), 127) };
         return Err(launch_error("suspended target cannot be assigned to the exact Job Object"));
     }
-    if let Some(control) = channels.as_mut().and_then(|value| value.take_control_reader()) {
+    let target = target_identity(process.dwProcessId, process_handle.raw())?;
+    let job_identity = crate::identity::job(
+        manifest.process_id(),
+        manifest.preparation_digest(),
+        manifest.job(),
+    );
+    let adoption = peritus_process::native_target_adoption_record(
+        manifest.digest(),
+        manifest.preparation_digest(),
+        job_identity,
+    );
+    channels
+        .signal_target_adoption(adoption.into_bytes(), target)
+        .and_then(|()| channels.await_target_adoption())
+        .map_err(|_| launch_error("C2 could not adopt the suspended Windows target"))?;
+    if let Some(control) = channels.take_control_reader() {
         activation.terminal.start_io(control)?;
     }
     // SAFETY: the primary thread handle is live and has not been resumed.
@@ -105,15 +127,13 @@ fn launch_and_wait_inner(
         unsafe { TerminateProcess(process_handle.raw(), 127) };
         return Err(launch_error("assigned target primary thread cannot be resumed"));
     }
-    if let Some(channels) = channels {
-        let record = peritus_process::native_target_started_record(
-            manifest.digest(),
-            manifest.preparation_digest(),
-        );
-        channels
-            .signal_started(record.into_bytes())
-            .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
-    }
+    let record = peritus_process::native_target_started_record(
+        manifest.digest(),
+        manifest.preparation_digest(),
+    );
+    channels
+        .signal_started(record.into_bytes())
+        .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
     // SAFETY: the process handle remains live until the wait finishes.
     if unsafe { WaitForSingleObject(process_handle.raw(), INFINITE) } != WAIT_OBJECT_0 {
         return Err(launch_error("owned target completion cannot be observed"));
@@ -123,76 +143,157 @@ fn launch_and_wait_inner(
     if unsafe { GetExitCodeProcess(process_handle.raw(), &raw mut code) } == 0 {
         return Err(launch_error("owned target exit status cannot be read"));
     }
+    process_handle.disarm();
     drop(attributes);
     Ok(i32::try_from(code).unwrap_or(i32::MAX))
 }
 
-struct OwnedHandle(HANDLE);
+struct OwnedHandle {
+    raw: HANDLE,
+    terminate_on_drop: bool,
+}
 
 impl OwnedHandle {
+    const fn target(raw: HANDLE) -> Self {
+        Self { raw, terminate_on_drop: true }
+    }
+
+    const fn ordinary(raw: HANDLE) -> Self {
+        Self { raw, terminate_on_drop: false }
+    }
+
     const fn raw(&self) -> HANDLE {
-        self.0
+        self.raw
+    }
+
+    const fn disarm(&mut self) {
+        self.terminate_on_drop = false;
     }
 }
 
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
+        if self.terminate_on_drop {
+            // SAFETY: this guard owns the exact target handle and fails closed before release.
+            unsafe { TerminateProcess(self.raw, 127) };
+        }
         // SAFETY: this wrapper uniquely owns one non-null process or thread handle.
-        unsafe { CloseHandle(self.0) };
+        unsafe { CloseHandle(self.raw) };
     }
+}
+
+fn target_identity(pid: u32, process: HANDLE) -> Result<ProcessTreeIdentity, WindowsError> {
+    let mut creation = FILETIME { dwLowDateTime: 0, dwHighDateTime: 0 };
+    let mut exit = creation;
+    let mut kernel = creation;
+    let mut user = creation;
+    // SAFETY: the exact suspended target handle and writable FILETIME records remain live.
+    if pid == 0
+        || unsafe {
+            GetProcessTimes(
+                process,
+                &raw mut creation,
+                &raw mut exit,
+                &raw mut kernel,
+                &raw mut user,
+            )
+        } == 0
+    {
+        return Err(launch_error("suspended target birth identity cannot be observed"));
+    }
+    let start = (u64::from(creation.dwHighDateTime) << 32)
+        | u64::from(creation.dwLowDateTime);
+    if start == 0 {
+        return Err(launch_error("suspended target birth identity is zero"));
+    }
+    Ok(ProcessTreeIdentity::new(pid, Some(start), None, true))
 }
 
 fn environment_block(ordinary: &[EnvironmentEntry], secrets: &[EnvironmentEntry]) -> Vec<u16> {
     let mut values = ordinary.iter().chain(secrets).collect::<Vec<_>>();
-    values.sort_by(|left, right| {
-        left.name().to_ascii_lowercase().cmp(&right.name().to_ascii_lowercase())
-    });
+    values.sort_by(|left, right| crate::manifest::windows_name_cmp(left.name(), right.name()));
     let mut block = Vec::new();
     for value in values {
-        block.extend(value.name().encode_utf16());
+        block.extend(value.name().encode_wide());
         block.push(u16::from(b'='));
-        block.extend(value.value().encode_utf16());
+        block.extend(value.value().encode_wide());
+        block.push(0);
+    }
+    if block.is_empty() {
         block.push(0);
     }
     block.push(0);
     block
 }
 
-fn command_line(executable: &str, arguments: &[String]) -> Vec<u16> {
+fn command_line(executable: &OsStr, arguments: &[std::ffi::OsString]) -> Vec<u16> {
     let mut text = quote_argument(executable);
     for argument in arguments {
-        text.push(' ');
-        text.push_str(&quote_argument(argument));
+        text.push(u16::from(b' '));
+        text.extend(quote_argument(argument));
     }
-    wide_nul(&text)
+    text.push(0);
+    text
 }
 
-fn quote_argument(value: &str) -> String {
-    if !value.is_empty() && !value.bytes().any(|byte| matches!(byte, b' ' | b'\t' | b'"')) {
-        return value.to_owned();
+fn quote_argument(value: &OsStr) -> Vec<u16> {
+    let units = value.encode_wide().collect::<Vec<_>>();
+    if !units.is_empty()
+        && !units
+            .iter()
+            .any(|unit| matches!(*unit, 0x20 | 0x09 | 0x22))
+    {
+        return units;
     }
-    let mut result = String::from('"');
+    let mut result = vec![u16::from(b'"')];
     let mut backslashes = 0_usize;
-    for character in value.chars() {
-        if character == '\\' {
+    for unit in units {
+        if unit == u16::from(b'\\') {
             backslashes += 1;
         } else {
-            if character == '"' {
-                result.extend(core::iter::repeat_n('\\', backslashes * 2 + 1));
+            if unit == u16::from(b'"') {
+                result.extend(core::iter::repeat_n(u16::from(b'\\'), backslashes * 2 + 1));
             } else {
-                result.extend(core::iter::repeat_n('\\', backslashes));
+                result.extend(core::iter::repeat_n(u16::from(b'\\'), backslashes));
             }
             backslashes = 0;
-            result.push(character);
+            result.push(unit);
         }
     }
-    result.extend(core::iter::repeat_n('\\', backslashes * 2));
-    result.push('"');
+    result.extend(core::iter::repeat_n(u16::from(b'\\'), backslashes * 2));
+    result.push(u16::from(b'"'));
     result
 }
 
-fn wide_nul(value: &str) -> Vec<u16> {
-    value.encode_utf16().chain(core::iter::once(0)).collect()
+fn wide_nul(value: &OsStr) -> Vec<u16> {
+    value.encode_wide().chain(core::iter::once(0)).collect()
+}
+
+fn validate_native_admission(
+    manifest: &HelperManifest,
+    secrets: &[EnvironmentEntry],
+) -> Result<(), WindowsError> {
+    let command = peritus_process::CommandSpec::new(
+        manifest.executable().to_owned(),
+        manifest.arguments().to_vec(),
+    )
+    .map_err(|_| launch_error("target command failed native helper validation"))?;
+    let variables = manifest
+        .environment()
+        .iter()
+        .chain(secrets)
+        .map(|entry| {
+            peritus_process::EnvironmentVariable::new(
+                entry.name().to_owned(),
+                entry.value().to_owned(),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| launch_error("target environment failed native helper validation"))?;
+    let environment = peritus_process::EnvironmentPlan::cleared(variables)
+        .map_err(|_| launch_error("target environment failed native helper validation"))?;
+    peritus_process::validate_native_command_environment(&command, &environment)
+        .map_err(|_| launch_error("target exceeds current native process capacity"))
 }
 
 fn launch_error(detail: &'static str) -> WindowsError {

@@ -362,7 +362,10 @@ impl ProcessStore {
         }
         transport.launch_or_attach(key, request.encode(), request.digest())?;
         let observation = transport.observe(key, ProcessCursor::after(0), 0, None)?;
-        if request.backend_factory_request().platform() == crate::NativePlatform::Macos
+        if matches!(
+            request.backend_factory_request().platform(),
+            crate::NativePlatform::Macos | crate::NativePlatform::Windows
+        )
             && !observation.matches_native_adoption(
                 request.backend_factory_request().platform(),
                 binding,

@@ -13,6 +13,7 @@ keywords = ["process", "pty", "sandbox", "authorization", "formal-verification"]
 categories = ["development-tools"]
 
 [dependencies]
+getrandom.workspace = true
 peritus-artifact-store = { version = "=0.0.5", path = "../../state/peritus-artifact-store" }
 peritus-budget = { version = "=0.0.5", path = "../../foundation/peritus-budget" }
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
@@ -25,6 +26,7 @@ peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 portable-pty.workspace = true
 process-wrap.workspace = true
+rusqlite.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
 vstd.workspace = true
@@ -37,7 +39,10 @@ nix.workspace = true
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = [
     "Win32_Foundation",
+    "Win32_Globalization",
     "Win32_Security",
+    "Win32_System_IO",
+    "Win32_System_JobObjects",
     "Win32_System_Pipes",
     "Win32_System_ProcessStatus",
     "Win32_System_Threading",

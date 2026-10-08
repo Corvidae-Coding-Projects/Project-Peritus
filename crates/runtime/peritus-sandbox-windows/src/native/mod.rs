@@ -16,7 +16,7 @@ pub(crate) mod wfp;
 
 pub(crate) use token::derive_profile;
 
-use crate::{HelperManifest, NetworkIsolation, TokenProfile, WindowsError};
+use crate::{HelperManifest, JobPlan, NetworkIsolation, TokenProfile, WindowsError};
 
 pub(crate) struct Activation {
     token: token::RestrictedToken,
@@ -28,6 +28,7 @@ pub(crate) struct Activation {
 
 pub(crate) fn activate(
     manifest: &HelperManifest,
+    inherited_job: std::fs::File,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Activation, WindowsError> {
     verify_helper_identity(manifest, should_continue)?;
@@ -38,10 +39,30 @@ pub(crate) fn activate(
         TokenProfile::RestrictedLowIntegrity { .. } => None,
         TokenProfile::AppContainer(profile) => Some(token::AppContainerSid::derive(profile)?),
     };
-    let job = job::OwnedJob::create(manifest.job())?;
+    let job = job::OwnedJob::adopt(inherited_job, manifest.job())?;
     let terminal = handle::TerminalAttachment::create(manifest.terminal())?;
     let secrets = secret::stage(manifest)?;
     Ok(Activation { token, job, app_container, terminal, secrets })
+}
+
+pub(crate) fn prepare_containment_job(
+    plan: JobPlan,
+    object_name: &str,
+) -> Result<peritus_process::NativeProtectedHandle, WindowsError> {
+    let job = job::OwnedJob::create_bound(plan, object_name)?;
+    peritus_process::NativeProtectedHandle::from_file(
+        peritus_process::NATIVE_WINDOWS_JOB_HANDLE_LABEL,
+        job.into_file(),
+    )
+    .map_err(|source| {
+        WindowsError::new(
+            crate::WindowsErrorKind::Handle,
+            crate::WindowsOperation::Prepare,
+            crate::WindowsRecovery::CancelAndReap,
+            "retained Job Object handle cannot be staged for helper inheritance",
+        )
+        .with_source(crate::error::process_source(&source))
+    })
 }
 
 pub(crate) fn execute(

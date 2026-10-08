@@ -1,7 +1,7 @@
 //! Versioned native recovery record and exact ownership classification.
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits, decode_frame, encode_frame};
-use peritus_process::ProcessTreeIdentity;
+use peritus_process::{NativeWindowsContainmentIdentity, ProcessTreeIdentity};
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsPhase, WindowsRecovery};
@@ -9,6 +9,7 @@ use crate::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsPhase, Wind
 const FAMILY: u16 = 0xC317;
 const SCHEMA_V1: u16 = 1;
 const SCHEMA_V2: u16 = 2;
+const SCHEMA_V3: u16 = 3;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const LIMITS: CodecLimits = CodecLimits::new(4_096, 4_080, 32, 512, 512, 4);
 
@@ -86,6 +87,7 @@ pub struct WindowsRecoveryRecord {
     secret_files_removed: bool,
     helper_reaped: bool,
     tree: Option<ProcessTreeIdentity>,
+    containment: Option<NativeWindowsContainmentIdentity>,
     acl_transaction_digest: Option<Sha256Digest>,
     acl_receipt: Option<Sha256Digest>,
     owner_operation_digest: Option<Sha256Digest>,
@@ -105,6 +107,7 @@ impl WindowsRecoveryRecord {
             secret_files_removed: false,
             helper_reaped: false,
             tree: None,
+            containment: None,
             acl_transaction_digest: None,
             acl_receipt: None,
             owner_operation_digest: None,
@@ -117,6 +120,7 @@ impl WindowsRecoveryRecord {
 
     pub(crate) fn prepared_owned(
         identity: RuntimeIdentity,
+        containment_required: bool,
         transaction_digest: Option<Sha256Digest>,
         receipt: Option<Sha256Digest>,
         owner_operation_digest: Option<Sha256Digest>,
@@ -125,13 +129,14 @@ impl WindowsRecoveryRecord {
         let complete_transaction = transaction_digest.is_some() == receipt.is_some();
         let complete_owner = owner_operation_digest.is_some() == service_owner_digest.is_some();
         let mut value = Self {
-            schema: SCHEMA_V2,
+            schema: if containment_required { SCHEMA_V3 } else { SCHEMA_V2 },
             identity,
             phase: WindowsPhase::Prepared,
             acl_restored: false,
             secret_files_removed: false,
             helper_reaped: false,
             tree: None,
+            containment: None,
             acl_transaction_digest: complete_transaction.then_some(transaction_digest).flatten(),
             acl_receipt: complete_transaction.then_some(receipt).flatten(),
             owner_operation_digest: complete_owner.then_some(owner_operation_digest).flatten(),
@@ -157,6 +162,38 @@ impl WindowsRecoveryRecord {
             return Err(recovery_error("native recovery helper birth identity changed"));
         }
         self.tree = Some(tree);
+        self.canonical = self.encode()?;
+        Ok(())
+    }
+
+    pub(crate) fn adopted(
+        &mut self,
+        containment: NativeWindowsContainmentIdentity,
+    ) -> Result<(), WindowsError> {
+        if self.schema != SCHEMA_V3 {
+            return Err(recovery_error(
+                "legacy Windows recovery record cannot claim live Job Object adoption",
+            ));
+        }
+        let helper = self
+            .tree
+            .ok_or_else(|| recovery_error("Windows containment preceded helper birth identity"))?;
+        if containment.job_identity() != self.identity.job_identity
+            || containment.object_name()
+                != crate::identity::job_name(self.identity.process_id, self.identity.job_identity)
+            || containment.target_identity().root_pid() == helper.root_pid()
+        {
+            return Err(recovery_error(
+                "Windows Job Object or target identity differs from its authority",
+            ));
+        }
+        if self.containment.as_ref() == Some(&containment) {
+            return Ok(());
+        }
+        if self.containment.is_some() {
+            return Err(recovery_error("Windows containment adoption identity changed"));
+        }
+        self.containment = Some(containment);
         self.canonical = self.encode()?;
         Ok(())
     }
@@ -225,7 +262,9 @@ impl WindowsRecoveryRecord {
         let frame = decode_frame(&bytes[..split], LIMITS)
             .map_err(|_| recovery_error("native recovery frame is invalid"))?;
         let schema = frame.header().schema_version();
-        if frame.header().family() != FAMILY || !matches!(schema, SCHEMA_V1 | SCHEMA_V2) {
+        if frame.header().family() != FAMILY
+            || !matches!(schema, SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3)
+        {
             return Err(recovery_error("native recovery schema is unsupported"));
         }
         let mut reader = CanonicalReader::new(frame.payload(), LIMITS);
@@ -249,7 +288,7 @@ impl WindowsRecoveryRecord {
             acl_receipt,
             owner_operation_digest,
             service_owner_digest,
-        ) = if schema == SCHEMA_V2 {
+        ) = if matches!(schema, SCHEMA_V2 | SCHEMA_V3) {
             let tree = if reader.read_option_tag().map_err(codec_failure)? {
                 let root = reader.read_u32().map_err(codec_failure)?;
                 let start = if reader.read_option_tag().map_err(codec_failure)? {
@@ -285,11 +324,59 @@ impl WindowsRecoveryRecord {
         } else {
             (None, None, None, None, None)
         };
+        let containment = if schema == SCHEMA_V3
+            && reader.read_option_tag().map_err(codec_failure)?
+        {
+            let job_identity = read_digest(&mut reader)?;
+            let object_name = reader.read_str().map_err(codec_failure)?.to_owned();
+            let root = reader.read_u32().map_err(codec_failure)?;
+            let start = if reader.read_option_tag().map_err(codec_failure)? {
+                Some(reader.read_u64().map_err(codec_failure)?)
+            } else {
+                None
+            };
+            let group = if reader.read_option_tag().map_err(codec_failure)? {
+                Some(reader.read_u32().map_err(codec_failure)?)
+            } else {
+                None
+            };
+            let complete = reader.read_bool().map_err(codec_failure)?;
+            let target = ProcessTreeIdentity::new(root, start, group, complete);
+            let containment = NativeWindowsContainmentIdentity::new(
+                job_identity,
+                object_name,
+                target,
+            )
+            .map_err(|_| recovery_error("native recovery containment identity is invalid"))?;
+            if containment.job_identity() != identity.job_identity()
+                || containment.object_name()
+                    != crate::identity::job_name(identity.process_id(), identity.job_identity())
+                || tree.is_none_or(|helper| helper.root_pid() == root)
+            {
+                return Err(recovery_error(
+                    "native recovery containment is not authority-bound",
+                ));
+            }
+            Some(containment)
+        } else {
+            None
+        };
         reader.finish().map_err(codec_failure)?;
         let any_cleanup = acl_restored || secret_files_removed || helper_reaped;
         let complete_cleanup = acl_restored && secret_files_removed && helper_reaped;
         if (phase == WindowsPhase::Released || any_cleanup) && !complete_cleanup {
             return Err(recovery_error("native recovery record has inconsistent cleanup facts"));
+        }
+        if schema == SCHEMA_V3
+            && matches!(
+                phase,
+                WindowsPhase::Activated | WindowsPhase::CancelRequested | WindowsPhase::Terminated
+            )
+            && containment.is_none()
+        {
+            return Err(recovery_error(
+                "native recovery active phase lacks exact Windows containment",
+            ));
         }
         let value = Self {
             schema,
@@ -299,6 +386,7 @@ impl WindowsRecoveryRecord {
             secret_files_removed,
             helper_reaped,
             tree,
+            containment,
             acl_transaction_digest,
             acl_receipt,
             owner_operation_digest,
@@ -325,6 +413,11 @@ impl WindowsRecoveryRecord {
     #[must_use]
     pub const fn tree_identity(&self) -> Option<ProcessTreeIdentity> {
         self.tree
+    }
+    /// Returns the exact authority-bound Job Object and target birth identity.
+    #[must_use]
+    pub const fn containment_identity(&self) -> Option<&NativeWindowsContainmentIdentity> {
+        self.containment.as_ref()
     }
     /// Returns the authorization-bound ACL transaction identity, when recorded.
     #[must_use]
@@ -364,6 +457,9 @@ impl WindowsRecoveryRecord {
             && self.acl_receipt.is_some()
             && self.phase != WindowsPhase::Released
             && !self.cleanup_complete()
+            && (self.schema < SCHEMA_V3
+                || self.phase == WindowsPhase::Prepared
+                || self.containment.is_some())
     }
 
     fn encode(&self) -> Result<Vec<u8>, WindowsError> {
@@ -382,7 +478,7 @@ impl WindowsRecoveryRecord {
         writer.write_bool(self.acl_restored).map_err(codec_failure)?;
         writer.write_bool(self.secret_files_removed).map_err(codec_failure)?;
         writer.write_bool(self.helper_reaped).map_err(codec_failure)?;
-        if self.schema == SCHEMA_V2 {
+        if matches!(self.schema, SCHEMA_V2 | SCHEMA_V3) {
             writer.write_option_tag(self.tree.is_some()).map_err(codec_failure)?;
             if let Some(tree) = self.tree {
                 writer.write_u32(tree.root_pid()).map_err(codec_failure)?;
@@ -416,6 +512,32 @@ impl WindowsRecoveryRecord {
                 writer
                     .write_fixed(self.service_owner_digest.expect("checked").as_bytes())
                     .map_err(codec_failure)?;
+            }
+            if self.schema == SCHEMA_V3 {
+                writer.write_option_tag(self.containment.is_some()).map_err(codec_failure)?;
+                if let Some(containment) = &self.containment {
+                    writer
+                        .write_fixed(containment.job_identity().as_bytes())
+                        .map_err(codec_failure)?;
+                    writer.write_str(containment.object_name()).map_err(codec_failure)?;
+                    let target = containment.target_identity();
+                    writer.write_u32(target.root_pid()).map_err(codec_failure)?;
+                    writer
+                        .write_option_tag(target.start_token().is_some())
+                        .map_err(codec_failure)?;
+                    if let Some(start) = target.start_token() {
+                        writer.write_u64(start).map_err(codec_failure)?;
+                    }
+                    writer
+                        .write_option_tag(target.process_group().is_some())
+                        .map_err(codec_failure)?;
+                    if let Some(group) = target.process_group() {
+                        writer.write_u32(group).map_err(codec_failure)?;
+                    }
+                    writer
+                        .write_bool(target.complete_containment())
+                        .map_err(codec_failure)?;
+                }
             }
         }
         let mut bytes =

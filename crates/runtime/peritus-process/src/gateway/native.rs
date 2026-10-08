@@ -72,7 +72,10 @@ impl ExecutionGateway {
             0,
             None,
         )?;
-        if retained.backend_factory_request().platform() == NativePlatform::Macos
+        if matches!(
+            retained.backend_factory_request().platform(),
+            NativePlatform::Macos | NativePlatform::Windows
+        )
             && !observation.matches_native_adoption(
                 retained.backend_factory_request().platform(),
                 binding,
@@ -165,7 +168,10 @@ impl ExecutionGateway {
                 let key = RetainedProcessKey::from_binding(binding);
                 drop(transaction);
                 transport.launch_or_attach(key, retained.encode(), retained.digest())?;
-                if retained.backend_factory_request().platform() == NativePlatform::Macos {
+                if matches!(
+                    retained.backend_factory_request().platform(),
+                    NativePlatform::Macos | NativePlatform::Windows
+                ) {
                     let observation = transport.observe(
                         key,
                         crate::ProcessCursor::after(0),

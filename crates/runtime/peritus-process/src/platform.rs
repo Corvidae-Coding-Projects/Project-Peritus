@@ -106,6 +106,8 @@ pub(crate) struct NativeHandshake {
     pub(crate) activated: Sha256Digest,
     #[cfg(windows)]
     pub(crate) started: Sha256Digest,
+    #[cfg(windows)]
+    pub(crate) adoption: Option<Sha256Digest>,
     pub(crate) protected_handles: Vec<NativeProtectedHandle>,
     #[cfg(windows)]
     pub(crate) windows_channels: Option<crate::NativeWindowsHelperChannels>,

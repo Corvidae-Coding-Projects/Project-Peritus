@@ -12,8 +12,8 @@ mod windows_channel;
 pub use probe::NativeProcessProbe;
 pub use protected_handle::NativeProtectedHandle;
 pub use protocol::{
-    native_activation_record, native_ready_record, native_target_exec_failed_record,
-    native_target_started_record,
+    native_activation_record, native_ready_record, native_target_adoption_record,
+    native_target_exec_failed_record, native_target_started_record,
 };
 pub use observation::{
     native_observation_prefix_digest, native_observation_producer_binding,
@@ -22,7 +22,8 @@ pub use observation::{
 pub use pty::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 #[cfg(windows)]
 pub use windows_channel::{
-    NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
+    NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
+    NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
     NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
 };
 
@@ -65,6 +66,61 @@ pub enum NativeRecoveryPhase {
     Released,
 }
 
+const MAX_WINDOWS_JOB_OBJECT_NAME_BYTES: usize = 192;
+
+/// Exact Windows Job Object and adopted target identity retained by the live process owner.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct NativeWindowsContainmentIdentity {
+    job_identity: Sha256Digest,
+    object_name: String,
+    target: ProcessTreeIdentity,
+}
+
+impl NativeWindowsContainmentIdentity {
+    /// Creates one exact authority-bound Job Object and target birth identity.
+    ///
+    /// # Errors
+    /// Rejects a noncanonical object name or incomplete/reused target identity.
+    pub fn new(
+        job_identity: Sha256Digest,
+        object_name: impl Into<String>,
+        target: ProcessTreeIdentity,
+    ) -> Result<Self, ProcessError> {
+        let object_name = object_name.into();
+        if object_name.is_empty()
+            || object_name.len() > MAX_WINDOWS_JOB_OBJECT_NAME_BYTES
+            || !object_name.is_ascii()
+            || !object_name.starts_with("Local\\PeritusJob-")
+            || object_name.bytes().any(|byte| byte.is_ascii_control())
+            || target.root_pid() == 0
+            || target.start_token().is_none_or(|token| token == 0)
+            || target.process_group().is_some()
+            || !target.complete_containment()
+        {
+            return Err(native_mismatch("Windows containment identity is invalid"));
+        }
+        Ok(Self { job_identity, object_name, target })
+    }
+
+    /// Returns the authorization-bound Job Object identity digest.
+    #[must_use]
+    pub const fn job_identity(&self) -> Sha256Digest {
+        self.job_identity
+    }
+
+    /// Returns the exact native Job Object name whose live handle is retained.
+    #[must_use]
+    pub fn object_name(&self) -> &str {
+        &self.object_name
+    }
+
+    /// Returns the exact adopted target process birth identity.
+    #[must_use]
+    pub const fn target_identity(&self) -> ProcessTreeIdentity {
+        self.target
+    }
+}
+
 /// Exact live native-session evidence published only by the retained process owner.
 ///
 /// The opaque record remains platform-owned. The common process layer binds it to the consumed
@@ -80,6 +136,7 @@ pub struct NativeSessionRecovery {
     owner_operation_digest: Option<Sha256Digest>,
     service_owner_digest: Option<Sha256Digest>,
     custody_complete: bool,
+    windows_containment: Option<NativeWindowsContainmentIdentity>,
     record: Vec<u8>,
     record_digest: Sha256Digest,
 }
@@ -92,6 +149,7 @@ impl core::fmt::Debug for NativeSessionRecovery {
             .field("process_id", &self.process_id)
             .field("phase", &self.phase)
             .field("tree", &self.tree)
+            .field("windows_containment", &self.windows_containment)
             .field("custody_complete", &self.custody_complete)
             .field("record_bytes", &self.record.len())
             .field("record_digest", &self.record_digest)
@@ -158,6 +216,7 @@ impl NativeSessionRecovery {
             owner_operation_digest,
             service_owner_digest,
             custody_complete,
+            windows_containment: None,
             record,
             record_digest,
         })
@@ -188,12 +247,37 @@ impl NativeSessionRecovery {
     /// Reports that every resource required by the current phase remains under the live owner.
     #[must_use]
     pub const fn custody_complete(&self) -> bool { self.custody_complete }
+    /// Returns exact Windows Job Object and target identity retained by this owner.
+    #[must_use]
+    pub const fn windows_containment(&self) -> Option<&NativeWindowsContainmentIdentity> {
+        self.windows_containment.as_ref()
+    }
     /// Borrows the platform-owned canonical record.
     #[must_use]
     pub fn record(&self) -> &[u8] { &self.record }
     /// Returns the digest of the complete platform record.
     #[must_use]
     pub const fn record_digest(&self) -> Sha256Digest { self.record_digest }
+
+    /// Attaches exact live Windows Job Object and target custody to this snapshot.
+    ///
+    /// # Errors
+    /// Rejects non-Windows snapshots, missing helper birth identity, or helper/target aliasing.
+    pub fn with_windows_containment(
+        mut self,
+        containment: NativeWindowsContainmentIdentity,
+    ) -> Result<Self, ProcessError> {
+        if self.platform != NativePlatform::Windows
+            || self.tree.is_none()
+            || self.tree.is_some_and(|tree| tree.root_pid() == containment.target.root_pid())
+        {
+            return Err(native_mismatch(
+                "Windows containment does not match the retained helper identity",
+            ));
+        }
+        self.windows_containment = Some(containment);
+        Ok(self)
+    }
 
     /// Verifies that this live snapshot belongs to one exact retained-owner request.
     #[must_use]
@@ -208,6 +292,21 @@ impl NativeSessionRecovery {
             && self.service_owner_digest == Some(binding.service_owner().digest())
             && self.custody_complete
             && self.phase != NativeRecoveryPhase::Released
+            && match (self.platform, self.phase) {
+                (NativePlatform::Windows, NativeRecoveryPhase::Prepared) => {
+                    self.windows_containment.is_none()
+                }
+                (
+                    NativePlatform::Windows,
+                    NativeRecoveryPhase::Active
+                    | NativeRecoveryPhase::Cancelling
+                    | NativeRecoveryPhase::Terminated,
+                ) => self.windows_containment.is_some(),
+                (NativePlatform::Windows, NativeRecoveryPhase::Released) => false,
+                (NativePlatform::Linux | NativePlatform::Macos, _) => {
+                    self.windows_containment.is_none()
+                }
+            }
     }
 }
 
@@ -579,6 +678,40 @@ impl NativeLaunchDescription {
     #[cfg(windows)]
     pub(crate) const fn windows_helper_channels(&self) -> Option<&NativeWindowsHelperChannels> {
         self.windows_helper_channels.as_ref()
+    }
+
+    #[cfg(windows)]
+    pub(crate) fn windows_target_adoption_record(&self) -> Option<Sha256Digest> {
+        self.windows_helper_channels.as_ref().and_then(|channels| {
+            channels.containment_job_identity().map(|job_identity| {
+                native_target_adoption_record(
+                    self.manifest_digest,
+                    self.preparation_digest,
+                    job_identity,
+                )
+            })
+        })
+    }
+
+    /// Returns the exact Windows containment identity published by the suspended-target handoff.
+    #[cfg(windows)]
+    pub fn windows_containment_identity(
+        &self,
+    ) -> Result<Option<NativeWindowsContainmentIdentity>, ProcessError> {
+        self.windows_helper_channels
+            .as_ref()
+            .map(NativeWindowsHelperChannels::containment_identity)
+            .transpose()
+            .map(Option::flatten)
+    }
+
+    /// Reports whether this launch still retains its exact live Windows Job Object handle.
+    #[cfg(windows)]
+    #[must_use]
+    pub fn retains_windows_job(&self, expected: Sha256Digest) -> bool {
+        self.windows_helper_channels
+            .as_ref()
+            .is_some_and(|channels| channels.retains_containment_job(expected))
     }
 
     /// Returns the fixed record the helper writes after opening its protected channels.

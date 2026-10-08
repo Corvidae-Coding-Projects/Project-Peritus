@@ -66,6 +66,9 @@ pub(super) fn launch(
         command.env(crate::NATIVE_WINDOWS_STATUS_HANDLE_ENV, channels.status_handle().to_string());
         command
             .env(crate::NATIVE_WINDOWS_CONTROL_HANDLE_ENV, channels.control_handle().to_string());
+        if let Some(job_handle) = channels.containment_job_handle() {
+            command.env(crate::NATIVE_WINDOWS_JOB_HANDLE_ENV, job_handle.to_string());
+        }
     }
     let protected_handles =
         handshake.as_ref().map_or(&[][..], |value| value.protected_handles.as_slice());
@@ -157,13 +160,41 @@ pub(super) fn launch(
         #[cfg(windows)]
         if matches!(handshake_status, NativeHandshakeStatus::Complete)
             && let Some(status_reader) = status_reader
-            && let Err(error) = super::verify_helper_record(
-                Box::new(status_reader),
-                handshake.started,
-                should_continue,
-            )
         {
-            handshake_status = error.status();
+            let verification = if let Some(adoption) = handshake.adoption {
+                let channels = windows_channels.as_ref().ok_or_else(|| {
+                    HandshakeError::Failed(spawn_error(
+                        "Windows containment channels disappeared before adoption",
+                    ))
+                });
+                channels.and_then(|channels| {
+                    channels
+                        .verify_target_adoption(
+                            Box::new(status_reader),
+                            adoption,
+                            identity,
+                            should_continue,
+                        )
+                        .and_then(|reader| {
+                            if !should_continue() {
+                                return Err(HandshakeError::Cancelled);
+                            }
+                            channels
+                                .acknowledge_target_adoption()
+                                .map_err(HandshakeError::Failed)?;
+                            super::verify_helper_record(reader, handshake.started, should_continue)
+                        })
+                })
+            } else {
+                super::verify_helper_record(
+                    Box::new(status_reader),
+                    handshake.started,
+                    should_continue,
+                )
+            };
+            if let Err(error) = verification {
+                handshake_status = error.status();
+            }
         }
         if plan.stdin_policy() == StdinPolicy::Closed {
             input.take();
