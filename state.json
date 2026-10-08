@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3917,
-        "tip_oid": "8f3b1dbd0897b442e30aab130ce9b4a10c3e5f91",
-        "prefix_sha256": "48ab5150fbb3aef98391a8e2ce18e3abcf6f3eb130c22ae9fb8e55223e0f8feb"
+        "sequence": 3918,
+        "tip_oid": "e8ec297d644b3589d8115f8526c8ef92413421ef",
+        "prefix_sha256": "7bfef699bb58f4b6d37dfb5bf16843f375ff2fa2f777b007a44c644592666b3f"
       },
       "NWAR": {
         "sequence": 39,
@@ -21429,12 +21429,13 @@
       "display_id": 510,
       "title": "[L430] E3 execution requires a wall deadline and has no untimed representation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L430.\n\n- Evidence: `crates/analysis/peritus-eval/src/profile/binding.rs:98-168,195-218,222-330`, `src/execution/directive.rs:35-67,149-183`, `src/execution/port.rs:56-129` in the same crate.\n- Behavior: ExecutionBinding stores deadline_micros as u64 and rejects zero, along with zero concurrency. The positive deadline participates in its immutable digest and is copied into both candidate and evaluator stage directives. There is no None/Untimed variant. The E3 execution wrapper itself runs synchronous external ports and does not measure elapsed time or install a watchdog; enforcing the requested deadline is delegated to runtime composition.\n- Consequence: Every valid evaluation profile requires an artificial wall ceiling even when the user requests persistent untimed work. Changing it creates a different execution/profile identity. The read source proves the mandatory contract but does not establish which external owner enforces it, what value an installed evaluator uses, or that it caused the current session timeout. Concurrency's u16 width is a physical scalar constraint, separate from the positive-only policy.\n- Repair direction: Represent an explicit optional user deadline separately from process ownership, cancellation, isolation, and measured elapsed usage, and propagate untimed execution consistently through both stages and their canonical identities. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.513897620Z",
-      "updated_at": "2026-10-08T00:47:09.572352528Z",
+      "updated_at": "2026-10-08T00:48:35.831920186Z",
+      "closed_at": "2026-10-08T00:48:35.829013567Z",
       "labels": [
         "daily-driving-limiter"
       ],
