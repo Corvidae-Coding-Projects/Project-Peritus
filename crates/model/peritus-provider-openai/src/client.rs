@@ -177,11 +177,14 @@ impl ModelProvider for OpenAiProvider {
         &self,
         model: peritus_model_protocol::ModelName,
     ) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
-        let profile = peritus_provider_core::catalog::selected_profile(&self.profile, model)?;
-        crate::profile::validate(&profile)?;
+        if model != *self.profile.model() {
+            return Err(peritus_provider_core::catalog::unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
+            ));
+        }
         Ok(Arc::new(Self::compose_shared(
             self.config.clone(),
-            profile,
+            self.profile.clone(),
             Arc::clone(&self.credentials),
             Arc::clone(&self.transport),
             self.background_responses.clone(),

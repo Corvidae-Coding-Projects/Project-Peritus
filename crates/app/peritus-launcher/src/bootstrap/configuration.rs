@@ -8,7 +8,9 @@ use std::{
 
 use peritus_daemon::{DaemonConfig, DaemonIdentity, DaemonPaths, LocalEndpointAddress};
 use peritus_product_state::{
-    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind, WorkspaceTrust,
+    CompatibleProtocol, DirectProviderProfile, ProductState, ProviderKind,
+    ProviderModelCapability, ProviderModelFactSource, ProviderModelFacts, ProviderRouteIdentity,
+    ProviderSelection, WorkspaceTrust,
 };
 
 use crate::{AppLayout, LauncherError, persistence::read_exact_or_publish};
@@ -17,8 +19,8 @@ mod compatibility;
 mod folder;
 mod hosted;
 
-/// Imports the exact models from a pre-conversation immutable configuration. This migration
-/// never substitutes a newly chosen provider default or edits an old configuration generation.
+/// Imports exact model facts from a pre-fact immutable configuration. Imported values remain
+/// marked as legacy generated claims; no route default is re-created or presented as discovery.
 pub(super) fn retain_legacy_models(
     layout: &AppLayout,
     store: &crate::persistence::ProductStateStore,
@@ -26,10 +28,13 @@ pub(super) fn retain_legacy_models(
 ) -> Result<(), LauncherError> {
     let missing = state
         .providers()
-        .enabled()
-        .iter()
-        .copied()
-        .any(|kind| kind.is_account() && state.providers().account_model(kind).is_none());
+        .routes()
+        .into_iter()
+        .any(|route| {
+            state.providers().model_facts(route.identity()).is_none()
+                || route.kind().is_account()
+                    && state.providers().account_model(route.kind()).is_none()
+        });
     if !missing {
         return Ok(());
     }
@@ -47,28 +52,137 @@ pub(super) fn retain_legacy_models(
         .get("providers")
         .and_then(toml::Value::as_array)
         .ok_or_else(|| invalid("prior provider configuration is missing"))?;
-    let mut models = std::collections::BTreeMap::new();
+    let mut direct_profiles = Vec::new();
+    for direct in state.providers().direct_profiles() {
+        if direct.model_facts().is_some() {
+            direct_profiles.push(direct.clone());
+            continue;
+        }
+        let route = configured_route(routes, direct.route_identity())?;
+        direct_profiles.push(
+            direct
+                .clone()
+                .with_model_facts(legacy_model_facts(route, direct.model())?)?,
+        );
+    }
+    let mut models = BTreeMap::new();
+    let mut model_facts = BTreeMap::new();
+    let mut executables = BTreeMap::new();
     for kind in state.providers().enabled().iter().copied().filter(|kind| kind.is_account()) {
-        let model = if let Some(model) = state.providers().account_model(kind) {
-            model
-        } else {
-            let route =
-                if kind == ProviderKind::CodexAccount { "codex-runtime" } else { "claude-runtime" };
-            routes
-                .iter()
-                .find(|value| value.get("kind").and_then(toml::Value::as_str) == Some(route))
-                .and_then(|value| value.get("profile"))
-                .and_then(|value| value.get("model"))
-                .and_then(toml::Value::as_str)
-                .ok_or_else(|| invalid("prior selected account model is missing"))?
+        let identity = state
+            .providers()
+            .routes()
+            .into_iter()
+            .find(|route| route.kind() == kind)
+            .map(|route| route.identity())
+            .ok_or_else(|| invalid("prior account provider route is missing"))?;
+        let route = configured_route(routes, identity)?;
+        let model = state
+            .providers()
+            .account_model(kind)
+            .or_else(|| {
+                route
+                    .get("profile")
+                    .and_then(|value| value.get("model"))
+                    .and_then(toml::Value::as_str)
+            })
+            .ok_or_else(|| invalid("prior selected account model is missing"))?;
+        let facts = match state.providers().account_model_facts(kind) {
+            Some(facts) => facts.clone(),
+            None => legacy_model_facts(route, model)?,
         };
         models.insert(kind, model.to_owned());
+        model_facts.insert(kind, facts);
+        if let Some(executable) = state.providers().account_executable(kind) {
+            executables.insert(kind, executable.to_owned());
+        }
     }
-    let selection = state.providers().clone().with_account_models(models)?;
-    if state.configure_providers(selection)? {
+    let selection = ProviderSelection::with_routes_and_failover(
+        state.providers().enabled().to_vec(),
+        state.providers().default_route(),
+        direct_profiles,
+        state.providers().automatic_failover(),
+    )?
+    .with_account_models(models)?
+    .with_account_model_facts(model_facts)?
+    .with_account_executables(executables)?;
+    let changed = state.configure_providers(selection)?;
+    let migrated = state.migrate_legacy_storage()?;
+    if changed || migrated {
         store.commit(state)?;
     }
     Ok(())
+}
+
+fn configured_route<'a>(
+    routes: &'a [toml::Value],
+    identity: ProviderRouteIdentity,
+) -> Result<&'a toml::Value, LauncherError> {
+    let identity = identity.to_string();
+    routes
+        .iter()
+        .find(|route| {
+            route
+                .get("profile")
+                .and_then(|profile| profile.get("profile_id"))
+                .and_then(toml::Value::as_str)
+                == Some(identity.as_str())
+        })
+        .ok_or_else(|| invalid("prior exact provider profile is missing"))
+}
+
+fn legacy_model_facts(
+    route: &toml::Value,
+    selected_model: &str,
+) -> Result<ProviderModelFacts, LauncherError> {
+    let profile = route
+        .get("profile")
+        .ok_or_else(|| invalid("prior provider profile is missing"))?;
+    if profile.get("model").and_then(toml::Value::as_str) != Some(selected_model) {
+        return Err(invalid("prior provider profile belongs to a different model"));
+    }
+    let capabilities = profile
+        .get("capabilities")
+        .and_then(toml::Value::as_array)
+        .ok_or_else(|| invalid("prior provider capabilities are missing"))?
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .and_then(ProviderModelCapability::parse)
+                .ok_or_else(|| invalid("prior provider capability cannot be retained exactly"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let u64_field = |name| {
+        profile
+            .get(name)
+            .and_then(toml::Value::as_integer)
+            .and_then(|value| u64::try_from(value).ok())
+            .ok_or_else(|| invalid("prior provider capacity is missing or invalid"))
+    };
+    let u32_field = |name| {
+        u64_field(name).and_then(|value| {
+            u32::try_from(value)
+                .map_err(|_| invalid("prior provider capacity is not representable"))
+        })
+    };
+    let revision = profile
+        .get("revision")
+        .and_then(toml::Value::as_integer)
+        .and_then(|value| u64::try_from(value).ok())
+        .ok_or_else(|| invalid("prior provider profile revision is missing or invalid"))?;
+    ProviderModelFacts::new(
+        ProviderModelFactSource::LegacyGenerated,
+        selected_model.to_owned(),
+        capabilities,
+        u64_field("max_input_tokens")?,
+        u64_field("max_output_tokens")?,
+        u32_field("max_tools")?,
+        u32_field("max_parallel_tool_calls")?,
+        u64_field("max_inline_media_bytes")?,
+    )
+    .and_then(|facts| facts.with_revision(revision))
+    .map_err(LauncherError::from)
 }
 
 pub fn ensure_configuration(
@@ -131,6 +245,7 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
             state.providers().direct_profile_by_route(route.identity()),
             state.providers().account_model(route.kind()),
             state.providers().account_executable(route.kind()),
+            state.providers().model_facts(route.identity()),
         )?);
     }
     render_workspaces(&mut text, state)?;
@@ -189,10 +304,11 @@ fn render_provider(
     direct: Option<&DirectProviderProfile>,
     account_model: Option<&str>,
     account_executable: Option<&str>,
+    model_facts: Option<&ProviderModelFacts>,
 ) -> Result<String, LauncherError> {
-    let (kind, image_input) = match provider {
-        ProviderKind::CodexAccount => ("codex-runtime", true),
-        ProviderKind::ClaudeAccount => ("claude-runtime", false),
+    let kind = match provider {
+        ProviderKind::CodexAccount => "codex-runtime",
+        ProviderKind::ClaudeAccount => "claude-runtime",
         _ => return render_direct_provider(provider, direct),
     };
     let model = account_model.ok_or_else(|| {
@@ -205,13 +321,13 @@ fn render_provider(
         writeln!(text, "executable = {}", toml_string(executable))
             .expect("writing to String cannot fail");
     }
-    text.push_str(&profile_block(
-        &route_identity.to_string(),
-        model,
-        200_000,
-        64_000,
-        ProfileFeatures::account(image_input),
-    ));
+    let facts = model_facts.ok_or_else(|| {
+        invalid("account model capacity is unknown; reopen provider setup to resolve it")
+    })?;
+    if facts.model() != model {
+        return Err(invalid("account model facts belong to a different selected model"));
+    }
+    text.push_str(&profile_block(&route_identity.to_string(), facts, &[]));
     Ok(text)
 }
 
@@ -227,7 +343,7 @@ pub fn render_direct_provider(
     if let Some(service) = provider.hosted_service() {
         return hosted::render(direct, service);
     }
-    let (kind, input, output, image_input, reasoning) = direct_route(provider, direct)?;
+    let kind = direct_route(provider, direct)?;
     let mut text = format!(
         "\n[[providers]]\nkind = {}\ncredential_reference = {}\n",
         toml_string(kind),
@@ -236,12 +352,13 @@ pub fn render_direct_provider(
     append_optional(&mut text, "endpoint", direct.endpoint());
     append_optional(&mut text, "catalog_endpoint", direct.catalog_endpoint());
     append_optional(&mut text, "credential_header", direct.credential_header());
+    let facts = direct.model_facts().ok_or_else(|| {
+        invalid("direct model capacity is unknown; reopen provider setup to resolve it")
+    })?;
     text.push_str(&profile_block(
         &direct.route_identity().to_string(),
-        direct.model(),
-        input,
-        output,
-        ProfileFeatures::direct(provider, image_input, reasoning),
+        facts,
+        &[],
     ));
     Ok(text)
 }
@@ -249,32 +366,14 @@ pub fn render_direct_provider(
 fn direct_route(
     provider: ProviderKind,
     direct: &DirectProviderProfile,
-) -> Result<(&'static str, u64, u64, bool, bool), LauncherError> {
+) -> Result<&'static str, LauncherError> {
     match provider {
-        ProviderKind::OpenAiApi => Ok(("open-ai", 200_000, 64_000, true, true)),
-        ProviderKind::AnthropicApi => Ok(("anthropic", 200_000, 32_000, true, true)),
-        ProviderKind::GoogleGeminiApi => Ok((
-            "google-generate-content",
-            1_000_000,
-            65_536,
-            true,
-            true,
-        )),
+        ProviderKind::OpenAiApi => Ok("open-ai"),
+        ProviderKind::AnthropicApi => Ok("anthropic"),
+        ProviderKind::GoogleGeminiApi => Ok("google-generate-content"),
         ProviderKind::CompatibleEndpoint => match direct.compatible_protocol() {
-            Some(CompatibleProtocol::Responses) => Ok((
-                "compatible-responses",
-                200_000,
-                32_000,
-                false,
-                false,
-            )),
-            Some(CompatibleProtocol::ChatCompletions) => Ok((
-                "compatible-chat-completions",
-                200_000,
-                32_000,
-                false,
-                false,
-            )),
+            Some(CompatibleProtocol::Responses) => Ok("compatible-responses"),
+            Some(CompatibleProtocol::ChatCompletions) => Ok("compatible-chat-completions"),
             _ => Err(invalid("compatible provider is missing its supported wire protocol")),
         },
         _ => Err(invalid("account provider was routed through direct configuration")),
@@ -290,68 +389,33 @@ fn append_optional(text: &mut String, field: &str, value: Option<&str>) {
     }
 }
 
-struct ProfileFeatures {
-    capabilities: Vec<&'static str>,
-    inline_media_bytes: u64,
-}
-
-impl ProfileFeatures {
-    fn account(image_input: bool) -> Self {
-        let mut capabilities = vec![
-            "parallel-tool-calls",
-            "prompt-caching",
-            "reasoning-controls",
-            "tool-calls",
-            "usage-detail",
-        ];
-        if image_input {
-            capabilities.push("image-input");
-        }
-        Self::new(capabilities, image_input)
-    }
-
-    fn direct(provider: ProviderKind, image_input: bool, reasoning: bool) -> Self {
-        let mut capabilities =
-            vec!["parallel-tool-calls", "streaming", "tool-calls", "usage-detail"];
-        if provider != ProviderKind::CompatibleEndpoint {
-            capabilities.push("prompt-caching");
-        }
-        if image_input {
-            capabilities.push("image-input");
-        }
-        if reasoning {
-            capabilities.push("reasoning-controls");
-            capabilities.push("reasoning-summaries");
-        }
-        Self::new(capabilities, image_input)
-    }
-
-    fn new(mut capabilities: Vec<&'static str>, image_input: bool) -> Self {
-        capabilities.sort_unstable();
-        let inline_media_bytes = if image_input { 32 * 1024 * 1024 } else { 1 };
-        Self { capabilities, inline_media_bytes }
-    }
-}
-
 fn profile_block(
     profile_id: &str,
-    model: &str,
-    input: u64,
-    output: u64,
-    features: ProfileFeatures,
+    facts: &ProviderModelFacts,
+    adapter_capabilities: &[ProviderModelCapability],
 ) -> String {
+    let mut selected = facts.capabilities().to_vec();
+    selected.extend_from_slice(adapter_capabilities);
+    selected.sort_unstable();
+    selected.dedup();
     let capabilities = toml::Value::Array(
-        features
-            .capabilities
+        selected
             .into_iter()
-            .map(|value| toml::Value::String(value.to_owned()))
+            .map(|value| toml::Value::String(value.as_str().to_owned()))
             .collect(),
     );
-    let inline_media_bytes = features.inline_media_bytes;
     format!(
-        "\n[providers.profile]\nprofile_id = {}\nrevision = 1\nmodel = {}\ncapabilities = {capabilities}\nmax_input_tokens = {input}\nmax_output_tokens = {output}\nmax_tools = 64\nmax_parallel_tool_calls = 8\nmax_inline_media_bytes = {inline_media_bytes}\n",
+        "\n[providers.profile]\nprofile_id = {}\nrevision = {}\nmodel = {}\nfacts_version = {}\nfacts_source = {}\ncapabilities = {capabilities}\nmax_input_tokens = {}\nmax_output_tokens = {}\nmax_tools = {}\nmax_parallel_tool_calls = {}\nmax_inline_media_bytes = {}\n",
         toml_string(profile_id),
-        toml_string(model),
+        facts.revision(),
+        toml_string(facts.model()),
+        facts.version(),
+        toml_string(facts.source().as_str()),
+        facts.max_input_tokens(),
+        facts.max_output_tokens(),
+        facts.max_tools(),
+        facts.max_parallel_tool_calls(),
+        facts.max_inline_media_bytes(),
     )
 }
 

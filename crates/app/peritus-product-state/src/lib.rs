@@ -15,8 +15,9 @@ pub use error::ProductStateError;
 pub use identity::InstallIdentity;
 pub use phase::{BootstrapPhase, LaunchReadiness};
 pub use provider::{
-    CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderRouteChoice,
-    ProviderRouteIdentity, ProviderSelection,
+    CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderModelCapability,
+    ProviderModelFactSource, ProviderModelFacts, ProviderRouteChoice, ProviderRouteIdentity,
+    ProviderSelection,
 };
 pub use state::{PRODUCT_STATE_SCHEMA_VERSION, ProductState};
 pub use workspace::{WorkspaceProfile, WorkspaceSelection, WorkspaceTrust};

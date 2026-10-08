@@ -63,9 +63,10 @@ impl ProductBootstrap {
             .enabled()
             .iter()
             .any(|kind| kind.is_account() && providers.account_model(*kind).is_none())
+            || !providers.model_facts_are_complete()
         {
             return Err(LauncherError::Interaction(
-                "Select an explicit model for every enabled account provider before saving"
+                "Resolve the exact model, capacity, and feature facts for every enabled provider before saving"
                     .to_owned(),
             ));
         }
@@ -263,6 +264,7 @@ fn provider_scope_matches(
         && previous.direct_profiles() == refreshed.direct_profiles()
         && previous.enabled().iter().copied().filter(|kind| kind.is_account()).all(|kind| {
             previous.account_model(kind) == refreshed.account_model(kind)
+                && previous.account_model_facts(kind) == refreshed.account_model_facts(kind)
         })
 }
 

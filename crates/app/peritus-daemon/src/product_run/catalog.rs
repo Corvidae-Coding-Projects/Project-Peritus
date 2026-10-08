@@ -1,6 +1,12 @@
-//! Provider-advertised catalogs and immutable, explicitly selected role adapters.
+//! Provider-advertised model catalogs and immutable, explicitly selected role adapters.
 
-use super::{ProductRunService, ProductRunServiceError, interaction::InteractionOptions};
+mod runs;
+
+pub(super) use runs::{RunCatalog, migrate_sequences};
+
+use super::{
+    ProductRunService, ProductRunServiceError, RunRecord, interaction::InteractionOptions,
+};
 use peritus_app_protocol::{
     ProductModelCatalog, ProductModelChoice, ProductModelEffort, ProductModelInfo,
     ProductModelQuery, ProductProviderSelection,
@@ -8,7 +14,7 @@ use peritus_app_protocol::{
 use peritus_model_protocol::ReasoningEffort as Effort;
 use peritus_product_runner::RoleProviders;
 use peritus_provider_core::{CancellationToken, ModelProvider};
-use peritus_types::ProviderProfileId;
+use peritus_types::{ProviderProfileId, RunId};
 use std::{
     collections::BTreeMap,
     sync::Arc,
@@ -16,7 +22,10 @@ use std::{
 };
 
 #[derive(Default)]
-pub(super) struct ModelCatalogs(tokio::sync::Mutex<BTreeMap<ProviderProfileId, Arc<CatalogSlot>>>);
+pub(super) struct ModelCatalogs {
+    models: tokio::sync::Mutex<BTreeMap<ProviderProfileId, Arc<CatalogSlot>>>,
+    runs: std::sync::RwLock<RunCatalog>,
+}
 
 #[derive(Default)]
 struct CatalogSlot {
@@ -25,8 +34,30 @@ struct CatalogSlot {
 }
 
 impl ModelCatalogs {
+    pub(super) fn with_runs(
+        records: &BTreeMap<RunId, RunRecord>,
+        frontier: u64,
+    ) -> Result<Self, ProductRunServiceError> {
+        Ok(Self {
+            models: tokio::sync::Mutex::new(BTreeMap::new()),
+            runs: std::sync::RwLock::new(RunCatalog::from_records(records, frontier)?),
+        })
+    }
+
     async fn slot(&self, profile: ProviderProfileId) -> Arc<CatalogSlot> {
-        Arc::clone(self.0.lock().await.entry(profile).or_default())
+        Arc::clone(self.models.lock().await.entry(profile).or_default())
+    }
+
+    pub(super) fn runs(
+        &self,
+    ) -> Result<std::sync::RwLockReadGuard<'_, RunCatalog>, ProductRunServiceError> {
+        self.runs.read().map_err(|_| ProductRunServiceError::Unavailable)
+    }
+
+    pub(super) fn runs_mut(
+        &self,
+    ) -> Result<std::sync::RwLockWriteGuard<'_, RunCatalog>, ProductRunServiceError> {
+        self.runs.write().map_err(|_| ProductRunServiceError::Unavailable)
     }
 }
 
@@ -130,6 +161,35 @@ impl ProductRunService {
         })
     }
 
+    /// Validates every immediately usable role and reports whether another role is retained
+    /// pending exact facts for its selected model.
+    pub(super) fn validate_model_resolution(
+        &self,
+        selected: ProductProviderSelection,
+        models: &peritus_app_protocol::ProductRoleModels,
+    ) -> Result<bool, ProductRunServiceError> {
+        let mut pending = false;
+        for (profile, choice) in [
+            (selected.writer(), models.writer()),
+            (selected.reviewer(), models.reviewer()),
+            (selected.fixer(), models.fixer()),
+        ] {
+            let provider = self
+                .inner
+                .providers
+                .get(&profile)
+                .ok_or(ProductRunServiceError::ProviderUnavailable)?;
+            if !choice.id().is_empty()
+                && choice.id() != provider.profile().model().as_str()
+            {
+                pending = true;
+            } else {
+                let _ = self.select_provider(profile, choice)?;
+            }
+        }
+        Ok(pending)
+    }
+
     pub(super) fn select_provider(
         &self,
         profile: ProviderProfileId,
@@ -145,9 +205,7 @@ impl ProductRunService {
         {
             Arc::clone(provider)
         } else {
-            let model = peritus_model_protocol::ModelName::new(choice.id().to_owned())
-                .map_err(|_| ProductRunServiceError::InvalidMessage)?;
-            provider.select_model(model).map_err(|_| ProductRunServiceError::ProviderUnavailable)?
+            return Err(ProductRunServiceError::ModelFactsRequired);
         };
         let effort = match choice.effort() {
             ProductModelEffort::Default => return Ok(selected),

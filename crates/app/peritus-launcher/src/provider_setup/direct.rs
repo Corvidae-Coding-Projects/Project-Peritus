@@ -45,9 +45,15 @@ pub(super) async fn setup(
         draft.discover_models(&credential, cancellation),
     )
     .await;
-    let (model, protocol) = super::models::choose_direct(terminal, kind, discovered)?;
-    let draft = draft.with_model(model);
-    let draft = if let Some(protocol) = protocol { draft.with_protocol(protocol) } else { draft };
+    let selection = super::models::choose_direct(terminal, kind, discovered)?;
+    let draft = draft
+        .with_model(selection.model)
+        .with_model_facts(selection.facts);
+    let draft = if let Some(protocol) = selection.protocol {
+        draft.with_protocol(protocol)
+    } else {
+        draft
+    };
     let profile = draft.store(&credential, effects)?;
     terminal.line(&format!("{} is configured. Connection not yet tested.", kind.label()))?;
     super::connection::offer(terminal, &profile)?;

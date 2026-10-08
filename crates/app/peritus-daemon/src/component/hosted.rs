@@ -1,11 +1,11 @@
 //! Named-service composition through the same native adapters used by ordinary daemon routes.
 
-use peritus_model_protocol::{ModelName, ModelRequest, ProviderName, ProviderProfile, WireDialect};
+use peritus_model_protocol::{ModelName, ModelRequest, ProviderProfile, WireDialect};
 use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialReference, CredentialSource, Endpoint, FramingLimits,
     HeaderName, HttpHeaders, HttpLimits, ModelProvider, OwnedModelStream, ProviderAvailability,
     ProviderCoreError, ReqwestTransport, RetryPolicy,
-    catalog::{DiscoveredModel, selected_profile, unavailable},
+    catalog::{DiscoveredModel, unavailable},
     hosted::{HostedService, discover_hosted_models, enrich_hosted_models},
 };
 use std::{
@@ -269,95 +269,15 @@ impl ModelProvider for HostedProvider {
     }
 
     fn select_model(&self, model: ModelName) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
-        let metadata = self.catalog.model(model.as_str())?;
-        let configured_model = model == *self.profile().model();
-        let dialect = if configured_model {
-            self.profile().dialect()
-        } else if self.service.mixed_protocols() {
-            metadata.as_ref().and_then(|model| model.dialect).ok_or_else(|| unavailable("selected model has no protocol metadata; use provider setup to choose its documented API"))?
-        } else {
-            WireDialect::CompatibleChatCompletions
-        };
-        if metadata.as_ref().and_then(|model| model.tools) == Some(false) {
-            return Err(ProviderCoreError::unsupported_capability(
-                "selected model advertises no tool-calling support; choose a tool-capable model",
+        if model != *self.profile().model() {
+            return Err(unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
             ));
         }
-        if !configured_model
-            && self.service.mixed_protocols()
-            && self
-                .profile()
-                .capabilities()
-                .supports(peritus_model_protocol::Capability::ToolCalls)
-            && metadata.as_ref().and_then(|model| model.tools) != Some(true)
-        {
-            return Err(ProviderCoreError::unsupported_capability(
-                "selected model has no reviewed tool-calling evidence; wait for metadata enrichment or choose its documented profile",
-            ));
-        }
-        let selected = selected_profile(self.profile(), model)?;
-        let limits = if !configured_model && self.service.mixed_protocols() {
-            let evidence = metadata.as_ref().ok_or_else(|| {
-                unavailable("selected model is absent from the authenticated hosted inventory")
-            })?;
-            let input_tokens = evidence.input_tokens.ok_or_else(|| {
-                unavailable("selected model has no reviewed input-token limit")
-            })?;
-            let output_tokens = evidence.output_tokens.ok_or_else(|| {
-                unavailable("selected model has no reviewed output-token limit")
-            })?;
-            let configured = selected.limits();
-            peritus_model_protocol::ModelLimits::new(
-                configured.max_input_tokens().min(input_tokens),
-                configured.max_output_tokens().min(output_tokens),
-                configured.max_tools(),
-                configured.max_parallel_tool_calls(),
-                configured.max_inline_media_bytes(),
-            )
-            .map_err(|_| unavailable("selected model limits contradict the configured profile"))?
-        } else {
-            selected.limits()
-        };
-        let name = match dialect {
-            WireDialect::OpenAiResponses => "openai",
-            WireDialect::AnthropicMessages => "anthropic",
-            WireDialect::GeminiGenerateContentV1 => "google",
-            _ => "compatible",
-        };
-        let mut capabilities: Vec<_> = selected
-            .capabilities()
-            .iter()
-            .filter_map(|(capability, state)| {
-                (state == peritus_model_protocol::CapabilityState::Supported
-                    && capability != peritus_model_protocol::Capability::ReasoningReplay)
-                    .then_some(capability)
-            })
-            .collect();
-        if dialect != WireDialect::CompatibleResponses {
-            capabilities.push(peritus_model_protocol::Capability::ReasoningReplay);
-        }
-        let capabilities = peritus_model_protocol::CapabilityMatrix::new(&capabilities, &[])
-            .map_err(|_| unavailable("selected model capabilities are invalid"))?;
-        let profile = ProviderProfile::new(
-            selected.profile_id(),
-            selected.revision(),
-            ProviderName::new(name.to_owned())
-                .map_err(|_| unavailable("hosted provider name is invalid"))?,
-            selected.model().clone(),
-            dialect,
-            capabilities,
-            selected.provenance(),
-            limits,
-            selected.output_limit_enforcement(),
-            selected.state_mode(),
-            selected.resume_kind(),
-            selected.cancellation_kind(),
-        )
-        .map_err(|_| unavailable("selected model protocol contradicts the configured profile"))?;
         let mut provider = Self::new(
             self.service,
             self.credential.clone(),
-            profile,
+            self.profile().clone(),
             Arc::clone(&self.credentials),
         )?;
         provider.catalog = Arc::clone(&self.catalog);

@@ -84,22 +84,14 @@ impl ModelProvider for CompatibleClient {
         &self,
         model: peritus_model_protocol::ModelName,
     ) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
-        let profile = peritus_provider_core::catalog::selected_profile(
-            self.profile.provider_profile(),
-            model,
-        )?;
-        let profile = match profile.dialect() {
-            peritus_model_protocol::WireDialect::CompatibleResponses => {
-                CompatibleProfile::responses(profile)?
-            }
-            _ if self.config.hosted_service().is_some() => {
-                CompatibleProfile::hosted_chat_completions(profile)?
-            }
-            _ => CompatibleProfile::chat_completions(profile)?,
-        };
+        if model != *self.profile.provider_profile().model() {
+            return Err(peritus_provider_core::catalog::unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
+            ));
+        }
         Ok(Arc::new(Self::compose(
             self.config.clone(),
-            profile,
+            self.profile.clone(),
             Arc::clone(&self.credentials),
             Arc::clone(&self.transport),
         )))

@@ -138,7 +138,8 @@ impl CodexRuntimeProvider {
                 &runtime.allowed_tools,
                 runtime.min_calls..=runtime.max_calls,
                 output.final_message.as_deref().ok(),
-            );
+            )
+            .relative_to(output.prior_usage);
             if !output.process.exit().success() {
                 return self.failed_process(
                     &request,
@@ -239,11 +240,14 @@ impl ModelProvider for CodexRuntimeProvider {
         &self,
         model: peritus_model_protocol::ModelName,
     ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
-        let profile =
-            peritus_provider_core::catalog::selected_profile(self.config.profile(), model)?;
+        if model != *self.config.profile().model() {
+            return Err(peritus_provider_core::catalog::unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
+            ));
+        }
         let config = CodexRuntimeConfig::new(
             self.config.executable().clone(),
-            profile,
+            self.config.profile().clone(),
             self.config.process_limits(),
         )?;
         Ok(std::sync::Arc::new(Self::new(config)))

@@ -31,11 +31,11 @@ pub struct ModelLimits {
 }
 
 impl ModelLimits {
-    /// Creates nonzero model limits.
+    /// Creates exact model limits. A zero inline-media ceiling truthfully disables inline media.
     ///
     /// # Errors
     ///
-    /// Rejects zero limits or parallel calls wider than the tool count.
+    /// Rejects zero token/tool limits or parallel calls wider than the tool count.
     pub fn new(
         max_input_tokens: u64,
         max_output_tokens: u64,
@@ -48,12 +48,11 @@ impl ModelLimits {
             || max_tools == 0
             || max_parallel_tool_calls == 0
             || max_parallel_tool_calls > max_tools
-            || max_inline_media_bytes == 0
         {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidLimit,
                 "model_limits",
-                "model limits must be nonzero and parallel calls cannot exceed tools",
+                "model token/tool limits must be nonzero and parallel calls cannot exceed tools",
             ));
         }
         Ok(Self {

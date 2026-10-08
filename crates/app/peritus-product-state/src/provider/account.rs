@@ -1,6 +1,9 @@
 //! Durable account model selections and resolved executable pins.
 
-use super::{ProductStateError, ProviderKind, ProviderSelection, bounded_text};
+use super::{
+    ProductStateError, ProviderKind, ProviderModelCapability, ProviderModelFacts,
+    ProviderSelection, bounded_text,
+};
 
 impl ProviderSelection {
     /// Retains resolved executable paths as non-secret configuration facts.
@@ -51,6 +54,9 @@ impl ProviderSelection {
             ));
         }
         self.account_models = models;
+        self.account_model_facts.retain(|kind, facts| {
+            self.account_models.get(kind).is_some_and(|model| model == facts.model())
+        });
         Ok(self)
     }
 
@@ -58,6 +64,55 @@ impl ProviderSelection {
     #[must_use]
     pub fn account_model(&self, kind: ProviderKind) -> Option<&str> {
         self.account_models.get(&kind).map(String::as_str)
+    }
+
+    /// Retains versioned facts for exact selected account models.
+    ///
+    /// # Errors
+    /// Rejects facts for disabled routes, missing model selections, or different model IDs.
+    pub fn with_account_model_facts(
+        mut self,
+        facts: std::collections::BTreeMap<ProviderKind, ProviderModelFacts>,
+    ) -> Result<Self, ProductStateError> {
+        if facts.iter().any(|(kind, facts)| {
+            !kind.is_account()
+                || !self.enabled.contains(kind)
+                || facts.validate().is_err()
+                || self.account_models.get(kind).map(String::as_str) != Some(facts.model())
+                || facts.capabilities().iter().any(|capability| {
+                    !matches!(
+                        (*kind, *capability),
+                        (
+                            ProviderKind::CodexAccount,
+                            ProviderModelCapability::ToolCalls
+                                | ProviderModelCapability::ParallelToolCalls
+                                | ProviderModelCapability::PromptCaching
+                                | ProviderModelCapability::ImageInput
+                                | ProviderModelCapability::ReasoningControls
+                                | ProviderModelCapability::UsageDetail
+                        ) | (
+                            ProviderKind::ClaudeAccount,
+                            ProviderModelCapability::ToolCalls
+                                | ProviderModelCapability::ParallelToolCalls
+                                | ProviderModelCapability::PromptCaching
+                                | ProviderModelCapability::ReasoningControls
+                                | ProviderModelCapability::UsageDetail
+                        )
+                    )
+                })
+        }) {
+            return Err(ProductStateError::InvalidPayload(
+                "account model facts do not match the exact selected models".to_owned(),
+            ));
+        }
+        self.account_model_facts = facts;
+        Ok(self)
+    }
+
+    /// Exact facts for one selected account model; absence means legacy or unresolved capacity.
+    #[must_use]
+    pub fn account_model_facts(&self, kind: ProviderKind) -> Option<&ProviderModelFacts> {
+        self.account_model_facts.get(&kind)
     }
 }
 

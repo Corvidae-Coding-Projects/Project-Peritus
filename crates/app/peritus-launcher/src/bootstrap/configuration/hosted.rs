@@ -1,7 +1,6 @@
 //! Named hosted provider route rendering from a selected protocol.
 use super::{
-    CompatibleProtocol, DirectProviderProfile, LauncherError, ProfileFeatures, invalid,
-    profile_block, toml_string,
+    CompatibleProtocol, DirectProviderProfile, LauncherError, invalid, profile_block, toml_string,
 };
 
 pub(super) fn render(
@@ -26,17 +25,13 @@ pub(super) fn render(
         toml_string(protocol),
         toml_string(direct.credential_reference())
     );
-    // These conservative request ceilings and required adapter features are not live capability
-    // claims. The UI reports catalog metadata and explicit connection tests independently.
+    let facts = direct.model_facts().ok_or_else(|| {
+        invalid("hosted model capacity is unknown; reopen provider setup to resolve it")
+    })?;
     text.push_str(&profile_block(
         &profile_id,
-        direct.model(),
-        32_768,
-        4_096,
-        ProfileFeatures::new(
-            vec!["streaming", "tool-calls", "usage-detail", "reasoning-replay"],
-            false,
-        ),
+        facts,
+        &[],
     ));
     Ok(text)
 }

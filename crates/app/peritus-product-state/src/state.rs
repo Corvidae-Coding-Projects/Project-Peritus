@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Product-state schema understood by this executable.
-pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 3;
+pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 4;
 
 /// Canonical durable state needed to resume local bootstrap.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -58,7 +58,7 @@ impl ProductState {
             .map_err(|error| ProductStateError::InvalidPayload(error.to_string()))?;
         match state.schema_version {
             PRODUCT_STATE_SCHEMA_VERSION => {}
-            2 => {
+            3 | 2 => {
                 state.schema_version = PRODUCT_STATE_SCHEMA_VERSION;
                 state.legacy_storage = true;
             }
@@ -145,6 +145,12 @@ impl ProductState {
         if !self.legacy_storage && !self.workspaces.storage_migration_required() {
             return Ok(false);
         }
+        if self.legacy_storage
+            && self.providers.is_configured()
+            && !self.providers.model_facts_are_complete()
+        {
+            return Ok(false);
+        }
         let generation = self.next_generation()?;
         self.workspaces.finish_storage_migration();
         self.legacy_storage = false;
@@ -166,6 +172,9 @@ impl ProductState {
         providers.validate()?;
         let generation = self.next_generation()?;
         self.providers = providers;
+        if self.providers.model_facts_are_complete() {
+            self.legacy_storage = false;
+        }
         self.provider_setup_complete = true;
         self.generation = generation;
         Ok(true)

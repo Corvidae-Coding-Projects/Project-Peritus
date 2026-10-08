@@ -83,6 +83,10 @@ pub struct ProviderProfileDeclaration {
     profile_id: String,
     revision: u64,
     model: String,
+    #[serde(default)]
+    facts_version: Option<u16>,
+    #[serde(default)]
+    facts_source: Option<String>,
     provider_name: Option<String>,
     capabilities: Vec<String>,
     max_input_tokens: u64,
@@ -270,6 +274,19 @@ impl ProviderProfileDeclaration {
             return Err(invalid("provider profile capabilities are duplicate or oversized"));
         }
         let matrix = CapabilityMatrix::new(&capabilities, &[]).map_err(protocol_error)?;
+        let provenance = match (self.facts_version, self.facts_source.as_deref()) {
+            (None, None) => CapabilityProvenance::Profiled,
+            (Some(1), Some("discovered")) => CapabilityProvenance::Discovered,
+            (
+                Some(1),
+                Some("explicit" | "discovered-and-explicit" | "legacy-generated"),
+            ) => CapabilityProvenance::Profiled,
+            _ => {
+                return Err(invalid(
+                    "provider model fact version or provenance is unsupported",
+                ));
+            }
+        };
         let limits = ModelLimits::new(
             self.max_input_tokens,
             self.max_output_tokens,
@@ -285,7 +302,7 @@ impl ProviderProfileDeclaration {
             ModelName::new(self.model.clone()).map_err(protocol_error)?,
             dialect,
             matrix,
-            CapabilityProvenance::Profiled,
+            provenance,
             limits,
             output_limit,
             StateMode::StatelessReplay,

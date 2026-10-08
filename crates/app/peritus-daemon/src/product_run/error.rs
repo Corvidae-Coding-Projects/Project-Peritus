@@ -93,6 +93,7 @@ pub enum ProductRunServiceError {
     Duplicate,
     NotFound,
     ProviderUnavailable,
+    ModelFactsRequired,
     EffortUnsupported,
     WorkspaceUnavailable,
     GitRequired,
@@ -201,6 +202,12 @@ impl ProductRunServiceError {
                 ResponsibleSubsystem::Provider,
                 self.default_diagnostic(),
             ),
+            Self::ModelFactsRequired => (
+                AppErrorCode::NotReady,
+                RetryDisposition::AfterRecovery,
+                ResponsibleSubsystem::Provider,
+                self.default_diagnostic(),
+            ),
             Self::WorkspaceUnavailable => (
                 AppErrorCode::InvalidIdentifier,
                 RetryDisposition::NewRequest,
@@ -276,6 +283,9 @@ impl ProductRunServiceError {
             }
             Self::ProviderUnavailable => {
                 "The selected provider or model is unavailable. Check provider settings and refresh the model list."
+            }
+            Self::ModelFactsRequired => {
+                "The selected model still needs exact capacity and feature facts. Open provider setup, select this model on the same provider route, and finish setup before retrying this run."
             }
             Self::EffortUnsupported => {
                 "The selected reasoning effort is unsupported by this provider. Choose another effort or use the provider default."

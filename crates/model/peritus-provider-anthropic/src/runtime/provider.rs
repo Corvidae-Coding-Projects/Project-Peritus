@@ -215,7 +215,14 @@ impl ClaudeRuntimeProvider {
             process
         };
         session.mark_started()?;
-        let output = self.transport.run(process, cancellation).await?;
+        let output = self.transport.run(process, cancellation).await;
+        if output
+            .as_ref()
+            .is_err_and(|error| error.kind() == ProviderCoreErrorKind::Connect)
+        {
+            session.release_unaccepted_start()?;
+        }
+        let output = output?;
         session.validate_output(output.stdout())?;
         Ok(output)
     }
@@ -251,11 +258,14 @@ impl ModelProvider for ClaudeRuntimeProvider {
         &self,
         model: peritus_model_protocol::ModelName,
     ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
-        let profile =
-            peritus_provider_core::catalog::selected_profile(self.config.profile(), model)?;
+        if model != *self.config.profile().model() {
+            return Err(peritus_provider_core::catalog::unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
+            ));
+        }
         let config = ClaudeRuntimeConfig::new(
             self.config.executable().clone(),
-            profile,
+            self.config.profile().clone(),
             self.config.process_limits(),
         )?;
         Ok(std::sync::Arc::new(Self::new(config)))

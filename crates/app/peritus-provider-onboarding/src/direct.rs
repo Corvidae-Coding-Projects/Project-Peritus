@@ -3,7 +3,8 @@
 use core::fmt;
 
 use peritus_product_state::{
-    CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderRouteIdentity,
+    CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderModelFacts,
+    ProviderRouteIdentity,
 };
 use peritus_secrets::{
     PlatformCredentialStore, SecretMaterial, format_credential_reference,
@@ -41,6 +42,7 @@ pub struct DirectProviderDraft {
     endpoint: Option<String>,
     catalog_endpoint: Option<String>,
     model: String,
+    model_facts: Option<ProviderModelFacts>,
     compatible_protocol: Option<CompatibleProtocol>,
     credential_header: Option<String>,
 }
@@ -57,6 +59,13 @@ impl DirectProviderDraft {
     #[must_use]
     pub fn with_model(mut self, model: String) -> Self {
         self.model = model;
+        self
+    }
+
+    /// Binds the versioned capacity and feature facts for the exact selected model.
+    #[must_use]
+    pub fn with_model_facts(mut self, facts: ProviderModelFacts) -> Self {
+        self.model_facts = Some(facts);
         self
     }
 
@@ -101,6 +110,7 @@ impl DirectProviderDraft {
             endpoint,
             catalog_endpoint: None,
             model,
+            model_facts: None,
             compatible_protocol,
             credential_header,
         }
@@ -116,6 +126,11 @@ impl DirectProviderDraft {
         credential: &DirectCredential,
         effects: &ProviderEffectStore,
     ) -> Result<DirectProviderProfile, OnboardingError> {
+        let model_facts = self.model_facts.clone().ok_or_else(|| {
+            peritus_product_state::ProductStateError::InvalidPayload(
+                "selected direct model capacity and feature facts are unresolved".to_owned(),
+            )
+        })?;
         let catalog_endpoint = match (self.kind, self.catalog_endpoint.as_deref()) {
             (ProviderKind::CompatibleEndpoint, configured) => {
                 let inference = self.endpoint.as_deref().ok_or(OnboardingError::ModelCatalog)?;
@@ -150,7 +165,8 @@ impl DirectProviderDraft {
             self.model,
             self.compatible_protocol,
             self.credential_header,
-        )?;
+        )?
+        .with_model_facts(model_facts)?;
         effects.begin_credential(&expected_reference)?;
         let store = PlatformCredentialStore::providers();
         match store.store(resource_id, &credential.0) {

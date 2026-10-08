@@ -255,10 +255,13 @@ impl ModelProvider for AnthropicClient {
         &self,
         model: peritus_model_protocol::ModelName,
     ) -> Result<std::sync::Arc<dyn ModelProvider>, ProviderCoreError> {
-        let profile = peritus_provider_core::catalog::selected_profile(self.profile(), model)?;
-        let config = self.config.clone().with_selected_profile(profile)?;
+        if model != *self.profile().model() {
+            return Err(peritus_provider_core::catalog::unavailable(
+                "selected model capacity or features are unresolved; choose it through provider setup",
+            ));
+        }
         Ok(std::sync::Arc::new(Self {
-            config,
+            config: self.config.clone(),
             credentials: std::sync::Arc::clone(&self.credentials),
             transport: std::sync::Arc::clone(&self.transport),
         }))

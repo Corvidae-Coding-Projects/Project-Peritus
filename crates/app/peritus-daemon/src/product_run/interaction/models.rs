@@ -32,8 +32,10 @@ impl ProductRunService {
         let mut selection = identity.interaction.clone();
         selection.models = requested_models.clone();
         self.validate_models(providers, &selection.models).await?;
-        // Resolve all adapters before mutating durable state. Discovery alone is not support.
-        self.resolve_selected_providers(providers, &selection)?;
+        // Discovery establishes the exact model identity, not its complete execution contract.
+        // Retain such a selection under this run so provider setup can resolve its facts without
+        // substituting a model or losing the user's explicit choice.
+        let pending_facts = self.validate_model_resolution(providers, &selection.models)?;
         let mut input = b"peritus-product-run-model-selection-v1\0".to_vec();
         input.extend_from_slice(run.as_bytes());
         input.extend_from_slice(actor.as_bytes());
@@ -66,9 +68,14 @@ impl ProductRunService {
                 }
                 let mut next = prior.clone();
                 next.models = requested_models;
+                let status = if pending_facts {
+                    "Model selection saved pending exact capacity and feature facts. Open provider setup, select the same model on this provider route, and finish setup before its next turn. Any in-flight turn is unchanged."
+                } else {
+                    "Model selection saved for subsequent model turns; any in-flight turn is unchanged."
+                };
                 next.append(
                     ProductActivityKind::Status,
-                    "Model selection saved for subsequent model turns; any in-flight turn is unchanged.",
+                    status,
                     "",
                 )?;
                 record.interaction = next;
