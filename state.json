@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4093,
-        "tip_oid": "68914e3eb43b2880a7bcb29ec1d4c23ed2283b66",
-        "prefix_sha256": "080dbfbbd539f3efcc544070d2fc7f897a9ac072e9ca193ad95ad1ff19d130df"
+        "sequence": 4094,
+        "tip_oid": "8cd11368182d30098372e495967ce8ba23a8c0c4",
+        "prefix_sha256": "89a2bcb0fb1f983b4dfe8087ed74abc71e5da083f9095f8d0714246a362e7551"
       },
       "NWAR": {
         "sequence": 39,
@@ -16735,12 +16735,13 @@
       "display_id": 685,
       "title": "[L634] Filesystem schemas impose whole-file and inline-mutation ceilings without ranged alternatives",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L634.\n\n- Evidence: `crates/tools/peritus-tools-fs/src/input.rs:7-16,79-86,119-133,281-304,320-344`; `src/schemas.rs:7-38,61-75,78-118`; `src/decoder.rs:25-41,95-116`; `src/read.rs:220-232`; `src/catalog.rs:105-119` in the same crate.\n- Behavior: fs.read requires a positive caller byte bound no larger than 48 KiB and has no offset, line range, chunk cursor, or artifact result. Discovery/search require depth 1..64 and entries 1..100,000; search additionally requires a literal no longer than 4,096 bytes, a per-file limit up to 8 MiB, total UTF-8 bytes up to 64 MiB, and matches up to 10,000. Mutation schemas accept content strings up to 65,536 bytes and present preimage sizes up to 8 MiB; patch arrays require 1..1,024 edits and compile against the patch crate's separate byte/operation ceilings. Paths have a 4,096-byte schema ceiling. Binary content consumes its base64-expanded string allowance. All descriptors impose 8 MiB output, 16,384-byte human/model output, and count fields of one, while explicitly selecting no timeout.\n- Consequence: A legitimate source file larger than 48 KiB cannot be read with this tool, and a larger replacement cannot be supplied inline even when the lower patch engine supports more bytes. Raising the invocation timeout does not change these schema barriers.\n- Repair direction: Provide exact digest-bound range/chunk reads and streamed/artifact mutation inputs with persistent cursors; distinguish envelope-sized chunks from limits on the total job. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.353461930Z",
-      "updated_at": "2026-10-08T05:43:47.739508136Z",
+      "updated_at": "2026-10-08T05:45:57.850356942Z",
+      "closed_at": "2026-10-08T05:45:57.847434560Z",
       "labels": [
         "daily-driving-limiter"
       ],
