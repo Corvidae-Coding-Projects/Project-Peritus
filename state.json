@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3954,
-        "tip_oid": "63ff901c2244ad08dcb5ca33474d08351732fa7d",
-        "prefix_sha256": "1ed28eb2311d56fa5564f6370ba6b84433b705d0fb40af453dd34071da336015"
+        "sequence": 3955,
+        "tip_oid": "46b3d7de9c0898160c0c7603db8f8b59bbfbc77e",
+        "prefix_sha256": "5b784f51e953b872a41d0e93155ff66f6fdf76a54061b2bf528b867586164a9a"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3180,
+  "next_comment_id": 3181,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -37347,11 +37347,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.250257450Z",
-      "updated_at": "2026-10-06T13:27:51.252619134Z",
+      "updated_at": "2026-10-08T01:47:24.571865540Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "72caae66-e066-4de8-b591-811a4a942ff2": {
+          "display_id": 3180,
+          "author": "6ME5",
+          "content": "Code complete in commit 06103f441: Windows ACL application/reversal owns an authorization-bound durable transaction with exact native path/file identity, preimage and cleanup journals, cancellable lifetime serialization and same-transaction restart resumption. Interrupted effects restore before replay; changed identities and uncertain anchors fail closed. Restoration/deletion failures remain explicit; recovery schema v2 retains helper birth/ACL receipts while decoding v1. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:47:24.561744204Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ+dL82SWemwyAZOymKChng1obQ4+ZvmIQEO4vdC1OeMwIyZAZ08EN2X1hcBLXCcAONY0aSX+pDYOtPjh6H6BAQ=="
+        },
         "b445928c-ac15-4bd0-85cb-27b25d866e80": {
           "display_id": 2736,
           "author": "6ME5",
