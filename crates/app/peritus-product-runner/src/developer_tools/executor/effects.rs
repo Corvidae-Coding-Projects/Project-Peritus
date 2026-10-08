@@ -1,10 +1,9 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_PROGRESS_NUDGES,
-    ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools,
-    WorkspaceToolMode, atomic_write, checked, fs, literal_patch::apply_literal_patch, object,
-    observation, removal, required_string, string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolExecutor, DeveloperToolObservation,
+    ReceiptDecision, Value, WorkspaceDeveloperTools, atomic_write, checked, fs,
+    literal_patch::apply_literal_patch, object, removal, required_string, string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -23,10 +22,9 @@ impl WorkspaceDeveloperTools {
         };
         match decision {
             ReceiptDecision::Replay { value, is_error } => {
-                if value.get("error").is_none() {
-                    self.record_success(call.name().as_str(), arguments, &value);
-                }
-                observation(&value, is_error).map(Some)
+                let accepted = value.get("error").is_none();
+                self.finish_observation(call, arguments, &value, is_error, accepted, false)
+                    .map(Some)
             }
             ReceiptDecision::RecoverCheckpoint { value, is_error } => {
                 self.recover_checkpoint(call.name().as_str(), arguments, &value)?;
@@ -34,19 +32,18 @@ impl WorkspaceDeveloperTools {
                     .as_mut()
                     .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
                     .finalize()?;
-                if value.get("error").is_none() {
-                    self.record_success(call.name().as_str(), arguments, &value);
-                }
-                observation(&value, is_error).map(Some)
+                let accepted = value.get("error").is_none();
+                self.finish_observation(call, arguments, &value, is_error, accepted, false)
+                    .map(Some)
             }
-            ReceiptDecision::Refuse { detail, ambiguous } => observation(
-                &object(vec![
+            ReceiptDecision::Refuse { detail, ambiguous } => {
+                let value = object(vec![
                     ("error", Value::String(detail)),
                     ("ambiguous", Value::Bool(ambiguous)),
-                ]),
-                true,
-            )
-            .map(Some),
+                ]);
+                self.finish_observation(call, arguments, &value, true, false, false)
+                    .map(Some)
+            }
             ReceiptDecision::Execute => Err(tool("receipt replay returned an execute decision")),
         }
     }
@@ -111,63 +108,58 @@ impl WorkspaceDeveloperTools {
         match decision {
             ReceiptDecision::Execute => Ok(None),
             ReceiptDecision::Replay { value, is_error } => {
-                if value.get("error").is_none() {
-                    self.record_success(call.name().as_str(), arguments, &value);
-                }
-                observation(&value, is_error).map(Some)
+                let accepted = value.get("error").is_none();
+                self.finish_observation(call, arguments, &value, is_error, accepted, false)
+                    .map(Some)
             }
             ReceiptDecision::RecoverCheckpoint { .. } => {
                 Err(tool("checkpoint recovery must occur before effect preflight"))
             }
-            ReceiptDecision::Refuse { detail, ambiguous } => observation(
-                &object(vec![
+            ReceiptDecision::Refuse { detail, ambiguous } => {
+                let value = object(vec![
                     ("error", Value::String(detail)),
                     ("ambiguous", Value::Bool(ambiguous)),
-                ]),
-                true,
-            )
-            .map(Some),
+                ]);
+                self.finish_observation(call, arguments, &value, true, false, false)
+                    .map(Some)
+            }
         }
     }
-    pub(super) fn observe_delivery_progress(
+
+    pub(super) fn observe_progress(
         &mut self,
         name: &str,
         arguments: &Value,
         result: &Value,
         accepted: bool,
+        required_before: Option<&str>,
+        mutation_boundary: bool,
     ) {
-        if self.mode == WorkspaceToolMode::ReadOnly {
-            return;
-        }
-        let workspace_mutation = accepted
-            && matches!(name, "workspace_write" | "workspace_patch" | "workspace_remove")
-            && result.get("changed").and_then(Value::as_bool) != Some(false);
-        let external_effect = matches!(
+        let required_after =
+            DeveloperToolExecutor::required_tool_name(self).map(str::to_owned);
+        let discharged = accepted
+            && required_before.is_some_and(|required| {
+                required_after.as_deref() != Some(required)
+            });
+        let stalled = required_before.filter(|required| {
+            required_after.as_deref() == Some(*required) && *required != name
+        });
+        let delta = super::inspection_progress::ProgressDelta::from_observation(
             name,
-            "run_command"
-                | "command_poll"
-                | "command_stdin"
-                | "command_resize"
-                | "command_signal"
-                | "command_cancel"
-                | "command_recover"
-        ) && result.get("success").and_then(Value::as_bool) == Some(true)
-            && (string(arguments, "purpose") == Some("external_effect")
-                || result.get("purpose").and_then(Value::as_str) == Some("external_effect"));
-        if workspace_mutation || external_effect {
-            self.tools_without_delivery_progress = 0;
-            self.progress_feedback_pending = false;
+            arguments,
+            result,
+            accepted,
+            discharged,
+            mutation_boundary,
+        );
+        let observation = self
+            .grounding
+            .record_progress(name, arguments, result, delta);
+        self.inspection_progress
+            .observe_progress(name, observation, stalled);
+        #[cfg(test)]
+        if delta.candidate_advanced() {
             self.progress_nudges = 0;
-            return;
-        }
-        self.tools_without_delivery_progress =
-            self.tools_without_delivery_progress.saturating_add(1);
-        if self.tools_without_delivery_progress >= TOOLS_WITHOUT_DELIVERY_PROGRESS
-            && self.progress_nudges < MAX_PROGRESS_NUDGES
-        {
-            self.tools_without_delivery_progress = 0;
-            self.progress_nudges = self.progress_nudges.saturating_add(1);
-            self.progress_feedback_pending = true;
         }
     }
 

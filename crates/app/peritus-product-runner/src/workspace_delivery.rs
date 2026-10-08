@@ -16,9 +16,16 @@ use peritus_model_protocol::{ProviderProfile, ToolDefinition};
 impl ProductRunInput {
     pub(crate) fn accounting(&self) -> Result<RunAccounting, ProductRunnerError> {
         if self.workspace_kind.is_in_place() {
-            RunAccounting::direct_folder(self.max_elapsed)
+            RunAccounting::direct_folder_with_cancellation(
+                self.max_elapsed,
+                std::sync::Arc::clone(&self.cancelled),
+            )
         } else {
-            RunAccounting::new(&self.workspace_root, self.max_elapsed)
+            RunAccounting::new_with_cancellation(
+                &self.workspace_root,
+                self.max_elapsed,
+                std::sync::Arc::clone(&self.cancelled),
+            )
         }
     }
 
@@ -38,7 +45,15 @@ impl ProductRunInput {
 
     pub(crate) fn baseline(&self) -> Result<CandidateBaseline, ProductRunnerError> {
         self.in_place_scope().map_or_else(
-            || CandidateBaseline::capture_task(&self.workspace_root, &self.trace_path),
+            || {
+                crate::candidate::process::with_cancellation(
+                    crate::candidate::process::Cancellation::new(
+                        std::sync::Arc::clone(&self.cancelled),
+                        self.provider_cancellation.clone(),
+                    ),
+                    || CandidateBaseline::capture_task(&self.workspace_root, &self.trace_path),
+                )
+            },
             |scope| Ok(CandidateBaseline::in_place(scope)),
         )
     }
@@ -65,11 +80,24 @@ impl ProductRunInput {
         tools: WorkspaceDeveloperTools,
     ) -> WorkspaceDeveloperTools {
         let reference_authority = self.conversation.reference_authority_context();
-        tools
+        let revision = self.conversation.revision();
+        let request_sources = self.conversation.request_source_binding();
+        let tools = tools
+            .with_directory_listing_owner(crate::developer_tools::DirectoryListingOwner::new(
+                self.workspace_root.clone(),
+                self.trace_path.with_extension("directory-listings"),
+                std::sync::Arc::clone(&self.cancelled),
+                self.provider_cancellation.clone(),
+            ))
             .with_reference_contract(&reference_authority)
             .with_protected_paths(self.workspace_kind.protected_paths())
             .with_protection_view(std::sync::Arc::clone(&self.conversation))
-            .with_in_place_scope(self.in_place_scope())
+            .with_in_place_scope(self.in_place_scope());
+        if self.conversation.revision() == revision {
+            tools.with_progress_binding(revision, request_sources)
+        } else {
+            tools
+        }
     }
 
     pub(crate) fn developer_definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
@@ -89,14 +117,22 @@ impl ProductRunInput {
             return Ok(WorkspaceImages::default());
         }
         if self.workspace_kind.is_in_place() {
-            crate::workspace_media::discover_explicit(
+            crate::workspace_media::discover_explicit_retained(
                 &self.workspace_root,
                 transcript,
                 profile,
                 self.workspace_kind.protected_paths(),
+                &self.trace_path.with_extension("workspace-media"),
+                self.cancelled.as_ref(),
             )
         } else {
-            crate::workspace_media::discover(&self.workspace_root, transcript, profile)
+            crate::workspace_media::discover_retained(
+                &self.workspace_root,
+                transcript,
+                profile,
+                &self.trace_path.with_extension("workspace-media"),
+                self.cancelled.as_ref(),
+            )
         }
     }
 
@@ -105,6 +141,13 @@ impl ProductRunInput {
         role: &str,
     ) -> Result<Option<LocalContextHandle>, ProductRunnerError> {
         LocalContextHandle::open(self, role)
+    }
+
+    pub(crate) async fn working_memory_async(
+        &self,
+        role: &str,
+    ) -> Result<Option<LocalContextHandle>, ProductRunnerError> {
+        LocalContextHandle::open_async(self, role).await
     }
 
     pub(crate) fn native_session_directory(&self, role: &str) -> std::path::PathBuf {

@@ -24,9 +24,6 @@ use super::{
     wire::{object, observation, required_string, string},
 };
 use crate::control::{HostPermissions, PermissionCapability};
-const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
-const MAX_PROGRESS_NUDGES: u8 = 2;
-const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
 
 mod active;
 mod checkpoint_observer;
@@ -34,7 +31,7 @@ mod command;
 mod construction;
 mod dispatch;
 mod in_place;
-mod inspection_progress;
+pub(in crate::developer_tools) mod inspection_progress;
 mod literal_patch;
 pub(in crate::developer_tools) mod sources;
 
@@ -64,9 +61,8 @@ pub struct WorkspaceDeveloperTools {
     resources: CommandResources,
     command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
-    tools_without_delivery_progress: u16,
+    #[cfg(test)]
     progress_nudges: u8,
-    progress_feedback_pending: bool,
     inspection_progress: inspection_progress::InspectionProgress,
     directory_listings: Option<inspection::DirectoryListingOwner>,
     request_sources: sources::RequestSourceProgress,
@@ -112,9 +108,22 @@ impl WorkspaceDeveloperTools {
     }
 
     pub(crate) fn with_grounding(mut self, mut grounding: GroundingEvidence) -> Self {
+        let progress_binding = self.grounding.progress_binding();
         grounding.bind_workspace(&self.root);
+        if let Some((revision, request_sources)) = progress_binding {
+            grounding.bind_progress(revision, request_sources);
+        }
         self.grounding = grounding;
         self.restore_request_source_evidence();
+        self
+    }
+
+    pub(crate) fn with_progress_binding(
+        mut self,
+        revision: u64,
+        request_sources: [u8; 32],
+    ) -> Self {
+        self.grounding.bind_progress(revision, request_sources);
         self
     }
 
@@ -171,11 +180,19 @@ impl WorkspaceDeveloperTools {
         accepted: bool,
         mutation_boundary: bool,
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
+        let required_before =
+            DeveloperToolExecutor::required_tool_name(self).map(str::to_owned);
         if accepted {
             self.record_success(call.name().as_str(), arguments, value);
         }
-        self.observe_delivery_progress(call.name().as_str(), arguments, value, accepted);
-        self.inspection_progress.observe(call.name().as_str(), arguments, value, mutation_boundary);
+        self.observe_progress(
+            call.name().as_str(),
+            arguments,
+            value,
+            accepted,
+            required_before.as_deref(),
+            mutation_boundary,
+        );
         observation(value, is_error)
     }
 }
@@ -271,9 +288,14 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     && let Err(error) =
                         self.prepare_effect_checkpoint(call.name().as_str(), &arguments)
                 {
-                    return observation(
-                        &object(vec![("error", Value::String(error.to_string()))]),
+                    let value = object(vec![("error", Value::String(error.to_string()))]);
+                    return self.finish_observation(
+                        call,
+                        &arguments,
+                        &value,
                         true,
+                        false,
+                        false,
                     );
                 }
                 self.dispatch_prepared(call, &arguments, effect)
@@ -294,20 +316,41 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                             .prepare_effect_checkpoint_async(call.name().as_str(), &arguments)
                             .await
                     {
-                        return observation(
-                            &object(vec![("error", Value::String(error.to_string()))]),
+                        let value = object(vec![("error", Value::String(error.to_string()))]);
+                        return self.finish_observation(
+                            call,
+                            &arguments,
+                            &value,
                             true,
+                            false,
+                            false,
                         );
                     }
                     // Permission and protection changes received while waiting remain authoritative.
                     if let Some(detail) = self.permission_denial(call.name().as_str()) {
-                        return observation(&object(vec![("error", Value::String(detail))]), true);
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call,
+                            &arguments,
+                            &value,
+                            true,
+                            false,
+                            false,
+                        );
                     }
                     self.refresh_hard_constraints();
                     if let Err(detail) =
                         self.access_policy.authorize(call.name().as_str(), &arguments)
                     {
-                        return observation(&object(vec![("error", Value::String(detail))]), true);
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call,
+                            &arguments,
+                            &value,
+                            true,
+                            false,
+                            false,
+                        );
                     }
                     self.dispatch_prepared_async(call, &arguments, effect).await
                 }
@@ -327,13 +370,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     }
 
     fn take_progress_feedback(&mut self) -> Option<String> {
-        if let Some(feedback) = self.inspection_progress.feedback() {
-            return Some(feedback);
-        }
-        if !std::mem::take(&mut self.progress_feedback_pending) {
-            return None;
-        }
-        Some(PROGRESS_FEEDBACK.to_owned())
+        let required = DeveloperToolExecutor::required_tool_name(self).map(str::to_owned);
+        self.inspection_progress
+            .feedback_for(required.as_deref(), self.mode == WorkspaceToolMode::ReadOnly)
     }
 }
 

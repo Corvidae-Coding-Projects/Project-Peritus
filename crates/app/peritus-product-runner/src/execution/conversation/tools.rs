@@ -7,7 +7,7 @@ use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
 };
 use peritus_model_protocol::{
-    BoundedText, CanonicalJson, CompletedToolCall, JsonBounds, JsonSchema, ProtocolLimits,
+    BoundedText, CanonicalJson, CompletedToolCall, JsonBounds, JsonSchema, Message, ProtocolLimits,
     SchemaDialect, ToolDefinition, ToolName,
 };
 use std::sync::Arc;
@@ -17,6 +17,7 @@ pub(super) struct ConversationTools {
     pub(super) requested_revision: Option<u64>,
     pub(super) allow_pipeline: bool,
     pub(super) conversation: Arc<dyn ConversationView>,
+    provider_network_required: bool,
 }
 
 impl ConversationTools {
@@ -29,11 +30,16 @@ impl ConversationTools {
             requested_revision: None,
             allow_pipeline,
             conversation: Arc::clone(&input.conversation),
+            provider_network_required: providers_require_network(input),
         }
     }
 }
 
 impl DeveloperToolExecutor for ConversationTools {
+    fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.workspace.observe_model_context(messages)
+    }
+
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
         if call.name().as_str() == "run_pipeline" {
             DeveloperToolEffect::MutationCapable
@@ -54,7 +60,10 @@ impl DeveloperToolExecutor for ConversationTools {
                 .map_err(|error| DeveloperLoopError::Tool(error.to_string()))?;
         let allowed = self.allow_pipeline
             && arguments.as_object().is_some_and(serde_json::Map::is_empty)
-            && pipeline_permissions_allow(self.conversation.as_ref());
+            && permissions_allow(
+                self.conversation.as_ref(),
+                self.provider_network_required,
+            );
         if allowed {
             self.requested_revision = Some(self.conversation.incorporated_revision());
         }
@@ -72,20 +81,45 @@ impl DeveloperToolExecutor for ConversationTools {
     fn yields_to_host(&self) -> bool {
         self.requested_revision.is_some()
     }
+
+    fn take_progress_feedback(&mut self) -> Option<String> {
+        self.workspace.take_progress_feedback()
+    }
+
     // Conversation reads have no delivery obligations. All effects live in the pipeline executor,
     // which retains its normal grounding, gate, review and progress checks.
 }
 
-pub(super) fn pipeline_permissions_allow(conversation: &dyn ConversationView) -> bool {
+pub(super) fn pipeline_permissions_allow(input: &crate::ProductRunInput) -> bool {
+    permissions_allow(input.conversation.as_ref(), providers_require_network(input))
+}
+
+fn permissions_allow(conversation: &dyn ConversationView, network_required: bool) -> bool {
     let permissions = conversation.effective_permissions();
-    [
+    let local = [
         PermissionCapability::Read,
         PermissionCapability::Write,
         PermissionCapability::Process,
-        PermissionCapability::Network,
     ]
     .into_iter()
-    .all(|capability| permissions.allows(capability))
+    .all(|capability| permissions.allows(capability));
+    local
+        && (!network_required || permissions.allows(PermissionCapability::Network))
+}
+
+fn providers_require_network(input: &crate::ProductRunInput) -> bool {
+    std::iter::once(&input.providers.writer)
+        .chain(std::iter::once(&input.providers.reviewer))
+        .chain(std::iter::once(&input.providers.fixer))
+        .chain(input.providers.fallbacks.iter())
+        .any(|provider| {
+            matches!(
+                provider.route(),
+                peritus_provider_core::ProviderRoute::FirstPartyApi
+                    | peritus_provider_core::ProviderRoute::CompatibleApi
+                    | peritus_provider_core::ProviderRoute::AccountRuntime
+            )
+        })
 }
 
 pub(super) fn definition() -> Result<ToolDefinition, DeveloperLoopError> {

@@ -13,11 +13,14 @@ impl WorkspaceDeveloperTools {
     #[must_use]
     pub fn read_only(root: PathBuf) -> Self {
         let ownership = WorkspaceOwnership::direct();
+        let grounding = GroundingEvidence::for_workspace(&root);
+        let directory_listings = super::inspection::DirectoryListingOwner::ephemeral(root.clone())
+            .ok();
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),
-            grounding: GroundingEvidence::default(),
+            grounding,
             ownership,
             mode: WorkspaceToolMode::ReadOnly,
             in_place_scope: None,
@@ -27,10 +30,11 @@ impl WorkspaceDeveloperTools {
             resources: CommandResources::observe(),
             command_runtime: None,
             active_commands: ActiveCommandLedger::default(),
-            tools_without_delivery_progress: 0,
+            #[cfg(test)]
             progress_nudges: 0,
-            progress_feedback_pending: false,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
+            directory_listings,
+            request_sources: super::sources::RequestSourceProgress::default(),
             checkpoint_observer: None,
             checkpoint_view: None,
             prepared_mutations: Vec::new(),
@@ -47,11 +51,18 @@ impl WorkspaceDeveloperTools {
         command_horizon: impl Into<Option<Duration>>,
         command_runtime: crate::CommandRuntime,
     ) -> Self {
+        let grounding = GroundingEvidence::for_workspace(&root);
+        let directory_listings = Some(super::inspection::DirectoryListingOwner::new(
+            root.clone(),
+            receipt_path.with_extension("directory-listings"),
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            peritus_provider_core::CancellationToken::new(),
+        ));
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
             references: ExplicitReferences::default(),
-            grounding: GroundingEvidence::default(),
+            grounding,
             ownership,
             mode: WorkspaceToolMode::ReadWrite,
             in_place_scope: None,
@@ -61,10 +72,11 @@ impl WorkspaceDeveloperTools {
             resources: CommandResources::observe(),
             command_runtime: Some(command_runtime),
             active_commands: ActiveCommandLedger::default(),
-            tools_without_delivery_progress: 0,
+            #[cfg(test)]
             progress_nudges: 0,
-            progress_feedback_pending: false,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
+            directory_listings,
+            request_sources: super::sources::RequestSourceProgress::default(),
             checkpoint_observer: None,
             checkpoint_view: None,
             prepared_mutations: Vec::new(),
