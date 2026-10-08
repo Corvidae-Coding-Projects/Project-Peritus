@@ -6,12 +6,14 @@ use windows_sys::core::GUID;
 
 use crate::ProxyRoute;
 
+#[derive(Clone, Copy)]
 pub(super) struct PolicyKeys {
     pub(super) session: GUID,
     pub(super) sublayer: GUID,
     pub(super) allow_v4: GUID,
     pub(super) block_v4: GUID,
     pub(super) block_v6: GUID,
+    pub(super) ownership_digest: peritus_types::Sha256Digest,
 }
 
 impl PolicyKeys {
@@ -25,6 +27,7 @@ impl PolicyKeys {
             IpAddr::V6(value) => seed.extend_from_slice(&value.octets()),
         }
         seed.extend_from_slice(&route.endpoint().port().to_be_bytes());
+        seed.extend_from_slice(&route.routing_handle().to_be_bytes());
         Self::from_seed(&seed)
     }
 
@@ -43,8 +46,15 @@ impl PolicyKeys {
             allow_v4: derived_guid(seed, b"allow-v4"),
             block_v4: derived_guid(seed, b"block-v4"),
             block_v6: derived_guid(seed, b"block-v6"),
+            ownership_digest: ownership_digest(seed),
         }
     }
+}
+
+fn ownership_digest(seed: &[u8]) -> peritus_types::Sha256Digest {
+    let mut input = Vec::from(b"PERITUS-WINDOWS-WFP-OWNERSHIP-V1\0".as_slice());
+    input.extend_from_slice(seed);
+    peritus_codec::sha256(&input)
 }
 
 fn derived_guid(seed: &[u8], label: &[u8]) -> GUID {

@@ -131,7 +131,10 @@ fn verify_network(manifest: &HelperManifest) -> Result<(), WindowsError> {
         NetworkIsolation::DenyAll if manifest.token().is_app_container() => Ok(()),
         NetworkIsolation::ManagedProxy(route)
             if manifest.token().is_app_container()
-                && route.endpoint().ip().is_loopback()
+                && matches!(
+                    route.endpoint().ip(),
+                    std::net::IpAddr::V4(address) if address.is_loopback()
+                )
                 && route.network_plan_digest() == manifest.plan_digest() =>
         {
             Ok(())

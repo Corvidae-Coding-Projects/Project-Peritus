@@ -7,7 +7,7 @@ use peritus_process::{
 use peritus_sandbox::{
     AdmissionProfile, BackendAdmission, BackendDescriptor, CheckedSandboxPlan, admit_backend,
 };
-use peritus_types::Sha256Digest;
+use peritus_types::{ProcessId, Sha256Digest};
 use std::sync::Arc;
 
 use crate::{
@@ -206,6 +206,21 @@ impl WindowsBackend {
         }
         let probe = self.descriptor.probe();
         let selected = probe.selected_controls(sandbox, &self.config.token)?;
+        let token = preparation_token(
+            &self.config.token,
+            execution.identity().process_id(),
+            admission.preparation_digest(),
+            install_native && selected.managed_network(),
+        )?;
+        #[cfg(target_os = "windows")]
+        if install_native {
+            let mut should_continue = || (self.preparation_continues)();
+            crate::native::probe::validate_selected_capacity(
+                sandbox,
+                &token,
+                &mut should_continue,
+            )?;
+        }
         let helper_digest = helper_digest(&self.config.helper_path, &self.preparation_continues)?;
         if probe.evidence().helper_digest != Some(helper_digest) {
             return Err(crate::error::mismatch(
@@ -219,7 +234,7 @@ impl WindowsBackend {
             PathPolicy::new(self.config.workspace.clone(), self.config.protected_roots.clone())?
                 .with_read_only_inputs(self.config.read_only_inputs.clone())?
                 .with_writable_inputs(self.config.writable_inputs.clone())?;
-        let acl = compile_acl_plan(sandbox, &path_policy, self.config.token.principal_sid())?;
+        let acl = compile_acl_plan(sandbox, &path_policy, token.principal_sid())?;
         let environment = execution
             .environment()
             .variables()
@@ -245,6 +260,7 @@ impl WindowsBackend {
             &self.config,
             execution,
             sandbox,
+            &token,
             install_native,
             selected.managed_network(),
             selected.credential_delivery(),
@@ -256,7 +272,7 @@ impl WindowsBackend {
             admission,
             helper_digest,
             &acl,
-            self.config.token.clone(),
+            token.clone(),
             execution.command(),
             self.config.workspace.clone(),
             environment.clone(),
@@ -274,6 +290,7 @@ impl WindowsBackend {
             admission,
             helper_digest,
             &acl,
+            &token,
             &projected_manifest,
         )?;
         let helper_identity = crate::identity::helper(helper_digest);
@@ -331,6 +348,7 @@ impl WindowsBackend {
             &mut self.config,
             execution,
             sandbox,
+            &token,
             &channel_plan,
             self.preparation_continues.as_ref(),
         )
@@ -350,7 +368,7 @@ impl WindowsBackend {
             admission,
             helper_digest,
             &acl,
-            self.config.token.clone(),
+            token.clone(),
             execution.command(),
             self.config.workspace.clone(),
             environment,
@@ -363,7 +381,15 @@ impl WindowsBackend {
             inherited_handles,
         )
         .map_err(|error| staged.cleanup(error))?;
-        self.validate_compilation(execution, sandbox, admission, helper_digest, &acl, &manifest)
+        self.validate_compilation(
+            execution,
+            sandbox,
+            admission,
+            helper_digest,
+            &acl,
+            &token,
+            &manifest,
+        )
             .map_err(|error| staged.cleanup(error))?;
         let protected_handles = match staged.take_handles() {
             Ok(handles) => handles,
@@ -394,7 +420,7 @@ impl WindowsBackend {
             admission.preparation_digest(),
             helper_digest,
             job_identity,
-            crate::identity::profile(&self.config.token),
+            crate::identity::profile(&token),
             acl.digest(),
         );
         let (acl_transaction, channels) = staged.finish()?;
@@ -532,6 +558,7 @@ impl WindowsBackend {
         admission: &BackendAdmission,
         helper_digest: Sha256Digest,
         acl: &crate::AclPlan,
+        token: &crate::TokenProfile,
         manifest: &HelperManifest,
     ) -> Result<(), WindowsError> {
         let execution_plan_exact = execution.sandbox_digest() == manifest.plan_digest();
@@ -549,12 +576,12 @@ impl WindowsBackend {
             preparation_exact: admission.preparation_digest() == manifest.preparation_digest(),
             helper_exact,
             workspace_exact: manifest.working_directory() == &self.config.workspace,
-            token_exact: manifest.token() == &self.config.token,
+            token_exact: manifest.token() == token,
             acl_exact: acl.digest() == manifest.acl_digest(),
             network_exact: network_exact(
                 manifest.network(),
                 sandbox,
-                &self.config.token,
+                token,
                 self.config.managed_filter_digest,
             ),
             handles_exact: manifest.inherited_handles().digest()
@@ -624,6 +651,51 @@ fn helper_digest(
     }
 }
 
+fn preparation_token(
+    configured: &crate::TokenProfile,
+    process_id: ProcessId,
+    preparation: Sha256Digest,
+    isolate_app_container: bool,
+) -> Result<crate::TokenProfile, WindowsError> {
+    if !isolate_app_container {
+        return Ok(configured.clone());
+    }
+    if !configured.is_app_container() {
+        return Err(crate::error::unsupported(
+            WindowsOperation::Prepare,
+            "managed Windows networking requires a run-scoped AppContainer identity",
+        ));
+    }
+    let mut bytes = Vec::from(b"PERITUS-WINDOWS-RUN-PROFILE-V1\0".as_slice());
+    bytes.extend_from_slice(crate::identity::profile(configured).as_bytes());
+    bytes.extend_from_slice(process_id.as_bytes());
+    bytes.extend_from_slice(preparation.as_bytes());
+    let digest = peritus_codec::sha256(&bytes);
+    let mut name = String::from("Peritus.Run.");
+    append_hex_prefix(&mut name, digest.as_bytes(), 16);
+    #[cfg(target_os = "windows")]
+    {
+        crate::AppContainerProfile::derive_for_current_host(name)
+            .map(crate::TokenProfile::AppContainer)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = name;
+        Err(crate::error::unsupported(
+            WindowsOperation::Prepare,
+            "run-scoped AppContainer derivation requires a native Windows host",
+        ))
+    }
+}
+
+fn append_hex_prefix(target: &mut String, bytes: &[u8], count: usize) {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for byte in bytes.iter().take(count) {
+        target.push(char::from(HEX[usize::from(byte >> 4)]));
+        target.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+}
+
 fn network_exact(
     isolation: crate::NetworkIsolation,
     sandbox: &CheckedSandboxPlan,
@@ -637,6 +709,10 @@ fn network_exact(
         }
         crate::NetworkIsolation::ManagedProxy(route) => {
             !sandbox.requirements().network().is_empty()
+                && matches!(
+                    route.endpoint().ip(),
+                    std::net::IpAddr::V4(address) if address.is_loopback()
+                )
                 && route.network_plan_digest() == sandbox.digest()
                 && controller.is_some_and(|identity| {
                     crate::network::managed_wfp_policy_digest(

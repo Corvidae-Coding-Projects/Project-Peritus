@@ -131,6 +131,8 @@ pub enum WindowsErrorSource {
     },
     /// Operating-system I/O category.
     Io(std::io::ErrorKind),
+    /// Raw Windows or BFE status code from a native policy operation.
+    WindowsStatus(u32),
     /// Managed-network preparation or teardown failure.
     Network {
         /// Underlying network category.
@@ -171,6 +173,9 @@ impl fmt::Display for WindowsErrorSource {
                 Ok(())
             }
             Self::Io(kind) => write!(formatter, "operating-system I/O category {kind:?}"),
+            Self::WindowsStatus(status) => {
+                write!(formatter, "Windows status 0x{status:08x}")
+            }
             Self::Network { kind, operation, recovery } => {
                 write!(formatter, "network {kind:?} during {operation:?}; recovery {recovery:?}")
             }

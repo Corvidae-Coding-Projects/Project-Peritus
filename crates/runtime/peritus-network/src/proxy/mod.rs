@@ -22,6 +22,8 @@ use crate::{
     RoutingToken, SystemResolver,
 };
 
+pub(crate) const MANAGED_PROXY_LISTENER_IP: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+
 #[cfg(unix)]
 pub use inherited::{InheritedListenerProxy, send_inherited_listener};
 
@@ -130,7 +132,7 @@ impl ManagedProxy {
         credential: Option<Arc<ProxyCredential>>,
     ) -> Result<Self, NetworkError> {
         let plan_digest = plan.digest();
-        let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
+        let listener = TcpListener::bind(SocketAddr::new(MANAGED_PROXY_LISTENER_IP, 0))
             .map_err(|_| owner::proxy_error("managed proxy cannot bind loopback"))?;
         listener
             .set_nonblocking(true)

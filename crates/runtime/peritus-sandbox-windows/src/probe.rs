@@ -60,6 +60,12 @@ pub struct ProbeEvidence {
     pub deny_network: bool,
     /// Dynamic WFP filter-to-managed-proxy enforcement is available.
     pub managed_network: bool,
+    /// A dynamic BFE session and owned sublayer completed a reversible round trip.
+    pub managed_network_installation: bool,
+    /// BFE accepted enabled exact-permit and package-block filter records.
+    pub managed_network_filters_enabled: bool,
+    /// A target AppContainer connection was qualified through the installed policy.
+    pub managed_network_connection_qualified: bool,
     /// Dimension-specific hard/supervisor support.
     pub resources: [EnforcementLevel; 8],
 }
@@ -87,6 +93,9 @@ impl ProbeEvidence {
             credential_manager: true,
             deny_network: true,
             managed_network: true,
+            managed_network_installation: true,
+            managed_network_filters_enabled: true,
+            managed_network_connection_qualified: true,
             resources: production_resource_levels(),
         }
     }
@@ -113,6 +122,9 @@ impl ProbeEvidence {
             credential_manager: false,
             deny_network: false,
             managed_network: false,
+            managed_network_installation: false,
+            managed_network_filters_enabled: false,
+            managed_network_connection_qualified: false,
             resources: [EnforcementLevel::Unsupported; 8],
         }
     }
@@ -208,6 +220,12 @@ impl WindowsProbe {
             || (evidence.kill_on_close && !evidence.job_object)
             || (evidence.deny_network && !evidence.app_container_sid_exact)
             || (evidence.managed_network && !evidence.deny_network)
+            || (evidence.managed_network_filters_enabled
+                && !evidence.managed_network_installation)
+            || (evidence.managed_network_connection_qualified
+                && !evidence.managed_network_filters_enabled)
+            || (evidence.managed_network
+                && !evidence.managed_network_connection_qualified)
             || [1_usize, 2, 6].into_iter().any(|index| {
                 evidence.resources[index] == EnforcementLevel::Hard && !evidence.job_object
             })
@@ -492,6 +510,9 @@ fn supported_features(evidence: &ProbeEvidence) -> FeatureSet {
         features.insert(SandboxFeature::TerminalSignals);
     }
     if evidence.managed_network
+        && evidence.managed_network_installation
+        && evidence.managed_network_filters_enabled
+        && evidence.managed_network_connection_qualified
         && evidence.app_container
         && evidence.app_container_sid_exact
         && evidence.deny_network
@@ -538,6 +559,9 @@ fn probe_bytes(evidence: &ProbeEvidence) -> Vec<u8> {
         evidence.credential_manager,
         evidence.deny_network,
         evidence.managed_network,
+        evidence.managed_network_installation,
+        evidence.managed_network_filters_enabled,
+        evidence.managed_network_connection_qualified,
     ] {
         bytes.push(u8::from(fact));
     }

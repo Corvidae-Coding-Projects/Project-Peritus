@@ -890,6 +890,30 @@ pub(crate) fn process_error(error: &WindowsError) -> ProcessError {
             RecoveryClass::ReopenAndReconcile,
             "Windows native cleanup requires retained-owner reconciliation",
         )
+    } else if error.recovery() == WindowsRecovery::Reauthorize {
+        (
+            ErrorCode::AuthorizationMismatch,
+            ProcessOperation::Authorize,
+            RecoveryClass::Reauthorize,
+            "Windows native policy requires fresh authorization",
+        )
+    } else if matches!(
+        error.recovery(),
+        WindowsRecovery::ConfigureHost | WindowsRecovery::SelectBackend
+    ) {
+        (
+            ErrorCode::Unsupported,
+            ProcessOperation::Validate,
+            RecoveryClass::SelectBackend,
+            "Windows host policy does not permit the selected native control",
+        )
+    } else if error.recovery() == WindowsRecovery::Replan {
+        (
+            ErrorCode::PlanMismatch,
+            ProcessOperation::Validate,
+            RecoveryClass::RetryPreparation,
+            "Windows native preparation must be recomputed from current authority",
+        )
     } else {
         match error.kind() {
         WindowsErrorKind::InvalidPlan | WindowsErrorKind::Path => (

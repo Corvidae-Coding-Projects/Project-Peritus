@@ -62,6 +62,12 @@ pub(crate) fn run(
         .is_ok();
     let conpty = function_exists("kernel32.dll", b"CreatePseudoConsole\0");
     let app_isolation = app_container && app_container_sid_exact;
+    let managed_network = request
+        .managed_filter_digest()
+        .filter(|_| app_isolation)
+        .map_or_else(super::wfp::WfpProbeEvidence::default, |identity| {
+            super::wfp::WfpSession::probe(request.token_profile(), identity)
+        });
     ensure_continues(should_continue)?;
     Ok(ProbeEvidence {
         os_build: os_build(),
@@ -81,9 +87,10 @@ pub(crate) fn run(
         conpty,
         credential_manager: credential_manager_usable(),
         deny_network: app_isolation,
-        managed_network: request.managed_filter_digest().is_some_and(|identity| {
-            app_isolation && super::wfp::WfpSession::probe(request.token_profile(), identity)
-        }),
+        managed_network: managed_network.qualified(),
+        managed_network_installation: managed_network.installation,
+        managed_network_filters_enabled: managed_network.enabled_filters,
+        managed_network_connection_qualified: managed_network.connection_qualified,
         resources: resource_levels(job_cpu, job_memory, job_processes),
     })
 }

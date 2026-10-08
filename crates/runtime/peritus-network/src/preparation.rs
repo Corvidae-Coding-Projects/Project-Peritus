@@ -1,7 +1,7 @@
 //! Inert managed-proxy configuration consumed during native preparation.
 
 use core::fmt;
-use std::sync::Arc;
+use std::{net::IpAddr, sync::Arc};
 
 use peritus_sandbox::CheckedSandboxPlan;
 
@@ -43,6 +43,12 @@ impl ManagedProxyPreparation {
     /// Rejects the same non-narrowing options and credential drift as [`Self::prepare`].
     pub fn preflight(&self, checked: &CheckedSandboxPlan) -> Result<(), NetworkError> {
         NetworkPlan::from_checked(checked, self.options.clone()).map(drop)
+    }
+
+    /// Returns the listener address family that [`Self::prepare`] will bind.
+    #[must_use]
+    pub const fn listener_ip(&self) -> IpAddr {
+        crate::proxy::MANAGED_PROXY_LISTENER_IP
     }
 
     /// Compiles the checked plan and starts its one owned loopback proxy.

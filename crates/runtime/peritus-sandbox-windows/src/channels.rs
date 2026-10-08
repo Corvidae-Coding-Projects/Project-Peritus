@@ -12,8 +12,8 @@ use peritus_secrets::{
 use crate::{
     NetworkIsolation, PreparationCleanup, ProtectedSecretHandle, ProxyRoute,
     SecretHandleDestination, WindowsBackendConfig, WindowsError, WindowsErrorKind,
-    WindowsErrorSource, WindowsOperation, WindowsRecovery, network_filter::NetworkFilterOwner,
-    secret_reference_digest,
+    WindowsErrorSource, WindowsOperation, WindowsRecovery, TokenProfile,
+    network_filter::NetworkFilterOwner, secret_reference_digest,
 };
 
 /// Effect-free representation of the exact selected protected channels.
@@ -27,6 +27,7 @@ impl PreparedChannelPlan {
         config: &WindowsBackendConfig,
         execution: &ExecutionPlan,
         sandbox: &CheckedSandboxPlan,
+        profile: &TokenProfile,
         authorized: bool,
         managed_network_supported: bool,
         credential_delivery_supported: bool,
@@ -34,6 +35,7 @@ impl PreparedChannelPlan {
         let network = preflight_network(
             config,
             sandbox,
+            profile,
             authorized,
             managed_network_supported,
         )?;
@@ -76,6 +78,7 @@ impl PreparedChannels {
         config: &mut WindowsBackendConfig,
         execution: &ExecutionPlan,
         sandbox: &CheckedSandboxPlan,
+        profile: &TokenProfile,
         plan: &PreparedChannelPlan,
         should_continue: &dyn Fn() -> bool,
     ) -> Result<Self, WindowsError> {
@@ -98,7 +101,8 @@ impl PreparedChannels {
             return Err(prepared.cleanup(error));
         }
         if matches!(plan.network, NetworkIsolation::ManagedProxy(_))
-            && let Err(error) = prepared.prepare_network(config, sandbox, should_continue)
+            && let Err(error) =
+                prepared.prepare_network(config, sandbox, profile, should_continue)
         {
             return Err(prepared.cleanup(error));
         }
@@ -142,6 +146,7 @@ impl PreparedChannels {
         &mut self,
         config: &mut WindowsBackendConfig,
         sandbox: &CheckedSandboxPlan,
+        profile: &TokenProfile,
         should_continue: &dyn Fn() -> bool,
     ) -> Result<(), WindowsError> {
         ensure_continues(should_continue)?;
@@ -154,6 +159,13 @@ impl PreparedChannels {
         let proxy = self.proxy_owner.as_ref().ok_or_else(|| {
             channel_error(WindowsErrorKind::Network, "managed proxy owner was not retained")
         })?;
+        let endpoint = proxy.endpoint().socket_addr();
+        if !matches!(endpoint.ip(), std::net::IpAddr::V4(address) if address.is_loopback()) {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "managed proxy did not bind its preflighted IPv4 loopback family",
+            ));
+        }
         let protected = proxy
             .routing_token()
             .expose_bytes(|bytes| {
@@ -168,16 +180,15 @@ impl PreparedChannels {
         let controller = config.managed_filter_digest.ok_or_else(|| {
             channel_error(WindowsErrorKind::Network, "managed network filter identity is absent")
         })?;
-        let endpoint = proxy.endpoint().socket_addr();
         let filter = crate::network::managed_wfp_policy_digest(
             controller,
-            config.token.principal_sid(),
+            profile.principal_sid(),
             endpoint,
             sandbox.digest(),
         );
         let route = ProxyRoute::new(endpoint, protected.raw_handle(), sandbox.digest(), filter)?;
         self.handles.push(protected);
-        self.filter_owner = NetworkFilterOwner::install(&config.token, route)?;
+        self.filter_owner = NetworkFilterOwner::install(profile, route)?;
         self.network = NetworkIsolation::ManagedProxy(route);
         Ok(())
     }
@@ -214,11 +225,12 @@ impl PreparedChannels {
 fn preflight_network(
     config: &WindowsBackendConfig,
     sandbox: &CheckedSandboxPlan,
+    profile: &TokenProfile,
     authorized: bool,
     managed_network_supported: bool,
 ) -> Result<NetworkIsolation, WindowsError> {
     if sandbox.requirements().network().is_empty() {
-        if !config.token.is_app_container() {
+        if !profile.is_app_container() {
             return Err(channel_error(
                 WindowsErrorKind::Network,
                 "deny-all networking requires AppContainer isolation",
@@ -235,6 +247,15 @@ fn preflight_network(
     let preparation = config.proxy.as_ref().ok_or_else(|| {
         channel_error(WindowsErrorKind::Network, "network egress lacks its exact proxy preparation")
     })?;
+    if !matches!(
+        preparation.listener_ip(),
+        std::net::IpAddr::V4(address) if address.is_loopback()
+    ) {
+        return Err(crate::error::unsupported(
+            WindowsOperation::Prepare,
+            "managed proxy preparation lacks IPv4 loopback listener capability",
+        ));
+    }
     preparation.preflight(sandbox).map_err(proxy_prepare_error)?;
     let controller = config.managed_filter_digest.ok_or_else(|| {
         channel_error(WindowsErrorKind::Network, "managed network filter identity is absent")
@@ -242,7 +263,7 @@ fn preflight_network(
     let endpoint = SocketAddr::from(([127, 0, 0, 1], 1));
     let filter = crate::network::managed_wfp_policy_digest(
         controller,
-        config.token.principal_sid(),
+        profile.principal_sid(),
         endpoint,
         sandbox.digest(),
     );

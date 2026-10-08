@@ -26,7 +26,11 @@ impl ProxyRoute {
         network_plan_digest: Sha256Digest,
         filter_digest: Sha256Digest,
     ) -> Result<Self, WindowsError> {
-        if !endpoint.ip().is_loopback()
+        let ipv4_loopback = matches!(
+            endpoint.ip(),
+            std::net::IpAddr::V4(address) if address.is_loopback()
+        );
+        if !ipv4_loopback
             || endpoint.port() == 0
             || routing_handle == 0
             || network_plan_digest == Sha256Digest::new([0; 32])
@@ -36,7 +40,7 @@ impl ProxyRoute {
                 WindowsErrorKind::Network,
                 WindowsOperation::Validate,
                 WindowsRecovery::CorrectRequest,
-                "managed Windows proxy route is incomplete or not loopback",
+                "managed Windows proxy route is incomplete or not IPv4 loopback",
             ));
         }
         Ok(Self { endpoint, routing_handle, network_plan_digest, filter_digest })

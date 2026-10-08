@@ -7,7 +7,6 @@ use crate::{ProxyRoute, TokenProfile, WindowsError, WindowsOperation};
 pub(crate) struct NetworkFilterOwner {
     #[cfg(target_os = "windows")]
     native: Option<crate::native::wfp::WfpSession>,
-    managed: bool,
 }
 
 impl NetworkFilterOwner {
@@ -15,20 +14,23 @@ impl NetworkFilterOwner {
         Self {
             #[cfg(target_os = "windows")]
             native: None,
-            managed: false,
         }
     }
 
     #[must_use]
     pub(crate) const fn is_managed(&self) -> bool {
-        self.managed
+        #[cfg(target_os = "windows")]
+        {
+            self.native.is_some()
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            false
+        }
     }
 
     #[must_use]
     pub(crate) fn custody_identity(&self) -> Option<peritus_types::Sha256Digest> {
-        if !self.managed {
-            return None;
-        }
         #[cfg(target_os = "windows")]
         {
             return self.native.as_ref().and_then(crate::native::wfp::WfpSession::custody_identity);
@@ -49,7 +51,7 @@ impl NetworkFilterOwner {
         #[cfg(target_os = "windows")]
         {
             let native = crate::native::wfp::WfpSession::install(profile, route)?;
-            Ok(Self { native: Some(native), managed: true })
+            Ok(Self { native: Some(native) })
         }
         #[cfg(not(target_os = "windows"))]
         {
@@ -76,7 +78,6 @@ impl NetworkFilterOwner {
             native.release()?;
             self.native = None;
         }
-        self.managed = false;
         Ok(true)
     }
 }
