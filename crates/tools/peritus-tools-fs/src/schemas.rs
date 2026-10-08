@@ -8,6 +8,7 @@ const CONTENT_MAX: u32 = 65_536;
 
 pub fn discover_schema() -> Result<Schema, FsToolError> {
     object(vec![
+        property("cursor", cursor()?, false)?,
         property("maximum_depth", integer(1, 64)?, true)?,
         property("maximum_entries", integer(1, 100_000)?, true)?,
         property("root", path()?, false)?,
@@ -20,7 +21,9 @@ pub fn metadata_schema() -> Result<Schema, FsToolError> {
 
 pub fn read_schema() -> Result<Schema, FsToolError> {
     object(vec![
+        property("cursor", cursor()?, false)?,
         property("maximum_bytes", integer(1, 48 * 1_024)?, true)?,
+        property("offset", Schema::integer(Some(0), None).map_err(|_| schema_error())?, false)?,
         property("path", path()?, true)?,
     ])
 }
@@ -28,6 +31,7 @@ pub fn read_schema() -> Result<Schema, FsToolError> {
 pub fn search_schema() -> Result<Schema, FsToolError> {
     object(vec![
         property("case_sensitive", Schema::boolean(), true)?,
+        property("cursor", cursor()?, false)?,
         property("literal", Schema::string(1, 4_096).map_err(|_| schema_error())?, true)?,
         property("maximum_depth", integer(1, 64)?, true)?,
         property("maximum_entries", integer(1, 100_000)?, true)?,
@@ -59,8 +63,11 @@ pub fn replace_schema() -> Result<Schema, FsToolError> {
 
 pub fn patch_schema() -> Result<Schema, FsToolError> {
     let edit = object(vec![
+        property("artifact_bytes", Schema::integer(Some(0), None).map_err(|_| schema_error())?, false)?,
+        property("artifact_digest", digest()?, false)?,
         property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, false)?,
         property("content_encoding", content_encoding()?, false)?,
+        property("content_source", content_source()?, false)?,
         property("line_endings", line_endings()?, false)?,
         property("mode", mode()?, false)?,
         property("operation", edit_operation()?, true)?,
@@ -76,8 +83,11 @@ pub fn patch_schema() -> Result<Schema, FsToolError> {
 
 fn final_file_schema(include_preimage: bool) -> Result<Schema, FsToolError> {
     let mut properties = vec![
-        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, true)?,
-        property("content_encoding", content_encoding()?, true)?,
+        property("artifact_bytes", Schema::integer(Some(0), None).map_err(|_| schema_error())?, false)?,
+        property("artifact_digest", digest()?, false)?,
+        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, false)?,
+        property("content_encoding", content_encoding()?, false)?,
+        property("content_source", content_source()?, false)?,
         property("line_endings", line_endings()?, true)?,
         property("mode", mode()?, true)?,
         property("path", path()?, true)?,
@@ -91,8 +101,11 @@ fn final_file_schema(include_preimage: bool) -> Result<Schema, FsToolError> {
 
 fn replacement_schema() -> Result<Schema, FsToolError> {
     object(vec![
-        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, true)?,
-        property("content_encoding", content_encoding()?, true)?,
+        property("artifact_bytes", Schema::integer(Some(0), None).map_err(|_| schema_error())?, false)?,
+        property("artifact_digest", digest()?, false)?,
+        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, false)?,
+        property("content_encoding", content_encoding()?, false)?,
+        property("content_source", content_source()?, false)?,
         property("line_endings", line_endings()?, true)?,
         property("mode", mode()?, true)?,
         property("path", path()?, true)?,
@@ -127,6 +140,18 @@ fn line_endings() -> Result<Schema, FsToolError> {
 
 fn content_encoding() -> Result<Schema, FsToolError> {
     enumeration(&["base64", "utf8"])
+}
+
+fn content_source() -> Result<Schema, FsToolError> {
+    enumeration(&["artifact", "inline"])
+}
+
+fn digest() -> Result<Schema, FsToolError> {
+    Schema::string(64, 64).map_err(|_| schema_error())
+}
+
+fn cursor() -> Result<Schema, FsToolError> {
+    Schema::string(1, 64 * 1_024).map_err(|_| schema_error())
 }
 
 fn edit_operation() -> Result<Schema, FsToolError> {

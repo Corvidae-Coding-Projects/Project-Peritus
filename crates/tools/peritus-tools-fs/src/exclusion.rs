@@ -33,3 +33,20 @@ impl DiscoverExclusion {
         self.depth
     }
 }
+
+/// One authority-safe directory whose descendants were outside the requested logical depth.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct TraversalOmission {
+    pub(crate) path: WorkspacePath,
+    pub(crate) depth: u16,
+}
+
+impl TraversalOmission {
+    pub(crate) const fn path(&self) -> &WorkspacePath {
+        &self.path
+    }
+
+    pub(crate) const fn depth(&self) -> u16 {
+        self.depth
+    }
+}

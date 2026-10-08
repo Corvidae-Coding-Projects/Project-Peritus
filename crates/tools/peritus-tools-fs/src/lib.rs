@@ -1,6 +1,7 @@
 //! Bounded filesystem tools for immutable and authorized Peritus workspaces.
 
 mod catalog;
+mod cursor;
 mod decoder;
 mod dispatcher;
 mod error;
@@ -18,12 +19,12 @@ pub use dispatcher::{FsDispatchKind, FsDispatcher};
 pub use error::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
 pub use exclusion::DiscoverExclusion;
 pub use input::{
-    CreateInput, DiscoverInput, MetadataInput, PatchEdit, PatchInput, ReadInput, RemoveInput,
-    ReplaceInput, SearchInput, WriteInput,
+    CreateInput, DiscoverInput, MetadataInput, MutationContent, PatchEdit, PatchInput, ReadInput,
+    RemoveInput, ReplaceInput, SearchInput, WriteInput,
 };
 pub use mutation::{CompiledMutation, WorkspaceVersion};
 pub use read::{
     DiscoverEntry, DiscoverObservation, FileContent, FileObservation, FsReadService,
-    MetadataObservation, SearchMatch, SearchObservation,
+    MetadataObservation, SearchMatch, SearchObservation, SearchOmission, SearchOmissionReason,
 };
 pub use render::RenderedOutput;

@@ -1,6 +1,7 @@
 //! Router-authorized filesystem dispatcher adapters.
 
 use peritus_policy::AuthorityInstant;
+use peritus_artifact_store::ArtifactStore;
 use peritus_tool_protocol::{
     BoundedText, FailureCategory, ImplementationIdentity, RecoveryRoute, ResponsibleSubsystem,
     ResultStatus, Retryability, SchemaDigest, ToolFailure, ToolResult, ToolTiming, Truncation,
@@ -65,6 +66,7 @@ enum DispatchContext<'a> {
     Mutation {
         gateway: &'a mut WorkspaceGateway,
         authorization: &'a WorkspaceAuthorizationRequest<'a>,
+        artifacts: Option<&'a ArtifactStore>,
     },
 }
 
@@ -110,7 +112,29 @@ impl<'a> FsDispatcher<'a> {
                 "read kind cannot use a mutation dispatcher",
             ));
         }
-        Self::build(kind, DispatchContext::Mutation { gateway, authorization })
+        Self::build(kind, DispatchContext::Mutation { gateway, authorization, artifacts: None })
+    }
+
+    /// Creates a mutation dispatcher that can resolve exact artifact-backed final content.
+    ///
+    /// # Errors
+    /// Rejects read kinds or an invalid frozen descriptor catalog.
+    pub fn mutation_with_artifacts(
+        kind: FsDispatchKind,
+        gateway: &'a mut WorkspaceGateway,
+        authorization: &'a WorkspaceAuthorizationRequest<'a>,
+        artifacts: &'a ArtifactStore,
+    ) -> Result<Self, FsToolError> {
+        if !kind.is_mutation() {
+            return Err(FsToolError::invalid(
+                FsToolOperation::Catalog,
+                "read kind cannot use a mutation dispatcher",
+            ));
+        }
+        Self::build(
+            kind,
+            DispatchContext::Mutation { gateway, authorization, artifacts: Some(artifacts) },
+        )
     }
 
     fn build(kind: FsDispatchKind, context: DispatchContext<'a>) -> Result<Self, FsToolError> {
@@ -161,8 +185,14 @@ impl ToolDispatcher for FsDispatcher<'_> {
         let arguments = prepared.arguments();
         let rendered = match &mut self.context {
             DispatchContext::Read(workspace) => execute_read(self.kind, workspace, arguments),
-            DispatchContext::Mutation { gateway, authorization } => {
-                let outcome = execute_mutation(self.kind, gateway, authorization, arguments)
+            DispatchContext::Mutation { gateway, authorization, artifacts } => {
+                let outcome = execute_mutation(
+                    self.kind,
+                    gateway,
+                    authorization,
+                    *artifacts,
+                    arguments,
+                )
                     .map_err(|error| tool_failure(&error))?;
                 let rendered = RenderedOutput::mutation(&outcome);
                 self.mutation_outcome = Some(outcome);
@@ -202,17 +232,34 @@ fn execute_mutation(
     kind: FsDispatchKind,
     gateway: &mut WorkspaceGateway,
     authorization: &WorkspaceAuthorizationRequest<'_>,
+    artifacts: Option<&ArtifactStore>,
     arguments: &peritus_tool_protocol::BoundedJson,
 ) -> Result<MutationOutcome, FsToolError> {
     let state = gateway.state();
     let version =
         WorkspaceVersion::new(state.binding().workspace_id(), state.generation(), state.revision());
     let compiled = match kind {
-        FsDispatchKind::Create => CompiledMutation::create(version, decoder::create(arguments)?),
-        FsDispatchKind::Patch => CompiledMutation::patch(version, decoder::patch(arguments)?),
+        FsDispatchKind::Create => CompiledMutation::create_with_artifacts(
+            version,
+            decoder::create(arguments)?,
+            artifacts,
+        ),
+        FsDispatchKind::Patch => CompiledMutation::patch_with_artifacts(
+            version,
+            decoder::patch(arguments)?,
+            artifacts,
+        ),
         FsDispatchKind::Remove => CompiledMutation::remove(version, decoder::remove(arguments)?),
-        FsDispatchKind::Replace => CompiledMutation::replace(version, decoder::replace(arguments)?),
-        FsDispatchKind::Write => CompiledMutation::write(version, decoder::write(arguments)?),
+        FsDispatchKind::Replace => CompiledMutation::replace_with_artifacts(
+            version,
+            decoder::replace(arguments)?,
+            artifacts,
+        ),
+        FsDispatchKind::Write => CompiledMutation::write_with_artifacts(
+            version,
+            decoder::write(arguments)?,
+            artifacts,
+        ),
         _ => Err(FsToolError::invalid(
             FsToolOperation::Catalog,
             "read kind reached mutation dispatcher",

@@ -6,15 +6,17 @@ use peritus_tool_protocol::BoundedJson;
 use peritus_types::Sha256Digest;
 
 use crate::{
-    CreateInput, DiscoverInput, FsToolError, FsToolOperation, MetadataInput, PatchEdit, PatchInput,
-    ReadInput, RemoveInput, ReplaceInput, SearchInput, WriteInput,
+    CreateInput, DiscoverInput, FsToolError, FsToolOperation, MetadataInput, MutationContent,
+    PatchEdit, PatchInput, ReadInput, RemoveInput, ReplaceInput, SearchInput, WriteInput,
 };
 
 pub fn discover(value: &BoundedJson) -> Result<DiscoverInput, FsToolError> {
-    DiscoverInput::new(
-        optional_str(value, "root")?,
-        number(value, "maximum_depth")?,
-        number(value, "maximum_entries")?,
+    let root = optional_str_for(value, "root", FsToolOperation::Discover)?;
+    let depth = number_for(value, "maximum_depth", FsToolOperation::Discover)?;
+    let entries = number_for(value, "maximum_entries", FsToolOperation::Discover)?;
+    optional_str_for(value, "cursor", FsToolOperation::Discover)?.map_or_else(
+        || DiscoverInput::new(root, depth, entries),
+        |cursor| DiscoverInput::resume(root, depth, entries, cursor),
     )
 }
 
@@ -23,21 +25,32 @@ pub fn metadata(value: &BoundedJson) -> Result<MetadataInput, FsToolError> {
 }
 
 pub fn read(value: &BoundedJson) -> Result<ReadInput, FsToolError> {
-    ReadInput::new(required_str(value, "path")?, number(value, "maximum_bytes")?)
+    let path = required_str_for(value, "path", FsToolOperation::Read)?;
+    let maximum = number_for(value, "maximum_bytes", FsToolOperation::Read)?;
+    match (
+        optional_str_for(value, "cursor", FsToolOperation::Read)?,
+        optional_number_for(value, "offset", FsToolOperation::Read)?,
+    ) {
+        (Some(cursor), None) => ReadInput::resume(path, maximum, cursor),
+        (None, offset) => ReadInput::at_offset(path, maximum, offset.unwrap_or(0)),
+        (Some(_), Some(_)) => Err(invalid(FsToolOperation::Read)),
+    }
 }
 
 pub fn search(value: &BoundedJson) -> Result<SearchInput, FsToolError> {
-    SearchInput::new(
-        optional_str(value, "root")?,
-        required_str(value, "literal")?,
-        required(value, "case_sensitive", FsToolOperation::Search)?
-            .as_bool()
-            .ok_or_else(|| invalid(FsToolOperation::Search))?,
-        number(value, "maximum_depth")?,
-        number(value, "maximum_entries")?,
-        number(value, "maximum_file_bytes")?,
-        number(value, "maximum_total_bytes")?,
-        number(value, "maximum_matches")?,
+    let root = optional_str_for(value, "root", FsToolOperation::Search)?;
+    let literal = required_str_for(value, "literal", FsToolOperation::Search)?;
+    let sensitive = required(value, "case_sensitive", FsToolOperation::Search)?
+        .as_bool()
+        .ok_or_else(|| invalid(FsToolOperation::Search))?;
+    let depth = number_for(value, "maximum_depth", FsToolOperation::Search)?;
+    let entries = number_for(value, "maximum_entries", FsToolOperation::Search)?;
+    let file_bytes = number_for(value, "maximum_file_bytes", FsToolOperation::Search)?;
+    let total_bytes = number_for(value, "maximum_total_bytes", FsToolOperation::Search)?;
+    let matches = number_for(value, "maximum_matches", FsToolOperation::Search)?;
+    optional_str_for(value, "cursor", FsToolOperation::Search)?.map_or_else(
+        || SearchInput::new(root, literal, sensitive, depth, entries, file_bytes, total_bytes, matches),
+        |cursor| SearchInput::resume(root, literal, sensitive, depth, entries, file_bytes, total_bytes, matches, cursor),
     )
 }
 
@@ -95,11 +108,24 @@ pub fn patch(value: &BoundedJson) -> Result<PatchInput, FsToolError> {
 fn final_fields(
     value: &BoundedJson,
     operation: FsToolOperation,
-) -> Result<(Vec<u8>, FileMode, LineEndingPolicy), FsToolError> {
-    let content = required_str_for(value, "content", operation)?;
-    let bytes = match required_str_for(value, "content_encoding", operation)?.as_str() {
-        "utf8" => content.into_bytes(),
-        "base64" => STANDARD.decode(content).map_err(|_| invalid(operation))?,
+) -> Result<(MutationContent, FileMode, LineEndingPolicy), FsToolError> {
+    let source = optional_str_for(value, "content_source", operation)?;
+    let content = optional_str_for(value, "content", operation)?;
+    let encoding = optional_str_for(value, "content_encoding", operation)?;
+    let artifact_digest = optional_str_for(value, "artifact_digest", operation)?;
+    let artifact_bytes = optional_number_for(value, "artifact_bytes", operation)?;
+    let content = match (source.as_deref(), content, encoding, artifact_digest, artifact_bytes) {
+        (None | Some("inline"), Some(content), Some(encoding), None, None) => {
+            let bytes = match encoding.as_str() {
+                "utf8" => content.into_bytes(),
+                "base64" => STANDARD.decode(content).map_err(|_| invalid(operation))?,
+                _ => return Err(invalid(operation)),
+            };
+            MutationContent::Inline(bytes)
+        }
+        (Some("artifact"), None, None, Some(digest), Some(bytes)) => {
+            MutationContent::artifact(parse_digest(&digest, operation)?, bytes)
+        }
         _ => return Err(invalid(operation)),
     };
     let mode = match required_str_for(value, "mode", operation)?.as_str() {
@@ -113,7 +139,7 @@ fn final_fields(
         "crlf" => LineEndingPolicy::Crlf,
         _ => return Err(invalid(operation)),
     };
-    Ok((bytes, mode, endings))
+    Ok((content, mode, endings))
 }
 
 fn preimage(value: &BoundedJson, allow_absent: bool) -> Result<Preimage, FsToolError> {
@@ -130,7 +156,10 @@ fn preimage(value: &BoundedJson, allow_absent: bool) -> Result<Preimage, FsToolE
     if state != "present" {
         return Err(invalid(FsToolOperation::Patch));
     }
-    let digest = parse_digest(&required_str_for(value, "digest", FsToolOperation::Patch)?)?;
+    let digest = parse_digest(
+        &required_str_for(value, "digest", FsToolOperation::Patch)?,
+        FsToolOperation::Patch,
+    )?;
     let size = number_for(value, "size", FsToolOperation::Patch)?;
     let mode = match required_str_for(value, "mode", FsToolOperation::Patch)?.as_str() {
         "regular" => FileMode::Regular,
@@ -140,15 +169,15 @@ fn preimage(value: &BoundedJson, allow_absent: bool) -> Result<Preimage, FsToolE
     Ok(Preimage::present(digest, size, mode))
 }
 
-fn parse_digest(value: &str) -> Result<Sha256Digest, FsToolError> {
+fn parse_digest(value: &str, operation: FsToolOperation) -> Result<Sha256Digest, FsToolError> {
     if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err(invalid(FsToolOperation::Patch));
+        return Err(invalid(operation));
     }
     let mut bytes = [0_u8; 32];
     for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
         bytes[index] = hex(pair[0])
             .and_then(|high| hex(pair[1]).map(|low| high * 16 + low))
-            .ok_or_else(|| invalid(FsToolOperation::Patch))?;
+            .ok_or_else(|| invalid(operation))?;
     }
     Ok(Sha256Digest::new(bytes))
 }
@@ -181,20 +210,34 @@ fn required_str_for(
     required(value, name, operation)?.as_str().map(str::to_owned).ok_or_else(|| invalid(operation))
 }
 
-fn optional_str(value: &BoundedJson, name: &str) -> Result<Option<String>, FsToolError> {
+fn optional_str_for(
+    value: &BoundedJson,
+    name: &str,
+    operation: FsToolOperation,
+) -> Result<Option<String>, FsToolError> {
     value
         .property(name)
-        .map(|value| {
-            value.as_str().map(str::to_owned).ok_or_else(|| invalid(FsToolOperation::Patch))
-        })
+        .map(|value| value.as_str().map(str::to_owned).ok_or_else(|| invalid(operation)))
         .transpose()
 }
 
-fn number<T>(value: &BoundedJson, name: &str) -> Result<T, FsToolError>
+fn optional_number_for<T>(
+    value: &BoundedJson,
+    name: &str,
+    operation: FsToolOperation,
+) -> Result<Option<T>, FsToolError>
 where
     T: TryFrom<i64>,
 {
-    number_for(value, name, FsToolOperation::Patch)
+    value
+        .property(name)
+        .map(|value| {
+            value
+                .as_i64()
+                .and_then(|value| T::try_from(value).ok())
+                .ok_or_else(|| invalid(operation))
+        })
+        .transpose()
 }
 
 fn number_for<T>(

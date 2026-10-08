@@ -1,9 +1,10 @@
 //! Shared handle-relative discovery/search traversal and explicit native exclusions.
 
 use super::{
-    DiscoverExclusion, FsReadService, FsToolError, FsToolOperation, WalkObservation, WorkspacePath,
-    bound_error, inspection_error, project_metadata,
+    DiscoverExclusion, FsReadService, FsToolError, FsToolOperation, WalkObservation, WalkRecord,
+    WorkspacePath, inspection_error, project_metadata,
 };
+use crate::exclusion::TraversalOmission;
 use peritus_workspace::WorkspaceEntryKind;
 use std::collections::VecDeque;
 
@@ -12,11 +13,10 @@ impl FsReadService<'_> {
         &self,
         root: Option<&WorkspacePath>,
         maximum_depth: u16,
-        maximum_entries: u32,
         operation: FsToolOperation,
     ) -> Result<WalkObservation, FsToolError> {
         let mut pending = VecDeque::from([(root.cloned(), 0_u16)]);
-        let mut observed = WalkObservation { entries: Vec::new(), exclusions: Vec::new() };
+        let mut observed = WalkObservation { records: Vec::new() };
         while let Some((directory, parent_depth)) = pending.pop_front() {
             let children = self
                 .workspace
@@ -30,27 +30,33 @@ impl FsReadService<'_> {
                 (None, None) => left.name().encoded_bytes().cmp(right.name().encoded_bytes()),
             });
             for child in children {
-                if observed.entries.len() + observed.exclusions.len() >= maximum_entries as usize {
-                    return Err(bound_error(operation, "workspace traversal entry bound exceeded"));
-                }
                 let depth = parent_depth.saturating_add(1);
                 let metadata = match child.observation() {
                     Ok(metadata) => metadata,
                     Err(reason) => {
-                        observed.exclusions.push(DiscoverExclusion {
+                        observed.records.push(WalkRecord::Exclusion(DiscoverExclusion {
                             directory: directory.clone(),
                             name: child.name().clone(),
                             reason,
                             depth,
-                        });
+                        }));
                         continue;
                     }
                 };
                 let metadata = project_metadata(metadata);
-                if metadata.kind == WorkspaceEntryKind::Directory && depth < maximum_depth {
-                    pending.push_back((Some(metadata.path.clone()), depth));
+                let descend = metadata.kind == WorkspaceEntryKind::Directory;
+                let path = metadata.path.clone();
+                observed.records.push(WalkRecord::Entry(metadata, depth));
+                if descend {
+                    if depth < maximum_depth {
+                        pending.push_back((Some(path), depth));
+                    } else {
+                        observed.records.push(WalkRecord::TraversalOmission(TraversalOmission {
+                            path,
+                            depth,
+                        }));
+                    }
                 }
-                observed.entries.push((metadata, depth));
             }
         }
         Ok(observed)

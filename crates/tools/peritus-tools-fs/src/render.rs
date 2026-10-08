@@ -60,8 +60,14 @@ impl RenderedOutput {
     pub fn discover(value: &DiscoverObservation) -> Result<Self, FsToolError> {
         let retained = value.entries().len().min(MAX_RENDER_ITEMS);
         let excluded_retained = value.exclusions().len().min(MAX_RENDER_ITEMS - retained);
-        let truncated =
-            retained < value.entries().len() || excluded_retained < value.exclusions().len();
+        let omitted_retained = value
+            .omissions()
+            .len()
+            .min(MAX_RENDER_ITEMS - retained - excluded_retained);
+        let truncated = value.next_cursor().is_some()
+            || retained < value.entries().len()
+            || excluded_retained < value.exclusions().len()
+            || omitted_retained < value.omissions().len();
         let entries = value.entries()[..retained]
             .iter()
             .map(|entry| {
@@ -72,9 +78,14 @@ impl RenderedOutput {
             })
             .collect::<Result<Vec<_>, _>>()?;
         let mut fields = vec![
+            ("cursor", string(value.cursor().to_owned())),
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
-            ("observed_count", Ok(integer(usize_integer(value.entries().len())))),
+            ("entry_count", Ok(integer(u64_integer(value.entry_count())))),
+            ("next_cursor", optional_string(value.next_cursor())),
+            ("observed_count", Ok(integer(u64_integer(value.entry_count())))),
+            ("omitted_count", Ok(integer(u64_integer(value.omission_count())))),
+            ("record_count", Ok(integer(u64_integer(value.record_count())))),
             (
                 "root",
                 value
@@ -84,10 +95,15 @@ impl RenderedOutput {
             ("truncated", Ok(BoundedJson::boolean(truncated))),
         ];
         append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
+        fields.push((
+            "total_excluded_count",
+            Ok(integer(u64_integer(value.exclusion_count()))),
+        ));
+        append_traversal_omissions(&mut fields, value.omissions(), omitted_retained)?;
         let structured = object(fields)?;
         let text = format!(
             "Discovered {} workspace entries{}.",
-            value.entries().len(),
+            value.entry_count(),
             if truncated { " (rendered window truncated)" } else { "" }
         );
         let text = with_exclusion_summary(text, value.exclusions());
@@ -106,15 +122,21 @@ impl RenderedOutput {
         let structured = object(vec![
             ("content", string(content)),
             ("content_digest", string(digest_hex(value.content_digest()))),
+            ("cursor", string(value.cursor().to_owned())),
             ("encoding", string(encoding.to_owned())),
             ("metadata", metadata_json(value.metadata())),
+            ("next_cursor", optional_string(value.next_cursor())),
+            ("range_end", Ok(integer(u64_integer(value.range().1)))),
+            ("range_start", Ok(integer(u64_integer(value.range().0)))),
+            ("source_bytes", Ok(integer(u64_integer(value.source_bytes())))),
+            ("source_digest", string(digest_hex(value.source_digest()))),
         ])?;
         let text = format!(
             "Read {} exact bytes from {} as {encoding}.",
-            value.metadata().size(),
+            value.range().1 - value.range().0,
             value.metadata().path().as_str().escape_debug()
         );
-        finish(structured, text.clone(), text, false)
+        finish(structured, text.clone(), text, value.next_cursor().is_some())
     }
 
     /// Renders a bounded window of structured literal matches.
@@ -124,8 +146,18 @@ impl RenderedOutput {
     pub fn search(value: &SearchObservation) -> Result<Self, FsToolError> {
         let retained = value.matches().len().min(MAX_RENDER_ITEMS);
         let excluded_retained = value.exclusions().len().min(MAX_RENDER_ITEMS - retained);
-        let truncated =
-            retained < value.matches().len() || excluded_retained < value.exclusions().len();
+        let traversal_retained = value
+            .traversal_omissions()
+            .len()
+            .min(MAX_RENDER_ITEMS - retained - excluded_retained);
+        let omitted_retained = value.omissions().len().min(
+            MAX_RENDER_ITEMS - retained - excluded_retained - traversal_retained,
+        );
+        let truncated = value.next_cursor().is_some()
+            || retained < value.matches().len()
+            || excluded_retained < value.exclusions().len()
+            || traversal_retained < value.traversal_omissions().len()
+            || omitted_retained < value.omissions().len();
         let matches = value.matches()[..retained]
             .iter()
             .map(|value| {
@@ -138,18 +170,36 @@ impl RenderedOutput {
             })
             .collect::<Result<Vec<_>, _>>()?;
         let mut fields = vec![
+            ("cursor", string(value.cursor().to_owned())),
             ("digest", string(digest_hex(value.digest()))),
-            ("match_count", Ok(integer(usize_integer(value.matches().len())))),
+            ("match_count", Ok(integer(u64_integer(value.match_count())))),
             ("matches", array(matches)),
+            ("next_cursor", optional_string(value.next_cursor())),
+            ("omitted_count", Ok(integer(u64_integer(value.omission_count())))),
+            ("returned_match_count", Ok(integer(usize_integer(value.matches().len())))),
             ("scanned_bytes", Ok(integer(u64_integer(value.scanned_bytes())))),
             ("scanned_files", Ok(integer(i64::from(value.scanned_files())))),
+            (
+                "traversal_omitted_count",
+                Ok(integer(u64_integer(value.traversal_omission_count()))),
+            ),
             ("truncated", Ok(BoundedJson::boolean(truncated))),
         ];
         append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
+        fields.push((
+            "total_excluded_count",
+            Ok(integer(u64_integer(value.exclusion_count()))),
+        ));
+        append_traversal_omissions(
+            &mut fields,
+            value.traversal_omissions(),
+            traversal_retained,
+        )?;
+        append_search_omissions(&mut fields, value.omissions(), omitted_retained)?;
         let structured = object(fields)?;
         let text = format!(
             "Found {} literal matches across {} UTF-8 files ({} bytes scanned){}.",
-            value.matches().len(),
+            value.match_count(),
             value.scanned_files(),
             value.scanned_bytes(),
             if truncated { " Rendered match window is truncated" } else { "" }
@@ -223,6 +273,43 @@ fn append_exclusions(
     Ok(())
 }
 
+fn append_traversal_omissions(
+    fields: &mut Vec<(&'static str, Result<BoundedJson, FsToolError>)>,
+    omissions: &[crate::exclusion::TraversalOmission],
+    retained: usize,
+) -> Result<(), FsToolError> {
+    let values = omissions[..retained]
+        .iter()
+        .map(|value| {
+            object(vec![
+                ("depth", Ok(integer(i64::from(value.depth())))),
+                ("path", string(value.path().to_string())),
+                ("reason", string("maximum_depth".to_owned())),
+            ])
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    fields.push(("traversal_omissions", array(values)));
+    Ok(())
+}
+
+fn append_search_omissions(
+    fields: &mut Vec<(&'static str, Result<BoundedJson, FsToolError>)>,
+    omissions: &[crate::SearchOmission],
+    retained: usize,
+) -> Result<(), FsToolError> {
+    let values = omissions[..retained]
+        .iter()
+        .map(|value| {
+            object(vec![
+                ("path", string(value.path().to_string())),
+                ("reason", string(value.reason().as_str().to_owned())),
+            ])
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    fields.push(("omissions", array(values)));
+    Ok(())
+}
+
 fn with_exclusion_summary(mut text: String, exclusions: &[DiscoverExclusion]) -> String {
     use std::fmt::Write as _;
     if !exclusions.is_empty() {
@@ -275,6 +362,10 @@ fn array(values: Vec<BoundedJson>) -> Result<BoundedJson, FsToolError> {
 
 fn string(value: String) -> Result<BoundedJson, FsToolError> {
     BoundedJson::string(value, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+}
+
+fn optional_string(value: Option<&str>) -> Result<BoundedJson, FsToolError> {
+    value.map_or_else(|| Ok(BoundedJson::null()), |value| string(value.to_owned()))
 }
 
 fn integer(value: i64) -> BoundedJson {
