@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4079,
-        "tip_oid": "aa206b5a488dbc4672fe3368fbeac599c07f031d",
-        "prefix_sha256": "19c1d66b524410ae6fc0f2b15dd0a0a7002f557987d187c802e6442cfa6bcaba"
+        "sequence": 4080,
+        "tip_oid": "e731a9ec4ae9b3747f84bea04018eb9ca84a5432",
+        "prefix_sha256": "592db16a9c9d1da74a19693e3594e5293637e0a71655980aaeb92cfd21c66ace"
       },
       "NWAR": {
         "sequence": 39,
@@ -7448,12 +7448,13 @@
       "display_id": 149,
       "title": "[L050] Retry attempts remain finite while elapsed retry horizon is absent",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L050.\n\n- `peritus-agent/src/developer/retry.rs:18-20,129-157` supplies **250 ms base delay**, **30,000 ms maximum delay**, and deterministic jitter up to **250,000 millionths (25%)** to the retry planner. These wait parameters are backoff policy, not a total execution deadline.\n- RetryInput explicitly uses `max_elapsed_millis: None`, but retains the selected finite attempt count (default three/hard maximum eight, L049). Plan Stop/Resume becomes no new attempt. Provider-required retry-after handling and final attempt outcomes remain pending complete reads.\n- `developer/execution/invocation.rs:19-26,40-48` can force exactly one declared grounding tool on a retry while disallowing a terminal answer. Model request construction disables parallel calls while a prerequisite is active (`model_request.rs:33-40,58-70`). The current executor state controls this; historical successful grounding is not accepted after executor reconstruction (L043).\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.041710760Z",
-      "updated_at": "2026-10-08T05:18:33.816538140Z",
+      "updated_at": "2026-10-08T05:20:20.921863521Z",
+      "closed_at": "2026-10-08T05:20:20.919057856Z",
       "labels": [
         "daily-driving-limiter"
       ],
