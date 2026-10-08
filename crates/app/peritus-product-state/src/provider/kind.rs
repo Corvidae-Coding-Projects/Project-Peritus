@@ -66,7 +66,7 @@ impl ProviderKind {
         }
     }
 
-    /// Stable identity shared by saved configuration and the launched product context.
+    /// Legacy-stable identity used to migrate closed-kind routes and seed account routes.
     #[must_use]
     pub const fn profile_identity(self) -> [u8; 16] {
         let index = match self {
@@ -88,6 +88,12 @@ impl ProviderKind {
         bytes[0] = 0xa0 + index;
         bytes[15] = index;
         bytes
+    }
+
+    /// Returns the legacy-stable route identity now persisted in product state.
+    #[must_use]
+    pub const fn route_identity(self) -> super::ProviderRouteIdentity {
+        super::ProviderRouteIdentity(self.profile_identity())
     }
 
     /// Returns the user-facing provider label.

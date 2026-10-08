@@ -147,13 +147,13 @@ impl ProviderPlan {
             .prepare()
             .map_err(|error| configured_error("load Peritus provider selection", error))?;
         let selected = prepared.state().providers();
-        let kind = selected.default().ok_or_else(|| {
+        let route = selected.default_route().ok_or_else(|| {
             BenchmarkError::Provider(
                 "configured benchmark provider source requires a default Peritus provider"
                     .to_owned(),
             )
         })?;
-        let profile_id = ProviderProfileId::new(kind.profile_identity()).map_err(|_| {
+        let profile_id = ProviderProfileId::new(*route.as_bytes()).map_err(|_| {
             BenchmarkError::Provider("configured provider identity is invalid".to_owned())
         })?;
         let components = DaemonComponents::build(prepared.daemon_config())

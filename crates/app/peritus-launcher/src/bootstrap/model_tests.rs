@@ -62,7 +62,7 @@ fn legacy_account_migration_preserves_the_exact_prior_model_and_configuration() 
         ProductBootstrap::new(layout.clone()).configure_providers(selected).expect("configure");
     let prior_text = fs::read(configured.daemon_config_path()).expect("config");
     let mut state = configured.state().clone();
-    assert!(state.configure_providers(legacy));
+    assert!(state.configure_providers(legacy).expect("configure legacy"));
     let prior_path = layout.daemon_config(state.generation());
     fs::write(&prior_path, &prior_text).expect("pre-upgrade immutable configuration fixture");
     let store = ProductStateStore::open(layout.product_state_root()).expect("store");

@@ -59,6 +59,7 @@ impl ProductState {
         match state.schema_version {
             PRODUCT_STATE_SCHEMA_VERSION => {}
             1 => {
+                state.providers.finish_legacy_route_migration()?;
                 state.schema_version = PRODUCT_STATE_SCHEMA_VERSION;
                 state.legacy_storage = true;
             }
@@ -129,21 +130,17 @@ impl ProductState {
         self.workspace_setup_complete
     }
 
-    /// Converts a decoded legacy workspace inventory into the indexed registry storage shape.
+    /// Publishes a decoded legacy document in the indexed workspace and exact-route storage shape.
     ///
     /// The legacy generation remains valid and immutable; callers must publish this successor.
     ///
     /// # Errors
     /// Returns a typed failure when the durable generation cannot advance.
-    pub fn migrate_legacy_workspace_storage(&mut self) -> Result<bool, ProductStateError> {
+    pub fn migrate_legacy_storage(&mut self) -> Result<bool, ProductStateError> {
         if !self.legacy_storage && !self.workspaces.storage_migration_required() {
             return Ok(false);
         }
-        let generation = self.generation.checked_add(1).ok_or_else(|| {
-            ProductStateError::InvalidPayload(
-                "product-state generation cannot advance for workspace migration".to_owned(),
-            )
-        })?;
+        let generation = self.next_generation()?;
         self.workspaces.finish_storage_migration();
         self.legacy_storage = false;
         self.generation = generation;
@@ -151,14 +148,22 @@ impl ProductState {
     }
 
     /// Replaces durable provider choices and advances the immutable generation when changed.
-    pub fn configure_providers(&mut self, providers: ProviderSelection) -> bool {
+    ///
+    /// # Errors
+    /// Returns a validation failure or exact generation-exhaustion ownership state.
+    pub fn configure_providers(
+        &mut self,
+        providers: ProviderSelection,
+    ) -> Result<bool, ProductStateError> {
         if self.providers == providers && self.provider_setup_complete {
-            return false;
+            return Ok(false);
         }
+        providers.validate()?;
+        let generation = self.next_generation()?;
         self.providers = providers;
         self.provider_setup_complete = true;
-        self.generation = self.generation.saturating_add(1);
-        true
+        self.generation = generation;
+        Ok(true)
     }
 
     /// Inserts or updates the active workspace and advances the immutable generation.
@@ -175,9 +180,10 @@ impl ProductState {
         if self.workspaces == workspaces && self.workspace_setup_complete {
             return Ok(false);
         }
+        let generation = self.next_generation()?;
         self.workspaces = workspaces;
         self.workspace_setup_complete = true;
-        self.generation = self.generation.saturating_add(1);
+        self.generation = generation;
         Ok(true)
     }
 
@@ -190,19 +196,28 @@ impl ProductState {
         if self.workspaces.active().map(WorkspaceProfile::workspace_id) == Some(workspace_id) {
             return Ok(false);
         }
-        self.workspaces.select(workspace_id)?;
+        let mut workspaces = self.workspaces.clone();
+        workspaces.select(workspace_id)?;
+        let generation = self.next_generation()?;
+        self.workspaces = workspaces;
         self.workspace_setup_complete = true;
-        self.generation = self.generation.saturating_add(1);
+        self.generation = generation;
         Ok(true)
     }
 
     /// Forgets one workspace and advances the immutable generation when found.
-    pub fn remove_workspace(&mut self, workspace_id: &str) -> bool {
-        if !self.workspaces.remove(workspace_id) {
-            return false;
+    ///
+    /// # Errors
+    /// Returns exact generation exhaustion without changing the current owner state.
+    pub fn remove_workspace(&mut self, workspace_id: &str) -> Result<bool, ProductStateError> {
+        let mut workspaces = self.workspaces.clone();
+        if !workspaces.remove(workspace_id) {
+            return Ok(false);
         }
-        self.generation = self.generation.saturating_add(1);
-        true
+        let generation = self.next_generation()?;
+        self.workspaces = workspaces;
+        self.generation = generation;
+        Ok(true)
     }
 
     /// Advances to the same phase or its exact successor.
@@ -222,9 +237,16 @@ impl ProductState {
         if self.bootstrap_phase == next {
             return Ok(false);
         }
+        let generation = self.next_generation()?;
         self.bootstrap_phase = next;
-        self.generation = self.generation.saturating_add(1);
+        self.generation = generation;
         Ok(true)
+    }
+
+    fn next_generation(&self) -> Result<u64, ProductStateError> {
+        self.generation.checked_add(1).ok_or(ProductStateError::GenerationExhausted {
+            generation: self.generation,
+        })
     }
 
     fn validate(&self) -> Result<(), ProductStateError> {
@@ -288,8 +310,8 @@ mod tests {
             Some(crate::ProviderKind::CodexAccount),
         )
         .expect("selection");
-        assert!(state.configure_providers(selection.clone()));
-        assert!(!state.configure_providers(selection));
+        assert!(state.configure_providers(selection.clone()).expect("configure"));
+        assert!(!state.configure_providers(selection).expect("idempotent"));
         assert_eq!(state.generation(), 2);
         assert_eq!(state.providers().enabled().len(), 2);
         assert!(state.provider_setup_complete());

@@ -1,12 +1,10 @@
 //! Named hosted provider route rendering from a selected protocol.
 use super::{
-    CompatibleProtocol, DirectProviderProfile, LauncherError, ProfileFeatures, ProviderKind,
-    invalid, profile_block, toml_string,
+    CompatibleProtocol, DirectProviderProfile, LauncherError, ProfileFeatures, invalid,
+    profile_block, toml_string,
 };
-use std::fmt::Write as _;
 
 pub(super) fn render(
-    provider: ProviderKind,
     direct: &DirectProviderProfile,
     service: &str,
 ) -> Result<String, LauncherError> {
@@ -21,11 +19,7 @@ pub(super) fn render(
             ));
         }
     };
-    let mut profile_id = String::with_capacity(32);
-    for byte in provider.profile_identity() {
-        write!(profile_id, "{byte:02x}")
-            .map_err(|_| invalid("profile identity formatting failed"))?;
-    }
+    let profile_id = direct.route_identity().to_string();
     let mut text = format!(
         "\n[[providers]]\nkind = \"hosted\"\nhosted_service = {}\nwire_protocol = {}\ncredential_reference = {}\n",
         toml_string(service),

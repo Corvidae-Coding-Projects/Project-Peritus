@@ -1,6 +1,6 @@
 //! First-run provider selection and focused repeat-launch repair.
 
-use peritus_product_state::{ProviderKind, ProviderSelection};
+use peritus_product_state::{ProviderKind, ProviderRouteIdentity, ProviderSelection};
 use peritus_provider_onboarding::{
     AccountLogin, AccountProvider, ProviderCatalog, ProviderObservation, ProviderStatus,
     remove_direct_credential,
@@ -50,10 +50,16 @@ fn first_run(
 
     let activated = activate_requested(&mut terminal, observations, requested, None)?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
-    let automatic_failover = choose_failover(&mut terminal, &activated.enabled, false)?;
-    let selection = ProviderSelection::with_direct_profiles_and_failover(
-        activated.enabled,
+    let default_route = choose_default_route(
+        &mut terminal,
         default,
+        &activated.direct_profiles,
+        None,
+    )?;
+    let automatic_failover = choose_failover(&mut terminal, activated.route_count(), false)?;
+    let selection = ProviderSelection::with_routes_and_failover(
+        activated.enabled,
+        default_route,
         activated.direct_profiles,
         automatic_failover,
     )?;
@@ -74,11 +80,20 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
         choose_provider_set(&mut terminal, current.enabled().to_vec(), "current selection")?;
     let activated = activate_requested(&mut terminal, &observations, requested, Some(&current))?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
-    let automatic_failover =
-        choose_failover(&mut terminal, &activated.enabled, current.automatic_failover())?;
-    let selection = ProviderSelection::with_direct_profiles_and_failover(
-        activated.enabled,
+    let default_route = choose_default_route(
+        &mut terminal,
         default,
+        &activated.direct_profiles,
+        current.default_route(),
+    )?;
+    let automatic_failover = choose_failover(
+        &mut terminal,
+        activated.route_count(),
+        current.automatic_failover(),
+    )?;
+    let selection = ProviderSelection::with_routes_and_failover(
+        activated.enabled,
+        default_route,
         activated.direct_profiles.clone(),
         automatic_failover,
     )?;
@@ -141,11 +156,19 @@ fn repair_if_needed(
         .filter(|profile| retained.contains(&profile.kind()))
         .cloned()
         .collect();
-    let automatic_failover =
-        prepared.state().providers().automatic_failover() && retained.len() > 1;
-    let selection = ProviderSelection::with_direct_profiles_and_failover(
-        retained,
+    let default_route = choose_default_route(
+        &mut terminal,
         default,
+        &direct_profiles,
+        prepared.state().providers().default_route(),
+    )?;
+    let route_count = retained.iter().filter(|kind| kind.is_account()).count()
+        + direct_profiles.len();
+    let automatic_failover =
+        prepared.state().providers().automatic_failover() && route_count > 1;
+    let selection = ProviderSelection::with_routes_and_failover(
+        retained,
+        default_route,
         direct_profiles,
         automatic_failover,
     )?;
@@ -191,12 +214,19 @@ fn activate_requested(
     let mut direct_profiles = Vec::new();
     for kind in requested {
         if kind.is_direct() {
-            let profile = match existing.and_then(|selection| selection.direct_profile(kind)) {
-                Some(profile) => connection::existing(terminal, profile)?,
-                None => direct::setup(terminal, kind)?,
-            };
+            let existing_profiles = existing
+                .into_iter()
+                .flat_map(ProviderSelection::direct_profiles)
+                .filter(|profile| profile.kind() == kind)
+                .collect::<Vec<_>>();
             enabled.push(kind);
-            direct_profiles.push(profile);
+            if existing_profiles.is_empty() {
+                direct_profiles.push(direct::setup(terminal, kind)?);
+            } else {
+                for profile in existing_profiles {
+                    direct_profiles.push(connection::existing(terminal, profile)?);
+                }
+            }
             continue;
         }
         let Some(item) = observation(observations, kind) else {
@@ -320,4 +350,51 @@ fn installation_guidance(
 struct ActivatedProviders {
     enabled: Vec<ProviderKind>,
     direct_profiles: Vec<peritus_product_state::DirectProviderProfile>,
+}
+
+impl ActivatedProviders {
+    fn route_count(&self) -> usize {
+        self.enabled.iter().filter(|kind| kind.is_account()).count()
+            + self.direct_profiles.len()
+    }
+}
+
+fn choose_default_route(
+    terminal: &mut Terminal<'_>,
+    default: Option<ProviderKind>,
+    direct_profiles: &[peritus_product_state::DirectProviderProfile],
+    previous: Option<ProviderRouteIdentity>,
+) -> Result<Option<ProviderRouteIdentity>, LauncherError> {
+    let Some(kind) = default else {
+        return Ok(None);
+    };
+    if kind.is_account() {
+        return Ok(Some(kind.route_identity()));
+    }
+    let candidates = direct_profiles
+        .iter()
+        .filter(|profile| profile.kind() == kind)
+        .collect::<Vec<_>>();
+    if let [only] = candidates.as_slice() {
+        return Ok(Some(only.route_identity()));
+    }
+    if let Some(previous) = previous
+        && candidates.iter().any(|profile| profile.route_identity() == previous)
+    {
+        return Ok(Some(previous));
+    }
+    terminal.line(&format!("\nDefault {} route for new runs:", kind.label()))?;
+    for (index, profile) in candidates.iter().enumerate() {
+        terminal.line(&format!("  {}. {}", index + 1, profile.model()))?;
+    }
+    loop {
+        let answer = terminal.prompt("Default route: ")?;
+        if let Ok(index) = answer.parse::<usize>()
+            && let Some(profile) =
+                index.checked_sub(1).and_then(|index| candidates.get(index))
+        {
+            return Ok(Some(profile.route_identity()));
+        }
+        terminal.line("Choose one of the displayed route numbers.")?;
+    }
 }

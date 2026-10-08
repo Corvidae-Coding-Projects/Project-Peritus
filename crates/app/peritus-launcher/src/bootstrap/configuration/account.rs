@@ -45,7 +45,7 @@ fn reconcile(
     paths: BTreeMap<ProviderKind, String>,
 ) -> Result<(), LauncherError> {
     let selection = state.providers().clone().with_account_executables(paths)?;
-    if state.configure_providers(selection) {
+    if state.configure_providers(selection)? {
         store.commit(state)?;
     }
     Ok(())

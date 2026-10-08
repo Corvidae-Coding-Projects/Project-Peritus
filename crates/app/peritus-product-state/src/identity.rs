@@ -57,7 +57,7 @@ impl InstallIdentity {
     }
 }
 
-fn encode_hex(bytes: [u8; 16]) -> String {
+pub(crate) fn encode_hex(bytes: [u8; 16]) -> String {
     let mut encoded = String::with_capacity(32);
     for byte in bytes {
         use core::fmt::Write as _;
@@ -66,7 +66,10 @@ fn encode_hex(bytes: [u8; 16]) -> String {
     encoded
 }
 
-fn decode_hex(value: &str, field: &'static str) -> Result<[u8; 16], ProductStateError> {
+pub(crate) fn decode_hex(
+    value: &str,
+    field: &'static str,
+) -> Result<[u8; 16], ProductStateError> {
     if value.len() != 32
         || !value.bytes().all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
     {

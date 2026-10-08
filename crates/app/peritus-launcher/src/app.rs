@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use peritus_product_state::{ProviderKind, WorkspaceProfile};
+use peritus_product_state::WorkspaceProfile;
 use peritus_tui::{ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
@@ -153,14 +153,23 @@ fn workspace_context(
     let workspace_id = WorkspaceId::new(decode_id(workspace.workspace_id())?).map_err(|error| {
         LauncherError::WorkspaceSetup(format!("active workspace identity is invalid: {error:?}"))
     })?;
-    let providers = prepared
-        .state()
-        .providers()
-        .enabled()
+    let routes = prepared.state().providers().routes();
+    let providers = routes
         .iter()
-        .map(|kind| {
-            ProviderProfileId::new(provider_id(*kind))
-                .map(|profile| ProductProviderOption::new(profile, kind.label()))
+        .map(|route| {
+            let label = if routes.iter().filter(|other| other.kind() == route.kind()).count() > 1 {
+                let identity = route.identity().to_string();
+                let model = prepared
+                    .state()
+                    .providers()
+                    .direct_profile_by_route(route.identity())
+                    .map_or("account route", peritus_product_state::DirectProviderProfile::model);
+                format!("{} / {model} ({})", route.kind().label(), &identity[..8])
+            } else {
+                route.kind().label().to_owned()
+            };
+            ProviderProfileId::new(*route.identity().as_bytes())
+                .map(|profile| ProductProviderOption::new(profile, label))
                 .map_err(|error| {
                     LauncherError::WorkspaceSetup(format!(
                         "provider profile identity is invalid: {error:?}"
@@ -168,9 +177,11 @@ fn workspace_context(
                 })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let default = prepared.state().providers().default().and_then(|selected| {
-        prepared.state().providers().enabled().iter().position(|kind| *kind == selected)
-    });
+    let default = prepared
+        .state()
+        .providers()
+        .default_route()
+        .and_then(|selected| routes.iter().position(|route| route.identity() == selected));
     ProductLaunchContext::new(
         workspace_id,
         workspace.managed_root().unwrap_or_else(|| workspace.repository_root()).to_owned(),
@@ -187,10 +198,6 @@ fn workspace_context(
         }
     })
     .map_err(LauncherError::Tui)
-}
-
-const fn provider_id(kind: ProviderKind) -> [u8; 16] {
-    kind.profile_identity()
 }
 
 fn decode_id(value: &str) -> Result<[u8; 16], LauncherError> {

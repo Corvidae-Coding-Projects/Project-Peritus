@@ -14,6 +14,11 @@ pub enum ProductStateError {
         /// Requested next phase.
         to: crate::BootstrapPhase,
     },
+    /// The immutable generation space is exhausted and the current state remains authoritative.
+    GenerationExhausted {
+        /// Exact generation that still owns the durable state.
+        generation: u64,
+    },
     /// The state payload is malformed or contains unsupported fields.
     InvalidPayload(String),
 }
@@ -31,6 +36,10 @@ impl core::fmt::Display for ProductStateError {
             Self::InvalidTransition { from, to } => {
                 write!(formatter, "invalid durable bootstrap transition from {from:?} to {to:?}")
             }
+            Self::GenerationExhausted { generation } => write!(
+                formatter,
+                "product-state generation {generation} is the final representable owner"
+            ),
             Self::InvalidPayload(message) => {
                 write!(formatter, "product-state payload is invalid: {message}")
             }

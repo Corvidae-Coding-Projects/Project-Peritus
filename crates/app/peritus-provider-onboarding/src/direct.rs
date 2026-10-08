@@ -2,7 +2,9 @@
 
 use core::fmt;
 
-use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
+use peritus_product_state::{
+    CompatibleProtocol, DirectProviderProfile, ProviderKind, ProviderRouteIdentity,
+};
 use peritus_secrets::{
     PlatformCredentialStore, SecretMaterial, format_credential_reference,
     parse_credential_reference,
@@ -127,8 +129,10 @@ impl DirectProviderDraft {
         let resource_id = random_resource_id()?;
         let store = PlatformCredentialStore::providers();
         let reference = store.store(resource_id, &credential.0)?;
-        let profile = DirectProviderProfile::new_with_catalog_endpoint(
+        let route_identity = ProviderRouteIdentity::new(*resource_id.as_bytes())?;
+        let profile = DirectProviderProfile::new_with_route_identity_and_catalog_endpoint(
             self.kind,
+            route_identity,
             format_credential_reference(reference),
             self.endpoint,
             catalog_endpoint,

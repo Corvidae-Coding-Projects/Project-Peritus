@@ -25,7 +25,7 @@ impl ProductStateStore {
 
     pub fn load_or_initialize(&self) -> Result<ProductState, LauncherError> {
         if let Some(mut state) = self.load_latest()? {
-            if state.migrate_legacy_workspace_storage()? {
+            if state.migrate_legacy_storage()? {
                 self.commit(&state)?;
             }
             return Ok(state);

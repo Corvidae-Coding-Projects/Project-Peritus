@@ -60,10 +60,10 @@ pub fn choose_default(
 
 pub fn choose_failover(
     terminal: &mut Terminal<'_>,
-    enabled: &[ProviderKind],
+    route_count: usize,
     default: bool,
 ) -> Result<bool, LauncherError> {
-    if enabled.len() < 2 {
+    if route_count < 2 {
         return Ok(false);
     }
     let suffix = if default { " [Y/n]: " } else { " [y/N]: " };

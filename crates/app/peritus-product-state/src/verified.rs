@@ -52,21 +52,21 @@ verus! {
 
 /// A provider switch can be authorized only when another selected route exists.
 pub open spec fn provider_failover_shape(
-    enabled_providers: u64,
+    enabled_routes: u64,
     automatic_failover: bool,
 ) -> bool {
-    !automatic_failover || enabled_providers >= 2
+    !automatic_failover || enabled_routes >= 2
 }
 
 /// Executable refinement of the provider failover selection invariant.
 #[must_use]
 pub const fn provider_failover_shape_model_exec(
-    enabled_providers: u64,
+    enabled_routes: u64,
     automatic_failover: bool,
 ) -> (result: bool)
-    ensures result == provider_failover_shape(enabled_providers, automatic_failover)
+    ensures result == provider_failover_shape(enabled_routes, automatic_failover)
 {
-    !automatic_failover || enabled_providers >= 2
+    !automatic_failover || enabled_routes >= 2
 }
 
 } // verus!
@@ -142,8 +142,8 @@ const fn trust_model(trust: WorkspaceTrust) -> WorkspaceTrustModel {
 /// Applies the verified failover-selection predicate to a runtime provider count.
 #[must_use]
 pub const fn provider_failover_shape_exec(
-    enabled_providers: u64,
+    enabled_routes: u64,
     automatic_failover: bool,
 ) -> bool {
-    provider_failover_shape_model_exec(enabled_providers, automatic_failover)
+    provider_failover_shape_model_exec(enabled_routes, automatic_failover)
 }

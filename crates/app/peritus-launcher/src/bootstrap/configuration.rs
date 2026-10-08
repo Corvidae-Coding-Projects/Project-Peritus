@@ -65,7 +65,7 @@ pub(super) fn retain_legacy_models(
         models.insert(kind, model.to_owned());
     }
     let selection = state.providers().clone().with_account_models(models)?;
-    if state.configure_providers(selection) {
+    if state.configure_providers(selection)? {
         store.commit(state)?;
     }
     Ok(())
@@ -113,12 +113,13 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
         state.identity().actor_id(),
         state.providers().automatic_failover(),
     );
-    for provider in state.providers().enabled() {
+    for route in state.providers().routes() {
         text.push_str(&render_provider(
-            *provider,
-            state.providers().direct_profile(*provider),
-            state.providers().account_model(*provider),
-            state.providers().account_executable(*provider),
+            route.kind(),
+            route.identity(),
+            state.providers().direct_profile_by_route(route.identity()),
+            state.providers().account_model(route.kind()),
+            state.providers().account_executable(route.kind()),
         )?);
     }
     render_workspaces(&mut text, state)?;
@@ -172,15 +173,14 @@ fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), Laun
 
 fn render_provider(
     provider: ProviderKind,
+    route_identity: peritus_product_state::ProviderRouteIdentity,
     direct: Option<&DirectProviderProfile>,
     account_model: Option<&str>,
     account_executable: Option<&str>,
 ) -> Result<String, LauncherError> {
-    let (kind, profile_id, image_input) = match provider {
-        ProviderKind::CodexAccount => ("codex-runtime", "a1000000000000000000000000000001", true),
-        ProviderKind::ClaudeAccount => {
-            ("claude-runtime", "a2000000000000000000000000000002", false)
-        }
+    let (kind, image_input) = match provider {
+        ProviderKind::CodexAccount => ("codex-runtime", true),
+        ProviderKind::ClaudeAccount => ("claude-runtime", false),
         _ => return render_direct_provider(provider, direct),
     };
     let model = account_model.ok_or_else(|| {
@@ -194,7 +194,7 @@ fn render_provider(
             .expect("writing to String cannot fail");
     }
     text.push_str(&profile_block(
-        profile_id,
+        &route_identity.to_string(),
         model,
         200_000,
         64_000,
@@ -213,9 +213,9 @@ pub fn render_direct_provider(
         )
     })?;
     if let Some(service) = provider.hosted_service() {
-        return hosted::render(provider, direct, service);
+        return hosted::render(direct, service);
     }
-    let (kind, profile_id, input, output, image_input, reasoning) = direct_route(provider, direct)?;
+    let (kind, input, output, image_input, reasoning) = direct_route(provider, direct)?;
     let mut text = format!(
         "\n[[providers]]\nkind = {}\ncredential_reference = {}\n",
         toml_string(kind),
@@ -225,7 +225,7 @@ pub fn render_direct_provider(
     append_optional(&mut text, "catalog_endpoint", direct.catalog_endpoint());
     append_optional(&mut text, "credential_header", direct.credential_header());
     text.push_str(&profile_block(
-        profile_id,
+        &direct.route_identity().to_string(),
         direct.model(),
         input,
         output,
@@ -237,17 +237,12 @@ pub fn render_direct_provider(
 fn direct_route(
     provider: ProviderKind,
     direct: &DirectProviderProfile,
-) -> Result<(&'static str, &'static str, u64, u64, bool, bool), LauncherError> {
+) -> Result<(&'static str, u64, u64, bool, bool), LauncherError> {
     match provider {
-        ProviderKind::OpenAiApi => {
-            Ok(("open-ai", "a3000000000000000000000000000003", 200_000, 64_000, true, true))
-        }
-        ProviderKind::AnthropicApi => {
-            Ok(("anthropic", "a4000000000000000000000000000004", 200_000, 32_000, true, true))
-        }
+        ProviderKind::OpenAiApi => Ok(("open-ai", 200_000, 64_000, true, true)),
+        ProviderKind::AnthropicApi => Ok(("anthropic", 200_000, 32_000, true, true)),
         ProviderKind::GoogleGeminiApi => Ok((
             "google-generate-content",
-            "a5000000000000000000000000000005",
             1_000_000,
             65_536,
             true,
@@ -256,7 +251,6 @@ fn direct_route(
         ProviderKind::CompatibleEndpoint => match direct.compatible_protocol() {
             Some(CompatibleProtocol::Responses) => Ok((
                 "compatible-responses",
-                "a6000000000000000000000000000006",
                 200_000,
                 32_000,
                 false,
@@ -264,7 +258,6 @@ fn direct_route(
             )),
             Some(CompatibleProtocol::ChatCompletions) => Ok((
                 "compatible-chat-completions",
-                "a6000000000000000000000000000006",
                 200_000,
                 32_000,
                 false,

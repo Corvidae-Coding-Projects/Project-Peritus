@@ -72,7 +72,7 @@ impl ProductBootstrap {
         let _lock = BootstrapLock::acquire(&lock_path)?;
         let store = ProductStateStore::open(self.layout.product_state_root())?;
         let mut state = store.load_or_initialize()?;
-        if state.configure_providers(providers) {
+        if state.configure_providers(providers)? {
             store.commit(&state)?;
         }
         finish(self.layout, &store, state)
@@ -123,7 +123,7 @@ impl ProductBootstrap {
         let _lock = BootstrapLock::acquire(&lock_path)?;
         let store = ProductStateStore::open(self.layout.product_state_root())?;
         let mut state = store.load_or_initialize()?;
-        if state.remove_workspace(workspace_id) {
+        if state.remove_workspace(workspace_id)? {
             store.commit(&state)?;
         }
         finish(self.layout, &store, state)
