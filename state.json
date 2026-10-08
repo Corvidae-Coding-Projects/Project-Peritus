@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4186,
-        "tip_oid": "649ceda9feb5804605a026c5e7e8010295f574cd",
-        "prefix_sha256": "b2b9de6fc7c9f1063619bec853185cfb149a8d81bd238352f0402a292c21c6f9"
+        "sequence": 4187,
+        "tip_oid": "82f6603a537392fbee9fbb72c8a2a85d5a6e5439",
+        "prefix_sha256": "00cf59170ebaa28c2db2d41cfaff6b85eaaa4208ee03178a4c5b6a3f207956bb"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3299,
+  "next_comment_id": 3300,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -34685,7 +34685,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.622796501Z",
-      "updated_at": "2026-10-06T13:27:51.624912332Z",
+      "updated_at": "2026-10-08T16:16:04.487274597Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -34696,6 +34696,15 @@
           "content": "Systemic repair plan for L712: Checkpoint and rewind coverage use whole 65,535-item lists and production-sized preview hashing.\n\nOwning contract and implementation boundary: crates/app/peritus-app-protocol/src/workbench/checkpoints.rs:6-7,347-369,385-394; src/workbench/checkpoints/rewind.rs:188-213; src/wire/workbench_checkpoints.rs:174-186,229-241,267-288,332-354. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nBind consent to durable paginated coverage manifests and stream their hash while retaining complete exact path decisions and visible exclusions. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "4db7d4d6-c2ab-43b8-8f55-b7a81816169b": {
+          "display_id": 3299,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L712 on fix/minimum-repair. Added negotiated checkpoint/rewind coverage pages and full-checkpoint/live-preview-bound confirmation, compact durable restore summaries, stale-token rejection before writes, replay/recovery support, and TUI paging. Blocking disk/hash work runs off the async runtime.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T16:16:04.477691678Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAIQDq8+64D3MIxmOnbdI+sO+NZrqZxRBvm0sDmAiXaSIQ2ZGEq/qv0VcdLZf80/cJMag0LMn8Z/KcIe+BGKlHAQ=="
         }
       }
     },
