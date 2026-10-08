@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3953,
-        "tip_oid": "321615ea7122962f19d754d0e6e8bcb75afb0c68",
-        "prefix_sha256": "def8f581c02c516686721e89b5201fa28be7a0087026f52336df3b7e2abd53e9"
+        "sequence": 3954,
+        "tip_oid": "63ff901c2244ad08dcb5ca33474d08351732fa7d",
+        "prefix_sha256": "1ed28eb2311d56fa5564f6370ba6b84433b705d0fb40af453dd34071da336015"
       },
       "NWAR": {
         "sequence": 39,
@@ -15071,12 +15071,13 @@
       "display_id": 133,
       "title": "[L034] Goal continuation requires lifecycle/evidence admission",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L034.\n\n- `goal/execution.rs:179-235` makes incomplete or stale acceptance evidence Blocked, missing external evidence WaitingForUser, and recovery-required settlement Blocked. `goal/lifecycle.rs:114-118` marks only Active as automatically restart-eligible.\n- `lifecycle.rs:149-162` permits explicit resume from Paused, WaitingForUser, or Blocked while retaining history and usage. It rejects resume from Active, Pausing, Achieved, or Cancelled. Changes to a confirmed objective or previously achieved evidence can block continuation at lines 179-211.\n- These are explicit goal/evidence/pause semantics, not elapsed quotas. Daily-driving concern is whether product callers classify transient infrastructure/capacity errors as a terminal lifecycle state and supply a usable recovery path; those callers remain partly pending (L026/L028).\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.971084862Z",
-      "updated_at": "2026-10-08T01:43:01.390265902Z",
+      "updated_at": "2026-10-08T01:44:35.208015208Z",
+      "closed_at": "2026-10-08T01:44:35.204992530Z",
       "labels": [
         "daily-driving-limiter"
       ],
