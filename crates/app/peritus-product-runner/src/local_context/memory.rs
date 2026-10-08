@@ -16,8 +16,8 @@ use super::{
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_context::working::{
-    WorkingBinding, WorkingEvent, WorkingLimits, WorkingState, apply_working_event,
-    encode_working_event,
+    ReusableWorkingStateHistory, WorkingBinding, WorkingEvent, WorkingLimits, WorkingState,
+    apply_working_event, encode_working_event,
 };
 use peritus_model_protocol::{Message, ProviderProfile, ToolDefinition};
 use peritus_types::Sha256Digest;
@@ -43,6 +43,7 @@ pub(super) struct LocalMemory {
     pub(super) transcript_index_tail: Option<StoredArtifact>,
     pub(super) indexed_source_count: u64,
     pub(super) indexed_transcript: TranscriptManifest,
+    pub(super) working_history: Option<ReusableWorkingStateHistory>,
     pub(super) invocations: BTreeMap<u64, String>,
     pub(super) invocation_ranges: BTreeMap<String, Vec<(u64, u64)>>,
     pub(super) indexed_invocation_count: u64,
@@ -144,6 +145,7 @@ impl LocalMemory {
             transcript_index_tail: None,
             indexed_source_count: 0,
             indexed_transcript: TranscriptManifest::default(),
+            working_history: None,
             invocations: BTreeMap::new(),
             invocation_ranges: BTreeMap::new(),
             indexed_invocation_count: 0,
@@ -170,6 +172,13 @@ impl LocalMemory {
                 memory.observe_tool_in(invocation, tool_sequence, &call, &observation).map(|_| ())
             },
         )?;
+        if let Err(trace) = memory.reconcile_last_checkpoint_trace() {
+            use std::io::Write as _;
+            let _ = writeln!(
+                std::io::stderr().lock(),
+                "local checkpoint trace observation remains deferred after recovery: {trace}"
+            );
+        }
         Ok(memory)
     }
 

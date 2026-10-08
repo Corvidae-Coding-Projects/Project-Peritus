@@ -8,7 +8,8 @@ use super::super::{
         CONTEXT_UPDATE_SCHEMA_VERSION, CheckpointManifest, ContextUpdateEntryPage,
         ContextUpdateEntryIdentity, ContextUpdateEntryStatus, ContextUpdateRecord,
         ContextUpdateReducer, ContextUpdateReducerPage, ContextUpdateRoot,
-        ContextUpdateTranscriptPage, MemoryRecord, RootContextUpdate, TranscriptManifest, encode,
+        ContextUpdateTranscriptPage, MemoryRecord, RootContextUpdate, TranscriptManifest, decode,
+        encode,
     },
     storage::{LocalStore, StoredArtifact},
     view_binding,
@@ -17,9 +18,9 @@ use super::LocalMemory;
 use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_codec::sha256;
 use peritus_context::working::{
-    EncodedWorkingStatePart, WorkingEntryStatus, WorkingEvent, WorkingState,
-    WorkingStateArtifact, WorkingStateWriteError, apply_working_event,
-    encode_paged_working_state_with, encode_working_event,
+    EncodedWorkingStatePart, ReusableWorkingStateHistory, WorkingEntryStatus, WorkingEvent,
+    WorkingState, WorkingStateArtifact, WorkingStateWriteError, apply_working_event,
+    encode_paged_working_state_reusing_with, encode_working_event,
 };
 use peritus_model_protocol::{Message, ProtocolLimits, encode_messages};
 use peritus_types::Sha256Digest;
@@ -34,6 +35,7 @@ pub(super) fn reconcile_checkpoint_trace(
     path: &Path,
     manifest: &CheckpointManifest,
     artifact: StoredArtifact,
+    receipt: Sha256Digest,
     validation: &super::super::record::ViewValidation,
 ) -> Result<(), DeveloperLoopError> {
     let payload = serde_json::to_vec(&Value::from_iter([
@@ -41,7 +43,7 @@ pub(super) fn reconcile_checkpoint_trace(
         ("scope", Value::from(manifest.scope)),
         ("generation", Value::from(manifest.generation)),
         ("manifest_sha256", Value::from(artifact.digest.into_bytes())),
-        ("trace_receipt", Value::from(artifact.digest.into_bytes())),
+        ("trace_receipt", Value::from(receipt.into_bytes())),
         ("manifest_bytes", Value::from(artifact.bytes)),
         ("view_sha256", Value::from(manifest.view.digest.into_bytes())),
         ("state_revision", Value::from(validation.state_revision)),
@@ -56,7 +58,7 @@ pub(super) fn reconcile_checkpoint_trace(
         ),
     ]))
     .map_err(|_| error("encode checkpoint trace"))?;
-    crate::trace::local_memory::checkpoint_once(path, artifact.digest, &payload)
+    crate::trace::local_memory::checkpoint_once(path, receipt, &payload)
 }
 
 impl LocalMemory {
@@ -98,7 +100,7 @@ impl LocalMemory {
         let prepared_messages = prepared.messages.clone();
         let (source_index, transcript_manifest) = self.publish_checkpoint_index()?;
         let through_event = self.store.sequence();
-        let working_state = self.store_working_snapshot(source_index)?;
+        let (working_state, working_history) = self.store_working_snapshot(source_index)?;
         let view_bytes = encode_messages(messages, ProtocolLimits::PRODUCTION)?;
         let view = self.store.store(&view_bytes)?;
         let validation_artifact = self.store.store(&encode(&validation)?)?;
@@ -144,6 +146,7 @@ impl LocalMemory {
             self.store.append(&event, &roots, Some((self.store.generation(), bytes)))?;
         self.last_checkpoint = Some(manifest.clone());
         self.last_checkpoint_owner = Some(receipt.owner());
+        self.working_history = Some(working_history);
         self.last_view = prepared_messages;
         self.prepared = None;
         if let Some(owner) = previous_owner
@@ -156,7 +159,13 @@ impl LocalMemory {
             );
         }
         if let Err(trace) =
-            reconcile_checkpoint_trace(&self.trace_path, &manifest, artifact, &validation)
+            reconcile_checkpoint_trace(
+                &self.trace_path,
+                &manifest,
+                artifact,
+                receipt.owner(),
+                &validation,
+            )
         {
             use std::io::Write as _;
             let _ = writeln!(
@@ -217,8 +226,35 @@ impl LocalMemory {
     fn store_working_snapshot(
         &self,
         source_index: StoredArtifact,
-    ) -> Result<StoredArtifact, DeveloperLoopError> {
-        store_working_snapshot(&self.store, &self.state, source_index)
+    ) -> Result<(StoredArtifact, ReusableWorkingStateHistory), DeveloperLoopError> {
+        store_working_snapshot_reusing(
+            &self.store,
+            &self.state,
+            source_index,
+            self.working_history.as_ref(),
+        )
+    }
+
+    pub(super) fn reconcile_last_checkpoint_trace(&self) -> Result<(), DeveloperLoopError> {
+        let (Some(manifest), Some(receipt)) =
+            (self.last_checkpoint.as_ref(), self.last_checkpoint_owner)
+        else {
+            return Ok(());
+        };
+        let manifest_bytes = encode(manifest)?;
+        let artifact = StoredArtifact {
+            digest: sha256(&manifest_bytes),
+            bytes: u64::try_from(manifest_bytes.len())
+                .map_err(|_| error("checkpoint manifest size overflow"))?,
+        };
+        let validation = decode(&self.store.read(manifest.validation)?)?;
+        reconcile_checkpoint_trace(
+            &self.trace_path,
+            manifest,
+            artifact,
+            receipt,
+            &validation,
+        )
     }
 }
 
@@ -227,6 +263,16 @@ pub(super) fn store_working_snapshot(
     state: &WorkingState,
     source_index: StoredArtifact,
 ) -> Result<StoredArtifact, DeveloperLoopError> {
+    store_working_snapshot_reusing(store, state, source_index, None)
+        .map(|(artifact, _)| artifact)
+}
+
+fn store_working_snapshot_reusing(
+    store: &LocalStore,
+    state: &WorkingState,
+    source_index: StoredArtifact,
+    history: Option<&ReusableWorkingStateHistory>,
+) -> Result<(StoredArtifact, ReusableWorkingStateHistory), DeveloperLoopError> {
     let source = WorkingStateArtifact::new(
         source_index.digest.into_bytes(),
         source_index.bytes,
@@ -237,7 +283,11 @@ pub(super) fn store_working_snapshot(
         .map_err(|_| error("allocate working checkpoint page index"))?;
     let mut descriptor_tail = None;
     let mut covered = 0_usize;
-    let root = encode_paged_working_state_with(state, source, |part| {
+    let (root, history) = encode_paged_working_state_reusing_with(
+        state,
+        source,
+        history,
+        |part| {
         match part {
             EncodedWorkingStatePart::Data(page) => {
                 let stored = store.store(page.bytes())?;
@@ -247,6 +297,9 @@ pub(super) fn store_working_snapshot(
                     ));
                 }
                 data.push(stored);
+            }
+            EncodedWorkingStatePart::Reused(page) => {
+                data.push(stored_artifact(page.artifact()));
             }
             EncodedWorkingStatePart::Descriptor(page) => {
                 let first = usize::try_from(page.first())
@@ -281,7 +334,8 @@ pub(super) fn store_working_snapshot(
             }
         }
         Ok(())
-    })
+    },
+    )
     .map_err(|failure| match failure {
         WorkingStateWriteError::Artifact(failure) => failure,
         WorkingStateWriteError::Codec(_) => error("encode paged working checkpoint"),
@@ -295,7 +349,8 @@ pub(super) fn store_working_snapshot(
     if let Some(tail) = descriptor_tail {
         children.push(tail);
     }
-    store.store_bundle(&root, &children)
+    let artifact = store.store_bundle(&root, &children)?;
+    Ok((artifact, history))
 }
 
 fn stored_artifact(artifact: WorkingStateArtifact) -> StoredArtifact {

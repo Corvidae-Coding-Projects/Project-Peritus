@@ -22,10 +22,10 @@ use super::LocalMemory;
 use peritus_agent::DeveloperLoopError;
 use peritus_context::ContextNodeId;
 use peritus_context::working::{
-    ObservationId, ObservationSource, WorkingDelta, WorkingEntryStatus, WorkingEvent,
-    WorkingState, WorkingStateArtifact, WorkingStateReadError, apply_working_event,
-    decode_paged_working_state_from, decode_working_event, decode_working_state,
-    decode_working_state_core,
+    ObservationId, ObservationSource, ReusableWorkingStateHistory, WorkingDelta,
+    WorkingEntryStatus, WorkingEvent, WorkingState, WorkingStateArtifact,
+    WorkingStateReadError, apply_working_event, decode_paged_working_state_with_history_from,
+    decode_working_event, decode_working_state, decode_working_state_core,
 };
 use peritus_model_protocol::{ProtocolLimits, decode_messages};
 use peritus_types::Sha256Digest;
@@ -139,7 +139,7 @@ impl LocalMemory {
                     manifest.source_index.bytes,
                 )
                 .map_err(|_| error("invalid paged source-index reference"))?;
-                decode_paged_working_state_from(
+                let (state, history) = decode_paged_working_state_with_history_from(
                     &working,
                     source_index,
                     &observations,
@@ -153,8 +153,11 @@ impl LocalMemory {
                 .map_err(|failure| match failure {
                     WorkingStateReadError::Artifact(failure) => failure,
                     WorkingStateReadError::Codec(_) => error("invalid paged working checkpoint"),
-                })?
+                })?;
+                self.working_history = Some(history);
+                state
             } else {
+                self.working_history = None;
                 decode_working_state_core(
                     &working,
                     &observations,
@@ -164,6 +167,7 @@ impl LocalMemory {
                 .map_err(|_| error("invalid incremental working checkpoint"))?
             };
         } else {
+            self.working_history = None;
             self.state = decode_working_state(
                 &self.store.read(manifest.working_state)?,
                 self.binding,
@@ -210,18 +214,6 @@ impl LocalMemory {
             INDEXED_CHECKPOINT_SCHEMA_VERSION | CHECKPOINT_SCHEMA_VERSION
         ) {
             self.retry_previous_checkpoint_retirement(manifest);
-        }
-        if let Err(trace) = super::checkpoint::reconcile_checkpoint_trace(
-            &self.trace_path,
-            manifest,
-            manifest_artifact,
-            &validation,
-        ) {
-            use std::io::Write as _;
-            let _ = writeln!(
-                std::io::stderr().lock(),
-                "local checkpoint trace observation remains deferred after recovery: {trace}"
-            );
         }
         Ok(())
     }
@@ -331,11 +323,12 @@ impl LocalMemory {
                 {
                     return Err(error("invalid paged genesis source index"));
                 }
-                let state = self.read_linked_working_state(state, source_index)?;
+                let (state, history) = self.read_linked_working_snapshot(state, source_index)?;
                 if state.revision() != 0 || state.through_observation() != 0 {
                     return Err(error("genesis is not empty"));
                 }
                 self.state = state;
+                self.working_history = Some(history);
             }
             MemoryRecord::Invocation { sequence, request_prefix } => {
                 if self.transcript.invocation.checked_add(1) != Some(sequence) {
@@ -706,6 +699,15 @@ impl LocalMemory {
         state: StoredArtifact,
         source_index: StoredArtifact,
     ) -> Result<WorkingState, DeveloperLoopError> {
+        self.read_linked_working_snapshot(state, source_index)
+            .map(|(state, _)| state)
+    }
+
+    fn read_linked_working_snapshot(
+        &self,
+        state: StoredArtifact,
+        source_index: StoredArtifact,
+    ) -> Result<(WorkingState, ReusableWorkingStateHistory), DeveloperLoopError> {
         let observations = self
             .sources
             .iter()
@@ -727,7 +729,7 @@ impl LocalMemory {
             source_index.bytes,
         )
         .map_err(|_| error("invalid linked source-index reference"))?;
-        decode_paged_working_state_from(
+        decode_paged_working_state_with_history_from(
             &self.store.read(state)?,
             source,
             &observations,

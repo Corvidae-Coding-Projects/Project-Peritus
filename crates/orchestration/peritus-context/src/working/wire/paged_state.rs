@@ -193,8 +193,44 @@ impl EncodedWorkingStateDescriptorPage {
 pub enum EncodedWorkingStatePart<'a> {
     /// A bounded entry, protocol, or environment data page.
     Data(&'a EncodedWorkingStatePage),
+    /// A previously verified immutable history page reused without re-encoding its entries.
+    Reused(WorkingStatePageReference),
     /// A bounded linked descriptor page emitted after all of its data children.
     Descriptor(&'a EncodedWorkingStateDescriptorPage),
+}
+
+/// Exact stored-page reference emitted when immutable working history can be reused.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkingStatePageReference {
+    kind: WorkingStatePageKind,
+    first: u64,
+    count: u64,
+    artifact: WorkingStateArtifact,
+}
+
+impl WorkingStatePageReference {
+    /// Page semantic kind.
+    #[must_use]
+    pub const fn kind(self) -> WorkingStatePageKind { self.kind }
+
+    /// Zero-based first logical item index.
+    #[must_use]
+    pub const fn first(self) -> u64 { self.first }
+
+    /// Number of logical items in this physical page.
+    #[must_use]
+    pub const fn count(self) -> u64 { self.count }
+
+    /// Exact digest and byte length already verified for this page.
+    #[must_use]
+    pub const fn artifact(self) -> WorkingStateArtifact { self.artifact }
+}
+
+/// Verified immutable retired-entry pages available to a successor PWP2 snapshot.
+#[derive(Debug, Eq, PartialEq)]
+pub struct ReusableWorkingStateHistory {
+    retired_entries: Vec<WorkingEntry>,
+    retired_pages: Vec<PageDescriptor>,
 }
 
 /// Canonical root plus its independently storable bounded physical pages.
@@ -251,6 +287,7 @@ struct DecodedDescriptorPage {
 struct StreamingPagePublisher<F> {
     publish: F,
     descriptors: Vec<PageDescriptor>,
+    published: Vec<PageDescriptor>,
     descriptor_tail: Option<WorkingStateArtifact>,
     page_count: usize,
     descriptor_page_count: usize,
@@ -319,6 +356,26 @@ pub fn encode_paged_working_state_with<E>(
     observation_index: WorkingStateArtifact,
     publish: impl for<'a> FnMut(EncodedWorkingStatePart<'a>) -> Result<(), E>,
 ) -> Result<Vec<u8>, WorkingStateWriteError<E>> {
+    encode_paged_working_state_reusing_with(state, observation_index, None, publish)
+        .map(|(root, _)| root)
+}
+
+/// Encodes a PWP2 snapshot while reusing unchanged immutable retired-entry pages.
+///
+/// The returned history is safe to adopt only after the caller has durably published the returned
+/// root and all emitted dependencies. Mutable pages are always freshly encoded. A retired page is
+/// reused only when every decoded semantic entry still exactly matches the same canonical range.
+///
+/// # Errors
+/// Rejects the same malformed state, source-index, page, and sink failures as
+/// [`encode_paged_working_state_with`].
+#[allow(clippy::too_many_lines, reason = "the five canonical page kinds have distinct codecs")]
+pub fn encode_paged_working_state_reusing_with<E>(
+    state: &WorkingState,
+    observation_index: WorkingStateArtifact,
+    history: Option<&ReusableWorkingStateHistory>,
+    publish: impl for<'a> FnMut(EncodedWorkingStatePart<'a>) -> Result<(), E>,
+) -> Result<(Vec<u8>, ReusableWorkingStateHistory), WorkingStateWriteError<E>> {
     super::state::validate_snapshot(state)?;
     let (active_entries, retired_entries) = partition_entries(&state.entries);
     let mut publisher = StreamingPagePublisher::new(publish)?;
@@ -391,6 +448,10 @@ pub fn encode_paged_working_state_with<E>(
     for (page_index, records) in retired_entries.chunks(ENTRY_PAGE_ITEMS).enumerate() {
         let first = page_index.checked_mul(ENTRY_PAGE_ITEMS)
             .ok_or(WorkingCodecError::InvalidValue)?;
+        if let Some(reference) = history.and_then(|history| history.reusable(first, records)) {
+            publisher.reused(reference)?;
+            continue;
+        }
         let mut page = writer(WorkingStatePageKind::RetiredEntries.magic())?;
         page.write_u64(usize_to_u64(first)?)?;
         page.write_collection_len(records.len())?;
@@ -403,7 +464,7 @@ pub fn encode_paged_working_state_with<E>(
         )?)?;
     }
 
-    let (page_count, descriptor_page_count, descriptor_tail) = publisher.finish()?;
+    let (page_count, descriptor_page_count, descriptor_tail, descriptors) = publisher.finish()?;
     let mut root = writer(*b"PWP2")?;
     super::state::write_limits(&mut root, state.limits())?;
     fields::write_binding(&mut root, state.binding())?;
@@ -420,7 +481,59 @@ pub fn encode_paged_working_state_with<E>(
     root.write_u64(usize_to_u64(descriptor_page_count)?)?;
     root.write_option_tag(descriptor_tail.is_some())?;
     if let Some(tail) = descriptor_tail { write_artifact(&mut root, tail)?; }
-    Ok(root.into_bytes())
+    let history = reusable_history(&retired_entries, &descriptors)?;
+    Ok((root.into_bytes(), history))
+}
+
+impl ReusableWorkingStateHistory {
+    fn reusable(
+        &self,
+        first: usize,
+        entries: &[&WorkingEntry],
+    ) -> Option<WorkingStatePageReference> {
+        let end = first.checked_add(entries.len())?;
+        let previous = self.retired_entries.get(first..end)?;
+        if previous
+            .iter()
+            .zip(entries.iter().copied())
+            .any(|(old, current)| old != current)
+        {
+            return None;
+        }
+        let descriptor = *self.retired_pages.get(first / ENTRY_PAGE_ITEMS)?;
+        if descriptor.kind != WorkingStatePageKind::RetiredEntries
+            || descriptor.first != usize_to_u64(first).ok()?
+            || descriptor.count != usize_to_u64(entries.len()).ok()?
+        {
+            return None;
+        }
+        Some(WorkingStatePageReference {
+            kind: descriptor.kind,
+            first: descriptor.first,
+            count: descriptor.count,
+            artifact: descriptor.artifact,
+        })
+    }
+}
+
+fn reusable_history(
+    entries: &[&WorkingEntry],
+    descriptors: &[PageDescriptor],
+) -> Result<ReusableWorkingStateHistory, WorkingCodecError> {
+    let mut retired_entries = Vec::new();
+    retired_entries
+        .try_reserve_exact(entries.len())
+        .map_err(|_| WorkingCodecError::State(WorkingError::Capacity))?;
+    retired_entries.extend(entries.iter().map(|entry| (*entry).clone()));
+    let retired_pages = descriptors
+        .iter()
+        .copied()
+        .filter(|descriptor| descriptor.kind == WorkingStatePageKind::RetiredEntries)
+        .collect::<Vec<_>>();
+    if retired_pages.len() != page_count(retired_entries.len(), ENTRY_PAGE_ITEMS)? {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    Ok(ReusableWorkingStateHistory { retired_entries, retired_pages })
 }
 
 impl<F> StreamingPagePublisher<F> {
@@ -431,6 +544,7 @@ impl<F> StreamingPagePublisher<F> {
         Ok(Self {
             publish,
             descriptors,
+            published: Vec::new(),
             descriptor_tail: None,
             page_count: 0,
             descriptor_page_count: 0,
@@ -446,12 +560,37 @@ impl<F> StreamingPagePublisher<F> {
     {
         (self.publish)(EncodedWorkingStatePart::Data(page))
             .map_err(WorkingStateWriteError::Artifact)?;
-        self.descriptors.push(PageDescriptor {
+        let descriptor = PageDescriptor {
             kind: page.kind,
             first: page.first,
             count: page.count,
             artifact: page.artifact,
-        });
+        };
+        self.descriptors.push(descriptor);
+        self.published.push(descriptor);
+        self.page_count = self.page_count.checked_add(1)
+            .ok_or(WorkingCodecError::InvalidValue)?;
+        if self.descriptors.len() == DESCRIPTOR_PAGE_ITEMS { self.flush()?; }
+        Ok(())
+    }
+
+    fn reused<E>(
+        &mut self,
+        page: WorkingStatePageReference,
+    ) -> Result<(), WorkingStateWriteError<E>>
+    where
+        F: for<'a> FnMut(EncodedWorkingStatePart<'a>) -> Result<(), E>,
+    {
+        (self.publish)(EncodedWorkingStatePart::Reused(page))
+            .map_err(WorkingStateWriteError::Artifact)?;
+        let descriptor = PageDescriptor {
+            kind: page.kind,
+            first: page.first,
+            count: page.count,
+            artifact: page.artifact,
+        };
+        self.descriptors.push(descriptor);
+        self.published.push(descriptor);
         self.page_count = self.page_count.checked_add(1)
             .ok_or(WorkingCodecError::InvalidValue)?;
         if self.descriptors.len() == DESCRIPTOR_PAGE_ITEMS { self.flush()?; }
@@ -482,12 +621,20 @@ impl<F> StreamingPagePublisher<F> {
 
     fn finish<E>(
         mut self,
-    ) -> Result<(usize, usize, Option<WorkingStateArtifact>), WorkingStateWriteError<E>>
+    ) -> Result<
+        (usize, usize, Option<WorkingStateArtifact>, Vec<PageDescriptor>),
+        WorkingStateWriteError<E>,
+    >
     where
         F: for<'a> FnMut(EncodedWorkingStatePart<'a>) -> Result<(), E>,
     {
         self.flush()?;
-        Ok((self.page_count, self.descriptor_page_count, self.descriptor_tail))
+        Ok((
+            self.page_count,
+            self.descriptor_page_count,
+            self.descriptor_tail,
+            self.published,
+        ))
     }
 }
 
@@ -579,8 +726,32 @@ pub fn decode_paged_working_state_from<E>(
     observations: &[ObservationSource],
     expected: WorkingBinding,
     maximum: WorkingLimits,
-    mut read: impl FnMut(WorkingStateArtifact) -> Result<Vec<u8>, E>,
+    read: impl FnMut(WorkingStateArtifact) -> Result<Vec<u8>, E>,
 ) -> Result<WorkingState, WorkingStateReadError<E>> {
+    decode_paged_working_state_with_history_from(
+        root_bytes,
+        observation_index,
+        observations,
+        expected,
+        maximum,
+        read,
+    )
+    .map(|(state, _)| state)
+}
+
+/// Loads a PWP2 snapshot and its verified immutable-history reuse frontier.
+///
+/// # Errors
+/// Rejects the same artifact, descriptor-chain, and semantic failures as
+/// [`decode_paged_working_state_from`].
+pub fn decode_paged_working_state_with_history_from<E>(
+    root_bytes: &[u8],
+    observation_index: WorkingStateArtifact,
+    observations: &[ObservationSource],
+    expected: WorkingBinding,
+    maximum: WorkingLimits,
+    mut read: impl FnMut(WorkingStateArtifact) -> Result<Vec<u8>, E>,
+) -> Result<(WorkingState, ReusableWorkingStateHistory), WorkingStateReadError<E>> {
     let mut root = decode_paged_root(
         root_bytes,
         observation_index,
@@ -611,8 +782,14 @@ pub fn decode_paged_working_state_from<E>(
         return Err(WorkingCodecError::InvalidValue.into());
     }
     reversed.reverse();
+    let mut descriptors = Vec::new();
+    descriptors.try_reserve_exact(root.descriptor_count)
+        .map_err(|_| WorkingCodecError::State(WorkingError::Capacity))?;
+    for page in reversed {
+        descriptors.extend(page.descriptors);
+    }
     validate_descriptor_sequence(
-        reversed.iter().flat_map(|page| page.descriptors.iter()),
+        descriptors.iter(),
         root.descriptor_count,
         root.counts,
     )?;
@@ -631,7 +808,7 @@ pub fn decode_paged_working_state_from<E>(
     files.try_reserve_exact(root.counts[3])
         .map_err(|_| WorkingCodecError::State(WorkingError::Capacity))?;
     let limits = root.state.limits();
-    for descriptor in reversed.into_iter().flat_map(|page| page.descriptors) {
+    for descriptor in descriptors.iter().copied() {
         let bytes = read(descriptor.artifact).map_err(WorkingStateReadError::Artifact)?;
         verify_page_artifact(descriptor, &bytes)?;
         match descriptor.kind {
@@ -652,8 +829,11 @@ pub fn decode_paged_working_state_from<E>(
             }
         }
     }
-    finish_paged_state(root, retired_entries, files, requirements, pending)
-        .map_err(WorkingStateReadError::Codec)
+    let state = finish_paged_state(root, retired_entries, files, requirements, pending)
+        .map_err(WorkingStateReadError::Codec)?;
+    let (_, retired_entries) = partition_entries(&state.entries);
+    let history = reusable_history(&retired_entries, &descriptors)?;
+    Ok((state, history))
 }
 
 fn decode_paged_root(
