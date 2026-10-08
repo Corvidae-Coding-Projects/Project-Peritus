@@ -40,6 +40,90 @@ pub struct OpenAiStream {
     metadata: metadata::ResponseMetadata,
     register_background: bool,
     resumable: Arc<Mutex<BTreeSet<ResponseId>>>,
+    restored_partial: Vec<EventEnvelope>,
+}
+
+/// Decoder checkpoint rebuilt from the exact durable normalized prefix.
+pub(crate) struct OpenAiResumeState {
+    local_sequence: u64,
+    provider_sequence: u64,
+    expected_model: ModelName,
+    state: state::ResponseState,
+    partial: Vec<EventEnvelope>,
+}
+
+impl OpenAiResumeState {
+    pub(crate) fn restore(
+        prefix: &[EventEnvelope],
+        response_id: &ResponseId,
+        provider_sequence: u64,
+        expected_model: &ModelName,
+        limits: ProtocolLimits,
+    ) -> Result<Option<Self>, ProviderCoreError> {
+        let cursor_index = prefix
+            .iter()
+            .rposition(|envelope| envelope.provider_sequence().is_some())
+            .ok_or_else(|| error::malformed("persisted OpenAI prefix has no provider cursor"))?;
+        let cursor = &prefix[cursor_index];
+        if cursor.provider_sequence() != Some(provider_sequence) {
+            return Err(error::malformed(
+                "persisted OpenAI prefix does not end at its continuation cursor",
+            ));
+        }
+        let partial_start = prefix[cursor_index + 1..]
+            .iter()
+            .position(|envelope| !matches!(envelope.event(), ModelEvent::Heartbeat))
+            .map_or(prefix.len(), |offset| cursor_index + 1 + offset);
+        let partial = &prefix[partial_start..];
+        if partial.iter().any(|envelope| {
+            envelope.provider_sequence().is_some() || envelope.provider_event_id().is_some()
+        }) {
+            return Err(error::malformed(
+                "persisted OpenAI partial frame contains a second provider cursor",
+            ));
+        }
+        if let Some(first) = partial.first() {
+            if first.provider_digest() == cursor.provider_digest()
+                || partial
+                    .iter()
+                    .any(|envelope| envelope.provider_digest() != first.provider_digest())
+            {
+                return Ok(None);
+            }
+        }
+        let Some(state) = state::ResponseState::restore(
+            &prefix[..partial_start],
+            response_id,
+            provider_sequence,
+            expected_model,
+            limits,
+        )?
+        else {
+            return Ok(None);
+        };
+        let local_sequence = prefix
+            .last()
+            .map(EventEnvelope::sequence)
+            .ok_or_else(|| error::malformed("persisted OpenAI prefix is empty"))?;
+        Ok(Some(Self {
+            local_sequence,
+            provider_sequence,
+            expected_model: expected_model.clone(),
+            state,
+            partial: partial.to_vec(),
+        }))
+    }
+
+    pub(crate) fn matches(
+        &self,
+        response_id: &ResponseId,
+        provider_sequence: u64,
+        expected_model: &ModelName,
+    ) -> bool {
+        self.provider_sequence == provider_sequence
+            && &self.expected_model == expected_model
+            && self.state.response_id() == Some(response_id)
+    }
 }
 
 impl OpenAiStream {
@@ -70,6 +154,37 @@ impl OpenAiStream {
             metadata,
             register_background,
             resumable,
+            restored_partial: Vec::new(),
+        }
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "resume binds independent validated context")]
+    pub(crate) fn resume(
+        body: Box<dyn ByteStream>,
+        framing_limits: FramingLimits,
+        provider: ProviderName,
+        structured_output: bool,
+        limits: ProtocolLimits,
+        metadata: metadata::ResponseMetadata,
+        resumable: Arc<Mutex<BTreeSet<ResponseId>>>,
+        restored: OpenAiResumeState,
+    ) -> Self {
+        Self {
+            body,
+            parser: SseParser::new(framing_limits),
+            pending: VecDeque::new(),
+            local_sequence: restored.local_sequence,
+            terminal: false,
+            body_finished: false,
+            provider,
+            expected_model: restored.expected_model,
+            structured_output,
+            limits,
+            state: restored.state,
+            metadata,
+            register_background: false,
+            resumable,
+            restored_partial: restored.partial,
         }
     }
 
@@ -98,6 +213,7 @@ impl OpenAiStream {
             metadata: metadata::ResponseMetadata::empty(),
             register_background: false,
             resumable: Arc::new(Mutex::new(BTreeSet::new())),
+            restored_partial: Vec::new(),
         })
     }
 

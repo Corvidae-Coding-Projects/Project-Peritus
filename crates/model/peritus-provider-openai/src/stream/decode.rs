@@ -51,17 +51,50 @@ impl OpenAiStream {
         }
         let mut events = self.map_event(event_type, &value)?;
         if events.is_empty() {
-            events.push(ModelEvent::Heartbeat);
+            events = Self::ancillary(&value)?;
         }
+        let events = self.reconcile_restored_frame(digest, events)?;
+        let cursor_index = events.len().checked_sub(1).ok_or_else(|| {
+            error::malformed("OpenAI frame produced no normalized continuation boundary")
+        })?;
         for (index, event) in events.into_iter().enumerate() {
             self.enqueue(
-                (index == 0).then_some(provider_sequence),
-                (index == 0).then(|| event_id.clone()),
+                (index == cursor_index).then_some(provider_sequence),
+                (index == cursor_index).then(|| event_id.clone()),
                 digest,
                 event,
             )?;
         }
         Ok(())
+    }
+
+    fn reconcile_restored_frame(
+        &mut self,
+        digest: peritus_types::Sha256Digest,
+        mut events: Vec<ModelEvent>,
+    ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
+        if self.restored_partial.is_empty() {
+            return Ok(events);
+        }
+        if self.restored_partial.len() > events.len()
+            || self
+                .restored_partial
+                .iter()
+                .zip(&events)
+                .any(|(persisted, decoded)| {
+                    persisted.provider_digest() != digest || persisted.event() != decoded
+                })
+        {
+            return Err(error::malformed(
+                "resumed OpenAI frame contradicted its persisted partial prefix",
+            ));
+        }
+        events.drain(..self.restored_partial.len());
+        self.restored_partial.clear();
+        if events.is_empty() {
+            events.push(ModelEvent::Heartbeat);
+        }
+        Ok(events)
     }
 
     fn map_event(

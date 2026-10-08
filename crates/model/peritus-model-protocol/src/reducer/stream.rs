@@ -203,17 +203,25 @@ impl ResponseReducer {
             && envelope.provider_sequence().is_none()
             && seen.local_sequence == self.last_sequence
             && crate::verified::next_sequence_legal(self.last_sequence, envelope.sequence());
+        let consecutive_provider_redelivery = seen.provider_sequence.is_some()
+            && seen.provider_sequence == envelope.provider_sequence()
+            && crate::verified::next_sequence_legal(self.last_sequence, envelope.sequence());
         if !crate::verified::deduplication_legal(crate::verified::DeduplicationFacts {
             identity_matches: true,
             digest_matches: seen.digest == envelope.provider_digest(),
             provider_sequence_matches: seen.provider_sequence == envelope.provider_sequence(),
-            local_sequence_compatible: exact_redelivery || consecutive_frame_sibling,
+            local_sequence_compatible: exact_redelivery
+                || consecutive_frame_sibling
+                || consecutive_provider_redelivery,
         }) {
             return self
                 .reject("provider event identity was reused with different bytes or sequence");
         }
         if consecutive_frame_sibling {
             return Ok(None);
+        }
+        if consecutive_provider_redelivery {
+            self.last_sequence = envelope.sequence();
         }
         Ok(Some(ReducerTransition::DuplicateIgnored))
     }

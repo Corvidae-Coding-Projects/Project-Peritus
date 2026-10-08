@@ -56,6 +56,7 @@ impl OpenAiStream {
                 call_id,
                 call_name,
                 arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                argument_progress_revision: 0,
                 arguments_done: false,
                 completed: false,
             },
@@ -100,6 +101,7 @@ impl OpenAiStream {
                 content_index,
                 kind,
                 bytes: Vec::new(),
+                progress_revision: 0,
                 value_done: false,
                 completed: false,
             },
@@ -136,7 +138,16 @@ impl OpenAiStream {
         }
         append_bounded(&mut part.bytes, delta, limits.max_output_bytes())?;
         if part.kind == ItemKind::StructuredOutput {
-            return Ok(Vec::new());
+            part.progress_revision = part.progress_revision.checked_add(1).ok_or_else(|| {
+                error::limit("OpenAI structured progress revision overflowed")
+            })?;
+            let fragment = StreamFragment::new(delta.to_vec(), limits)
+                .map_err(|_| error::limit("OpenAI structured fragment exceeds protocol limits"))?;
+            return Ok(vec![ModelEvent::StructuredOutputProgress {
+                item_id: part.normalized_id.clone(),
+                revision: part.progress_revision,
+                fragment,
+            }]);
         }
         let fragment = StreamFragment::new(delta.to_vec(), limits)
             .map_err(|_| error::limit("OpenAI content fragment exceeds protocol limits"))?;
@@ -214,8 +225,21 @@ impl OpenAiStream {
             return Err(error::malformed("OpenAI tool delta targeted an incompatible item"));
         }
         item.arguments.append(delta, limits)?;
-        // Retain raw bytes for terminal consistency; publish arguments only once complete.
-        Ok(Vec::new())
+        item.argument_progress_revision = item
+            .argument_progress_revision
+            .checked_add(1)
+            .ok_or_else(|| error::limit("OpenAI tool progress revision overflowed"))?;
+        let call_id = item
+            .call_id
+            .as_ref()
+            .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
+        let fragment = StreamFragment::new(delta.to_vec(), limits)
+            .map_err(|_| error::limit("OpenAI tool fragment exceeds protocol limits"))?;
+        Ok(vec![ModelEvent::ToolArgumentProgress {
+            call_id: call_id.clone(),
+            revision: item.argument_progress_revision,
+            fragment,
+        }])
     }
 
     pub(super) fn tool_done(

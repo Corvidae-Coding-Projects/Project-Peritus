@@ -114,7 +114,7 @@ fn forget_known(
     provider: &OpenAiProvider,
     response_id: &ResponseId,
 ) -> Result<(), ProviderCoreError> {
-    provider
+    let mut known = provider
         .resumable_background
         .lock()
         .map_err(|_| {
@@ -122,8 +122,15 @@ fn forget_known(
                 "openai_cancel",
                 "OpenAI background-response registry is unavailable",
             )
-        })?
-        .remove(response_id);
+        })?;
+    let mut restored = provider.restored_continuations.lock().map_err(|_| {
+        ProviderCoreError::invalid_request(
+            "openai_cancel",
+            "OpenAI restored-continuation registry is unavailable",
+        )
+    })?;
+    known.remove(response_id);
+    restored.remove(response_id);
     Ok(())
 }
 

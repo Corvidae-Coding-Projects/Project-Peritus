@@ -1,6 +1,6 @@
 //! Persisted continuation bindings restored into provider-owned runtime state.
 
-use peritus_model_protocol::Continuation;
+use peritus_model_protocol::{Continuation, EventEnvelope};
 use peritus_types::ProviderProfileId;
 
 /// Durable exact-profile binding for a continuation recovered from local state.
@@ -9,6 +9,7 @@ pub struct PersistedContinuation {
     profile_id: ProviderProfileId,
     profile_revision: u64,
     continuation: Continuation,
+    prefix: Vec<EventEnvelope>,
 }
 
 impl PersistedContinuation {
@@ -28,7 +29,32 @@ impl PersistedContinuation {
                 "persisted continuation profile revision must be nonzero",
             ));
         }
-        Ok(Self { profile_id, profile_revision, continuation })
+        Ok(Self { profile_id, profile_revision, continuation, prefix: Vec::new() })
+    }
+
+    /// Creates a profile-bound continuation with its exact durable normalized prefix.
+    ///
+    /// Providers that restore private decoder state use the same envelopes that reconstruct the
+    /// provider-neutral reducer, keeping both state machines on one acknowledged boundary.
+    ///
+    /// # Errors
+    ///
+    /// Rejects revision zero or an empty prefix.
+    pub fn with_prefix(
+        profile_id: ProviderProfileId,
+        profile_revision: u64,
+        continuation: Continuation,
+        prefix: Vec<EventEnvelope>,
+    ) -> Result<Self, crate::ProviderCoreError> {
+        if prefix.is_empty() {
+            return Err(crate::ProviderCoreError::invalid_request(
+                "continuation_restore",
+                "persisted exact continuation prefix must be nonempty",
+            ));
+        }
+        let mut persisted = Self::new(profile_id, profile_revision, continuation)?;
+        persisted.prefix = prefix;
+        Ok(persisted)
     }
 
     /// Returns the immutable provider-profile identity.
@@ -47,6 +73,12 @@ impl PersistedContinuation {
     #[must_use]
     pub const fn continuation(&self) -> &Continuation {
         &self.continuation
+    }
+
+    /// Borrows the exact durable normalized prefix at the continuation boundary.
+    #[must_use]
+    pub fn prefix(&self) -> &[EventEnvelope] {
+        &self.prefix
     }
 }
 

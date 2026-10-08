@@ -618,10 +618,11 @@ impl AgentDriver {
             .continuation()
             .cloned()
             .ok_or(ModelDriveError::InvalidContinuation)?;
-        let persisted = PersistedContinuation::new(
+        let persisted = PersistedContinuation::with_prefix(
             self.state.binding().provider_profile_id(),
             self.state.binding().provider_profile_revision().get(),
             continuation.clone(),
+            self.model_prefix.clone(),
         )
         .map_err(ModelDriveError::from)?;
         let outcome =
