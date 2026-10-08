@@ -7,7 +7,7 @@ use peritus_eval::{
     EvaluatorVerdict, ExecutionBinding, ExecutionFailure, FrozenEvaluationProfile,
     FrozenModelControls, FrozenProviderSnapshot, HarnessArmBinding, InfrastructurePolicy,
     InfrastructureTreatment, MetricPolicy, ResourceObservation, RolloutExecutionPort,
-    SealedEvaluatorInput, SeedDeliveryPolicy, TaskId,
+    SealedEvaluatorInput, SeedDeliveryPolicy, StageExecution, TaskId,
 };
 use peritus_harness::domain::{HarnessRevisionIdentity, RevisionDigest};
 use peritus_model_protocol::{
@@ -190,10 +190,14 @@ impl RolloutExecutionPort for FixturePort {
     fn execute_candidate(
         &mut self,
         directive: &peritus_eval::CandidateExecutionDirective,
-    ) -> Result<CandidateObservation, ExecutionFailure> {
+        control: &mut peritus_eval::ExecutionStageControl<'_>,
+    ) -> StageExecution<CandidateObservation> {
         self.candidate_calls += 1;
+        if let Some(cancelled) = control.cancellation(None, None) {
+            return cancelled;
+        }
         if matches!(self.mode, PortMode::CandidateInfrastructure) {
-            return Err(ExecutionFailure::new(
+            return StageExecution::Failed(ExecutionFailure::new(
                 peritus_eval::InfrastructureFailureClass::Provider,
                 digest(80),
                 true,
@@ -226,15 +230,20 @@ impl RolloutExecutionPort for FixturePort {
                 false,
             )
         })
+        .into()
     }
 
     fn execute_evaluator(
         &mut self,
         directive: &peritus_eval::EvaluatorExecutionDirective,
-    ) -> Result<EvaluatorObservation, ExecutionFailure> {
+        control: &mut peritus_eval::ExecutionStageControl<'_>,
+    ) -> StageExecution<EvaluatorObservation> {
         self.evaluator_calls += 1;
+        if let Some(cancelled) = control.cancellation(None, None) {
+            return cancelled;
+        }
         if matches!(self.mode, PortMode::EvaluatorInfrastructure) {
-            return Err(ExecutionFailure::new(
+            return StageExecution::Failed(ExecutionFailure::new(
                 peritus_eval::InfrastructureFailureClass::Evaluator,
                 digest(83),
                 true,
@@ -272,5 +281,6 @@ impl RolloutExecutionPort for FixturePort {
                 false,
             )
         })
+        .into()
     }
 }

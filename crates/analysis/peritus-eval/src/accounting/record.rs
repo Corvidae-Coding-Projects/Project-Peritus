@@ -26,6 +26,7 @@ pub struct RolloutRecord {
     candidate_output: Option<ArtifactDigest>,
     candidate_resources: Option<ResourceObservation>,
     evaluator_resources: Option<ResourceObservation>,
+    continuation: Option<crate::ExecutionContinuation>,
     trace_root: Option<ArtifactDigest>,
     evidence_root: Option<ArtifactDigest>,
     digest: Sha256Digest,
@@ -49,8 +50,9 @@ impl RolloutRecord {
             return Err(invalid("terminal observations differ from the rollout identity"));
         }
         let candidate_output = executed.candidate().map(crate::CandidateObservation::output);
-        let candidate_resources = executed.candidate().map(crate::CandidateObservation::resources);
-        let evaluator_resources = executed.evaluator().map(crate::EvaluatorObservation::resources);
+        let candidate_resources = executed.candidate_resources();
+        let evaluator_resources = executed.evaluator_resources();
+        let continuation = executed.continuation();
         if executed.evaluator().is_some() && candidate_output.is_none() {
             return Err(invalid("evaluator observation exists without candidate output"));
         }
@@ -68,6 +70,7 @@ impl RolloutRecord {
             candidate_output,
             candidate_resources,
             evaluator_resources,
+            continuation,
             trace_root,
             evidence_root,
             digest: Sha256Digest::new([0; 32]),
@@ -146,6 +149,11 @@ impl RolloutRecord {
     pub const fn evaluator_resources(self) -> Option<ResourceObservation> {
         self.evaluator_resources
     }
+    /// Exact failed/interrupted stage continuation retained for same-effect recovery.
+    #[must_use]
+    pub const fn continuation(self) -> Option<crate::ExecutionContinuation> {
+        self.continuation
+    }
     /// Complete trace root when available.
     #[must_use]
     pub const fn trace_root(self) -> Option<ArtifactDigest> {
@@ -179,6 +187,13 @@ impl RolloutRecord {
         encode_artifact(&mut bytes, self.candidate_output);
         encode_resource(&mut bytes, self.candidate_resources);
         encode_resource(&mut bytes, self.evaluator_resources);
+        if let Some(value) = self.continuation {
+            bytes.extend_from_slice(b"peritus.evaluation.rollout-continuation.v1\0");
+            bytes.extend_from_slice(value.digest().as_bytes());
+        }
+        if self.attempt.late_after_cancellation() {
+            bytes.extend_from_slice(b"peritus.evaluation.late-after-cancellation.v1\0");
+        }
         encode_artifact(&mut bytes, self.trace_root);
         encode_artifact(&mut bytes, self.evidence_root);
         bytes

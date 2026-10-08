@@ -4,8 +4,9 @@ use peritus_artifact_store::ArtifactDigest;
 use peritus_types::Sha256Digest;
 
 use crate::{
-    EvaluationError, EvaluationErrorKind, EvaluationOperation, InfrastructureFailureClass,
-    ResourceObservation, RolloutAttempt, RolloutId, RolloutOutcome, TaskFailureClass,
+    EvaluationError, EvaluationErrorKind, EvaluationOperation, ExecutionContinuation,
+    InfrastructureFailureClass, ResourceObservation, RolloutAttempt, RolloutId, RolloutOutcome,
+    TaskFailureClass,
 };
 
 /// Typed redaction-safe execution failure returned by an external owner.
@@ -14,6 +15,8 @@ pub struct ExecutionFailure {
     class: InfrastructureFailureClass,
     digest: Sha256Digest,
     retryable: bool,
+    resources: Option<ResourceObservation>,
+    continuation: Option<ExecutionContinuation>,
 }
 
 impl ExecutionFailure {
@@ -24,7 +27,19 @@ impl ExecutionFailure {
         digest: Sha256Digest,
         retryable: bool,
     ) -> Self {
-        Self { class, digest, retryable }
+        Self { class, digest, retryable, resources: None, continuation: None }
+    }
+    /// Retains resources consumed before the failed stage stopped.
+    #[must_use]
+    pub const fn with_resources(mut self, resources: ResourceObservation) -> Self {
+        self.resources = Some(resources);
+        self
+    }
+    /// Retains the exact owner checkpoint for resuming this same stage and effect.
+    #[must_use]
+    pub const fn with_continuation(mut self, continuation: ExecutionContinuation) -> Self {
+        self.continuation = Some(continuation);
+        self
     }
     /// Responsible layer.
     #[must_use]
@@ -40,6 +55,16 @@ impl ExecutionFailure {
     #[must_use]
     pub const fn retryable(self) -> bool {
         self.retryable
+    }
+    /// Resources consumed before failure, when observed.
+    #[must_use]
+    pub const fn resources(self) -> Option<ResourceObservation> {
+        self.resources
+    }
+    /// Exact same-stage continuation, when the owner produced one.
+    #[must_use]
+    pub const fn continuation(self) -> Option<ExecutionContinuation> {
+        self.continuation
     }
 
     pub(crate) const fn outcome(self) -> RolloutOutcome {
@@ -239,6 +264,9 @@ pub struct ExecutedRollout {
     attempt: RolloutAttempt,
     candidate: Option<CandidateObservation>,
     evaluator: Option<EvaluatorObservation>,
+    candidate_resources: Option<ResourceObservation>,
+    evaluator_resources: Option<ResourceObservation>,
+    continuation: Option<ExecutionContinuation>,
 }
 
 impl ExecutedRollout {
@@ -252,11 +280,25 @@ impl ExecutedRollout {
         outcome: RolloutOutcome,
         candidate: Option<CandidateObservation>,
         evaluator: Option<EvaluatorObservation>,
+        candidate_resources: Option<ResourceObservation>,
+        evaluator_resources: Option<ResourceObservation>,
+        continuation: Option<ExecutionContinuation>,
+        late_after_cancellation: bool,
     ) -> Result<Self, EvaluationError> {
         Ok(Self {
-            attempt: RolloutAttempt::new(number, observation_digest, outcome, false)?,
+            attempt: RolloutAttempt::new(
+                number,
+                observation_digest,
+                outcome,
+                late_after_cancellation,
+            )?,
             candidate,
             evaluator,
+            candidate_resources: candidate_resources
+                .or_else(|| candidate.map(CandidateObservation::resources)),
+            evaluator_resources: evaluator_resources
+                .or_else(|| evaluator.map(EvaluatorObservation::resources)),
+            continuation,
         })
     }
     /// Retained attempt and logical terminal.
@@ -273,6 +315,21 @@ impl ExecutedRollout {
     #[must_use]
     pub const fn evaluator(self) -> Option<EvaluatorObservation> {
         self.evaluator
+    }
+    /// Candidate resources, including partial resources from a failed/interrupted stage.
+    #[must_use]
+    pub const fn candidate_resources(self) -> Option<ResourceObservation> {
+        self.candidate_resources
+    }
+    /// Evaluator resources, including partial resources from a failed/interrupted stage.
+    #[must_use]
+    pub const fn evaluator_resources(self) -> Option<ResourceObservation> {
+        self.evaluator_resources
+    }
+    /// Exact same-stage continuation retained before cancellation, reconciliation, or retry.
+    #[must_use]
+    pub const fn continuation(self) -> Option<ExecutionContinuation> {
+        self.continuation
     }
 }
 
