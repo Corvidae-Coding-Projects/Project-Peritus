@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3986,
-        "tip_oid": "cc9fc800810be91a022bbd0b5446a9728404fb19",
-        "prefix_sha256": "f7533b7380fc812e012aa4c3e1f9af500eb2ec79af313649f775dc03f66614b0"
+        "sequence": 3987,
+        "tip_oid": "2f421e0d71f3f5178932db873306b05cfe3c64a2",
+        "prefix_sha256": "627bf302c79e2f4d00cee1e4398283bed6b7d09009d3585b1beec26d1a8d053b"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3196,
+  "next_comment_id": 3197,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20042,7 +20042,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.579182720Z",
-      "updated_at": "2026-10-06T13:27:50.581700887Z",
+      "updated_at": "2026-10-08T02:37:57.298110780Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20053,6 +20053,15 @@
           "content": "Systemic repair plan for L444: F0 phase progression prevents admitting later diagnosis, variants or replacement evaluations.\n\nOwning contract and implementation boundary: crates/analysis/peritus-evolution/src/campaign/reducer/transition.rs:70-183,185-205; src/campaign/reducer/transition/collection.rs:35-60; src/campaign/command.rs:14-76; src/campaign/state.rs:13-45. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nDefine durable per-variant/evidence lifecycle and explicit supersession rather than one global phase that closes all earlier admission. Preserve immutable snapshots and completed work when extending or repairing campaign scope. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "a5f60d46-b6f8-4bd5-8991-726e3afb794d": {
+          "display_id": 3196,
+          "author": "6ME5",
+          "content": "Code complete in commit 59030ad93: F0 campaign phases are progress high-water marks; concrete prerequisites permit interleaved evidence admission until selection freezes scope. Exact reconciled-successor proof drives versioned evaluation generations, retaining superseded independent snapshots and invalidating only dependent variant assessments. Selection binds active evidence/fresh policy, and old tags/state bytes remain unchanged before first supersession. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:37:57.289197067Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAlecCJuGUb7ae2Ntmb6TRhlTEw/oAsiJtfK1GBiXYIv9Hr4zJmGKe2yoP9rAFqQVf/5uNXqpOeUY5qIP0kZG1BQ=="
         }
       }
     },
