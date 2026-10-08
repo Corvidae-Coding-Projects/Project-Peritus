@@ -1,9 +1,9 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use peritus_model_protocol::{
-    CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, OutcomeCertainty,
-    OptionalObservation, OptionalObservationKind, OptionalObservationStatus, ProviderExtension,
-    ProviderName, RateLimitObservation, RateLimitWindow, ResetTime, ResponseId,
+    CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, ModelFailure,
+    OptionalObservation, OptionalObservationKind, OptionalObservationStatus, OutcomeCertainty,
+    ProviderExtension, ProviderName, RateLimitObservation, RateLimitWindow, ResetTime, ResponseId,
     RetryAfterObservation, RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, RetryFailure, StatusCode};
@@ -109,7 +109,7 @@ pub(super) fn http_failure(
     headers: &HttpHeaders,
     provider: &ProviderName,
     retry_after: &CompatibleRetryAfter,
-) -> Result<ModelEvent, ProviderCoreError> {
+) -> Result<ModelFailure, ProviderCoreError> {
     let status_number = status.as_u16();
     let (category, certainty, retryability, code) =
         classify(status_number, config.retry_statuses());
@@ -138,7 +138,7 @@ pub(super) fn http_failure(
     if let Some(observation) = rejected_request_id {
         failure = failure.with_optional_observation(observation);
     }
-    Ok(ModelEvent::ResponseFailed(failure))
+    Ok(failure)
 }
 
 pub(super) fn retry_directive(

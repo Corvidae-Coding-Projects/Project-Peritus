@@ -2,10 +2,10 @@
 
 use super::{ReducerTransition, ResponseReducer, SeenEvent};
 use crate::{
-    CacheObservation, Continuation, EventEnvelope, FailureCategory, ModelEvent, ProtocolError,
-    OptionalObservation, ProtocolErrorKind, ProtocolLimits, ProviderExtension, ProviderName,
-    RateLimitObservation, ReducerTransitionFacts, ResponseId, ResumeKind, TerminalOutcome,
-    UsageCounters, UsageTracker,
+    CacheObservation, Continuation, EventEnvelope, FailureCategory, ModelEvent, ModelFailure,
+    OptionalObservation, OutcomeCertainty, ProtocolError, ProtocolErrorKind, ProtocolLimits,
+    ProviderExtension, ProviderName, RateLimitObservation, ReducerTransitionFacts, ResponseId,
+    ResumeKind, TerminalOutcome, UsageCounters, UsageTracker,
 };
 
 impl ResponseReducer {
@@ -32,6 +32,7 @@ impl ResponseReducer {
             cache: Vec::new(),
             extensions: Vec::new(),
             optional_observations: Vec::new(),
+            header_rejection: None,
             finish: None,
             terminal: None,
         }
@@ -185,6 +186,11 @@ impl ResponseReducer {
     pub fn optional_observations(&self) -> &[OptionalObservation] {
         &self.optional_observations
     }
+    /// Borrows decisive non-accepting response headers before optional body evidence completes.
+    #[must_use]
+    pub const fn header_rejection(&self) -> Option<&ModelFailure> {
+        self.header_rejection.as_ref()
+    }
 
     fn duplicate(
         &mut self,
@@ -211,19 +217,57 @@ impl ResponseReducer {
 
     fn apply(&mut self, event: ModelEvent) -> Result<ReducerTransition, ProtocolError> {
         match event {
-            ModelEvent::Heartbeat => return Ok(ReducerTransition::Applied),
+            ModelEvent::Heartbeat => {
+                if self.header_rejection.is_some() {
+                    return self.reject("heartbeat followed decisive response rejection");
+                }
+                return Ok(ReducerTransition::Applied);
+            }
+            ModelEvent::ResponseRejected(failure) => {
+                if self.started || self.header_rejection.is_some() {
+                    return self.reject("response rejection followed response activity");
+                }
+                if failure.provider() != &self.provider
+                    || failure.certainty() != OutcomeCertainty::DefinitelyNotAccepted
+                    || failure.response_body_observation().is_some()
+                {
+                    return self.reject("response rejection header classification is invalid");
+                }
+                self.optional_observations.extend_from_slice(failure.optional_observations());
+                self.header_rejection = Some(failure);
+            }
             ModelEvent::ResponseStarted { response_id, .. } => {
-                if self.started {
+                if self.started || self.header_rejection.is_some() {
                     return self.reject("response started more than once");
                 }
                 self.started = true;
                 self.response_id = response_id;
             }
             ModelEvent::ResponseFailed(failure) => {
-                self.optional_observations.extend_from_slice(failure.optional_observations());
+                match self.header_rejection.as_ref() {
+                    Some(header)
+                        if failure.response_body_observation().is_some()
+                            && failure.same_header_rejection_as(header) => {}
+                    Some(_) => {
+                        return self.reject(
+                            "terminal failure contradicted its header rejection classification",
+                        );
+                    }
+                    None if failure.response_body_observation().is_some() => {
+                        return self.reject(
+                            "response-body evidence lacked a preceding header rejection",
+                        );
+                    }
+                    None => self
+                        .optional_observations
+                        .extend_from_slice(failure.optional_observations()),
+                }
                 return Ok(self.set_terminal(TerminalOutcome::Failed(failure)));
             }
             ModelEvent::ResponseCancelled => {
+                if self.header_rejection.is_some() {
+                    return self.reject("cancellation replaced a classified response rejection");
+                }
                 return Ok(self.set_terminal(TerminalOutcome::Cancelled));
             }
             other => {

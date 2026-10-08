@@ -8,7 +8,7 @@ use peritus_budget::{BudgetReceipt, UsageFinality};
 use peritus_codec::{CodecError, CodecLimits, sha256};
 use peritus_journal::SqliteJournal;
 use peritus_model_protocol::{
-    EventEnvelope, HistoryArchiveIdentity, HistoryArchiveProgress, ModelRequest,
+    EventEnvelope, HistoryArchiveIdentity, HistoryArchiveProgress, ModelFailure, ModelRequest,
     PhysicalPageCapacity, ProtocolLimits, ReducerTransition, TerminalOutcome,
     decode_event_envelope, decode_next_event_archive_page, encode_event_archive_page,
     is_event_archive_page,
@@ -565,6 +565,12 @@ impl AgentDriver {
         self.model_page_index = next_page_index;
         self.model_page_digest = Some(page_digest);
         Ok(ProviderAdvance::Envelope { sequence, transition: observed })
+    }
+
+    /// Borrows a committed non-accepting header classification while body diagnostics are pending.
+    #[must_use]
+    pub fn model_header_rejection(&self) -> Option<&ModelFailure> {
+        self.model.as_ref().and_then(ModelSession::header_rejection)
     }
 
     /// Restores an exact provider continuation after a durable `ExactResume` retry transition.

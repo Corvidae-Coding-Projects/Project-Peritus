@@ -292,6 +292,61 @@ fn invalid_retry_after(detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidEvent, "failure.retry_after", detail)
 }
 
+/// How bounded response-body evidence collection ended after a decisive header rejection.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum ResponseBodyCompletion {
+    /// The response body reached a clean end of stream.
+    Complete,
+    /// The body owner cancelled collection after the rejection became actionable.
+    Cancelled,
+    /// The body transport failed after the rejection was already classified.
+    TransportFailed,
+    /// The body exceeded its selected transport or diagnostic bound.
+    ExceededBound,
+}
+
+/// Fixed-size evidence collected from a rejected HTTP response body.
+///
+/// This observation is diagnostic only. It cannot change the header-derived acceptance certainty
+/// or retry classification carried by [`ModelFailure`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ResponseBodyObservation {
+    digest: Sha256Digest,
+    observed_bytes: u64,
+    completion: ResponseBodyCompletion,
+}
+
+impl ResponseBodyObservation {
+    /// Records the digest and count of the bounded body prefix that was actually observed.
+    #[must_use]
+    pub const fn new(
+        digest: Sha256Digest,
+        observed_bytes: u64,
+        completion: ResponseBodyCompletion,
+    ) -> Self {
+        Self { digest, observed_bytes, completion }
+    }
+
+    /// Returns the digest of the observed body prefix.
+    #[must_use]
+    pub const fn digest(self) -> Sha256Digest {
+        self.digest
+    }
+
+    /// Returns the number of body bytes included in the digest.
+    #[must_use]
+    pub const fn observed_bytes(self) -> u64 {
+        self.observed_bytes
+    }
+
+    /// Returns how body evidence collection ended.
+    #[must_use]
+    pub const fn completion(self) -> ResponseBodyCompletion {
+        self.completion
+    }
+}
+
 /// Complete redacted model-provider failure.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ModelFailure {
@@ -305,6 +360,7 @@ pub struct ModelFailure {
     retry_after_millis: Option<u64>,
     retry_after_observation: Option<RetryAfterObservation>,
     optional_observations: Vec<OptionalObservation>,
+    response_body_observation: Option<ResponseBodyObservation>,
     diagnostic: RedactedDiagnostic,
 }
 
@@ -337,6 +393,7 @@ impl ModelFailure {
             retry_after_millis,
             retry_after_observation: None,
             optional_observations: Vec::new(),
+            response_body_observation: None,
             diagnostic,
         }
     }
@@ -360,6 +417,16 @@ impl ModelFailure {
     #[must_use]
     pub fn with_optional_observation(mut self, observation: OptionalObservation) -> Self {
         self.optional_observations.push(observation);
+        self
+    }
+
+    /// Adds bounded diagnostic evidence collected after the decisive response headers.
+    #[must_use]
+    pub fn with_response_body_observation(
+        mut self,
+        observation: ResponseBodyObservation,
+    ) -> Self {
+        self.response_body_observation = Some(observation);
         self
     }
 
@@ -413,10 +480,29 @@ impl ModelFailure {
     pub fn optional_observations(&self) -> &[OptionalObservation] {
         &self.optional_observations
     }
+    /// Returns bounded rejected-response body evidence when collection reached a terminal state.
+    #[must_use]
+    pub const fn response_body_observation(&self) -> Option<ResponseBodyObservation> {
+        self.response_body_observation
+    }
     /// Redacted allowlisted detail.
     #[must_use]
     pub const fn diagnostic(&self) -> &RedactedDiagnostic {
         &self.diagnostic
+    }
+
+    pub(crate) fn same_header_rejection_as(&self, other: &Self) -> bool {
+        self.provider == other.provider
+            && self.category == other.category
+            && self.phase == other.phase
+            && self.certainty == other.certainty
+            && self.retryability == other.retryability
+            && self.http_status == other.http_status
+            && self.response_id == other.response_id
+            && self.retry_after_millis == other.retry_after_millis
+            && self.retry_after_observation == other.retry_after_observation
+            && self.optional_observations == other.optional_observations
+            && self.diagnostic == other.diagnostic
     }
 
     pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {

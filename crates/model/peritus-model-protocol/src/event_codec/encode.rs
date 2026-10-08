@@ -8,7 +8,8 @@ use crate::{
     ModelEvent, ModelFailure, OptionalObservation, OptionalObservationKind,
     OptionalObservationStatus, OutcomeCertainty, RateLimitDimension, RateLimitObservation,
     ResetTime, RetryAfterObservation, RetryAfterParseStatus, RetryAfterUnit, Retryability,
-    TransportPhase, UsageCounters, UsageObservation, UsageScope,
+    ResponseBodyCompletion, ResponseBodyObservation, TransportPhase, UsageCounters,
+    UsageObservation, UsageScope,
 };
 
 /// Encodes one normalized event envelope into canonical versioned bytes.
@@ -68,9 +69,13 @@ fn envelope_value(
 
 const fn envelope_schema(envelope: &EventEnvelope) -> u16 {
     match envelope.event() {
-        ModelEvent::OptionalObservation(_) => super::EVENT_ENVELOPE_SCHEMA_VERSION,
-        ModelEvent::ResponseFailed(failure) if !failure.optional_observations().is_empty() => {
+        ModelEvent::ResponseRejected(_) => super::EVENT_ENVELOPE_SCHEMA_VERSION,
+        ModelEvent::ResponseFailed(failure) if failure.response_body_observation().is_some() => {
             super::EVENT_ENVELOPE_SCHEMA_VERSION
+        }
+        ModelEvent::OptionalObservation(_) => 3,
+        ModelEvent::ResponseFailed(failure) if !failure.optional_observations().is_empty() => {
+            3
         }
         ModelEvent::ResponseFailed(failure) if failure.retry_after_observation().is_some() => {
             2
@@ -153,6 +158,10 @@ fn event(
             writer.write_bytes(extension.value().canonical_bytes()).map_err(write_codec)?;
         }
         ModelEvent::Heartbeat => writer.write_u8(16).map_err(write_codec)?,
+        ModelEvent::ResponseRejected(failure) => {
+            writer.write_u8(21).map_err(write_codec)?;
+            failure_value(writer, failure, schema)?;
+        }
         ModelEvent::ResponseCompleted => writer.write_u8(17).map_err(write_codec)?,
         ModelEvent::ResponseFailed(failure) => {
             writer.write_u8(18).map_err(write_codec)?;
@@ -349,8 +358,32 @@ fn failure_value(
         for observation in failure.optional_observations() {
             optional_observation(writer, observation)?;
         }
+        if schema >= 4 {
+            writer
+                .write_option_tag(failure.response_body_observation().is_some())
+                .map_err(write_codec)?;
+            if let Some(observation) = failure.response_body_observation() {
+                response_body_observation(writer, observation)?;
+            }
+        }
     }
     Ok(())
+}
+
+fn response_body_observation(
+    writer: &mut impl CanonicalWrite,
+    observation: ResponseBodyObservation,
+) -> Result<(), crate::ProtocolError> {
+    writer.write_fixed(observation.digest().as_bytes()).map_err(write_codec)?;
+    writer.write_u64(observation.observed_bytes()).map_err(write_codec)?;
+    writer
+        .write_u8(match observation.completion() {
+            ResponseBodyCompletion::Complete => 1,
+            ResponseBodyCompletion::Cancelled => 2,
+            ResponseBodyCompletion::TransportFailed => 3,
+            ResponseBodyCompletion::ExceededBound => 4,
+        })
+        .map_err(write_codec)
 }
 
 fn retry_after_observation(

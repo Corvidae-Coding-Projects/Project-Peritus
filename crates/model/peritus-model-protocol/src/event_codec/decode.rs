@@ -11,8 +11,9 @@ use crate::{
     OptionalObservationStatus, OutcomeCertainty, ProtocolError, ProtocolErrorKind, ProtocolLimits,
     ProtocolVersion, ProviderExtension, ProviderName, RateLimitDimension, RateLimitObservation,
     RateLimitWindow, RedactedDiagnostic, ResetTime, ResponseId, RetryAfterObservation,
-    RetryAfterParseStatus, RetryAfterUnit, Retryability, StreamFragment, ToolCallId, ToolName,
-    TransportPhase, UsageCounters, UsageObservation, UsageScope,
+    RetryAfterParseStatus, RetryAfterUnit, Retryability, ResponseBodyCompletion,
+    ResponseBodyObservation, StreamFragment, ToolCallId, ToolName, TransportPhase, UsageCounters,
+    UsageObservation, UsageScope,
 };
 
 /// Decodes supported canonical normalized-event schema bytes.
@@ -122,6 +123,7 @@ fn decode_event(
         18 => failure(reader, limits, schema).map(ModelEvent::ResponseFailed),
         19 => Ok(ModelEvent::ResponseCancelled),
         20 if schema >= 3 => optional_observation(reader).map(ModelEvent::OptionalObservation),
+        21 if schema >= 4 => failure(reader, limits, schema).map(ModelEvent::ResponseRejected),
         _ => Err(unknown("model_event")),
     }
 }
@@ -362,7 +364,25 @@ fn failure(
     for observation in observations {
         failure = failure.with_optional_observation(observation);
     }
+    if schema >= 4 && reader.read_option_tag().map_err(read_codec)? {
+        failure = failure.with_response_body_observation(response_body_observation(reader)?);
+    }
     Ok(failure)
+}
+
+fn response_body_observation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ResponseBodyObservation, ProtocolError> {
+    let digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(read_codec)?);
+    let observed_bytes = reader.read_u64().map_err(read_codec)?;
+    let completion = match reader.read_u8().map_err(read_codec)? {
+        1 => ResponseBodyCompletion::Complete,
+        2 => ResponseBodyCompletion::Cancelled,
+        3 => ResponseBodyCompletion::TransportFailed,
+        4 => ResponseBodyCompletion::ExceededBound,
+        _ => return Err(unknown("response_body_completion")),
+    };
+    Ok(ResponseBodyObservation::new(digest, observed_bytes, completion))
 }
 
 fn retry_after_observation(

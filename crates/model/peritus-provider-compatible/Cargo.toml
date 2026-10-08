@@ -18,6 +18,7 @@ peritus-provider-core = { version = "=0.0.5", path = "../peritus-provider-core" 
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 
 [dev-dependencies]
 peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }

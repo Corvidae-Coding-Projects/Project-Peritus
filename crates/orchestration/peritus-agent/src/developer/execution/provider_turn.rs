@@ -10,7 +10,8 @@ use super::super::{
 use super::{ContextSession, successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
 use peritus_model_protocol::{
-    Message, ModelEvent, ModelRequest, OutcomeCertainty, ProtocolLimits, TerminalOutcome,
+    Message, ModelEvent, ModelFailure, ModelRequest, OutcomeCertainty, ProtocolLimits,
+    TerminalOutcome,
 };
 use peritus_provider_core::{
     CancellationToken, ModelProvider, ProviderCoreErrorKind as CoreErrorKind, cancel_first,
@@ -21,6 +22,19 @@ mod progress;
 pub(super) struct RetryContext<'a, 'port> {
     pub(super) context: &'a mut ContextSession<'port>,
     pub(super) tools: &'a mut dyn DeveloperToolExecutor,
+}
+
+enum DriveOutcome {
+    Terminal(ModelSession),
+    Rejected { session: ModelSession, failure: ModelFailure },
+}
+
+impl DriveOutcome {
+    const fn session(&self) -> &ModelSession {
+        match self {
+            Self::Terminal(session) | Self::Rejected { session, .. } => session,
+        }
+    }
 }
 
 impl RetryContext<'_, '_> {
@@ -214,7 +228,7 @@ pub(super) async fn complete_turn(
         {
             let request_usage = driven.as_ref().map_or_else(
                 |_| peritus_model_protocol::UsageCounters::default(),
-                ModelSession::usage_high_water,
+                |outcome| outcome.session().usage_high_water(),
             );
             if port.complete_role_request(role, &admitted_request_id, request_usage)?
                 == DeveloperControlFlow::Stop
@@ -223,7 +237,9 @@ pub(super) async fn complete_turn(
             }
         }
         match driven {
-            Ok(session) if successful(session.terminal()) && usable(&session) => {
+            Ok(DriveOutcome::Terminal(session))
+                if successful(session.terminal()) && usable(&session) =>
+            {
                 usage.observe(session.usage_high_water())?;
                 trace.finish_retry_attempt(
                     turn,
@@ -233,7 +249,7 @@ pub(super) async fn complete_turn(
                 )?;
                 return Ok(Some(session));
             }
-            Ok(session) => {
+            Ok(DriveOutcome::Terminal(session)) => {
                 usage.observe(session.usage_high_water())?;
                 let record = planner.terminal(
                     &model_request,
@@ -253,6 +269,27 @@ pub(super) async fn complete_turn(
                 planner.record_and_wait(&record, trace).await?;
                 scheduled_attempt = Some(attempt);
                 *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+            }
+            Ok(DriveOutcome::Rejected { mut session, failure }) => {
+                usage.observe(session.usage_high_water())?;
+                let record = planner.rejection(&model_request, attempt, &failure)?;
+                if let Some(record) = record {
+                    planner.record(&record, trace)?;
+                    settle_rejected_body(&mut session, trace).await?;
+                    planner.wait(&record).await?;
+                    scheduled_attempt = Some(attempt);
+                    *retries =
+                        retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
+                } else {
+                    settle_rejected_body(&mut session, trace).await?;
+                    trace.finish_retry_attempt(
+                        turn,
+                        attempt,
+                        &model_request,
+                        terminal_disposition(session.terminal()),
+                    )?;
+                    return Err(terminal_error(session.terminal()));
+                }
             }
             Err(error) => {
                 let record = planner.error(&model_request, attempt, &error)?;
@@ -294,10 +331,16 @@ async fn wait_for_recovered_retry(
 }
 
 const fn request_disposition(
-    result: &Result<ModelSession, DeveloperLoopError>,
+    result: &Result<DriveOutcome, DeveloperLoopError>,
 ) -> DeveloperRetryDisposition {
     match result {
-        Ok(session) => terminal_disposition(session.terminal()),
+        Ok(DriveOutcome::Terminal(session)) => terminal_disposition(session.terminal()),
+        Ok(DriveOutcome::Rejected { failure, .. })
+            if failure.certainty() == OutcomeCertainty::DefinitelyNotAccepted =>
+        {
+            DeveloperRetryDisposition::Settled
+        }
+        Ok(DriveOutcome::Rejected { .. }) => DeveloperRetryDisposition::ReconciliationRequired,
         Err(error) => error_disposition(error),
     }
 }
@@ -427,7 +470,7 @@ async fn drive(
     protocol_limits: ProtocolLimits,
     trace: &mut dyn DeveloperTrace,
     interaction: Option<&dyn DeveloperInteraction>,
-) -> Result<ModelSession, DeveloperLoopError> {
+) -> Result<DriveOutcome, DeveloperLoopError> {
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
     // stop only this attempt, leaving the caller's token active for safe automatic reconnects.
     let attempt = AttemptCancellation(CancellationToken::new());
@@ -445,7 +488,9 @@ async fn drive(
                 .wait(async { session.pull_one().await.map_err(DeveloperLoopError::from) })
                 .await?
             {
-                ModelAdvance::Closed => return Ok::<(), DeveloperLoopError>(()),
+                ModelAdvance::Closed => {
+                    return Ok::<Option<ModelFailure>, DeveloperLoopError>(None);
+                }
                 ModelAdvance::EnvelopePending { .. } => {
                     let encoded = session.encode_pending()?;
                     trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
@@ -468,6 +513,13 @@ async fn drive(
                             if extension.name().as_str() == "peritus.response_healing"
                         )
                     });
+                    let rejection = session.pending().and_then(|envelope| {
+                        if let ModelEvent::ResponseRejected(failure) = envelope.event() {
+                            Some(failure.clone())
+                        } else {
+                            None
+                        }
+                    });
                     let _ = session.accept_durable_pending()?;
                     if healed && let Some(port) = interaction {
                         port.observe(DeveloperActivity::ResponseHealed)?;
@@ -487,6 +539,9 @@ async fn drive(
                             port.observe(DeveloperActivity::Text(&text))?;
                         }
                     }
+                    if rejection.is_some() {
+                        return Ok(rejection);
+                    }
                 }
             }
         }
@@ -494,8 +549,34 @@ async fn drive(
     .await;
     // A later stream/trace/tool failure must not erase usage already accepted by the reducer.
     trace.account(DeveloperAccountingEvent::Usage(session.usage_high_water()))?;
-    result?;
-    Ok(session)
+    let rejection = result?;
+    Ok(match rejection {
+        Some(failure) => DriveOutcome::Rejected { session, failure },
+        None => DriveOutcome::Terminal(session),
+    })
+}
+
+async fn settle_rejected_body(
+    session: &mut ModelSession,
+    trace: &mut dyn DeveloperTrace,
+) -> Result<(), DeveloperLoopError> {
+    session.cancel();
+    let ModelAdvance::EnvelopePending { .. } = session.pull_one().await? else {
+        return Err(crate::ModelDriveError::InvalidContinuation.into());
+    };
+    if !session
+        .pending()
+        .is_some_and(|envelope| matches!(envelope.event(), ModelEvent::ResponseFailed(_)))
+    {
+        return Err(crate::ModelDriveError::InvalidContinuation.into());
+    }
+    let encoded = session.encode_pending()?;
+    trace.record(DeveloperTraceEvent::ProviderEnvelope(&encoded))?;
+    let _ = session.accept_durable_pending()?;
+    if session.terminal().is_none() {
+        return Err(crate::ModelDriveError::InvalidContinuation.into());
+    }
+    Ok(())
 }
 
 struct AttemptCancellation(CancellationToken);

@@ -3,7 +3,7 @@
 use core::fmt;
 
 use peritus_model_protocol::{
-    EventEnvelope, ProtocolError, ProtocolLimits, ReducedItem, ReducerTransition,
+    EventEnvelope, ModelFailure, ProtocolError, ProtocolLimits, ReducedItem, ReducerTransition,
     RequestFingerprint, ResponseId, ResponseReducer, TerminalOutcome, UsageCounters,
     encode_event_envelope,
 };
@@ -139,7 +139,7 @@ impl ModelSession {
         for envelope in prefix {
             let _ = reducer.push(envelope.clone())?;
         }
-        if reducer.terminal().is_some() {
+        if reducer.terminal().is_some() || reducer.header_rejection().is_some() {
             return Err(ModelDriveError::InvalidContinuation);
         }
         let stream = provider.start(request, cancellation).await?;
@@ -246,6 +246,12 @@ impl ModelSession {
     #[must_use]
     pub const fn terminal(&self) -> Option<&TerminalOutcome> {
         self.reducer.terminal()
+    }
+
+    /// Borrows a durably accepted header rejection before optional body evidence completes.
+    #[must_use]
+    pub const fn header_rejection(&self) -> Option<&ModelFailure> {
+        self.reducer.header_rejection()
     }
 
     /// Borrows complete reduced response items in stable provider output order.

@@ -73,25 +73,54 @@ impl<'a> DeveloperRetryPlanner<'a> {
             return Err(DeveloperLoopError::Cancelled);
         }
         match terminal {
-            Some(TerminalOutcome::Failed(failure))
-                if failure.retryability() == Retryability::SafeNewRequest
-                    && failure.certainty() == OutcomeCertainty::DefinitelyNotAccepted =>
-            {
-                let FailureRetrySchedule::Available(retry_after_millis) =
-                    failure_retry_schedule(failure)?
-                else {
-                    return Ok(None);
-                };
-                self.plan(
-                    request,
-                    attempt,
-                    RetryCause::SafeNewRequest,
-                    retry_after_millis,
-                    DeveloperRetryReason::RetryableProviderResponse,
-                )
+            Some(TerminalOutcome::Failed(failure)) => {
+                self.rejection(request, attempt, failure)
             }
             Some(_) | None => Ok(None),
         }
+    }
+
+    pub(super) fn rejection(
+        &self,
+        request: &ModelRequest,
+        attempt: u64,
+        failure: &ModelFailure,
+    ) -> Result<Option<DeveloperRetryRecord>, DeveloperLoopError> {
+        if self.cancellation.is_cancelled() {
+            return Err(DeveloperLoopError::Cancelled);
+        }
+        if failure.retryability() != Retryability::SafeNewRequest
+            || failure.certainty() != OutcomeCertainty::DefinitelyNotAccepted
+        {
+            return Ok(None);
+        }
+        let FailureRetrySchedule::Available(retry_after_millis) =
+            failure_retry_schedule(failure)?
+        else {
+            return Ok(None);
+        };
+        self.plan(
+            request,
+            attempt,
+            RetryCause::SafeNewRequest,
+            retry_after_millis,
+            DeveloperRetryReason::RetryableProviderResponse,
+        )
+    }
+
+    pub(super) fn record(
+        &self,
+        record: &DeveloperRetryRecord,
+        trace: &mut dyn DeveloperTrace,
+    ) -> Result<(), DeveloperLoopError> {
+        trace.record(DeveloperTraceEvent::RetryScheduled(record))
+    }
+
+    pub(super) async fn wait(
+        &self,
+        record: &DeveloperRetryRecord,
+    ) -> Result<(), DeveloperLoopError> {
+        wait_until_eligible(self.cancellation, record.next_eligible_unix_millis()).await
     }
 
     pub(super) fn error(
@@ -122,8 +151,8 @@ impl<'a> DeveloperRetryPlanner<'a> {
         record: &DeveloperRetryRecord,
         trace: &mut dyn DeveloperTrace,
     ) -> Result<(), DeveloperLoopError> {
-        trace.record(DeveloperTraceEvent::RetryScheduled(record))?;
-        wait_until_eligible(self.cancellation, record.next_eligible_unix_millis()).await
+        self.record(record, trace)?;
+        self.wait(record).await
     }
 
     fn plan(

@@ -51,7 +51,7 @@ pub use event_codec::{
 };
 pub use failure::{
     FailureCategory, ModelFailure, OutcomeCertainty, RetryAfterObservation, RetryAfterParseStatus,
-    RetryAfterUnit, Retryability, TransportPhase,
+    RetryAfterUnit, Retryability, ResponseBodyCompletion, ResponseBodyObservation, TransportPhase,
 };
 pub use finish::{FinishReason, TerminalOutcome};
 pub use identity::{

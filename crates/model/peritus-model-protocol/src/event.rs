@@ -165,6 +165,8 @@ pub enum ModelEvent {
     OptionalObservation(OptionalObservation),
     /// Keepalive/ping without model semantics.
     Heartbeat,
+    /// Decisive non-accepting response headers, emitted before optional body evidence completes.
+    ResponseRejected(ModelFailure),
     /// Successful protocol terminal; reducer still validates all prior state.
     ResponseCompleted,
     /// Typed failure terminal.
@@ -201,7 +203,9 @@ impl ModelEvent {
             | Self::Heartbeat
             | Self::ResponseCompleted
             | Self::ResponseCancelled => Ok(()),
-            Self::ResponseFailed(failure) => failure.validate_under(limits),
+            Self::ResponseRejected(failure) | Self::ResponseFailed(failure) => {
+                failure.validate_under(limits)
+            }
         }
     }
 }

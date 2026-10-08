@@ -63,6 +63,7 @@ impl ResponseReducer {
             ModelEvent::ResponseCompleted => return self.complete_response(),
             ModelEvent::Heartbeat
             | ModelEvent::ResponseStarted { .. }
+            | ModelEvent::ResponseRejected(_)
             | ModelEvent::ResponseFailed(_)
             | ModelEvent::ResponseCancelled => {
                 return self.reject("event is illegal in the started response phase");
