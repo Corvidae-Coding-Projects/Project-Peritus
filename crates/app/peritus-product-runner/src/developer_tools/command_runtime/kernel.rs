@@ -15,10 +15,6 @@ use peritus_spec::AcceptanceContract;
 
 use super::{identity::CommandIds, journal};
 
-#[allow(
-    clippy::too_many_lines,
-    reason = "the linear C0 lifecycle is easier to audit when its ordered commitments stay together"
-)]
 pub(super) fn commit(
     store: &mut SqliteJournal,
     store_label: &str,
@@ -27,6 +23,79 @@ pub(super) fn commit(
     intent: &ActionIntentDto,
     capability: &CapabilityUseTransition,
     wall_millis: u64,
+) -> Result<CommittedKernelTransition, String> {
+    commit_with_wall_policy(
+        store,
+        store_label,
+        ids,
+        contract,
+        intent,
+        capability,
+        Some(wall_millis),
+    )
+}
+
+pub(super) fn commit_with_wall_policy(
+    store: &mut SqliteJournal,
+    store_label: &str,
+    ids: &CommandIds,
+    contract: &AcceptanceContract,
+    intent: &ActionIntentDto,
+    capability: &CapabilityUseTransition,
+    wall_millis: Option<u64>,
+) -> Result<CommittedKernelTransition, String> {
+    commit_with_budget_profile(
+        store,
+        store_label,
+        ids,
+        contract,
+        intent,
+        capability,
+        KernelBudgetProfile::Command { wall_millis },
+    )
+}
+
+/// Commits the same C0 lifecycle for an authority-only transaction.
+///
+/// This path dispatches no active effect. Its budget snapshots therefore retain only the finite
+/// lifecycle bounds needed by the kernel state machine, with every work-usage dimension set to
+/// zero.
+pub(super) fn commit_authority_only(
+    store: &mut SqliteJournal,
+    store_label: &str,
+    ids: &CommandIds,
+    contract: &AcceptanceContract,
+    intent: &ActionIntentDto,
+    capability: &CapabilityUseTransition,
+) -> Result<CommittedKernelTransition, String> {
+    commit_with_budget_profile(
+        store,
+        store_label,
+        ids,
+        contract,
+        intent,
+        capability,
+        KernelBudgetProfile::AuthorityOnly,
+    )
+}
+
+enum KernelBudgetProfile {
+    Command { wall_millis: Option<u64> },
+    AuthorityOnly,
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "the linear C0 lifecycle is easier to audit when its ordered commitments stay together"
+)]
+fn commit_with_budget_profile(
+    store: &mut SqliteJournal,
+    store_label: &str,
+    ids: &CommandIds,
+    contract: &AcceptanceContract,
+    intent: &ActionIntentDto,
+    capability: &CapabilityUseTransition,
+    budget_profile: KernelBudgetProfile,
 ) -> Result<CommittedKernelTransition, String> {
     let key = kernel_key(ids)?;
     let envelope = CommandEnvelope::new(
@@ -56,7 +125,10 @@ pub(super) fn commit(
         )
         .map_err(|error| format!("commit command kernel genesis: {error}"))?;
     let mut state = committed.into_parts().1;
-    let (root_budget, child_budget) = kernel_budgets(ids, wall_millis)?;
+    let (root_budget, child_budget) = match budget_profile {
+        KernelBudgetProfile::Command { wall_millis } => kernel_budgets(ids, wall_millis)?,
+        KernelBudgetProfile::AuthorityOnly => authority_only_kernel_budgets(ids)?,
+    };
     state = next(
         store,
         store_label,
@@ -190,18 +262,40 @@ fn kernel_key(ids: &CommandIds) -> Result<AggregateKey, String> {
 
 fn kernel_budgets(
     ids: &CommandIds,
-    wall_millis: u64,
+    wall_millis: Option<u64>,
 ) -> Result<(BudgetSnapshot, BudgetSnapshot), String> {
-    let child_ceiling = wall_millis.saturating_add(5_000);
-    let ceiling = child_ceiling.saturating_mul(2);
-    let root_limits = BudgetLimits::new(BudgetAmounts::from_units(100, 1_000, ceiling, 10, 5));
+    let child_ceiling = wall_millis.map_or(0, |value| value.saturating_add(5_000));
+    let ceiling = wall_millis.map_or(0, |_| child_ceiling.saturating_mul(2));
+    budget_snapshots(
+        ids,
+        BudgetAmounts::from_units(100, 1_000, ceiling, 10, 5),
+        BudgetAmounts::from_units(40, 400, child_ceiling, 4, 2),
+    )
+}
+
+fn authority_only_kernel_budgets(
+    ids: &CommandIds,
+) -> Result<(BudgetSnapshot, BudgetSnapshot), String> {
+    budget_snapshots(
+        ids,
+        BudgetAmounts::from_units(0, 0, 0, 10, 5),
+        BudgetAmounts::from_units(0, 0, 0, 4, 2),
+    )
+}
+
+fn budget_snapshots(
+    ids: &CommandIds,
+    root_amounts: BudgetAmounts,
+    child_amounts: BudgetAmounts,
+) -> Result<(BudgetSnapshot, BudgetSnapshot), String> {
+    let root_limits = BudgetLimits::new(root_amounts);
     let ledger = BudgetLedger::new_root(ids.kernel_root_budget, ids.revision, root_limits);
     let ledger = ledger
         .transition(BudgetCommand::AllocateChild(ChildBudgetRequest::new(
             ids.kernel_child_budget,
             ids.kernel_root_budget,
             ids.revision,
-            BudgetLimits::new(BudgetAmounts::from_units(40, 400, child_ceiling, 4, 2)),
+            BudgetLimits::new(child_amounts),
         )))
         .map_err(|error| format!("allocate command kernel child budget: {error:?}"))?
         .into_ledger();

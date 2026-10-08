@@ -116,7 +116,7 @@ pub(super) fn commit_tool(
     let kernel =
         kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
     let capability = commit_capability(&mut store, label, ids, capability_use)?;
-    let budget = commit_budget(&mut store, label, ids, digest, wall_millis)?;
+    let budget = commit_budget(&mut store, label, ids, digest, Some(wall_millis))?;
     let epoch = allocate_epoch(&mut store)?;
     Ok(ToolAuthority { intent, kernel, capability, budget, epoch })
 }
@@ -127,6 +127,17 @@ pub(super) fn commit_process(
     contract: &AcceptanceContract,
     plan: &ExecutionPlan,
     wall_millis: u64,
+) -> Result<ProcessAuthority, String> {
+    commit_process_with_wall_policy(path, ids, contract, plan, Some(wall_millis))
+}
+
+/// Commits process authority while preserving whether the caller selected a wall ceiling.
+pub(super) fn commit_process_with_wall_policy(
+    path: &Path,
+    ids: &CommandIds,
+    contract: &AcceptanceContract,
+    plan: &ExecutionPlan,
+    wall_millis: Option<u64>,
 ) -> Result<ProcessAuthority, String> {
     let label = "process-authority-store";
     let mut store = journal::open(path, ids, label)?;
@@ -157,14 +168,27 @@ pub(super) fn commit_process(
         RiskClass::ExternalSideEffect
     };
     let capability_use = capability_use(ids, digest, operation_class, risk)?;
-    let kernel =
-        kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
+    let kernel = kernel::commit_with_wall_policy(
+        &mut store,
+        label,
+        ids,
+        contract,
+        &intent,
+        &capability_use,
+        wall_millis,
+    )?;
     let (capability, committed_lease) =
         if plan.working_directory().access() == WorkspaceAccess::ReadOnly {
             (commit_capability(&mut store, label, ids, capability_use)?, None)
         } else {
             let (capability, lease) =
-                lease::commit(&mut store, label, ids, capability_use, wall_millis)?;
+                lease::commit_with_wall_policy(
+                    &mut store,
+                    label,
+                    ids,
+                    capability_use,
+                    wall_millis,
+                )?;
             (capability, Some(lease))
         };
     let budget = commit_budget(&mut store, label, ids, digest, wall_millis)?;
@@ -309,12 +333,14 @@ fn commit_budget(
     store_label: &str,
     ids: &CommandIds,
     action_digest: Sha256Digest,
-    wall_millis: u64,
+    wall_millis: Option<u64>,
 ) -> Result<CommittedBudgetTransition, String> {
+    let selected_time = wall_millis.unwrap_or(0);
+    let time_limit = wall_millis.map_or(0, |value| value.saturating_add(1_000));
     let limits = BudgetLimits::new(BudgetAmounts::from_units(
         10,
         10,
-        wall_millis.saturating_add(1_000),
+        time_limit,
         2,
         1,
     ));
@@ -326,7 +352,7 @@ fn commit_budget(
         ids.action,
         action_digest,
         BudgetAmounts::from_units(0, 0, 0, 1, 0),
-        BudgetAmounts::from_units(0, 0, wall_millis, 0, 0),
+        BudgetAmounts::from_units(0, 0, selected_time, 0, 0),
     );
     let transition = ledger
         .transition(BudgetCommand::Begin(request))

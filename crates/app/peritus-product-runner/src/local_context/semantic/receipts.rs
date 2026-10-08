@@ -11,6 +11,7 @@ use std::{
 
 const TRANSFER_BYTES: usize = 64 * 1024;
 const DIAGNOSTIC_TAIL_BYTES: usize = 16 * 1024;
+const RECEIPT_SCHEMA_VERSION: u16 = 3;
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -169,12 +170,12 @@ impl Receipts {
         let head = match read_json::<Head>(&directory.join("head.json")) {
             Ok(head) => head,
             Err(ReadError::Missing) => Head {
-                schema_version: 2, scope, ordinal: 0, failures: 0,
+                schema_version: RECEIPT_SCHEMA_VERSION, scope, ordinal: 0, failures: 0,
                 completed: None, pending: None, cursor: Cursor::default(),
             },
             Err(ReadError::Invalid(reason)) => return Err(reason),
         };
-        if !matches!(head.schema_version, 1 | 2) || head.scope != scope
+        if !matches!(head.schema_version, 1..=RECEIPT_SCHEMA_VERSION) || head.scope != scope
             || head.pending.as_ref().is_some_and(|intent| intent.ordinal != head.ordinal)
         {
             return Err("optional inference receipt identity mismatch".to_owned());
@@ -186,7 +187,8 @@ impl Receipts {
                 return Err("optional inference completion digest mismatch".to_owned());
             }
             let receipt: Receipt = canonical(&bytes)?;
-            if !matches!(receipt.schema_version, 1 | 2) || receipt.scope != scope
+            if !matches!(receipt.schema_version, 1..=RECEIPT_SCHEMA_VERSION)
+                || receipt.scope != scope
                 || receipt.intent.ordinal > head.ordinal
             {
                 return Err("optional inference completion lineage mismatch".to_owned());
@@ -225,7 +227,7 @@ impl Receipts {
         };
         atomic_write(&self.directory, &format!("{ordinal}.input"), input)?;
         let mut next = self.head.clone();
-        next.schema_version = 2;
+        next.schema_version = RECEIPT_SCHEMA_VERSION;
         next.ordinal = ordinal;
         next.pending = Some(intent);
         self.publish(next)
@@ -292,7 +294,7 @@ impl Receipts {
         let intent = self.head.pending.clone()
             .ok_or_else(|| "optional inference completion has no owned intent".to_owned())?;
         let receipt = Receipt {
-            schema_version: 2, scope: self.head.scope, intent, outcome,
+            schema_version: RECEIPT_SCHEMA_VERSION, scope: self.head.scope, intent, outcome,
             output_digest: output.map(|captured| captured.digest),
             output_bytes: output.map(|captured| captured.bytes),
             diagnostic_digest: diagnostic.map(|captured| captured.digest),
@@ -303,7 +305,7 @@ impl Receipts {
         let digest = sha256(&bytes).into_bytes();
         atomic_write(&self.directory, &format!("{}.json", hex(&digest)), &bytes)?;
         let mut next = self.head.clone();
-        next.schema_version = 2;
+        next.schema_version = RECEIPT_SCHEMA_VERSION;
         next.completed = Some(digest);
         next.pending = None;
         next.cursor = receipt.intent.next;

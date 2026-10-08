@@ -12,29 +12,76 @@ use peritus_policy::CapabilityUseTransition;
 
 use super::{authority::instant, identity::CommandIds, journal};
 
-pub(super) fn commit(
+const LEASE_ACQUIRE_TICK_MILLIS: u64 = 10;
+const LEASE_USE_TICK_MILLIS: u64 = 20;
+const AUTHORITY_ONLY_LEASE_DURATION_MILLIS: u64 =
+    LEASE_USE_TICK_MILLIS - LEASE_ACQUIRE_TICK_MILLIS + 1;
+
+pub(super) fn commit_with_wall_policy(
     store: &mut SqliteJournal,
     store_label: &str,
     ids: &CommandIds,
     capability: CapabilityUseTransition,
-    wall_millis: u64,
+    wall_millis: Option<u64>,
+) -> Result<(CommittedCapabilityUse, CommittedLeaseTransition), String> {
+    commit_with_profile(
+        store,
+        store_label,
+        ids,
+        capability,
+        LeaseProfile::Command { wall_millis },
+    )
+}
+
+/// Commits a lease used only by the immediate pre-effect authority transaction.
+///
+/// The claim is acquired at logical tick 10, used at tick 20, and expires at the exclusive tick
+/// 21 boundary. C1 consumes the resulting durable receipt; this lease does not bound later target
+/// work or recovery.
+pub(super) fn commit_authority_only(
+    store: &mut SqliteJournal,
+    store_label: &str,
+    ids: &CommandIds,
+    capability: CapabilityUseTransition,
+) -> Result<(CommittedCapabilityUse, CommittedLeaseTransition), String> {
+    commit_with_profile(store, store_label, ids, capability, LeaseProfile::AuthorityOnly)
+}
+
+enum LeaseProfile {
+    Command { wall_millis: Option<u64> },
+    AuthorityOnly,
+}
+
+fn commit_with_profile(
+    store: &mut SqliteJournal,
+    store_label: &str,
+    ids: &CommandIds,
+    capability: CapabilityUseTransition,
+    profile: LeaseProfile,
 ) -> Result<(CommittedCapabilityUse, CommittedLeaseTransition), String> {
     let scope = LeaseScope::new(ids.workspace, ids.resource, ids.environment);
     let key = AggregateKey::new(AggregateKind::Lease, ids.aggregate("lease")?);
     let mint = LeaseAggregate::mint(MintLease::new(
         ids.command("lease-mint-command")?,
         scope,
-        instant(10),
+        instant(LEASE_ACQUIRE_TICK_MILLIS),
     ))
     .map_err(|error| format!("mint command workspace lease: {error:?}"))?;
     let minted = commit_lease(store, store_label, ids, key, mint, 1, "lease-mint", None)?;
+    let duration_millis = match profile {
+        LeaseProfile::Command { wall_millis: Some(wall_millis) } => {
+            wall_millis.saturating_add(10_000)
+        }
+        LeaseProfile::Command { wall_millis: None } => AUTHORITY_ONLY_LEASE_DURATION_MILLIS,
+        LeaseProfile::AuthorityOnly => AUTHORITY_ONLY_LEASE_DURATION_MILLIS,
+    };
     let active = accepted(
         minted.into_parts().1.acquire(AcquireLease::new(
             ids.command("lease-acquire-command")?,
             LeaseHolder::new(ids.actor, ids.session),
-            LeaseDuration::new(wall_millis.saturating_add(10_000))
+            LeaseDuration::new(duration_millis)
                 .map_err(|error| format!("construct command lease duration: {error:?}"))?,
-            instant(10),
+            instant(LEASE_ACQUIRE_TICK_MILLIS),
         )),
     )?;
     let acquired = commit_lease(
@@ -55,7 +102,7 @@ pub(super) fn commit(
     let logical = match active.authorize_use(UseLease::new(
         ids.command("lease-use-command")?,
         claim,
-        instant(20),
+        instant(LEASE_USE_TICK_MILLIS),
         capability,
     )) {
         LeaseUseOutcome::Accepted(value) => value,
