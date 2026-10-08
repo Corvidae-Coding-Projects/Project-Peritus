@@ -80,7 +80,37 @@ pub struct RetryInput {
     pub max_elapsed_millis: Option<u64>,
     /// Initial backoff delay.
     pub base_delay_millis: u64,
-    /// Maximum single delay.
+    /// Maximum allowed delay for this finite retry budget.
+    pub max_delay_millis: u64,
+    /// Deterministic additive jitter in millionths, at most one million.
+    pub jitter_millionths: u32,
+    /// Provider retry-after observation.
+    pub retry_after_millis: Option<u64>,
+    /// Failure/phase cause.
+    pub cause: RetryCause,
+    /// Documented idempotency/resume guarantee.
+    pub guarantee: IdempotencyGuarantee,
+    /// Whether caller cancellation is active.
+    pub cancelled: bool,
+}
+
+/// Retry input with no synthetic attempt-count horizon.
+///
+/// This form is for work that is known not to have been accepted. It retains the same checked
+/// backoff, retry-after, elapsed-time, cancellation, and retry-safety policy as [`RetryInput`],
+/// while allowing the owning logical task to remain recoverable for the duration selected by its
+/// caller.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UnboundedRetryInput {
+    /// Zero-based completed attempt index, used only to select bounded backoff.
+    pub attempt: u64,
+    /// Elapsed time so far.
+    pub elapsed_millis: u64,
+    /// Maximum elapsed retry horizon.
+    pub max_elapsed_millis: Option<u64>,
+    /// Initial backoff delay.
+    pub base_delay_millis: u64,
+    /// Maximum host-selected backoff. A provider-required retry-after may exceed this value.
     pub max_delay_millis: u64,
     /// Deterministic additive jitter in millionths, at most one million.
     pub jitter_millionths: u32,
@@ -117,15 +147,49 @@ pub enum RetryDecision {
 ///
 /// Rejects malformed bounds rather than silently repairing them.
 pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
-    validate(input)?;
+    validate_finite(input)?;
+    Ok(plan(
+        RetryFacts::from(input),
+        AttemptPolicy::Finite { max_attempts: u64::from(input.max_attempts) },
+        RequiredDelayPolicy::RejectAboveLocalMaximum,
+    ))
+}
+
+/// Plans a legal retry without treating completed attempts as a work budget.
+///
+/// Cancellation, a configured elapsed horizon, retry-after bounds, and acceptance safety remain
+/// authoritative. The attempt number affects exponential backoff only; delay calculation
+/// saturates at the configured per-wait maximum.
+///
+/// # Errors
+///
+/// Rejects malformed bounds rather than silently repairing them.
+pub fn plan_unbounded_retry(
+    input: UnboundedRetryInput,
+) -> Result<RetryDecision, ProtocolError> {
+    validate_unbounded(input)?;
+    Ok(plan(
+        RetryFacts::from(input),
+        AttemptPolicy::Unbounded,
+        RequiredDelayPolicy::HonorProviderMinimum,
+    ))
+}
+
+fn plan(
+    input: RetryFacts,
+    attempt_policy: AttemptPolicy,
+    required_delay_policy: RequiredDelayPolicy,
+) -> RetryDecision {
     if input.cancelled {
-        return Ok(RetryDecision::Stop(NoRetryReason::Cancelled));
+        return RetryDecision::Stop(NoRetryReason::Cancelled);
     }
-    if input.attempt.saturating_add(1) >= input.max_attempts {
-        return Ok(RetryDecision::Stop(NoRetryReason::AttemptsExhausted));
+    if let AttemptPolicy::Finite { max_attempts } = attempt_policy {
+        if input.attempt.saturating_add(1) >= max_attempts {
+            return RetryDecision::Stop(NoRetryReason::AttemptsExhausted);
+        }
     }
     if input.max_elapsed_millis.is_some_and(|maximum| input.elapsed_millis >= maximum) {
-        return Ok(RetryDecision::Stop(NoRetryReason::ElapsedExhausted));
+        return RetryDecision::Stop(NoRetryReason::ElapsedExhausted);
     }
     let action = match input.cause {
         RetryCause::BeforeSend
@@ -145,7 +209,7 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
             ) {
                 Action::Resume
             } else {
-                return Ok(RetryDecision::Stop(NoRetryReason::Ambiguous));
+                return RetryDecision::Stop(NoRetryReason::Ambiguous);
             }
         }
         RetryCause::PartialStream => {
@@ -155,7 +219,7 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
             ) {
                 Action::Resume
             } else {
-                return Ok(RetryDecision::Stop(NoRetryReason::PartialWithoutResume));
+                return RetryDecision::Stop(NoRetryReason::PartialWithoutResume);
             }
         }
         RetryCause::InvalidRequest
@@ -164,23 +228,25 @@ pub fn plan_retry(input: RetryInput) -> Result<RetryDecision, ProtocolError> {
         | RetryCause::Malformed
         | RetryCause::Cancelled
         | RetryCause::Completed => {
-            return Ok(RetryDecision::Stop(NoRetryReason::NonRetryable));
+            return RetryDecision::Stop(NoRetryReason::NonRetryable);
         }
     };
-    if input.retry_after_millis.is_some_and(|value| value > input.max_delay_millis) {
-        return Ok(RetryDecision::Stop(NoRetryReason::RetryAfterOutOfBounds));
+    if required_delay_policy == RequiredDelayPolicy::RejectAboveLocalMaximum
+        && input.retry_after_millis.is_some_and(|value| value > input.max_delay_millis)
+    {
+        return RetryDecision::Stop(NoRetryReason::RetryAfterOutOfBounds);
     }
     let delay = delay(input);
     if input
         .max_elapsed_millis
         .is_some_and(|maximum| input.elapsed_millis.saturating_add(delay) > maximum)
     {
-        return Ok(RetryDecision::Stop(NoRetryReason::ElapsedExhausted));
+        return RetryDecision::Stop(NoRetryReason::ElapsedExhausted);
     }
-    Ok(match action {
+    match action {
         Action::New => RetryDecision::RetryNew { delay_millis: delay },
         Action::Resume => RetryDecision::Resume { delay_millis: delay },
-    })
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -189,23 +255,97 @@ enum Action {
     Resume,
 }
 
-fn validate(input: RetryInput) -> Result<(), ProtocolError> {
-    if input.max_attempts == 0
-        || input.max_elapsed_millis == Some(0)
+#[derive(Clone, Copy)]
+enum AttemptPolicy {
+    Finite { max_attempts: u64 },
+    Unbounded,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum RequiredDelayPolicy {
+    RejectAboveLocalMaximum,
+    HonorProviderMinimum,
+}
+
+#[derive(Clone, Copy)]
+struct RetryFacts {
+    attempt: u64,
+    elapsed_millis: u64,
+    max_elapsed_millis: Option<u64>,
+    base_delay_millis: u64,
+    max_delay_millis: u64,
+    jitter_millionths: u32,
+    retry_after_millis: Option<u64>,
+    cause: RetryCause,
+    guarantee: IdempotencyGuarantee,
+    cancelled: bool,
+}
+
+impl From<RetryInput> for RetryFacts {
+    fn from(input: RetryInput) -> Self {
+        Self {
+            attempt: u64::from(input.attempt),
+            elapsed_millis: input.elapsed_millis,
+            max_elapsed_millis: input.max_elapsed_millis,
+            base_delay_millis: input.base_delay_millis,
+            max_delay_millis: input.max_delay_millis,
+            jitter_millionths: input.jitter_millionths,
+            retry_after_millis: input.retry_after_millis,
+            cause: input.cause,
+            guarantee: input.guarantee,
+            cancelled: input.cancelled,
+        }
+    }
+}
+
+impl From<UnboundedRetryInput> for RetryFacts {
+    fn from(input: UnboundedRetryInput) -> Self {
+        Self {
+            attempt: input.attempt,
+            elapsed_millis: input.elapsed_millis,
+            max_elapsed_millis: input.max_elapsed_millis,
+            base_delay_millis: input.base_delay_millis,
+            max_delay_millis: input.max_delay_millis,
+            jitter_millionths: input.jitter_millionths,
+            retry_after_millis: input.retry_after_millis,
+            cause: input.cause,
+            guarantee: input.guarantee,
+            cancelled: input.cancelled,
+        }
+    }
+}
+
+fn validate_finite(input: RetryInput) -> Result<(), ProtocolError> {
+    if input.max_attempts == 0 {
+        return Err(invalid_retry_bounds());
+    }
+    validate_facts(RetryFacts::from(input))
+}
+
+fn validate_unbounded(input: UnboundedRetryInput) -> Result<(), ProtocolError> {
+    validate_facts(RetryFacts::from(input))
+}
+
+fn validate_facts(input: RetryFacts) -> Result<(), ProtocolError> {
+    if input.max_elapsed_millis == Some(0)
         || input.base_delay_millis == 0
         || input.max_delay_millis < input.base_delay_millis
         || input.jitter_millionths > 1_000_000
     {
-        return Err(ProtocolError::at(
-            ProtocolErrorKind::InvalidRetry,
-            "retry",
-            "retry bounds are zero, inverted, or outside the jitter range",
-        ));
+        return Err(invalid_retry_bounds());
     }
     Ok(())
 }
 
-fn delay(input: RetryInput) -> u64 {
+fn invalid_retry_bounds() -> ProtocolError {
+    ProtocolError::at(
+        ProtocolErrorKind::InvalidRetry,
+        "retry",
+        "retry bounds are zero, inverted, or outside the jitter range",
+    )
+}
+
+fn delay(input: RetryFacts) -> u64 {
     let shift = input.attempt.min(63);
     let exponential =
         input.base_delay_millis.checked_shl(shift).unwrap_or(u64::MAX).min(input.max_delay_millis);

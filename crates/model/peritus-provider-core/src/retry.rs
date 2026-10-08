@@ -141,8 +141,8 @@ impl RetryPolicy {
     ///
     /// # Errors
     ///
-    /// Rejects an invalid attempt, jitter, retry-after value, elapsed time, or cumulative byte
-    /// count rather than silently clamping untrusted observations.
+    /// Rejects an invalid attempt, jitter, elapsed time, or cumulative byte count rather than
+    /// silently clamping untrusted observations.
     pub fn plan(&self, observation: RetryObservation) -> Result<RetryPlan, ProviderCoreError> {
         observation.validate(*self)?;
         let action =
@@ -154,6 +154,9 @@ impl RetryPolicy {
             || self.max_elapsed.is_some_and(|maximum| observation.elapsed >= maximum)
             || observation.cumulative_bytes >= self.max_cumulative_bytes
         {
+            return Ok(RetryPlan { action: RetryAction::Stop, delay: Duration::ZERO });
+        }
+        if observation.retry_after.is_some_and(|delay| delay > self.max_retry_after) {
             return Ok(RetryPlan { action: RetryAction::Stop, delay: Duration::ZERO });
         }
         let delay = self.delay(observation.attempt, observation.jitter_unit)?;
@@ -284,7 +287,6 @@ impl RetryObservation {
             || policy.max_elapsed.is_some_and(|maximum| self.elapsed > maximum)
             || self.cumulative_bytes > policy.max_cumulative_bytes
             || self.jitter_unit > 10_000
-            || self.retry_after.is_some_and(|delay| delay > policy.max_retry_after)
         {
             return Err(retry_error("retry observation is outside policy bounds"));
         }
