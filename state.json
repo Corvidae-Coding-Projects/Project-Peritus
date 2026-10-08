@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4122,
-        "tip_oid": "2d367dd385c1654db71e6f8b2141edd1a4859f9b",
-        "prefix_sha256": "46871c74342662332b17d5260c1d3f6cc8aa1968d8ea5633b41eebc40ef79174"
+        "sequence": 4123,
+        "tip_oid": "49a887c3cd3c5a10a1d2bc68e25ac3bd7e0d5cdb",
+        "prefix_sha256": "314e8c974247ebfc33e3fb852e26d7204dcd009193c89c94f83c0cf3a971b91c"
       },
       "NWAR": {
         "sequence": 39,
@@ -32249,12 +32249,13 @@
       "display_id": 552,
       "title": "[L474] Compatible catalog discovery rejects safe configured queries and custom operation paths",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L474.\n\n- Evidence: `crates/model/peritus-provider-compatible/src/config.rs:175-189,279-283`, `src/client/catalog.rs:14-18`, `crates/model/peritus-provider-core/src/hosted.rs:73-84`.\n- Behavior: inference configuration explicitly permits fixed safe endpoint queries and an exact custom operation path. ModelProvider discovery derives the catalog by testing the full serialized URL for a raw /responses or /chat/completions suffix. A query prevents either suffix match. The routine does not dispatch to the separately reviewed hosted-service catalog endpoints; some hosted services use a different metadata origin/path.\n- Consequence: valid configured inference routes may be undiscoverable through this adapter API, requiring an explicit model ID. The method reports a capability limitation rather than inventing a replacement model. Its effect on current settings depends on the caller path, which remains separately tracked.\n- Repair direction: bind an explicit reviewed catalog endpoint to configuration, use parsed URL components for safe derivation when supported, and let exact-ID selection proceed when discovery is unavailable. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.713156365Z",
-      "updated_at": "2026-10-08T09:44:10.247390252Z",
+      "updated_at": "2026-10-08T09:45:31.156656191Z",
+      "closed_at": "2026-10-08T09:45:31.153832983Z",
       "labels": [
         "daily-driving-limiter"
       ],
