@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L514] Telemetry queues impose finite item counts and bounded shutdown flushing (#587)
 - [L103] Tool JSON envelopes have production ceilings that callers cannot widen (#202)
 - [L644] Git mutation can succeed before its terminal envelope is rejected (#690)
 - [L062] Generic artifact quota admission and storage-location fences (#161)
