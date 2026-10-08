@@ -3,9 +3,8 @@
 use peritus_types::{RunId, WorkspaceId};
 
 use super::{
-    MAX_PRODUCT_DETAIL_BYTES, MAX_PRODUCT_TASK_BYTES, ProductDeliverable, ProductProviderSelection,
-    ProductRunMessageError, ProductRunOperation, ProductRunPhase, bounded_text,
-    optional_bounded_text,
+    ProductArtifactReference, ProductDeliverable, ProductProviderSelection,
+    ProductRunMessageError, ProductRunOperation, ProductRunPhase,
 };
 
 /// Complete bounded observation of one product run.
@@ -47,10 +46,15 @@ impl ProductRunSnapshot {
         summary: String,
         operation: ProductRunOperation,
     ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&task, MAX_PRODUCT_TASK_BYTES)?;
-        bounded_text(&status, MAX_PRODUCT_DETAIL_BYTES)?;
+        if task.trim().is_empty() || status.trim().is_empty() {
+            return Err(ProductRunMessageError::Empty);
+        }
+        ProductArtifactReference::measure(&task)?;
+        ProductArtifactReference::measure(&status)?;
         for value in [&diff, &gates, &review, &summary] {
-            optional_bounded_text(value, MAX_PRODUCT_DETAIL_BYTES)?;
+            if !value.is_empty() {
+                ProductArtifactReference::measure(value)?;
+            }
         }
         Ok(Self {
             run_id,

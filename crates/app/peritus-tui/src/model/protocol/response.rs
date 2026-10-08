@@ -54,6 +54,16 @@ impl AppModel {
             self.activity_histories.remove(&query.run_id());
             return Vec::new();
         }
+        if matches!(
+            pending,
+            Some(
+                PendingRequest::ProductArtifactHydration(_)
+                    | PendingRequest::ProductIndexHydration(_)
+                    | PendingRequest::ProductReferenceContinuation(_)
+            )
+        ) {
+            self.product_hydration = None;
+        }
         let absent_goal = matches!(pending, Some(PendingRequest::WorkbenchGoal(_)))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier;
         if let Some(effects) = self.resolve_rejected_control(pending, error.code()) {
@@ -231,6 +241,43 @@ impl AppModel {
             }
             AppResponsePayload::InteractionPage(page) => {
                 return self.accept_activity_page(page, pending);
+            }
+            AppResponsePayload::ProductRunReferencePage(page) => {
+                if let Some(PendingRequest::ProductReferenceContinuation(query)) = pending {
+                    return self.accept_product_reference_page(*query, page);
+                }
+                let target = if matches!(pending, Some(PendingRequest::ProductControl)) {
+                    crate::model::product::ProductHydrationTarget::Control
+                } else if matches!(pending, Some(PendingRequest::ProductQuery)) {
+                    crate::model::product::ProductHydrationTarget::List
+                } else {
+                    self.notice(
+                        NoticeLevel::Error,
+                        "received product references without a matching request",
+                    );
+                    return Vec::new();
+                };
+                return self.begin_product_hydration(page, target);
+            }
+            AppResponsePayload::ProductArtifactPage(page) => {
+                let Some(PendingRequest::ProductArtifactHydration(query)) = pending else {
+                    self.notice(
+                        NoticeLevel::Error,
+                        "received a product artifact without a matching request",
+                    );
+                    return Vec::new();
+                };
+                return self.accept_product_artifact_page(*query, page);
+            }
+            AppResponsePayload::ProductDeliverableIndexPage(page) => {
+                let Some(PendingRequest::ProductIndexHydration(query)) = pending else {
+                    self.notice(
+                        NoticeLevel::Error,
+                        "received a product deliverable index without a matching request",
+                    );
+                    return Vec::new();
+                };
+                return self.accept_product_index_page(*query, page);
             }
             AppResponsePayload::Models(catalog) => self.accept_model_response(catalog, pending),
             AppResponsePayload::SubscriptionStarted(started) => {

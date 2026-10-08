@@ -4,8 +4,10 @@ use super::super::{
     AppTypeDescriptor, CanonicalWireType as W, FieldBound as B, JsonShape as J, field,
 };
 
+mod artifact;
 mod settlement;
 
+pub(super) use artifact::ARTIFACT_TYPES;
 pub(super) use settlement::SETTLEMENT_TYPES;
 
 pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
@@ -49,7 +51,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "workspacePath",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
@@ -58,7 +60,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "changedPaths",
                 W::Sequence,
-                &[B::ProductDeliverablePaths, B::ProductDetailBytes],
+                &[B::CodecCollectionItems, B::CodecStringBytes],
                 "Vec<String>",
                 "readonly string[]",
                 J::StringArray,
@@ -67,7 +69,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "successfulCommands",
                 W::Sequence,
-                &[B::ProductDeliverableCommands, B::ProductDetailBytes],
+                &[B::CodecCollectionItems, B::CodecStringBytes],
                 "Vec<String>",
                 "readonly string[]",
                 J::StringArray,
@@ -76,7 +78,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "runInstructions",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
@@ -86,7 +88,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "commitRevision",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
@@ -95,7 +97,7 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "exportPath",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
@@ -150,17 +152,17 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "identity",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
                 true,
             ),
-            field("known", W::Utf8, &[B::ProductDetailBytes], "String", "string", J::String, true),
+            field("known", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
             field(
                 "uncertainty",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,
@@ -223,15 +225,15 @@ pub(super) const PRODUCT_TYPES: &[AppTypeDescriptor] = &[
                 true,
             ),
             field("cycle", W::U32, &[], "u32", "number", J::U32, true),
-            field("task", W::Utf8, &[B::ProductTaskBytes], "String", "string", J::String, true),
-            field("status", W::Utf8, &[B::ProductDetailBytes], "String", "string", J::String, true),
-            field("diff", W::Utf8, &[B::ProductDetailBytes], "String", "string", J::String, true),
-            field("gates", W::Utf8, &[B::ProductDetailBytes], "String", "string", J::String, true),
-            field("review", W::Utf8, &[B::ProductDetailBytes], "String", "string", J::String, true),
+            field("task", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
+            field("status", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
+            field("diff", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
+            field("gates", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
+            field("review", W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true),
             field(
                 "summary",
                 W::Utf8,
-                &[B::ProductDetailBytes],
+                &[B::CodecStringBytes],
                 "String",
                 "string",
                 J::String,

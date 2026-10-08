@@ -12,6 +12,7 @@ mod files;
 mod goal;
 mod image_page;
 mod images;
+mod improvements;
 mod init;
 mod inputs;
 mod interaction;
@@ -47,6 +48,8 @@ pub const APP_FLOW_TYPES: &[&[AppTypeDescriptor]] = &[
     goal::GOAL_TYPES,
     library::LIBRARY_TYPES,
     product::PRODUCT_TYPES,
+    product::ARTIFACT_TYPES,
     product::SETTLEMENT_TYPES,
+    improvements::IMPROVEMENT_TYPES,
     interaction::INTERACTION_TYPES,
 ];

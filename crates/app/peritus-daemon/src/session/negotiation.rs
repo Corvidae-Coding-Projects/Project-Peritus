@@ -86,7 +86,7 @@ pub async fn establish(
         None => None,
     };
     let candidate = requested.unwrap_or_else(|| new_session_id(peer, client));
-    let capabilities = server_capabilities()?;
+    let capabilities = server_capabilities(client.receive_limits())?;
     let hello = negotiate(client, &capabilities, candidate).map_err(protocol_error)?;
     let negotiated = match hello.outcome() {
         NegotiationOutcome::Compatible(value) | NegotiationOutcome::Downgraded(value) => {
@@ -149,8 +149,19 @@ pub async fn establish(
     })
 }
 
-fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
-    let features = [
+fn server_capabilities(client_limits: AppProtocolLimits) -> Result<ServerCapabilities, DaemonError> {
+    let negotiated_limits = AppProtocolLimits::PRODUCTION.negotiated(client_limits).map_err(
+        |error| {
+            DaemonError::with_source(
+                DaemonErrorCode::InvalidInput,
+                DaemonRecovery::CorrectRequest,
+                "negotiate application protocol limits",
+                error.to_string(),
+                error,
+            )
+        },
+    )?;
+    let mut features = [
         WellKnownProtocolFeature::EventSubscriptions,
         WellKnownProtocolFeature::ArtifactTransfer,
         WellKnownProtocolFeature::ApprovalPrompts,
@@ -164,6 +175,7 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::HarnessImprovements,
         WellKnownProtocolFeature::HarnessImprovementPages,
         WellKnownProtocolFeature::ProductRunPages,
+        WellKnownProtocolFeature::ProductRunArtifacts,
         WellKnownProtocolFeature::ProductActivityPages,
         WellKnownProtocolFeature::WorkbenchControl,
         WellKnownProtocolFeature::WorkbenchInputs,
@@ -191,12 +203,17 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::WorkbenchPermissions,
         WellKnownProtocolFeature::WorkbenchInit,
         WellKnownProtocolFeature::WorkbenchMemory,
-        WellKnownProtocolFeature::GracefulShutdown,
     ]
     .into_iter()
     .map(ProtocolFeatureName::well_known)
     .collect::<Result<Vec<_>, _>>()
     .map_err(protocol_error)?;
+    if crate::shutdown::ShutdownBounds::from_protocol(negotiated_limits).is_ok() {
+        features.push(
+            ProtocolFeatureName::well_known(WellKnownProtocolFeature::GracefulShutdown)
+                .map_err(protocol_error)?,
+        );
+    }
     ServerCapabilities::new(
         vec![peritus_app_protocol::CURRENT_PROTOCOL_RANGE],
         features,

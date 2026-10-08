@@ -1,8 +1,6 @@
 //! Daemon-owned execution request, separate from the public application protocol.
 
-use peritus_app_protocol::{
-    MAX_PRODUCT_TASK_BYTES, ProductProviderSelection, ProductRunMessageError,
-};
+use peritus_app_protocol::{ProductArtifactReference, ProductProviderSelection, ProductRunMessageError};
 use peritus_types::{RunId, WorkspaceId};
 
 /// One admitted execution with distinct model input and user-facing identity.
@@ -64,10 +62,7 @@ impl ProductRunRequest {
 
 fn validate(value: &str) -> Result<(), ProductRunMessageError> {
     if value.trim().is_empty() {
-        Err(ProductRunMessageError::Empty)
-    } else if value.len() > MAX_PRODUCT_TASK_BYTES {
-        Err(ProductRunMessageError::TooLong)
-    } else {
-        Ok(())
+        return Err(ProductRunMessageError::Empty);
     }
+    ProductArtifactReference::measure(value).map(|_| ())
 }

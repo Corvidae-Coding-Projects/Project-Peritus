@@ -1,8 +1,15 @@
 //! Canonical product-run request and observation encoding.
 
 pub(super) mod observations;
+mod artifact;
 mod settlement;
 
+pub(super) use artifact::{
+    read_artifact_page, read_artifact_query, read_deliverable_index_page,
+    read_deliverable_index_query, read_reference_page, read_reference_query,
+    write_artifact_page, write_artifact_query, write_deliverable_index_page,
+    write_deliverable_index_query, write_reference_page, write_reference_query,
+};
 pub(super) use settlement::{read_settlement_snapshot, write_settlement_snapshot};
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
@@ -12,7 +19,8 @@ use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use crate::{
     ProductDeliverable, ProductInteractionQuery, ProductProviderSelection, ProductRunControl,
     ProductRunControlAction, ProductRunLegalControls, ProductRunOperation, ProductRunOperationKind,
-    ProductRunOperationState, ProductRunPhase, ProductRunQuery, ProductRunSnapshot,
+    ProductRunOperationState, ProductRunPage, ProductRunPageCursor, ProductRunPageEntry,
+    ProductRunPageQuery, ProductRunPhase, ProductRunQuery, ProductRunSnapshot, ProductRunStoreId,
 };
 
 use super::primitive::{invalid, read_id, write_id};
@@ -56,6 +64,103 @@ pub(super) fn read_run_query(
     } else {
         Ok(ProductRunQuery::page(reader.read_u64()?))
     }
+}
+
+pub(super) fn write_run_page_query(
+    writer: &mut CanonicalWriter,
+    value: ProductRunPageQuery,
+) -> Result<(), CodecError> {
+    writer.write_option_tag(value.cursor().is_some())?;
+    if let Some(cursor) = value.cursor() {
+        write_run_page_cursor(writer, cursor)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_run_page_query(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunPageQuery, CodecError> {
+    if reader.read_option_tag()? {
+        Ok(ProductRunPageQuery::after(read_run_page_cursor(reader)?))
+    } else {
+        Ok(ProductRunPageQuery::first())
+    }
+}
+
+pub(super) fn write_run_page(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunPage,
+) -> Result<(), CodecError> {
+    write_id(writer, value.store().as_bytes())?;
+    writer.write_collection_len(value.entries().len())?;
+    for entry in value.entries() {
+        writer.write_u64(entry.sequence())?;
+        observations::write_observation(writer, entry.observation())?;
+    }
+    writer.write_option_tag(value.next().is_some())?;
+    if let Some(cursor) = value.next() {
+        write_run_page_cursor(writer, cursor)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_run_page(reader: &mut CanonicalReader<'_>) -> Result<ProductRunPage, CodecError> {
+    let offset = reader.offset();
+    let store = read_id(reader, ProductRunStoreId::new)?;
+    let count = reader.read_collection_len(
+        8 + 1 + 2 * 16 + 3 * 16 + 2 + 4 + 6 * 4 + 2 * 2 + 3 * 4 + 7 + 1,
+    )?;
+    if count > crate::MAX_PRODUCT_RUN_PAGE {
+        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
+    }
+    let mut entries = reader.reserve_collection(count)?;
+    for _ in 0..count {
+        entries.push(invalid(
+            offset,
+            ProductRunPageEntry::new(
+                reader.read_u64()?,
+                observations::read_observation(reader, offset)?,
+            ),
+        )?);
+    }
+    let next = if reader.read_option_tag()? {
+        Some(read_run_page_cursor(reader)?)
+    } else {
+        None
+    };
+    invalid(offset, ProductRunPage::new(store, entries, next))
+}
+
+fn write_run_page_cursor(
+    writer: &mut CanonicalWriter,
+    value: ProductRunPageCursor,
+) -> Result<(), CodecError> {
+    write_id(writer, value.store().as_bytes())?;
+    writer.write_u64(value.highwater_sequence())?;
+    write_id(writer, value.highwater_run().as_bytes())?;
+    writer.write_u64(value.after_sequence())?;
+    write_id(writer, value.after_run().as_bytes())
+}
+
+fn read_run_page_cursor(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ProductRunPageCursor, CodecError> {
+    let offset = reader.offset();
+    let store = read_id(reader, ProductRunStoreId::new)?;
+    let highwater_sequence = reader.read_u64()?;
+    let highwater_run = read_id(reader, RunId::new)?;
+    let after_sequence = reader.read_u64()?;
+    let after_run = read_id(reader, RunId::new)?;
+    invalid(
+        offset,
+        ProductRunPageCursor::new(
+            store,
+            highwater_sequence,
+            highwater_run,
+            after_sequence,
+            after_run,
+        ),
+    )
 }
 
 pub(super) fn write_conversation_query(

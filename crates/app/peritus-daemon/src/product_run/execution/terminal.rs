@@ -738,6 +738,12 @@ impl ProductRunService {
         attempt: &Arc<AtomicBool>,
         result: &Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>,
     ) -> Result<Option<super::super::RunRecord>, ProductRunServiceError> {
+        let prepared_deliverable = result
+            .as_ref()
+            .ok()
+            .map(|outcome| self.prepare_deliverable(run_id, outcome))
+            .transpose()?
+            .flatten();
         let input = terminal_result_digest(result);
         let (retained, ticket) = self.mutate_run(
             run_id,
@@ -768,7 +774,11 @@ impl ProductRunService {
             Ok(outcome)
                 if outcome.settlement().disposition() == RunDisposition::Accepted =>
             {
-                self.retain_pending_accepted_projection(record, outcome)
+                self.retain_pending_accepted_projection(
+                    record,
+                    outcome,
+                    prepared_deliverable.clone(),
+                )
             }
             _ => true,
         };
@@ -786,6 +796,7 @@ impl ProductRunService {
         &self,
         record: &mut super::super::RunRecord,
         outcome: &ProductRunOutcome,
+        deliverable: Option<ProductDeliverable>,
     ) -> bool {
         let Some(output) = outcome.candidate() else {
             retain_pending_projection_failure(
@@ -794,7 +805,6 @@ impl ProductRunService {
             );
             return false;
         };
-        let deliverable = self.project_deliverable(record, outcome);
         if deliverable.is_none()
             && !self.inner.folders.contains_key(&record.request.workspace_id())
         {
@@ -841,10 +851,23 @@ impl ProductRunService {
                 return false;
             }
         };
-        record.snapshot = match deliverable {
+        let snapshot = match deliverable {
             Some(deliverable) => snapshot.with_deliverable(deliverable),
             None => snapshot,
         };
+        if self
+            .inner
+            .product_artifacts
+            .publish_snapshot(record.request.run_id(), &snapshot)
+            .is_err()
+        {
+            retain_pending_projection_failure(
+                record,
+                "completed candidate artifacts could not be prepared for exact retrieval",
+            );
+            return false;
+        }
+        record.snapshot = snapshot;
         true
     }
 
@@ -1023,7 +1046,7 @@ impl ProductRunService {
                     return Ok(TerminalProjection::Stop);
                 };
                 let completion_message = format!("Completed: {}", output.summary);
-                let deliverable = self.project_deliverable(&next, outcome);
+                let deliverable = next.snapshot.deliverable().cloned();
                 if deliverable.is_none()
                     && !self.inner.folders.contains_key(&next.request.workspace_id())
                 {
@@ -1053,10 +1076,12 @@ impl ProductRunService {
                     output.summary.clone(),
                     operation,
                 ) {
-                    next.snapshot = match deliverable {
+                    let snapshot = match deliverable {
                         Some(deliverable) => snapshot.with_deliverable(deliverable),
                         None => snapshot,
                     };
+                    self.inner.product_artifacts.publish_snapshot(run_id, &snapshot)?;
+                    next.snapshot = snapshot;
                 } else {
                     fail_handoff(&mut next);
                     *record = next;
@@ -1494,6 +1519,26 @@ impl ProductRunService {
             stage,
         )
         .ok()
+    }
+
+    fn prepare_deliverable(
+        &self,
+        run: RunId,
+        outcome: &ProductRunOutcome,
+    ) -> Result<Option<ProductDeliverable>, ProductRunServiceError> {
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&run)
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        let deliverable = self.project_deliverable(&record, outcome);
+        if let Some(deliverable) = &deliverable {
+            self.inner.product_artifacts.publish_deliverable(run, deliverable)?;
+        }
+        Ok(deliverable)
     }
 }
 

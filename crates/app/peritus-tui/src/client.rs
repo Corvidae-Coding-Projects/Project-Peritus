@@ -264,6 +264,7 @@ fn client_hello(
         WellKnownProtocolFeature::ReadOnlyDiagnostics,
         WellKnownProtocolFeature::ProductDiagnostics,
         WellKnownProtocolFeature::ProductActivityPages,
+        WellKnownProtocolFeature::ProductRunArtifacts,
         WellKnownProtocolFeature::WorkbenchControl,
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchInputMoves,

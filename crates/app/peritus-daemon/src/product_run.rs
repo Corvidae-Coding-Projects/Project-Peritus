@@ -98,6 +98,7 @@ struct Inner {
     host_permissions: permissions::HostPermissionCatalog,
     request_source_artifacts: peritus_artifact_store::StoreConfig,
     finding_bodies: persistence::FindingBodyStore,
+    product_artifacts: persistence::ProductArtifactStore,
     request_source_readers: std::sync::Mutex<RequestSourceReaders>,
     reply_artifacts: peritus_artifact_store::StoreConfig,
     reply_readers: std::sync::Mutex<RequestSourceReaders>,

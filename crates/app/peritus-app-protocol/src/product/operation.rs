@@ -1,9 +1,6 @@
 //! Authoritative operation knowledge and legal controls projected with every product run.
 
-use super::{
-    MAX_PRODUCT_DETAIL_BYTES, ProductRunControlAction, ProductRunMessageError, bounded_text,
-    optional_bounded_text,
-};
+use super::{ProductRunControlAction, ProductRunMessageError, bounded_text};
 
 /// Kind of operation whose outcome and recovery choices are currently authoritative for a run.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -211,12 +208,10 @@ impl ProductRunOperation {
         uncertainty: String,
         legal_controls: ProductRunLegalControls,
     ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&identity, MAX_PRODUCT_DETAIL_BYTES)?;
-        bounded_text(&known, MAX_PRODUCT_DETAIL_BYTES)?;
+        bounded_text(&identity, usize::MAX)?;
+        bounded_text(&known, usize::MAX)?;
         if state == ProductRunOperationState::OutcomeUnknown {
-            bounded_text(&uncertainty, MAX_PRODUCT_DETAIL_BYTES)?;
-        } else {
-            optional_bounded_text(&uncertainty, MAX_PRODUCT_DETAIL_BYTES)?;
+            bounded_text(&uncertainty, usize::MAX)?;
         }
         Ok(Self { kind, state, identity, known, uncertainty, legal_controls })
     }

@@ -79,6 +79,18 @@ impl ProductRunService {
                 error,
             )
         })?;
+        let product_artifacts = persistence::ProductArtifactStore::open(
+            &control_root.join("product-artifacts"),
+        )
+        .map_err(|error| {
+            DaemonError::with_source(
+                crate::DaemonErrorCode::RecoveryRequired,
+                crate::DaemonRecovery::Reconcile,
+                "open product artifact store",
+                "product task and deliverable artifacts must remain readable before run projections load",
+                error,
+            )
+        })?;
         let (control_generation, mut bootstrap_recovery) =
             crate::product_control::ControlGeneration::open_bootstrapping(
                 &control_root,
@@ -126,6 +138,14 @@ impl ProductRunService {
                 )
             })??;
         for (run, record) in loaded_records {
+            product_artifacts.publish_record(&record).map_err(|error| {
+                DaemonError::new(
+                    crate::DaemonErrorCode::RecoveryRequired,
+                    crate::DaemonRecovery::Reconcile,
+                    "recover product artifacts",
+                    error.describe(),
+                )
+            })?;
             records.insert(run, record);
         }
         let mut retained_reply_owners = std::collections::BTreeSet::new();
@@ -388,6 +408,7 @@ impl ProductRunService {
                 host_permissions: permissions::HostPermissionCatalog::new(components, workspaces),
                 request_source_artifacts,
                 finding_bodies,
+                product_artifacts,
                 request_source_readers: std::sync::Mutex::new(
                     super::RequestSourceReaders::default(),
                 ),

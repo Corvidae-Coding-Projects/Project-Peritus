@@ -3,6 +3,7 @@
 mod composer;
 mod interaction;
 mod observation;
+pub(super) use observation::{ProductHydration, ProductHydrationTarget};
 mod preview;
 mod resume;
 mod review;

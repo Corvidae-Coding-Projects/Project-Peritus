@@ -157,6 +157,12 @@ pub enum AppResponsePayload {
     ProductRunObservations(Vec<crate::ProductRunObservation>),
     /// Stable keyset page from one immutable durable run-catalog snapshot.
     ProductRunPage(crate::ProductRunPage),
+    /// Stable run-catalog metadata containing only exact artifact and index references.
+    ProductRunReferencePage(crate::ProductRunReferencePage),
+    /// One bounded UTF-8 slice of an exact run-owned artifact.
+    ProductArtifactPage(crate::ProductArtifactPage),
+    /// One bounded page from an exact deliverable evidence index.
+    ProductDeliverableIndexPage(crate::ProductDeliverableIndexPage),
     /// One exact product run paired with its verified terminal settlement.
     ProductRunSettled(ProductRunSettlementSnapshot),
 }

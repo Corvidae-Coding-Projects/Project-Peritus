@@ -294,13 +294,47 @@ where
                 }
             }
             AppRequestPayload::ControlProductRun(value) => {
-                product_runs.control_authenticated(actor_id, request.request_id(), *value).await
+                let response = product_runs
+                    .control_authenticated(actor_id, request.request_id(), *value)
+                    .await;
+                if context.supports(
+                    peritus_app_protocol::WellKnownProtocolFeature::ProductRunArtifacts,
+                ) && !matches!(response, AppResponsePayload::Error(_))
+                {
+                    match product_runs.query_run_references(
+                        peritus_app_protocol::ProductRunReferenceQuery::exact(value.run_id()),
+                    ) {
+                        Ok(page) => AppResponsePayload::ProductRunReferencePage(page),
+                        Err(error) => product_run_error(error),
+                    }
+                } else {
+                    response
+                }
             }
             AppRequestPayload::QueryProductRunObservations(value) => {
                 query::respond(product_runs, actor_id, query::Request::Observations(*value)).await
             }
             AppRequestPayload::QueryProductRunPage(value) => {
                 query::respond(product_runs, actor_id, query::Request::RunPage(*value)).await
+            }
+            AppRequestPayload::QueryProductRunReferences(value) => {
+                query::respond(product_runs, actor_id, query::Request::RunReferences(*value)).await
+            }
+            AppRequestPayload::QueryProductArtifact(value) => {
+                query::respond(
+                    product_runs,
+                    actor_id,
+                    query::Request::ProductArtifact(
+                        *value,
+                        limits
+                            .max_artifact_chunk_bytes()
+                            .min(limits.codec().max_opaque_bytes),
+                    ),
+                )
+                .await
+            }
+            AppRequestPayload::QueryProductDeliverableIndex(value) => {
+                query::respond(product_runs, actor_id, query::Request::DeliverableIndex(*value)).await
             }
             AppRequestPayload::AnswerPrompt(answer) => {
                 let prompt_id = answer.correlation().prompt_id();

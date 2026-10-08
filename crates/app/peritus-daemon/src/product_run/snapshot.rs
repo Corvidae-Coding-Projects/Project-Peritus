@@ -3,15 +3,116 @@
 use std::collections::BTreeMap;
 
 use peritus_app_protocol::{
-    AppResponsePayload, ProductRunObservation, ProductRunPage, ProductRunPageEntry,
-    ProductRunPageQuery, ProductRunPhase, ProductRunSettlementSnapshot, ProductRunSnapshot,
-    ProductRunStoreId,
+    AppResponsePayload, ProductArtifactPage, ProductArtifactQuery, ProductDeliverableIndexPage,
+    ProductDeliverableIndexQuery, ProductRunObservation, ProductRunPage, ProductRunPageEntry,
+    ProductRunPageQuery, ProductRunPhase, ProductRunReferencePage,
+    ProductRunReferencePageEntry, ProductRunReferenceQuery, ProductRunSettlementSnapshot,
+    ProductRunSnapshot, ProductRunStoreId,
 };
 use peritus_types::{RunId, WorkspaceId};
 
 use super::{ProductRunRequest, ProductRunServiceError, RunRecord};
 
 impl super::ProductRunService {
+    pub(crate) fn query_run_references(
+        &self,
+        query: ProductRunReferenceQuery,
+    ) -> Result<ProductRunReferencePage, ProductRunServiceError> {
+        let store = ProductRunStoreId::new(*self.inner.control_store.as_bytes())
+            .map_err(|_| ProductRunServiceError::InvalidState)?;
+        if let Some(run) = query.run_id() {
+            let record = self
+                .inner
+                .records
+                .read()
+                .map_err(|_| ProductRunServiceError::Unavailable)?
+                .get(&run)
+                .cloned()
+                .ok_or(ProductRunServiceError::NotFound)?;
+            let snapshot = live_snapshot(&self.inner.directory, &record)?;
+            let referenced = self.inner.product_artifacts.referenced_snapshot(
+                &snapshot,
+                delivery_settlement(&record),
+            )?;
+            let entry = ProductRunReferencePageEntry::new(
+                record.progress.catalog_sequence,
+                referenced,
+            )
+            .map_err(|_| ProductRunServiceError::InvalidState)?;
+            return ProductRunReferencePage::new(store, vec![entry], None)
+                .map_err(|_| ProductRunServiceError::InvalidState);
+        }
+        let catalog = self.inner.model_catalogs.runs()?;
+        let selection = catalog.select(
+            query.cursor().map_or_else(ProductRunPageQuery::first, ProductRunPageQuery::after),
+            store,
+        )?;
+        drop(catalog);
+        let records = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
+        let captured = selection
+            .keys
+            .into_iter()
+            .map(|key| {
+                records
+                    .get(&key.run())
+                    .cloned()
+                    .map(|record| (key, record))
+                    .ok_or(ProductRunServiceError::InvalidState)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        drop(records);
+        let entries = captured
+            .into_iter()
+            .map(|(key, record)| {
+                let snapshot = live_snapshot(&self.inner.directory, &record)?;
+                let referenced = self.inner.product_artifacts.referenced_snapshot(
+                    &snapshot,
+                    delivery_settlement(&record),
+                )?;
+                ProductRunReferencePageEntry::new(key.sequence(), referenced)
+                    .map_err(|_| ProductRunServiceError::InvalidState)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        ProductRunReferencePage::new(store, entries, selection.next)
+            .map_err(|_| ProductRunServiceError::InvalidState)
+    }
+
+    pub(crate) fn query_product_artifact(
+        &self,
+        query: ProductArtifactQuery,
+        maximum_chunk_bytes: usize,
+    ) -> Result<ProductArtifactPage, ProductRunServiceError> {
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&query.run_id())
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        self.inner.product_artifacts.publish_record(&record)?;
+        self.inner.product_artifacts.read(query, maximum_chunk_bytes)
+    }
+
+    pub(crate) fn query_deliverable_index(
+        &self,
+        query: ProductDeliverableIndexQuery,
+    ) -> Result<ProductDeliverableIndexPage, ProductRunServiceError> {
+        let record = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| ProductRunServiceError::Unavailable)?
+            .get(&query.run_id())
+            .cloned()
+            .ok_or(ProductRunServiceError::NotFound)?;
+        self.inner.product_artifacts.deliverable_index_page(&record, query)
+    }
+
     pub(crate) fn query_run_page(
         &self,
         query: ProductRunPageQuery,

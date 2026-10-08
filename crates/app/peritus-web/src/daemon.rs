@@ -7,10 +7,14 @@ use crate::{
 use peritus_app_client::Client;
 use peritus_app_protocol::{
     AppErrorCode, AppRequestPayload, AppResponsePayload, ConversationId,
+    ProductArtifactQuery, ProductArtifactReference, ProductDeliverable,
+    ProductDeliverableIndexKind, ProductDeliverableIndexQuery,
+    ProductDeliverableIndexReference,
     ProductInteractionMode, ProductInteractionQuery, ProductModelChoice, ProductModelEffort,
     ProductModelQuery, ProductProviderSelection, ProductRoleModels, ProductRunControl,
-    ProductRunControlAction, ProductRunPageCursor, ProductRunPageQuery, ProductRunSnapshot,
-    ProductRunStoreId, WorkbenchQuery,
+    ProductRunControlAction, ProductRunPageCursor, ProductRunReferenceQuery,
+    ProductRunOperation, ProductRunReferenceSnapshot, ProductRunSnapshot, ProductRunStoreId,
+    WorkbenchQuery, product_deliverable_index_reference,
 };
 use peritus_types::{ProviderProfileId, RunId, WorkspaceId};
 use serde::{Deserialize, Serialize};
@@ -181,6 +185,23 @@ pub fn response(value: AppResponsePayload) -> Result<Value> {
         _ => Err(problem("Unexpected conversation response from daemon")),
     }
 }
+
+pub(crate) async fn response_owned(
+    app: &App,
+    owner: &NativeOwner,
+    value: AppResponsePayload,
+) -> Result<Value> {
+    let AppResponsePayload::ProductRunReferencePage(page) = value else {
+        return response(value);
+    };
+    if page.entries().len() != 1 || page.next().is_some() {
+        return Err(problem(
+            "The daemon control response did not identify exactly one product run",
+        ));
+    }
+    let run = hydrate_run(app, owner.target(), page.entries()[0].snapshot()).await?;
+    Ok(json!({"run":snapshot(&run)}))
+}
 pub async fn conversation(app: &App, session: &str) -> Result<Value> {
     conversation::observe(app, session).await
 }
@@ -268,8 +289,7 @@ pub async fn control(app: &App, session: &str, action: &str, operation: &str) ->
         }
     };
     app.bind_session_owner(&session.id, owner.clone())?;
-    response(
-        receipts::recorded(
+    let payload = receipts::recorded(
             app,
             &owner,
             operation,
@@ -278,8 +298,8 @@ pub async fn control(app: &App, session: &str, action: &str, operation: &str) ->
                 action,
             )),
         )
-        .await?,
-    )
+        .await?;
+    response_owned(app, &owner, payload).await
 }
 pub async fn models(app: &App, profile: &str) -> Result<Value> {
     match request(
@@ -376,17 +396,17 @@ fn canonical_u64(value: &str) -> Result<u64> {
 pub async fn runs(app: &App, cursor: Option<&str>) -> Result<Value> {
     let target = current_target_async(app).await?;
     let query = match cursor {
-        Some(value) => ProductRunPageQuery::after(RetainedRunCursor::decode(value, &target)?),
-        None => ProductRunPageQuery::first(),
+        Some(value) => ProductRunReferenceQuery::after(RetainedRunCursor::decode(value, &target)?),
+        None => ProductRunReferenceQuery::first(),
     };
     let (payload, _) = raw_request_target(
         app,
         &target,
-        AppRequestPayload::QueryProductRunPage(query),
+        AppRequestPayload::QueryProductRunReferences(query),
     )
     .await?;
     let page = match payload {
-        AppResponsePayload::ProductRunPage(page) => page,
+        AppResponsePayload::ProductRunReferencePage(page) => page,
         AppResponsePayload::Error(error) => {
             return Err(problem(format!("Daemon rejected the request: {error}")));
         }
@@ -402,9 +422,193 @@ pub async fn runs(app: &App, cursor: Option<&str>) -> Result<Value> {
         .next()
         .map(|cursor| RetainedRunCursor::encode(target.clone(), cursor))
         .transpose()?;
+    let mut runs = Vec::with_capacity(page.entries().len());
+    for entry in page.entries() {
+        runs.push(snapshot(&hydrate_run(app, &target, entry.snapshot()).await?));
+    }
     Ok(json!({
-        "runs":page.entries().iter().map(|entry| snapshot(entry.observation().snapshot())).collect::<Vec<_>>(),
+        "runs":runs,
         "cursor":next,
         "store":store,
     }))
+}
+
+async fn hydrate_run(
+    app: &App,
+    target: &discovery::NativeTarget,
+    value: &ProductRunReferenceSnapshot,
+) -> Result<ProductRunSnapshot> {
+    let task = read_product_artifact(app, target, value.run_id(), value.task()).await?;
+    let status = read_product_artifact(app, target, value.run_id(), value.status()).await?;
+    let diff = read_optional_product_artifact(app, target, value.run_id(), value.diff()).await?;
+    let gates = read_optional_product_artifact(app, target, value.run_id(), value.gates()).await?;
+    let review = read_optional_product_artifact(app, target, value.run_id(), value.review()).await?;
+    let summary = read_optional_product_artifact(app, target, value.run_id(), value.summary()).await?;
+    let operation = value.operation();
+    let operation = ProductRunOperation::new(
+        operation.kind(),
+        operation.state(),
+        read_product_artifact(app, target, value.run_id(), operation.identity()).await?,
+        read_product_artifact(app, target, value.run_id(), operation.known()).await?,
+        read_optional_product_artifact(app, target, value.run_id(), operation.uncertainty()).await?,
+        operation.legal_controls(),
+    )
+    .map_err(problem)?;
+    let mut snapshot = ProductRunSnapshot::new(
+        value.run_id(),
+        value.workspace_id(),
+        value.providers(),
+        value.phase(),
+        value.cycle(),
+        task,
+        status,
+        diff,
+        gates,
+        review,
+        summary,
+        operation,
+    )
+    .map_err(problem)?;
+    if let Some(reference) = value.deliverable() {
+        let workspace =
+            read_product_artifact(app, target, value.run_id(), reference.workspace_path()).await?;
+        let changed_paths = read_product_index(
+            app,
+            target,
+            value.run_id(),
+            ProductDeliverableIndexKind::ChangedPaths,
+            reference.changed_paths(),
+        )
+        .await?;
+        let successful_commands = read_product_index(
+            app,
+            target,
+            value.run_id(),
+            ProductDeliverableIndexKind::SuccessfulCommands,
+            reference.successful_commands(),
+        )
+        .await?;
+        let instructions = read_product_artifact(
+            app,
+            target,
+            value.run_id(),
+            reference.run_instructions(),
+        )
+        .await?;
+        let mut deliverable = ProductDeliverable::candidate(
+            workspace,
+            changed_paths,
+            successful_commands,
+            instructions,
+            reference.qualification(),
+        )
+        .map_err(problem)?;
+        if reference.accepted() {
+            deliverable = deliverable.mark_accepted();
+        }
+        if let Some(commit) = reference.commit_revision() {
+            deliverable = deliverable
+                .mark_committed(
+                    read_product_artifact(app, target, value.run_id(), commit).await?,
+                )
+                .map_err(problem)?;
+        }
+        if let Some(export) = reference.export_path() {
+            deliverable = deliverable
+                .mark_exported(
+                    read_product_artifact(app, target, value.run_id(), export).await?,
+                )
+                .map_err(problem)?;
+        }
+        if reference.discarded() {
+            deliverable = deliverable.mark_discarded();
+        }
+        snapshot = snapshot.with_deliverable(deliverable);
+    }
+    Ok(snapshot)
+}
+
+async fn read_optional_product_artifact(
+    app: &App,
+    target: &discovery::NativeTarget,
+    run: RunId,
+    reference: Option<ProductArtifactReference>,
+) -> Result<String> {
+    match reference {
+        Some(reference) => read_product_artifact(app, target, run, reference).await,
+        None => Ok(String::new()),
+    }
+}
+
+async fn read_product_artifact(
+    app: &App,
+    target: &discovery::NativeTarget,
+    run: RunId,
+    reference: ProductArtifactReference,
+) -> Result<String> {
+    let mut bytes = Vec::new();
+    let mut offset = 0;
+    loop {
+        let query = ProductArtifactQuery::new(run, reference, offset).map_err(problem)?;
+        let (payload, _) = raw_request_target(
+            app,
+            target,
+            AppRequestPayload::QueryProductArtifact(query),
+        )
+        .await?;
+        let AppResponsePayload::ProductArtifactPage(page) = payload else {
+            return Err(problem("Unexpected product artifact response"));
+        };
+        if page.query() != query {
+            return Err(problem("The daemon changed the requested product artifact range"));
+        }
+        bytes.extend_from_slice(page.bytes());
+        let Some(next) = page.next() else { break };
+        offset = next;
+    }
+    if !reference.matches_bytes(&bytes) {
+        return Err(problem("The product artifact content changed during retrieval"));
+    }
+    String::from_utf8(bytes).map_err(|_| problem("The product artifact is not UTF-8"))
+}
+
+async fn read_product_index(
+    app: &App,
+    target: &discovery::NativeTarget,
+    run: RunId,
+    kind: ProductDeliverableIndexKind,
+    index: ProductDeliverableIndexReference,
+) -> Result<Vec<String>> {
+    let mut values = Vec::new();
+    let mut after = None;
+    loop {
+        let query = ProductDeliverableIndexQuery::new(run, kind, index, after).map_err(problem)?;
+        let (payload, _) = raw_request_target(
+            app,
+            target,
+            AppRequestPayload::QueryProductDeliverableIndex(query),
+        )
+        .await?;
+        let AppResponsePayload::ProductDeliverableIndexPage(page) = payload else {
+            return Err(problem("Unexpected product deliverable index response"));
+        };
+        if page.query() != query {
+            return Err(problem("The daemon changed the requested product deliverable index"));
+        }
+        for entry in page.entries() {
+            let ordinal = u64::try_from(values.len()).map_err(problem)?;
+            if entry.ordinal() != ordinal {
+                return Err(problem("The product deliverable index is not contiguous"));
+            }
+            values.push(read_product_artifact(app, target, run, entry.value()).await?);
+        }
+        let Some(next) = page.next() else { break };
+        after = Some(next);
+    }
+    if product_deliverable_index_reference(kind, &values).map_err(problem)? != index {
+        return Err(problem(
+            "The product deliverable index root or count changed during retrieval",
+        ));
+    }
+    Ok(values)
 }

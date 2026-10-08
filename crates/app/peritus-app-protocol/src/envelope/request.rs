@@ -184,6 +184,12 @@ pub enum AppRequestPayload {
     QueryProductRunObservations(ProductRunQuery),
     /// Reads one stable keyset page from an immutable product-run catalog snapshot.
     QueryProductRunPage(crate::ProductRunPageQuery),
+    /// Reads bounded referenced run metadata from a stable catalog snapshot or exact run.
+    QueryProductRunReferences(crate::ProductRunReferenceQuery),
+    /// Reads one bounded UTF-8 slice of an exact run-owned artifact.
+    QueryProductArtifact(crate::ProductArtifactQuery),
+    /// Reads one root-bound page of changed-path or successful-command references.
+    QueryProductDeliverableIndex(crate::ProductDeliverableIndexQuery),
     /// Answers an approval or user-input prompt.
     AnswerPrompt(PromptAnswer),
     /// Cancels an outstanding prompt.
@@ -268,6 +274,11 @@ impl AppRequestPayload {
             }
             Self::QueryProductRunPage(_) => {
                 Some(crate::WellKnownProtocolFeature::ProductRunPages)
+            }
+            Self::QueryProductRunReferences(_)
+            | Self::QueryProductArtifact(_)
+            | Self::QueryProductDeliverableIndex(_) => {
+                Some(crate::WellKnownProtocolFeature::ProductRunArtifacts)
             }
             Self::QueryInteractionPage(_) => {
                 Some(crate::WellKnownProtocolFeature::ProductActivityPages)

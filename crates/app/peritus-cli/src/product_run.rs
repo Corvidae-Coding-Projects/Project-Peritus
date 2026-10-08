@@ -5,8 +5,11 @@ mod presentation;
 use std::{ffi::OsStr, path::Path, process::Command, time::Duration};
 
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, ProductRunControl, ProductRunControlAction,
-    ProductRunQuery, ProductRunSettlementSnapshot, ProductRunSnapshot,
+    AppRequestPayload, AppResponsePayload, ProductArtifactQuery, ProductArtifactReference,
+    ProductDeliverable, ProductDeliverableIndexKind, ProductDeliverableIndexQuery,
+    ProductDeliverableIndexReference, ProductRunControl, ProductRunControlAction,
+    ProductRunOperation, ProductRunReferenceQuery, ProductRunReferenceSnapshot, ProductRunSnapshot,
+    WellKnownProtocolFeature, product_deliverable_index_reference,
 };
 use peritus_product_runner::ProductRunner;
 use peritus_run_settlement::{CandidateStage, RunSettlement};
@@ -32,7 +35,13 @@ pub async fn execute(
     arguments: ProductRunArgs,
     output: &Output,
 ) -> Result<(), CliError> {
-    let mut client = Client::connect(endpoint, session, timeout, &[]).await?;
+    let mut client = Client::connect(
+        endpoint,
+        session,
+        timeout,
+        &[WellKnownProtocolFeature::ProductRunArtifacts],
+    )
+    .await?;
     match arguments {
         ProductRunArgs::List => list(&mut client, output).await,
         ProductRunArgs::Show { run_id } => show(&mut client, run_id, output).await,
@@ -45,15 +54,21 @@ pub async fn execute(
 
 async fn list(client: &mut Client, output: &Output) -> Result<(), CliError> {
     let mut runs = Vec::new();
+    let mut query = ProductRunReferenceQuery::first();
     loop {
-        let offset = u64::try_from(runs.len())
-            .map_err(|_| CliError::protocol("list product runs", "run offset overflowed"))?;
-        let page = query(client, ProductRunQuery::page(offset)).await?;
-        let complete = page.len() < peritus_app_protocol::MAX_PRODUCT_RUN_PAGE;
-        runs.extend(page);
-        if complete {
-            break;
+        let identity = Client::new_request_identity()?;
+        let response = client
+            .request(identity, AppRequestPayload::QueryProductRunReferences(query))
+            .await?;
+        let AppResponsePayload::ProductRunReferencePage(page) = response.payload() else {
+            return response_error(response.payload(), "list product runs")
+                .and_then(|()| Err(CliError::protocol("list product runs", "missing run page")));
+        };
+        for entry in page.entries() {
+            runs.push(hydrate_reference(client, entry.snapshot()).await?);
         }
+        let Some(next) = page.next() else { break };
+        query = ProductRunReferenceQuery::after(next);
     }
     let json = runs.iter().map(observed_json).collect::<Vec<_>>();
     let human = if runs.is_empty() {
@@ -102,7 +117,10 @@ async fn control(
             AppRequestPayload::ControlProductRun(ProductRunControl::new(run_id, action)),
         )
         .await?;
-    let run = observed_response(response.payload())?;
+    if matches!(response.payload(), AppResponsePayload::Error(_)) {
+        response_error(response.payload(), "control product run")?;
+    }
+    let run = query_exact(client, run_id).await?;
     output.success("product-run-controlled", observed_json(&run), &observed_human(&run))
 }
 
@@ -183,49 +201,186 @@ async fn execute_candidate(
 }
 
 async fn query_exact(client: &mut Client, run_id: RunId) -> Result<ObservedRun, CliError> {
-    let mut runs = query(client, ProductRunQuery::exact(run_id)).await?;
-    if runs.len() != 1 {
+    let identity = Client::new_request_identity()?;
+    let response = client
+        .request(
+            identity,
+            AppRequestPayload::QueryProductRunReferences(ProductRunReferenceQuery::exact(run_id)),
+        )
+        .await?;
+    let AppResponsePayload::ProductRunReferencePage(page) = response.payload() else {
+        return response_error(response.payload(), "query exact product run")
+            .and_then(|()| Err(CliError::protocol("query exact product run", "missing run page")));
+    };
+    if page.entries().len() != 1 || page.next().is_some() {
         return Err(CliError::protocol(
             "query exact product run",
             "daemon did not return exactly one product run",
         ));
     }
-    Ok(runs.remove(0))
+    hydrate_reference(client, page.entries()[0].snapshot()).await
 }
 
-async fn query(client: &mut Client, query: ProductRunQuery) -> Result<Vec<ObservedRun>, CliError> {
-    let identity = Client::new_request_identity()?;
-    let response =
-        client.request(identity, AppRequestPayload::QueryProductRunObservations(query)).await?;
-    match response.payload() {
-        AppResponsePayload::ProductRunObservations(runs) => Ok(runs
-            .iter()
-            .map(|run| ObservedRun {
-                snapshot: run.snapshot().clone(),
-                settlement: run.settlement(),
-            })
-            .collect()),
-        AppResponsePayload::ProductRunAccepted(snapshot) => {
-            Ok(vec![ObservedRun { snapshot: snapshot.clone(), settlement: None }])
+async fn hydrate_reference(
+    client: &mut Client,
+    value: &ProductRunReferenceSnapshot,
+) -> Result<ObservedRun, CliError> {
+    let task = read_artifact(client, value.run_id(), value.task()).await?;
+    let status = read_artifact(client, value.run_id(), value.status()).await?;
+    let diff = read_optional_artifact(client, value.run_id(), value.diff()).await?;
+    let gates = read_optional_artifact(client, value.run_id(), value.gates()).await?;
+    let review = read_optional_artifact(client, value.run_id(), value.review()).await?;
+    let summary = read_optional_artifact(client, value.run_id(), value.summary()).await?;
+    let operation = value.operation();
+    let operation = ProductRunOperation::new(
+        operation.kind(),
+        operation.state(),
+        read_artifact(client, value.run_id(), operation.identity()).await?,
+        read_artifact(client, value.run_id(), operation.known()).await?,
+        read_optional_artifact(client, value.run_id(), operation.uncertainty()).await?,
+        operation.legal_controls(),
+    )
+    .map_err(|error| CliError::protocol("hydrate product operation", error.to_string()))?;
+    let mut snapshot = ProductRunSnapshot::new(
+        value.run_id(),
+        value.workspace_id(),
+        value.providers(),
+        value.phase(),
+        value.cycle(),
+        task,
+        status,
+        diff,
+        gates,
+        review,
+        summary,
+        operation,
+    )
+    .map_err(|error| CliError::protocol("hydrate product run", error.to_string()))?;
+    if let Some(reference) = value.deliverable() {
+        let workspace = read_artifact(client, value.run_id(), reference.workspace_path()).await?;
+        let changed_paths = read_index(
+            client,
+            value.run_id(),
+            ProductDeliverableIndexKind::ChangedPaths,
+            reference.changed_paths(),
+        )
+        .await?;
+        let successful_commands = read_index(
+            client,
+            value.run_id(),
+            ProductDeliverableIndexKind::SuccessfulCommands,
+            reference.successful_commands(),
+        )
+        .await?;
+        let instructions =
+            read_artifact(client, value.run_id(), reference.run_instructions()).await?;
+        let mut deliverable = ProductDeliverable::candidate(
+            workspace,
+            changed_paths,
+            successful_commands,
+            instructions,
+            reference.qualification(),
+        )
+        .map_err(|error| CliError::protocol("hydrate product deliverable", error.to_string()))?;
+        if reference.accepted() {
+            deliverable = deliverable.mark_accepted();
         }
-        AppResponsePayload::ProductRunSettled(settled) => Ok(vec![observed_settlement(settled)]),
-        payload => response_error(payload, "product-run query").map(|()| Vec::new()),
+        if let Some(commit) = reference.commit_revision() {
+            deliverable = deliverable
+                .mark_committed(read_artifact(client, value.run_id(), commit).await?)
+                .map_err(|error| CliError::protocol("hydrate commit revision", error.to_string()))?;
+        }
+        if let Some(export) = reference.export_path() {
+            deliverable = deliverable
+                .mark_exported(read_artifact(client, value.run_id(), export).await?)
+                .map_err(|error| CliError::protocol("hydrate export path", error.to_string()))?;
+        }
+        if reference.discarded() {
+            deliverable = deliverable.mark_discarded();
+        }
+        snapshot = snapshot.with_deliverable(deliverable);
+    }
+    Ok(ObservedRun { snapshot, settlement: value.settlement() })
+}
+
+async fn read_optional_artifact(
+    client: &mut Client,
+    run: RunId,
+    reference: Option<ProductArtifactReference>,
+) -> Result<String, CliError> {
+    match reference {
+        Some(reference) => read_artifact(client, run, reference).await,
+        None => Ok(String::new()),
     }
 }
 
-fn observed_response(payload: &AppResponsePayload) -> Result<ObservedRun, CliError> {
-    match payload {
-        AppResponsePayload::ProductRunAccepted(snapshot) => {
-            Ok(ObservedRun { snapshot: snapshot.clone(), settlement: None })
+async fn read_artifact(
+    client: &mut Client,
+    run: RunId,
+    reference: ProductArtifactReference,
+) -> Result<String, CliError> {
+    let mut bytes = Vec::new();
+    let mut offset = 0;
+    loop {
+        let query = ProductArtifactQuery::new(run, reference, offset)
+            .map_err(|error| CliError::protocol("read product artifact", error.to_string()))?;
+        let identity = Client::new_request_identity()?;
+        let response = client
+            .request(identity, AppRequestPayload::QueryProductArtifact(query))
+            .await?;
+        let AppResponsePayload::ProductArtifactPage(page) = response.payload() else {
+            return response_error(response.payload(), "read product artifact")
+                .and_then(|()| Err(CliError::protocol("read product artifact", "missing page")));
+        };
+        if page.query() != query {
+            return Err(CliError::protocol("read product artifact", "response changed its source"));
         }
-        AppResponsePayload::ProductRunSettled(settled) => Ok(observed_settlement(settled)),
-        payload => response_error(payload, "product-run response")
-            .and_then(|()| Err(CliError::protocol("product run", "missing product run"))),
+        bytes.extend_from_slice(page.bytes());
+        let Some(next) = page.next() else { break };
+        offset = next;
     }
+    if !reference.matches_bytes(&bytes) {
+        return Err(CliError::protocol("read product artifact", "content digest or length changed"));
+    }
+    String::from_utf8(bytes)
+        .map_err(|_| CliError::protocol("read product artifact", "content is not UTF-8"))
 }
 
-fn observed_settlement(value: &ProductRunSettlementSnapshot) -> ObservedRun {
-    ObservedRun { snapshot: value.snapshot().clone(), settlement: Some(*value.settlement()) }
+async fn read_index(
+    client: &mut Client,
+    run: RunId,
+    kind: ProductDeliverableIndexKind,
+    index: ProductDeliverableIndexReference,
+) -> Result<Vec<String>, CliError> {
+    let mut values = Vec::new();
+    let mut after = None;
+    loop {
+        let query = ProductDeliverableIndexQuery::new(run, kind, index, after)
+            .map_err(|error| CliError::protocol("read deliverable index", error.to_string()))?;
+        let identity = Client::new_request_identity()?;
+        let response = client
+            .request(identity, AppRequestPayload::QueryProductDeliverableIndex(query))
+            .await?;
+        let AppResponsePayload::ProductDeliverableIndexPage(page) = response.payload() else {
+            return response_error(response.payload(), "read deliverable index")
+                .and_then(|()| Err(CliError::protocol("read deliverable index", "missing page")));
+        };
+        if page.query() != query {
+            return Err(CliError::protocol("read deliverable index", "response changed its index"));
+        }
+        for entry in page.entries() {
+            values.push(read_artifact(client, run, entry.value()).await?);
+        }
+        let Some(next) = page.next() else { break };
+        after = Some(next);
+    }
+    if product_deliverable_index_reference(kind, &values)
+        .map_err(|error| CliError::protocol("read deliverable index", error.to_string()))?
+        != index
+    {
+        return Err(CliError::protocol("read deliverable index", "index root or count changed"));
+    }
+    Ok(values)
 }
 
 fn run_command(root: &str, instruction: &str) -> Result<std::process::ExitStatus, CliError> {

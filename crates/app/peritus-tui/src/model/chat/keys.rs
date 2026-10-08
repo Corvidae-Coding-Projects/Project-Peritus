@@ -11,12 +11,6 @@ impl AppModel {
         let text: String =
             text.chars().filter(|ch| !ch.is_control() || *ch == '\n' || *ch == '\t').collect();
         let selected = self.chat.selection().unwrap_or(self.chat.cursor..self.chat.cursor);
-        if self.chat.buffer.len().saturating_sub(selected.len()).saturating_add(text.len())
-            > peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
-        {
-            self.notice(NoticeLevel::Warning, "Message is too large; paste a smaller selection");
-            return;
-        }
         self.chat.cursor = selected.start + text.len();
         self.chat.buffer.replace_range(selected, &text);
         self.chat.selection_anchor = None;
@@ -124,26 +118,14 @@ impl AppModel {
                 self.chat.command_selection = 0;
             }
             _ => {
-                let selected_bytes = self.chat.selection().map_or(0, |range| range.len());
-                let inserted_bytes = match key.code {
-                    KeyCode::Char(ch) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        ch.len_utf8()
-                    }
-                    _ => 0,
-                };
-                if inserted_bytes == 0
-                    || self.chat.buffer.len() - selected_bytes + inserted_bytes
-                        <= peritus_app_protocol::MAX_PRODUCT_TASK_BYTES
-                {
-                    let _ = crate::input::selection::edit(
-                        &mut self.chat.buffer,
-                        &mut self.chat.cursor,
-                        &mut self.chat.selection_anchor,
-                        key,
-                    );
-                    if self.chat.buffer.is_empty() {
-                        self.chat.pasted_command = false;
-                    }
+                let _ = crate::input::selection::edit(
+                    &mut self.chat.buffer,
+                    &mut self.chat.cursor,
+                    &mut self.chat.selection_anchor,
+                    key,
+                );
+                if self.chat.buffer.is_empty() {
+                    self.chat.pasted_command = false;
                 }
             }
         }

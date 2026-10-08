@@ -14,6 +14,8 @@ impl ProtocolFeatureName {
     pub const HARNESS_IMPROVEMENT_PAGES: &'static str = "app.harness-improvement-pages";
     /// Stable keyset pages over one durable product-run catalog snapshot.
     pub const PRODUCT_RUN_PAGES: &'static str = "app.product-run-pages";
+    /// Exact product text artifacts and snapshot-bound deliverable index pages.
+    pub const PRODUCT_RUN_ARTIFACTS: &'static str = "app.product-run-artifacts";
     /// Digest-bound UTF-8 segment pages over complete public interaction history.
     pub const PRODUCT_ACTIVITY_PAGES: &'static str = "app.product-activity-pages";
     /// Version-one event subscription feature name.
@@ -134,6 +136,8 @@ pub enum WellKnownProtocolFeature {
     HarnessImprovementPages,
     /// Snapshot-bound keyset pages over durable product runs.
     ProductRunPages,
+    /// Exact product text artifacts and snapshot-bound deliverable index pages.
+    ProductRunArtifacts,
     /// Digest-bound segment pages over complete public activity history.
     ProductActivityPages,
     /// Replayable event subscriptions.
@@ -220,6 +224,7 @@ impl WellKnownProtocolFeature {
             Self::HarnessImprovements => ProtocolFeatureName::HARNESS_IMPROVEMENTS,
             Self::HarnessImprovementPages => ProtocolFeatureName::HARNESS_IMPROVEMENT_PAGES,
             Self::ProductRunPages => ProtocolFeatureName::PRODUCT_RUN_PAGES,
+            Self::ProductRunArtifacts => ProtocolFeatureName::PRODUCT_RUN_ARTIFACTS,
             Self::ProductActivityPages => ProtocolFeatureName::PRODUCT_ACTIVITY_PAGES,
             Self::EventSubscriptions => ProtocolFeatureName::EVENT_SUBSCRIPTIONS,
             Self::ArtifactTransfer => ProtocolFeatureName::ARTIFACT_TRANSFER,

@@ -38,7 +38,10 @@ pub(in crate::wire) fn read_settlement_snapshot(
     invalid(offset, ProductRunSettlementSnapshot::new(snapshot, settlement))
 }
 
-fn write_settlement(writer: &mut CanonicalWriter, value: &RunSettlement) -> Result<(), CodecError> {
+pub(super) fn write_settlement(
+    writer: &mut CanonicalWriter,
+    value: &RunSettlement,
+) -> Result<(), CodecError> {
     writer.write_u16(value.disposition().tag())?;
     writer.write_u16(value.cause().tag())?;
     writer.write_option_tag(value.checkpoint().is_some())?;
@@ -48,7 +51,9 @@ fn write_settlement(writer: &mut CanonicalWriter, value: &RunSettlement) -> Resu
     Ok(())
 }
 
-fn read_settlement(reader: &mut CanonicalReader<'_>) -> Result<RunSettlement, CodecError> {
+pub(super) fn read_settlement(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<RunSettlement, CodecError> {
     let offset = reader.offset();
     let disposition_offset = reader.offset();
     let disposition = RunDisposition::from_tag(reader.read_u16()?)

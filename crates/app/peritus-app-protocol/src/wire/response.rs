@@ -18,7 +18,9 @@ use super::{
     error::{read_app_error, write_app_error},
     primitive::{read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_run_page, read_settlement_snapshot, read_snapshot, write_run_page,
+        read_artifact_page, read_deliverable_index_page, read_reference_page, read_run_page,
+        read_settlement_snapshot, read_snapshot, write_artifact_page,
+        write_deliverable_index_page, write_reference_page, write_run_page,
         write_settlement_snapshot, write_snapshot,
     },
     terminal::{read_terminal_binding, write_terminal_binding},
@@ -147,6 +149,11 @@ fn write_payload(
             super::product::observations::write_observations(writer, value)
         }
         AppResponsePayload::ProductRunPage(value) => write_run_page(writer, value),
+        AppResponsePayload::ProductRunReferencePage(value) => write_reference_page(writer, value),
+        AppResponsePayload::ProductArtifactPage(value) => write_artifact_page(writer, value),
+        AppResponsePayload::ProductDeliverableIndexPage(value) => {
+            write_deliverable_index_page(writer, value)
+        }
         AppResponsePayload::ProductRunSettled(value) => write_settlement_snapshot(writer, value),
     }
 }
@@ -199,6 +206,9 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::ProductRunAccepted(_) => 10,
         AppResponsePayload::ProductRunObservations(_) => 102,
         AppResponsePayload::ProductRunPage(_) => 103,
+        AppResponsePayload::ProductRunReferencePage(_) => 105,
+        AppResponsePayload::ProductArtifactPage(_) => 106,
+        AppResponsePayload::ProductDeliverableIndexPage(_) => 107,
         AppResponsePayload::InteractionPage(_) => 104,
         AppResponsePayload::ProductRunSettled(_) => 13,
         AppResponsePayload::Interaction(value) => {
@@ -297,6 +307,16 @@ pub(super) fn read_response(
             super::product::observations::read_observations(reader)?,
         ),
         103 => AppResponsePayload::ProductRunPage(read_run_page(reader)?),
+        105 => AppResponsePayload::ProductRunReferencePage(read_reference_page(reader)?),
+        106 => AppResponsePayload::ProductArtifactPage(read_artifact_page(
+            reader,
+            limits
+                .max_artifact_chunk_bytes()
+                .min(limits.codec().max_opaque_bytes),
+        )?),
+        107 => AppResponsePayload::ProductDeliverableIndexPage(
+            read_deliverable_index_page(reader)?,
+        ),
         104 => AppResponsePayload::InteractionPage(super::interaction::read_page(reader)?),
         13 => AppResponsePayload::ProductRunSettled(read_settlement_snapshot(reader)?),
         15 => AppResponsePayload::Interaction(super::interaction::read_snapshot(reader, false)?),

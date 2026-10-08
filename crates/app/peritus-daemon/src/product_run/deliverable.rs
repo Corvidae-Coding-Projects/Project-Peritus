@@ -329,6 +329,7 @@ impl ProductRunService {
         input: Sha256Digest,
         prepared: RunRecord,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        self.inner.product_artifacts.publish_record(&prepared)?;
         let (snapshot, ticket) = self.mutate_run(
             run,
             Some(attempt),
@@ -409,20 +410,8 @@ fn discard_status(recovered: &[PathBuf]) -> String {
     if !recovered.is_empty() {
         status.push_str("\nGit history was preserved. Restored nested repositories may use a detached HEAD or a new unborn branch; recovery records below explain how to revisit saved work.");
     }
-    for (index, path) in recovered.iter().enumerate() {
-        let line = format!("\nRepository recovery: {}", path.display());
-        if status.len().saturating_add(line.len())
-            > peritus_app_protocol::MAX_PRODUCT_DETAIL_BYTES - 256
-        {
-            use std::fmt::Write as _;
-            let _ = write!(
-                status,
-                "\n{} additional recovery records are in peritus/discarded under their enclosing Git directories.",
-                recovered.len() - index
-            );
-            break;
-        }
-        status.push_str(&line);
+    for path in recovered {
+        status.push_str(&format!("\nRepository recovery: {}", path.display()));
     }
     status
 }

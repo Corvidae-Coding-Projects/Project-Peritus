@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::{
     fs,
-    io::Read as _,
     path::{Path, PathBuf},
 };
 
@@ -103,17 +102,7 @@ fn read_record(path: &Path) -> Result<Option<Vec<u8>>, ProductRunServiceError> {
     if !metadata.is_file() || metadata.file_type().is_symlink() {
         return Err(failure("discard record is not an ordinary file"));
     }
-    let maximum = peritus_app_protocol::MAX_PRODUCT_DETAIL_BYTES.saturating_mul(6) + 1024;
-    let mut bytes = Vec::new();
-    fs::File::open(path)
-        .map_err(failure)?
-        .take(maximum as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(failure)?;
-    if bytes.len() > maximum {
-        return Err(failure("discard completion record exceeds its size limit"));
-    }
-    Ok(Some(bytes))
+    fs::read(path).map(Some).map_err(failure)
 }
 
 #[cfg(unix)]

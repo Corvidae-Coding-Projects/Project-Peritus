@@ -151,6 +151,12 @@ impl ProductRunService {
             .cloned()
             .ok_or(ProductRunServiceError::WorkspaceUnavailable)?;
         let snapshot = initial_snapshot(&request)?;
+        self.inner
+            .product_artifacts
+            .publish_text(request.run_id(), request.execution_task())?;
+        self.inner
+            .product_artifacts
+            .publish_snapshot(request.run_id(), &snapshot)?;
         let cancelled = Arc::new(AtomicBool::new(false));
         let control_cancellation = peritus_journal::JournalCancellation::new();
         let provider_cancellation = CancellationToken::new();

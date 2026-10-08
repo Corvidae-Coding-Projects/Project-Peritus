@@ -33,7 +33,9 @@ pub(super) use handoff::{
     write_handoff_retrying,
 };
 mod finding_bodies;
+mod product_artifacts;
 pub(super) use finding_bodies::{FindingBodyStore, FindingSourcePage};
+pub(super) use product_artifacts::ProductArtifactStore;
 mod interaction;
 mod obligation;
 pub(super) use obligation::{

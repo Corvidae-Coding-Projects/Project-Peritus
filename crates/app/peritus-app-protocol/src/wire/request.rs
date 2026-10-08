@@ -27,8 +27,10 @@ use super::{
     daemon::{read_shutdown_request, write_shutdown_request},
     primitive::{invalid, read_context, read_id, unknown, write_context, write_id},
     product::{
-        read_conversation_query, read_run_control, read_run_page_query, read_run_query,
-        write_conversation_query, write_run_control, write_run_page_query, write_run_query,
+        read_artifact_query, read_conversation_query, read_deliverable_index_query,
+        read_reference_query, read_run_control, read_run_page_query, read_run_query,
+        write_artifact_query, write_conversation_query, write_deliverable_index_query,
+        write_reference_query, write_run_control, write_run_page_query, write_run_query,
     },
     prompt::{
         read_prompt_answer, read_prompt_cancellation, write_prompt_answer,
@@ -132,6 +134,13 @@ fn write_payload(
         AppRequestPayload::ControlProductRun(value) => write_run_control(writer, *value),
         AppRequestPayload::QueryProductRunObservations(value) => write_run_query(writer, *value),
         AppRequestPayload::QueryProductRunPage(value) => write_run_page_query(writer, *value),
+        AppRequestPayload::QueryProductRunReferences(value) => {
+            write_reference_query(writer, *value)
+        }
+        AppRequestPayload::QueryProductArtifact(value) => write_artifact_query(writer, *value),
+        AppRequestPayload::QueryProductDeliverableIndex(value) => {
+            write_deliverable_index_query(writer, *value)
+        }
         AppRequestPayload::UpdateModels(value) => {
             super::interaction::write_model_update(writer, value)
         }
@@ -187,6 +196,9 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::ControlProductRun(_) => 18,
         AppRequestPayload::QueryProductRunObservations(_) => 102,
         AppRequestPayload::QueryProductRunPage(_) => 103,
+        AppRequestPayload::QueryProductRunReferences(_) => 105,
+        AppRequestPayload::QueryProductArtifact(_) => 106,
+        AppRequestPayload::QueryProductDeliverableIndex(_) => 107,
         AppRequestPayload::QueryInteractionPage(_) => 104,
         AppRequestPayload::QueryInteraction(_) => 23,
         AppRequestPayload::QueryModels(_) => 24,
@@ -272,6 +284,11 @@ fn read_payload(
         18 => AppRequestPayload::ControlProductRun(read_run_control(reader)?),
         102 => AppRequestPayload::QueryProductRunObservations(read_run_query(reader)?),
         103 => AppRequestPayload::QueryProductRunPage(read_run_page_query(reader)?),
+        105 => AppRequestPayload::QueryProductRunReferences(read_reference_query(reader)?),
+        106 => AppRequestPayload::QueryProductArtifact(read_artifact_query(reader)?),
+        107 => {
+            AppRequestPayload::QueryProductDeliverableIndex(read_deliverable_index_query(reader)?)
+        }
         104 => AppRequestPayload::QueryInteractionPage(
             super::interaction::read_page_query(reader)?,
         ),

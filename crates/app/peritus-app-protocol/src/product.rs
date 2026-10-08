@@ -1,14 +1,17 @@
 //! Product-level coding-run messages exposed to interactive clients.
 
 mod binding;
+mod artifact;
 mod control;
 mod effort;
 mod error;
 mod interaction;
 pub use binding::ProductInteractionBinding;
+pub use artifact::*;
 mod models;
 mod observation;
 mod operation;
+mod page;
 mod phase;
 mod query;
 mod request;
@@ -22,6 +25,7 @@ pub use interaction::*;
 pub use models::*;
 pub use observation::ProductRunObservation;
 pub use operation::*;
+pub use page::*;
 pub use phase::*;
 pub use query::*;
 pub use request::*;
@@ -32,8 +36,6 @@ use std::path::{Component, Path};
 
 use peritus_run_settlement::CandidateStage;
 use peritus_types::RunId;
-
-use error::{bounded_text, optional_bounded_text};
 
 /// Maximum UTF-8 bytes accepted for one coding task.
 pub const MAX_PRODUCT_TASK_BYTES: usize = 64 * 1024;
@@ -64,17 +66,21 @@ impl ProductDeliverable {
         qualification: CandidateStage,
         require_successful_command: bool,
     ) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&workspace_path, MAX_PRODUCT_DETAIL_BYTES)?;
-        bounded_text(&run_instructions, MAX_PRODUCT_DETAIL_BYTES)?;
+        if workspace_path.trim().is_empty() || run_instructions.trim().is_empty() {
+            return Err(ProductRunMessageError::Empty);
+        }
+        ProductArtifactReference::measure(&workspace_path)?;
+        ProductArtifactReference::measure(&run_instructions)?;
         if changed_paths.is_empty()
-            || u16::try_from(changed_paths.len()).is_err()
             || require_successful_command && successful_commands.is_empty()
-            || u16::try_from(successful_commands.len()).is_err()
         {
             return Err(ProductRunMessageError::TooManyDeliverableItems);
         }
         for value in changed_paths.iter().chain(&successful_commands) {
-            bounded_text(value, MAX_PRODUCT_DETAIL_BYTES)?;
+            if value.trim().is_empty() {
+                return Err(ProductRunMessageError::Empty);
+            }
+            ProductArtifactReference::measure(value)?;
         }
         if changed_paths.iter().any(|value| {
             let path = Path::new(value);
@@ -119,6 +125,34 @@ impl ProductDeliverable {
     #[must_use]
     pub fn run_instructions(&self) -> &str {
         &self.run_instructions
+    }
+
+    /// Exact content-free handoff references used by bounded product-run projections.
+    ///
+    /// # Errors
+    /// Rejects an internally inconsistent retained deliverable.
+    pub fn reference(&self) -> Result<ProductDeliverableReference, ProductRunMessageError> {
+        ProductDeliverableReference::new(
+            ProductArtifactReference::measure(&self.workspace_path)?,
+            product_deliverable_index_reference(
+                ProductDeliverableIndexKind::ChangedPaths,
+                &self.changed_paths,
+            )?,
+            product_deliverable_index_reference(
+                ProductDeliverableIndexKind::SuccessfulCommands,
+                &self.successful_commands,
+            )?,
+            ProductArtifactReference::measure(&self.run_instructions)?,
+            self.qualification,
+            self.accepted,
+            (!self.commit_revision.is_empty())
+                .then(|| ProductArtifactReference::measure(&self.commit_revision))
+                .transpose()?,
+            (!self.export_path.is_empty())
+                .then(|| ProductArtifactReference::measure(&self.export_path))
+                .transpose()?,
+            self.discarded,
+        )
     }
 
     /// Strongest automated qualification stage for the exact candidate.
@@ -186,7 +220,10 @@ impl ProductDeliverable {
     /// # Errors
     /// Rejects an empty or oversized revision string.
     pub fn mark_committed(mut self, revision: String) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&revision, MAX_PRODUCT_DETAIL_BYTES)?;
+        if revision.trim().is_empty() {
+            return Err(ProductRunMessageError::Empty);
+        }
+        ProductArtifactReference::measure(&revision)?;
         self.commit_revision = revision;
         self.accepted = true;
         Ok(self)
@@ -197,7 +234,10 @@ impl ProductDeliverable {
     /// # Errors
     /// Rejects an empty or oversized export path.
     pub fn mark_exported(mut self, path: String) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&path, MAX_PRODUCT_DETAIL_BYTES)?;
+        if path.trim().is_empty() {
+            return Err(ProductRunMessageError::Empty);
+        }
+        ProductArtifactReference::measure(&path)?;
         self.export_path = path;
         Ok(self)
     }
@@ -277,8 +317,18 @@ impl ProductDeliverable {
             CandidateStage::Qualified,
             require_successful_command,
         )?;
-        optional_bounded_text(&commit_revision, MAX_PRODUCT_DETAIL_BYTES)?;
-        optional_bounded_text(&export_path, MAX_PRODUCT_DETAIL_BYTES)?;
+        if !commit_revision.is_empty() {
+            if commit_revision.trim().is_empty() {
+                return Err(ProductRunMessageError::Empty);
+            }
+            ProductArtifactReference::measure(&commit_revision)?;
+        }
+        if !export_path.is_empty() {
+            if export_path.trim().is_empty() {
+                return Err(ProductRunMessageError::Empty);
+            }
+            ProductArtifactReference::measure(&export_path)?;
+        }
         value.accepted = accepted;
         value.commit_revision = commit_revision;
         value.export_path = export_path;

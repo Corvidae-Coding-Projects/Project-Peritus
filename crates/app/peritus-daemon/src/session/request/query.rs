@@ -26,6 +26,9 @@ pub(super) enum Request {
     ActivityPage(peritus_app_protocol::ProductActivityPageQuery),
     Observations(peritus_app_protocol::ProductRunQuery),
     RunPage(peritus_app_protocol::ProductRunPageQuery),
+    RunReferences(peritus_app_protocol::ProductRunReferenceQuery),
+    ProductArtifact(peritus_app_protocol::ProductArtifactQuery, usize),
+    DeliverableIndex(peritus_app_protocol::ProductDeliverableIndexQuery),
 }
 
 pub(super) async fn respond(
@@ -75,6 +78,20 @@ pub(super) async fn respond(
         },
         Request::Observations(query) => response::product_run_observations(&service, query),
         Request::RunPage(query) => response::product_run_page(&service, query),
+        Request::RunReferences(query) => match service.query_run_references(query) {
+            Ok(page) => AppResponsePayload::ProductRunReferencePage(page),
+            Err(error) => product_run_error(error),
+        },
+        Request::ProductArtifact(query, maximum_chunk_bytes) => {
+            match service.query_product_artifact(query, maximum_chunk_bytes) {
+            Ok(page) => AppResponsePayload::ProductArtifactPage(page),
+            Err(error) => product_run_error(error),
+            }
+        }
+        Request::DeliverableIndex(query) => match service.query_deliverable_index(query) {
+            Ok(page) => AppResponsePayload::ProductDeliverableIndexPage(page),
+            Err(error) => product_run_error(error),
+        },
     })
     .await
 }

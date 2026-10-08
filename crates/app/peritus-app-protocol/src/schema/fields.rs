@@ -191,6 +191,10 @@ pub enum FieldBound {
     ProductDeliverablePaths,
     /// The product deliverable successful-command ceiling applies.
     ProductDeliverableCommands,
+    /// Maximum UTF-8 bytes in one physical product-artifact page.
+    ProductArtifactChunkBytes,
+    /// Maximum immutable deliverable-index entries in one physical page.
+    ProductDeliverableIndexPage,
     /// Interactive activity-entry ceiling.
     ProductActivities,
     /// Interactive activity text and detail byte ceiling.
@@ -285,6 +289,8 @@ impl FieldBound {
             Self::ProductDetailBytes => "product.max-detail-bytes",
             Self::ProductDeliverablePaths => "product.max-deliverable-paths",
             Self::ProductDeliverableCommands => "product.max-deliverable-commands",
+            Self::ProductArtifactChunkBytes => "product.max-artifact-chunk-bytes (32768)",
+            Self::ProductDeliverableIndexPage => "product.max-deliverable-index-page (256)",
             Self::ProductActivities => "product.max-activities (256)",
             Self::ProductActivityBytes => "product.max-activity-bytes (8192)",
             Self::ProductActivitySegmentBytes => "product.max-activity-segment-bytes (4096)",

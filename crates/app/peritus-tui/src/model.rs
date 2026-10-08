@@ -233,7 +233,10 @@ enum PendingRequest {
     TerminalDetach(TerminalBinding),
     TerminalCancel,
     ProductQuery,
+    ProductReferenceContinuation(peritus_app_protocol::ProductRunReferenceQuery),
     ProductExactQuery(RunId),
+    ProductArtifactHydration(peritus_app_protocol::ProductArtifactQuery),
+    ProductIndexHydration(peritus_app_protocol::ProductDeliverableIndexQuery),
     ProductControl,
     ProductInteractionQuery,
     ProductActivityPage(peritus_app_protocol::ProductActivityPageQuery),
@@ -348,6 +351,7 @@ pub struct AppModel {
     cancelled_imports: Vec<(peritus_app_protocol::TransferId, peritus_types::ArtifactId)>,
     ids: IdFactory,
     pub(super) product: Option<ProductUi>,
+    product_hydration: Option<product::ProductHydration>,
     tick_count: u64,
 }
 
@@ -390,6 +394,7 @@ impl AppModel {
             cancelled_imports: Vec::new(),
             ids: IdFactory::new(seed),
             product: product.map(ProductUi::new),
+            product_hydration: None,
             tick_count: 0,
         }
     }
@@ -492,6 +497,7 @@ impl AppModel {
         self.interrupt_image_import();
         self.pending.clear();
         self.pending_started.clear();
+        self.product_hydration = None;
     }
 
     pub(crate) fn visible_event_indices(&self) -> Vec<usize> {
