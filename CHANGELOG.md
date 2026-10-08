@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L053] Failure to publish a waiting notice cancels provider work (#152)
 - [L470] Compatible API defaults retain finite retry and private production capacities (#548)
 - [L634] Filesystem schemas impose whole-file and inline-mutation ceilings without ranged alternatives (#685)
 - [L469] Connection qualification conflicts with explicitly selected reasoning effort (#547)
