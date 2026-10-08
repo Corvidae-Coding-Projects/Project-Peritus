@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3984,
-        "tip_oid": "5d4946d79b038ed096d90963d4e6cbdb23eb88ac",
-        "prefix_sha256": "e9f81f807a4913fc6652682312101074e5b7755be2c57678f51927ed9f5695da"
+        "sequence": 3985,
+        "tip_oid": "edfd92cbb58ba2d2240e8b7214a2657f52f463af",
+        "prefix_sha256": "90bf8172f20d861a44da736fa1ac98a7ba4460ff8193b9097101a5a8837f0b07"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3195,
+  "next_comment_id": 3196,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1320,11 +1320,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.998796203Z",
-      "updated_at": "2026-10-06T13:19:08.000867996Z",
+      "updated_at": "2026-10-08T02:34:46.889730666Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "1ff55473-a80e-4c3c-a460-8b06d7b1a1bd": {
+          "display_id": 3195,
+          "author": "6ME5",
+          "content": "Code complete in commit bdf1e7bf6: build job estimates are advisory; explicit recognized flags and inherited parallelism settings remain unchanged with consistent recording, and independent Cargo maximum2 is removed. CPU/cgroup/memory evidence refreshes at launch, estimates are labeled, and exact observations persist through settlement/restart. Writer prompt now agrees with advisory policy, while native allocation failures retain typed same-owner recovery. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:34:46.880562149Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVAuh/ekbIaI5CIzPdz9V/7M8dSuvlbHUAdK8xiPlXXxRw1lRjeH1ImDeQ1nYybpD2RzQqsH6+FfPyzGTlnkgCQ=="
+        },
         "7d51a961-30c0-44c7-8231-34f7e20555d4": {
           "display_id": 2211,
           "author": "6ME5",
