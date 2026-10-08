@@ -182,18 +182,26 @@ fn environment_with_bindings(
     additional_bindings: Vec<(String, String)>,
 ) -> Result<EnvironmentPlan, String> {
     let mut allowlist = vec![
+        "CARGO_BUILD_JOBS",
         "CARGO_HOME",
         "CARGO_TARGET_DIR",
+        "CMAKE_BUILD_PARALLEL_LEVEL",
         "GOCACHE",
+        "GOMAXPROCS",
         "GOMODCACHE",
         "GOPATH",
         "GOROOT",
         "LANG",
         "LC_ALL",
+        "MAKEFLAGS",
+        "MAX_JOBS",
         "NODE_PATH",
+        "NUM_JOBS",
         "PATH",
         "PATHEXT",
+        "PERITUS_RECOMMENDED_PARALLELISM",
         "PYTHONPATH",
+        "RAYON_NUM_THREADS",
         "RUSTFLAGS",
         "RUSTUP_HOME",
         "RUSTUP_TOOLCHAIN",
@@ -204,6 +212,7 @@ fn environment_with_bindings(
         "VIRTUAL_ENV",
         "WINDIR",
         "npm_config_cache",
+        "npm_config_jobs",
     ];
     if managed_cache.is_some() {
         allowlist.retain(|name| {
@@ -219,9 +228,6 @@ fn environment_with_bindings(
         });
     }
     let mut bindings = BTreeMap::new();
-    if program == "cargo" {
-        bindings.insert("CARGO_BUILD_JOBS".to_owned(), "2".to_owned());
-    }
     if program == "go" && managed_cache.is_some() {
         for (name, value) in [
             ("GOPROXY", "https://proxy.golang.org"),

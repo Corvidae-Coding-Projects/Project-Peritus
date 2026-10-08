@@ -104,6 +104,7 @@ struct StartingCommand {
     router: CommandRouter,
     started: Instant,
     interactive: bool,
+    resource_evidence: Option<Value>,
 }
 
 struct ActiveCommand {
@@ -113,6 +114,7 @@ struct ActiveCommand {
     invocation: InvocationHandle,
     started: Instant,
     interactive: bool,
+    resource_evidence: Option<Value>,
 }
 
 #[derive(Clone)]
@@ -120,6 +122,12 @@ struct TerminalCommand {
     result: ToolResult,
     progress: ProgressBatch,
     mode: CommandExecutionMode,
+    resource_evidence: Option<Value>,
+}
+
+struct ProjectionContext {
+    mode: Option<CommandExecutionMode>,
+    resource_evidence: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -455,23 +463,33 @@ impl CommandRuntime {
     }
 
     pub(super) fn start(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
-        self.start_in_mode(request, CommandExecutionMode::Mutation)
+        self.start_in_mode(request, CommandExecutionMode::Mutation, None)
     }
 
     pub(super) fn start_observational(
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.start_in_mode(request, CommandExecutionMode::Observational)
+        self.start_in_mode(request, CommandExecutionMode::Observational, None)
+    }
+
+    pub(super) fn start_selected(
+        &self,
+        request: StartCommand<'_>,
+        mode: CommandExecutionMode,
+        resource_evidence: Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        self.start_in_mode(request, mode, Some(resource_evidence))
     }
 
     fn start_in_mode(
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
     ) -> Result<Value, DeveloperLoopError> {
         let cancellation = CancellationToken::new();
-        let started = self.start_owned(request, mode, &cancellation)?;
+        let started = self.start_owned(request, mode, resource_evidence, &cancellation)?;
         Ok(started.projection)
     }
 
@@ -479,27 +497,38 @@ impl CommandRuntime {
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.start_async_in_mode(request, CommandExecutionMode::Mutation).await
+        self.start_async_in_mode(request, CommandExecutionMode::Mutation, None).await
     }
 
     pub(super) async fn start_observational_async(
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.start_async_in_mode(request, CommandExecutionMode::Observational).await
+        self.start_async_in_mode(request, CommandExecutionMode::Observational, None).await
+    }
+
+    pub(super) async fn start_selected_async(
+        &self,
+        request: StartCommand<'_>,
+        mode: CommandExecutionMode,
+        resource_evidence: Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        self.start_async_in_mode(request, mode, Some(resource_evidence)).await
     }
 
     async fn start_async_in_mode(
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
     ) -> Result<Value, DeveloperLoopError> {
         let request = OwnedStartCommand::from_borrowed(request);
         let cancellation = CancellationToken::new();
         let mut cancel_on_drop = CancelOnDrop::new(cancellation.clone());
         let runtime = self.clone();
         let worker = tokio::task::spawn_blocking(move || {
-            let started = runtime.start_owned(request.borrowed(), mode, &cancellation)?;
+            let started =
+                runtime.start_owned(request.borrowed(), mode, resource_evidence, &cancellation)?;
             if cancellation.is_cancelled() {
                 runtime.inner.cancellation_worker.enqueue_observer_reconciliation(
                     runtime.clone(),
@@ -518,20 +547,30 @@ impl CommandRuntime {
     }
 
     pub(super) fn run(&self, request: StartCommand<'_>) -> Result<Value, DeveloperLoopError> {
-        self.run_in_mode(request, CommandExecutionMode::Mutation)
+        self.run_in_mode(request, CommandExecutionMode::Mutation, None)
     }
 
     pub(super) fn run_observational(
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.run_in_mode(request, CommandExecutionMode::Observational)
+        self.run_in_mode(request, CommandExecutionMode::Observational, None)
+    }
+
+    pub(super) fn run_selected(
+        &self,
+        request: StartCommand<'_>,
+        mode: CommandExecutionMode,
+        resource_evidence: Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        self.run_in_mode(request, mode, Some(resource_evidence))
     }
 
     fn run_in_mode(
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
     ) -> Result<Value, DeveloperLoopError> {
         let cancellation = CancellationToken::new();
         if tokio::runtime::Handle::try_current().is_ok_and(|handle| {
@@ -540,37 +579,52 @@ impl CommandRuntime {
             // Tool execution is a synchronous interface. Tell Tokio before waiting so this run's
             // worker can be replaced and the daemon control plane remains schedulable.
             return tokio::task::block_in_place(|| {
-                self.run_to_completion(request, mode, &cancellation)
+                self.run_to_completion(request, mode, resource_evidence, &cancellation)
             });
         }
-        self.run_to_completion(request, mode, &cancellation)
+        self.run_to_completion(request, mode, resource_evidence, &cancellation)
     }
 
     pub(super) async fn run_async(
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.run_async_in_mode(request, CommandExecutionMode::Mutation).await
+        self.run_async_in_mode(request, CommandExecutionMode::Mutation, None).await
     }
 
     pub(super) async fn run_observational_async(
         &self,
         request: StartCommand<'_>,
     ) -> Result<Value, DeveloperLoopError> {
-        self.run_async_in_mode(request, CommandExecutionMode::Observational).await
+        self.run_async_in_mode(request, CommandExecutionMode::Observational, None).await
+    }
+
+    pub(super) async fn run_selected_async(
+        &self,
+        request: StartCommand<'_>,
+        mode: CommandExecutionMode,
+        resource_evidence: Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        self.run_async_in_mode(request, mode, Some(resource_evidence)).await
     }
 
     async fn run_async_in_mode(
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
     ) -> Result<Value, DeveloperLoopError> {
         let request = OwnedStartCommand::from_borrowed(request);
         let cancellation = CancellationToken::new();
         let mut cancel_on_drop = CancelOnDrop::new(cancellation.clone());
         let runtime = self.clone();
         let worker = tokio::task::spawn_blocking(move || {
-            runtime.run_to_completion(request.borrowed(), mode, &cancellation)
+            runtime.run_to_completion(
+                request.borrowed(),
+                mode,
+                resource_evidence,
+                &cancellation,
+            )
         });
         let joined = worker.await;
         cancel_on_drop.disarm();
@@ -581,9 +635,10 @@ impl CommandRuntime {
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
         cancellation: &CancellationToken,
     ) -> Result<Value, DeveloperLoopError> {
-        let started = self.start_owned(request, mode, cancellation)?;
+        let started = self.start_owned(request, mode, resource_evidence, cancellation)?;
         if started.projection.get("state").and_then(Value::as_str) != Some("running") {
             return Ok(started.projection);
         }
@@ -633,6 +688,7 @@ impl CommandRuntime {
         &self,
         request: StartCommand<'_>,
         mode: CommandExecutionMode,
+        resource_evidence: Option<Value>,
         cancellation: &CancellationToken,
     ) -> Result<StartedCommand, DeveloperLoopError> {
         ensure_not_cancelled(cancellation)?;
@@ -779,6 +835,7 @@ impl CommandRuntime {
                         router: Arc::clone(&router_owner),
                         started,
                         interactive: request.interactive,
+                        resource_evidence: resource_evidence.clone(),
                     });
                 }
                 Entry::Occupied(_) => {
@@ -812,12 +869,16 @@ impl CommandRuntime {
                     }
                     return Err(tool(error.to_string()));
                 }
-                let projection = with_execution_mode(result::indeterminate(
-                    &handle,
-                    &format!(
-                        "command dispatch failed after authority consumption; the effect was not dispatched again: {error}"
+                let projection = with_execution_context(
+                    result::indeterminate(
+                        &handle,
+                        &format!(
+                            "command dispatch failed after authority consumption; the effect was not dispatched again: {error}"
+                        ),
                     ),
-                ), mode);
+                    Some(mode),
+                    resource_evidence.as_ref(),
+                );
                 let publication_pending =
                     router.pending_replay_publication(ids.action).is_some();
                 let mut state = self
@@ -906,13 +967,15 @@ impl CommandRuntime {
                                 invocation,
                                 started,
                                 interactive: request.interactive,
+                                resource_evidence: resource_evidence.clone(),
                             },
                         );
                         drop(state);
                         drop(router);
-                        let projection = with_execution_mode(
+                        let projection = with_execution_context(
                             result::active(&handle, &ProgressBatch::empty()),
-                            mode,
+                            Some(mode),
+                            resource_evidence.as_ref(),
                         );
                         self.retain_projection(&handle, projection.clone());
                         return Ok(StartedCommand {
@@ -923,10 +986,14 @@ impl CommandRuntime {
                         });
                     }
                     InterruptedDispatch::Settled => {
-                        let projection = with_execution_mode(result::indeterminate(
-                            &handle,
-                            "command dispatch was interrupted after authority consumption; the effect was not dispatched again",
-                        ), mode);
+                        let projection = with_execution_context(
+                            result::indeterminate(
+                                &handle,
+                                "command dispatch was interrupted after authority consumption; the effect was not dispatched again",
+                            ),
+                            Some(mode),
+                            resource_evidence.as_ref(),
+                        );
                         let publication_pending =
                             router.pending_replay_publication(ids.action).is_some();
                         let mut state = self
@@ -983,6 +1050,7 @@ impl CommandRuntime {
                         invocation,
                         started,
                         interactive: request.interactive,
+                        resource_evidence: resource_evidence.clone(),
                     },
                 );
                 started_control = control;
@@ -992,11 +1060,11 @@ impl CommandRuntime {
                 let retained = terminal.clone();
                 state.terminal.insert(
                     handle.clone(),
-                    TerminalCommand { result: terminal, progress: ProgressBatch::empty() },
                     TerminalCommand {
                         result: terminal,
                         progress: ProgressBatch::empty(),
                         mode,
+                        resource_evidence: resource_evidence.clone(),
                     },
                 );
                 publication_pending = router.pending_replay_publication(ids.action).is_some();
@@ -1014,21 +1082,25 @@ impl CommandRuntime {
         drop(state);
         drop(router);
         let terminal_action = terminal_projection.as_ref().map(ToolResult::action_id);
-        let projection = with_execution_mode(match terminal_projection {
-            Some(terminal) => match result::terminal(
-                &handle,
-                &terminal,
-                &self.inner.artifacts,
-                &ProgressBatch::empty(),
-            ) {
-                Ok(projection) => projection,
-                Err(error) => {
-                    self.enqueue_observer_reconciliation(&handle, started_control.clone());
-                    return Err(tool(error));
-                }
+        let projection = with_execution_context(
+            match terminal_projection {
+                Some(terminal) => match result::terminal(
+                    &handle,
+                    &terminal,
+                    &self.inner.artifacts,
+                    &ProgressBatch::empty(),
+                ) {
+                    Ok(projection) => projection,
+                    Err(error) => {
+                        self.enqueue_observer_reconciliation(&handle, started_control.clone());
+                        return Err(tool(error));
+                    }
+                },
+                None => result::active(&handle, &ProgressBatch::empty()),
             },
-            None => result::active(&handle, &ProgressBatch::empty()),
-        }, mode);
+            Some(mode),
+            resource_evidence.as_ref(),
+        );
         if terminal_action.is_some() {
             if let Err(error) = self.record_projection(&handle, projection.clone()) {
                 self.enqueue_observer_reconciliation(&handle, started_control.clone());
@@ -1171,7 +1243,7 @@ impl CommandRuntime {
     }
 
     fn observe(&self, handle: &str, operation: Observation) -> Result<Value, DeveloperLoopError> {
-        let mode = self.projection_mode(handle)?;
+        let context = self.projection_context(handle)?;
         let advanced = match self.advance_observation(handle, operation) {
             Ok(advanced) => advanced,
             Err(error) => {
@@ -1210,7 +1282,11 @@ impl CommandRuntime {
                 return Err(error);
             }
         };
-        let value = mode.map_or(value.clone(), |mode| with_execution_mode(value, mode));
+        let value = with_execution_context(
+            value,
+            context.mode,
+            context.resource_evidence.as_ref(),
+        );
         if persist_projection {
             if publication_action.is_some() {
                 if let Err(error) = self.record_projection(handle, value.clone()) {
@@ -1396,8 +1472,20 @@ impl CommandRuntime {
                         .lock()
                         .map_err(|_| tool("command runtime is poisoned"))?;
                     if active_owner_matches(&state, handle, &router_owner, invocation) {
+                        let active = state
+                            .active
+                            .get(handle)
+                            .expect("matched active command retains its context");
+                        let mode = CommandExecutionMode::from_access(
+                            active.plan.working_directory().access(),
+                        );
+                        let resource_evidence = active.resource_evidence.clone();
                         state.active.remove(handle);
-                        let projection = result::indeterminate(handle, &detail);
+                        let projection = with_execution_context(
+                            result::indeterminate(handle, &detail),
+                            Some(mode),
+                            resource_evidence.as_ref(),
+                        );
                         state.recovered.insert(handle.to_owned(), projection.clone());
                         recovered = Some(projection);
                         if publication_pending {
@@ -1422,17 +1510,24 @@ impl CommandRuntime {
             }
         };
 
-        let active_mode = {
+        let (active_mode, active_resource_evidence) = {
             let state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
             let active = state
                 .active
                 .get(handle)
                 .ok_or_else(|| tool("command invocation ownership changed before settlement"))?;
-            CommandExecutionMode::from_access(active.plan.working_directory().access())
+            (
+                CommandExecutionMode::from_access(active.plan.working_directory().access()),
+                active.resource_evidence.clone(),
+            )
         };
         let indeterminate_projection = match &observed {
             ObservedCommand::Indeterminate(detail) => {
-                Some(with_execution_mode(result::indeterminate(handle, detail), active_mode))
+                Some(with_execution_context(
+                    result::indeterminate(handle, detail),
+                    Some(active_mode),
+                    active_resource_evidence.as_ref(),
+                ))
             }
             ObservedCommand::Active(_)
             | ObservedCommand::SettlementPending(_, _)
@@ -1457,6 +1552,7 @@ impl CommandRuntime {
                         result: terminal.clone(),
                         progress: progress.clone(),
                         mode: active_mode,
+                        resource_evidence: active_resource_evidence.clone(),
                     },
                 );
                 if publication_pending {
@@ -1490,6 +1586,7 @@ impl CommandRuntime {
                     result,
                     progress,
                     mode: active_mode,
+                    resource_evidence: active_resource_evidence,
                 })
             }
             ObservedCommand::Indeterminate(_) => AdvancedObservationKind::Recovered(
@@ -1549,25 +1646,40 @@ impl CommandRuntime {
         Err(tool("command invocation handle is unknown"))
     }
 
-    fn projection_mode(
+    fn projection_context(
         &self,
         handle: &str,
-    ) -> Result<Option<CommandExecutionMode>, DeveloperLoopError> {
+    ) -> Result<ProjectionContext, DeveloperLoopError> {
         let state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         if let Some(command) = state.starting.get(handle) {
-            return Ok(Some(CommandExecutionMode::from_access(
-                command.plan.working_directory().access(),
-            )));
+            return Ok(ProjectionContext {
+                mode: Some(CommandExecutionMode::from_access(
+                    command.plan.working_directory().access(),
+                )),
+                resource_evidence: command.resource_evidence.clone(),
+            });
         }
         if let Some(command) = state.active.get(handle) {
-            return Ok(Some(CommandExecutionMode::from_access(
-                command.plan.working_directory().access(),
-            )));
+            return Ok(ProjectionContext {
+                mode: Some(CommandExecutionMode::from_access(
+                    command.plan.working_directory().access(),
+                )),
+                resource_evidence: command.resource_evidence.clone(),
+            });
         }
         if let Some(command) = state.terminal.get(handle) {
-            return Ok(Some(command.mode));
+            return Ok(ProjectionContext {
+                mode: Some(command.mode),
+                resource_evidence: command.resource_evidence.clone(),
+            });
         }
-        Ok(state.recovered.get(handle).and_then(execution_mode_from_value))
+        let recovered = state.recovered.get(handle);
+        Ok(ProjectionContext {
+            mode: recovered.and_then(execution_mode_from_value),
+            resource_evidence: recovered
+                .and_then(|value| value.get("execution_resources"))
+                .cloned(),
+        })
     }
 
     fn render_advanced_observation(
@@ -1616,9 +1728,10 @@ impl CommandRuntime {
         };
         match observation {
             AdvancedObservationKind::Terminal(terminal) => {
-                let deferred = with_execution_mode(
+                let deferred = with_execution_context(
                     result::terminal_deferred(handle, &terminal.result, &terminal.progress),
-                    terminal.mode,
+                    Some(terminal.mode),
+                    terminal.resource_evidence.as_ref(),
                 );
                 self.record_deferred_projection(handle, deferred)?;
                 self.publish_replay_action(terminal.result.action_id());
@@ -1719,12 +1832,25 @@ impl CommandRuntime {
     }
 }
 
-fn with_execution_mode(mut value: Value, mode: CommandExecutionMode) -> Value {
+fn with_execution_mode(value: Value, mode: CommandExecutionMode) -> Value {
+    with_execution_context(value, Some(mode), None)
+}
+
+fn with_execution_context(
+    mut value: Value,
+    mode: Option<CommandExecutionMode>,
+    resource_evidence: Option<&Value>,
+) -> Value {
     if let Some(object) = value.as_object_mut() {
-        object.insert(
-            "execution_mode".to_owned(),
-            Value::String(mode.label().to_owned()),
-        );
+        if let Some(mode) = mode {
+            object.insert(
+                "execution_mode".to_owned(),
+                Value::String(mode.label().to_owned()),
+            );
+        }
+        if let Some(resource_evidence) = resource_evidence {
+            object.insert("execution_resources".to_owned(), resource_evidence.clone());
+        }
     }
     value
 }

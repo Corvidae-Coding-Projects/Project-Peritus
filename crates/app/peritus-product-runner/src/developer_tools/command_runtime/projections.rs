@@ -54,12 +54,16 @@ pub(super) fn load(root: &Path) -> Result<BTreeMap<String, Value>, String> {
         }
         let value = if entry.value.get("state").and_then(Value::as_str) == Some("running") {
             let execution_mode = entry.value.get("execution_mode").cloned();
+            let execution_resources = entry.value.get("execution_resources").cloned();
             let mut value = result::indeterminate(
                 &entry.handle,
                 "the daemon restarted while this command was active; its durable process record was reconciled, but live control cannot be resumed",
             );
             if let (Some(mode), Some(object)) = (execution_mode, value.as_object_mut()) {
                 object.insert("execution_mode".to_owned(), mode);
+            }
+            if let (Some(resources), Some(object)) = (execution_resources, value.as_object_mut()) {
+                object.insert("execution_resources".to_owned(), resources);
             }
             value
         } else {

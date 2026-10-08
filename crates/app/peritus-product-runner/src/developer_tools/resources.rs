@@ -1,117 +1,208 @@
-//! Resource-aware defaults and admission for developer commands.
+//! Resource observations and advisory defaults for developer commands.
 
-use std::{path::Path, thread};
+use std::{env, path::Path, thread};
 
-use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
 
-use super::{path::tool, wire::object};
+use super::wire::object;
 
 const BYTES_PER_BUILD_JOB: u64 = 2 * 1024 * 1024 * 1024;
 const MAX_RECOMMENDED_PARALLELISM: usize = 8;
 
-/// One conservative execution envelope observed before a model can run commands.
+/// One conservative resource observation used to suggest command parallelism.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct CommandResources {
     logical_cpus: usize,
     effective_cpus: usize,
-    memory_ceiling_bytes: Option<u64>,
+    cgroup_memory_limit_bytes: Option<u64>,
+    cgroup_memory_headroom_bytes: Option<u64>,
+    available_memory_bytes: Option<u64>,
+    estimated_memory_budget_bytes: Option<u64>,
     recommended_parallelism: usize,
+}
+
+pub(super) struct CommandResourceSelection {
+    environment: Vec<(String, String)>,
+    observation: Value,
 }
 
 impl CommandResources {
     pub(super) fn observe() -> Self {
         let logical_cpus = thread::available_parallelism().map_or(1, usize::from);
         let effective_cpus = effective_cpu_limit().unwrap_or(logical_cpus).min(logical_cpus).max(1);
-        let memory_ceiling_bytes = effective_memory_limit();
-        let memory_parallelism = memory_ceiling_bytes
+        let (cgroup_memory_limit_bytes, cgroup_memory_headroom_bytes) = cgroup_memory_limits();
+        let available_memory_bytes = available_memory();
+        let estimated_memory_budget_bytes = match (
+            cgroup_memory_headroom_bytes,
+            available_memory_bytes,
+        ) {
+            (Some(headroom), Some(available)) => Some(headroom.min(available)),
+            (Some(headroom), None) => Some(headroom),
+            (None, available) => available,
+        };
+        let memory_parallelism = estimated_memory_budget_bytes
             .map_or(MAX_RECOMMENDED_PARALLELISM, |bytes| {
                 usize::try_from((bytes / BYTES_PER_BUILD_JOB).max(1)).unwrap_or(usize::MAX)
             });
         let recommended_parallelism =
             effective_cpus.min(memory_parallelism).clamp(1, MAX_RECOMMENDED_PARALLELISM);
-        Self { logical_cpus, effective_cpus, memory_ceiling_bytes, recommended_parallelism }
+        Self {
+            logical_cpus,
+            effective_cpus,
+            cgroup_memory_limit_bytes,
+            cgroup_memory_headroom_bytes,
+            available_memory_bytes,
+            estimated_memory_budget_bytes,
+            recommended_parallelism,
+        }
     }
 
     pub(super) fn observation(self) -> Value {
         object(vec![
+            ("advisory", Value::Bool(true)),
             ("logical_cpus", Value::from(self.logical_cpus)),
             ("effective_cpus", Value::from(self.effective_cpus)),
-            ("memory_ceiling_bytes", self.memory_ceiling_bytes.map_or(Value::Null, Value::from)),
+            (
+                "cgroup_memory_limit_bytes",
+                self.cgroup_memory_limit_bytes.map_or(Value::Null, Value::from),
+            ),
+            (
+                "cgroup_memory_headroom_bytes",
+                self.cgroup_memory_headroom_bytes.map_or(Value::Null, Value::from),
+            ),
+            (
+                "available_memory_bytes",
+                self.available_memory_bytes.map_or(Value::Null, Value::from),
+            ),
+            (
+                "estimated_memory_budget_bytes",
+                self.estimated_memory_budget_bytes.map_or(Value::Null, Value::from),
+            ),
+            ("estimated_bytes_per_build_job", Value::from(BYTES_PER_BUILD_JOB)),
+            (
+                "recommendation_maximum",
+                Value::from(MAX_RECOMMENDED_PARALLELISM),
+            ),
             ("recommended_parallelism", Value::from(self.recommended_parallelism)),
         ])
     }
 
-    pub(super) fn authorize(
-        self,
-        program: &str,
-        arguments: &[String],
-    ) -> Result<(), DeveloperLoopError> {
-        if let Some(requested) = requested_parallelism(program, arguments)
-            && requested > self.recommended_parallelism
-        {
-            return Err(tool(format!(
-                "command requests {requested} parallel jobs above the observed execution ceiling {}; retry with at most {} jobs or omit the explicit job count so the harness defaults apply (effective CPUs: {}, memory ceiling bytes: {})",
-                self.recommended_parallelism,
-                self.recommended_parallelism,
-                self.effective_cpus,
-                self.memory_ceiling_bytes
-                    .map_or_else(|| "unknown".to_owned(), |value| value.to_string()),
-            )));
-        }
-
-        Ok(())
-    }
-
-    pub(super) fn environment_bindings(self) -> Vec<(String, String)> {
+    pub(super) fn select(self, program: &str, arguments: &[String]) -> CommandResourceSelection {
+        let explicit = requested_parallelism(program, arguments);
         let jobs = self.recommended_parallelism.to_string();
-        vec![
-            ("PERITUS_RECOMMENDED_PARALLELISM".to_owned(), jobs.clone()),
-            ("CARGO_BUILD_JOBS".to_owned(), self.recommended_parallelism.min(2).to_string()),
-            ("CMAKE_BUILD_PARALLEL_LEVEL".to_owned(), jobs.clone()),
-            ("MAKEFLAGS".to_owned(), format!("-j{jobs}")),
-            ("GOMAXPROCS".to_owned(), jobs.clone()),
-            ("RAYON_NUM_THREADS".to_owned(), jobs.clone()),
-            ("NUM_JOBS".to_owned(), jobs.clone()),
-            ("MAX_JOBS".to_owned(), jobs.clone()),
-            ("npm_config_jobs".to_owned(), jobs),
-        ]
+        let mut environment = vec![("PERITUS_RECOMMENDED_PARALLELISM".to_owned(), jobs.clone())];
+        let mut applied = vec![Value::String("PERITUS_RECOMMENDED_PARALLELISM".to_owned())];
+        let mut preserved = Vec::new();
+        for (name, value) in [
+            ("CARGO_BUILD_JOBS", jobs.clone()),
+            ("CMAKE_BUILD_PARALLEL_LEVEL", jobs.clone()),
+            ("MAKEFLAGS", format!("-j{jobs}")),
+            ("GOMAXPROCS", jobs.clone()),
+            ("RAYON_NUM_THREADS", jobs.clone()),
+            ("NUM_JOBS", jobs.clone()),
+            ("MAX_JOBS", jobs.clone()),
+            ("npm_config_jobs", jobs),
+        ] {
+            if env::var_os(name).is_some() {
+                preserved.push(Value::String(name.to_owned()));
+            } else if explicit.is_none() {
+                environment.push((name.to_owned(), value));
+                applied.push(Value::String(name.to_owned()));
+            }
+        }
+        let mut observation = self.observation();
+        if let Some(fields) = observation.as_object_mut() {
+            fields.insert("applied_environment_defaults".to_owned(), Value::Array(applied));
+            fields.insert(
+                "explicit_parallelism".to_owned(),
+                explicit.map_or(Value::Null, RequestedParallelism::observation),
+            );
+            fields.insert("preserved_environment_settings".to_owned(), Value::Array(preserved));
+        }
+        CommandResourceSelection { environment, observation }
     }
 }
 
-fn requested_parallelism(program: &str, arguments: &[String]) -> Option<usize> {
-    let name = Path::new(program).file_name()?.to_str()?.to_ascii_lowercase();
-    if !matches!(name.as_str(), "cargo" | "cmake" | "make" | "gmake" | "ninja" | "ninja-build") {
-        return None;
+impl CommandResourceSelection {
+    pub(super) fn into_parts(self) -> (Vec<(String, String)>, Value) {
+        (self.environment, self.observation)
     }
-    let mut index = 0;
-    while index < arguments.len() {
-        let argument = &arguments[index];
-        if matches!(argument.as_str(), "-j" | "--jobs" | "--parallel") {
-            let requested = arguments.get(index + 1).and_then(|value| value.parse().ok());
-            if argument == "--parallel" && name == "cmake" {
-                return requested;
-            }
-            return requested.or(Some(usize::MAX));
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct RequestedParallelism<'a> {
+    syntax: &'a str,
+    jobs: Option<usize>,
+}
+
+impl RequestedParallelism<'_> {
+    fn observation(self) -> Value {
+        object(vec![
+            ("jobs", self.jobs.map_or(Value::Null, Value::from)),
+            ("source", Value::String("command_argument".to_owned())),
+            ("syntax", Value::String(self.syntax.to_owned())),
+        ])
+    }
+}
+
+#[derive(Clone, Copy)]
+enum BuildTool {
+    Cargo,
+    Cmake,
+    Make,
+    Ninja,
+}
+
+fn requested_parallelism<'a>(
+    program: &str,
+    arguments: &'a [String],
+) -> Option<RequestedParallelism<'a>> {
+    let name = Path::new(program).file_name()?.to_str()?.to_ascii_lowercase();
+    let name = name
+        .strip_suffix(".exe")
+        .or_else(|| name.strip_suffix(".cmd"))
+        .or_else(|| name.strip_suffix(".bat"))
+        .unwrap_or(&name);
+    let tool = match name {
+        "cargo" => BuildTool::Cargo,
+        "cmake" => BuildTool::Cmake,
+        "make" | "gmake" => BuildTool::Make,
+        "ninja" | "ninja-build" => BuildTool::Ninja,
+        _ => return None,
+    };
+    for (index, argument) in arguments.iter().enumerate() {
+        if argument == "-j" {
+            return Some(RequestedParallelism {
+                syntax: "-j",
+                jobs: arguments.get(index + 1).and_then(|value| value.parse().ok()),
+            });
         }
-        for prefix in ["-j", "--jobs=", "--parallel="] {
-            if let Some(value) = argument.strip_prefix(prefix)
-                && !value.is_empty()
-                && let Ok(parsed) = value.parse()
-            {
-                return Some(parsed);
-            }
+        if let Some(value) = argument.strip_prefix("-j").filter(|value| !value.is_empty()) {
+            return Some(RequestedParallelism { syntax: "-jN", jobs: value.parse().ok() });
         }
-        index += 1;
+        let long = match tool {
+            BuildTool::Cargo | BuildTool::Make => "--jobs",
+            BuildTool::Cmake => "--parallel",
+            BuildTool::Ninja => continue,
+        };
+        if argument == long {
+            return Some(RequestedParallelism {
+                syntax: long,
+                jobs: arguments.get(index + 1).and_then(|value| value.parse().ok()),
+            });
+        }
+        if let Some(value) = argument.strip_prefix(long).and_then(|value| value.strip_prefix('=')) {
+            return Some(RequestedParallelism { syntax: long, jobs: value.parse().ok() });
+        }
     }
     None
 }
 
 #[cfg(target_os = "linux")]
 fn effective_cpu_limit() -> Option<usize> {
-    cgroup_files("cpu.max")
+    cgroup_directories()
         .into_iter()
-        .filter_map(|path| std::fs::read_to_string(path).ok())
+        .filter_map(|path| std::fs::read_to_string(path.join("cpu.max")).ok())
         .filter_map(|text| parse_cpu_max(&text))
         .min()
 }
@@ -122,28 +213,45 @@ const fn effective_cpu_limit() -> Option<usize> {
 }
 
 #[cfg(target_os = "linux")]
-fn effective_memory_limit() -> Option<u64> {
-    let cgroup = cgroup_files("memory.max")
-        .into_iter()
-        .filter_map(|path| std::fs::read_to_string(path).ok())
-        .filter_map(|text| parse_memory_max(&text))
-        .min();
-    let available =
-        std::fs::read_to_string("/proc/meminfo").ok().and_then(|text| parse_mem_available(&text));
-    match (cgroup, available) {
-        (Some(limit), Some(free)) => Some(limit.min(free)),
-        (Some(limit), None) => Some(limit),
-        (None, available) => available,
+fn cgroup_memory_limits() -> (Option<u64>, Option<u64>) {
+    let mut limit = None;
+    let mut headroom = None;
+    for directory in cgroup_directories() {
+        let Some(maximum) = std::fs::read_to_string(directory.join("memory.max"))
+            .ok()
+            .and_then(|text| parse_memory_max(&text))
+        else {
+            continue;
+        };
+        limit = Some(limit.map_or(maximum, |current: u64| current.min(maximum)));
+        if let Some(current) = std::fs::read_to_string(directory.join("memory.current"))
+            .ok()
+            .and_then(|text| text.trim().parse::<u64>().ok())
+        {
+            let remaining = maximum.saturating_sub(current);
+            headroom = Some(headroom.map_or(remaining, |prior: u64| prior.min(remaining)));
+        }
     }
+    (limit, headroom)
 }
 
 #[cfg(not(target_os = "linux"))]
-const fn effective_memory_limit() -> Option<u64> {
+const fn cgroup_memory_limits() -> (Option<u64>, Option<u64>) {
+    (None, None)
+}
+
+#[cfg(target_os = "linux")]
+fn available_memory() -> Option<u64> {
+    std::fs::read_to_string("/proc/meminfo").ok().and_then(|text| parse_mem_available(&text))
+}
+
+#[cfg(not(target_os = "linux"))]
+const fn available_memory() -> Option<u64> {
     None
 }
 
 #[cfg(target_os = "linux")]
-fn cgroup_files(name: &'static str) -> Vec<std::path::PathBuf> {
+fn cgroup_directories() -> Vec<std::path::PathBuf> {
     let root = std::path::PathBuf::from("/sys/fs/cgroup");
     let relative = std::fs::read_to_string("/proc/self/cgroup")
         .ok()
@@ -163,7 +271,7 @@ fn cgroup_files(name: &'static str) -> Vec<std::path::PathBuf> {
     let mut current = root.join(safe_relative);
     let mut paths = Vec::new();
     loop {
-        paths.push(current.join(name));
+        paths.push(current.clone());
         if current == root || !current.pop() {
             break;
         }
@@ -209,7 +317,10 @@ mod tests {
         CommandResources {
             logical_cpus: 24,
             effective_cpus: parallelism,
-            memory_ceiling_bytes: Some(2 * 1024 * 1024 * 1024),
+            cgroup_memory_limit_bytes: Some(8 * 1024 * 1024 * 1024),
+            cgroup_memory_headroom_bytes: Some(4 * 1024 * 1024 * 1024),
+            available_memory_bytes: Some(6 * 1024 * 1024 * 1024),
+            estimated_memory_budget_bytes: Some(4 * 1024 * 1024 * 1024),
             recommended_parallelism: parallelism,
         }
     }
@@ -221,42 +332,53 @@ mod tests {
                 "cmake",
                 &["--build".into(), "build".into(), "--parallel".into(), "24".into()]
             ),
-            Some(24),
+            Some(RequestedParallelism { syntax: "--parallel", jobs: Some(24) }),
         );
-        assert_eq!(requested_parallelism("gmake", &["-j8".into()]), Some(8));
-        assert_eq!(requested_parallelism("cargo", &["--jobs=3".into()]), Some(3));
+        assert_eq!(
+            requested_parallelism("gmake", &["-j8".into()]),
+            Some(RequestedParallelism { syntax: "-jN", jobs: Some(8) }),
+        );
+        assert_eq!(
+            requested_parallelism("cargo", &["--jobs=3".into()]),
+            Some(RequestedParallelism { syntax: "--jobs", jobs: Some(3) }),
+        );
         assert_eq!(
             requested_parallelism(
                 "cmake",
                 &["--build".into(), "build".into(), "--parallel".into(), "--target".into()]
             ),
-            None,
+            Some(RequestedParallelism { syntax: "--parallel", jobs: None }),
         );
-        assert_eq!(requested_parallelism("make", &["-j".into(), "all".into()]), Some(usize::MAX));
+        assert_eq!(
+            requested_parallelism("make", &["-j".into(), "all".into()]),
+            Some(RequestedParallelism { syntax: "-j", jobs: None }),
+        );
         assert_eq!(requested_parallelism("python", &["-j24".into()]), None);
     }
 
     #[test]
-    fn excessive_explicit_parallelism_is_rejected_before_spawn() {
-        let error = resources(1)
-            .authorize(
+    fn explicit_parallelism_is_preserved_as_advisory_evidence() {
+        let (_, observation) = resources(1)
+            .select(
                 "cmake",
                 &["--build".into(), "build".into(), "--parallel".into(), "24".into()],
             )
-            .expect_err("oversized build");
-        assert!(error.to_string().contains("above the observed execution ceiling 1"));
-        assert!(error.to_string().contains("retry with at most 1 jobs"));
+            .into_parts();
+        assert_eq!(observation["recommended_parallelism"], 1);
+        assert_eq!(observation["explicit_parallelism"]["jobs"], 24);
+        assert_eq!(observation["advisory"], true);
     }
 
     #[test]
     fn admitted_commands_receive_cross_language_parallelism_defaults() {
-        resources(3).authorize("cmake", &["--build".into(), "build".into()]).unwrap();
         let environment = resources(3)
-            .environment_bindings()
+            .select("cmake", &["--build".into(), "build".into()])
+            .into_parts()
+            .0
             .into_iter()
             .collect::<std::collections::BTreeMap<_, _>>();
         assert_eq!(environment["CMAKE_BUILD_PARALLEL_LEVEL"], "3");
-        assert_eq!(environment["CARGO_BUILD_JOBS"], "2");
+        assert_eq!(environment["CARGO_BUILD_JOBS"], "3");
         assert_eq!(environment["MAKEFLAGS"], "-j3");
     }
 

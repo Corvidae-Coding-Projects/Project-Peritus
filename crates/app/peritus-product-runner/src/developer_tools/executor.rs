@@ -21,7 +21,6 @@ use super::{
     receipt::{EffectReceiptLedger, ReceiptDecision},
     reference::ExplicitReferences,
     removal,
-    resources::CommandResources,
     wire::{object, observation, required_string, string},
 };
 use crate::control::{HostPermissions, PermissionCapability};
@@ -59,7 +58,6 @@ pub struct WorkspaceDeveloperTools {
     command_evidence: CommandEvidence,
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
-    resources: CommandResources,
     command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     #[cfg(test)]

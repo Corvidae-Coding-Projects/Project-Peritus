@@ -5,6 +5,7 @@ use super::{
     ReceiptDecision, Value, WorkspaceDeveloperTools, atomic_write, checked, fs,
     literal_patch::apply_literal_patch, object, removal, required_string, string, tool,
 };
+use crate::developer_tools::resources::CommandResources;
 
 impl WorkspaceDeveloperTools {
     pub(super) fn replay_effect(
@@ -67,7 +68,7 @@ impl WorkspaceDeveloperTools {
                 inspection::list(
                     &self.root,
                     arguments,
-                    self.resources,
+                    CommandResources::observe(),
                     &self.access_policy,
                     self.directory_listings
                         .as_ref()

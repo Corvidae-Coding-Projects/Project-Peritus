@@ -1,9 +1,9 @@
 //! Read-only and explicitly writable filesystem/tool runtime construction.
 
 use super::{
-    ActiveCommandLedger, CommandBudget, CommandEvidence, CommandResources, EffectReceiptLedger,
-    ExplicitReferences, GroundingEvidence, WorkspaceAccessPolicy, WorkspaceDeveloperTools,
-    WorkspaceOwnership, WorkspaceToolMode,
+    ActiveCommandLedger, CommandBudget, CommandEvidence, EffectReceiptLedger, ExplicitReferences,
+    GroundingEvidence, WorkspaceAccessPolicy, WorkspaceDeveloperTools, WorkspaceOwnership,
+    WorkspaceToolMode,
 };
 use std::{path::PathBuf, time::Duration};
 
@@ -27,7 +27,6 @@ impl WorkspaceDeveloperTools {
             command_evidence: CommandEvidence::default(),
             command_budget: None,
             receipts: None,
-            resources: CommandResources::observe(),
             command_runtime: None,
             active_commands: ActiveCommandLedger::default(),
             #[cfg(test)]
@@ -80,7 +79,6 @@ impl WorkspaceDeveloperTools {
             command_evidence: CommandEvidence::default(),
             command_budget: Some(CommandBudget::new(command_horizon.into())),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
-            resources: CommandResources::observe(),
             command_runtime: Some(command_runtime),
             active_commands: ActiveCommandLedger::default(),
             #[cfg(test)]

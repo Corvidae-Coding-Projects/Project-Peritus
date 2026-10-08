@@ -11,6 +11,7 @@ use crate::developer_tools::{
     command_runtime::{CommandExecutionMode, StartCommand},
     effect::reject_destructive_command,
     path::{checked, tool},
+    resources::CommandResources,
     wire::{bounded_u64, required_string, string},
 };
 
@@ -46,6 +47,8 @@ impl WorkspaceDeveloperTools {
             .is_mutation()
             .then(|| self.ownership.unowned_files(&self.root))
             .unwrap_or_default();
+        let (environment, resource_evidence) =
+            CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
@@ -55,14 +58,10 @@ impl WorkspaceDeveloperTools {
             rows: u16::try_from(DEFAULT_TERMINAL_ROWS).expect("bounded terminal rows"),
             columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS).expect("bounded terminal columns"),
             idempotency_key: call_id,
-            environment: self.resources.environment_bindings(),
+            environment,
         };
-        let result = match command.mode {
-            CommandExecutionMode::Observational => {
-                self.command_runtime()?.run_observational(request)
-            }
-            CommandExecutionMode::Mutation => self.command_runtime()?.run(request),
-        };
+        let result =
+            self.command_runtime()?.run_selected(request, command.mode, resource_evidence);
         self.finish_run_command(arguments, result, unowned_before, &command)
     }
 
@@ -81,6 +80,8 @@ impl WorkspaceDeveloperTools {
             .then(|| self.ownership.unowned_files(&self.root))
             .unwrap_or_default();
         let runtime = self.command_runtime()?.clone();
+        let (environment, resource_evidence) =
+            CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
@@ -91,12 +92,9 @@ impl WorkspaceDeveloperTools {
                 columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS)
                     .expect("bounded terminal columns"),
                 idempotency_key: call_id,
-                environment: self.resources.environment_bindings(),
+                environment,
             };
-        let result = match command.mode {
-            CommandExecutionMode::Observational => runtime.run_observational_async(request).await,
-            CommandExecutionMode::Mutation => runtime.run_async(request).await,
-        };
+        let result = runtime.run_selected_async(request, command.mode, resource_evidence).await;
         self.finish_run_command(arguments, result, unowned_before, &command)
     }
 
@@ -151,6 +149,8 @@ impl WorkspaceDeveloperTools {
             .is_mutation()
             .then(|| self.ownership.unowned_files(&self.root))
             .unwrap_or_default();
+        let (environment, resource_evidence) =
+            CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
@@ -160,14 +160,13 @@ impl WorkspaceDeveloperTools {
             rows: u16::try_from(rows).expect("bounded terminal rows"),
             columns: u16::try_from(columns).expect("bounded terminal columns"),
             idempotency_key: call_id,
-            environment: self.resources.environment_bindings(),
+            environment,
         };
-        let result = match command.mode {
-            CommandExecutionMode::Observational => {
-                self.command_runtime()?.start_observational(request)
-            }
-            CommandExecutionMode::Mutation => self.command_runtime()?.start(request),
-        }?;
+        let result = self.command_runtime()?.start_selected(
+            request,
+            command.mode,
+            resource_evidence,
+        )?;
         let result = annotate_result(self, result, &command)?;
         self.active_commands.started(arguments, &result, unowned_before, command.mode)?;
         Ok(result)
@@ -192,6 +191,8 @@ impl WorkspaceDeveloperTools {
             .then(|| self.ownership.unowned_files(&self.root))
             .unwrap_or_default();
         let runtime = self.command_runtime()?.clone();
+        let (environment, resource_evidence) =
+            CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
@@ -201,12 +202,11 @@ impl WorkspaceDeveloperTools {
                 rows: u16::try_from(rows).expect("bounded terminal rows"),
                 columns: u16::try_from(columns).expect("bounded terminal columns"),
                 idempotency_key: call_id,
-                environment: self.resources.environment_bindings(),
+                environment,
             };
-        let result = match command.mode {
-            CommandExecutionMode::Observational => runtime.start_observational_async(request).await,
-            CommandExecutionMode::Mutation => runtime.start_async(request).await,
-        }?;
+        let result = runtime
+            .start_selected_async(request, command.mode, resource_evidence)
+            .await?;
         let result = annotate_result(self, result, &command)?;
         self.active_commands.started(arguments, &result, unowned_before, command.mode)?;
         Ok(result)
@@ -334,7 +334,6 @@ impl WorkspaceDeveloperTools {
             })
             .collect::<Result<Vec<_>, _>>()?;
         reject_destructive_command(program, &args)?;
-        self.resources.authorize(program, &args)?;
         let cwd = match string(arguments, "cwd") {
             Some(value) if !value.is_empty() => checked(&self.root, value, false).map_err(|error| {
                 tool(format!(

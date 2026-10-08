@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
-use super::{CommandRuntime, StartCommand};
+use super::{CommandExecutionMode, CommandRuntime, StartCommand};
 use crate::{
     PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState, ProductRunnerError,
     ProductRunnerErrorKind,
@@ -21,9 +21,20 @@ impl CommandRuntime {
         &self,
         command: &PreviewCommand,
     ) -> Result<PreviewLaunch, ProductRunnerError> {
+        let cancellation = peritus_provider_core::CancellationToken::new();
         let started = self
-            .start_owned(start_command(command))
+            .start_owned(
+                start_command(command),
+                CommandExecutionMode::Mutation,
+                None,
+                &cancellation,
+            )
             .map_err(|error| preview_error(error.to_string()))?;
+        if started.projection.get("state").and_then(Value::as_str) != Some("running") {
+            return Err(preview_error(
+                "preview dispatch did not establish an active process owner",
+            ));
+        }
         Ok(PreviewLaunch { handle: started.handle, process_id: started.process_id })
     }
 
