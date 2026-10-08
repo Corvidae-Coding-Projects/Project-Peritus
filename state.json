@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4057,
-        "tip_oid": "c3756f1db57483dce2d4d181e87f9131176aff94",
-        "prefix_sha256": "316041535401060e2ed5738809a13468e6c4ea7867eeb5e4640051676efea972"
+        "sequence": 4058,
+        "tip_oid": "ca0c28f220a667d3b57e3cf4c46130bed57868b8",
+        "prefix_sha256": "d41e89884237b06ec0d1fe55a89801307a51ecff5ac06adbc73b11275539fc48"
       },
       "NWAR": {
         "sequence": 39,
@@ -7326,12 +7326,13 @@
       "display_id": 146,
       "title": "[L047] Writer/fixer loop parameters and error-to-budget mapping",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L047.\n\n- `peritus-product-runner/src/turn.rs:292-321` constructs `DeveloperLoopLimits::new(48, 512)` for writer/fixer execution. The type definition and local-context continuation caller remain pending, so these numbers are recorded as supplied parameters rather than assumed terminal task quotas.\n- Lines 334-346 map both LimitExceeded and SegmentExhausted to ProductRunnerErrorKind::Budget. `turn/provider.rs:34-38` now verifies SegmentExhausted is handled **before** this mapping for writer/fixer: it resets recovery and starts another outer invocation with a segment-boundary correction. This avoids a terminal quota on that path but reconstructs empty grounding evidence (L043). Other role/caller paths remain pending.\n- Outer invocation count saturates at `u32::MAX` (line 74), rejected terminal output retries at lines 149-163, and changing unverified questions may retry at lines 180-187. No fixed outer retry count appears in this file. Durable invocation identity and convergence/ambiguity policy remain pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.028366924Z",
-      "updated_at": "2026-10-08T04:39:39.467483110Z",
+      "updated_at": "2026-10-08T04:41:23.628211260Z",
+      "closed_at": "2026-10-08T04:41:23.625216198Z",
       "labels": [
         "daily-driving-limiter"
       ],
