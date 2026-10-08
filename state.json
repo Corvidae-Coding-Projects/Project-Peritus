@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3946,
-        "tip_oid": "26d22daac1698d313bcb5be5b6c59e0eed7d5671",
-        "prefix_sha256": "95d00d71d047d7d2908e755dbaf9be12ea5df924c3e6c71d32af385bc53ae920"
+        "sequence": 3947,
+        "tip_oid": "d397217c3a7891aa86cff0ac6cc65ccececd1896",
+        "prefix_sha256": "d94d75716c9c1539346768010f9d6ebabc8aabc7fe4dbe922b734f1960e8c46c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3176,
+  "next_comment_id": 3177,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16615,7 +16615,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.962483561Z",
-      "updated_at": "2026-10-06T13:19:07.964432104Z",
+      "updated_at": "2026-10-08T01:32:54.800036421Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16626,6 +16626,15 @@
           "content": "Systemic repair plan for L032: Goal text/count representation and checked counter exhaustion.\n\nOwning contract and implementation boundary: peritus-product-runner/src/control/goal.rs:103,165-168; goal/lifecycle.rs:17-25; goal/validation.rs:43-57; goal/accounting.rs:32-41,111-118; goal/execution.rs:24,43-64,93,134-153,288-289; accounting.rs:129-135,159-165; goal/tests.rs:28-53. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nKeep goal text and evidence in referenced paged records and use epoch-plus-offset counters or segmented checked totals for indefinitely retained usage. Preserve exact accounting rather than saturation in authoritative summaries. A mandatory RunnerAcceptance criterion must remain explicit; representational rollover must not create a hidden daily work quota or discard previous evidence.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "9577a341-8132-4ae3-97dc-9491ddb921f5": {
+          "display_id": 3176,
+          "author": "6ME5",
+          "content": "Code complete in commit a24fcd07b: goal text/count representation no longer adds inline lifetime admission ceilings; arbitrary-precision canonical segmented usage replaces authoritative checked exhaustion and saturation. Exact protocol projection/rendering preserves legacy scalar bytes for representable values and uses additive canonical wire forms otherwise. Mandatory acceptance, per-attempt observations and historical JSON/codec compatibility retained. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:32:54.789290390Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAVTcoI5M5LDtMkxqHOG/fBJqfgReXa1XJDFRVrYLlP6tNReT1GP1Dt2ULOm4qD46VXeTHQEh2c0QsqGz5VDIKDg=="
         }
       }
     },
