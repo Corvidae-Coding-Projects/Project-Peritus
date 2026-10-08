@@ -48,7 +48,7 @@ pub(super) fn build(
     artifacts: &QualificationArtifacts,
     store: StoreId,
 ) -> Result<PromotionEvidence, crate::EvolutionError> {
-    let limits = EvolutionLimits::compiled();
+    let limits = EvolutionLimits::default();
     let project = ProjectId::new(nominal(b"peritus/h1/promotion/project/v1\0", store))
         .map_err(|_| invalid("construct qualification project identity"))?;
     let campaign =

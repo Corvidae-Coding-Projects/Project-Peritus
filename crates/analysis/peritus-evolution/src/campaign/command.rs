@@ -20,11 +20,16 @@ pub enum CampaignCommandKind {
         baseline: ProductionHarnessBinding,
         /// Protected frozen policy.
         policy: PromotionPolicyBinding,
-        /// Caller-tightened bounds.
+        /// Explicit finite or sentinel-unlimited workload policy.
         limits: EvolutionLimits,
     },
     /// Freezes all immutable campaign inputs.
     FreezeCampaign,
+    /// Atomically adopts a strictly broader owner-selected workload policy.
+    ExpandScope {
+        /// Monotonic successor policy; all accepted evidence remains in the same aggregate.
+        limits: EvolutionLimits,
+    },
     /// Records one immutable baseline evidence artifact and evidence record.
     RecordBaselineEvidence {
         /// Finalized immutable baseline artifact digest.
@@ -223,6 +228,10 @@ pub(crate) fn semantic_digest(kind: &CampaignCommandKind) -> Sha256Digest {
             bytes.extend_from_slice(limits.digest().as_bytes());
         }
         CampaignCommandKind::FreezeCampaign => bytes.push(2),
+        CampaignCommandKind::ExpandScope { limits } => {
+            bytes.push(15);
+            bytes.extend_from_slice(limits.digest().as_bytes());
+        }
         CampaignCommandKind::RecordBaselineEvidence { artifact_digest, evidence_digest } => {
             bytes.push(3);
             bytes.extend_from_slice(artifact_digest.as_bytes());

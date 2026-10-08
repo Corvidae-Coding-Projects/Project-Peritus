@@ -31,7 +31,9 @@ pub fn attribute(
     }
     let predicted = manifests.iter().map(|manifest| manifest.predictions().len()).sum::<usize>();
     if predicted == 0
-        || predicted > usize::try_from(limits.attribution_entries()).unwrap_or(usize::MAX)
+        || limits.attribution_entries_limit().is_some_and(|maximum| {
+            predicted > usize::try_from(maximum).unwrap_or(usize::MAX)
+        })
     {
         return Err(EvolutionError::new(
             EvolutionErrorKind::LimitExceeded,

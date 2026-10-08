@@ -189,6 +189,13 @@ fn apply_kind(
     state.last_event = event_id;
     match kind {
         PointerCommandKind::InitializeProductionHarness { .. } => return Err(transition()),
+        PointerCommandKind::ExpandScope { limits } => {
+            require_active(&state)?;
+            if !limits.is_strict_expansion_of(state.limits) {
+                return Err(binding("pointer scope successor is not a strict expansion"));
+            }
+            state.limits = *limits;
+        }
         PointerCommandKind::PreparePromotion(proposal) => {
             require_active(&state)?;
             if proposal.project_id() != state.project_id
@@ -238,7 +245,7 @@ fn apply_kind(
             );
             state.current = successor;
             state.generation = generation;
-            append_history(&mut state, record);
+            append_history(&mut state, record)?;
             state.pending = None;
             state.phase = PointerPhase::Active;
         }
@@ -295,7 +302,7 @@ fn apply_kind(
             );
             state.current = successor;
             state.generation = generation;
-            append_history(&mut state, record);
+            append_history(&mut state, record)?;
             state.pending = None;
             state.phase = PointerPhase::Active;
         }
@@ -310,12 +317,24 @@ fn apply_kind(
     Ok(state)
 }
 
-fn append_history(state: &mut ProductionHarnessState, record: crate::ActivationRecord) {
-    let limit = usize::from(state.limits.activation_history());
-    if state.history.len() == limit {
-        state.history.remove(0);
+fn append_history(
+    state: &mut ProductionHarnessState,
+    record: crate::ActivationRecord,
+) -> Result<(), EvolutionError> {
+    if state
+        .limits
+        .activation_history_limit()
+        .is_some_and(|limit| state.history.len() >= usize::from(limit))
+    {
+        return Err(EvolutionError::new(
+            EvolutionErrorKind::LimitExceeded,
+            EvolutionOperation::TransitionPointer,
+            EvolutionRecovery::SuccessorCampaign,
+            "pointer history policy requires an owner-approved scope expansion",
+        ));
     }
     state.history.push(record);
+    Ok(())
 }
 
 fn require_active(state: &ProductionHarnessState) -> Result<(), EvolutionError> {

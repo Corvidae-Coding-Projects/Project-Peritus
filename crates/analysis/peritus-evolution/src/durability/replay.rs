@@ -7,13 +7,13 @@ use peritus_types::EventSequence;
 use crate::{
     CampaignEvent, CampaignState, EvolutionCampaignId, EvolutionError, PointerEvent,
     ProductionHarnessState, apply_campaign_event, apply_pointer_event,
-    wire::{CampaignEventFrame, CampaignStateFrame, PointerEventFrame, PointerStateFrame},
+    wire::{CampaignEventFrame, PointerEventFrame},
 };
 
 use super::{
     CAMPAIGN_STATE_NAMESPACE, POINTER_STATE_NAMESPACE, campaign::codec, campaign::journal_error,
-    campaign::recovery, campaign_aggregate_key, campaign_state_key, pointer_aggregate_key,
-    pointer_state_key,
+    campaign::recovery, campaign_aggregate_key, campaign_state_key, checkpoint,
+    pointer_aggregate_key, pointer_state_key,
 };
 
 /// Fully replayed campaign observation.
@@ -96,8 +96,7 @@ pub fn recover_campaign(
         events.push(event);
     }
     if let Some(record) = checkpoint {
-        let frame = decode_message::<CampaignStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+        let frame = checkpoint::decode_campaign(journal, &record, campaign_id)?;
         let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("campaign checkpoint has no semantic events"))?;
@@ -144,8 +143,7 @@ pub fn recover_pointer(
         events.push(event);
     }
     if let Some(record) = checkpoint {
-        let frame = decode_message::<PointerStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+        let frame = checkpoint::decode_pointer(journal, &record, project_id)?;
         let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("pointer checkpoint has no semantic events"))?;

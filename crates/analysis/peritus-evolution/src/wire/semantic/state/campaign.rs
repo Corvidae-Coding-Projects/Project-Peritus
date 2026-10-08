@@ -74,8 +74,8 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
     let last_event = scalar::event_id(&mut reader).map_err(scalar::codec)?;
     let encoded_state = scalar::digest(&mut reader)?;
     let phase = campaign_phase(reader.read_u8().map_err(scalar::codec)?)?;
-    let maximum_manifests = usize::from(limits.manifests());
-    let maximum_variants = usize::from(limits.variants());
+    let maximum_manifests = limits.manifests_limit().map_or(usize::MAX, usize::from);
+    let maximum_variants = limits.variants_limit().map_or(usize::MAX, usize::from);
 
     let baseline_evidence = read_vec(&mut reader, maximum_manifests, 2 * 32, |reader| {
         Ok(BaselineEvidence::new(scalar::digest(reader)?, scalar::digest(reader)?))

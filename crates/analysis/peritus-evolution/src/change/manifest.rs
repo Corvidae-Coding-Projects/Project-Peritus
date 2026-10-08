@@ -57,13 +57,17 @@ impl ChangeManifest {
             || diagnoses.windows(2).any(|pair| pair[0].digest() >= pair[1].digest())
             || !citation_counts_within_limit(
                 diagnoses.iter().map(|value| value.citations().len()),
-                limits.citations_per_manifest(),
+                limits.citations_per_manifest_limit(),
             )
             || deltas.is_empty()
-            || deltas.len() > usize::from(limits.deltas_per_manifest())
+            || limits
+                .deltas_per_manifest_limit()
+                .is_some_and(|maximum| deltas.len() > usize::from(maximum))
             || deltas.windows(2).any(|pair| pair[0].component_id() >= pair[1].component_id())
             || predictions.is_empty()
-            || predictions.len() > usize::from(limits.predictions_per_manifest())
+            || limits
+                .predictions_per_manifest_limit()
+                .is_some_and(|maximum| predictions.len() > usize::from(maximum))
             || predictions.windows(2).any(|pair| pair[0].digest() >= pair[1].digest())
         {
             return Err(EvolutionError::new(
@@ -145,13 +149,17 @@ impl ChangeManifest {
             || diagnoses.windows(2).any(|pair| pair[0].digest() >= pair[1].digest())
             || !citation_counts_within_limit(
                 diagnoses.iter().map(|value| value.citations().len()),
-                limits.citations_per_manifest(),
+                limits.citations_per_manifest_limit(),
             )
             || deltas.is_empty()
-            || deltas.len() > usize::from(limits.deltas_per_manifest())
+            || limits
+                .deltas_per_manifest_limit()
+                .is_some_and(|maximum| deltas.len() > usize::from(maximum))
             || deltas.windows(2).any(|pair| pair[0].component_id() >= pair[1].component_id())
             || predictions.is_empty()
-            || predictions.len() > usize::from(limits.predictions_per_manifest())
+            || limits
+                .predictions_per_manifest_limit()
+                .is_some_and(|maximum| predictions.len() > usize::from(maximum))
             || predictions.windows(2).any(|pair| pair[0].digest() >= pair[1].digest())
         {
             return Err(EvolutionError::new(
@@ -263,11 +271,13 @@ pub(crate) fn changed_components(
     ids.into_iter().collect()
 }
 
-fn citation_counts_within_limit(counts: impl IntoIterator<Item = usize>, maximum: u16) -> bool {
-    counts
-        .into_iter()
-        .try_fold(0_usize, usize::checked_add)
-        .is_some_and(|total| total <= usize::from(maximum))
+fn citation_counts_within_limit(
+    counts: impl IntoIterator<Item = usize>,
+    maximum: Option<u16>,
+) -> bool {
+    counts.into_iter().try_fold(0_usize, usize::checked_add).is_some_and(|total| {
+        maximum.is_none_or(|maximum| total <= usize::from(maximum))
+    })
 }
 
 #[allow(clippy::too_many_arguments)]

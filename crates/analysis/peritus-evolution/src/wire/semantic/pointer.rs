@@ -50,6 +50,10 @@ pub(crate) fn encode_kind(kind: &PointerCommandKind) -> Result<Vec<u8>, Evolutio
             writer.write_u8(6).map_err(scalar::codec)?;
             writer.write_fixed(reason_digest.as_bytes()).map_err(scalar::codec)?;
         }
+        PointerCommandKind::ExpandScope { limits } => {
+            writer.write_u8(7).map_err(scalar::codec)?;
+            binding::write_limits(&mut writer, *limits)?;
+        }
     }
     Ok(writer.into_bytes())
 }
@@ -81,6 +85,7 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<PointerCommandKind, EvolutionE
             authorization: binding::authorization(&mut reader)?,
         },
         6 => PointerCommandKind::CancelPending { reason_digest: scalar::digest(&mut reader)? },
+        7 => PointerCommandKind::ExpandScope { limits: binding::limits(&mut reader)? },
         _ => return Err(scalar::protocol()),
     };
     reader.finish().map_err(scalar::codec)?;

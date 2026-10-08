@@ -15,7 +15,9 @@ impl BoundedText {
     /// Rejects empty, over-limit, non-trimmed, or control-containing text.
     pub fn new(value: String, limits: EvolutionLimits) -> Result<Self, EvolutionError> {
         if value.is_empty()
-            || value.len() > usize::try_from(limits.text_bytes()).unwrap_or(usize::MAX)
+            || limits
+                .text_bytes_limit()
+                .is_some_and(|maximum| value.len() > usize::try_from(maximum).unwrap_or(usize::MAX))
             || value.trim() != value
             || value.chars().any(char::is_control)
         {

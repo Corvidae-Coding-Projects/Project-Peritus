@@ -176,7 +176,7 @@ impl CampaignState {
     pub const fn policy(&self) -> &PromotionPolicyBinding {
         &self.policy
     }
-    /// Caller-tightened bounds.
+    /// Explicit finite or sentinel-unlimited workload policy.
     #[must_use]
     pub const fn limits(&self) -> EvolutionLimits {
         self.limits

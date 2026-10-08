@@ -40,7 +40,9 @@ pub(super) fn assessment(
     let evidence = scalar::digest(reader)?;
     let policy = scalar::digest(reader)?;
     let length = reader.read_collection_len(1 + 1 + 1 + 32).map_err(scalar::codec)?;
-    if length != 14 || length > usize::from(limits.criteria()) {
+    if length != 14
+        || limits.criteria_limit().is_some_and(|maximum| length > usize::from(maximum))
+    {
         return Err(scalar::protocol());
     }
     let mut criteria = reader.reserve_collection(length).map_err(scalar::codec)?;

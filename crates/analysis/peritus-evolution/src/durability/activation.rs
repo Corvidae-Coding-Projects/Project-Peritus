@@ -8,8 +8,8 @@ use peritus_journal::{
 };
 
 use crate::{
-    CampaignCommand, CampaignCommandKind, CampaignTransition, EvolutionError, PointerCommand,
-    PointerCommandKind, PointerTransition,
+    CampaignCommand, CampaignCommandKind, CampaignTransition, EvolutionError,
+    EvolutionStorageLimits, PointerCommand, PointerCommandKind, PointerTransition,
     wire::{CampaignCommandFrame, PointerCommandFrame},
 };
 
@@ -29,7 +29,7 @@ use super::{
 
 mod frames;
 
-use frames::{campaign_event, campaign_install, pointer_event, pointer_install};
+use frames::{campaign_event, campaign_installs, pointer_event, pointer_installs};
 
 /// One complete already-decided atomic pointer mutation.
 pub struct AtomicActivation<'a> {
@@ -113,6 +113,23 @@ pub fn commit_atomic_activation(
     journal: &mut SqliteJournal,
     activation: AtomicActivation<'_>,
 ) -> Result<CommittedApprovalUse, EvolutionError> {
+    commit_atomic_activation_with_storage(
+        journal,
+        activation,
+        EvolutionStorageLimits::default(),
+    )
+}
+
+/// Commits an atomic activation with caller-selected physical checkpoint paging.
+///
+/// # Errors
+/// Rejects stale heads/state, invalid frames, missing artifacts, stale registry/approval state, or
+/// any journal commit failure without partially committing the requested activation.
+pub fn commit_atomic_activation_with_storage(
+    journal: &mut SqliteJournal,
+    activation: AtomicActivation<'_>,
+    storage: EvolutionStorageLimits,
+) -> Result<CommittedApprovalUse, EvolutionError> {
     let AtomicActivation {
         campaign,
         pointer_command,
@@ -124,11 +141,13 @@ pub fn commit_atomic_activation(
     let pointer_aggregate = pointer_aggregate_key(pointer_command.project_id())?;
     let pointer_key = pointer_state_key(pointer_command.project_id());
     let mut events = vec![pointer_event(pointer_aggregate, pointer_transition)?];
-    let mut installs = vec![pointer_install(
+    let mut installs = pointer_installs(
+        journal,
         pointer_key.clone(),
         pointer_command.expected_sequence(),
         pointer_transition,
-    )?];
+        storage,
+    )?;
     let mut artifacts = pointer_artifacts(pointer_command.kind());
     if let Some(record) = pointer_transition.state().history().last() {
         artifacts.push(peritus_journal::ArtifactDependency::new(record.evidence_artifact()));
@@ -147,10 +166,12 @@ pub fn commit_atomic_activation(
         let campaign_aggregate = campaign_aggregate_key(campaign_command.campaign_id())?;
         let campaign_key = campaign_state_key(campaign_command.campaign_id());
         events.push(campaign_event(campaign_aggregate, campaign_transition)?);
-        installs.push(campaign_install(
+        installs.extend(campaign_installs(
+            journal,
             campaign_key,
             campaign_command.expected_sequence(),
             campaign_transition,
+            storage,
         )?);
         artifacts.extend(campaign_artifacts(campaign_command.kind()));
         let bytes = encode_message(
@@ -188,7 +209,7 @@ pub fn commit_atomic_activation(
     let pointer_head = journal.head(pointer_aggregate).map_err(journal_error)?;
     let pointer_current =
         journal.state_record(POINTER_STATE_NAMESPACE, &pointer_key).map_err(journal_error)?;
-    validate_pointer_current(pointer_command, pointer_head, pointer_current.as_ref())?;
+    validate_pointer_current(journal, pointer_command, pointer_head, pointer_current.as_ref())?;
     let mut heads = vec![expectation(pointer_aggregate, pointer_head)];
     if let Some((campaign_command, _)) = campaign {
         let campaign_aggregate = campaign_aggregate_key(campaign_command.campaign_id())?;
@@ -196,7 +217,12 @@ pub fn commit_atomic_activation(
         let campaign_head = journal.head(campaign_aggregate).map_err(journal_error)?;
         let campaign_current =
             journal.state_record(CAMPAIGN_STATE_NAMESPACE, &campaign_key).map_err(journal_error)?;
-        validate_campaign_current(campaign_command, campaign_head, campaign_current.as_ref())?;
+        validate_campaign_current(
+            journal,
+            campaign_command,
+            campaign_head,
+            campaign_current.as_ref(),
+        )?;
         heads.push(expectation(campaign_aggregate, campaign_head));
     }
     heads.sort_by_key(|value| value.key());

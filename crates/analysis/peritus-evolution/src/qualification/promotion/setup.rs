@@ -37,7 +37,7 @@ pub(super) fn seed_campaign(
             project_id,
             baseline: fixture.baseline,
             policy: fixture.policy.clone(),
-            limits: EvolutionLimits::compiled(),
+            limits: EvolutionLimits::default(),
         },
         CampaignCommandKind::FreezeCampaign,
         CampaignCommandKind::RecordBaselineEvidence {
@@ -149,7 +149,7 @@ pub(super) fn seed_pointer(
         PointerCommandKind::InitializeProductionHarness {
             initial: fixture.baseline,
             policy: fixture.policy.clone(),
-            limits: EvolutionLimits::compiled(),
+            limits: EvolutionLimits::default(),
             evidence_artifact: artifacts.initialization,
             evidence_digest: artifacts.initialization_evidence,
         },
@@ -288,7 +288,7 @@ mod tests {
                     .expect("project"),
                 baseline: fixture.baseline,
                 policy: fixture.policy,
-                limits: EvolutionLimits::compiled(),
+                limits: EvolutionLimits::default(),
             },
             1,
             store,

@@ -192,14 +192,16 @@ impl PromotionPolicy {
         limits: EvolutionLimits,
     ) -> Result<Self, EvolutionError> {
         if objectives.is_empty()
-            || objectives.len() > usize::from(limits.criteria())
+            || limits
+                .criteria_limit()
+                .is_some_and(|maximum| objectives.len() > usize::from(maximum))
             || objectives
                 .iter()
                 .enumerate()
                 .any(|(index, value)| objectives[index + 1..].contains(value))
             || review_required_kinds.windows(2).any(|pair| pair[0] >= pair[1])
             || maximum_variants == 0
-            || maximum_variants > limits.variants()
+            || limits.variants_limit().is_some_and(|limit| maximum_variants > limit)
         {
             return Err(EvolutionError::new(
                 EvolutionErrorKind::NonCanonical,

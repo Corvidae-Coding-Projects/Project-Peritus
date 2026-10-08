@@ -1,17 +1,17 @@
 //! Canonical event drafts and state installs for atomic activation.
 
 use peritus_codec::{CodecLimits, encode_message};
-use peritus_journal::{EventDraft, ExactFrame, StateInstall};
+use peritus_journal::{EventDraft, ExactFrame, SqliteJournal, StateInstall};
 use peritus_types::EventSequence;
 
 use crate::{
-    CampaignTransition, EvolutionError, PointerTransition,
-    wire::{CampaignEventFrame, CampaignStateFrame, PointerEventFrame, PointerStateFrame},
+    CampaignTransition, EvolutionError, EvolutionStorageLimits, PointerTransition,
+    wire::{CampaignEventFrame, PointerEventFrame},
 };
 
 use super::super::{
-    CAMPAIGN_STATE_NAMESPACE, POINTER_STATE_NAMESPACE, binding,
-    campaign::{codec, journal_error},
+    binding,
+    campaign::{codec, journal_error}, checkpoint,
 };
 
 pub(super) fn campaign_event(
@@ -59,42 +59,34 @@ pub(super) fn pointer_event(
     .map_err(journal_error)
 }
 
-pub(super) fn campaign_install(
+pub(super) fn campaign_installs(
+    journal: &SqliteJournal,
     key: Vec<u8>,
     expected_revision: u64,
     transition: &CampaignTransition,
-) -> Result<StateInstall, EvolutionError> {
-    let bytes = encode_message(
-        &CampaignStateFrame::from_state(transition.state()).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
-    StateInstall::new(
-        CAMPAIGN_STATE_NAMESPACE,
-        key,
+    storage: EvolutionStorageLimits,
+) -> Result<Vec<StateInstall>, EvolutionError> {
+    checkpoint::campaign_compatible_installs(
+        journal,
+        &key,
         Some(expected_revision),
-        transition.state().sequence(),
-        bytes,
+        transition.state(),
+        storage,
     )
-    .map_err(journal_error)
 }
 
-pub(super) fn pointer_install(
+pub(super) fn pointer_installs(
+    journal: &SqliteJournal,
     key: Vec<u8>,
     expected_revision: u64,
     transition: &PointerTransition,
-) -> Result<StateInstall, EvolutionError> {
-    let bytes = encode_message(
-        &PointerStateFrame::from_state(transition.state()).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
-    StateInstall::new(
-        POINTER_STATE_NAMESPACE,
-        key,
+    storage: EvolutionStorageLimits,
+) -> Result<Vec<StateInstall>, EvolutionError> {
+    checkpoint::pointer_compatible_installs(
+        journal,
+        &key,
         Some(expected_revision),
-        transition.state().sequence(),
-        bytes,
+        transition.state(),
+        storage,
     )
-    .map_err(journal_error)
 }

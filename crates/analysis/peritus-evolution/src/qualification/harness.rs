@@ -79,7 +79,7 @@ fn policy() -> Result<PromotionPolicy, crate::EvolutionError> {
         Vec::new(),
         false,
         1,
-        EvolutionLimits::compiled(),
+        EvolutionLimits::default(),
     )
 }
 

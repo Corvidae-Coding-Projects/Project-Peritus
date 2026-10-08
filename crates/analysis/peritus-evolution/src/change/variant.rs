@@ -40,7 +40,9 @@ impl VariantDefinition {
         limits: EvolutionLimits,
     ) -> Result<Self, EvolutionError> {
         if manifests.is_empty()
-            || manifests.len() > usize::from(limits.manifests())
+            || limits
+                .manifests_limit()
+                .is_some_and(|maximum| manifests.len() > usize::from(maximum))
             || manifests.windows(2).any(|pair| pair[0].id() >= pair[1].id())
             || baseline.harness_revision() != baseline_revision.identity()
             || candidate.harness_revision() != candidate_revision.identity()
@@ -141,7 +143,9 @@ impl VariantDefinition {
     ) -> Result<Self, EvolutionError> {
         if baseline == candidate
             || manifest_ids.is_empty()
-            || manifest_ids.len() > usize::from(limits.manifests())
+            || limits
+                .manifests_limit()
+                .is_some_and(|maximum| manifest_ids.len() > usize::from(maximum))
             || manifest_ids.len() != manifest_digests.len()
             || manifest_ids.windows(2).any(|pair| pair[0] >= pair[1])
             || changed_components.is_empty()

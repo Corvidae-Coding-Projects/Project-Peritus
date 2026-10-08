@@ -17,6 +17,10 @@ pub(crate) fn encode_kind(kind: &CampaignCommandKind) -> Result<Vec<u8>, Evoluti
             binding::write_policy(&mut writer, policy)?;
         }
         CampaignCommandKind::FreezeCampaign => writer.write_u8(2).map_err(scalar::codec)?,
+        CampaignCommandKind::ExpandScope { limits } => {
+            writer.write_u8(15).map_err(scalar::codec)?;
+            binding::write_limits(&mut writer, *limits)?;
+        }
         CampaignCommandKind::RecordBaselineEvidence { artifact_digest, evidence_digest } => {
             writer.write_u8(3).map_err(scalar::codec)?;
             writer.write_fixed(artifact_digest.as_bytes()).map_err(scalar::codec)?;
@@ -74,7 +78,7 @@ pub(crate) fn encode_kind(kind: &CampaignCommandKind) -> Result<Vec<u8>, Evoluti
 
 pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, EvolutionError> {
     let mut reader = CanonicalReader::new(bytes, CodecLimits::PRODUCTION);
-    let compiled = EvolutionLimits::compiled();
+    let unbounded = EvolutionLimits::unlimited();
     let kind = match reader.read_u8().map_err(scalar::codec)? {
         1 => {
             let project_id = scalar::project_id(&mut reader).map_err(scalar::codec)?;
@@ -88,16 +92,16 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, Evolution
             artifact_digest: scalar::digest(&mut reader)?,
             evidence_digest: scalar::digest(&mut reader)?,
         },
-        4 => CampaignCommandKind::SubmitDiagnosis(binding::diagnosis(&mut reader, compiled)?),
-        5 => CampaignCommandKind::AdmitChangeManifest(change::manifest(&mut reader, compiled)?),
-        6 => CampaignCommandKind::AdmitVariant(change::variant(&mut reader, compiled)?),
+        4 => CampaignCommandKind::SubmitDiagnosis(binding::diagnosis(&mut reader, unbounded)?),
+        5 => CampaignCommandKind::AdmitChangeManifest(change::manifest(&mut reader, unbounded)?),
+        6 => CampaignCommandKind::AdmitVariant(change::variant(&mut reader, unbounded)?),
         7 => CampaignCommandKind::AdmitEvaluation {
             variant_id: VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?,
             evidence: evaluation::read(&mut reader)?,
         },
         8 => CampaignCommandKind::CompleteAttribution {
-            attribution: attribution::read(&mut reader, compiled)?,
-            assessment: selection::assessment(&mut reader, compiled)?,
+            attribution: attribution::read(&mut reader, unbounded)?,
+            assessment: selection::assessment(&mut reader, unbounded)?,
         },
         9 => CampaignCommandKind::RecordSelection(selection::selection(&mut reader)?),
         10 => CampaignCommandKind::RequestPromotion(proposal::promotion(&mut reader)?),
@@ -107,6 +111,7 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, Evolution
         12 => CampaignCommandKind::RecordPublication(proposal::publication(&mut reader)?),
         13 => CampaignCommandKind::CancelCampaign { reason_digest: scalar::digest(&mut reader)? },
         14 => CampaignCommandKind::FailCampaign { reason_digest: scalar::digest(&mut reader)? },
+        15 => CampaignCommandKind::ExpandScope { limits: binding::limits(&mut reader)? },
         _ => return Err(scalar::protocol()),
     };
     reader.finish().map_err(scalar::codec)?;

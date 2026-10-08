@@ -122,7 +122,9 @@ impl AttributionRecord {
         limits: EvolutionLimits,
     ) -> Result<Self, EvolutionError> {
         if entries.is_empty()
-            || entries.len() > usize::try_from(limits.attribution_entries()).unwrap_or(usize::MAX)
+            || limits.attribution_entries_limit().is_some_and(|maximum| {
+                entries.len() > usize::try_from(maximum).unwrap_or(usize::MAX)
+            })
             || entries.windows(2).any(|pair| {
                 (pair[0].manifest_id(), pair[0].prediction_digest())
                     >= (pair[1].manifest_id(), pair[1].prediction_digest())

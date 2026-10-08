@@ -24,16 +24,8 @@ pub(super) fn apply_kind(
         if prior.is_some() || sequence != 1 || policy.policy().digest() != policy_digest {
             return Err(transition());
         }
-        let binding_digest = digest_parts(
-            b"peritus.f0.campaign-binding.v1\0",
-            &[
-                campaign_id.as_bytes(),
-                project_id.as_bytes(),
-                baseline.digest().as_bytes(),
-                policy.digest().as_bytes(),
-                limits.digest().as_bytes(),
-            ],
-        );
+        let binding_digest =
+            campaign_binding_digest(campaign_id, *project_id, *baseline, policy, *limits);
         return Ok(CampaignState {
             campaign_id,
             project_id: *project_id,
@@ -67,12 +59,25 @@ pub(super) fn apply_kind(
             require(&state, &[CampaignPhase::Draft])?;
             state.phase = CampaignPhase::Frozen;
         }
+        CampaignCommandKind::ExpandScope { limits } => {
+            if !limits.is_strict_expansion_of(state.limits) {
+                return Err(binding("campaign scope successor is not a strict expansion"));
+            }
+            state.limits = *limits;
+            state.binding_digest = campaign_binding_digest(
+                state.campaign_id,
+                state.project_id,
+                state.baseline,
+                &state.policy,
+                *limits,
+            );
+        }
         CampaignCommandKind::RecordBaselineEvidence { artifact_digest, evidence_digest } => {
             require(&state, &[CampaignPhase::Frozen, CampaignPhase::BaselineRunning])?;
             insert_unique(
                 &mut state.baseline_evidence,
                 BaselineEvidence::new(*artifact_digest, *evidence_digest),
-                usize::from(state.limits.manifests()),
+                state.limits.manifests_limit().map(usize::from),
             )?;
             state.phase = CampaignPhase::BaselineRunning;
         }
@@ -87,7 +92,7 @@ pub(super) fn apply_kind(
                 &mut state.diagnoses,
                 evidence.clone(),
                 crate::PublishedDebuggerEvidence::digest,
-                usize::from(state.limits.manifests()),
+                state.limits.manifests_limit().map(usize::from),
             )?;
             state.phase = CampaignPhase::Diagnosing;
         }
@@ -112,7 +117,7 @@ pub(super) fn apply_kind(
                 &mut state.manifests,
                 manifest.clone(),
                 crate::ChangeManifest::id,
-                usize::from(state.limits.manifests()),
+                state.limits.manifests_limit().map(usize::from),
             )?;
             state.phase = CampaignPhase::Proposing;
         }
@@ -128,12 +133,15 @@ pub(super) fn apply_kind(
                     "variant differs from campaign manifests or duplicates a candidate",
                 ));
             }
-            let maximum = state.limits.variants().min(state.policy.policy().maximum_variants());
+            let maximum = state.limits.variants_limit().map_or_else(
+                || state.policy.policy().maximum_variants(),
+                |limit| limit.min(state.policy.policy().maximum_variants()),
+            );
             insert_by(
                 &mut state.variants,
                 variant.clone(),
                 crate::VariantDefinition::id,
-                usize::from(maximum),
+                Some(usize::from(maximum)),
             )?;
         }
         CampaignCommandKind::AdmitEvaluation { variant_id, evidence } => {
@@ -153,7 +161,7 @@ pub(super) fn apply_kind(
                 &mut state.evaluations,
                 VariantEvaluation::new(*variant_id, evidence.clone()),
                 VariantEvaluation::variant_id,
-                usize::from(state.limits.variants()),
+                state.limits.variants_limit().map(usize::from),
             )?;
             state.phase = CampaignPhase::VariantsRunning;
         }
@@ -172,13 +180,13 @@ pub(super) fn apply_kind(
                 &mut state.attributions,
                 attribution.clone(),
                 crate::AttributionRecord::variant_id,
-                usize::from(state.limits.variants()),
+                state.limits.variants_limit().map(usize::from),
             )?;
             insert_by(
                 &mut state.assessments,
                 assessment.clone(),
                 crate::VariantAssessment::variant_id,
-                usize::from(state.limits.variants()),
+                state.limits.variants_limit().map(usize::from),
             )?;
             state.phase = CampaignPhase::Attributing;
         }
@@ -263,6 +271,25 @@ pub(super) fn apply_kind(
         }
     }
     Ok(state)
+}
+
+fn campaign_binding_digest(
+    campaign_id: crate::EvolutionCampaignId,
+    project_id: peritus_types::ProjectId,
+    baseline: crate::ProductionHarnessBinding,
+    policy: &crate::PromotionPolicyBinding,
+    limits: crate::EvolutionLimits,
+) -> Sha256Digest {
+    digest_parts(
+        b"peritus.f0.campaign-binding.v1\0",
+        &[
+            campaign_id.as_bytes(),
+            project_id.as_bytes(),
+            baseline.digest().as_bytes(),
+            policy.digest().as_bytes(),
+            limits.digest().as_bytes(),
+        ],
+    )
 }
 
 fn require(state: &CampaignState, allowed: &[CampaignPhase]) -> Result<(), EvolutionError> {

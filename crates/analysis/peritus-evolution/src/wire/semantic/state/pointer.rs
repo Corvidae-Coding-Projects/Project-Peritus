@@ -55,7 +55,7 @@ pub(crate) fn decode_pointer_state(bytes: &[u8]) -> Result<ProductionHarnessStat
     let phase = pointer_phase(reader.read_u8().map_err(scalar::codec)?)?;
     let history = read_vec(
         &mut reader,
-        usize::from(limits.activation_history()),
+        limits.activation_history_limit().map_or(usize::MAX, usize::from),
         1 + 8 + 1 + (96 + 56 + 32 + 32 + 2 * 33) + 1 + 32 + 1 + 2 * 32 + 1,
         activation,
     )?;

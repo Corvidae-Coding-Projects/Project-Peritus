@@ -61,7 +61,9 @@ impl PublishedDebuggerEvidence {
         let record = state.report().ok_or_else(incomplete)?;
         let publication = state.publication().ok_or_else(incomplete)?;
         let canonical = !citations.is_empty()
-            && citations.len() <= usize::from(limits.citations_per_manifest())
+            && limits
+                .citations_per_manifest_limit()
+                .is_none_or(|maximum| citations.len() <= usize::from(maximum))
             && citations.windows(2).all(|pair| pair[0] < pair[1]);
         if state.phase() != DebuggerPhase::Published
             || record.id() != validated.id()
@@ -154,7 +156,9 @@ impl PublishedDebuggerEvidence {
         if artifact_size == 0
             || journal_position == 0
             || citations.is_empty()
-            || citations.len() > usize::from(limits.citations_per_manifest())
+            || limits
+                .citations_per_manifest_limit()
+                .is_some_and(|maximum| citations.len() > usize::from(maximum))
             || citations.windows(2).any(|pair| pair[0] >= pair[1])
         {
             return Err(EvolutionError::new(

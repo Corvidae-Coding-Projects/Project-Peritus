@@ -17,12 +17,17 @@ pub enum PointerCommandKind {
         initial: ProductionHarnessBinding,
         /// Protected typed promotion policy.
         policy: PromotionPolicyBinding,
-        /// Caller-tightened pointer bounds.
+        /// Explicit finite or sentinel-unlimited pointer workload policy.
         limits: EvolutionLimits,
         /// Finalized initialization artifact.
         evidence_artifact: Sha256Digest,
         /// Exact initialization evidence digest.
         evidence_digest: Sha256Digest,
+    },
+    /// Atomically adopts a strictly broader owner-selected workload policy.
+    ExpandScope {
+        /// Monotonic successor policy; retained activation evidence remains intact.
+        limits: EvolutionLimits,
     },
     /// Fences one selected exact promotion against the current pointer.
     PreparePromotion(PromotionProposal),
@@ -215,6 +220,10 @@ pub(crate) fn semantic_digest(kind: &PointerCommandKind) -> Sha256Digest {
             bytes.extend_from_slice(evidence_digest.as_bytes());
         }
         PointerCommandKind::PreparePromotion(value) => append(&mut bytes, 2, value.digest()),
+        PointerCommandKind::ExpandScope { limits } => {
+            bytes.push(7);
+            bytes.extend_from_slice(limits.digest().as_bytes());
+        }
         PointerCommandKind::ActivatePromotion {
             promotion_id,
             campaign_terminal_digest,

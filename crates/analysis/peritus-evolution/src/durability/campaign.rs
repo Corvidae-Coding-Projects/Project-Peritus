@@ -1,20 +1,21 @@
 //! Atomic ordinary campaign event and checkpoint persistence.
 
-use peritus_codec::{CodecLimits, decode_message, encode_message};
+use peritus_codec::{CodecLimits, encode_message};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
-    HeadExpectation, SqliteJournal, StateInstall,
+    HeadExpectation, SqliteJournal,
 };
 use peritus_types::EventSequence;
 
 use crate::{
     CampaignCommand, CampaignCommandKind, CampaignState, CampaignTransition, EvolutionError,
-    EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
-    wire::{CampaignCommandFrame, CampaignEventFrame, CampaignStateFrame},
+    EvolutionErrorKind, EvolutionOperation, EvolutionRecovery, EvolutionStorageLimits,
+    wire::{CampaignCommandFrame, CampaignEventFrame},
 };
 
 use super::{
     CAMPAIGN_STATE_NAMESPACE, binding, campaign_aggregate_key, campaign_state_key,
+    checkpoint,
     directive::campaign_outbox,
 };
 
@@ -28,6 +29,25 @@ pub fn commit_campaign_transition(
     command: &CampaignCommand,
     transition: &CampaignTransition,
 ) -> Result<CommittedBatch, EvolutionError> {
+    commit_campaign_transition_with_storage(
+        journal,
+        command,
+        transition,
+        EvolutionStorageLimits::default(),
+    )
+}
+
+/// Atomically appends one campaign transition with caller-selected physical checkpoint paging.
+///
+/// # Errors
+/// Rejects transition drift, stale C0 fences, missing artifacts, protocol errors, or journal
+/// failures.
+pub fn commit_campaign_transition_with_storage(
+    journal: &mut SqliteJournal,
+    command: &CampaignCommand,
+    transition: &CampaignTransition,
+    storage: EvolutionStorageLimits,
+) -> Result<CommittedBatch, EvolutionError> {
     binding::validate_campaign(command, transition)?;
     let aggregate = campaign_aggregate_key(command.campaign_id())?;
     let state_key = campaign_state_key(command.campaign_id());
@@ -38,11 +58,6 @@ pub fn commit_campaign_transition(
     .map_err(codec)?;
     let event_bytes = encode_message(
         &CampaignEventFrame::from_event(transition.event()).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
-    let state_bytes = encode_message(
-        &CampaignStateFrame::from_state(transition.state()).map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
@@ -61,7 +76,7 @@ pub fn commit_campaign_transition(
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
         journal.state_record(CAMPAIGN_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
-    validate_current(command, head, current.as_ref())?;
+    validate_current(journal, command, head, current.as_ref())?;
     let event = transition.event();
     let draft = EventDraft::new(
         aggregate,
@@ -74,14 +89,12 @@ pub fn commit_campaign_transition(
         Vec::new(),
     )
     .map_err(journal_error)?;
-    let install = StateInstall::new(
-        CAMPAIGN_STATE_NAMESPACE,
-        state_key,
+    let installs = checkpoint::campaign_installs(
+        &state_key,
         current.as_ref().map(peritus_journal::DurableStateRecord::revision),
-        transition.state().sequence(),
-        state_bytes,
-    )
-    .map_err(journal_error)?;
+        transition.state(),
+        storage,
+    )?;
     let expectation = head.map_or(HeadExpectation::Absent(aggregate), HeadExpectation::Present);
     let request = AppendRequest::new(
         journal.store_id(),
@@ -89,13 +102,44 @@ pub fn commit_campaign_transition(
         request_digest,
         vec![expectation],
         vec![draft],
-        vec![install],
+        installs,
         artifact_dependencies(command.kind()),
         None,
         None,
         campaign_outbox(command)?,
     );
     journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+}
+
+/// Resolves an exact campaign command receipt before reducer capacity or state fences are read.
+///
+/// # Errors
+/// Rejects a command identity already bound to another request or a receipt for another aggregate.
+pub fn resolve_campaign_receipt(
+    journal: &SqliteJournal,
+    command: &CampaignCommand,
+) -> Result<Option<CommittedBatch>, EvolutionError> {
+    let aggregate = campaign_aggregate_key(command.campaign_id())?;
+    let command_bytes = encode_message(
+        &CampaignCommandFrame::from_command(command).map_err(codec)?,
+        CodecLimits::PRODUCTION,
+    )
+    .map_err(codec)?;
+    match journal
+        .resolve_command(command.command_id(), peritus_codec::sha256(&command_bytes))
+        .map_err(journal_error)?
+    {
+        CommandResolution::Committed(batch) => {
+            if batch.records().len() != 1 || batch.records()[0].aggregate() != aggregate {
+                return Err(recovery("campaign receipt belongs to another durable effect"));
+            }
+            Ok(Some(batch))
+        }
+        CommandResolution::Conflict { .. } => {
+            Err(binding::binding("campaign command identity has another request"))
+        }
+        CommandResolution::DefinitelyAbsent => Ok(None),
+    }
 }
 
 fn event_revision_digest(
@@ -139,6 +183,7 @@ pub(super) fn artifact_dependencies(kind: &CampaignCommandKind) -> Vec<ArtifactD
         }
         CampaignCommandKind::CreateCampaign { .. }
         | CampaignCommandKind::FreezeCampaign
+        | CampaignCommandKind::ExpandScope { .. }
         | CampaignCommandKind::AdmitVariant(_)
         | CampaignCommandKind::CompleteAttribution { .. }
         | CampaignCommandKind::RecordSelection(_)
@@ -152,6 +197,7 @@ pub(super) fn artifact_dependencies(kind: &CampaignCommandKind) -> Vec<ArtifactD
 }
 
 pub(super) fn validate_current(
+    journal: &SqliteJournal,
     command: &CampaignCommand,
     head: Option<peritus_journal::AggregateHead>,
     current: Option<&peritus_journal::DurableStateRecord>,
@@ -175,8 +221,7 @@ pub(super) fn validate_current(
         if record.revision() != command.expected_sequence() {
             return Err(recovery("campaign checkpoint revision differs from C0 head"));
         }
-        let frame = decode_message::<CampaignStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+        let frame = checkpoint::decode_campaign(journal, record, command.campaign_id())?;
         if frame.campaign_id() != command.campaign_id()
             || frame.sequence() != command.expected_sequence()
             || Some(frame.last_event_id()) != command.expected_head()
@@ -209,18 +254,16 @@ fn resolve_existing(
         CommandResolution::DefinitelyAbsent => return Ok(None),
     };
     let checkpoint = journal
-        .state_record(CAMPAIGN_STATE_NAMESPACE, state_key)
+        .state_record_revision(CAMPAIGN_STATE_NAMESPACE, state_key, state.sequence())
         .map_err(journal_error)?
-        .ok_or_else(|| recovery("resolved campaign command has no checkpoint"))?;
+        .ok_or_else(|| recovery("resolved campaign command has no historical checkpoint"))?;
     if batch.records().len() != 1
         || batch.records()[0].aggregate() != aggregate
         || batch.records()[0].frame_bytes() != event_bytes
     {
         return Err(recovery("resolved campaign command differs from its event"));
     }
-    let observed =
-        decode_message::<CampaignStateFrame>(checkpoint.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+    let observed = checkpoint::decode_campaign(journal, &checkpoint, command.campaign_id())?;
     if checkpoint.revision() == state.sequence() && observed.matches_state(state) {
         Ok(Some(batch))
     } else {

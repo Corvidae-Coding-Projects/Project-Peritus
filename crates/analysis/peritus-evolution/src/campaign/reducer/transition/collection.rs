@@ -18,37 +18,47 @@ pub(super) fn arm_digest(binding: ProductionHarnessBinding) -> Sha256Digest {
 pub(super) fn insert_unique<T: Ord>(
     values: &mut Vec<T>,
     value: T,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<(), EvolutionError> {
-    if values.len() >= limit {
-        return Err(limit_error());
-    }
     match values.binary_search(&value) {
-        Ok(_) => Err(binding()),
+        Ok(_) => Err(duplicate()),
         Err(index) => {
+            if limit.is_some_and(|limit| values.len() >= limit) {
+                return Err(limit_error());
+            }
             values.insert(index, value);
             Ok(())
         }
     }
 }
 
-pub(super) fn insert_by<T, K: Ord>(
+pub(super) fn insert_by<T: PartialEq, K: Ord>(
     values: &mut Vec<T>,
     value: T,
     key: impl Fn(&T) -> K,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<(), EvolutionError> {
-    if values.len() >= limit {
-        return Err(limit_error());
-    }
     let value_key = key(&value);
     match values.binary_search_by_key(&value_key, key) {
+        Ok(index) if values[index] == value => Err(duplicate()),
         Ok(_) => Err(binding()),
         Err(index) => {
+            if limit.is_some_and(|limit| values.len() >= limit) {
+                return Err(limit_error());
+            }
             values.insert(index, value);
             Ok(())
         }
     }
+}
+
+const fn duplicate() -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::BindingDrift,
+        EvolutionOperation::TransitionCampaign,
+        EvolutionRecovery::Reconcile,
+        "campaign item already has an immutable receipt",
+    )
 }
 
 const fn binding() -> EvolutionError {
@@ -64,7 +74,7 @@ const fn limit_error() -> EvolutionError {
     EvolutionError::new(
         EvolutionErrorKind::LimitExceeded,
         EvolutionOperation::TransitionCampaign,
-        EvolutionRecovery::ReduceScope,
-        "campaign collection exceeds its frozen bound",
+        EvolutionRecovery::SuccessorCampaign,
+        "campaign workload policy requires an owner-approved scope expansion",
     )
 }

@@ -1,20 +1,21 @@
 //! Atomic ordinary production-pointer event and checkpoint persistence.
 
-use peritus_codec::{CodecLimits, decode_message, encode_message};
+use peritus_codec::{CodecLimits, encode_message};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
-    HeadExpectation, SqliteJournal, StateInstall,
+    HeadExpectation, SqliteJournal,
 };
 use peritus_types::EventSequence;
 
 use crate::{
-    EvolutionError, PointerCommand, PointerCommandKind, PointerTransition, ProductionHarnessState,
-    wire::{PointerCommandFrame, PointerEventFrame, PointerStateFrame},
+    EvolutionError, EvolutionStorageLimits, PointerCommand, PointerCommandKind, PointerTransition,
+    ProductionHarnessState,
+    wire::{PointerCommandFrame, PointerEventFrame},
 };
 
 use super::{
     POINTER_STATE_NAMESPACE, binding, campaign::codec, campaign::journal_error, campaign::recovery,
-    directive::pointer_outbox, pointer_aggregate_key, pointer_state_key,
+    checkpoint, directive::pointer_outbox, pointer_aggregate_key, pointer_state_key,
 };
 
 /// Atomically appends one accepted pointer event and its complete checkpoint.
@@ -27,6 +28,25 @@ pub fn commit_pointer_transition(
     command: &PointerCommand,
     transition: &PointerTransition,
 ) -> Result<CommittedBatch, EvolutionError> {
+    commit_pointer_transition_with_storage(
+        journal,
+        command,
+        transition,
+        EvolutionStorageLimits::default(),
+    )
+}
+
+/// Atomically appends one pointer transition with caller-selected physical checkpoint paging.
+///
+/// # Errors
+/// Rejects transition drift, stale C0 fences, missing artifacts, protocol errors, or journal
+/// failures.
+pub fn commit_pointer_transition_with_storage(
+    journal: &mut SqliteJournal,
+    command: &PointerCommand,
+    transition: &PointerTransition,
+    storage: EvolutionStorageLimits,
+) -> Result<CommittedBatch, EvolutionError> {
     binding::validate_pointer(command, transition)?;
     let aggregate = pointer_aggregate_key(command.project_id())?;
     let state_key = pointer_state_key(command.project_id());
@@ -37,11 +57,6 @@ pub fn commit_pointer_transition(
     .map_err(codec)?;
     let event_bytes = encode_message(
         &PointerEventFrame::from_event(transition.event()).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
-    let state_bytes = encode_message(
-        &PointerStateFrame::from_state(transition.state()).map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
@@ -60,7 +75,7 @@ pub fn commit_pointer_transition(
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
         journal.state_record(POINTER_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
-    validate_current(command, head, current.as_ref())?;
+    validate_current(journal, command, head, current.as_ref())?;
     let event = transition.event();
     let draft = EventDraft::new(
         aggregate,
@@ -72,14 +87,12 @@ pub fn commit_pointer_transition(
         Vec::new(),
     )
     .map_err(journal_error)?;
-    let install = StateInstall::new(
-        POINTER_STATE_NAMESPACE,
-        state_key,
+    let installs = checkpoint::pointer_installs(
+        &state_key,
         current.as_ref().map(peritus_journal::DurableStateRecord::revision),
-        transition.state().sequence(),
-        state_bytes,
-    )
-    .map_err(journal_error)?;
+        transition.state(),
+        storage,
+    )?;
     let expectation = head.map_or(HeadExpectation::Absent(aggregate), HeadExpectation::Present);
     let request = AppendRequest::new(
         journal.store_id(),
@@ -87,13 +100,44 @@ pub fn commit_pointer_transition(
         request_digest,
         vec![expectation],
         vec![draft],
-        vec![install],
+        installs,
         artifact_dependencies(command.kind()),
         None,
         None,
         pointer_outbox(command, transition.state())?,
     );
     journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+}
+
+/// Resolves an exact pointer command receipt before reducer capacity or state fences are read.
+///
+/// # Errors
+/// Rejects a command identity already bound to another request or a receipt for another aggregate.
+pub fn resolve_pointer_receipt(
+    journal: &SqliteJournal,
+    command: &PointerCommand,
+) -> Result<Option<CommittedBatch>, EvolutionError> {
+    let aggregate = pointer_aggregate_key(command.project_id())?;
+    let command_bytes = encode_message(
+        &PointerCommandFrame::from_command(command).map_err(codec)?,
+        CodecLimits::PRODUCTION,
+    )
+    .map_err(codec)?;
+    match journal
+        .resolve_command(command.command_id(), peritus_codec::sha256(&command_bytes))
+        .map_err(journal_error)?
+    {
+        CommandResolution::Committed(batch) => {
+            if batch.records().len() != 1 || batch.records()[0].aggregate() != aggregate {
+                return Err(recovery("pointer receipt belongs to another durable effect"));
+            }
+            Ok(Some(batch))
+        }
+        CommandResolution::Conflict { .. } => {
+            Err(binding::binding("pointer command identity has another request"))
+        }
+        CommandResolution::DefinitelyAbsent => Ok(None),
+    }
 }
 
 pub(super) fn pointer_event_revision_digest(
@@ -118,7 +162,8 @@ pub(super) fn artifact_dependencies(kind: &PointerCommandKind) -> Vec<ArtifactDe
         }
         PointerCommandKind::ActivatePromotion { .. }
         | PointerCommandKind::ActivateRollback { .. }
-        | PointerCommandKind::CancelPending { .. } => Vec::new(),
+        | PointerCommandKind::CancelPending { .. }
+        | PointerCommandKind::ExpandScope { .. } => Vec::new(),
     };
     values.sort_unstable();
     values.dedup();
@@ -126,6 +171,7 @@ pub(super) fn artifact_dependencies(kind: &PointerCommandKind) -> Vec<ArtifactDe
 }
 
 pub(super) fn validate_current(
+    journal: &SqliteJournal,
     command: &PointerCommand,
     head: Option<peritus_journal::AggregateHead>,
     current: Option<&peritus_journal::DurableStateRecord>,
@@ -149,8 +195,7 @@ pub(super) fn validate_current(
         if record.revision() != command.expected_sequence() {
             return Err(recovery("pointer checkpoint revision differs from C0 head"));
         }
-        let frame = decode_message::<PointerStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+        let frame = checkpoint::decode_pointer(journal, record, command.project_id())?;
         if frame.project_id() != command.project_id()
             || frame.sequence() != command.expected_sequence()
             || Some(frame.last_event_id()) != command.expected_head()
@@ -183,17 +228,16 @@ fn resolve_existing(
         CommandResolution::DefinitelyAbsent => return Ok(None),
     };
     let checkpoint = journal
-        .state_record(POINTER_STATE_NAMESPACE, state_key)
+        .state_record_revision(POINTER_STATE_NAMESPACE, state_key, state.sequence())
         .map_err(journal_error)?
-        .ok_or_else(|| recovery("resolved pointer command has no checkpoint"))?;
+        .ok_or_else(|| recovery("resolved pointer command has no historical checkpoint"))?;
     if batch.records().len() != 1
         || batch.records()[0].aggregate() != aggregate
         || batch.records()[0].frame_bytes() != event_bytes
     {
         return Err(recovery("resolved pointer command differs from its event"));
     }
-    let observed = decode_message::<PointerStateFrame>(checkpoint.bytes(), CodecLimits::PRODUCTION)
-        .map_err(codec)?;
+    let observed = checkpoint::decode_pointer(journal, &checkpoint, command.project_id())?;
     if checkpoint.revision() == state.sequence() && observed.matches_state(state) {
         Ok(Some(batch))
     } else {
