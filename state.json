@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3925,
-        "tip_oid": "cc4962951001955d8c065b1246b87384e36ff028",
-        "prefix_sha256": "9e559a99dfb32897f14408748e471660b3d72c57285532c81319975fc0857333"
+        "sequence": 3926,
+        "tip_oid": "2f0fa1336e6aedd311a8a99f7fa587cdba2d3011",
+        "prefix_sha256": "86d73655656e81018816f66d92bf5e5bafc0b32f90c710e43929e8a1f3ede5a5"
       },
       "NWAR": {
         "sequence": 39,
@@ -28120,12 +28120,13 @@
       "display_id": 660,
       "title": "[L603] macOS protected-secret metadata has separate finite capacities",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L603.\n\n- Evidence: `crates/runtime/peritus-sandbox-macos/src/secret.rs:14-16,47-59,161-172,204-241`.\n- Behavior: Protected-secret collections are capped at 128 before canonicalization; labels at 256 ASCII bytes; payloads at one MiB and must be nonempty. Native descriptors must be nonstandard positive signed-32-bit values. Some payload/label bounds are deferred from protected-handle construction to manifest conversion. Destination collisions are checked globally; label collisions are checked only between adjacent entries after sorting by descriptor.\n- Consequence: Oversized otherwise meaningful material fails a finite representation gate rather than a session deadline, potentially late in preparation. This utility's adjacency check alone does not establish global label uniqueness; later native launch validation is a separate boundary.\n- Repair direction: Unify selected delivery capacities and validate them before authority consumption; use one globally unique descriptor/label/destination representation, with streaming delivery for larger material where supported.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.231364749Z",
-      "updated_at": "2026-10-08T01:00:06.957662728Z",
+      "updated_at": "2026-10-08T01:01:33.836360099Z",
+      "closed_at": "2026-10-08T01:01:33.833621185Z",
       "labels": [
         "daily-driving-limiter"
       ],
