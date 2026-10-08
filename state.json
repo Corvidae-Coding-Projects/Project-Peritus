@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3933,
-        "tip_oid": "7c734486ec1589ae05f8635335b6f6f11b765ea1",
-        "prefix_sha256": "d0ab6052249e939598b83558768180f725c0a11140accdd8e8b3c5738f37bb1a"
+        "sequence": 3934,
+        "tip_oid": "1443520d0260e498555156773d25c7e0c170494a",
+        "prefix_sha256": "2da0b802245c0e0ced2ec97a91974b3ff360af025025f310da4f3e0a56cd996f"
       },
       "NWAR": {
         "sequence": 39,
@@ -36688,12 +36688,13 @@
       "display_id": 514,
       "title": "[L434] E3 retry retention acknowledges the only execution directive without scheduling the next attempt",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L434.\n\n- Evidence: `crates/analysis/peritus-eval/src/aggregate/reducer.rs:252-273`, `src/durability/commit.rs:158-167,170-211,295-302`, `src/durability/directive.rs:225-239`, `src/runtime/recovery.rs:66-90`, `src/runtime/mod.rs:75-105` in the same crate.\n- Behavior: RetainRetryableAttempt changes Running to Scheduled and retains the attempt number. Its required settlement acknowledges the execution claim. transition_outbox emits no directive for this command; execution identity depends on campaign, rollout and request digest, with no attempt identity. With no other pending rows, recovery sees neither Running nor complete counts and returns Continue. RequestSchedule requires Planned and RecordSchedule requires Scheduling, so neither normal scheduling command accepts this retained Scheduled state.\n- Consequence: The durable E3 retry path has no newly outstanding execution delivery after the retryable settlement. The runtime facade exposes commits and the journal rather than a retry driver. External code could provide another mechanism, but none is provided by this crate's normal transition/outbox path. This is a source-derived progress gap, not a reproduced installed loop. Raw aggregate retry/start admission also has no frozen maximum/backoff policy in state; the separately bounded accounting ledger is not an aggregate retry controller.\n- Repair direction: Commit retry intent, exact next-attempt identity and a deliverable execution directive atomically with retention. Recovery must select the retained attempt's actual outstanding work; preserve the same logical rollout and any continuation instead of reconstructing it from a generic Scheduled flag. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.535576227Z",
-      "updated_at": "2026-10-08T01:11:57.955206986Z",
+      "updated_at": "2026-10-08T01:13:26.345521841Z",
+      "closed_at": "2026-10-08T01:13:26.342734908Z",
       "labels": [
         "daily-driving-limiter"
       ],
