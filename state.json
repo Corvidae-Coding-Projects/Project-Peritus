@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3976,
-        "tip_oid": "f92a23f4289de70927ddf42be5eb62cb6fb27230",
-        "prefix_sha256": "800d0d41e04899beaeb293542492e65b99e730ba937a596afe427463461c6985"
+        "sequence": 3977,
+        "tip_oid": "b0258320886a475a200e728fe0741b7266c73801",
+        "prefix_sha256": "3d6955f434e0f16c68b5ba705336b73b237b0d4b7d38b6e0124348e2a9f2be0f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3191,
+  "next_comment_id": 3192,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -28353,7 +28353,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.569864877Z",
-      "updated_at": "2026-10-06T13:27:50.572130321Z",
+      "updated_at": "2026-10-08T02:21:34.262398175Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -28364,6 +28364,15 @@
           "content": "Systemic repair plan for L442: F0 has nine mandatory positive compiled bounds frozen into campaigns and pointers.\n\nOwning contract and implementation boundary: crates/analysis/peritus-evolution/src/limits.rs:7-94,96-153; src/campaign/command.rs:14-76; src/campaign/reducer/transition.rs:23-59,70-183; src/campaign/reducer/transition/collection.rs:18-69; src/binding/policy.rs:186-209; src/pointer/command.rs:13-52. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate campaign workload policy from storage/schema representation, preserve exact duplicate receipts, and support authorized successor scopes without discarding completed evidence. Storage paging should not impose a hidden lifetime work limit. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "e1e5a58b-7952-477e-a885-5b4618f48031": {
+          "display_id": 3191,
+          "author": "6ME5",
+          "content": "Code complete in commit 98ee5c31a: F0 defaults to unlimited workload policy while selected physical storage pages are independent. CAS-fenced scope expansion retains accepted evidence/history/origin; exact duplicate collections resolve before finite caller policy, conflicting identities reject. Campaign/pointer receipt-first runtime resolves historical checkpoints after later progress; paged roots atomically adopt with legacy inline fallback and producer identities preserved. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:21:34.253391017Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAd1bhozv9O0pRNkkxDU+S/Kw+TOizta1JUY7y2OVnR+FM3Se6lUezuoTvu/bWlpVfze4R4rWNg18J6ZdjglPCg=="
         }
       }
     },
