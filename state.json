@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4039,
-        "tip_oid": "8dd885174882ac4c6197743c1608856cb83105d1",
-        "prefix_sha256": "7ce25579da85795691be9e11fd044d2862902f588af8a4f8aa6127fb274d8bb4"
+        "sequence": 4040,
+        "tip_oid": "1759ceff0de8977adcf74ad3ad4ce11c9da4af10",
+        "prefix_sha256": "630c0324c309c2963a2402f941900772a3213949328766d15d0ef744dcf837bf"
       },
       "NWAR": {
         "sequence": 39,
@@ -2116,12 +2116,13 @@
       "display_id": 535,
       "title": "[L457] C5 request controls and identifier/media fields have additional fixed acceptance ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L457.\n\n- Evidence: `crates/model/peritus-model-protocol/src/request/options.rs:123-143`, `src/request/validation.rs:35-67`, `src/identity/public.rs`, `src/identity/sensitive.rs`, `src/content.rs:80-98,168-183`, `src/redaction.rs:28-40` in that crate; aggregate protocol maxima in L017.\n- Behavior: Generation requires positive max_output_tokens and at most 64 stop strings. Each request allows at most 128 option extensions. Provider/tool/extension/output names and idempotency keys are capped at 128 bytes, model and request/response/item/tool-call/event identities at 512, cache identities at 1,024, MIME values at 128 and media references at 8,192. These constants have no widening/unlimited option. Negotiation separately takes the minimum of five positive profile/caller numeric ceilings; request output must fit the negotiated ceiling even for a profile declaring output enforcement Advisory.\n- Consequence: Representable provider identifiers or request controls beyond these local constants are rejected before transport. The caps are schema/input acceptance limits, not session duration or cache TTL. Model capacity metadata and API-required generation controls must be distinguished from artificial execution cutoffs; no installed request hitting these exact bounds was observed here.\n- Repair direction: Ground field constraints in versioned provider contracts, keep diagnostics bounded separately, and support evolving or paged representations where the provider actually accepts more. Keep advisory output requests distinct from guaranteed enforcement. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.635151608Z",
-      "updated_at": "2026-10-08T04:06:24.775231284Z",
+      "updated_at": "2026-10-08T04:08:06.115986422Z",
+      "closed_at": "2026-10-08T04:08:06.113191976Z",
       "labels": [
         "daily-driving-limiter"
       ],
