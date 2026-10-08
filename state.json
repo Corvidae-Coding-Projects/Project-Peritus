@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4053,
-        "tip_oid": "9cb5f79555aa3df6447bb8cca2bf2e162867924a",
-        "prefix_sha256": "1c1525d1ca78ac743d2c8c75fe6916f657a35717dafc9908a9f1e09c34edad03"
+        "sequence": 4054,
+        "tip_oid": "6839578e47058f394f84a6779212a56e72f481bc",
+        "prefix_sha256": "d218a8e3ce1d6fbc37a94ee3275b833c498dcb8df9d822dba20636882199e1ca"
       },
       "NWAR": {
         "sequence": 39,
@@ -32148,12 +32148,13 @@
       "display_id": 680,
       "title": "[L626] Projection storage repeats the five-second SQLite contention cutoff",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L626.\n\n- Evidence: `crates/state/peritus-projection/src/sqlite/store.rs:13-72,186-209`; `src/error.rs:84-97`; `src/sqlite/schema.rs:3-28` in the same crate.\n- Behavior: Projection connections default to a five-second busy timeout with mandatory Duration configuration. Busy/Locked map to Retry while other SQLite errors map to CorrectInput, with their source retained. Versions, positions, counts, and generations ultimately must fit SQLite INTEGER even though the pure model uses u64; generation allocation only checks u64 overflow before persistence conversion.\n- Consequence: Contention can stop startup/install at another artificial timer. Representation exhaustion is separate from elapsed-time policy; an i64 overflow is reported as corrupt-catalog/rebuild even when it came from a new otherwise valid pure candidate.\n- Repair direction: Give the shared database owner cancellation-aware durable contention handling and classify representability separately from corruption. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.329023634Z",
-      "updated_at": "2026-10-08T04:32:45.955146796Z",
+      "updated_at": "2026-10-08T04:34:29.303383519Z",
+      "closed_at": "2026-10-08T04:34:29.300645863Z",
       "labels": [
         "daily-driving-limiter"
       ],
