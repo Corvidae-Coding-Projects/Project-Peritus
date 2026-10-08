@@ -284,7 +284,7 @@ impl ModelFailureOrigin {
     }
 }
 
-/// Exact provider/core cause retained independently of the failure stage.
+/// Exact provider/core or locally validated output cause retained independently of the stage.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ModelProviderFailureCause {
     /// Provider endpoint configuration was invalid.
@@ -339,6 +339,16 @@ pub enum ModelProviderFailureCause {
     Safety,
     /// Provider cause was retained without guessing a narrower class.
     Provider,
+    /// Completed structured output did not match the closed proposal schema.
+    InvalidOutputSchema,
+    /// Proposal selection or deterministic-analysis bindings disagreed.
+    InvalidOutputBinding,
+    /// Proposal diagnostic text failed the typed text contract.
+    InvalidOutputText,
+    /// Proposal citations failed identity, containment, or provenance checks.
+    InvalidOutputCitation,
+    /// A proposal collection was empty, duplicated, or otherwise semantically invalid.
+    InvalidOutputCollection,
 }
 
 impl ModelProviderFailureCause {
@@ -374,6 +384,11 @@ impl ModelProviderFailureCause {
             24 => Ok(Self::Refusal),
             25 => Ok(Self::Safety),
             26 => Ok(Self::Provider),
+            27 => Ok(Self::InvalidOutputSchema),
+            28 => Ok(Self::InvalidOutputBinding),
+            29 => Ok(Self::InvalidOutputText),
+            30 => Ok(Self::InvalidOutputCitation),
+            31 => Ok(Self::InvalidOutputCollection),
             _ => Err(super::invalid("unknown provider-failure cause tag")),
         }
     }

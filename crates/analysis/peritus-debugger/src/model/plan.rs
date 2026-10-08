@@ -139,15 +139,22 @@ impl ModelAnalysisPlan {
             request_bytes.len(),
             DebuggerOperation::RunModelAnalysis,
         )?;
+        let protocol_output_bytes = protocol_limits
+            .max_output_bytes()
+            .min(protocol_limits.max_tool_argument_bytes());
+        let protocol_output_bytes = u64::try_from(protocol_output_bytes).unwrap_or(u64::MAX);
         if budget.max_events() > debugger_limits.get(DebuggerLimit::ModelEvents)
             || budget.max_output_bytes() > debugger_limits.get(DebuggerLimit::ModelOutputBytes)
+            || budget.max_output_bytes() > protocol_output_bytes
             || budget.max_total_tokens() > debugger_limits.get(DebuggerLimit::ModelTokens)
             || retry_policy.max_attempts().is_some_and(|attempts| {
                 u64::from(attempts) > debugger_limits.model_attempts()
                     || u64::from(attempts.saturating_sub(1)) > debugger_limits.retries()
             })
         {
-            return Err(budget_error("model plan exceeds the frozen debugger resource policy"));
+            return Err(budget_error(
+                "model plan exceeds the frozen debugger or structured-output resource policy",
+            ));
         }
         let render_digest = render_digest(render);
         let request_digest = peritus_codec::sha256(&request_bytes);

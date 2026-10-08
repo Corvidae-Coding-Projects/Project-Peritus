@@ -4,6 +4,7 @@ use peritus_harness::domain::ComponentKind;
 use peritus_model_protocol::CanonicalJson;
 use peritus_types::{EventId, Sha256Digest};
 use serde::Deserialize;
+use sha2::{Digest, Sha256};
 
 use crate::{
     DebuggerError, DebuggerErrorKind, DebuggerLimit, DebuggerLimits, DebuggerOperation,
@@ -37,6 +38,36 @@ pub struct ModelRecommendation {
     statement: DiagnosticText,
     citations: Vec<EvidenceCitation>,
     affected_components: Vec<ComponentKind>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum ModelProposalRejectionCause {
+    Schema,
+    Binding,
+    Text,
+    Citation,
+    Collection,
+    Budget,
+}
+
+#[derive(Debug)]
+pub(crate) struct ModelProposalRejection {
+    cause: ModelProposalRejectionCause,
+    error: DebuggerError,
+}
+
+impl ModelProposalRejection {
+    pub(crate) const fn cause(&self) -> ModelProposalRejectionCause {
+        self.cause
+    }
+
+    pub(crate) const fn error(&self) -> &DebuggerError {
+        &self.error
+    }
+
+    fn into_error(self) -> DebuggerError {
+        self.error
+    }
 }
 
 impl ModelRecommendation {
@@ -81,71 +112,124 @@ impl ValidatedModelProposal {
         deterministic_digest: Sha256Digest,
         limits: DebuggerLimits,
     ) -> Result<Self, DebuggerError> {
+        Self::validate_classified(value, manifest, deterministic_digest, limits)
+            .map_err(ModelProposalRejection::into_error)
+    }
+
+    pub(crate) fn validate_classified(
+        value: &CanonicalJson,
+        manifest: &TraceSelectionManifest,
+        deterministic_digest: Sha256Digest,
+        limits: DebuggerLimits,
+    ) -> Result<Self, ModelProposalRejection> {
+        limits
+            .check(
+                DebuggerLimit::ModelOutputBytes,
+                value.canonical_bytes().len(),
+                DebuggerOperation::RunModelAnalysis,
+            )
+            .map_err(|error| classified(ModelProposalRejectionCause::Budget, error))?;
         let wire: ProposalWire = serde_json::from_slice(value.canonical_bytes())
-            .map_err(|_| rejected("structured proposal does not match the closed E2 schema"))?;
-        if wire.schema_version != 1
-            || parse_id::<16>(&wire.manifest_id)? != *manifest.id().as_bytes()
-            || parse_id::<32>(&wire.manifest_digest)? != *manifest.digest().as_bytes()
-            || parse_id::<32>(&wire.deterministic_digest)? != *deterministic_digest.as_bytes()
+            .map_err(|_| {
+                proposal_rejected(
+                    ModelProposalRejectionCause::Schema,
+                    "structured proposal does not match the closed E2 schema",
+                )
+            })?;
+        if wire.schema_version != 1 {
+            return Err(proposal_rejected(
+                ModelProposalRejectionCause::Schema,
+                "structured proposal schema version is unsupported",
+            ));
+        }
+        let manifest_id = parse_id::<16>(&wire.manifest_id)
+            .map_err(|error| classified(ModelProposalRejectionCause::Binding, error))?;
+        let manifest_digest = parse_id::<32>(&wire.manifest_digest)
+            .map_err(|error| classified(ModelProposalRejectionCause::Binding, error))?;
+        let proposal_deterministic_digest = parse_id::<32>(&wire.deterministic_digest)
+            .map_err(|error| classified(ModelProposalRejectionCause::Binding, error))?;
+        if manifest_id != *manifest.id().as_bytes()
+            || manifest_digest != *manifest.digest().as_bytes()
+            || proposal_deterministic_digest != *deterministic_digest.as_bytes()
         {
-            return Err(rejected(
+            return Err(proposal_rejected(
+                ModelProposalRejectionCause::Binding,
                 "structured proposal binding differs from selection or deterministic analysis",
             ));
         }
-        limits.check(
-            DebuggerLimit::ModelOutputBytes,
-            value.canonical_bytes().len(),
-            DebuggerOperation::RunModelAnalysis,
-        )?;
         let claim_count = wire
             .findings
             .len()
             .checked_add(wire.recommendations.len())
-            .ok_or_else(|| budget("model proposal claim count overflowed"))?;
-        limits.check(DebuggerLimit::Claims, claim_count, DebuggerOperation::RunModelAnalysis)?;
-        let findings = wire
+            .ok_or_else(|| proposal_budget("model proposal claim count overflowed"))?;
+        limits
+            .check(DebuggerLimit::Claims, claim_count, DebuggerOperation::RunModelAnalysis)
+            .map_err(|error| classified(ModelProposalRejectionCause::Budget, error))?;
+        let mut findings = wire
             .findings
             .into_iter()
             .map(|finding| {
                 Ok(ModelFinding {
-                    statement: DiagnosticText::new(finding.statement)?,
-                    citations: citations(finding.citations, manifest)?,
+                    statement: DiagnosticText::new(finding.statement).map_err(|error| {
+                        classified(ModelProposalRejectionCause::Text, error)
+                    })?,
+                    citations: citations(finding.citations, manifest).map_err(|error| {
+                        classified(ModelProposalRejectionCause::Citation, error)
+                    })?,
                 })
             })
-            .collect::<Result<Vec<_>, DebuggerError>>()?;
-        if findings.windows(2).any(|pair| pair[0].statement >= pair[1].statement) {
-            return Err(rejected("model findings are not in canonical statement order"));
+            .collect::<Result<Vec<_>, ModelProposalRejection>>()?;
+        findings.sort_by(|left, right| left.statement.cmp(&right.statement));
+        if findings.windows(2).any(|pair| pair[0].statement == pair[1].statement) {
+            return Err(proposal_rejected(
+                ModelProposalRejectionCause::Collection,
+                "model findings contain a duplicate statement",
+            ));
         }
-        let recommendations = wire
+        let mut recommendations = wire
             .recommendations
             .into_iter()
             .map(|recommendation| {
-                let affected_components = recommendation
+                let mut affected_components = recommendation
                     .affected_component_tags
                     .into_iter()
                     .map(component_kind)
-                    .collect::<Result<Vec<_>, DebuggerError>>()?;
+                    .collect::<Result<Vec<_>, DebuggerError>>()
+                    .map_err(|error| {
+                        classified(ModelProposalRejectionCause::Collection, error)
+                    })?;
+                affected_components.sort_unstable();
                 if affected_components.is_empty()
-                    || affected_components.windows(2).any(|pair| pair[0] >= pair[1])
+                    || affected_components.windows(2).any(|pair| pair[0] == pair[1])
                 {
-                    return Err(rejected(
-                        "recommendation component classes are not nonempty and canonical",
+                    return Err(proposal_rejected(
+                        ModelProposalRejectionCause::Collection,
+                        "recommendation component classes are empty or duplicated",
                     ));
                 }
                 Ok(ModelRecommendation {
-                    statement: DiagnosticText::new(recommendation.statement)?,
-                    citations: citations(recommendation.citations, manifest)?,
+                    statement: DiagnosticText::new(recommendation.statement).map_err(|error| {
+                        classified(ModelProposalRejectionCause::Text, error)
+                    })?,
+                    citations: citations(recommendation.citations, manifest).map_err(|error| {
+                        classified(ModelProposalRejectionCause::Citation, error)
+                    })?,
                     affected_components,
                 })
             })
-            .collect::<Result<Vec<_>, DebuggerError>>()?;
-        if recommendations.windows(2).any(|pair| pair[0].statement >= pair[1].statement) {
-            return Err(rejected("model recommendations are not in canonical statement order"));
+            .collect::<Result<Vec<_>, ModelProposalRejection>>()?;
+        recommendations.sort_by(|left, right| left.statement.cmp(&right.statement));
+        if recommendations.windows(2).any(|pair| pair[0].statement == pair[1].statement) {
+            return Err(proposal_rejected(
+                ModelProposalRejectionCause::Collection,
+                "model recommendations contain a duplicate statement",
+            ));
         }
         let canonical_bytes = value.canonical_bytes().to_vec();
-        let mut identity = b"peritus.debugger.validated-model-proposal.v1\0".to_vec();
-        identity.extend_from_slice(&canonical_bytes);
-        let digest = peritus_codec::sha256(&identity);
+        let mut identity = Sha256::new();
+        identity.update(b"peritus.debugger.validated-model-proposal.v1\0");
+        identity.update(&canonical_bytes);
+        let digest = Sha256Digest::new(identity.finalize().into());
         Ok(Self {
             manifest_id: manifest.id(),
             manifest_digest: manifest.digest(),
@@ -233,7 +317,7 @@ fn citations(
     values: Vec<CitationWire>,
     manifest: &TraceSelectionManifest,
 ) -> Result<Vec<EvidenceCitation>, DebuggerError> {
-    let citations = values
+    let mut citations = values
         .into_iter()
         .map(|value| {
             EvidenceCitation::new(
@@ -247,6 +331,7 @@ fn citations(
             )
         })
         .collect::<Result<Vec<_>, DebuggerError>>()?;
+    citations.sort();
     validate_citations(&citations, manifest)?;
     Ok(citations)
 }
@@ -294,4 +379,22 @@ fn budget(detail: &'static str) -> DebuggerError {
         DebuggerRecovery::None,
         detail,
     )
+}
+
+fn classified(
+    cause: ModelProposalRejectionCause,
+    error: DebuggerError,
+) -> ModelProposalRejection {
+    ModelProposalRejection { cause, error }
+}
+
+fn proposal_rejected(
+    cause: ModelProposalRejectionCause,
+    detail: &'static str,
+) -> ModelProposalRejection {
+    classified(cause, rejected(detail))
+}
+
+fn proposal_budget(detail: &'static str) -> ModelProposalRejection {
+    classified(ModelProposalRejectionCause::Budget, budget(detail))
 }

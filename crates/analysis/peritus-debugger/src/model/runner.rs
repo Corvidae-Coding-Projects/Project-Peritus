@@ -2,7 +2,8 @@
 
 use peritus_model_protocol::{
     Continuation, EventEnvelope, FailureCategory, FinishReason, ModelFailure, OutcomeCertainty,
-    ReducedItem, ResponseId, ResponseReducer, Retryability, TerminalOutcome, TransportPhase,
+    ProtocolLimits, ReducedItem, ResponseId, ResponseReducer, Retryability, TerminalOutcome,
+    TransportPhase,
 };
 use peritus_provider_core::{
     CancellationToken, ModelProvider, ProviderCoreError, ProviderCoreErrorKind,
@@ -11,13 +12,16 @@ use peritus_provider_core::{
 use peritus_types::Sha256Digest;
 
 use crate::{
-    DebuggerErrorKind, DebuggerLimits, DebuggerRecovery, ModelAcceptanceCertainty,
-    ModelAttemptFailureCode, ModelFailureContext, ModelFailureOrigin, ModelFailurePhase,
-    ModelFailureRecovery, ModelProviderFailureCause, TraceSelectionManifest,
+    DebuggerErrorKind, DebuggerLimit, DebuggerLimits, DebuggerRecovery,
+    ModelAcceptanceCertainty, ModelAttemptFailureCode, ModelFailureContext, ModelFailureOrigin,
+    ModelFailurePhase, ModelFailureRecovery, ModelProviderFailureCause, TraceSelectionManifest,
     ValidatedModelProposal,
 };
 
-use super::ModelAnalysisPlan;
+use super::{
+    ModelAnalysisPlan,
+    proposal::{ModelProposalRejection, ModelProposalRejectionCause},
+};
 
 #[cfg(test)]
 mod tests;
@@ -246,6 +250,7 @@ pub(crate) async fn run_model_analysis_with_usage(
     let budget = plan.budget();
     if prior.events >= budget.max_events()
         || prior.output_bytes >= budget.max_output_bytes()
+        || prior.output_bytes >= debugger_limits.get(DebuggerLimit::ModelOutputBytes)
         || prior.input_tokens >= budget.max_input_tokens()
         || prior.output_tokens >= budget.max_output_tokens()
         || prior.total_tokens >= budget.max_total_tokens()
@@ -263,6 +268,7 @@ pub(crate) async fn run_model_analysis_with_usage(
             AttemptUsage::default(),
         ));
     }
+    let reducer_limits = selected_structured_limits(plan, debugger_limits, prior);
     let request = if let Some(continuation) = continuation {
         plan.request()
             .clone()
@@ -284,7 +290,7 @@ pub(crate) async fn run_model_analysis_with_usage(
     } else {
         plan.request().clone()
     };
-    let mut reducer = ResponseReducer::new(request.provider().clone(), plan.protocol_limits());
+    let mut reducer = ResponseReducer::new(request.provider().clone(), reducer_limits);
     let mut stream = provider
         .start(request, cancellation.clone())
         .await
@@ -367,6 +373,7 @@ pub(crate) async fn run_model_analysis_with_usage(
                 prior,
                 AttemptUsage::from_reducer(&reducer, observations.count),
                 plan,
+                debugger_limits,
             )
         {
             stream.cancel();
@@ -495,24 +502,19 @@ pub(crate) async fn run_model_analysis_with_usage(
     if output_bytes > plan.budget().max_output_bytes() {
         return Err(budget_failure(profile, &reducer, &observations));
     }
-    let proposal = ValidatedModelProposal::validate(
+    let proposal = ValidatedModelProposal::validate_classified(
         value,
         manifest,
         plan.deterministic_digest(),
         debugger_limits,
     )
     .map_err(|error| {
-        local_failure(
+        proposal_failure(
             profile,
-            ModelAttemptFailureCode::InvalidProposal,
-            ModelFailureOrigin::OutputValidation,
-            ModelProviderFailureCause::InvalidRequest,
-            ModelFailurePhase::Completed,
-            ModelAcceptanceCertainty::Terminal,
-            continuation_from(profile, &reducer, None),
-            &error.to_string(),
+            &reducer,
             &observations,
             usage,
+            &error,
         )
     })?;
     Ok(ModelRunSuccess {
@@ -579,13 +581,40 @@ fn cumulative_exceeds(
     prior: ModelPriorUsage,
     current: AttemptUsage,
     plan: &ModelAnalysisPlan,
+    debugger_limits: DebuggerLimits,
 ) -> bool {
     let budget = plan.budget();
+    let output_bytes = prior.output_bytes.saturating_add(current.output_bytes);
     prior.events.saturating_add(current.event_count) > budget.max_events()
-        || prior.output_bytes.saturating_add(current.output_bytes) > budget.max_output_bytes()
+        || output_bytes > budget.max_output_bytes()
+        || output_bytes > debugger_limits.get(DebuggerLimit::ModelOutputBytes)
         || prior.input_tokens.saturating_add(current.input_tokens) > budget.max_input_tokens()
         || prior.output_tokens.saturating_add(current.output_tokens) > budget.max_output_tokens()
         || prior.total_tokens.saturating_add(current.total_tokens) > budget.max_total_tokens()
+}
+
+fn selected_structured_limits(
+    plan: &ModelAnalysisPlan,
+    debugger_limits: DebuggerLimits,
+    prior: ModelPriorUsage,
+) -> ProtocolLimits {
+    const MAX_TOOL_ARGUMENT_BYTES_INDEX: usize = 11;
+
+    let selected = plan
+        .budget()
+        .max_output_bytes()
+        .saturating_sub(prior.output_bytes)
+        .min(
+            debugger_limits
+                .get(DebuggerLimit::ModelOutputBytes)
+                .saturating_sub(prior.output_bytes),
+        );
+    let selected = usize::try_from(selected).unwrap_or(usize::MAX);
+    let mut values = plan.protocol_limits().as_array();
+    values[MAX_TOOL_ARGUMENT_BYTES_INDEX] =
+        values[MAX_TOOL_ARGUMENT_BYTES_INDEX].min(selected);
+    ProtocolLimits::new(values)
+        .expect("validated model plan and nonexhausted usage produce valid protocol limits")
 }
 
 fn budget_failure(
@@ -608,6 +637,59 @@ fn budget_failure(
         "model event or token allowance was exceeded",
         observations,
         AttemptUsage::from_reducer(reducer, observations.count),
+    )
+}
+
+fn proposal_failure(
+    profile: &peritus_model_protocol::ProviderProfile,
+    reducer: &ResponseReducer,
+    observations: &ObservationDigest,
+    usage: AttemptUsage,
+    rejection: &ModelProposalRejection,
+) -> ModelRunFailure {
+    let (code, origin, cause) = match rejection.cause() {
+        ModelProposalRejectionCause::Schema => (
+            ModelAttemptFailureCode::InvalidProposal,
+            ModelFailureOrigin::OutputValidation,
+            ModelProviderFailureCause::InvalidOutputSchema,
+        ),
+        ModelProposalRejectionCause::Binding => (
+            ModelAttemptFailureCode::InvalidProposal,
+            ModelFailureOrigin::OutputValidation,
+            ModelProviderFailureCause::InvalidOutputBinding,
+        ),
+        ModelProposalRejectionCause::Text => (
+            ModelAttemptFailureCode::InvalidProposal,
+            ModelFailureOrigin::OutputValidation,
+            ModelProviderFailureCause::InvalidOutputText,
+        ),
+        ModelProposalRejectionCause::Citation => (
+            ModelAttemptFailureCode::InvalidProposal,
+            ModelFailureOrigin::OutputValidation,
+            ModelProviderFailureCause::InvalidOutputCitation,
+        ),
+        ModelProposalRejectionCause::Collection => (
+            ModelAttemptFailureCode::InvalidProposal,
+            ModelFailureOrigin::OutputValidation,
+            ModelProviderFailureCause::InvalidOutputCollection,
+        ),
+        ModelProposalRejectionCause::Budget => (
+            ModelAttemptFailureCode::BudgetExceeded,
+            ModelFailureOrigin::Budget,
+            ModelProviderFailureCause::LimitExceeded,
+        ),
+    };
+    local_failure(
+        profile,
+        code,
+        origin,
+        cause,
+        ModelFailurePhase::Completed,
+        ModelAcceptanceCertainty::Terminal,
+        continuation_from(profile, reducer, None),
+        &rejection.error().to_string(),
+        observations,
+        usage,
     )
 }
 
