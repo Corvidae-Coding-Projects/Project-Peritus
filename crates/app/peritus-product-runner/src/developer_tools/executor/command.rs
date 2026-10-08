@@ -1,12 +1,13 @@
 //! Structured command execution through the shared C4 router and C2 process owner.
 
-use std::{path::PathBuf, time::Duration};
+use std::{collections::BTreeSet, path::PathBuf, time::Duration};
 
 use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
 
 use super::WorkspaceDeveloperTools;
 use crate::developer_tools::{
+    command_budget::{CommandAllowance, CommandDeadlineSource},
     command_runtime::StartCommand,
     effect::reject_destructive_command,
     path::{checked, tool},
@@ -22,15 +23,12 @@ struct ParsedCommand {
     arguments: Vec<String>,
     cwd: PathBuf,
     timeout: Option<Duration>,
-    requested_timeout_seconds: Option<u64>,
-    deadline_limited: bool,
-    completion_reserve_seconds: u64,
+    allowance: CommandAllowance,
 }
 
 impl WorkspaceDeveloperTools {
     pub(super) fn command_has_effect(&self, arguments: &Value) -> Result<bool, DeveloperLoopError> {
-        self.parse_command(arguments)
-            .map(|command| !command.timeout.is_some_and(|timeout| timeout.is_zero()))
+        self.parse_command(arguments).map(|command| command.allowance.starts_execution())
     }
 
     pub(super) fn run_command(
@@ -39,8 +37,8 @@ impl WorkspaceDeveloperTools {
         call_id: &str,
     ) -> Result<Value, DeveloperLoopError> {
         let command = self.parse_command(arguments)?;
-        if command.timeout.is_some_and(|timeout| timeout.is_zero()) {
-            return self.exhausted_result(command.requested_timeout_seconds);
+        if !command.allowance.starts_execution() {
+            return Ok(command.allowance.exhausted_result());
         }
         let unowned_before = self.ownership.unowned_files(&self.root);
         let result = self.command_runtime()?.run(StartCommand {
@@ -54,8 +52,60 @@ impl WorkspaceDeveloperTools {
             idempotency_key: call_id,
             environment: self.resources.environment_bindings(),
         });
-        self.ownership.record_command_creations(&self.root, &unowned_before);
-        annotate_result(self, result?, &command)
+        self.finish_run_command(arguments, result, unowned_before, &command)
+    }
+
+    pub(super) async fn run_command_async(
+        &mut self,
+        arguments: &Value,
+        call_id: &str,
+    ) -> Result<Value, DeveloperLoopError> {
+        let command = self.parse_command(arguments)?;
+        if !command.allowance.starts_execution() {
+            return Ok(command.allowance.exhausted_result());
+        }
+        let unowned_before = self.ownership.unowned_files(&self.root);
+        let runtime = self.command_runtime()?.clone();
+        let result = runtime
+            .run_async(StartCommand {
+                program: &command.program,
+                arguments: &command.arguments,
+                cwd: &command.cwd,
+                timeout: command.timeout,
+                interactive: false,
+                rows: u16::try_from(DEFAULT_TERMINAL_ROWS).expect("bounded terminal rows"),
+                columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS)
+                    .expect("bounded terminal columns"),
+                idempotency_key: call_id,
+                environment: self.resources.environment_bindings(),
+            })
+            .await;
+        self.finish_run_command(arguments, result, unowned_before, &command)
+    }
+
+    fn finish_run_command(
+        &mut self,
+        arguments: &Value,
+        result: Result<Value, DeveloperLoopError>,
+        unowned_before: BTreeSet<PathBuf>,
+        command: &ParsedCommand,
+    ) -> Result<Value, DeveloperLoopError> {
+        match result {
+            Ok(result) => {
+                if matches!(result.get("state").and_then(Value::as_str), Some("running" | "starting")) {
+                    // The original process can still produce files after this observation fails.
+                    // Retain its admission preimage and purpose until same-handle settlement.
+                    self.active_commands.started_named("run_command", arguments, &result, unowned_before)?;
+                } else {
+                    self.ownership.record_command_creations(&self.root, &unowned_before);
+                }
+                annotate_result(self, result, command)
+            }
+            Err(error) => {
+                self.ownership.record_command_creations(&self.root, &unowned_before);
+                Err(error)
+            }
+        }
     }
 
     pub(super) fn start_command(
@@ -64,8 +114,8 @@ impl WorkspaceDeveloperTools {
         call_id: &str,
     ) -> Result<Value, DeveloperLoopError> {
         let command = self.parse_command(arguments)?;
-        if command.timeout.is_some_and(|timeout| timeout.is_zero()) {
-            return self.exhausted_result(command.requested_timeout_seconds);
+        if !command.allowance.starts_execution() {
+            return Ok(command.allowance.exhausted_result());
         }
         let interactive = arguments.get("interactive").and_then(Value::as_bool).unwrap_or(true);
         let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
@@ -88,8 +138,50 @@ impl WorkspaceDeveloperTools {
         Ok(result)
     }
 
+    pub(super) async fn start_command_async(
+        &mut self,
+        arguments: &Value,
+        call_id: &str,
+    ) -> Result<Value, DeveloperLoopError> {
+        let command = self.parse_command(arguments)?;
+        if !command.allowance.starts_execution() {
+            return Ok(command.allowance.exhausted_result());
+        }
+        let interactive = arguments.get("interactive").and_then(Value::as_bool).unwrap_or(true);
+        let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
+        let columns =
+            bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
+        let unowned_before = self.ownership.unowned_files(&self.root);
+        let runtime = self.command_runtime()?.clone();
+        let result = runtime
+            .start_async(StartCommand {
+                program: &command.program,
+                arguments: &command.arguments,
+                cwd: &command.cwd,
+                timeout: command.timeout,
+                interactive,
+                rows: u16::try_from(rows).expect("bounded terminal rows"),
+                columns: u16::try_from(columns).expect("bounded terminal columns"),
+                idempotency_key: call_id,
+                environment: self.resources.environment_bindings(),
+            })
+            .await?;
+        let result = annotate_result(self, result, &command)?;
+        self.active_commands.started(arguments, &result, unowned_before)?;
+        Ok(result)
+    }
+
     pub(super) fn poll_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         self.command_runtime()?.poll(required_string(arguments, "handle")?)
+    }
+
+    pub(super) async fn poll_command_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let runtime = self.command_runtime()?.clone();
+        runtime.poll_async(handle).await
     }
 
     pub(super) fn write_command_stdin(
@@ -102,6 +194,16 @@ impl WorkspaceDeveloperTools {
         )
     }
 
+    pub(super) async fn write_command_stdin_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let bytes = required_string(arguments, "text")?.as_bytes().to_vec();
+        let runtime = self.command_runtime()?.clone();
+        runtime.stdin_async(handle, bytes).await
+    }
+
     pub(super) fn resize_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let rows = bounded_u64(arguments, "rows", 0, 0, u16::MAX.into());
         let columns = bounded_u64(arguments, "columns", 0, 0, u16::MAX.into());
@@ -112,6 +214,23 @@ impl WorkspaceDeveloperTools {
         )
     }
 
+    pub(super) async fn resize_command_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let rows = bounded_u64(arguments, "rows", 0, 0, u16::MAX.into());
+        let columns = bounded_u64(arguments, "columns", 0, 0, u16::MAX.into());
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let runtime = self.command_runtime()?.clone();
+        runtime
+            .resize_async(
+                handle,
+                u16::try_from(rows).expect("bounded terminal rows"),
+                u16::try_from(columns).expect("bounded terminal columns"),
+            )
+            .await
+    }
+
     pub(super) fn signal_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         self.command_runtime()?.signal(
             required_string(arguments, "handle")?,
@@ -119,25 +238,44 @@ impl WorkspaceDeveloperTools {
         )
     }
 
+    pub(super) async fn signal_command_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let signal = required_string(arguments, "signal")?.to_owned();
+        let runtime = self.command_runtime()?.clone();
+        runtime.signal_async(handle, signal).await
+    }
+
     pub(super) fn cancel_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         self.command_runtime()?.cancel(required_string(arguments, "handle")?)
+    }
+
+    pub(super) async fn cancel_command_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let runtime = self.command_runtime()?.clone();
+        runtime.cancel_async(handle).await
     }
 
     pub(super) fn recover_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         self.command_runtime()?.recover(required_string(arguments, "handle")?)
     }
 
-    fn command_runtime(&self) -> Result<&crate::CommandRuntime, DeveloperLoopError> {
-        self.command_runtime.as_ref().ok_or_else(|| tool("writable tools have no command runtime"))
+    pub(super) async fn recover_command_async(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let handle = required_string(arguments, "handle")?.to_owned();
+        let runtime = self.command_runtime()?.clone();
+        runtime.recover_async(handle).await
     }
 
-    fn exhausted_result(&self, requested: Option<u64>) -> Result<Value, DeveloperLoopError> {
-        Ok(self
-            .command_budget
-            .as_ref()
-            .ok_or_else(|| tool("writable tools have no command budget"))?
-            .allowance(requested)
-            .exhausted_result())
+    fn command_runtime(&self) -> Result<&crate::CommandRuntime, DeveloperLoopError> {
+        self.command_runtime.as_ref().ok_or_else(|| tool("writable tools have no command runtime"))
     }
 
     fn parse_command(&self, arguments: &Value) -> Result<ParsedCommand, DeveloperLoopError> {
@@ -182,10 +320,8 @@ impl WorkspaceDeveloperTools {
             program: program.to_owned(),
             arguments: args,
             cwd,
-            timeout: allowance.timeout_seconds.map(Duration::from_secs),
-            requested_timeout_seconds: allowance.requested_seconds,
-            deadline_limited: allowance.deadline_limited,
-            completion_reserve_seconds: allowance.completion_reserve_seconds,
+            timeout: allowance.timeout,
+            allowance,
         })
     }
 }
@@ -198,34 +334,51 @@ fn annotate_result(
     let result =
         value.as_object_mut().ok_or_else(|| tool("command runtime returned non-object"))?;
     let timed_out = result.get("timed_out").and_then(Value::as_bool) == Some(true);
-    let recovery_hint = timed_out.then_some({
-        if command.deadline_limited {
-            "The command reached the live product-budget allowance. Preserve the completion reserve, use existing evidence, and deliver the best verified result now."
-        } else {
-            "Do not retry an equivalent command with a longer timeout or another bulk-transfer wrapper without new size or progress evidence. Choose a materially bounded or resumable strategy."
+    let recovery_hint = timed_out.then(|| match command.allowance.deadline_source {
+        CommandDeadlineSource::Product => {
+            "The command reached the caller-selected product deadline. Active execution stopped at that deadline; exact command evidence and unfinished product obligations remain recoverable for an authorized resume."
+        }
+        CommandDeadlineSource::RequestedCommand => {
+            "The command reached its requested positive timeout. Its terminal result is retained; retry with a longer positive timeout or a resumable strategy when the observed progress supports it."
+        }
+        CommandDeadlineSource::Untimed => {
+            "The command runtime reported a timeout without an imposed command or product deadline. Reconcile the retained terminal result before deciding whether to retry."
         }
     });
     result.insert(
         "requested_timeout_seconds".to_owned(),
-        command.requested_timeout_seconds.map_or(Value::Null, Value::from),
+        command.allowance.requested_seconds.map_or(Value::Null, Value::from),
     );
     result.insert(
         "timeout_seconds".to_owned(),
         command.timeout.map_or(Value::Null, |timeout| Value::from(timeout.as_secs())),
     );
-    result.insert("deadline_limited".to_owned(), Value::Bool(command.deadline_limited));
     result.insert(
-        "remaining_product_seconds".to_owned(),
-        tools
-            .command_budget
-            .as_ref()
-            .ok_or_else(|| tool("writable tools have no command budget"))?
-            .remaining_seconds()
-            .map_or(Value::Null, Value::from),
+        "timeout_millis".to_owned(),
+        command.allowance.timeout_millis().map_or(Value::Null, Value::from),
     );
     result.insert(
-        "completion_reserve_seconds".to_owned(),
-        Value::from(command.completion_reserve_seconds),
+        "deadline_source".to_owned(),
+        Value::String(command.allowance.deadline_source.label().to_owned()),
+    );
+    result.insert(
+        "deadline_limited".to_owned(),
+        Value::Bool(command.allowance.deadline_limited()),
+    );
+    let remaining = tools
+        .command_budget
+        .as_ref()
+        .ok_or_else(|| tool("writable tools have no command budget"))?
+        .remaining();
+    result.insert(
+        "remaining_product_seconds".to_owned(),
+        remaining.map_or(Value::Null, |remaining| Value::from(remaining.as_secs())),
+    );
+    result.insert(
+        "remaining_product_millis".to_owned(),
+        remaining
+            .and_then(|remaining| u64::try_from(remaining.as_millis()).ok())
+            .map_or(Value::Null, Value::from),
     );
     result.insert(
         "recovery_hint".to_owned(),

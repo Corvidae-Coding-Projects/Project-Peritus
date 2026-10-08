@@ -3,7 +3,7 @@
 use peritus_run_settlement::SettlementCause;
 
 use super::{ProductRunPhase, settlement};
-use crate::{ProductRunnerError, ProductRunnerErrorKind};
+use crate::ProductRunnerError;
 
 pub(super) struct ActiveExit {
     pub(super) cause: SettlementCause,
@@ -46,32 +46,23 @@ impl ActiveExit {
     pub(super) fn deadline(next_phase: ProductRunPhase) -> Self {
         Self::stopped(
             SettlementCause::Deadline,
-            "the configured active phase window ended with finalization time preserved".to_owned(),
+            "the caller-selected run horizon expired; retained work remains available".to_owned(),
             next_phase,
         )
     }
 
     pub(super) fn from_error(
         error: &ProductRunnerError,
-        deadline: bool,
         next_phase: ProductRunPhase,
     ) -> Self {
-        let cause = settlement::cause_from_error(error, deadline);
-        Self::stopped(cause, format!("{}: {}", error.operation(), error.detail()), next_phase)
+        let cause = settlement::cause_from_error(error, false);
+        Self::stopped(cause, error.settlement_detail(), next_phase)
     }
 
-    pub(super) const fn with_deadline(mut self, reached: bool) -> Self {
-        if reached && !matches!(self.cause, SettlementCause::Completed | SettlementCause::UserWait)
-        {
-            self.cause = SettlementCause::Deadline;
+    pub(super) fn retain_finalization_failure(&mut self, error: &ProductRunnerError) {
+        if self.cause != SettlementCause::Cancellation {
+            self.cause = SettlementCause::Recovery;
         }
-        self
+        settlement::append_detail(&mut self.detail, error);
     }
-}
-
-pub(super) const fn fatal(error: &ProductRunnerError) -> bool {
-    matches!(
-        error.kind(),
-        ProductRunnerErrorKind::InvalidPrecondition | ProductRunnerErrorKind::InternalInvariant
-    )
 }

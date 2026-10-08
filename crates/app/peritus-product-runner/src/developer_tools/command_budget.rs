@@ -1,4 +1,4 @@
-//! Live command allowances derived from the enclosing product-run horizon.
+//! Live command deadlines derived from caller-selected command and product limits.
 
 use std::time::{Duration, Instant};
 
@@ -6,25 +6,59 @@ use serde_json::Value;
 
 use super::wire::object;
 
-const MAX_COMPLETION_RESERVE_SECONDS: u64 = 300;
-
 pub(super) struct CommandBudget {
     started: Instant,
     horizon: Option<Duration>,
-    completion_reserve: Duration,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum CommandDeadlineSource {
+    Untimed,
+    RequestedCommand,
+    Product,
+}
+
+impl CommandDeadlineSource {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::Untimed => "none",
+            Self::RequestedCommand => "requested_command",
+            Self::Product => "product_deadline",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) struct CommandAllowance {
     pub(super) requested_seconds: Option<u64>,
-    pub(super) timeout_seconds: Option<u64>,
-    pub(super) deadline_limited: bool,
-    pub(super) remaining_product_seconds: Option<u64>,
-    pub(super) completion_reserve_seconds: u64,
+    pub(super) timeout: Option<Duration>,
+    pub(super) deadline_source: CommandDeadlineSource,
+    pub(super) remaining_product: Option<Duration>,
 }
 
 impl CommandAllowance {
+    pub(super) fn starts_execution(self) -> bool {
+        self.timeout.is_none_or(|timeout| timeout.as_millis() > 0)
+    }
+
+    pub(super) const fn deadline_limited(self) -> bool {
+        matches!(self.deadline_source, CommandDeadlineSource::Product)
+    }
+
+    pub(super) fn timeout_millis(self) -> Option<u64> {
+        self.timeout.and_then(representable_millis)
+    }
+
     pub(super) fn exhausted_result(self) -> Value {
+        let recovery_hint = if self.remaining_product.is_some_and(Duration::is_zero) {
+            "The command was not started because the caller-selected product deadline elapsed. \
+             Active execution has stopped; finalization retains unfinished obligations for an \
+             authorized resume."
+        } else {
+            "The command was not started because the caller-selected product deadline has less \
+             than one representable millisecond remaining. Active execution has stopped; \
+             finalization retains unfinished obligations for an authorized resume."
+        };
         object(vec![
             ("success", Value::Bool(false)),
             ("exit_code", Value::Null),
@@ -32,33 +66,38 @@ impl CommandAllowance {
             ("stderr", Value::String(String::new())),
             ("timed_out", Value::Bool(false)),
             ("requested_timeout_seconds", self.requested_seconds.map_or(Value::Null, Value::from)),
-            ("timeout_seconds", Value::from(0_u64)),
-            ("deadline_limited", Value::Bool(true)),
+            (
+                "timeout_seconds",
+                self.timeout.map_or(Value::Null, |timeout| Value::from(timeout.as_secs())),
+            ),
+            (
+                "timeout_millis",
+                self.timeout_millis().map_or(Value::Null, Value::from),
+            ),
+            (
+                "deadline_source",
+                Value::String(self.deadline_source.label().to_owned()),
+            ),
+            ("deadline_limited", Value::Bool(self.deadline_limited())),
             (
                 "remaining_product_seconds",
-                self.remaining_product_seconds.map_or(Value::Null, Value::from),
+                self.remaining_product
+                    .map_or(Value::Null, |remaining| Value::from(remaining.as_secs())),
             ),
-            ("completion_reserve_seconds", Value::from(self.completion_reserve_seconds)),
             (
-                "recovery_hint",
-                Value::String(
-                    "The command was not started because only the product completion reserve \
-                     remains. Use existing evidence, write the deliverable if needed, and finish \
-                     with the best verification already available."
-                        .to_owned(),
-                ),
+                "remaining_product_millis",
+                self.remaining_product
+                    .and_then(representable_millis)
+                    .map_or(Value::Null, Value::from),
             ),
+            ("recovery_hint", Value::String(recovery_hint.to_owned())),
         ])
     }
 }
 
 impl CommandBudget {
     pub(super) fn new(horizon: Option<Duration>) -> Self {
-        Self {
-            started: Instant::now(),
-            horizon,
-            completion_reserve: horizon.map_or(Duration::ZERO, completion_reserve),
-        }
+        Self { started: Instant::now(), horizon }
     }
 
     pub(super) fn allowance(&self, requested_seconds: Option<u64>) -> CommandAllowance {
@@ -71,35 +110,32 @@ impl CommandBudget {
         elapsed: Duration,
     ) -> CommandAllowance {
         let remaining = self.horizon.map(|horizon| horizon.saturating_sub(elapsed));
-        let available =
-            remaining.map(|remaining| remaining.saturating_sub(self.completion_reserve).as_secs());
-        let timeout_seconds = match (available, requested_seconds) {
-            (Some(available), Some(requested)) => Some(requested.min(available)),
-            (Some(available), None) => Some(available),
-            (None, requested) => requested,
+        let requested = requested_seconds.map(Duration::from_secs);
+        let (timeout, deadline_source) = match (remaining, requested) {
+            (Some(remaining), Some(requested)) if remaining < requested => {
+                (Some(remaining), CommandDeadlineSource::Product)
+            }
+            (_, Some(requested)) => {
+                (Some(requested), CommandDeadlineSource::RequestedCommand)
+            }
+            (Some(remaining), None) => (Some(remaining), CommandDeadlineSource::Product),
+            (None, None) => (None, CommandDeadlineSource::Untimed),
         };
         CommandAllowance {
             requested_seconds,
-            timeout_seconds,
-            deadline_limited: available.is_some()
-                && (requested_seconds.is_none() || timeout_seconds < requested_seconds),
-            remaining_product_seconds: remaining.map(|remaining| remaining.as_secs()),
-            completion_reserve_seconds: self.completion_reserve.as_secs(),
+            timeout,
+            deadline_source,
+            remaining_product: remaining,
         }
     }
 
-    pub(super) fn remaining_seconds(&self) -> Option<u64> {
-        self.horizon.map(|horizon| horizon.saturating_sub(self.started.elapsed()).as_secs())
+    pub(super) fn remaining(&self) -> Option<Duration> {
+        self.horizon.map(|horizon| horizon.saturating_sub(self.started.elapsed()))
     }
 }
 
-fn completion_reserve(horizon: Duration) -> Duration {
-    let horizon_seconds = horizon.as_secs();
-    if horizon_seconds == 0 {
-        return Duration::ZERO;
-    }
-    let proportional = (horizon_seconds / 5).max(1);
-    Duration::from_secs(proportional.min(MAX_COMPLETION_RESERVE_SECONDS).min(horizon_seconds))
+fn representable_millis(duration: Duration) -> Option<u64> {
+    u64::try_from(duration.as_millis()).ok()
 }
 
 #[cfg(test)]
