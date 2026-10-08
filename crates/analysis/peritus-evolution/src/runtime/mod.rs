@@ -11,8 +11,16 @@ use peritus_types::{ProjectId, Sha256Digest};
 pub use artifact::{FinalizedEvolutionArtifact, finalize_evolution_artifact};
 pub(crate) use authority::approval_use_digest;
 pub use authority::{PromotionAuthority, PromotionAuthorityRequest};
-pub use publication::{EvolutionPublication, publish_claimed_evolution};
-pub use recovery::{EvolutionRecoveryDecision, EvolutionRecoveryObservation, decide_recovery};
+pub use publication::{
+    EvolutionPublication, observe_evolution_publication_recovery, publish_claimed_evolution,
+    reconcile_evolution_publication_intent,
+};
+pub use recovery::{
+    DurableEvolutionRecoveryObservation, EvolutionPublicationDependencyStatus,
+    EvolutionPublicationDirectiveObservation, EvolutionPublicationOwnerObservation,
+    EvolutionRecoveryDecision, EvolutionRecoveryObservation, decide_durable_recovery,
+    decide_recovery,
+};
 
 use crate::{
     ActivationId, AtomicActivation, CampaignCommand, CampaignState, CampaignTransition,

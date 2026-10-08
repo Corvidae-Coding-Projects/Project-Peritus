@@ -20,7 +20,11 @@ pub use campaign::{
 };
 pub use directive::{
     EVOLUTION_PUBLICATION_DESTINATION, EvolutionPublicationClaim, EvolutionPublicationDirective,
-    EvolutionPublicationKind,
+    EvolutionPublicationKind, EvolutionPublicationObligation,
+};
+pub(crate) use directive::{
+    activation_publication_directive, campaign_publication_directive, outbox_draft,
+    publication_evidence_id,
 };
 pub use pointer::{
     commit_pointer_transition, commit_pointer_transition_with_storage, prepare_rollback_proposal,
