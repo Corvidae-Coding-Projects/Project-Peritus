@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4177,
-        "tip_oid": "2c22ea449d3c8defee9c46713ff86ad29f26ec20",
-        "prefix_sha256": "80d93d95b05f5766ff679dab4e733cff3cf170d9abbae29df16994ab4588449e"
+        "sequence": 4178,
+        "tip_oid": "aae1ebd3d5ed8cf56cd4b2b657a882db6469e085",
+        "prefix_sha256": "bb22c5909c3669d7cad2c8f6f1a27e4d78100ac14c6f04f46efd4fe76d19a7a0"
       },
       "NWAR": {
         "sequence": 39,
@@ -24230,12 +24230,13 @@
       "display_id": 264,
       "title": "[L168] Explicit external-reference reads have fixed discovery and path-recognition bounds",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L168.\n\n- Source: `crates/app/peritus-product-runner/src/developer_tools/reference.rs:22,30-58,70-149,166-319`.\n- External listing stops after **512 entries** and constrains depth to **1–6**, default **3**. It exposes a truncated flag but no offset or continuation cursor. Callers can list named descendants separately; discovery is still bounded independently of actual directory size. Each directory is fully collected and sorted before limiting its output, and child enumeration/metadata errors are silently omitted.\n- Reads share the existing file-size/default-500-line/range escape and output-prefix bounds (L041/L045). Reference authority requires a normal absolute path recognized in task text, at most **4,096 bytes**, without a URL or control characters. Tokens lose terminal punctuation including a final period, which can change a legitimate filename. Quoted tokens support spaces, but there is no general shell/path escape grammar.\n- Case-insensitive component matching applies on every platform when excluding the workspace and selecting an authority root; on a case-sensitive filesystem, distinct paths that differ only by case can therefore be misclassified. The filesystem resolver prefers an exact spelling and rejects ambiguous fallback names. Named targets/descendants reject symlinks; system-alias ancestors of the named root are intentionally accepted. Preserve explicit authority while repairing recognition or traversal restrictions. **Full source and inline test read; not exercised.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.851081662Z",
-      "updated_at": "2026-10-08T16:00:21.587176280Z",
+      "updated_at": "2026-10-08T16:01:53.110618371Z",
+      "closed_at": "2026-10-08T16:01:53.107527085Z",
       "labels": [
         "daily-driving-limiter"
       ],
