@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3911,
-        "tip_oid": "b58e97b21892d3ab9a6da690592daad0a9d1cbed",
-        "prefix_sha256": "23a574c8b18399732653010bf4d765c9c5433702cebad52e0bd559ed6410e4cf"
+        "sequence": 3912,
+        "tip_oid": "6a548d1f86d1203678810e4adc29812a42900112",
+        "prefix_sha256": "9c66ecfc78e3f91cb34524793d8e5ee52a13bd92f8e76e13c6b46fa121758974"
       },
       "NWAR": {
         "sequence": 39,
@@ -3062,12 +3062,13 @@
       "display_id": 128,
       "title": "[L029] Application-protocol default and negotiated capacity ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L029.\n\n- `peritus-app-protocol/src/limits.rs:40-53,240-243` defaults to production codec limits (L009), **16 version ranges**, **64 feature names**, **4,096 retained idempotency entries**, **64 subscription topics**, **256 unacknowledged events**, **256 KiB artifact chunks**, **64 prompt choices**, **64 KiB terminal chunks**, **4 KiB diagnostic text**, and **256 remaining-work items**.\n- Lines 97-118 negotiate the pointwise minimum of both peers' capacities. Constructor validation at lines 198-237 requires positive values that fit their chosen enclosing codec dimensions; these application dimensions are not individually hard-capped to production by this constructor.\n- Effect depends on the owning state machine: chunk/page boundaries can permit unbounded total progress, while retained state and one-message collections can reject work. All declarations are recorded; actual owner/caller enforcement is pending rather than assumed identical across dimensions.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.949742321Z",
-      "updated_at": "2026-10-08T00:38:43.645475197Z",
+      "updated_at": "2026-10-08T00:40:08.563395374Z",
+      "closed_at": "2026-10-08T00:40:08.560591744Z",
       "labels": [
         "daily-driving-limiter"
       ],
