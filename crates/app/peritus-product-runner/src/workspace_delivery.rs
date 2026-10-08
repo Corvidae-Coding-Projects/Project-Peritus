@@ -103,7 +103,7 @@ impl ProductRunInput {
     pub(crate) fn developer_definitions(&self) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         let mut definitions = crate::developer_tools::definitions()?;
         if self.workspace_kind.is_in_place() {
-            definitions.push(scope::definition()?);
+            definitions.extend(scope::definitions()?);
         }
         Ok(definitions)
     }

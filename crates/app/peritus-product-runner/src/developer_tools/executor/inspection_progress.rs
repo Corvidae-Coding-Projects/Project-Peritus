@@ -346,6 +346,7 @@ fn is_evidence(name: &str) -> bool {
             | "workspace_list"
             | "workspace_search"
             | "workspace_read"
+            | "workspace_scope_evidence_read"
     ) || is_command(name)
 }
 

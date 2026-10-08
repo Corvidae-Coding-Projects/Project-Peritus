@@ -42,7 +42,7 @@ mod resources;
 mod wire;
 
 #[cfg(not(verus_only))]
-pub use catalog::{definitions, in_place_definition, read_only_definitions};
+pub use catalog::{definitions, in_place_definition, in_place_definitions, read_only_definitions};
 #[cfg(not(verus_only))]
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, ManagedGateNetworkCatalog,

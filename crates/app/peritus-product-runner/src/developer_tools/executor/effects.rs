@@ -94,6 +94,7 @@ impl WorkspaceDeveloperTools {
                     .ok_or_else(|| tool("workspace inspection owner is unavailable"))?,
             ),
             "workspace_scope" => self.declare_in_place(arguments),
+            "workspace_scope_evidence_read" => self.read_in_place_evidence(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),
             "workspace_remove" => self.remove(arguments),

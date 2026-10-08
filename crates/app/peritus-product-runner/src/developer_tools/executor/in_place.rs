@@ -35,7 +35,7 @@ impl WorkspaceDeveloperTools {
         }
         if matches!(name, "run_command" | "command_start")
             && process_mode == Some(CommandExecutionMode::Mutation)
-            && scope.paths().map_err(|error| tool(error.to_string()))?.is_empty()
+            && scope.path_count().map_err(|error| tool(error.to_string()))? == 0
         {
             return Err(tool(
                 "Declare exact task files with workspace_scope before commands in an in-place folder; no whole-folder inventory is taken",
@@ -78,6 +78,67 @@ impl WorkspaceDeveloperTools {
         }
         scope_page_result(scope, &accepted, None)
     }
+
+    pub(super) fn read_in_place_evidence(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        let scope = self
+            .in_place_scope
+            .as_ref()
+            .ok_or_else(|| tool("workspace_scope_evidence_read is only available for in-place delivery"))?;
+        let handle = required_string(arguments, "handle")?;
+        let sha256 = required_string(arguments, "sha256")?;
+        let size = decimal_argument(arguments, "size")?;
+        let offset = decimal_argument(arguments, "offset")?;
+        let page = scope
+            .evidence_page(handle, sha256, size, offset)
+            .map_err(|error| tool(error.to_string()))?;
+        let utf8 = std::str::from_utf8(&page.content)
+            .map(|text| Value::String(text.to_owned()))
+            .unwrap_or(Value::Null);
+        let next = page.next.map_or(Value::Null, |next| {
+            object(vec![
+                ("handle", Value::String(page.handle.clone())),
+                ("offset", Value::String(next.to_string())),
+                ("sha256", Value::String(page.sha256.clone())),
+                ("size", Value::String(page.bytes.to_string())),
+            ])
+        });
+        Ok(object(vec![
+            ("bytes_hex", Value::String(hex_bytes(&page.content))),
+            ("complete", Value::Bool(page.next.is_none())),
+            (
+                "encoding",
+                Value::String(
+                    if page.handle.ends_with(":utf8") { "utf8" } else { "bytes" }.to_owned(),
+                ),
+            ),
+            ("handle", Value::String(page.handle)),
+            ("next", next),
+            (
+                "range",
+                object(vec![
+                    ("end", Value::String(page.end.to_string())),
+                    ("start", Value::String(page.start.to_string())),
+                ]),
+            ),
+            ("sha256", Value::String(page.sha256)),
+            ("size", Value::String(page.bytes.to_string())),
+            ("utf8", utf8),
+        ]))
+    }
+}
+
+fn decimal_argument(arguments: &Value, name: &str) -> Result<u64, DeveloperLoopError> {
+    let text = required_string(arguments, name)?;
+    let value = text
+        .parse::<u64>()
+        .map_err(|_| tool(format!("{name} is not a canonical u64 decimal")))?;
+    if value.to_string() != text {
+        return Err(tool(format!("{name} is not a canonical u64 decimal")));
+    }
+    Ok(value)
 }
 
 fn scope_page_result(
@@ -85,7 +146,7 @@ fn scope_page_result(
     accepted: &[&str],
     failure: Option<(usize, &str, String)>,
 ) -> Result<Value, DeveloperLoopError> {
-    let tracked = scope.paths().map_err(|error| tool(error.to_string()))?;
+    let tracked = scope.path_count().map_err(|error| tool(error.to_string()))?;
     let mut hasher = Sha256::new();
     for path in accepted {
         hasher.update((path.len() as u64).to_be_bytes());
@@ -131,7 +192,7 @@ fn scope_page_result(
         ("next_path_index", next_path_index),
         ("page_complete", Value::Bool(success)),
         ("success", Value::Bool(success)),
-        ("tracked_path_count", Value::from(tracked.len())),
+        ("tracked_path_count", Value::from(tracked)),
         // Retain the legacy field as this accepted physical page, rather than an ever-growing
         // cumulative projection that can itself become impossible to represent.
         ("tracked_paths", Value::Array(accepted_paths)),
@@ -142,6 +203,15 @@ fn hex(bytes: [u8; 32]) -> String {
     use core::fmt::Write as _;
 
     bytes.iter().fold(String::with_capacity(64), |mut output, byte| {
+        let _ = write!(output, "{byte:02x}");
+        output
+    })
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    use core::fmt::Write as _;
+
+    bytes.iter().fold(String::with_capacity(bytes.len() * 2), |mut output, byte| {
         let _ = write!(output, "{byte:02x}");
         output
     })

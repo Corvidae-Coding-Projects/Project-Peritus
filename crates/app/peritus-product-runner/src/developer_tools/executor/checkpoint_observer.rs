@@ -326,28 +326,7 @@ impl WorkspaceDeveloperTools {
             return Ok(());
         }
         let Some(scope) = &self.in_place_scope else { return Ok(()) };
-        let paths = scope.paths().map_err(|error| tool(error.to_string()))?;
-        for path in &paths {
-            let relative = path.to_str().ok_or_else(|| tool("scope path must be UTF-8"))?;
-            let target = checked(&self.root, relative, true)?;
-            if target.is_dir() {
-                return Err(tool("command scope paths must be regular files or absent"));
-            }
-            scope
-                .mutation_baseline(relative)
-                .map_err(|error| tool(error.to_string()))?;
-        }
-        if self
-            .in_place_scope
-            .as_ref()
-            .ok_or_else(|| tool("command scope disappeared"))?
-            .paths()
-            .map_err(|error| tool(error.to_string()))?
-            != paths
-        {
-            return Err(tool("in-place command scope changed during baseline validation"));
-        }
-        Ok(())
+        scope.command_paths().map(|_| ()).map_err(|error| tool(error.to_string()))
     }
 
     pub(super) fn checkpoint_before_mutation(&mut self, path: &str, kind: WorkspaceMutationKind) {

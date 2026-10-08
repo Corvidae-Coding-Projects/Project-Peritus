@@ -201,6 +201,9 @@ fn read_only_role_allows(
     tool_name: &str,
     process_mode: Option<CommandExecutionMode>,
 ) -> bool {
+    if tool_name == "workspace_scope_evidence_read" {
+        return true;
+    }
     matches!(
         tool_name,
         "request_sources" | "request_source_read"

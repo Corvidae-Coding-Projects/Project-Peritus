@@ -252,7 +252,7 @@ fn required_permissions(
         // Reading them grants no workspace capability and remains possible before permissions.
         "request_sources" | "request_source_read" => None,
         "context_sources" | "context_source_read" | "workspace_list" | "workspace_search"
-        | "workspace_read" => Some(&[Read]),
+        | "workspace_read" | "workspace_scope_evidence_read" => Some(&[Read]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
@@ -312,6 +312,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             name,
             "request_sources" | "request_source_read" | "context_sources" | "context_source_read"
                 | "workspace_list" | "workspace_search" | "workspace_read"
+                | "workspace_scope_evidence_read"
                 | "command_poll" | "command_output_read" | "command_recover" | "command_cancel"
         ) {
             return DeveloperToolEffect::ReadOnly;

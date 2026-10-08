@@ -13,6 +13,7 @@ const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properti
 const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"end_line":{"minimum":1,"type":"integer"},"path":{"type":"string"},"start_line":{"minimum":1,"type":"integer"}},"required":["path"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
 const COMMAND_OUTPUT_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"digest":{"maxLength":64,"minLength":64,"type":"string"},"handle":{"type":"string"},"label":{"maxLength":128,"minLength":1,"type":"string"},"offset":{"maxLength":20,"type":"string"},"prepared_digest":{"maxLength":64,"minLength":64,"type":"string"},"size":{"maxLength":20,"type":"string"}},"required":["digest","handle","label","offset","prepared_digest","size"],"type":"object"}"#;
+const WORKSPACE_SCOPE_EVIDENCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"maxLength":256,"minLength":1,"type":"string"},"offset":{"maxLength":20,"minLength":1,"type":"string"},"sha256":{"maxLength":64,"minLength":64,"type":"string"},"size":{"maxLength":20,"minLength":1,"type":"string"}},"required":["handle","offset","sha256","size"],"type":"object"}"#;
 const CONTEXT_SOURCES_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"after":{"maxLength":20,"type":"string"}},"type":"object"}"#;
 const CONTEXT_SOURCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"offset":{"maxLength":20,"type":"string"},"source":{"maxLength":20,"type":"string"}},"required":["source","offset"],"type":"object"}"#;
 const REQUEST_SOURCES_SCHEMA: &str = CONTEXT_SOURCES_SCHEMA;
@@ -209,6 +210,18 @@ pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
         "workspace_scope",
         "Declare one transport-bounded page of additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. Repeat with further pages to extend the same durable scope; each result acknowledges only that page and reports the cumulative tracked count. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
         argument_contract::WORKSPACE_SCOPE_SCHEMA,
+    )
+}
+
+pub fn in_place_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    Ok(vec![in_place_definition()?, in_place_evidence_definition()?])
+}
+
+fn in_place_evidence_definition() -> Result<ToolDefinition, ProductRunnerError> {
+    definition(
+        "workspace_scope_evidence_read",
+        "Read one exact physical byte page from a retained in-place comparison or enrolled-file artifact. Copy handle, sha256, size and offset from the comparison marker or a per-file before_exact/current_exact record, then follow next until null. bytes_hex is lossless; utf8 is present only when the physical page is valid UTF-8. Every call revalidates the scope binding, complete artifact digest, byte length and requested frontier without a cumulative logical limit.",
+        WORKSPACE_SCOPE_EVIDENCE_READ_SCHEMA,
     )
 }
 

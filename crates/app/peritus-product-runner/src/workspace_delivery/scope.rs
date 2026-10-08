@@ -8,17 +8,20 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 use std::{
-    collections::BTreeMap,
     fmt::Write as _,
     fs,
-    io::{BufRead as _, Read as _, Write as _},
+    io::{Read as _, Write as _},
     path::{Path, PathBuf},
 };
 
 const MAX_PREVIEW_BYTES: usize = 16 * 1024;
+const MAX_DIFF_PREVIEW_BYTES: usize = 480 * 1024;
+const EVIDENCE_PAGE_BYTES: usize = 16 * 1024;
+const EVIDENCE_MARKER: &str = "peritus_scope_evidence_v1";
 
 #[cfg(test)]
 mod tests;
+mod storage;
 
 /// Durable scope descriptor, with a journal location supplied by the daemon-owned trace.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -48,10 +51,21 @@ struct Preimage {
     bytes: u64,
 }
 
+#[derive(Clone, Eq, PartialEq)]
 struct BaselineEntry {
     before: FileStamp,
     preimage: Option<Preimage>,
     complete: bool,
+}
+
+pub(crate) struct EvidencePage {
+    pub(crate) handle: String,
+    pub(crate) sha256: String,
+    pub(crate) bytes: u64,
+    pub(crate) start: u64,
+    pub(crate) end: u64,
+    pub(crate) content: Vec<u8>,
+    pub(crate) next: Option<u64>,
 }
 
 pub(crate) struct EvidenceContent {
@@ -110,7 +124,11 @@ impl ScopedBaseline {
     }
 
     pub fn paths(&self) -> Result<Vec<PathBuf>, ProductRunnerError> {
-        Ok(self.load()?.into_keys().map(PathBuf::from).collect())
+        Ok(storage::snapshot(self)?.entries.into_keys().map(PathBuf::from).collect())
+    }
+
+    pub(crate) fn path_count(&self) -> Result<usize, ProductRunnerError> {
+        storage::path_count(self)
     }
 
     pub(crate) fn mutation_baseline(
@@ -118,10 +136,33 @@ impl ScopedBaseline {
         relative: &str,
     ) -> Result<(WorkspaceMutationKind, WorkspaceMutationBaseline), ProductRunnerError> {
         self.checked_path(relative)?;
-        let entries = self.load()?;
-        let baseline = entries
-            .get(relative)
+        let baseline = storage::load_one(self, relative)?
             .ok_or_else(|| failure("command path is not enrolled in the in-place scope"))?;
+        self.mutation_baseline_entry(&baseline)
+    }
+
+    pub(crate) fn command_paths(&self) -> Result<Vec<PathBuf>, ProductRunnerError> {
+        let first = storage::snapshot(self)?;
+        let mut paths = Vec::with_capacity(first.entries.len());
+        for (relative, baseline) in &first.entries {
+            if self.checked_path(relative)?.is_dir() {
+                return Err(failure("command scope paths must be regular files or absent"));
+            }
+            self.mutation_baseline_entry(baseline)?;
+            paths.push(PathBuf::from(relative));
+        }
+        if !storage::frontier_matches(self, first.frontier)? {
+            return Err(failure(
+                "in-place command scope changed during baseline validation",
+            ));
+        }
+        Ok(paths)
+    }
+
+    fn mutation_baseline_entry(
+        &self,
+        baseline: &BaselineEntry,
+    ) -> Result<(WorkspaceMutationKind, WorkspaceMutationBaseline), ProductRunnerError> {
         let before = &baseline.before;
         match before.kind.as_str() {
             "absent"
@@ -200,19 +241,27 @@ impl ScopedBaseline {
 
     pub fn changed_paths(&self, root: &Path) -> Result<Vec<PathBuf>, ProductRunnerError> {
         self.check_root(root)?;
-        self.load()?
+        let snapshot = storage::snapshot(self)?;
+        let changed = snapshot
+            .entries
             .into_iter()
             .filter_map(|(path, baseline)| match self.stamp(&path) {
                 Ok(current) if current == baseline.before => None,
                 Ok(_) => Some(Ok(PathBuf::from(path))),
                 Err(error) => Some(Err(error)),
             })
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+        if !storage::frontier_matches(self, snapshot.frontier)? {
+            return Err(failure(
+                "in-place scope changed while changed paths were observed",
+            ));
+        }
+        Ok(changed)
     }
 
     pub fn enroll(&self, path: &str) -> Result<(), ProductRunnerError> {
-        let entries = self.load()?;
-        if entries.contains_key(path) {
+        self.checked_path(path)?;
+        if storage::load_one(self, path)?.is_some() {
             return Ok(());
         }
         let before = self.stamp(path)?;
@@ -224,40 +273,28 @@ impl ScopedBaseline {
             before,
             preimage,
         };
-        let mut bytes = serde_json::to_vec(&entry).map_err(|error| failure(error.to_string()))?;
-        bytes.push(b'\n');
-        let size = self.journal_size()?;
-        let mut options = fs::OpenOptions::new();
-        options.append(true);
-        if size.is_none() {
-            options.create_new(true);
-        }
-        let mut file = options.open(&self.journal).map_err(|error| failure(error.to_string()))?;
-        file.write_all(&bytes)
-            .and_then(|()| file.sync_all())
-            .map_err(|error| failure(error.to_string()))?;
-        #[cfg(unix)]
-        if size.is_none() {
-            let parent = self.journal.parent().ok_or_else(|| failure("journal has no parent"))?;
-            fs::File::open(parent)
-                .and_then(|file| file.sync_all())
-                .map_err(|error| failure(error.to_string()))?;
-        }
-        Ok(())
+        storage::enroll(self, &entry)
     }
 
     pub fn diff(&self, root: &Path) -> Result<String, ProductRunnerError> {
         self.check_root(root)?;
-        let mut diff = String::from(
-            "In-place task-file comparison; not a whole-folder inventory or a Git candidate.\n",
-        );
-        for (path, baseline) in self.load()? {
-            let before = baseline.before;
+        let snapshot = storage::snapshot(self)?;
+        let binding = storage::binding(self)?;
+        let mut diff = storage::artifact_writer(self)?;
+        writeln!(
+            diff,
+            "In-place task-file comparison; not a whole-folder inventory or a Git candidate."
+        )
+        .map_err(|error| failure(error.to_string()))?;
+        let mut observed = Vec::with_capacity(snapshot.entries.len());
+        for (path, baseline) in snapshot.entries {
+            let before = &baseline.before;
             let after = self.stamp(&path)?;
-            if before == after {
+            observed.push((path.clone(), after.clone()));
+            if *before == after {
                 continue;
             }
-            let _ = writeln!(
+            writeln!(
                 diff,
                 "\n--- before/{path}\n+++ current/{path}\nkind: {} -> {}; permissions: {:?} -> {:?}; bytes: {} -> {}",
                 before.kind,
@@ -266,21 +303,84 @@ impl ScopedBaseline {
                 after.permissions,
                 before.bytes,
                 after.bytes
-            );
+            )
+            .map_err(|error| failure(error.to_string()))?;
             for line in before.preview.lines() {
-                let _ = writeln!(diff, "-{line}");
+                writeln!(diff, "-{line}").map_err(|error| failure(error.to_string()))?;
             }
             for line in after.preview.lines() {
-                let _ = writeln!(diff, "+{line}");
+                writeln!(diff, "+{line}").map_err(|error| failure(error.to_string()))?;
             }
-            if before.bytes > MAX_PREVIEW_BYTES as u64 || after.bytes > MAX_PREVIEW_BYTES as u64 {
-                diff.push_str("[bounded preview; exact full-file digests used for freshness]\n");
+            if let Some(preimage) = baseline.preimage.as_ref() {
+                let artifact = retain_artifact(
+                    storage::artifact_writer(self)?,
+                    self.open_preimage(preimage)?,
+                    preimage.sha256,
+                    preimage.bytes,
+                )?;
+                write_artifact_reference(&mut diff, "before", binding, artifact)?;
+            } else if before.kind == "file" {
+                writeln!(
+                    diff,
+                    "before_exact: unavailable legacy preimage sha256={} bytes={}",
+                    before.digest.map_or_else(|| "missing".to_owned(), |digest| hex(&digest)),
+                    before.bytes,
+                )
+                .map_err(|error| failure(error.to_string()))?;
             }
-            if diff.len() > 512 * 1024 {
-                return Ok(crate::bundle::limit_text(&diff, 512 * 1024));
+            if let Some(digest) = after.digest {
+                let artifact = retain_artifact(
+                    storage::artifact_writer(self)?,
+                    self.open_current(&path, digest, after.bytes)?,
+                    digest,
+                    after.bytes,
+                )?;
+                write_artifact_reference(&mut diff, "current", binding, artifact)?;
             }
         }
-        Ok(diff)
+        let artifact = diff.finish()?;
+        for (path, expected) in observed {
+            if self.stamp(&path)? != expected {
+                return Err(failure(
+                    "in-place file changed while its replayable comparison was published",
+                ));
+            }
+        }
+        if !storage::frontier_matches(self, snapshot.frontier)? {
+            return Err(failure(
+                "in-place scope changed while its replayable comparison was published",
+            ));
+        }
+        let mut page = storage::read_artifact_page(
+            self,
+            artifact.sha256,
+            artifact.bytes,
+            0,
+            MAX_DIFF_PREVIEW_BYTES,
+        )?;
+        while let Err(error) = std::str::from_utf8(&page) {
+            if error.error_len().is_some() {
+                return Err(failure("generated in-place comparison is not UTF-8"));
+            }
+            page.truncate(error.valid_up_to());
+        }
+        let consumed = page.len() as u64;
+        let next = (consumed < artifact.bytes).then_some(consumed);
+        let handle = evidence_handle(binding, artifact.sha256, "utf8");
+        let mut preview = format!(
+            "{EVIDENCE_MARKER} handle={handle} size={} sha256={} offset=0 next={}\n",
+            artifact.bytes,
+            hex(&artifact.sha256),
+            next.map_or_else(|| "null".to_owned(), |offset| offset.to_string()),
+        );
+        preview.push_str(
+            "This comparison is a physical preview of a complete retained UTF-8 artifact. Use workspace_scope_evidence_read with the exact handle, digest, size and next offset until next is null. Per-file handles in that artifact retrieve exact before/current bytes from offset zero.\n\n",
+        );
+        preview.push_str(
+            std::str::from_utf8(&page)
+                .map_err(|_| failure("generated in-place comparison is not UTF-8"))?,
+        );
+        Ok(preview)
     }
 
     pub(crate) fn evidence_snapshot(
@@ -288,12 +388,13 @@ impl ScopedBaseline {
         root: &Path,
     ) -> Result<EvidenceSnapshot, ProductRunnerError> {
         self.check_root(root)?;
+        let snapshot = storage::snapshot(self)?;
         let mut entries = Vec::new();
         let mut content = Sha256::new();
         checkpoint_bytes(&mut content, b"in-place-task-files-v1");
         let mut repository = Sha256::new();
         checkpoint_bytes(&mut repository, b"in-place-task-files-v1");
-        for (path, baseline) in self.load()? {
+        for (path, baseline) in snapshot.entries {
             let after = self.stamp(&path)?;
             checkpoint_entry(&mut repository, &path, &after);
             if baseline.before == after {
@@ -345,10 +446,62 @@ impl ScopedBaseline {
                 legacy_preimage_missing,
             });
         }
-        Ok(EvidenceSnapshot {
+        let evidence = EvidenceSnapshot {
             entries,
             content_digest: peritus_types::Sha256Digest::new(content.finalize().into()),
             repository_digest: peritus_types::Sha256Digest::new(repository.finalize().into()),
+        };
+        if !storage::frontier_matches(self, snapshot.frontier)? {
+            return Err(failure(
+                "in-place scope changed while candidate evidence was captured",
+            ));
+        }
+        Ok(evidence)
+    }
+
+    pub(crate) fn evidence_page(
+        &self,
+        handle: &str,
+        digest: &str,
+        bytes: u64,
+        offset: u64,
+    ) -> Result<EvidencePage, ProductRunnerError> {
+        let digest = parse_hex(digest)
+            .ok_or_else(|| failure("in-place evidence digest is not canonical lowercase SHA-256"))?;
+        let binding = storage::binding(self)?;
+        let utf8 = handle == evidence_handle(binding, digest, "utf8");
+        if !utf8 && handle != evidence_handle(binding, digest, "bytes") {
+            return Err(failure("in-place evidence handle conflicts with its retained scope"));
+        }
+        let mut content = storage::read_artifact_page(
+            self,
+            digest,
+            bytes,
+            offset,
+            EVIDENCE_PAGE_BYTES,
+        )?;
+        if utf8 {
+            while let Err(error) = std::str::from_utf8(&content) {
+                if error.error_len().is_some() {
+                    return Err(failure("retained UTF-8 scope evidence is corrupt"));
+                }
+                content.truncate(error.valid_up_to());
+            }
+            if content.is_empty() && offset < bytes {
+                return Err(failure("UTF-8 scope evidence page cannot advance"));
+            }
+        }
+        let end = offset
+            .checked_add(content.len() as u64)
+            .ok_or_else(|| failure("in-place evidence page offset overflow"))?;
+        Ok(EvidencePage {
+            handle: handle.to_owned(),
+            sha256: hex(&digest),
+            bytes,
+            start: offset,
+            end,
+            content,
+            next: (end < bytes).then_some(end),
         })
     }
 
@@ -359,67 +512,13 @@ impl ScopedBaseline {
         Ok(())
     }
 
-    fn journal_size(&self) -> Result<Option<u64>, ProductRunnerError> {
-        match fs::symlink_metadata(&self.journal) {
-            Ok(meta) if meta.is_file() && !meta.file_type().is_symlink() => Ok(Some(meta.len())),
-            Ok(_) => Err(failure("in-place evidence is not a regular owned journal")),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(failure(error.to_string())),
-        }
-    }
-
-    fn load(&self) -> Result<BTreeMap<String, BaselineEntry>, ProductRunnerError> {
-        let mut entries = BTreeMap::new();
-        if self.journal_size()?.is_none() {
-            return Ok(entries);
-        }
-        let file = fs::File::open(&self.journal).map_err(|error| failure(error.to_string()))?;
-        let mut reader = std::io::BufReader::new(file);
-        loop {
-            let mut bytes = Vec::new();
-            let count = reader
-                .by_ref()
-                .take(512 * 1024 + 1)
-                .read_until(b'\n', &mut bytes)
-                .map_err(|error| failure(error.to_string()))?;
-            if count == 0 {
-                break;
-            }
-            if count > 512 * 1024 || bytes.last() != Some(&b'\n') {
-                return Err(failure(
-                    "in-place evidence has a torn or oversized record; effects remain unverified",
-                ));
-            }
-            let entry: Entry =
-                serde_json::from_slice(&bytes).map_err(|error| failure(error.to_string()))?;
-            self.checked_path(&entry.path)?;
-            if !matches!(entry.version, 1 | 2)
-                || entry.scope != *self
-                || !valid_preimage(&entry)
-                || entries.insert(
-                    entry.path,
-                    BaselineEntry {
-                        before: entry.before,
-                        preimage: entry.preimage,
-                        complete: entry.version == 2,
-                    },
-                ).is_some()
-            {
-                return Err(failure(
-                    "in-place evidence has an invalid scope, version or duplicate path",
-                ));
-            }
-        }
-        Ok(entries)
-    }
-
     fn retain_preimage(
         &self,
         relative: &str,
         stamp: &FileStamp,
     ) -> Result<Option<Preimage>, ProductRunnerError> {
         let Some(expected) = stamp.digest else { return Ok(None) };
-        let source = self.checked_path(relative)?;
+        self.checked_path(relative)?;
         let directory = self.preimage_directory();
         fs::create_dir_all(&directory).map_err(|error| failure(error.to_string()))?;
         let metadata = fs::symlink_metadata(&directory)
@@ -434,7 +533,7 @@ impl ScopedBaseline {
                 .and_then(|file| file.sync_all())
                 .map_err(|error| failure(error.to_string()))?;
         }
-        let mut source = fs::File::open(source).map_err(|error| failure(error.to_string()))?;
+        let mut source = self.open_current(relative, expected, stamp.bytes)?;
         let mut temporary = tempfile::NamedTempFile::new_in(&directory)
             .map_err(|error| failure(error.to_string()))?;
         let mut hasher = Sha256::new();
@@ -515,6 +614,26 @@ impl ScopedBaseline {
         Ok(file)
     }
 
+    fn open_current(
+        &self,
+        relative: &str,
+        _digest: [u8; 32],
+        bytes: u64,
+    ) -> Result<fs::File, ProductRunnerError> {
+        let path = self.checked_path(relative)?;
+        let before = fs::symlink_metadata(&path).map_err(|error| failure(error.to_string()))?;
+        if !before.is_file() || before.file_type().is_symlink() || before.len() != bytes {
+            return Err(failure("current in-place evidence has an invalid file identity"));
+        }
+        let file = fs::File::open(&path).map_err(|error| failure(error.to_string()))?;
+        let opened = file.metadata().map_err(|error| failure(error.to_string()))?;
+        let after = fs::symlink_metadata(&path).map_err(|error| failure(error.to_string()))?;
+        if !same_open_file(&before, &opened) || !same_open_file(&after, &opened) {
+            return Err(failure("current in-place evidence changed while it was opened"));
+        }
+        Ok(file)
+    }
+
     fn preimage_path(&self, digest: &[u8; 32]) -> PathBuf {
         use std::fmt::Write as _;
         let name = digest.iter().fold(String::with_capacity(64), |mut name, byte| {
@@ -567,9 +686,18 @@ impl ScopedBaseline {
         if !metadata.is_file() {
             return Err(failure("in-place evidence target is not a regular file"));
         }
-        let mut file = fs::File::open(path).map_err(|error| failure(error.to_string()))?;
+        let mut file = fs::File::open(&path).map_err(|error| failure(error.to_string()))?;
+        let opened = file.metadata().map_err(|error| failure(error.to_string()))?;
+        let current = fs::symlink_metadata(&path).map_err(|error| failure(error.to_string()))?;
+        if !same_open_file(&metadata, &opened)
+            || !same_open_file(&current, &opened)
+            || current.file_type().is_symlink()
+        {
+            return Err(failure("in-place evidence target changed while it was opened"));
+        }
         let mut hasher = Sha256::new();
         let mut preview = Vec::new();
+        let mut bytes = 0_u64;
         let mut buffer = [0; 8192];
         loop {
             let count = file.read(&mut buffer).map_err(|error| failure(error.to_string()))?;
@@ -577,16 +705,88 @@ impl ScopedBaseline {
                 break;
             }
             hasher.update(&buffer[..count]);
+            bytes = bytes
+                .checked_add(count as u64)
+                .ok_or_else(|| failure("in-place evidence file length overflow"))?;
             let remaining = MAX_PREVIEW_BYTES.saturating_sub(preview.len());
             preview.extend_from_slice(&buffer[..count.min(remaining)]);
+        }
+        let after = fs::symlink_metadata(&path).map_err(|error| failure(error.to_string()))?;
+        if !same_open_file(&metadata, &after) || bytes != metadata.len() {
+            return Err(failure("in-place evidence target changed while it was read"));
         }
         Ok(FileStamp {
             kind: "file".to_owned(),
             digest: Some(hasher.finalize().into()),
             permissions,
-            bytes: metadata.len(),
+            bytes,
             preview: String::from_utf8(preview).unwrap_or_else(|_| "[binary content]".to_owned()),
         })
+    }
+}
+
+fn retain_artifact(
+    mut writer: storage::ArtifactWriter,
+    mut source: fs::File,
+    digest: [u8; 32],
+    bytes: u64,
+) -> Result<storage::Artifact, ProductRunnerError> {
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let count = source.read(&mut buffer).map_err(|error| failure(error.to_string()))?;
+        if count == 0 {
+            break;
+        }
+        writer
+            .write_all(&buffer[..count])
+            .map_err(|error| failure(error.to_string()))?;
+    }
+    writer.finish_expected(digest, bytes)
+}
+
+fn write_artifact_reference(
+    writer: &mut storage::ArtifactWriter,
+    side: &str,
+    binding: [u8; 32],
+    artifact: storage::Artifact,
+) -> Result<(), ProductRunnerError> {
+    writeln!(
+        writer,
+        "{side}_exact: handle={} sha256={} size={} offset=0",
+        evidence_handle(binding, artifact.sha256, "bytes"),
+        hex(&artifact.sha256),
+        artifact.bytes,
+    )
+    .map_err(|error| failure(error.to_string()))
+}
+
+fn evidence_handle(binding: [u8; 32], digest: [u8; 32], encoding: &str) -> String {
+    format!("scope:{}:artifact:{}:{encoding}", hex(&binding), hex(&digest))
+}
+
+fn hex(bytes: &[u8; 32]) -> String {
+    bytes.iter().fold(String::with_capacity(64), |mut output, byte| {
+        let _ = write!(output, "{byte:02x}");
+        output
+    })
+}
+
+fn parse_hex(value: &str) -> Option<[u8; 32]> {
+    if value.len() != 64 {
+        return None;
+    }
+    let mut output = [0_u8; 32];
+    for (index, pair) in value.as_bytes().chunks_exact(2).enumerate() {
+        output[index] = hex_value(pair[0])?.checked_mul(16)?.checked_add(hex_value(pair[1])?)?;
+    }
+    Some(output)
+}
+
+const fn hex_value(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        _ => None,
     }
 }
 
@@ -668,8 +868,8 @@ fn same_open_file(left: &fs::Metadata, right: &fs::Metadata) -> bool {
     }
 }
 
-pub fn definition() -> Result<peritus_model_protocol::ToolDefinition, ProductRunnerError> {
-    crate::developer_tools::in_place_definition()
+pub fn definitions() -> Result<Vec<peritus_model_protocol::ToolDefinition>, ProductRunnerError> {
+    crate::developer_tools::in_place_definitions()
 }
 
 fn failure(detail: impl Into<String>) -> ProductRunnerError {
