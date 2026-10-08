@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3955,
-        "tip_oid": "46b3d7de9c0898160c0c7603db8f8b59bbfbc77e",
-        "prefix_sha256": "5b784f51e953b872a41d0e93155ff66f6fdf76a54061b2bf528b867586164a9a"
+        "sequence": 3956,
+        "tip_oid": "dde448a7351732b58e29923aba9ec1007ff8c91f",
+        "prefix_sha256": "00f84c536714e650e484d0399931c48bcdef6d308ecda3d8c5d3113a1d66145d"
       },
       "NWAR": {
         "sequence": 39,
@@ -37342,12 +37342,13 @@
       "display_id": 664,
       "title": "[L608] Windows ACL rollback ownership is not durable across owner loss",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L608.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/filesystem/acl.rs:112-140,167-174`; `src/filesystem/acl/reversal.rs:18-58,91-139,160-201` in the same crate.\n- Behavior: ACL backup filenames use only ACL-plan digest and entry index. The list of backup paths and restore parents is retained in the transaction's in-memory reversal vector. Save/apply/restore invoke synchronous `icacls.exe` from PATH with no cancellation. Failed installation attempts restoration but discards that restoration result before returning the original error; `Drop` also ignores restore errors. Explicit restore correctly retains unsuccessful reversals for same-owner retry, while successful backup deletion failures are ignored.\n- Consequence: A crash or failed drop can leave modified ACLs and backup files without a reconstructible pending reversal list. Concurrent equal plans share backup filenames without per-operation identity here. Synchronous ACL tooling can block preparation and release indefinitely.\n- Repair direction: Persist each exact preimage and reversal obligation under a unique transaction before mutation, serialize conflicting ACL owners, and implement cancellable resumable application/reversal with explicit cleanup outcomes.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.250257450Z",
-      "updated_at": "2026-10-08T01:47:24.571865540Z",
+      "updated_at": "2026-10-08T01:48:56.763899915Z",
+      "closed_at": "2026-10-08T01:48:56.760994681Z",
       "labels": [
         "daily-driving-limiter"
       ],
