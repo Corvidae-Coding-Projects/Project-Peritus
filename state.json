@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3985,
-        "tip_oid": "edfd92cbb58ba2d2240e8b7214a2657f52f463af",
-        "prefix_sha256": "90bf8172f20d861a44da736fa1ac98a7ba4460ff8193b9097101a5a8837f0b07"
+        "sequence": 3986,
+        "tip_oid": "cc9fc800810be91a022bbd0b5446a9728404fb19",
+        "prefix_sha256": "f7533b7380fc812e012aa4c3e1f9af500eb2ec79af313649f775dc03f66614b0"
       },
       "NWAR": {
         "sequence": 39,
@@ -1315,12 +1315,13 @@
       "display_id": 139,
       "title": "[L040] Build concurrency heuristic is enforced as an execution ceiling",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L040.\n\n- `developer_tools/resources.rs:10-11,23-33` estimates **2 GiB per build job** and clamps recommended parallelism to **1..8**, regardless of a larger usable host. It samples available CPU/cgroup and memory once when the tool executor is constructed.\n- Lines 45-61 reject recognized cargo/cmake/make/gmake/ninja/ninja-build job flags above that recommendation. Bare `-j`/`--jobs` is treated as `usize::MAX` when no integer follows, while CMake's bare `--parallel` can return no requested value (lines 82-107).\n- Lines 66-78 inject concurrency environment defaults across languages; **CARGO_BUILD_JOBS is separately capped at 2**. `executor/command.rs:158` calls authorization before any command starts and passes these bindings into the runtime.\n- Daily-driving effect: a heuristic recommendation becomes a hard refusal even when the user/host could safely run more workers. Real OS/cgroup limits and the added fixed/heuristic policy are distinct. Runtime environment merge/override behavior remains pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.998796203Z",
-      "updated_at": "2026-10-08T02:34:46.889730666Z",
+      "updated_at": "2026-10-08T02:36:21.418110771Z",
+      "closed_at": "2026-10-08T02:36:21.415129439Z",
       "labels": [
         "daily-driving-limiter"
       ],
