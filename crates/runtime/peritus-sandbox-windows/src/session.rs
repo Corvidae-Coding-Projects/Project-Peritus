@@ -15,9 +15,9 @@ use peritus_secrets::SecretDeliverySession;
 
 use crate::{
     AclTransaction, CleanupState, ObservationBinding, ObservationStatus, ReleaseProgress,
-    RecoveryCleanup, ReleaseReport, ResourceControlPlan, RuntimeIdentity, WindowsError, WindowsErrorKind,
-    WindowsLaunchDescription, WindowsObservation, WindowsOperation, WindowsPhase, WindowsRecovery,
-    WindowsRecoveryRecord,
+    RecoveryClassification, RecoveryCleanup, RecoveryProbe, ReleaseReport, ResourceControlPlan,
+    RuntimeIdentity, WindowsError, WindowsErrorKind, WindowsLaunchDescription, WindowsObservation,
+    WindowsOperation, WindowsOwnerIdentity, WindowsPhase, WindowsRecovery, WindowsRecoveryRecord,
     network_filter::NetworkFilterOwner,
     observation::{WindowsCapability, observation_error, transition_allowed},
     recovery::RecoveryCleanupDimension,
@@ -69,7 +69,7 @@ impl WindowsSession {
         proxy: Option<ManagedProxy>,
         filter: NetworkFilterOwner,
         secrets: Option<SecretDeliverySession>,
-    ) -> Self {
+    ) -> Result<Self, WindowsError> {
         let prepared = binding.common(1, WindowsPhase::Prepared, ObservationDisposition::Completed);
         let mut observations = ObservationTail::new(COMMON_OBSERVATION_TAIL_LIMIT);
         observations.push(prepared);
@@ -145,6 +145,17 @@ impl WindowsSession {
         let helper_cleanup = cleanup_state(cleanup.helper_reaped());
         let secret_file_cleanup = cleanup_state(cleanup.secret_files_removed());
         let handle_cleanup = cleanup_state(cleanup.handles_closed());
+        let owner_identity = if acl.owner_operation_digest().is_some() {
+            Some(prepared_owner_identity(
+                &native_launch,
+                proxy.as_ref(),
+                &filter,
+                secrets.as_ref(),
+                &acl,
+            )?)
+        } else {
+            None
+        };
         let recovery = WindowsRecoveryRecord::prepared_owned(
             runtime_identity,
             containment_required,
@@ -153,8 +164,9 @@ impl WindowsSession {
             acl.receipt(),
             acl.owner_operation_digest(),
             acl.service_owner_digest(),
+            owner_identity,
         );
-        Self {
+        Ok(Self {
             native_launch,
             windows_launch,
             acl,
@@ -179,7 +191,7 @@ impl WindowsSession {
             secret_file_cleanup,
             handle_cleanup,
             release: None,
-        }
+        })
     }
 
     /// Returns backend-local launch details.
@@ -307,10 +319,8 @@ impl NativeSandboxSession for WindowsSession {
         })?;
         record.extend_from_slice(bytes);
         #[cfg(target_os = "windows")]
-        let custody_complete = self.recovery.custody_complete()
-            && self
-                .native_launch
-                .retains_windows_job(self.recovery.identity().job_identity());
+        let (custody_complete, owner_identity, custody_digest, containment) =
+            self.inspect_recovery_custody()?;
         #[cfg(not(target_os = "windows"))]
         let custody_complete = self.recovery.custody_complete();
         let snapshot = NativeSessionRecovery::new(
@@ -323,9 +333,18 @@ impl NativeSandboxSession for WindowsSession {
             custody_complete,
             record,
         )?;
-        let snapshot = match self.recovery.containment_identity() {
-            Some(containment) => snapshot.with_windows_containment(containment.clone())?,
+        #[cfg(not(target_os = "windows"))]
+        let containment = self.recovery.containment_identity().cloned();
+        let snapshot = match containment {
+            Some(containment) => snapshot.with_windows_containment(containment)?,
             None => snapshot,
+        };
+        #[cfg(target_os = "windows")]
+        let snapshot = match (owner_identity, custody_digest) {
+            (Some(owner), Some(custody)) if custody_complete => {
+                snapshot.with_windows_owner_inspection(owner, custody)?
+            }
+            _ => snapshot,
         };
         Ok(Some(snapshot))
     }
@@ -527,6 +546,250 @@ impl WindowsSession {
     fn record_abort_cleanup(&mut self) {
         self.push_rich(self.phase, ObservationStatus::Verified);
     }
+
+    #[cfg(target_os = "windows")]
+    fn inspect_recovery_custody(
+        &self,
+    ) -> Result<(
+        bool,
+        Option<peritus_types::Sha256Digest>,
+        Option<peritus_types::Sha256Digest>,
+        Option<peritus_process::NativeWindowsContainmentIdentity>,
+    ), ProcessError> {
+        let cleanup = self.recovery.cleanup();
+        let native = if !cleanup.job_closed() || !cleanup.handles_closed() {
+            self.native_launch.windows_owner_inspection()?
+        } else {
+            None
+        };
+        let job = if cleanup.job_closed() {
+            None
+        } else {
+            native.and_then(peritus_process::NativeWindowsOwnerInspection::job)
+        };
+        let helper_channels = if cleanup.handles_closed() {
+            None
+        } else {
+            native.map(peritus_process::NativeWindowsOwnerInspection::helper_channels)
+        };
+        let protected_handles = if cleanup.handles_closed() {
+            None
+        } else {
+            native.and_then(peritus_process::NativeWindowsOwnerInspection::protected_handles)
+        };
+        let proxy = if cleanup.proxy_joined() {
+            None
+        } else {
+            self.proxy.as_ref().and_then(ManagedProxy::custody_identity)
+        };
+        let network_filter = if cleanup.network_filter_removed() {
+            None
+        } else {
+            self.filter.custody_identity()
+        };
+        let secret_delivery = if cleanup.secret_delivery_released() {
+            None
+        } else {
+            self.secrets
+                .as_ref()
+                .and_then(SecretDeliverySession::custody_identity)
+        };
+        let acl_reversal = if cleanup.acl_restored() {
+            None
+        } else {
+            self.acl.custody_identity()
+        };
+        let dispatch = native_observation_producer_binding(
+            self.native_launch.manifest_digest(),
+            self.native_launch.preparation_digest(),
+        );
+        let observed = WindowsOwnerIdentity::new(
+            job,
+            helper_channels,
+            protected_handles,
+            proxy,
+            network_filter,
+            secret_delivery,
+            acl_reversal,
+            dispatch,
+        );
+        let custody_digest = observed.digest();
+        let classification = crate::classify(
+            Some(&self.recovery),
+            RecoveryProbe::LiveInspected(self.recovery.identity(), custody_digest),
+        );
+        let containment = if cleanup.job_closed() {
+            None
+        } else {
+            self.native_launch.windows_containment_identity()?
+        };
+        let containment_exact = match self.recovery.phase() {
+            WindowsPhase::Prepared => containment.is_none(),
+            WindowsPhase::Activated
+            | WindowsPhase::CancelRequested
+            | WindowsPhase::Terminated => {
+                cleanup.job_closed()
+                    || containment.as_ref() == self.recovery.containment_identity()
+            }
+            WindowsPhase::Released => false,
+        };
+        let secret_files_exact = cleanup.secret_files_removed()
+            || self.recovery.phase() == WindowsPhase::Prepared
+            || inspect_secret_files(self.recovery.secret_files());
+        let complete = classification == RecoveryClassification::LiveOwned
+            && containment_exact
+            && secret_files_exact;
+        Ok((
+            complete,
+            complete.then(|| self.recovery.owner_identity_digest()).flatten(),
+            complete.then_some(custody_digest),
+            containment,
+        ))
+    }
+}
+
+fn prepared_owner_identity(
+    native_launch: &NativeLaunchDescription,
+    proxy: Option<&ManagedProxy>,
+    filter: &NetworkFilterOwner,
+    secrets: Option<&SecretDeliverySession>,
+    acl: &AclTransaction,
+) -> Result<WindowsOwnerIdentity, WindowsError> {
+    #[cfg(target_os = "windows")]
+    {
+        let native = native_launch
+            .windows_owner_inspection()
+            .map_err(|source| owner_inspection_error("Windows native owner inspection failed", source))?
+            .ok_or_else(|| owner_inspection_error_without_source(
+                "Windows native helper owner is missing after retained preparation",
+            ))?;
+        let job = native.job().ok_or_else(|| owner_inspection_error_without_source(
+            "Windows retained Job Object owner is missing after preparation",
+        ))?;
+        let handles = native.protected_handles().ok_or_else(|| {
+            owner_inspection_error_without_source(
+                "Windows protected handle owner is missing after preparation",
+            )
+        })?;
+        let proxy_identity = match proxy {
+            Some(proxy) => Some(proxy.custody_identity().ok_or_else(|| {
+                owner_inspection_error_without_source(
+                    "Windows managed proxy owner is not live after preparation",
+                )
+            })?),
+            None => None,
+        };
+        let filter_identity = if filter.is_managed() {
+            Some(filter.custody_identity().ok_or_else(|| {
+                owner_inspection_error_without_source(
+                    "Windows WFP policy owner is not live after preparation",
+                )
+            })?)
+        } else {
+            None
+        };
+        let secret_identity = match secrets {
+            Some(secrets) => Some(secrets.custody_identity().ok_or_else(|| {
+                owner_inspection_error_without_source(
+                    "Windows secret delivery owner is not live after preparation",
+                )
+            })?),
+            None => None,
+        };
+        let acl_identity = if acl.restored() {
+            None
+        } else {
+            Some(acl.custody_identity().ok_or_else(|| {
+                owner_inspection_error_without_source(
+                    "Windows ACL reversal owner is not live after preparation",
+                )
+            })?)
+        };
+        let dispatch = native_observation_producer_binding(
+            native_launch.manifest_digest(),
+            native_launch.preparation_digest(),
+        );
+        Ok(WindowsOwnerIdentity::new(
+            Some(job),
+            Some(native.helper_channels()),
+            Some(handles),
+            proxy_identity,
+            filter_identity,
+            secret_identity,
+            acl_identity,
+            dispatch,
+        ))
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (native_launch, proxy, filter, secrets, acl);
+        Err(owner_inspection_error_without_source(
+            "Windows retained owner inspection is unavailable on this host",
+        ))
+    }
+}
+
+fn owner_inspection_error_without_source(detail: &'static str) -> WindowsError {
+    WindowsError::new(
+        WindowsErrorKind::RecoveryIndeterminate,
+        WindowsOperation::Recover,
+        WindowsRecovery::Quarantine,
+        detail,
+    )
+}
+
+#[cfg(target_os = "windows")]
+fn owner_inspection_error(detail: &'static str, source: ProcessError) -> WindowsError {
+    owner_inspection_error_without_source(detail)
+        .with_source(crate::error::process_source(&source))
+}
+
+#[cfg(target_os = "windows")]
+fn inspect_secret_files(files: &[crate::recovery::SecretFileRecovery]) -> bool {
+    use std::{
+        fs::OpenOptions,
+        os::windows::{
+            fs::{MetadataExt as _, OpenOptionsExt as _},
+            io::AsRawHandle as _,
+        },
+    };
+    use windows_sys::Win32::Storage::FileSystem::{
+        FILE_FLAG_OPEN_REPARSE_POINT, FILE_ID_INFO, FILE_READ_ATTRIBUTES, FILE_SHARE_DELETE,
+        FILE_SHARE_READ, FILE_SHARE_WRITE, FileIdInfo, GetFileInformationByHandleEx,
+    };
+
+    !files.is_empty() && files.iter().all(|expected| {
+        let mut options = OpenOptions::new();
+        options
+            .read(true)
+            .access_mode(FILE_READ_ATTRIBUTES)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
+            .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+        let Ok(file) = options.open(expected.path().to_path_buf()) else {
+            return false;
+        };
+        let Ok(metadata) = file.metadata() else {
+            return false;
+        };
+        let mut identity = FILE_ID_INFO::default();
+        let Ok(identity_size) = u32::try_from(core::mem::size_of::<FILE_ID_INFO>()) else {
+            return false;
+        };
+        // SAFETY: the File remains live and identity is writable for the exact structure size.
+        unsafe {
+            GetFileInformationByHandleEx(
+                file.as_raw_handle().cast(),
+                FileIdInfo,
+                (&raw mut identity).cast(),
+                identity_size,
+            )
+        } != 0
+            && metadata.is_file()
+            && metadata.number_of_links() == Some(1)
+            && metadata.len() == expected.payload_len()
+            && identity.VolumeSerialNumber == expected.volume_serial()
+            && identity.FileId.Identifier == expected.file_id()
+    })
 }
 
 const fn cleanup_state(complete: bool) -> CleanupState {

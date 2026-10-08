@@ -41,6 +41,7 @@ struct RetainedExecution {
     completion_retrying: bool,
     stream_snapshots: [Option<RetainedStreamSnapshot>; 3],
     snapshot_captures: [bool; 3],
+    windows_owner_identity: Option<peritus_types::Sha256Digest>,
 }
 
 #[derive(Default)]
@@ -573,6 +574,9 @@ impl ProcessOwner {
             }
         };
         let control = owner.control();
+        let windows_owner_identity = control
+            .native_recovery()
+            .and_then(|recovery| recovery.windows_owner_identity());
         if !self.accepting.load(Ordering::Acquire) {
             let _ = cancellation.request(CancellationReason::SupervisorShutdown);
         }
@@ -601,6 +605,7 @@ impl ProcessOwner {
                 completion_retrying: false,
                 stream_snapshots: std::array::from_fn(|_| None),
                 snapshot_captures: [false; 3],
+                windows_owner_identity,
             },
         );
         drop(executions);
@@ -694,6 +699,23 @@ impl ProcessOwner {
                     RecoveryClass::Quarantine,
                     "retained process identity is already owned by another operation",
                 ));
+            }
+            if let Some(observed) = execution
+                .control
+                .native_recovery()
+                .and_then(|recovery| recovery.windows_owner_identity())
+            {
+                match execution.windows_owner_identity {
+                    Some(expected) if expected != observed => {
+                        return Err(owner_error(
+                            ErrorCode::CorruptRecovery,
+                            RecoveryClass::Quarantine,
+                            "retained Windows owner identity changed before attachment",
+                        ));
+                    }
+                    None => execution.windows_owner_identity = Some(observed),
+                    Some(_) => {}
+                }
             }
             if let Some(failure) = execution.failure {
                 return Err(failure.restore());
@@ -1228,6 +1250,28 @@ impl ProcessOwner {
         };
         if let Some(control) = control {
             let events = control.read_events(cursor, max_events.min(RETAINED_EVENT_PAGE));
+            let native_recovery = control.native_recovery();
+            if let Some(observed) = native_recovery
+                .as_ref()
+                .and_then(peritus_process::NativeSessionRecovery::windows_owner_identity)
+            {
+                let mut executions = self
+                    .executions
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                let execution = exact_execution_mut(&mut executions, key)?;
+                match execution.windows_owner_identity {
+                    Some(expected) if expected != observed => {
+                        return Err(owner_error(
+                            ErrorCode::CorruptRecovery,
+                            RecoveryClass::Quarantine,
+                            "retained Windows owner identity changed across attachment",
+                        ));
+                    }
+                    None => execution.windows_owner_identity = Some(observed),
+                    Some(_) => {}
+                }
+            }
             // Terminal visibility belongs to the durable receipt handoff. While this live entry
             // remains, its collector is still joining or publishing and ownership is unfinished.
             return Ok(RetainedOwnerObservation::new(
@@ -1238,7 +1282,7 @@ impl ProcessOwner {
                 None,
                 false,
                 control.tree_identity(),
-                control.native_recovery(),
+                native_recovery,
             ));
         }
         let store = self

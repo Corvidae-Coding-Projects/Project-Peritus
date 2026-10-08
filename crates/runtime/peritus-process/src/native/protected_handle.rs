@@ -180,6 +180,31 @@ impl NativeProtectedHandle {
 
         self.inner.file.as_raw_handle() as usize as u64
     }
+
+    #[cfg(windows)]
+    pub(crate) fn windows_identity_digest(&self) -> Option<peritus_types::Sha256Digest> {
+        use std::os::windows::io::AsRawHandle as _;
+        use windows_sys::Win32::Foundation::GetHandleInformation;
+
+        let raw = self.inner.file.as_raw_handle().cast();
+        let mut flags = 0_u32;
+        // SAFETY: the File retains this handle while the query writes only `flags`.
+        if unsafe { GetHandleInformation(raw, &raw mut flags) } == 0 {
+            return None;
+        }
+        let mut bytes = Vec::from(b"PERITUS-WINDOWS-PROTECTED-HANDLE-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(self.label.as_bytes());
+        bytes.push(0);
+        bytes.extend_from_slice(&self.raw_handle().to_be_bytes());
+        match self.payload_len {
+            Some(length) => {
+                bytes.push(1);
+                bytes.extend_from_slice(&u64::try_from(length).ok()?.to_be_bytes());
+            }
+            None => bytes.push(0),
+        }
+        Some(peritus_codec::sha256(&bytes))
+    }
 }
 
 impl fmt::Debug for NativeProtectedHandle {

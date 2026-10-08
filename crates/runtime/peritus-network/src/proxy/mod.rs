@@ -76,6 +76,7 @@ impl ProxyShutdown {
 #[must_use = "the managed proxy must be shut down or dropped to cancel and join workers"]
 pub struct ManagedProxy {
     endpoint: ProxyEndpoint,
+    plan_digest: peritus_types::Sha256Digest,
     token: Arc<RoutingToken>,
     cancellation: CancellationToken,
     observations: Arc<Mutex<owner::ObservationLog>>,
@@ -102,6 +103,7 @@ impl ManagedProxy {
         resolver: Arc<dyn Resolver>,
         credential: Option<Arc<ProxyCredential>>,
     ) -> Result<Self, NetworkError> {
+        let plan_digest = plan.digest();
         let listener = TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))
             .map_err(|_| owner::proxy_error("managed proxy cannot bind loopback"))?;
         listener
@@ -132,6 +134,7 @@ impl ManagedProxy {
             .map_err(|_| owner::proxy_error("managed proxy owner thread cannot be started"))?;
         Ok(Self {
             endpoint,
+            plan_digest,
             token,
             cancellation,
             observations,
@@ -150,6 +153,34 @@ impl ManagedProxy {
     #[must_use]
     pub fn routing_token(&self) -> &RoutingToken {
         &self.token
+    }
+
+    /// Returns a stable identity only while the exact listener owner remains live.
+    #[must_use]
+    pub fn custody_identity(&self) -> Option<peritus_types::Sha256Digest> {
+        let join = self.join.as_ref()?;
+        if join.is_finished() || self.owner_exit_observed {
+            return None;
+        }
+        let mut bytes = Vec::from(b"PERITUS-MANAGED-PROXY-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(self.plan_digest.as_bytes());
+        match self.endpoint.socket_addr() {
+            SocketAddr::V4(address) => {
+                bytes.push(4);
+                bytes.extend_from_slice(&address.ip().octets());
+                bytes.extend_from_slice(&address.port().to_be_bytes());
+            }
+            SocketAddr::V6(address) => {
+                bytes.push(6);
+                bytes.extend_from_slice(&address.ip().octets());
+                bytes.extend_from_slice(&address.port().to_be_bytes());
+                bytes.extend_from_slice(&address.flowinfo().to_be_bytes());
+                bytes.extend_from_slice(&address.scope_id().to_be_bytes());
+            }
+        }
+        self.token
+            .expose_bytes(|token| bytes.extend_from_slice(token));
+        Some(peritus_codec::sha256(&bytes))
     }
 
     /// Returns a compatibility snapshot of retained normalized observations.

@@ -251,6 +251,8 @@ fn encode_native_recovery(
     optional_digest(writer, recovery.owner_operation_digest());
     optional_digest(writer, recovery.service_owner_digest());
     writer.boolean(recovery.custody_complete());
+    optional_digest(writer, recovery.windows_owner_identity());
+    optional_digest(writer, recovery.windows_custody_digest());
     encode_windows_containment(writer, recovery.windows_containment())?;
     writer.frame(recovery.record())
 }
@@ -267,6 +269,8 @@ fn decode_native_recovery(
             let owner = decode_optional_digest(reader)?;
             let service = decode_optional_digest(reader)?;
             let custody = reader.boolean()?;
+            let windows_owner_identity = decode_optional_digest(reader)?;
+            let windows_custody_digest = decode_optional_digest(reader)?;
             let containment = decode_windows_containment(reader)?;
             let record = reader.frame()?.to_vec();
             let recovery = NativeSessionRecovery::new(
@@ -285,6 +289,13 @@ fn decode_native_recovery(
                     .with_windows_containment(identity)
                     .map_err(|_| invalid_data())?,
                 None => recovery,
+            };
+            let recovery = match (windows_owner_identity, windows_custody_digest) {
+                (Some(owner), Some(custody)) => recovery
+                    .with_windows_owner_inspection(owner, custody)
+                    .map_err(|_| invalid_data())?,
+                (None, None) => recovery,
+                _ => return Err(invalid_data()),
             };
             Ok(Some(recovery))
         }

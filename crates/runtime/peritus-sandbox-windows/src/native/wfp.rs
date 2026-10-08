@@ -111,6 +111,16 @@ impl WfpSession {
         Ok(())
     }
 
+    pub(crate) fn custody_identity(&self) -> Option<peritus_types::Sha256Digest> {
+        if self.engine == 0 || self.policy_digest == peritus_types::Sha256Digest::new([0; 32]) {
+            return None;
+        }
+        let mut bytes = Vec::from(b"PERITUS-WINDOWS-WFP-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(&(self.engine as u64).to_be_bytes());
+        bytes.extend_from_slice(self.policy_digest.as_bytes());
+        Some(peritus_codec::sha256(&bytes))
+    }
+
     fn open(session_key: GUID) -> Result<Self, WindowsError> {
         let mut name = wide("Peritus managed sandbox session");
         let session = FWPM_SESSION0 {

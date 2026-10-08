@@ -136,7 +136,7 @@ pub struct NativeWindowsHelperChannels {
 #[derive(Debug)]
 struct ContainmentAdoption {
     identity: NativeWindowsContainmentIdentity,
-    _target: File,
+    target: File,
 }
 
 impl NativeWindowsHelperChannels {
@@ -427,7 +427,7 @@ impl NativeWindowsHelperChannels {
                 "Windows target adoption was already published",
             )));
         }
-        *adoption = Some(ContainmentAdoption { identity, _target: target });
+        *adoption = Some(ContainmentAdoption { identity, target });
         drop(adoption);
         Ok(reader)
     }
@@ -439,10 +439,72 @@ impl NativeWindowsHelperChannels {
     pub(crate) fn containment_identity(
         &self,
     ) -> Result<Option<NativeWindowsContainmentIdentity>, ProcessError> {
-        self.adoption
+        let adoption = self
+            .adoption
             .lock()
-            .map(|adoption| adoption.as_ref().map(|value| value.identity.clone()))
-            .map_err(|_| channel_error("Windows containment adoption state was poisoned"))
+            .map_err(|_| channel_error("Windows containment adoption state was poisoned"))?;
+        let Some(adoption) = adoption.as_ref() else {
+            return Ok(None);
+        };
+        if process_start_token(&adoption.target) != adoption.identity.target_identity().start_token()
+        {
+            return Err(channel_error("Windows target birth identity changed after adoption"));
+        }
+        let mut member = 0;
+        let job = self.raw_containment_job()?;
+        // SAFETY: both retained handles remain live and `member` is writable for the call.
+        if unsafe {
+            IsProcessInJob(
+                adoption.target.as_raw_handle().cast(),
+                job,
+                &raw mut member,
+            )
+        } == 0
+            || member == 0
+        {
+            return Err(channel_error(
+                "Windows target is no longer contained by the retained Job Object",
+            ));
+        }
+        Ok(Some(adoption.identity.clone()))
+    }
+
+    pub(crate) fn owner_identity_digest(&self) -> Result<Sha256Digest, ProcessError> {
+        let status_reader = self.status_reader.as_raw_handle().cast();
+        let control = self
+            .control_writer
+            .lock()
+            .map_err(|_| channel_error("Windows terminal control channel was poisoned"))?;
+        let control_writer = control.as_raw_handle().cast();
+        if !handle_is_live(status_reader) || !handle_is_live(control_writer) {
+            return Err(channel_error("Windows retained helper channel is no longer live"));
+        }
+        let mut bytes = Vec::from(b"PERITUS-WINDOWS-HELPER-CHANNEL-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(&(status_reader as usize as u64).to_be_bytes());
+        bytes.extend_from_slice(&(control_writer as usize as u64).to_be_bytes());
+        bytes.extend_from_slice(&self.status_handle.to_be_bytes());
+        bytes.extend_from_slice(&self.control_handle.to_be_bytes());
+        bytes.extend_from_slice(
+            &u64::try_from(self.expected_secret_files.len())
+                .unwrap_or(u64::MAX)
+                .to_be_bytes(),
+        );
+        for binding in self.expected_secret_files.iter().copied() {
+            bytes.extend_from_slice(binding.path_digest().as_bytes());
+            bytes.extend_from_slice(&binding.payload_len().to_be_bytes());
+        }
+        Ok(peritus_codec::sha256(&bytes))
+    }
+
+    pub(crate) fn containment_job_owner_digest(&self) -> Option<Sha256Digest> {
+        let raw = self.raw_containment_job().ok()?;
+        let identity = self.containment_job_identity?;
+        let name = self.containment_job_name.as_ref()?;
+        let mut bytes = Vec::from(b"PERITUS-WINDOWS-JOB-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(&(raw as usize as u64).to_be_bytes());
+        bytes.extend_from_slice(identity.as_bytes());
+        bytes.extend_from_slice(name.as_bytes());
+        Some(peritus_codec::sha256(&bytes))
     }
 
     #[must_use]
@@ -518,6 +580,12 @@ impl NativeWindowsHelperChannels {
         }
         Ok(raw)
     }
+}
+
+fn handle_is_live(raw: HANDLE) -> bool {
+    let mut flags = 0_u32;
+    // SAFETY: the caller retains the handle and the query writes only `flags`.
+    unsafe { GetHandleInformation(raw, &raw mut flags) } != 0
 }
 
 /// Helper-owned inherited status/control endpoints opened from C2-reserved environment values.

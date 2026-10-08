@@ -219,6 +219,47 @@ impl AclTransaction {
         }
     }
 
+    /// Returns the exact live durable ACL reversal owner, including its retained lock.
+    #[must_use]
+    pub(crate) fn custody_identity(&self) -> Option<Sha256Digest> {
+        if self.restored() {
+            return None;
+        }
+        let transaction = self.transaction_digest?;
+        let receipt = self.receipt?;
+        let owner = self.owner_operation_digest?;
+        let service = self.service_owner_digest?;
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::io::AsRawHandle as _;
+            use windows_sys::Win32::Foundation::GetHandleInformation;
+
+            if self.journal.is_none() {
+                return None;
+            }
+            let lock = self._owner_lock.as_ref()?;
+            let raw = lock.as_raw_handle().cast();
+            let mut flags = 0_u32;
+            // SAFETY: the retained File owns the handle and the query writes only `flags`.
+            if unsafe { GetHandleInformation(raw, &raw mut flags) } == 0 {
+                return None;
+            }
+            let mut bytes = Vec::from(b"PERITUS-WINDOWS-ACL-OWNER-V1\0".as_slice());
+            bytes.extend_from_slice(self.digest.as_bytes());
+            bytes.extend_from_slice(transaction.as_bytes());
+            bytes.extend_from_slice(receipt.as_bytes());
+            bytes.extend_from_slice(owner.as_bytes());
+            bytes.extend_from_slice(service.as_bytes());
+            bytes.extend_from_slice(&(raw as usize as u64).to_be_bytes());
+            return Some(peritus_codec::sha256(&bytes));
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = (transaction, receipt, owner, service);
+            None
+        }
+    }
+
     /// Returns the exact durable obligations still requiring reversal or retirement.
     #[must_use]
     pub fn pending_reversal_count(&self) -> usize {

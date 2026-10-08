@@ -19,8 +19,24 @@ impl NetworkFilterOwner {
         }
     }
 
+    #[must_use]
     pub(crate) const fn is_managed(&self) -> bool {
         self.managed
+    }
+
+    #[must_use]
+    pub(crate) fn custody_identity(&self) -> Option<peritus_types::Sha256Digest> {
+        if !self.managed {
+            return None;
+        }
+        #[cfg(target_os = "windows")]
+        {
+            return self.native.as_ref().and_then(crate::native::wfp::WfpSession::custody_identity);
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            None
+        }
     }
 
     pub(crate) fn install(profile: &TokenProfile, route: ProxyRoute) -> Result<Self, WindowsError> {

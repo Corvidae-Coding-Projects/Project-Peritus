@@ -11,8 +11,8 @@ use peritus_sandbox::{BrokeredHandleLabel, EnvironmentName, SandboxPath, SecretD
 use peritus_types::{EnvironmentId, ProcessId, Sha256Digest};
 
 use crate::{
-    RecoveryClass, SecretError, SecretErrorKind, SecretLease, SecretLeaseId, SecretMaterial,
-    SecretOperation,
+    RecoveryClass, SecretError, SecretErrorKind, SecretLease, SecretLeaseId, SecretLeaseState,
+    SecretMaterial, SecretOperation,
 };
 
 /// Nonsensitive delivery receipt.
@@ -63,6 +63,60 @@ impl DeliveryReceipt {
     pub const fn released(&self) -> bool {
         self.released
     }
+
+    /// Returns the exact lease/dispatch/receipt identity while this delivery owner is live.
+    #[must_use]
+    pub fn custody_identity(&self) -> Option<Sha256Digest> {
+        if self.released
+            || self.leases.is_empty()
+            || self.leases.len() != self.receipts.len()
+        {
+            return None;
+        }
+        let mut bytes = Vec::from(b"PERITUS-SECRET-DELIVERY-OWNER-V1\0".as_slice());
+        bytes.extend_from_slice(&u64::try_from(self.leases.len()).ok()?.to_be_bytes());
+        for (lease, receipt) in self.leases.iter().zip(&self.receipts) {
+            if lease.id() != receipt.lease_id() || lease.delivery() != receipt.delivery() {
+                return None;
+            }
+            bytes.extend_from_slice(lease.id().as_bytes());
+            bytes.extend_from_slice(lease.owner().as_bytes());
+            bytes.extend_from_slice(lease.environment().as_bytes());
+            bytes.extend_from_slice(lease.sandbox_digest().as_bytes());
+            bytes.extend_from_slice(lease.execution_digest().as_bytes());
+            bytes.extend_from_slice(lease.reference().resource_id().as_bytes());
+            bytes.extend_from_slice(lease.reference().version().as_bytes());
+            append_delivery_identity(&mut bytes, lease.delivery());
+            bytes.extend_from_slice(&lease.remaining_uses().to_be_bytes());
+            bytes.extend_from_slice(&lease.expires_epoch_millis().to_be_bytes());
+            bytes.push(match lease.state() {
+                SecretLeaseState::Active => 1,
+                SecretLeaseState::Exhausted => 2,
+                SecretLeaseState::Revoked => 3,
+                SecretLeaseState::Expired => 4,
+            });
+            bytes.push(u8::from(receipt.released()));
+        }
+        Some(peritus_codec::sha256(&bytes))
+    }
+}
+
+fn append_delivery_identity(bytes: &mut Vec<u8>, delivery: &SecretDelivery) {
+    match delivery {
+        SecretDelivery::Environment(name) => {
+            bytes.push(1);
+            bytes.extend_from_slice(name.as_str().as_bytes());
+        }
+        SecretDelivery::File(path) => {
+            bytes.push(2);
+            bytes.extend_from_slice(path.as_str().as_bytes());
+        }
+        SecretDelivery::BrokeredHandle(label) => {
+            bytes.push(3);
+            bytes.extend_from_slice(label.as_str().as_bytes());
+        }
+    }
+    bytes.push(0);
 }
 
 /// Backend-consumable delivery artifact with redacted formatting.

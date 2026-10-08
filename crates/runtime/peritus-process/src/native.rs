@@ -78,6 +78,28 @@ pub struct NativeWindowsContainmentIdentity {
     target: ProcessTreeIdentity,
 }
 
+/// Independently inspected identities for each live Windows owner resource family.
+#[cfg(windows)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeWindowsOwnerInspection {
+    job: Option<Sha256Digest>,
+    helper_channels: Sha256Digest,
+    protected_handles: Option<Sha256Digest>,
+}
+
+#[cfg(windows)]
+impl NativeWindowsOwnerInspection {
+    /// Returns the exact retained Job Object owner identity when its handle is live.
+    #[must_use]
+    pub const fn job(self) -> Option<Sha256Digest> { self.job }
+    /// Returns the exact parent/child helper-channel identity.
+    #[must_use]
+    pub const fn helper_channels(self) -> Sha256Digest { self.helper_channels }
+    /// Returns all non-Job protected handles retained by this launch.
+    #[must_use]
+    pub const fn protected_handles(self) -> Option<Sha256Digest> { self.protected_handles }
+}
+
 impl NativeWindowsContainmentIdentity {
     /// Creates one exact authority-bound Job Object and target birth identity.
     ///
@@ -139,6 +161,8 @@ pub struct NativeSessionRecovery {
     service_owner_digest: Option<Sha256Digest>,
     custody_complete: bool,
     windows_containment: Option<NativeWindowsContainmentIdentity>,
+    windows_owner_identity: Option<Sha256Digest>,
+    windows_custody_digest: Option<Sha256Digest>,
     record: Vec<u8>,
     record_digest: Sha256Digest,
 }
@@ -152,6 +176,8 @@ impl core::fmt::Debug for NativeSessionRecovery {
             .field("phase", &self.phase)
             .field("tree", &self.tree)
             .field("windows_containment", &self.windows_containment)
+            .field("windows_owner_identity", &self.windows_owner_identity)
+            .field("windows_custody_digest", &self.windows_custody_digest)
             .field("custody_complete", &self.custody_complete)
             .field("record_bytes", &self.record.len())
             .field("record_digest", &self.record_digest)
@@ -219,6 +245,8 @@ impl NativeSessionRecovery {
             service_owner_digest,
             custody_complete,
             windows_containment: None,
+            windows_owner_identity: None,
+            windows_custody_digest: None,
             record,
             record_digest,
         })
@@ -254,6 +282,16 @@ impl NativeSessionRecovery {
     pub const fn windows_containment(&self) -> Option<&NativeWindowsContainmentIdentity> {
         self.windows_containment.as_ref()
     }
+    /// Returns the stable identity of the original retained Windows resource set.
+    #[must_use]
+    pub const fn windows_owner_identity(&self) -> Option<Sha256Digest> {
+        self.windows_owner_identity
+    }
+    /// Returns the exact currently outstanding Windows cleanup-custody identity.
+    #[must_use]
+    pub const fn windows_custody_digest(&self) -> Option<Sha256Digest> {
+        self.windows_custody_digest
+    }
     /// Borrows the platform-owned canonical record.
     #[must_use]
     pub fn record(&self) -> &[u8] { &self.record }
@@ -281,6 +319,27 @@ impl NativeSessionRecovery {
         Ok(self)
     }
 
+    /// Attaches a platform-verified live Windows owner inspection.
+    ///
+    /// # Errors
+    /// Rejects non-Windows or released snapshots and zero inspection identities.
+    pub fn with_windows_owner_inspection(
+        mut self,
+        owner_identity: Sha256Digest,
+        custody_digest: Sha256Digest,
+    ) -> Result<Self, ProcessError> {
+        if self.platform != NativePlatform::Windows
+            || self.phase == NativeRecoveryPhase::Released
+            || owner_identity == Sha256Digest::new([0; 32])
+            || custody_digest == Sha256Digest::new([0; 32])
+        {
+            return Err(native_mismatch("Windows owner inspection identity is invalid"));
+        }
+        self.windows_owner_identity = Some(owner_identity);
+        self.windows_custody_digest = Some(custody_digest);
+        Ok(self)
+    }
+
     /// Verifies that this live snapshot belongs to one exact retained-owner request.
     #[must_use]
     pub fn matches_retained_owner(
@@ -297,16 +356,27 @@ impl NativeSessionRecovery {
             && match (self.platform, self.phase) {
                 (NativePlatform::Windows, NativeRecoveryPhase::Prepared) => {
                     self.windows_containment.is_none()
+                        && self.windows_owner_identity.is_some()
+                        && self.windows_custody_digest.is_some()
                 }
                 (
                     NativePlatform::Windows,
                     NativeRecoveryPhase::Active
-                    | NativeRecoveryPhase::Cancelling
-                    | NativeRecoveryPhase::Terminated,
-                ) => self.windows_containment.is_some(),
+                    | NativeRecoveryPhase::Cancelling,
+                ) => {
+                    self.windows_containment.is_some()
+                        && self.windows_owner_identity.is_some()
+                        && self.windows_custody_digest.is_some()
+                }
+                (NativePlatform::Windows, NativeRecoveryPhase::Terminated) => {
+                    self.windows_owner_identity.is_some()
+                        && self.windows_custody_digest.is_some()
+                }
                 (NativePlatform::Windows, NativeRecoveryPhase::Released) => false,
                 (NativePlatform::Linux | NativePlatform::Macos, _) => {
                     self.windows_containment.is_none()
+                        && self.windows_owner_identity.is_none()
+                        && self.windows_custody_digest.is_none()
                 }
             }
     }
@@ -705,6 +775,48 @@ impl NativeLaunchDescription {
             .map(NativeWindowsHelperChannels::containment_identity)
             .transpose()
             .map(Option::flatten)
+    }
+
+    /// Inspects every retained Windows helper channel and protected handle independently.
+    #[cfg(windows)]
+    pub fn windows_owner_inspection(
+        &self,
+    ) -> Result<Option<NativeWindowsOwnerInspection>, ProcessError> {
+        let Some(channels) = self.windows_helper_channels.as_ref() else {
+            return Ok(None);
+        };
+        let helper_channels = channels.owner_identity_digest()?;
+        let job = channels.containment_job_owner_digest();
+        let mut handle_digests = Vec::new();
+        for handle in self
+            .protected_handles
+            .iter()
+            .filter(|handle| handle.label() != NATIVE_WINDOWS_JOB_HANDLE_LABEL)
+        {
+            let digest = handle.windows_identity_digest().ok_or_else(|| {
+                native_mismatch("Windows protected handle is no longer live")
+            })?;
+            handle_digests.push((handle.label(), digest));
+        }
+        handle_digests.sort_by(|left, right| left.0.cmp(right.0));
+        let protected_handles = if handle_digests.is_empty() {
+            None
+        } else {
+            let mut bytes = Vec::from(
+                b"PERITUS-WINDOWS-PROTECTED-HANDLE-SET-V1\0".as_slice(),
+            );
+            for (label, digest) in handle_digests {
+                bytes.extend_from_slice(label.as_bytes());
+                bytes.push(0);
+                bytes.extend_from_slice(digest.as_bytes());
+            }
+            Some(peritus_codec::sha256(&bytes))
+        };
+        Ok(Some(NativeWindowsOwnerInspection {
+            job,
+            helper_channels,
+            protected_handles,
+        }))
     }
 
     /// Reports whether this launch still retains its exact live Windows Job Object handle.

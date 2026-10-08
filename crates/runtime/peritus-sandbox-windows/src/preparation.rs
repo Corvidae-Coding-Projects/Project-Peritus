@@ -398,7 +398,7 @@ impl WindowsBackend {
             acl.digest(),
         );
         let (acl_transaction, channels) = staged.finish()?;
-        Ok(WindowsSession::new(
+        WindowsSession::new(
             native_launch,
             windows_launch,
             acl_transaction,
@@ -408,7 +408,7 @@ impl WindowsBackend {
             channels.proxy_owner,
             channels.filter_owner,
             channels.secret_owner,
-        ))
+        )
     }
 
     fn validate_bindings(
