@@ -26,6 +26,8 @@ pub enum ProjectionErrorKind {
     FoldInvariant,
     /// A checkpoint did not bind the current journal and projection schema.
     StaleCheckpoint,
+    /// The authoritative journal appended after a candidate reached its checked frontier.
+    JournalAdvanced,
     /// Durable projection catalog bytes or metadata were corrupt.
     CorruptCatalog,
     /// A generation or active-pointer compare-and-swap lost a race.

@@ -17,10 +17,17 @@ use peritus_types::Sha256Digest;
 /// Fully checked immutable candidate ready for a transactional generation install.
 #[derive(Debug)]
 pub struct RebuildCandidate<S> {
+    owner_store_id: StoreId,
     output: ReplayOutput<S>,
 }
 
 impl<S> RebuildCandidate<S> {
+    /// Returns the durable journal owner whose verified history produced this candidate.
+    #[must_use]
+    pub const fn owner_store_id(&self) -> StoreId {
+        self.owner_store_id
+    }
+
     /// Borrows the completed state for caller-side invariant inspection.
     #[must_use]
     pub const fn state(&self) -> &S {
@@ -73,7 +80,10 @@ pub fn rebuild_from_genesis<P: Projection>(
     projection: &P,
     export: &IntegrityExport,
 ) -> Result<RebuildCandidate<P::State>, ProjectionError> {
-    replay_from_genesis(projection, export).map(|output| RebuildCandidate { output })
+    replay_from_genesis(projection, export).map(|output| RebuildCandidate {
+        owner_store_id: export.report().store_id(),
+        output,
+    })
 }
 
 /// Restores accepted durable projection work and applies only checked immutable journal suffixes.
@@ -97,17 +107,28 @@ pub fn resume_or_rebuild<P: Projection>(
     let initial_tip = tip_export(journal)?;
     verify_owner(owner, &initial_tip)?;
     let active = store.load_active(projection.schema())?;
-    let action = plan_repair(
+    let mut action = plan_repair(
         active.as_ref(),
         projection.schema(),
         initial_tip.report().last_position(),
         initial_tip.report().journal_head_digest(),
     );
     if let RepairAction::Reuse(generation) = action {
-        store.clear_progress(projection.schema())?;
-        return Ok(generation);
+        match store.confirm_current(
+            projection.schema(),
+            generation,
+            owner,
+            initial_tip.report().last_position(),
+            initial_tip.report().journal_head_digest(),
+        ) {
+            Ok(confirmed) => return Ok(confirmed),
+            Err(error) if error.kind() == ProjectionErrorKind::JournalAdvanced => {
+                action = RepairAction::CatchUpFromCheckpoint(generation);
+            }
+            Err(error) => return Err(error),
+        }
     }
-    let source_generation = active.as_ref().map(ActiveGeneration::generation);
+    let mut source_generation = active.as_ref().map(ActiveGeneration::generation);
     let mut replay = restore_progress(
         store,
         projection,
@@ -172,14 +193,8 @@ pub fn resume_or_rebuild<P: Projection>(
             }
             let output =
                 replay.finish(projection.schema(), tip.report(), tip.heads())?;
-            let candidate = RebuildCandidate { output };
-            persist_candidate(
-                store,
-                projection,
-                owner,
-                source_generation,
-                &candidate,
-            )?;
+            let candidate = RebuildCandidate { owner_store_id: owner, output };
+            persist_candidate(store, projection, source_generation, &candidate)?;
             ensure_live(cancellation)?;
             let confirmed = tip_export(journal)?;
             verify_owner(owner, &confirmed)?;
@@ -187,7 +202,25 @@ pub fn resume_or_rebuild<P: Projection>(
                 && confirmed.report().journal_head_digest()
                     == candidate.checkpoint().journal_head_digest()
             {
-                return store.install_shadow(&candidate, source_generation);
+                match store.install_shadow(&candidate, source_generation) {
+                    Ok(generation) => return Ok(generation),
+                    Err(error)
+                        if matches!(
+                            error.kind(),
+                            ProjectionErrorKind::JournalAdvanced | ProjectionErrorKind::Conflict
+                        ) =>
+                    {
+                        replay = resume_after_install_race(
+                            store,
+                            projection,
+                            owner,
+                            &mut source_generation,
+                            &candidate,
+                        )?;
+                        continue;
+                    }
+                    Err(error) => return Err(error),
+                }
             }
             if confirmed.report().last_position() > candidate.checkpoint().last_position() {
                 replay = ReplayCheckpoint::restore(
@@ -332,13 +365,12 @@ fn persist_replay<P: Projection>(
 fn persist_candidate<P: Projection>(
     store: &crate::ProjectionStore,
     projection: &P,
-    owner: StoreId,
     source_generation: Option<CatalogGeneration>,
     candidate: &RebuildCandidate<P::State>,
 ) -> Result<(), ProjectionError> {
     let progress = StoredProgress {
         schema_digest: projection.schema().digest(),
-        owner_store_id: owner,
+        owner_store_id: candidate.owner_store_id(),
         source_generation,
         phase: WorkPhase::Ready,
         cursor_position: candidate.checkpoint().last_position(),
@@ -351,6 +383,44 @@ fn persist_candidate<P: Projection>(
         frontier: candidate.frontier_payload().to_vec(),
     };
     store.store_progress(projection.schema(), &progress)
+}
+
+fn resume_after_install_race<P: Projection>(
+    store: &crate::ProjectionStore,
+    projection: &P,
+    owner: StoreId,
+    source_generation: &mut Option<CatalogGeneration>,
+    candidate: &RebuildCandidate<P::State>,
+) -> Result<ReplayCheckpoint<P::State>, ProjectionError> {
+    let mut replay = ReplayCheckpoint::restore(
+        candidate.payload(),
+        candidate.invariant_digest(),
+        candidate.frontier_payload(),
+        candidate.checkpoint().last_position(),
+        candidate.record_count(),
+    )?;
+    let active = store.load_active(projection.schema())?;
+    let observed_source = active.as_ref().map(ActiveGeneration::generation);
+    if observed_source != *source_generation {
+        if let Some(active) = active.as_ref() {
+            if active.checkpoint().last_position() >= replay.last_position() {
+                if let Some(restored) = restore_active::<P>(active) {
+                    replay = restored;
+                }
+            }
+        }
+        *source_generation = observed_source;
+    }
+    persist_replay(
+        store,
+        projection,
+        owner,
+        *source_generation,
+        WorkPhase::Folding,
+        None,
+        &replay,
+    )?;
+    Ok(replay)
 }
 
 fn tip_export(journal: &mut SqliteJournal) -> Result<IntegrityExport, ProjectionError> {
