@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4163,
-        "tip_oid": "aee0275ec11c9e6229159fecfcf4bdc5b2a21de9",
-        "prefix_sha256": "0573609efc66e92d15ecf89181da8c150c8a09eb927e5657a10477a3414ab217"
+        "sequence": 4164,
+        "tip_oid": "72b89a34c8eab205c542661c3b6e7247911f7224",
+        "prefix_sha256": "87971494cd2aaf14394d0b551f024047b118d1c77061a6899a987fe116ccfa48"
       },
       "NWAR": {
         "sequence": 39,
@@ -40502,12 +40502,13 @@
       "display_id": 118,
       "title": "[L016] Transaction manifest ancestor and decoder ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L016.\n\n- `crates/runtime/peritus-patch/src/transaction/manifest.rs:227-244` expands every operation into every ancestor path before validating manifest capacity. This includes ancestors that already exist, not just directories that a transaction will create.\n- Encoding at lines 121-147 uses L009's production codec: a created-directory collection cannot exceed **65,535** and total manifest payload must fit **16 MiB minus header**, including its checksum. Thus paths/operations within L006/L008 can still fail admission due to expanded ancestor representation.\n- Decoding at lines 150-173 and 260-269 re-enforces payload capacity, **1,024 entries**, and **8 MiB file identities**. Decode failure becomes `CorruptManifest` with `FenceWorkspace` at lines 303-310.\n- Structural consequence: admission, stored manifest, recovery reader, and expanded ancestor representation all carry the same hard policies. Raising only one limit would leave other rejection/fencing paths intact.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.905687878Z",
-      "updated_at": "2026-10-08T15:38:37.474889581Z",
+      "updated_at": "2026-10-08T15:40:10.786732061Z",
+      "closed_at": "2026-10-08T15:40:10.783540257Z",
       "labels": [
         "daily-driving-limiter"
       ],
