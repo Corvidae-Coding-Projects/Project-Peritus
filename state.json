@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4101,
-        "tip_oid": "9b1f5e49034f99911cee6c1101f8266b6dc7208a",
-        "prefix_sha256": "d53f23488840f59f9a7b46740bb89ad9cd1ce5a43456ca474f8911d2a419587d"
+        "sequence": 4102,
+        "tip_oid": "7bdf55d4486dcc86032cbf085e9bc1e7565c4db2",
+        "prefix_sha256": "d56151bc631a2477d9be446931584a9715fa31ded29e642798878b6f589f7409"
       },
       "NWAR": {
         "sequence": 39,
@@ -32079,12 +32079,13 @@
       "display_id": 153,
       "title": "[L054] Selected run horizons also impose a separate phase-finalization reserve",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L054.\n\n- `peritus-product-runner/src/execution/deadline.rs:7-8,21-22,25-57` reserves **one tenth of the selected horizon**, clamped between **one second and 60 seconds**, each capped by the horizon. It subtracts this from active time and refuses Design/Writer/Reviewer/Fixer phase admission when remaining time is at or below the reserve.\n- This differs from the command completion reserve (one fifth/up to 300 seconds, L037); one user-selected horizon therefore feeds multiple independent derived cutoffs. `None` horizon paired with `None` remaining admits work without this reserve. Mismatched Some/None states fail closed.\n- Actual phase/driver caller enforcement is pending. Conversation execution at `execution/conversation.rs:77-80,116-123` only wraps a selected remaining horizon in tokio::timeout; no wrapper is applied when absent.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.058963250Z",
-      "updated_at": "2026-10-08T06:00:19.311675014Z",
+      "updated_at": "2026-10-08T06:02:09.761570948Z",
+      "closed_at": "2026-10-08T06:02:09.758768605Z",
       "labels": [
         "daily-driving-limiter"
       ],
