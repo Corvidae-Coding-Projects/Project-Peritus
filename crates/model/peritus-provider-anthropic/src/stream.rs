@@ -99,9 +99,6 @@ impl AnthropicStream {
 
     fn drain_state(&mut self) {
         self.pending.extend(self.state.take_pending());
-        if self.state.is_terminal() {
-            self.ended = true;
-        }
     }
 
     fn fail(
@@ -111,15 +108,13 @@ impl AnthropicStream {
     ) -> Result<(), ProviderCoreError> {
         self.framed.clear();
         self.state.clear_deferred_replay();
-        if !self.state.is_terminal() {
-            let failure = stream_failure(
-                self.provider.clone(),
-                category,
-                self.state.has_observed_semantics(),
-                code,
-            )?;
-            self.state.push_synthetic(ModelEvent::ResponseFailed(failure))?;
-        }
+        let failure = stream_failure(
+            self.provider.clone(),
+            category,
+            self.state.has_observed_semantics(),
+            code,
+        )?;
+        self.state.push_synthetic(ModelEvent::ResponseFailed(failure))?;
         self.drain_state();
         Ok(())
     }
@@ -153,7 +148,7 @@ impl ModelStream for AnthropicStream {
     ) -> BoxFuture<'a, Result<Option<EventEnvelope>, ProviderCoreError>> {
         Box::pin(async move {
             loop {
-                if cancellation.is_cancelled() && !self.state.is_terminal() {
+                if cancellation.is_cancelled() && self.state.can_accept_cancellation() {
                     self.pending.clear();
                     self.framed.clear();
                     self.state.clear_deferred_replay();
@@ -181,9 +176,16 @@ impl ModelStream for AnthropicStream {
                 self.resume_framed()?;
                 if !self.pending.is_empty()
                     || self.state.has_deferred_replay()
-                    || self.ended
                 {
                     continue;
+                }
+                if cancellation.is_cancelled() && self.state.can_accept_cancellation() {
+                    continue;
+                }
+                if let Some(event) = self.state.take_staged_terminal() {
+                    self.body = None;
+                    self.ended = true;
+                    return Ok(Some(event));
                 }
                 let Some(body) = self.body.as_mut() else {
                     self.drain_state();

@@ -109,6 +109,7 @@ pub(super) struct NormalizeState {
     limits: ProtocolLimits,
     sequence: u64,
     pending: VecDeque<EventEnvelope>,
+    staged_terminal: Option<EventEnvelope>,
     replay_index: ExactReplayIndex,
     deferred_replay: Option<DeferredReplay>,
     metadata: Vec<ModelEvent>,
@@ -146,6 +147,7 @@ impl NormalizeState {
             limits,
             sequence: 0,
             pending: VecDeque::new(),
+            staged_terminal: None,
             replay_index: ExactReplayIndex::new(limits.max_events(), replay_identity_bytes),
             deferred_replay: None,
             metadata: metadata_events(headers, limits)?,
@@ -170,6 +172,17 @@ impl NormalizeState {
 
     pub(super) fn take_pending(&mut self) -> VecDeque<EventEnvelope> {
         core::mem::take(&mut self.pending)
+    }
+
+    pub(super) fn take_staged_terminal(&mut self) -> Option<EventEnvelope> {
+        self.staged_terminal.take()
+    }
+
+    pub(super) fn can_accept_cancellation(&self) -> bool {
+        !self.terminal
+            || self.staged_terminal.as_ref().is_some_and(|envelope| {
+                matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            })
     }
 
     pub(super) const fn is_terminal(&self) -> bool {
@@ -320,12 +333,37 @@ impl NormalizeState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
-        let sequence = self.sequence.checked_add(1).ok_or_else(|| {
-            ProviderCoreError::limit_exceeded(
-                "anthropic_stream",
-                "normalized event sequence overflowed",
-            )
-        })?;
+        let terminal = matches!(
+            event,
+            ModelEvent::ResponseCompleted
+                | ModelEvent::ResponseFailed(_)
+                | ModelEvent::ResponseCancelled
+        );
+        if self.terminal && !terminal {
+            return Err(invalid("Anthropic event followed a terminal event"));
+        }
+        let sequence = if terminal {
+            if let Some(staged) = &self.staged_terminal {
+                staged.sequence()
+            } else {
+                if self.terminal {
+                    return Err(invalid("Anthropic terminal event was duplicated"));
+                }
+                self.sequence.checked_add(1).ok_or_else(|| {
+                    ProviderCoreError::limit_exceeded(
+                        "anthropic_stream",
+                        "normalized event sequence overflowed",
+                    )
+                })?
+            }
+        } else {
+            self.sequence.checked_add(1).ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "anthropic_stream",
+                    "normalized event sequence overflowed",
+                )
+            })?
+        };
         if usize::try_from(sequence).map_or(true, |count| count > self.limits.max_events()) {
             return Err(limit("Anthropic normalized events exceeded the selected event bound"));
         }
@@ -340,21 +378,26 @@ impl NormalizeState {
             .transpose()
             ?;
         let observed_semantics = !matches!(event, ModelEvent::Heartbeat);
-        let terminal = matches!(
-            event,
-            ModelEvent::ResponseCompleted
-                | ModelEvent::ResponseFailed(_)
-                | ModelEvent::ResponseCancelled
-        );
-        self.pending
-            .try_reserve(1)
-            .map_err(|_| limit("Anthropic normalized event capacity is unavailable"))?;
         let envelope = EventEnvelope::new(sequence, None, provider_event_id, digest, event)
             .map_err(|_| invalid("normalized Anthropic event envelope is invalid"))?;
-        self.sequence = sequence;
         self.observed_semantics |= observed_semantics;
-        self.terminal = terminal;
-        self.pending.push_back(envelope);
+        if terminal {
+            let replace_completion = self.staged_terminal.as_ref().is_some_and(|staged| {
+                matches!(staged.event(), ModelEvent::ResponseCompleted)
+                    && !matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            });
+            if self.staged_terminal.is_none() || replace_completion {
+                self.staged_terminal = Some(envelope);
+            }
+            self.sequence = sequence;
+            self.terminal = true;
+        } else {
+            self.pending
+                .try_reserve(1)
+                .map_err(|_| limit("Anthropic normalized event capacity is unavailable"))?;
+            self.sequence = sequence;
+            self.pending.push_back(envelope);
+        }
         Ok(())
     }
 }
