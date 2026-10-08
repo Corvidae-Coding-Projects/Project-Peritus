@@ -242,7 +242,7 @@ impl FrozenEvaluationProfile {
     /// Validates and freezes every campaign input.
     ///
     /// # Errors
-    /// Rejects noncanonical partitions, equal arms, undeclared work, or bounded-size overflow.
+    /// Rejects noncanonical partitions, equal arms, undeclared work, or representational overflow.
     #[allow(
         clippy::too_many_arguments,
         reason = "the complete frozen campaign profile stays explicit"
@@ -289,14 +289,14 @@ impl FrozenEvaluationProfile {
                     "profile rollout cardinality overflowed",
                 )
             })?;
-        if rollout_count > usize::try_from(limits.rollouts()).unwrap_or(usize::MAX) {
-            return Err(EvaluationError::new(
+        u32::try_from(rollout_count).map_err(|_| {
+            EvaluationError::new(
                 EvaluationErrorKind::LimitExceeded,
                 EvaluationOperation::FreezeProfile,
                 EvaluationRecovery::ReduceScope,
-                "profile exceeds the logical rollout ceiling",
-            ));
-        }
+                "profile rollout cardinality exceeds its canonical representation",
+            )
+        })?;
         let digest = ProfileDigest::new(profile_digest(
             &dataset,
             &partitions,
@@ -435,7 +435,7 @@ fn profile_digest(
     ] {
         writer.write_fixed(digest.as_bytes()).map_err(codec)?;
     }
-    writer.write_u16(retry.maximum_attempts()).map_err(codec)?;
+    writer.write_u16(retry.canonical_stop_after_attempt()).map_err(codec)?;
     writer.write_u64(retry.initial_backoff_micros()).map_err(codec)?;
     writer.write_u64(retry.maximum_backoff_micros()).map_err(codec)?;
     writer.write_collection_len(metrics.pass_k().len()).map_err(codec)?;

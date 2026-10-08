@@ -25,8 +25,8 @@ impl DatasetManifest {
     /// Validates and freezes a canonical dataset manifest.
     ///
     /// # Errors
-    /// Rejects zero revision, empty/oversized tasks, noncanonical IDs, and any candidate/evaluator
-    /// artifact collision across the complete corpus.
+    /// Rejects zero revision, empty/noncanonical tasks, and any candidate/evaluator artifact
+    /// collision across the complete corpus. The task-page bound does not limit corpus size.
     pub fn new(
         id: DatasetId,
         revision: u64,
@@ -36,15 +36,15 @@ impl DatasetManifest {
     ) -> Result<Self, EvaluationError> {
         if revision == 0
             || tasks.is_empty()
-            || tasks.len() > usize::try_from(limits.tasks()).unwrap_or(usize::MAX)
             || tasks.windows(2).any(|pair| pair[0].id() >= pair[1].id())
         {
             return Err(crate::invalid(
                 EvaluationErrorKind::Manifest,
                 EvaluationOperation::ValidateDataset,
-                "dataset revision/tasks are empty, oversized, duplicated, or noncanonical",
+                "dataset revision/tasks are empty, duplicated, or noncanonical",
             ));
         }
+        let _ = limits;
         let candidate: BTreeSet<_> =
             tasks.iter().map(|task| task.candidate_input().artifact()).collect();
         let evaluator: BTreeSet<_> =
@@ -79,6 +79,16 @@ impl DatasetManifest {
     #[must_use]
     pub fn tasks(&self) -> &[DatasetTask] {
         &self.tasks
+    }
+    /// Iterates bounded physical task pages without changing dataset identity or task order.
+    #[must_use]
+    pub fn task_pages(
+        &self,
+        limits: EvaluationLimits,
+    ) -> std::slice::Chunks<'_, DatasetTask> {
+        let page_size = usize::try_from(limits.tasks_per_page())
+            .expect("u32 task-page size fits every supported target");
+        self.tasks.chunks(page_size)
     }
     /// Returns exact provenance digest.
     #[must_use]

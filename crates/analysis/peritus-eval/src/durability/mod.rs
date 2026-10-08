@@ -1,6 +1,7 @@
 //! C0 aggregate binding, outbox directives, atomic commits, and replay.
 
 mod binding;
+mod checkpoint;
 mod commit;
 mod directive;
 mod replay;

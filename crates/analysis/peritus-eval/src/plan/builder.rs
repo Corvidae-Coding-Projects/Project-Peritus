@@ -1,4 +1,4 @@
-//! Complete bounded task/ordinal/arm matrix construction.
+//! Complete task/ordinal/arm matrix construction with bounded physical views.
 
 use crate::{
     EvaluationArm, EvaluationCampaignId, EvaluationError, EvaluationErrorKind, EvaluationOperation,
@@ -15,7 +15,7 @@ pub struct EvaluationPlan {
 }
 
 impl EvaluationPlan {
-    /// Builds the complete bounded paired rollout plan.
+    /// Builds the complete paired rollout plan.
     ///
     /// # Errors
     /// Rejects identity derivation, cardinality, or canonical-binding failure.
@@ -24,6 +24,36 @@ impl EvaluationPlan {
         profile: &FrozenEvaluationProfile,
     ) -> Result<Self, EvaluationError> {
         let mut specs = Vec::new();
+        let selected = profile
+            .dataset()
+            .tasks()
+            .iter()
+            .filter(|task| profile.partitions().contains(&task.partition()))
+            .count();
+        let expected = selected
+            .checked_mul(2)
+            .and_then(|value| value.checked_mul(usize::from(profile.rollouts_per_task())))
+            .ok_or_else(|| {
+                crate::invalid(
+                    EvaluationErrorKind::LimitExceeded,
+                    EvaluationOperation::BuildPlan,
+                    "rollout matrix cardinality overflowed",
+                )
+            })?;
+        u32::try_from(expected).map_err(|_| {
+            crate::invalid(
+                EvaluationErrorKind::LimitExceeded,
+                EvaluationOperation::BuildPlan,
+                "rollout matrix exceeds its canonical representation",
+            )
+        })?;
+        specs.try_reserve(expected).map_err(|_| {
+            crate::invalid(
+                EvaluationErrorKind::LimitExceeded,
+                EvaluationOperation::BuildPlan,
+                "rollout matrix allocation is unavailable",
+            )
+        })?;
         for task in profile
             .dataset()
             .tasks()
@@ -51,16 +81,14 @@ impl EvaluationPlan {
                 }
             }
         }
-        if specs.is_empty()
-            || specs.len() > usize::try_from(profile.limits().rollouts()).unwrap_or(usize::MAX)
-        {
+        if specs.is_empty() {
             return Err(crate::invalid(
                 EvaluationErrorKind::LimitExceeded,
                 EvaluationOperation::BuildPlan,
-                "rollout matrix is empty or exceeds its campaign limit",
+                "rollout matrix is empty",
             ));
         }
-        let digest = PlanDigest::new(plan_digest(campaign_id, profile.digest(), &specs));
+        let digest = PlanDigest::new(plan_digest(campaign_id, profile.digest(), &specs)?);
         let id = EvaluationPlanId::new(crate::identity::derived_identity(
             b"peritus.evaluation.plan-id.v1\0",
             &[campaign_id.as_bytes(), digest.as_bytes()],
@@ -87,6 +115,16 @@ impl EvaluationPlan {
     pub fn specs(&self) -> &[RolloutSpec] {
         &self.specs
     }
+    /// Iterates bounded physical rollout pages in canonical plan order.
+    #[must_use]
+    pub fn spec_pages(
+        &self,
+        limits: crate::EvaluationLimits,
+    ) -> std::slice::Chunks<'_, RolloutSpec> {
+        let page_size = usize::try_from(limits.rollouts_per_page())
+            .expect("u32 rollout-page size fits every supported target");
+        self.specs.chunks(page_size)
+    }
     /// Returns stable blocked dispatch order without mutating canonical storage.
     #[must_use]
     pub fn dispatch_order(&self) -> Vec<&RolloutSpec> {
@@ -100,16 +138,23 @@ fn plan_digest(
     campaign: EvaluationCampaignId,
     profile: crate::ProfileDigest,
     specs: &[RolloutSpec],
-) -> peritus_types::Sha256Digest {
+) -> Result<peritus_types::Sha256Digest, EvaluationError> {
     let mut bytes = b"peritus.evaluation.plan.v1\0".to_vec();
     bytes.extend_from_slice(campaign.as_bytes());
     bytes.extend_from_slice(profile.as_bytes());
-    bytes.extend_from_slice(&u32::try_from(specs.len()).unwrap_or(u32::MAX).to_be_bytes());
+    let count = u32::try_from(specs.len()).map_err(|_| {
+        crate::invalid(
+            EvaluationErrorKind::LimitExceeded,
+            EvaluationOperation::BuildPlan,
+            "rollout matrix exceeds its canonical representation",
+        )
+    })?;
+    bytes.extend_from_slice(&count.to_be_bytes());
     for spec in specs {
         bytes.extend_from_slice(spec.id().as_bytes());
         bytes.extend_from_slice(spec.work_id().as_bytes());
         bytes.extend_from_slice(spec.request_digest().as_bytes());
         bytes.extend_from_slice(spec.seed().as_bytes());
     }
-    peritus_codec::sha256(&bytes)
+    Ok(peritus_codec::sha256(&bytes))
 }

@@ -1,8 +1,12 @@
-//! Independent compiled and caller-selected E3 bounds.
+//! Independent compiled physical page and statistical-work bounds.
 
 use crate::{EvaluationError, EvaluationErrorKind, EvaluationOperation, invalid};
 
-/// Complete independently enforced campaign limits.
+/// Complete independently enforced physical page and statistical-work limits.
+///
+/// Task, rollout, attempt, and state bounds size one physical page. They never limit the
+/// cumulative logical work performed by a campaign. Bootstrap and pass@k bounds remain explicit
+/// caller-selected statistical work limits.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EvaluationLimits {
     tasks: u32,
@@ -14,17 +18,17 @@ pub struct EvaluationLimits {
 }
 
 impl EvaluationLimits {
-    /// Compiled task ceiling.
+    /// Compiled task descriptors per physical page.
     pub const MAX_TASKS: u32 = 2_048;
-    /// Compiled logical rollout ceiling that keeps compact checkpoints bounded.
+    /// Compiled rollout descriptors per physical page.
     pub const MAX_ROLLOUTS: u32 = 16_384;
-    /// Compiled attempts retained per logical rollout.
+    /// Compiled attempt records per physical page.
     pub const MAX_ATTEMPTS_PER_ROLLOUT: u16 = 16;
     /// Compiled deterministic bootstrap replicate ceiling.
     pub const MAX_BOOTSTRAP_REPLICATES: u32 = 100_000;
     /// Compiled distinct pass@k values.
     pub const MAX_PASS_K_VALUES: u16 = 32;
-    /// C0 canonical frame/checkpoint ceiling.
+    /// C0 physical state-page ceiling.
     pub const MAX_STATE_BYTES: u64 = 16 * 1024 * 1024;
 
     /// Creates a complete checked limit set.
@@ -68,7 +72,7 @@ impl EvaluationLimits {
         })
     }
 
-    /// Production defaults sized below the compact C0 checkpoint ceiling.
+    /// Production defaults for bounded physical pages and statistical work.
     #[must_use]
     pub const fn production() -> Self {
         Self {
@@ -81,19 +85,34 @@ impl EvaluationLimits {
         }
     }
 
-    /// Maximum tasks.
+    /// Maximum task descriptors in one physical page.
     #[must_use]
     pub const fn tasks(self) -> u32 {
         self.tasks
     }
-    /// Maximum logical rollouts.
+    /// Maximum task descriptors in one physical page.
+    #[must_use]
+    pub const fn tasks_per_page(self) -> u32 {
+        self.tasks
+    }
+    /// Maximum rollout descriptors in one physical page.
     #[must_use]
     pub const fn rollouts(self) -> u32 {
         self.rollouts
     }
-    /// Maximum retained attempts per rollout.
+    /// Maximum rollout descriptors in one physical page.
+    #[must_use]
+    pub const fn rollouts_per_page(self) -> u32 {
+        self.rollouts
+    }
+    /// Maximum attempt records in one physical page.
     #[must_use]
     pub const fn attempts_per_rollout(self) -> u16 {
+        self.attempts_per_rollout
+    }
+    /// Maximum attempt records in one physical page.
+    #[must_use]
+    pub const fn attempts_per_page(self) -> u16 {
         self.attempts_per_rollout
     }
     /// Maximum bootstrap replicates.
@@ -106,9 +125,14 @@ impl EvaluationLimits {
     pub const fn pass_k_values(self) -> u16 {
         self.pass_k_values
     }
-    /// Maximum complete checkpoint bytes.
+    /// Maximum bytes in one physical state page.
     #[must_use]
     pub const fn state_bytes(self) -> u64 {
+        self.state_bytes
+    }
+    /// Maximum bytes in one physical state page.
+    #[must_use]
+    pub const fn state_page_bytes(self) -> u64 {
         self.state_bytes
     }
 }

@@ -101,10 +101,7 @@ pub fn load_evaluation_replay(
     }
     let checkpoint = state_record
         .as_ref()
-        .map(|record| {
-            decode_message::<EvaluationStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
-                .map_err(codec)
-        })
+        .map(|record| super::checkpoint::decode(journal, record, campaign_id))
         .transpose()?;
     if let Some(frame) = &checkpoint {
         let last = events.last().ok_or_else(|| recovery("checkpoint has no evaluation event"))?;

@@ -47,11 +47,11 @@ impl LedgerCounts {
     }
 }
 
-/// Complete bounded append-only attempt and logical-terminal ledger.
+/// Complete append-only attempt and logical-terminal ledger.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RolloutLedger {
     entries: BTreeMap<RolloutId, LedgerEntry>,
-    maximum_attempts: u16,
+    stop_after_attempt: Option<u16>,
 }
 
 impl RolloutLedger {
@@ -63,25 +63,39 @@ impl RolloutLedger {
             .iter()
             .map(|spec| (spec.id(), LedgerEntry { attempts: Vec::new(), terminal: None }))
             .collect();
-        Self { entries, maximum_attempts }
+        Self { entries, stop_after_attempt: Some(maximum_attempts) }
+    }
+
+    /// Creates one expected entry per rollout under the frozen caller retry policy.
+    #[must_use]
+    pub fn from_plan_with_policy(
+        plan: &EvaluationPlan,
+        retry: crate::EvaluationRetryPolicy,
+    ) -> Self {
+        let entries = plan
+            .specs()
+            .iter()
+            .map(|spec| (spec.id(), LedgerEntry { attempts: Vec::new(), terminal: None }))
+            .collect();
+        Self { entries, stop_after_attempt: retry.stop_after_attempt() }
     }
 
     /// Retains one monotonic attempt observation.
     ///
     /// # Errors
-    /// Rejects unknown rollout, nonmonotonic/conflicting attempt, or configured overflow.
+    /// Rejects unknown rollout, nonmonotonic/conflicting attempt, or a caller-selected stop.
     pub fn record_attempt(
         &mut self,
         rollout: RolloutId,
         attempt: RolloutAttempt,
     ) -> Result<(), EvaluationError> {
         let entry = self.entries.get_mut(&rollout).ok_or_else(unknown)?;
-        if attempt.number() > self.maximum_attempts {
+        if self.stop_after_attempt.is_some_and(|maximum| attempt.number() > maximum) {
             return Err(EvaluationError::new(
-                EvaluationErrorKind::LimitExceeded,
+                EvaluationErrorKind::Profile,
                 EvaluationOperation::Account,
-                EvaluationRecovery::Terminal,
-                "rollout attempt exceeds frozen retry policy",
+                EvaluationRecovery::CorrectInput,
+                "rollout attempt exceeds the caller-selected retry stopping point",
             ));
         }
         if let Some(existing) =
@@ -129,13 +143,23 @@ impl RolloutLedger {
     }
     /// Iterates complete terminal records in canonical rollout identity order.
     #[must_use]
-    pub fn records(&self) -> std::vec::IntoIter<RolloutRecord> {
-        self.entries.values().filter_map(|entry| entry.terminal).collect::<Vec<_>>().into_iter()
+    pub fn records(&self) -> impl Iterator<Item = RolloutRecord> + '_ {
+        self.entries.values().filter_map(|entry| entry.terminal)
     }
     /// Borrows retained attempts for one rollout.
     #[must_use]
     pub fn attempts(&self, rollout: RolloutId) -> Option<&[RolloutAttempt]> {
         self.entries.get(&rollout).map(|entry| entry.attempts.as_slice())
+    }
+    /// Iterates bounded physical attempt pages for one logical rollout.
+    #[must_use]
+    pub fn attempt_pages(
+        &self,
+        rollout: RolloutId,
+        limits: crate::EvaluationLimits,
+    ) -> Option<std::slice::Chunks<'_, RolloutAttempt>> {
+        self.attempts(rollout)
+            .map(|attempts| attempts.chunks(usize::from(limits.attempts_per_page())))
     }
     /// Computes conserved raw counts.
     #[must_use]

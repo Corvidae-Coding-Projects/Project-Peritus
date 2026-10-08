@@ -23,7 +23,7 @@ impl SeedDeliveryPolicy {
 /// Frozen retry policy for one logical rollout.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EvaluationRetryPolicy {
-    maximum_attempts: u16,
+    stop_after_attempt: Option<u16>,
     initial_backoff_micros: u64,
     maximum_backoff_micros: u64,
 }
@@ -32,29 +32,66 @@ impl EvaluationRetryPolicy {
     /// Creates a checked exact retry policy.
     ///
     /// # Errors
-    /// Rejects zero attempts, attempts above E3 limits, or reversed backoff bounds.
+    /// Rejects zero attempts or reversed backoff bounds. The attempt-page size is a storage
+    /// concern and does not change the caller's stopping policy.
     pub const fn new(
         maximum_attempts: u16,
         initial_backoff_micros: u64,
         maximum_backoff_micros: u64,
-        limits: EvaluationLimits,
+        _limits: EvaluationLimits,
     ) -> Result<Self, EvaluationError> {
-        if maximum_attempts == 0
-            || maximum_attempts > limits.attempts_per_rollout()
-            || initial_backoff_micros > maximum_backoff_micros
-        {
+        if maximum_attempts == 0 || initial_backoff_micros > maximum_backoff_micros {
             return Err(crate::invalid(
                 EvaluationErrorKind::Profile,
                 EvaluationOperation::FreezeProfile,
                 "evaluation retry policy is invalid",
             ));
         }
-        Ok(Self { maximum_attempts, initial_backoff_micros, maximum_backoff_micros })
+        Ok(Self {
+            stop_after_attempt: Some(maximum_attempts),
+            initial_backoff_micros,
+            maximum_backoff_micros,
+        })
     }
-    /// Returns the attempt ceiling.
+    /// Creates a persistent retry policy with no synthetic attempt stopping point.
+    ///
+    /// # Errors
+    /// Rejects reversed backoff bounds.
+    pub const fn persistent(
+        initial_backoff_micros: u64,
+        maximum_backoff_micros: u64,
+    ) -> Result<Self, EvaluationError> {
+        if initial_backoff_micros > maximum_backoff_micros {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Profile,
+                EvaluationOperation::FreezeProfile,
+                "evaluation retry policy is invalid",
+            ));
+        }
+        Ok(Self {
+            stop_after_attempt: None,
+            initial_backoff_micros,
+            maximum_backoff_micros,
+        })
+    }
+    /// Returns the caller-selected stopping attempt, or `None` for persistent operation.
+    #[must_use]
+    pub const fn stop_after_attempt(self) -> Option<u16> {
+        self.stop_after_attempt
+    }
+    /// Returns whether retries remain persistent until the caller changes policy or cancels.
+    #[must_use]
+    pub const fn is_persistent(self) -> bool {
+        self.stop_after_attempt.is_none()
+    }
+    /// Returns the finite stopping attempt, or the largest representable attempt for adapters
+    /// whose legacy interface cannot express persistence.
     #[must_use]
     pub const fn maximum_attempts(self) -> u16 {
-        self.maximum_attempts
+        match self.stop_after_attempt {
+            Some(value) => value,
+            None => u16::MAX,
+        }
     }
     /// Returns initial deterministic backoff.
     #[must_use]
@@ -65,6 +102,13 @@ impl EvaluationRetryPolicy {
     #[must_use]
     pub const fn maximum_backoff_micros(self) -> u64 {
         self.maximum_backoff_micros
+    }
+
+    pub(crate) const fn canonical_stop_after_attempt(self) -> u16 {
+        match self.stop_after_attempt {
+            Some(value) => value,
+            None => 0,
+        }
     }
 }
 

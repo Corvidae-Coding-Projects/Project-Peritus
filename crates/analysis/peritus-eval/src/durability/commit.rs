@@ -1,9 +1,9 @@
 //! Atomic family-86 event, family-87 checkpoint, artifact, and outbox persistence.
 
-use peritus_codec::{CodecLimits, decode_message, encode_message};
+use peritus_codec::{CodecLimits, encode_message};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
-    HeadExpectation, OutboxAcknowledgement, OutboxDraft, SqliteJournal, StateInstall,
+    HeadExpectation, OutboxAcknowledgement, OutboxDraft, SqliteJournal,
 };
 use peritus_types::EventSequence;
 
@@ -13,7 +13,7 @@ use crate::{
     EvaluationState, EvaluationTransition, ExecutionDirective, ExecutionDirectiveKind,
     PUBLICATION_DESTINATION, PublicationDirective, RolloutStatus, SCHEDULE_DESTINATION,
     ScheduleDirective, ScheduleDirectiveKind,
-    wire::{EvaluationCommandFrame, EvaluationEventFrame, EvaluationStateFrame},
+    wire::{EvaluationCommandFrame, EvaluationEventFrame},
 };
 
 use super::{
@@ -89,9 +89,6 @@ fn commit(
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
-    let state_bytes =
-        encode_message(&EvaluationStateFrame::from_state(state), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
     let base_digest = peritus_codec::sha256(&command_bytes);
     let request_digest = match &mode {
         CommitMode::Ordinary => base_digest,
@@ -128,14 +125,12 @@ fn commit(
         Vec::new(),
     )
     .map_err(journal_error)?;
-    let install = StateInstall::new(
-        EVALUATION_STATE_NAMESPACE,
-        state_key,
+    let installs = super::checkpoint::installs(
+        journal,
+        &state_key,
         current.as_ref().map(peritus_journal::DurableStateRecord::revision),
-        state.sequence(),
-        state_bytes,
-    )
-    .map_err(journal_error)?;
+        state,
+    )?;
     let expectation = head.map_or(HeadExpectation::Absent(aggregate), HeadExpectation::Present);
     let dependencies = artifact_dependencies(event.kind());
     let outbox = transition_outbox(command, state)?;
@@ -149,7 +144,7 @@ fn commit(
         request_base_digest,
         vec![expectation],
         vec![draft],
-        vec![install],
+        installs,
         dependencies,
         None,
         None,
@@ -390,9 +385,7 @@ fn resolve_existing(
     {
         return Err(recovery("resolved command differs from its exact evaluation event"));
     }
-    let observed =
-        decode_message::<EvaluationStateFrame>(checkpoint.bytes(), CodecLimits::PRODUCTION)
-            .map_err(codec)?;
+    let observed = super::checkpoint::decode(journal, &checkpoint, command.campaign_id())?;
     if checkpoint.revision() == state.sequence() && observed.matches_state(state) {
         return Ok(Some(batch));
     }
