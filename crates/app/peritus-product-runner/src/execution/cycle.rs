@@ -1,7 +1,7 @@
 //! One inspect-review-fix cycle of a product run.
 
 use peritus_review::ProductFindingLedger;
-use peritus_run_settlement::CandidateStage;
+use peritus_run_settlement::{CandidateIdentity, CandidateStage};
 
 use super::{
     AppliedTurn, ProductRunInput, ProductRunPhase, ProductRunUpdate, RunObserver, RunState,
@@ -80,6 +80,12 @@ pub(super) struct GateInspection {
     pub(super) conversation_changed: bool,
 }
 
+pub(super) enum GateInspectionOutcome {
+    Complete(GateInspection),
+    Waiting { question: String, conversation_revision: u64 },
+    Superseded,
+}
+
 pub(super) async fn initial_write(
     input: &ProductRunInput,
     observe: &RunObserver,
@@ -124,6 +130,7 @@ pub(super) async fn create_design(
     observe: &RunObserver,
     cycle: u32,
     accounting: &mut RunAccounting,
+    candidate: CandidateIdentity,
 ) -> Result<design::DesignDocument, ProductRunnerError> {
     deadline::require_phase_window(
         input.max_elapsed,
@@ -147,6 +154,7 @@ pub(super) async fn create_design(
         &input.providers.fallbacks,
         cycle,
         accounting,
+        candidate,
     )
     .await?;
     let status = format!("Detailed design ready at {}", document.path().display());
@@ -168,7 +176,7 @@ pub(super) async fn create_design(
 }
 
 #[allow(clippy::too_many_arguments, reason = "gate execution binds one exact run boundary")]
-pub(super) fn inspect_gates(
+pub(super) async fn inspect_gates(
     input: &ProductRunInput,
     observe: &RunObserver,
     baseline: &CandidateBaseline,
@@ -177,7 +185,7 @@ pub(super) fn inspect_gates(
     accounting: &mut RunAccounting,
     recorder: &CandidateRecorder,
     obligations: &RunObligations,
-) -> Result<GateInspection, ProductRunnerError> {
+) -> Result<GateInspectionOutcome, ProductRunnerError> {
     let phase = if state.coordinator.completed_fixer_cycles() == 0 {
         ProductRunPhase::Checking
     } else {
@@ -196,34 +204,56 @@ pub(super) fn inspect_gates(
     )?;
     check_cancelled(input)?;
     let permissions = input.conversation.effective_permissions();
-    if ![
-        crate::control::PermissionCapability::Read,
-        crate::control::PermissionCapability::Write,
-        crate::control::PermissionCapability::Process,
-        crate::control::PermissionCapability::Network,
-    ]
-    .into_iter()
-    .all(|capability| permissions.allows(capability))
-    {
-        return Err(ProductRunnerError::new(
-            ProductRunnerErrorKind::InvalidPrecondition,
-            "run exact-target gates",
-            "execution permissions changed before gate launch; inspect /permissions",
-        ));
+    if !permissions.allows(crate::control::PermissionCapability::Read) {
+        return Ok(GateInspectionOutcome::Waiting {
+            question: "Exact-target planning is paused because workspace read permission is disabled. Restore Read in /permissions to continue this same candidate."
+                .to_owned(),
+            conversation_revision: input.conversation.revision(),
+        });
     }
     let conversation = input.conversation.render();
     let effect_requirement = crate::delivery_requirement::ExternalEffectRequirement::from_task(
         input.delivery_scope,
         &input.task,
     );
-    let changed_paths = baseline.changed_paths(&input.workspace_root)?;
-    let gate_report = gates::run_with_ownership(
-        &input.workspace_root,
+    let candidate_cancellation = crate::candidate::process::Cancellation::new(
+        std::sync::Arc::clone(&input.cancelled),
+        input.provider_cancellation.clone(),
+    );
+    let changed_paths = crate::candidate::process::with_cancellation(
+        candidate_cancellation.clone(),
+        || baseline.changed_paths(&input.workspace_root),
+    )?;
+    let checkpoint = recorder.checkpoint()?.ok_or_else(|| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::InternalInvariant,
+            "run exact-target gates",
+            "gate execution has no retained candidate identity",
+        )
+    })?;
+    let gate_report = match gates::run_with_ownership(
+        input,
         changed_paths,
         ownership,
         input.delivery_scope,
         &conversation,
-    )?;
+        *checkpoint.identity(),
+        recorder,
+    )
+    .await?
+    {
+        gates::GateRunOutcome::Complete(report) => report,
+        gates::GateRunOutcome::Waiting { question } => {
+            return Ok(GateInspectionOutcome::Waiting {
+                question,
+                conversation_revision: input.conversation.revision(),
+            });
+        }
+        gates::GateRunOutcome::Superseded => {
+            let _ = recorder.refresh(input.conversation.revision())?;
+            return Ok(GateInspectionOutcome::Superseded);
+        }
+    };
     let mut gate_output = gate_report.output.clone();
     if input.workspace_kind.is_in_place() {
         gate_output.insert_str(0, "In-place verification covers explicitly tracked task files, not a whole-folder inventory or undeclared command effects.\n\n");
@@ -242,28 +272,40 @@ pub(super) fn inspect_gates(
         &gate_report,
         &state.successful_commands,
     );
+    let Some(diff) = bundle::publish(
+        &input.workspace_root,
+        baseline,
+        &input.trace_path,
+        *checkpoint.identity(),
+        candidate_cancellation,
+    )? else {
+        let _ = recorder.refresh(input.conversation.revision())?;
+        return Ok(GateInspectionOutcome::Superseded);
+    };
     let evidence = RunEvidence {
-        diff: bundle::diff(&input.workspace_root, baseline)?,
+        diff,
         gates: gate_output,
         review: review::render(&state.findings),
         developer_commands: state.developer_evidence.clone(),
     };
     let gate_stage =
         if gates_satisfied { CandidateStage::GatesPassed } else { CandidateStage::SelfChecked };
-    let _ = recorder.record(
+    let (_, candidate_current) = recorder.record_gates_for_candidate(
+        *checkpoint.identity(),
+        input.conversation.revision(),
         gate_stage,
-        state.conversation_revision,
-        CheckpointEvidence::Gates {
-            satisfied: gates_satisfied,
-            execution_context: gate_report.execution_context(),
-        },
+        gates_satisfied,
+        gate_report.execution_context(),
     )?;
-    Ok(GateInspection {
+    if !candidate_current {
+        return Ok(GateInspectionOutcome::Superseded);
+    }
+    Ok(GateInspectionOutcome::Complete(GateInspection {
         gates: gate_report,
         gates_satisfied,
         evidence,
         conversation_changed: input.conversation.revision() != state.conversation_revision,
-    })
+    }))
 }
 
 pub(super) async fn apply_fix(
@@ -314,7 +356,14 @@ pub(super) async fn apply_fix(
             state.coordinator.record_fixer_completed();
             state.fix_summaries.push(applied.summary);
             state.run_instructions = applied.run_instructions;
-            state.tool_calls = state.tool_calls.saturating_add(applied.tool_calls);
+            state.tool_calls = state
+                .tool_calls
+                .checked_add(applied.tool_calls)
+                .ok_or_else(|| ProductRunnerError::new(
+                    crate::ProductRunnerErrorKind::InternalInvariant,
+                    "accumulate developer tool calls",
+                    "developer tool-call counter overflow",
+                ))?;
             state.conversation_revision = applied.conversation_revision;
             crate::developer_tools::merge_rendered(
                 &mut state.developer_evidence,
@@ -342,11 +391,11 @@ pub(super) async fn apply_fix(
             Ok(None)
         }
         AppliedTurn::Waiting { question, conversation_revision, host } => {
-            state.merge_host(&host);
+            state.merge_host(&host)?;
             Ok(Some((question, conversation_revision)))
         }
         AppliedTurn::Rejected { error, host } => {
-            state.merge_host(&host);
+            state.merge_host(&host)?;
             Err(error)
         }
     }

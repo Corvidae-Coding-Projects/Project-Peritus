@@ -12,7 +12,7 @@ use super::{
     resume::ProductRunResume,
 };
 use crate::{
-    ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting,
+    ProductRunnerError, ProductRunnerErrorKind, ProductRunnerFailureCause, budget::RunAccounting,
     candidate::CandidateBaseline, design, developer_tools::WorkspaceOwnership, gates, review,
 };
 
@@ -38,38 +38,47 @@ impl ExecutionContext {
                 "resume delivery scope differs from the caller's current workspace capability",
             ));
         }
-        let transcript = input.conversation.render();
-        let obligations = RunObligations::capture(&transcript, input.conversation.revision())?;
+        let (obligations, transcript) = loop {
+            let obligations = RunObligations::capture_input(input)?;
+            let transcript = input.conversation.render();
+            if obligations.source_contract_is_current(input) {
+                break (obligations, transcript);
+            }
+            super::check_cancelled(input)?;
+        };
+        let conversation_revision = obligations
+            .source_revision()
+            .unwrap_or_else(|| input.conversation.revision());
         let baseline = input
             .resume
             .as_ref()
             .map_or_else(|| input.baseline(), |resume| Ok(resume.baseline().clone()))?;
         let prior = input.resume.as_ref().map(ProductRunResume::checkpoint);
-        let recorder = CandidateRecorder::new(
-            &input.workspace_root,
-            baseline.clone(),
-            input.run_id,
-            input.workspace_id,
-            prior,
-            input.delivery_scope.allows_external_effects(),
-        )?;
-        let _ = recorder.refresh(input.conversation.revision())?;
+        let recorder = CandidateRecorder::for_input(input, baseline.clone(), prior)?;
+        let obligation_contract_changed = input.resume.as_ref().map_or_else(
+            || obligations.source_root_digest().is_some(),
+            |resume| resume.obligation_source_root() != obligations.source_root_digest(),
+        );
+        if obligation_contract_changed {
+            recorder.adopt_obligation_contract(conversation_revision)?;
+        } else {
+            let _ = recorder.refresh(conversation_revision)?;
+        }
         let next_phase = match (&input.resume, recorder.checkpoint()?) {
-            (Some(resume), Some(checkpoint)) => resume.plan(*checkpoint.identity(), &transcript)?,
+            (Some(resume), Some(checkpoint)) => {
+                let planned = resume.plan(*checkpoint.identity(), &transcript)?;
+                resume.phase_with_current_checkpoint(planned, &checkpoint)
+            }
             _ => ProductRunPhase::Designing,
         };
-        let (design, state, evidence, gate_report) = if let Some(resume) = &input.resume {
-            let design = design::DesignDocument::restored(
-                resume.design_path().clone(),
-                resume.design_markdown().to_owned(),
-                resume.design_revision(),
-            );
+        let (design, mut state, evidence, gate_report) = if let Some(resume) = &input.resume {
+            let design = resume.restored_design();
             if next_phase == ProductRunPhase::Designing {
                 // The prior design is not reusable for execution after a conversation change,
                 // but it remains the last durable design artifact for the unchanged workspace
                 // candidate. Retain it only as a finalization fallback until create_design
                 // replaces it; prior evidence is deliberately not carried forward.
-                (Some(design), None, RunEvidence::default(), None)
+                (design, None, RunEvidence::default(), None)
             } else {
                 let evidence = RunEvidence {
                     diff: resume.diff().to_owned(),
@@ -78,13 +87,19 @@ impl ExecutionContext {
                     developer_commands: resume.developer_evidence().to_owned(),
                 };
                 let state = (next_phase != ProductRunPhase::Writing)
-                    .then(|| RunState::restore(resume, design.clone()))
+                    .then(|| {
+                        let design = design.clone().ok_or_else(missing_design)?;
+                        RunState::restore(resume, design)
+                    })
                     .transpose()?;
-                (Some(design), state, evidence, resume.gate_report().cloned())
+                (design, state, evidence, resume.gate_report().cloned())
             }
         } else {
             (None, None, RunEvidence::default(), None)
         };
+        if let Some(state) = &mut state {
+            externalize_findings(input, &mut state.findings)?;
+        }
         Ok(Self {
             baseline,
             recorder,
@@ -97,6 +112,34 @@ impl ExecutionContext {
         })
     }
 
+    /// Adopts a changed authoritative source root before any phase reuses prior qualification.
+    /// Physical page reconstruction remains cancellation-aware and has no lifetime attempt cap.
+    pub(super) fn refresh_obligation_contract(
+        &mut self,
+        input: &ProductRunInput,
+    ) -> Result<bool, ProductRunnerError> {
+        if self.obligations.source_contract_is_current(input) {
+            return Ok(false);
+        }
+        let replacement = loop {
+            let replacement = RunObligations::capture_input(input)?;
+            if replacement.source_contract_is_current(input) {
+                break replacement;
+            }
+            super::check_cancelled(input)?;
+        };
+        let changed = replacement.source_root_digest() != self.obligations.source_root_digest();
+        if changed {
+            let revision = replacement
+                .source_revision()
+                .unwrap_or_else(|| input.conversation.revision());
+            self.recorder.adopt_obligation_contract(revision)?;
+            self.next_phase = ProductRunPhase::Designing;
+        }
+        self.obligations = replacement;
+        Ok(changed)
+    }
+
     pub(super) async fn prepare_active_state(
         &mut self,
         input: &ProductRunInput,
@@ -105,7 +148,18 @@ impl ExecutionContext {
         accounting: &mut RunAccounting,
     ) -> Result<Option<(String, u64)>, ProductRunnerError> {
         if self.next_phase == ProductRunPhase::Designing {
-            self.design = Some(create_design(input, observe, 1, accounting).await?);
+            let candidate = *self
+                .recorder
+                .checkpoint()?
+                .ok_or_else(|| {
+                    ProductRunnerError::new(
+                        ProductRunnerErrorKind::InternalInvariant,
+                        "start design phase",
+                        "design phase has no retained candidate identity",
+                    )
+                })?
+                .identity();
+            self.design = Some(create_design(input, observe, 1, accounting, candidate).await?);
             self.next_phase = ProductRunPhase::Writing;
         }
         if self.next_phase != ProductRunPhase::Writing {
@@ -118,9 +172,11 @@ impl ExecutionContext {
                 "writer phase has no current implementation design",
             )
         })?;
-        let restored_findings = review::restore_ledger(
-            input.resume.as_ref().map_or(&input.finding_state, |resume| resume.finding_state()),
-        )?;
+        let mut restored_findings = match input.resume.as_ref() {
+            Some(resume) => resume.finding_ledger().cloned().ok_or_else(missing_findings)?,
+            None => review::restore_ledger(&input.finding_state)?,
+        };
+        externalize_findings(input, &mut restored_findings)?;
         let prior_findings =
             (restored_findings.cycle() > 0).then(|| review::render(&restored_findings));
         let applied = match initial_write(
@@ -136,13 +192,21 @@ impl ExecutionContext {
         {
             AppliedTurn::Applied(applied) => applied,
             AppliedTurn::Waiting { question, conversation_revision, host } => {
-                self.state =
-                    Some(RunState::interrupted(input, design.clone(), restored_findings, host));
+                self.state = Some(RunState::interrupted(
+                    input,
+                    design.clone(),
+                    restored_findings,
+                    host,
+                )?);
                 return Ok(Some((question, conversation_revision)));
             }
             AppliedTurn::Rejected { error, host } => {
-                self.state =
-                    Some(RunState::interrupted(input, design.clone(), restored_findings, host));
+                self.state = Some(RunState::interrupted(
+                    input,
+                    design.clone(),
+                    restored_findings,
+                    host,
+                )?);
                 return Err(error);
             }
         };
@@ -158,7 +222,7 @@ impl ExecutionContext {
             self.recorder.record(stage, applied.conversation_revision, CheckpointEvidence::None)?;
         let mut run_state = RunState::new(design.clone(), restored_findings, applied);
         if let Some(resume) = &input.resume {
-            run_state.merge_resume_host(resume);
+            run_state.merge_resume_host(resume)?;
         }
         self.state = Some(run_state);
         self.next_phase = ProductRunPhase::Checking;
@@ -170,12 +234,39 @@ impl ExecutionContext {
     }
 }
 
+fn externalize_findings(
+    input: &ProductRunInput,
+    findings: &mut ProductFindingLedger,
+) -> Result<(), ProductRunnerError> {
+    let Some(publisher) = input.conversation.finding_body_publisher() else { return Ok(()) };
+    let changed = findings.externalize_bodies(publisher).map_err(|error| {
+        ProductRunnerError::new(
+            ProductRunnerErrorKind::Repository,
+            "publish retained D2 finding bodies",
+            error.to_string(),
+        )
+        .with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
+    })?;
+    if changed {
+        let encoded = review::encode_ledger(findings)?;
+        input.conversation.adopt_finding_state(&encoded).map_err(|error| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::Repository,
+                "adopt retained D2 finding body descriptors",
+                error,
+            )
+            .with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
+        })?;
+    }
+    Ok(())
+}
+
 pub(super) struct RunState {
     pub(super) task_summary: String,
     pub(super) run_instructions: String,
     pub(super) design: design::DesignDocument,
     pub(super) fix_summaries: Vec<String>,
-    pub(super) tool_calls: u32,
+    pub(super) tool_calls: u64,
     pub(super) conversation_revision: u64,
     pub(super) findings: ProductFindingLedger,
     pub(super) coordinator: ProductionRunCoordinator,
@@ -214,7 +305,7 @@ impl RunState {
             fix_summaries: resume.fix_summaries().to_vec(),
             tool_calls: resume.tool_calls(),
             conversation_revision: resume.checkpoint().identity().requirements_revision(),
-            findings: review::restore_ledger(resume.finding_state())?,
+            findings: resume.finding_ledger().cloned().ok_or_else(missing_findings)?,
             coordinator: ProductionRunCoordinator::new(resume.fixer_cycles()),
             developer_evidence: resume.developer_evidence().to_owned(),
             successful_commands: resume.successful_commands().to_vec(),
@@ -226,7 +317,7 @@ impl RunState {
         design: design::DesignDocument,
         findings: ProductFindingLedger,
         host: super::HostTurnEvidence,
-    ) -> Self {
+    ) -> Result<Self, ProductRunnerError> {
         let mut state = Self {
             task_summary: "Peritus retained host-observed work after the developer's terminal report could not be accepted."
                 .to_owned(),
@@ -242,13 +333,22 @@ impl RunState {
             successful_commands: host.successful_commands,
         };
         if let Some(resume) = &input.resume {
-            state.merge_resume_host(resume);
+            state.merge_resume_host(resume)?;
         }
-        state
+        Ok(state)
     }
 
-    pub(super) fn merge_host(&mut self, host: &super::HostTurnEvidence) {
-        self.tool_calls = self.tool_calls.saturating_add(host.tool_calls);
+    pub(super) fn merge_host(
+        &mut self,
+        host: &super::HostTurnEvidence,
+    ) -> Result<(), ProductRunnerError> {
+        self.tool_calls = self.tool_calls.checked_add(host.tool_calls).ok_or_else(|| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::InternalInvariant,
+                "accumulate developer tool calls",
+                "developer tool-call counter overflow",
+            )
+        })?;
         self.conversation_revision = host.conversation_revision;
         crate::developer_tools::merge_rendered(
             &mut self.developer_evidence,
@@ -258,10 +358,17 @@ impl RunState {
             &mut self.successful_commands,
             &host.successful_commands,
         );
+        Ok(())
     }
 
-    fn merge_resume_host(&mut self, resume: &ProductRunResume) {
-        self.tool_calls = self.tool_calls.saturating_add(resume.tool_calls());
+    fn merge_resume_host(&mut self, resume: &ProductRunResume) -> Result<(), ProductRunnerError> {
+        self.tool_calls = self.tool_calls.checked_add(resume.tool_calls()).ok_or_else(|| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::InternalInvariant,
+                "accumulate retained developer tool calls",
+                "retained developer tool-call counter overflow",
+            )
+        })?;
         let current_evidence = std::mem::take(&mut self.developer_evidence);
         resume.developer_evidence().clone_into(&mut self.developer_evidence);
         crate::developer_tools::merge_rendered(&mut self.developer_evidence, &current_evidence);
@@ -272,5 +379,24 @@ impl RunState {
             }
         }
         self.successful_commands = retained;
+        Ok(())
     }
+}
+
+fn missing_design() -> ProductRunnerError {
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::InternalInvariant,
+        "restore retained product state",
+        "the retained run has no completed design for this active phase",
+    )
+    .with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
+}
+
+fn missing_findings() -> ProductRunnerError {
+    ProductRunnerError::new(
+        ProductRunnerErrorKind::InternalInvariant,
+        "restore retained product state",
+        "the retained run has no decoded authoritative finding ledger",
+    )
+    .with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
 }

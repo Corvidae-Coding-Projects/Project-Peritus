@@ -33,7 +33,7 @@ pub use interaction::{
 };
 pub use tool_executor::{DeveloperToolExecution, DeveloperToolExecutor};
 pub use types::{
-    DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperRetryDisposition, DeveloperRetryReason, DeveloperRetryRecord,
+    DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopProgress,
+    DeveloperLoopRequest, DeveloperRetryDisposition, DeveloperRetryReason, DeveloperRetryRecord,
     DeveloperRetryRecovery, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
 };

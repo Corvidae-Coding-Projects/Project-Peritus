@@ -29,13 +29,19 @@ pub(super) fn build_model_request(
     kind: ModelTurnKind,
     required_tool: Option<&str>,
     selected_effort: Option<ReasoningEffort>,
+    remaining_tool_calls: u32,
 ) -> Result<ModelRequest, DeveloperLoopError> {
     let segment_prefix = request.limits.segment_request_prefix(&request.request_prefix);
+    let parallel_tool_calls = negotiated
+        .limits()
+        .max_parallel_tool_calls()
+        .min(remaining_tool_calls);
     let parallel_tools = if kind == ModelTurnKind::Developer
         && required_tool.is_none()
         && negotiated.includes(Capability::ParallelToolCalls)
+        && parallel_tool_calls > 0
     {
-        ParallelToolPolicy::Allowed(negotiated.limits().max_parallel_tool_calls())
+        ParallelToolPolicy::Allowed(parallel_tool_calls)
     } else {
         ParallelToolPolicy::Disabled
     };
@@ -80,7 +86,7 @@ pub(super) fn build_model_request(
             format!("{segment_prefix}-semantic-compaction-{turn}-attempt-{attempt}"),
             Vec::new(),
             ToolChoice::None,
-            request.limits.max_output_tokens().min(8_192),
+            request.limits.max_output_tokens(),
         ),
     };
     let model_request = ModelRequest::new(

@@ -4,8 +4,9 @@ mod provider_turn;
 use provider_turn::{RetryContext, complete_turn};
 
 use peritus_model_protocol::{
-    CanonicalJson, Capability, ContentBlock, JsonBounds, MediaInput, Message, ProtocolLimits,
-    RequestedCapabilities, Role, ToolResult, encode_messages, negotiate,
+    CanonicalJson, Capability, CompletedToolCall, ContentBlock, JsonBounds, MediaInput, Message,
+    ProtocolLimits, ProviderProfile, RequestedCapabilities, Role, ToolResult, encode_messages,
+    negotiate,
 };
 use peritus_provider_core::ModelProvider;
 
@@ -15,7 +16,8 @@ use super::semantic::SemanticCompaction;
 use super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperCompactionOwner,
     DeveloperContextEvent, DeveloperInteraction, DeveloperLoop, DeveloperLoopError,
-    DeveloperLoopOutcome, DeveloperLoopRequest, DeveloperToolExecutor,
+    DeveloperLoopOutcome, DeveloperLoopProgress, DeveloperLoopRequest, DeveloperModelRole,
+    DeveloperToolExecutor,
     DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
 };
 use super::{context::prepare_messages, context_port::ContextSession};
@@ -47,6 +49,10 @@ impl DeveloperLoop {
         let mut first_turn = 1;
         let mut tool_calls = 0;
         let mut retries = 0;
+        let mut segment_progress = DeveloperLoopProgress::default();
+        let mut pending_exchange = Vec::new();
+        let mut pending_calls = Vec::new();
+        let mut pending_first_sequence = 1;
         let mut resumed_turn = resume.is_some();
         let mut resumed_segment =
             resume.as_ref().is_some_and(|resume| resume.is_segment_continuation());
@@ -54,7 +60,16 @@ impl DeveloperLoop {
             first_turn = resume.turn();
             tool_calls = resume.tool_calls();
             retries = resume.retries();
-            let (system, prompt, mut attachments, mut resumed_messages) =
+            segment_progress = resume.progress();
+            let (
+                system,
+                prompt,
+                mut attachments,
+                mut resumed_messages,
+                resumed_exchange,
+                resumed_calls,
+                resumed_first_sequence,
+            ) =
                 resume.into_request_state();
             restore_resolved_resume_media(
                 &messages,
@@ -69,9 +84,13 @@ impl DeveloperLoop {
             request.prompt = prompt;
             request.attachments = attachments;
             messages = resumed_messages;
+            pending_exchange = resumed_exchange;
+            pending_calls = resumed_calls;
+            pending_first_sequence = resumed_first_sequence;
         }
         let execution_prefix = request.limits.segment_request_prefix(&request.request_prefix);
-        let mut compactions = 0_u16;
+        let mut completed_model_turns = first_turn.saturating_sub(1);
+        let mut compactions = 0_u64;
         let mut usage = DeveloperUsage::default();
         let mut input_revision = 0;
         let mut governing_installed = false;
@@ -128,6 +147,62 @@ impl DeveloperLoop {
                 None
             };
             let required_tool = tools.required_tool_name().map(str::to_owned);
+            if !pending_exchange.is_empty() {
+                messages.append(&mut pending_exchange);
+                execute_tool_batch(
+                    &request,
+                    tools,
+                    trace,
+                    &mut context,
+                    live,
+                    interaction,
+                    protocol_limits,
+                    profile,
+                    &execution_prefix,
+                    input_revision,
+                    &mut messages,
+                    std::mem::take(&mut pending_calls),
+                    pending_first_sequence,
+                )
+                .await?;
+                if tools.yields_to_host() {
+                    let progress = segment_progress.checked_add_segment(
+                        completed_model_turns,
+                        tool_calls,
+                        compactions,
+                        retries,
+                    )?;
+                    return Ok(DeveloperLoopOutcome {
+                        text: String::new(),
+                        model_turns: progress.model_turns(),
+                        tool_calls: progress.tool_calls(),
+                        compactions: progress.compactions(),
+                        retries: progress.retries(),
+                        usage,
+                        messages,
+                    });
+                }
+                if tool_calls >= request.limits.max_tool_calls() {
+                    let next_segment = request
+                        .limits
+                        .segment_sequence()
+                        .checked_add(1)
+                        .ok_or(DeveloperLoopError::LimitExceeded)?;
+                    let progress = segment_progress.checked_add_segment(
+                        completed_model_turns,
+                        tool_calls,
+                        compactions,
+                        retries,
+                    )?;
+                    return if request.limits.permits_segment_continuation()
+                        && context.schedule_segment(next_segment, progress, &[])?
+                    {
+                        Err(DeveloperLoopError::SegmentContinuation)
+                    } else {
+                        Err(DeveloperLoopError::SegmentExhausted)
+                    };
+                }
+            }
             let invocation_policy = invocation::policy(&request, turn, required_tool.as_deref())?;
             if compaction_owner == DeveloperCompactionOwner::LocalContext {
                 if resumed_turn {
@@ -206,6 +281,7 @@ impl DeveloperLoop {
                         turn,
                         ModelTurnKind::SemanticCompaction,
                         None,
+                        0,
                         &mut retries,
                         &mut usage,
                         trace,
@@ -246,7 +322,7 @@ impl DeveloperLoop {
                 }
                 compactions = compactions
                     .checked_add(
-                        u16::try_from(records.len())
+                        u64::try_from(records.len())
                             .map_err(|_| DeveloperLoopError::LimitExceeded)?,
                     )
                     .ok_or(DeveloperLoopError::LimitExceeded)?;
@@ -261,6 +337,11 @@ impl DeveloperLoop {
                 turn,
                 ModelTurnKind::Developer,
                 required_tool.as_deref(),
+                request
+                    .limits
+                    .max_tool_calls()
+                    .checked_sub(tool_calls)
+                    .ok_or(DeveloperLoopError::LimitExceeded)?,
                 &mut retries,
                 &mut usage,
                 trace,
@@ -275,6 +356,7 @@ impl DeveloperLoop {
             else {
                 continue;
             };
+            completed_model_turns = turn;
 
             let (assistant, calls, final_text) =
                 state::assistant_items(session.completed_items(), protocol_limits)?;
@@ -311,12 +393,18 @@ impl DeveloperLoop {
                     )?))?;
                 }
                 context.complete_invocation()?;
-                return Ok(DeveloperLoopOutcome {
-                    text: final_text,
-                    model_turns: turn,
+                let progress = segment_progress.checked_add_segment(
+                    completed_model_turns,
                     tool_calls,
                     compactions,
                     retries,
+                )?;
+                return Ok(DeveloperLoopOutcome {
+                    text: final_text,
+                    model_turns: progress.model_turns(),
+                    tool_calls: progress.tool_calls(),
+                    compactions: progress.compactions(),
+                    retries: progress.retries(),
                     usage,
                     messages,
                 });
@@ -325,96 +413,192 @@ impl DeveloperLoop {
                 &mut messages,
                 Message::new(Role::Assistant, assistant, protocol_limits)?,
             )?;
-            tool_calls = tool_calls
-                .checked_add(
-                    u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
-                )
-                .ok_or(DeveloperLoopError::LimitExceeded)?;
-            if !request.limits.permits_segment_continuation()
-                && tool_calls > request.limits.max_tool_calls()
-            {
-                return Err(DeveloperLoopError::SegmentExhausted);
-            }
             let calls_in_batch =
                 u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?;
+            let remaining_tool_calls = request
+                .limits
+                .max_tool_calls()
+                .checked_sub(tool_calls)
+                .ok_or(DeveloperLoopError::LimitExceeded)?;
+            if calls_in_batch > remaining_tool_calls {
+                if calls_in_batch > request.limits.max_tool_calls() {
+                    return Err(DeveloperLoopError::LimitExceeded);
+                }
+                let next_segment = request
+                    .limits
+                    .segment_sequence()
+                    .checked_add(1)
+                    .ok_or(DeveloperLoopError::LimitExceeded)?;
+                let progress = segment_progress.checked_add_segment(
+                    completed_model_turns,
+                    tool_calls,
+                    compactions,
+                    retries,
+                )?;
+                return if request.limits.permits_segment_continuation()
+                    && context.schedule_segment(next_segment, progress, &calls)?
+                {
+                    Err(DeveloperLoopError::SegmentContinuation)
+                } else {
+                    Err(DeveloperLoopError::SegmentExhausted)
+                };
+            }
+            tool_calls = tool_calls
+                .checked_add(calls_in_batch)
+                .ok_or(DeveloperLoopError::LimitExceeded)?;
             let first_sequence = tool_calls
                 .checked_sub(calls_in_batch)
                 .and_then(|value| value.checked_add(1))
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
-            for (index, call) in calls.into_iter().enumerate() {
-                if request.cancellation.is_cancelled() {
+            execute_tool_batch(
+                &request,
+                tools,
+                trace,
+                &mut context,
+                live,
+                interaction,
+                protocol_limits,
+                profile,
+                &execution_prefix,
+                input_revision,
+                &mut messages,
+                calls,
+                first_sequence,
+            )
+            .await?;
+            if tools.yields_to_host() {
+                let progress = segment_progress.checked_add_segment(
+                    completed_model_turns,
+                    tool_calls,
+                    compactions,
+                    retries,
+                )?;
+                return Ok(DeveloperLoopOutcome {
+                    text: String::new(),
+                    model_turns: progress.model_turns(),
+                    tool_calls: progress.tool_calls(),
+                    compactions: progress.compactions(),
+                    retries: progress.retries(),
+                    usage,
+                    messages,
+                });
+            }
+            if request.limits.permits_segment_continuation()
+                && tool_calls >= request.limits.max_tool_calls()
+            {
+                let next_segment = request
+                    .limits
+                    .segment_sequence()
+                    .checked_add(1)
+                    .ok_or(DeveloperLoopError::LimitExceeded)?;
+                let progress = segment_progress.checked_add_segment(
+                    completed_model_turns,
+                    tool_calls,
+                    compactions,
+                    retries,
+                )?;
+                return if context.schedule_segment(next_segment, progress, &[])? {
+                    Err(DeveloperLoopError::SegmentContinuation)
+                } else {
+                    Err(DeveloperLoopError::SegmentExhausted)
+                };
+            }
+        }
+        if request.limits.permits_segment_continuation() {
+            let next_segment = request
+                .limits
+                .segment_sequence()
+                .checked_add(1)
+                .ok_or(DeveloperLoopError::LimitExceeded)?;
+            let progress = segment_progress.checked_add_segment(
+                completed_model_turns,
+                tool_calls,
+                compactions,
+                retries,
+            )?;
+            if context.schedule_segment(next_segment, progress, &[])? {
+                return Err(DeveloperLoopError::SegmentContinuation);
+            }
+        }
+        Err(DeveloperLoopError::SegmentExhausted)
+    }
+}
+
+#[allow(clippy::too_many_arguments, reason = "one atomic tool batch retains every host boundary")]
+async fn execute_tool_batch(
+    request: &DeveloperLoopRequest,
+    tools: &mut dyn DeveloperToolExecutor,
+    trace: &mut dyn DeveloperTrace,
+    context: &mut ContextSession<'_>,
+    live: Option<(&dyn DeveloperInteraction, DeveloperModelRole)>,
+    interaction: Option<&dyn DeveloperInteraction>,
+    protocol_limits: ProtocolLimits,
+    profile: &ProviderProfile,
+    execution_prefix: &str,
+    input_revision: u64,
+    messages: &mut Vec<Message>,
+    calls: Vec<CompletedToolCall>,
+    first_sequence: u32,
+) -> Result<(), DeveloperLoopError> {
+    for (index, call) in calls.into_iter().enumerate() {
+        if request.cancellation.is_cancelled() {
+            return Err(DeveloperLoopError::Cancelled);
+        }
+        let name = call.name().as_str();
+        let sequence = first_sequence
+            .checked_add(u32::try_from(index).map_err(|_| DeveloperLoopError::LimitExceeded)?)
+            .ok_or(DeveloperLoopError::LimitExceeded)?;
+        let mut yielded = tools.yields_to_host() || input_changed(interaction, input_revision)?;
+        if !yielded && let Some((port, role)) = live {
+            match port.admit_tool(
+                role,
+                execution_prefix,
+                sequence,
+                input_revision,
+                tools.effect(&call),
+            )? {
+                crate::DeveloperControlFlow::Continue => {}
+                crate::DeveloperControlFlow::Yield => yielded = true,
+                crate::DeveloperControlFlow::Stop => {
+                    port.observe(DeveloperActivity::ToolSkipped { name })?;
                     return Err(DeveloperLoopError::Cancelled);
                 }
-                let name = call.name().as_str();
-                let sequence = first_sequence
-                    .checked_add(
-                        u32::try_from(index).map_err(|_| DeveloperLoopError::LimitExceeded)?,
-                    )
-                    .ok_or(DeveloperLoopError::LimitExceeded)?;
-                let mut yielded =
-                    tools.yields_to_host() || input_changed(interaction, input_revision)?;
-                if !yielded && let Some((port, role)) = live {
-                    match port.admit_tool(
-                        role,
-                        &execution_prefix,
-                        sequence,
-                        input_revision,
-                        tools.effect(&call),
-                    )? {
-                        crate::DeveloperControlFlow::Continue => {}
-                        crate::DeveloperControlFlow::Yield => yielded = true,
-                        crate::DeveloperControlFlow::Stop => {
-                            port.observe(DeveloperActivity::ToolSkipped { name })?;
-                            return Err(DeveloperLoopError::Cancelled);
-                        }
-                    }
-                }
-                let observation = if yielded {
-                    if let Some(port) = interaction {
-                        port.observe(DeveloperActivity::ToolSkipped { name })?;
-                    }
-                    DeveloperToolObservation {
-                        output: CanonicalJson::parse(
-                            r#"{"error":"Not executed: control was handed to the host or a newer user message superseded this tool call."}"#,
-                            JsonBounds::value(protocol_limits),
-                        )?,
-                        is_error: true,
-                    }
-                } else {
-                    if let Some(port) = interaction {
-                        port.observe(DeveloperActivity::ToolStarted {
-                            name,
-                            arguments: &call.arguments().to_wire_string(),
-                        })?;
-                    }
-                    let observation = tools.execute_async(&call).await?;
-                    if request.cancellation.is_cancelled() {
-                        return Err(DeveloperLoopError::Cancelled);
-                    }
-                    trace.account(DeveloperAccountingEvent::ToolCall)?;
-                    if let Some(port) = interaction {
-                        port.observe(DeveloperActivity::ToolFinished {
-                            name,
-                            output: &observation.output.to_wire_string(),
-                            is_error: observation.is_error,
-                        })?;
-                    }
-                    if let Some((port, role)) = live
-                        && port.complete_tool(role, &execution_prefix, sequence)?
-                            == crate::DeveloperControlFlow::Stop
-                    {
-                        trace.record(DeveloperTraceEvent::ToolObservation {
-                            call: &call,
-                            observation: &observation,
-                        })?;
-                        context.observe(DeveloperContextEvent::ToolObservation {
-                            call: &call,
-                            observation: &observation,
-                        })?;
-                        return Err(DeveloperLoopError::Cancelled);
-                    }
-                    observation
-                };
+            }
+        }
+        let observation = if yielded {
+            if let Some(port) = interaction {
+                port.observe(DeveloperActivity::ToolSkipped { name })?;
+            }
+            DeveloperToolObservation {
+                output: CanonicalJson::parse(
+                    r#"{"error":"Not executed: control was handed to the host or a newer user message superseded this tool call."}"#,
+                    JsonBounds::value(protocol_limits),
+                )?,
+                is_error: true,
+            }
+        } else {
+            if let Some(port) = interaction {
+                port.observe(DeveloperActivity::ToolStarted {
+                    name,
+                    arguments: &call.arguments().to_wire_string(),
+                })?;
+            }
+            let observation = tools.execute_async(&call).await?;
+            if request.cancellation.is_cancelled() {
+                return Err(DeveloperLoopError::Cancelled);
+            }
+            trace.account(DeveloperAccountingEvent::ToolCall)?;
+            if let Some(port) = interaction {
+                port.observe(DeveloperActivity::ToolFinished {
+                    name,
+                    output: &observation.output.to_wire_string(),
+                    is_error: observation.is_error,
+                })?;
+            }
+            if let Some((port, role)) = live
+                && port.complete_tool(role, execution_prefix, sequence)?
+                    == crate::DeveloperControlFlow::Stop
+            {
                 trace.record(DeveloperTraceEvent::ToolObservation {
                     call: &call,
                     observation: &observation,
@@ -423,66 +607,47 @@ impl DeveloperLoop {
                     call: &call,
                     observation: &observation,
                 })?;
-                let model_output = model_visible_tool_output(
-                    call.name().as_str(),
-                    &observation.output,
-                    profile.limits().max_input_tokens(),
-                    protocol_limits,
-                )?;
-                let model_output = context.annotate(&call, model_output)?;
-                context.append(
-                    &mut messages,
-                    Message::new(
-                        Role::Tool,
-                        vec![ContentBlock::ToolResult(ToolResult::new(
-                            call.id().clone(),
-                            model_output,
-                            observation.is_error,
-                        ))],
-                        protocol_limits,
-                    )?,
-                )?;
+                return Err(DeveloperLoopError::Cancelled);
             }
-            // A queued warning must reach a provider turn before it can justify stopping.
-            // Capturing first preserves an executor's pending-warning state for this batch.
-            let continuation_blocker = tools.continuation_blocker();
-            if let Some(feedback) = tools.take_progress_feedback() {
-                context.append(&mut messages, message(Role::User, feedback, protocol_limits)?)?;
-            }
-            context.observe(DeveloperContextEvent::BatchCompleted)?;
-            if let Some(blocker) = continuation_blocker {
-                return Err(DeveloperLoopError::Tool(blocker));
-            }
-            if tools.yields_to_host() {
-                return Ok(DeveloperLoopOutcome {
-                    text: String::new(),
-                    model_turns: turn,
-                    tool_calls,
-                    compactions,
-                    retries,
-                    usage,
-                    messages,
-                });
-            }
-            if request.limits.permits_segment_continuation()
-                && tool_calls >= request.limits.max_tool_calls()
-            {
-                let next_segment = request.limits.segment_sequence().saturating_add(1);
-                return if context.schedule_segment(next_segment)? {
-                    Err(DeveloperLoopError::SegmentContinuation)
-                } else {
-                    Err(DeveloperLoopError::SegmentExhausted)
-                };
-            }
-        }
-        if request.limits.permits_segment_continuation() {
-            let next_segment = request.limits.segment_sequence().saturating_add(1);
-            if context.schedule_segment(next_segment)? {
-                return Err(DeveloperLoopError::SegmentContinuation);
-            }
-        }
-        Err(DeveloperLoopError::SegmentExhausted)
+            observation
+        };
+        trace.record(DeveloperTraceEvent::ToolObservation {
+            call: &call,
+            observation: &observation,
+        })?;
+        context.observe(DeveloperContextEvent::ToolObservation {
+            call: &call,
+            observation: &observation,
+        })?;
+        let model_output = model_visible_tool_output(
+            call.name().as_str(),
+            &observation.output,
+            profile.limits().max_input_tokens(),
+            protocol_limits,
+        )?;
+        let model_output = context.annotate(&call, model_output)?;
+        context.append(
+            messages,
+            Message::new(
+                Role::Tool,
+                vec![ContentBlock::ToolResult(ToolResult::new(
+                    call.id().clone(),
+                    model_output,
+                    observation.is_error,
+                ))],
+                protocol_limits,
+            )?,
+        )?;
     }
+    let continuation_blocker = tools.continuation_blocker();
+    if let Some(feedback) = tools.take_progress_feedback() {
+        context.append(messages, message(Role::User, feedback, protocol_limits)?)?;
+    }
+    context.observe(DeveloperContextEvent::BatchCompleted)?;
+    if let Some(blocker) = continuation_blocker {
+        return Err(DeveloperLoopError::Tool(blocker));
+    }
+    Ok(())
 }
 
 mod state;

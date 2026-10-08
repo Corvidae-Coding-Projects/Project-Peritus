@@ -6,7 +6,8 @@ use super::{
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
         INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
-        SEGMENT_CONTINUATION_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
+        SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
         TranscriptManifest, ViewValidation, decode,
     },
 };
@@ -68,12 +69,43 @@ pub(super) fn validate_checkpoint(
         .iter()
         .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
     let segment_valid = validation.segment_continuation.as_ref().is_none_or(|segment| {
-        schema_version == CHECKPOINT_SCHEMA_VERSION
-            && segment.schema_version == SEGMENT_CONTINUATION_SCHEMA_VERSION
+        let common = schema_version == CHECKPOINT_SCHEMA_VERSION
             && segment.invocation == transcript.invocation
             && segment.request_prefix == transcript.request_prefix
             && segment.segment_sequence > 0
-            && segment.protocol_limits_sha256 != [0; 32]
+            && segment.protocol_limits_sha256 != [0; 32];
+        let pending_valid = segment.pending_batch.as_ref().is_none_or(|batch| {
+            batch.assistant_source > 0
+                && !batch.calls.is_empty()
+                && batch.calls.iter().enumerate().all(|(index, call)| {
+                    !call.id.is_empty()
+                        && !call.name.is_empty()
+                        && !batch.calls[..index].contains(call)
+                        && (transcript.pending.iter().any(|pending| {
+                            pending.invocation == segment.invocation
+                                && pending.source == batch.assistant_source
+                                && pending.handle.is_none()
+                                && pending.call == *call
+                        }) || sources.iter().any(|source| {
+                            source.invocation == segment.invocation
+                                && source.kind == ArchiveKind::ToolOutput
+                                && source.call.as_ref() == Some(call)
+                        }))
+                })
+                && sources.iter().any(|source| {
+                    source.sequence == batch.assistant_source
+                        && source.invocation == segment.invocation
+                        && source.kind == ArchiveKind::Assistant
+                })
+        });
+        common
+            && match segment.schema_version {
+                LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION => {
+                    segment.progress == Default::default() && segment.pending_batch.is_none()
+                }
+                SEGMENT_CONTINUATION_SCHEMA_VERSION => pending_valid,
+                _ => false,
+            }
     });
     if validation.state_revision != state.revision()
         || validation.through_observation != state.through_observation()

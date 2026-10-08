@@ -77,8 +77,8 @@ pub async fn complete_developer_turn(
         .transpose()
         .map_err(|error| developer_error(&error))?
         .unwrap_or_default();
-    let mut invocation = 0_u32;
-    let mut segment = 0_u32;
+    let mut invocation = 0_u64;
+    let mut segment = 0_u64;
     let mut reuse_invocation = false;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
@@ -95,7 +95,9 @@ pub async fn complete_developer_turn(
         if reuse_invocation {
             reuse_invocation = false;
         } else {
-            invocation = invocation.saturating_add(1);
+            invocation = invocation
+                .checked_add(1)
+                .ok_or_else(|| developer_error(&DeveloperLoopError::LimitExceeded))?;
             segment = 0;
         }
         let revision = input.conversation.revision();
@@ -136,7 +138,10 @@ pub async fn complete_developer_turn(
             &tools.successful_commands(),
         );
         if let Ok(outcome) = &result {
-            host.tool_calls = host.tool_calls.saturating_add(outcome.tool_calls);
+            host.tool_calls = host
+                .tool_calls
+                .checked_add(outcome.tool_calls)
+                .ok_or_else(|| developer_error(&DeveloperLoopError::LimitExceeded))?;
         }
         if let Err(error) = accounting.check() {
             return Ok(AppliedTurn::Rejected { error, host });
@@ -187,7 +192,9 @@ pub async fn complete_developer_turn(
         else {
             if segment_continuation {
                 reuse_invocation = true;
-                segment = executed_segment.saturating_add(1);
+                segment = executed_segment
+                    .checked_add(1)
+                    .ok_or_else(|| developer_error(&DeveloperLoopError::LimitExceeded))?;
             }
             continue;
         };
@@ -258,8 +265,8 @@ fn parse_grounded_terminal(
 struct DeveloperInvocation<'a> {
     role: &'a str,
     cycle: u32,
-    invocation: u32,
-    segment: u32,
+    invocation: u64,
+    segment: u64,
 }
 
 struct InvocationContext<'a> {
@@ -283,7 +290,7 @@ async fn run_selected_invocation(
     Option<(
         Result<DeveloperLoopOutcome, DeveloperLoopError>,
         WorkspaceDeveloperTools,
-        u32,
+        u64,
     )>,
     ProductRunnerError,
 > {
@@ -315,7 +322,7 @@ async fn run_developer_invocation(
     (
         Result<DeveloperLoopOutcome, DeveloperLoopError>,
         WorkspaceDeveloperTools,
-        u32,
+        u64,
     ),
     ProductRunnerError,
 > {
@@ -347,7 +354,7 @@ async fn run_developer_invocation(
                 identity.role,
                 identity.cycle,
                 revision,
-                u64::from(identity.invocation),
+                identity.invocation,
             )?,
             identity.segment,
         ),

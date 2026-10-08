@@ -109,6 +109,19 @@ impl LocalMemory {
         call: &CompletedToolCall,
         output: &DeveloperToolObservation,
     ) -> Result<u64, DeveloperLoopError> {
+        let identity = call_identity(call);
+        if let Some(prior) = self.sources.iter().find(|source| {
+            source.invocation == self.transcript.invocation
+                && source.kind == ArchiveKind::ToolOutput
+                && source.call.as_ref() == Some(&identity)
+        }) {
+            if prior.artifact.digest != sha256(output.output.canonical_bytes()).into_bytes()
+                || prior.is_error != output.is_error
+            {
+                return Err(error("conflicting recovery of tool observation identity"));
+            }
+            return Ok(prior.sequence);
+        }
         self.observe_tool_in(self.transcript.invocation, self.next_tool_sequence()?, call, output)
     }
 

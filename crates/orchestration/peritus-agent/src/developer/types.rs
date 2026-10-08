@@ -16,29 +16,26 @@ pub struct DeveloperLoopLimits {
     tool_calls: u32,
     max_output_tokens: u64,
     segment_continuation: bool,
-    segment_sequence: u32,
+    segment_sequence: u64,
 }
 
 impl DeveloperLoopLimits {
     /// Creates nonzero production loop bounds.
     ///
     /// # Errors
-    /// Rejects zero or unreasonably wide loops.
+    /// Rejects zero bounds. The integer representations are the physical scheduling bounds;
+    /// callers may choose any nonzero value they can actually schedule.
     pub const fn new(
         max_model_turns: u16,
         max_tool_calls: u32,
     ) -> Result<Self, DeveloperLoopError> {
-        if max_model_turns == 0
-            || max_model_turns > 128
-            || max_tool_calls == 0
-            || max_tool_calls > 2_048
-        {
+        if max_model_turns == 0 || max_tool_calls == 0 {
             return Err(DeveloperLoopError::LimitExceeded);
         }
         Ok(Self {
             model_turns: max_model_turns,
             tool_calls: max_tool_calls,
-            max_output_tokens: 32_768,
+            max_output_tokens: u64::MAX,
             segment_continuation: false,
             segment_sequence: 0,
         })
@@ -59,7 +56,7 @@ impl DeveloperLoopLimits {
     /// Segment zero preserves canonical legacy request and receipt identities. Later segments use
     /// a suffix so their model requests and effects cannot collide with an earlier segment.
     #[must_use]
-    pub const fn with_segment_sequence(mut self, segment_sequence: u32) -> Self {
+    pub const fn with_segment_sequence(mut self, segment_sequence: u64) -> Self {
         self.segment_sequence = segment_sequence;
         self
     }
@@ -131,7 +128,7 @@ impl DeveloperLoopLimits {
 
     /// Physical segment identity; zero is the unchanged legacy request namespace.
     #[must_use]
-    pub const fn segment_sequence(self) -> u32 {
+    pub const fn segment_sequence(self) -> u64 {
         self.segment_sequence
     }
 
@@ -143,12 +140,83 @@ impl DeveloperLoopLimits {
 
     /// Derives a physical segment namespace while preserving segment-zero compatibility.
     #[must_use]
-    pub fn request_prefix_for_segment(logical_prefix: &str, segment_sequence: u32) -> String {
+    pub fn request_prefix_for_segment(logical_prefix: &str, segment_sequence: u64) -> String {
         if segment_sequence == 0 {
             logical_prefix.to_owned()
         } else {
             format!("{logical_prefix}-segment-{segment_sequence}")
         }
+    }
+}
+
+/// Exact cumulative progress of one durable logical developer invocation.
+///
+/// Physical segment limits remain in [`DeveloperLoopLimits`]. This state crosses segment and
+/// process boundaries without turning a scheduling batch into a task-work quota.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct DeveloperLoopProgress {
+    model_turns: u64,
+    tool_calls: u64,
+    compactions: u64,
+    retries: u64,
+}
+
+impl DeveloperLoopProgress {
+    /// Reconstructs host-validated cumulative progress.
+    #[must_use]
+    pub const fn new(model_turns: u64, tool_calls: u64, compactions: u64, retries: u64) -> Self {
+        Self { model_turns, tool_calls, compactions, retries }
+    }
+
+    /// Completed provider turns across the logical invocation.
+    #[must_use]
+    pub const fn model_turns(self) -> u64 {
+        self.model_turns
+    }
+
+    /// Admitted application tool calls across the logical invocation.
+    #[must_use]
+    pub const fn tool_calls(self) -> u64 {
+        self.tool_calls
+    }
+
+    /// Transcript compactions across the logical invocation.
+    #[must_use]
+    pub const fn compactions(self) -> u64 {
+        self.compactions
+    }
+
+    /// Safe provider retries across the logical invocation.
+    #[must_use]
+    pub const fn retries(self) -> u64 {
+        self.retries
+    }
+
+    pub(crate) fn checked_add_segment(
+        self,
+        model_turns: u16,
+        tool_calls: u32,
+        compactions: u64,
+        retries: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        Ok(Self {
+            model_turns: self
+                .model_turns
+                .checked_add(u64::from(model_turns))
+                .ok_or(DeveloperLoopError::LimitExceeded)?,
+            tool_calls: self
+                .tool_calls
+                .checked_add(u64::from(tool_calls))
+                .ok_or(DeveloperLoopError::LimitExceeded)?,
+            compactions: self
+                .compactions
+                .checked_add(compactions)
+                .ok_or(DeveloperLoopError::LimitExceeded)?,
+            retries: self
+                .retries
+                .checked_add(retries)
+                .ok_or(DeveloperLoopError::LimitExceeded)?,
+        })
     }
 }
 
@@ -572,11 +640,11 @@ pub struct DeveloperLoopOutcome {
     /// Final provider text for product-level parsing.
     pub text: String,
     /// Number of provider turns executed.
-    pub model_turns: u16,
+    pub model_turns: u64,
     /// Number of application tool calls observed.
-    pub tool_calls: u32,
+    pub tool_calls: u64,
     /// Number of transcript compactions applied during the role.
-    pub compactions: u16,
+    pub compactions: u64,
     /// Number of safe provider retries completed during the role.
     pub retries: u64,
     /// Aggregate normalized usage across every completed provider response.

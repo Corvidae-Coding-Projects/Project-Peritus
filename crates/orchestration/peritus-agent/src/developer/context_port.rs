@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 use super::context_encoding::estimated_request_tokens;
 use super::{
     DeveloperCompactionOwner, DeveloperInteraction, DeveloperLoopError, DeveloperLoopRequest,
-    DeveloperToolObservation,
+    DeveloperLoopProgress, DeveloperToolObservation,
 };
 
 /// Estimates the complete input request using the same accounting as the production loop.
@@ -47,6 +47,10 @@ pub struct DeveloperContextResume {
     tool_calls: u32,
     retries: u64,
     segment_continuation: bool,
+    progress: DeveloperLoopProgress,
+    pending_exchange: Vec<Message>,
+    pending_calls: Vec<CompletedToolCall>,
+    pending_first_sequence: u32,
 }
 
 impl DeveloperContextResume {
@@ -61,7 +65,18 @@ impl DeveloperContextResume {
         tool_calls: u32,
         retries: u64,
     ) -> Result<Self, DeveloperLoopError> {
-        Self::new_with_kind(turn, initial_messages, messages, tool_calls, retries, false)
+        Self::new_with_kind(
+            turn,
+            initial_messages,
+            messages,
+            tool_calls,
+            retries,
+            false,
+            DeveloperLoopProgress::default(),
+            Vec::new(),
+            Vec::new(),
+            1,
+        )
     }
 
     /// Creates checked state for a new physical segment of the same durable invocation.
@@ -75,7 +90,61 @@ impl DeveloperContextResume {
         tool_calls: u32,
         retries: u64,
     ) -> Result<Self, DeveloperLoopError> {
-        Self::new_with_kind(turn, initial_messages, messages, tool_calls, retries, true)
+        Self::new_with_kind(
+            turn,
+            initial_messages,
+            messages,
+            tool_calls,
+            retries,
+            true,
+            DeveloperLoopProgress::default(),
+            Vec::new(),
+            Vec::new(),
+            1,
+        )
+    }
+
+    /// Creates checked state for a physical segment with exact cumulative progress and an
+    /// optional provider-generated tool batch that has not completed admission.
+    ///
+    /// `pending_exchange` is exact durable replay beginning with the batch's assistant message
+    /// and any already committed tool-result prefix. `pending_calls` is the unfinished suffix.
+    ///
+    /// # Errors
+    /// Rejects malformed replay, zero sequence identities, or invalid ordinary resume state.
+    pub fn new_segment_with_progress(
+        turn: u16,
+        initial_messages: &[Message],
+        messages: Vec<Message>,
+        tool_calls: u32,
+        retries: u64,
+        progress: DeveloperLoopProgress,
+        pending_exchange: Vec<Message>,
+        pending_calls: Vec<CompletedToolCall>,
+        pending_first_sequence: u32,
+    ) -> Result<Self, DeveloperLoopError> {
+        if pending_first_sequence == 0
+            || pending_exchange
+                .first()
+                .is_some_and(|message| message.role() != Role::Assistant)
+            || (pending_exchange.is_empty() && !pending_calls.is_empty())
+        {
+            return Err(DeveloperLoopError::Context(
+                "invalid durable pending tool-batch replay".to_owned(),
+            ));
+        }
+        Self::new_with_kind(
+            turn,
+            initial_messages,
+            messages,
+            tool_calls,
+            retries,
+            true,
+            progress,
+            pending_exchange,
+            pending_calls,
+            pending_first_sequence,
+        )
     }
 
     fn new_with_kind(
@@ -85,6 +154,10 @@ impl DeveloperContextResume {
         tool_calls: u32,
         retries: u64,
         segment_continuation: bool,
+        progress: DeveloperLoopProgress,
+        pending_exchange: Vec<Message>,
+        pending_calls: Vec<CompletedToolCall>,
+        pending_first_sequence: u32,
     ) -> Result<Self, DeveloperLoopError> {
         let [system, user] = initial_messages else {
             return Err(DeveloperLoopError::Context(
@@ -130,6 +203,10 @@ impl DeveloperContextResume {
             tool_calls,
             retries,
             segment_continuation,
+            progress,
+            pending_exchange,
+            pending_calls,
+            pending_first_sequence,
         })
     }
 
@@ -149,10 +226,30 @@ impl DeveloperContextResume {
         self.segment_continuation
     }
 
+    pub(super) const fn progress(&self) -> DeveloperLoopProgress {
+        self.progress
+    }
+
     pub(super) fn into_request_state(
         self,
-    ) -> (String, String, Vec<peritus_model_protocol::MediaInput>, Vec<Message>) {
-        (self.system, self.prompt, self.attachments, self.messages)
+    ) -> (
+        String,
+        String,
+        Vec<peritus_model_protocol::MediaInput>,
+        Vec<Message>,
+        Vec<Message>,
+        Vec<CompletedToolCall>,
+        u32,
+    ) {
+        (
+            self.system,
+            self.prompt,
+            self.attachments,
+            self.messages,
+            self.pending_exchange,
+            self.pending_calls,
+            self.pending_first_sequence,
+        )
     }
 }
 
@@ -276,7 +373,9 @@ pub trait DeveloperContextPort: Send {
     /// Rejects an incomplete tool exchange, conflicting segment identity, or failed publication.
     fn schedule_segment(
         &mut self,
-        _next_segment: u32,
+        _next_segment: u64,
+        _progress: DeveloperLoopProgress,
+        _pending_calls: &[CompletedToolCall],
     ) -> Result<bool, DeveloperLoopError> {
         Ok(false)
     }
@@ -449,11 +548,15 @@ impl ContextSession<'_> {
 
     pub(super) fn schedule_segment(
         &mut self,
-        next_segment: u32,
+        next_segment: u64,
+        progress: DeveloperLoopProgress,
+        pending_calls: &[CompletedToolCall],
     ) -> Result<bool, DeveloperLoopError> {
         self.0
             .as_mut()
-            .map_or(Ok(false), |port| port.schedule_segment(next_segment))
+            .map_or(Ok(false), |port| {
+                port.schedule_segment(next_segment, progress, pending_calls)
+            })
     }
 
     pub(super) fn complete_invocation(&mut self) -> Result<(), DeveloperLoopError> {

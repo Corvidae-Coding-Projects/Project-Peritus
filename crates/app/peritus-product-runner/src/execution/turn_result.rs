@@ -3,7 +3,7 @@
 /// Host-observed work retained independently from the model's terminal report.
 pub struct HostTurnEvidence {
     /// Number of provider tool calls observed in terminal provider responses.
-    pub tool_calls: u32,
+    pub tool_calls: u64,
     /// Conversation revision under which the retained work was performed.
     pub conversation_revision: u64,
     /// Bounded structured command requests and observations from the host.
@@ -19,7 +19,7 @@ pub struct AppliedWrite {
     /// Concrete command or steps for running the result.
     pub run_instructions: String,
     /// Number of actual developer-tool calls executed.
-    pub tool_calls: u32,
+    pub tool_calls: u64,
     /// Conversation revision incorporated by the turn.
     pub conversation_revision: u64,
     /// Bounded structured command requests and observations from this developer turn.

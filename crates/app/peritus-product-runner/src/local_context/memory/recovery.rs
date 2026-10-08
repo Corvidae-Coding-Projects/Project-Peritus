@@ -11,8 +11,9 @@ use super::super::{
         ContextUpdateRoot, ContextUpdateTranscriptPage, INDEXED_CHECKPOINT_SCHEMA_VERSION,
         INDEX_PAGE_SCHEMA_VERSION, InlineContextUpdate, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION, MemoryRecord, PAGED_GENESIS_SCHEMA_VERSION,
-        SEGMENT_CONTINUATION_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, SourceIndexPage,
-        TranscriptManifest, ViewValidation, decode, encode,
+        LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
+        SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, SourceIndexPage, TranscriptManifest, ViewValidation,
+        decode, encode,
     },
     storage::StoredArtifact,
     view_binding,
@@ -362,7 +363,12 @@ impl LocalMemory {
                     .segment_continuation
                     .as_ref()
                     .ok_or_else(|| error("segment completion has no active continuation"))?;
-                if schema_version != SEGMENT_CONTINUATION_SCHEMA_VERSION
+                if !matches!(
+                    schema_version,
+                    LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION
+                        | SEGMENT_CONTINUATION_SCHEMA_VERSION
+                )
+                    || schema_version != active.schema_version
                     || active.invocation != invocation
                     || active.request_prefix != request_prefix
                     || active.segment_sequence != segment_sequence

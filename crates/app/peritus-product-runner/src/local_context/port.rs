@@ -5,7 +5,8 @@ use super::{
     error,
     memory::LocalMemory,
     record::{
-        SEGMENT_CONTINUATION_SCHEMA_VERSION, SegmentContinuation,
+        CallIdentity, PendingState, SEGMENT_CONTINUATION_SCHEMA_VERSION, SegmentContinuation,
+        SegmentPendingBatch, SegmentProgress,
     },
 };
 use crate::{
@@ -14,7 +15,8 @@ use crate::{
 };
 use peritus_agent::{
     DeveloperCompactionOwner, DeveloperContextAssembly, DeveloperContextEvent,
-    DeveloperContextPort, DeveloperContextResume, DeveloperLoopError, DeveloperLoopRequest,
+    DeveloperContextPort, DeveloperContextResume, DeveloperLoopError, DeveloperLoopProgress,
+    DeveloperLoopRequest,
 };
 use peritus_context::{ContextNodeId, working::WorkingBinding};
 use peritus_model_protocol::{
@@ -150,7 +152,7 @@ impl LocalContextHandle {
     pub(crate) fn pending_developer_reentry(
         &self,
         expected_prefix: &str,
-    ) -> Result<Option<(String, u32)>, DeveloperLoopError> {
+    ) -> Result<Option<(String, u64)>, DeveloperLoopError> {
         self.lock()?.pending_developer_reentry(expected_prefix)
     }
 
@@ -323,14 +325,27 @@ impl DeveloperContextPort for LocalContextHandle {
                 memory.observe_tool(call, observation)?;
             }
             DeveloperContextEvent::BatchCompleted => {
-                memory.compact_locally()?;
-                if (memory.config.checkpoint_every_completed_batch
-                    || memory.segment_continuation.is_some())
-                    && let Some(profile) = memory.profile.clone()
-                {
-                    let tools = memory.tools.clone();
-                    let messages = memory.prepare_view(&profile, &tools)?;
-                    memory.publish(&messages)?;
+                let pending_batch = memory
+                    .segment_continuation
+                    .as_mut()
+                    .and_then(|segment| segment.pending_batch.take());
+                let result = (|| {
+                    memory.compact_locally()?;
+                    if (memory.config.checkpoint_every_completed_batch
+                        || memory.segment_continuation.is_some())
+                        && let Some(profile) = memory.profile.clone()
+                    {
+                        let tools = memory.tools.clone();
+                        let messages = memory.prepare_view(&profile, &tools)?;
+                        memory.publish(&messages)?;
+                    }
+                    Ok(())
+                })();
+                if let Err(failure) = result {
+                    if let Some(segment) = memory.segment_continuation.as_mut() {
+                        segment.pending_batch = pending_batch;
+                    }
+                    return Err(failure);
                 }
             }
         }
@@ -354,25 +369,68 @@ impl DeveloperContextPort for LocalContextHandle {
 
     fn schedule_segment(
         &mut self,
-        next_segment: u32,
+        next_segment: u64,
+        progress: DeveloperLoopProgress,
+        pending_calls: &[CompletedToolCall],
     ) -> Result<bool, DeveloperLoopError> {
         let mut memory = self.lock()?;
-        if next_segment == 0
-            || memory
-                .transcript
-                .pending
-                .iter()
-                .any(|pending| pending.handle.is_none())
-        {
-            return Err(error("cannot checkpoint an incomplete segment tool exchange"));
+        if next_segment == 0 {
+            return Err(error("cannot checkpoint a zero developer segment"));
         }
         let previous = memory.segment_continuation.clone();
-        let expected = previous
-            .as_ref()
-            .map_or(1, |segment| segment.segment_sequence.saturating_add(1));
+        let expected = match previous.as_ref() {
+            Some(segment) => segment
+                .segment_sequence
+                .checked_add(1)
+                .ok_or_else(|| error("developer segment sequence overflow"))?,
+            None => 1,
+        };
         if next_segment != expected {
             return Err(error("noncontiguous developer segment continuation"));
         }
+        if previous.as_ref().is_some_and(|segment| {
+            segment.pending_batch.is_some()
+                || progress.model_turns() < segment.progress.model_turns
+                || progress.tool_calls() < segment.progress.tool_calls
+                || progress.compactions() < segment.progress.compactions
+                || progress.retries() < segment.progress.retries
+        }) {
+            return Err(error("developer segment progress regressed or retained a pending batch"));
+        }
+        let proposed = memory
+            .transcript
+            .pending
+            .iter()
+            .filter(|pending| pending.handle.is_none())
+            .collect::<Vec<_>>();
+        let pending_batch = if pending_calls.is_empty() {
+            if !proposed.is_empty() {
+                return Err(error("segment checkpoint omitted pending provider calls"));
+            }
+            None
+        } else {
+            let identities = pending_calls.iter().map(call_identity).collect::<Vec<_>>();
+            if identities
+                .iter()
+                .enumerate()
+                .any(|(index, identity)| identities[..index].contains(identity))
+                || proposed.len() != identities.len()
+                || proposed.iter().any(|pending| {
+                    pending.state != PendingState::Proposed
+                        || !identities.contains(&pending.call)
+                })
+            {
+                return Err(error("segment checkpoint pending call identity mismatch"));
+            }
+            let assistant_source = proposed
+                .first()
+                .map(|pending| pending.source)
+                .ok_or_else(|| error("segment checkpoint has no pending assistant source"))?;
+            if proposed.iter().any(|pending| pending.source != assistant_source) {
+                return Err(error("segment checkpoint spans multiple provider batches"));
+            }
+            Some(SegmentPendingBatch { assistant_source, calls: identities })
+        };
         let invocation = memory.transcript.invocation;
         let request_prefix = memory.transcript.request_prefix.clone();
         let protocol_limits_sha256 = super::reentry::protocol_limits_sha256()?;
@@ -382,6 +440,13 @@ impl DeveloperContextPort for LocalContextHandle {
             request_prefix,
             segment_sequence: next_segment,
             protocol_limits_sha256,
+            progress: SegmentProgress {
+                model_turns: progress.model_turns(),
+                tool_calls: progress.tool_calls(),
+                compactions: progress.compactions(),
+                retries: progress.retries(),
+            },
+            pending_batch,
         });
         let result = (|| {
             memory.compact_locally()?;
@@ -402,5 +467,13 @@ impl DeveloperContextPort for LocalContextHandle {
 
     fn complete_invocation(&mut self) -> Result<(), DeveloperLoopError> {
         self.lock()?.complete_segment_continuation()
+    }
+}
+
+fn call_identity(call: &CompletedToolCall) -> CallIdentity {
+    CallIdentity {
+        id: call.id().expose_for_wire().to_owned(),
+        name: call.name().as_str().to_owned(),
+        arguments_digest: peritus_codec::sha256(call.arguments().canonical_bytes()).into_bytes(),
     }
 }

@@ -18,7 +18,8 @@ pub(super) const CONTEXT_UPDATE_PAGE_SCHEMA_VERSION: u16 = 1;
 pub(super) const CONTEXT_UPDATE_REDUCER_SCHEMA_VERSION: u16 = 1;
 pub(super) const CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION: u16 = 1;
 pub(super) const PAGED_GENESIS_SCHEMA_VERSION: u16 = 2;
-pub(super) const SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 1;
+pub(super) const LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 1;
+pub(super) const SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 2;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -105,7 +106,7 @@ pub(super) enum MemoryRecord {
         schema_version: u16,
         invocation: u64,
         request_prefix: String,
-        segment_sequence: u32,
+        segment_sequence: u64,
     },
     Observation { observation: ArchivedObservation, reducer: StoredArtifact },
     StateEvent { reducer: StoredArtifact },
@@ -267,8 +268,28 @@ pub(super) struct SegmentContinuation {
     pub(super) schema_version: u16,
     pub(super) invocation: u64,
     pub(super) request_prefix: String,
-    pub(super) segment_sequence: u32,
+    pub(super) segment_sequence: u64,
     pub(super) protocol_limits_sha256: [u8; 32],
+    #[serde(default)]
+    pub(super) progress: SegmentProgress,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) pending_batch: Option<SegmentPendingBatch>,
+}
+
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct SegmentProgress {
+    pub(super) model_turns: u64,
+    pub(super) tool_calls: u64,
+    pub(super) compactions: u64,
+    pub(super) retries: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct SegmentPendingBatch {
+    pub(super) assistant_source: u64,
+    pub(super) calls: Vec<CallIdentity>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]

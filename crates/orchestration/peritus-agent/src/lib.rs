@@ -37,7 +37,7 @@ pub use developer::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperContextAssembly, DeveloperContextEvent,
     DeveloperContextPort, DeveloperContextResume, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
-    DeveloperLoopRequest, DeveloperModelRole, DeveloperProviderSelection,
+    DeveloperLoopProgress, DeveloperLoopRequest, DeveloperModelRole, DeveloperProviderSelection,
     DeveloperRetryDisposition, DeveloperRetryReason, DeveloperRetryRecord,
     DeveloperRetryRecovery, DeveloperReviewRetryReason, DeveloperToolEffect,
     DeveloperToolExecution, DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace,

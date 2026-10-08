@@ -119,7 +119,14 @@ impl ProductRunner {
                         }
                         state.fix_summaries.push(applied.summary);
                         state.run_instructions = applied.run_instructions;
-                        state.tool_calls = state.tool_calls.saturating_add(applied.tool_calls);
+                        state.tool_calls = state
+                            .tool_calls
+                            .checked_add(applied.tool_calls)
+                            .ok_or_else(|| ProductRunnerError::new(
+                                crate::ProductRunnerErrorKind::InternalInvariant,
+                                "accumulate developer tool calls",
+                                "developer tool-call counter overflow",
+                            ))?;
                         state.conversation_revision = applied.conversation_revision;
                         crate::developer_tools::merge_rendered(
                             &mut state.developer_evidence,
@@ -132,7 +139,7 @@ impl ProductRunner {
                         execution.next_phase = ProductRunPhase::Checking;
                     }
                     AppliedTurn::Waiting { question, conversation_revision, host } => {
-                        state.merge_host(&host);
+                        state.merge_host(&host)?;
                         return Ok(ActiveExit::waiting(
                             question,
                             conversation_revision,
@@ -140,7 +147,7 @@ impl ProductRunner {
                         ));
                     }
                     AppliedTurn::Rejected { error, host } => {
-                        state.merge_host(&host);
+                        state.merge_host(&host)?;
                         return Err(error);
                     }
                 }

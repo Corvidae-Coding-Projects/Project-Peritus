@@ -53,6 +53,7 @@ pub(super) async fn complete_turn(
     turn: u16,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
+    remaining_tool_calls: u32,
     retries: &mut u64,
     usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
@@ -86,6 +87,7 @@ pub(super) async fn complete_turn(
         kind,
         required_tool,
         provider.reasoning_effort(),
+        remaining_tool_calls,
     )?;
     let recovery_probe = RetryContext::bind_session(retry_context.as_ref(), kind, recovery_probe);
     let recovered = if selection_superseded {
@@ -142,6 +144,7 @@ pub(super) async fn complete_turn(
             kind,
             required_tool,
             provider.reasoning_effort(),
+            remaining_tool_calls,
         )?;
         let model_request = RetryContext::bind_session(retry_context.as_ref(), kind, model_request);
         if let Some(owner) = retry_context.as_mut() {
