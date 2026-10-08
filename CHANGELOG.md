@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L459] C5's complete request constructor admits unsatisfiable tool selection and unsupported semantic continuation (#537)
 - [L046] In-place scope journal has a lifetime byte ceiling and strict torn-record barrier (#145)
 - [L458] C5 JSON has non-widenable depth/member ceilings checked after full parsing (#536)
 - [L623] Evidence work repeats synchronous whole-history and artifact verification without a resumable work owner (#678)
