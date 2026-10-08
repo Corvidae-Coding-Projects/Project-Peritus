@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3899,
-        "tip_oid": "6db07815875bac32722e4d6c89deae7fa54b37dc",
-        "prefix_sha256": "5a66edfb811d94d912d452568f8b791bc8b28dbf864d783c7f7a373ad2b60c7e"
+        "sequence": 3900,
+        "tip_oid": "e02736cbfffcc86b045571d5bd93967e55a8bbb0",
+        "prefix_sha256": "20c9d311a03b5d8935c851c3186b38d0297b7b2349412f6a252e1e427fc0ed24"
       },
       "NWAR": {
         "sequence": 39,
@@ -22585,12 +22585,13 @@
       "display_id": 127,
       "title": "[L028] Accounting failures cancel the active run",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L028.\n\n- `product_run/execution/goal.rs:59-96` polls durable goal progress after an initial 100 ms and then at 1,000 ms intervals while accounting remains active. These are polling cadences, not elapsed execution deadlines.\n- Any error from `observe_goal_clock` cancels both the run flag and provider cancellation and stops accounting. Lines 98-108 set `persistence_failed` and retain a goal-progress persistence error. A final observation failure records the error while returning the original execution result.\n- Structural coupling: an accounting storage failure can stop otherwise progressing model/tool work, and the resulting shared failure flag blocks subsequent admission (L026). `product_control/goal.rs:158-200,292-335` confirms that each governed progress update loads the execution record, persists a host operation, and loads state again; storage errors propagate to this cancellation path. Its reservations admit ordinary execution with no goal at lines 28-30 and 99-101. Pure goal-transition budget enforcement remains pending. Whether SQLite's 250 ms contention deadline (L019) reaches this path requires those remaining reads.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.945268189Z",
-      "updated_at": "2026-10-08T00:20:46.366699122Z",
+      "updated_at": "2026-10-08T00:22:10.399312841Z",
+      "closed_at": "2026-10-08T00:22:10.396536101Z",
       "labels": [
         "daily-driving-limiter"
       ],
