@@ -1,11 +1,14 @@
 //! Complete report validation and validated wrapper.
 
 use crate::{
-    ComponentCorrelation, DebuggerError, DebuggerErrorKind, DebuggerLimit, DebuggerLimits,
-    DebuggerOperation, DebuggerRecovery, DiagnosticStatus, HarnessHealthSummary, PatternCluster,
-    ReportClaim, ReportId, RootCauseCandidate, Timeline, TraceSelectionManifest,
+    AnalysisContext, AnalysisControl, AnalysisStage, ComponentCorrelation, DebuggerError,
+    DebuggerErrorKind, DebuggerLimit, DebuggerLimits, DebuggerOperation, DebuggerRecovery,
+    DiagnosticStatus, EvidenceCitation, HarnessHealthSummary, PatternCluster, ReportClaim,
+    ReportId, RootCauseCandidate, Timeline, TraceSelectionManifest,
 };
 use peritus_types::{EvidenceId, Sha256Digest};
+use std::collections::BTreeSet;
+use std::sync::OnceLock;
 
 const REPORT_ARTIFACT_FANOUT: usize = 256;
 const REPORT_PAGE_ENVELOPE_ALLOWANCE: usize = 128;
@@ -68,6 +71,20 @@ impl DebuggerReport {
         limits: DebuggerLimits,
     ) -> Result<ValidatedReport, DebuggerError> {
         validate_report(self, manifest, limits)
+    }
+
+    /// Validates with exact progress and cooperative suspension or cancellation.
+    ///
+    /// # Errors
+    /// Rejects context drift, cancellation, or any complete report-contract violation.
+    pub fn validate_controlled(
+        self,
+        manifest: &TraceSelectionManifest,
+        limits: DebuggerLimits,
+        context: AnalysisContext,
+        control: &mut impl AnalysisControl,
+    ) -> Result<ValidatedReport, DebuggerError> {
+        validate_report_controlled(self, manifest, limits, context, control)
     }
 
     /// Returns the selection manifest identity.
@@ -162,6 +179,9 @@ pub struct ReportArtifactPage {
     artifact_digest: Sha256Digest,
     artifact_size: u64,
     payload_end: u64,
+    artifact_index: usize,
+    artifact_payload_start: usize,
+    artifact_payload_end: usize,
 }
 
 impl ReportArtifactPage {
@@ -220,11 +240,12 @@ impl ReportArtifactObject {
 }
 
 /// Report proven manifest-contained, with a lossless bounded artifact layout.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ValidatedReport {
     id: ReportId,
     digest: Sha256Digest,
-    canonical_bytes: Vec<u8>,
+    canonical_size: u64,
+    canonical_cache: OnceLock<Vec<u8>>,
     artifacts: Vec<ReportArtifactObject>,
     root_artifact: usize,
     pages: Vec<ReportArtifactPage>,
@@ -242,10 +263,27 @@ impl ValidatedReport {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
-    /// Borrows canonical schema-v1 bytes eligible for artifact finalization.
+    /// Materializes the complete canonical schema-v1 payload on explicit request.
     #[must_use]
     pub fn canonical_bytes(&self) -> &[u8] {
-        &self.canonical_bytes
+        self.canonical_cache
+            .get_or_init(|| {
+                let mut bytes = Vec::with_capacity(
+                    usize::try_from(self.canonical_size).unwrap_or(usize::MAX),
+                );
+                for page in &self.pages {
+                    if let Some((chunk, _)) = self.read_page(page.cursor) {
+                        bytes.extend_from_slice(chunk);
+                    }
+                }
+                bytes
+            })
+            .as_slice()
+    }
+    /// Returns the exact complete schema-v1 payload size without materializing it.
+    #[must_use]
+    pub const fn canonical_size(&self) -> u64 {
+        self.canonical_size
     }
     /// Borrows the root artifact bytes referenced by durable report and evidence records.
     ///
@@ -277,9 +315,11 @@ impl ValidatedReport {
         if page.cursor != cursor {
             return None;
         }
-        let start = usize::try_from(cursor.byte_offset).ok()?;
-        let end = usize::try_from(page.payload_end).ok()?;
-        self.canonical_bytes.get(start..end).map(|bytes| (bytes, page.next_cursor))
+        self.artifacts
+            .get(page.artifact_index)?
+            .bytes
+            .get(page.artifact_payload_start..page.artifact_payload_end)
+            .map(|bytes| (bytes, page.next_cursor))
     }
     /// Borrows the completely validated semantic report.
     #[must_use]
@@ -292,6 +332,20 @@ impl ValidatedReport {
     }
 }
 
+impl PartialEq for ValidatedReport {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+            && self.digest == other.digest
+            && self.canonical_size == other.canonical_size
+            && self.artifacts == other.artifacts
+            && self.root_artifact == other.root_artifact
+            && self.pages == other.pages
+            && self.report == other.report
+    }
+}
+
+impl Eq for ValidatedReport {}
+
 /// Validates every report section and derives canonical identity.
 ///
 /// # Errors
@@ -302,34 +356,93 @@ pub fn validate_report(
     manifest: &TraceSelectionManifest,
     limits: DebuggerLimits,
 ) -> Result<ValidatedReport, DebuggerError> {
+    let context = AnalysisContext::for_manifest(manifest);
+    validate_report_controlled(
+        report,
+        manifest,
+        limits,
+        context,
+        &mut crate::work::RunToCompletion,
+    )
+}
+
+/// Validates and incrementally encodes a report with exact cooperative progress.
+///
+/// # Errors
+/// Returns a typed binding, report, citation, or cancellation error without partial output.
+pub fn validate_report_controlled(
+    report: DebuggerReport,
+    manifest: &TraceSelectionManifest,
+    limits: DebuggerLimits,
+    context: AnalysisContext,
+    control: &mut impl AnalysisControl,
+) -> Result<ValidatedReport, DebuggerError> {
+    context.validate(manifest, DebuggerOperation::ValidateReport)?;
     if report.manifest_id != manifest.id()
         || report.manifest_digest != manifest.digest()
         || report.query_digest != manifest.query_digest()
     {
         return Err(report_error("report selection or query binding differs"));
     }
-    validate_timelines(&report, manifest)?;
-    validate_causes(&report, manifest)?;
-    validate_patterns(&report, manifest, limits)?;
+    let mut validated_citations = BTreeSet::new();
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 0, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
+    validate_timelines(&report, manifest, &mut validated_citations)?;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 1, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
+    validate_causes(&report, manifest, &mut validated_citations)?;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 2, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
+    validate_patterns(&report, manifest, limits, &mut validated_citations)?;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 3, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
     validate_correlations(&report)?;
-    validate_claims(&report, manifest)?;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 4, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
+    validate_claims(&report, manifest, &mut validated_citations)?;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ValidateReport, 5, 5,
+        DebuggerOperation::ValidateReport,
+    )?;
+    drop(validated_citations);
     if report.health.status() != DiagnosticStatus::DiagnosticOnly {
         return Err(report_error("health summary is not diagnostic-only"));
     }
-    let canonical_bytes = super::canonical::encode_report(&report);
-    let digest =
-        crate::identity::domain_digest(b"peritus-e2-debugger-report-digest-v1\0", &canonical_bytes);
+    let page_bound = usize::try_from(limits.get(DebuggerLimit::ReportBytes))
+        .unwrap_or(usize::MAX)
+        .max(1);
+    let page_payload_bound =
+        page_bound.saturating_sub(REPORT_PAGE_ENVELOPE_ALLOWANCE).max(1);
+    let encoded = super::streaming::encode_report(
+        &report,
+        page_payload_bound,
+        context,
+        control,
+    )?;
+    let digest = encoded.digest;
     let id = ReportId::derive(b"peritus-e2-debugger-report-id-v1\0", digest.as_bytes())?;
     let (artifacts, root_artifact, pages) = build_artifact_layout(
         id,
         digest,
-        &canonical_bytes,
-        usize::try_from(limits.get(DebuggerLimit::ReportBytes)).unwrap_or(usize::MAX),
+        encoded.chunks,
+        encoded.payload_size,
+        page_bound,
     );
     Ok(ValidatedReport {
         id,
         digest,
-        canonical_bytes,
+        canonical_size: encoded.payload_size,
+        canonical_cache: OnceLock::new(),
         artifacts,
         root_artifact,
         pages,
@@ -348,12 +461,16 @@ struct ArtifactReference {
 fn build_artifact_layout(
     report_id: ReportId,
     payload_digest: Sha256Digest,
-    payload: &[u8],
+    chunks: Vec<Vec<u8>>,
+    payload_size: u64,
     page_bound: usize,
 ) -> (Vec<ReportArtifactObject>, usize, Vec<ReportArtifactPage>) {
-    let payload_size = u64::try_from(payload.len()).unwrap_or(u64::MAX);
-    if payload.len() <= page_bound {
-        let digest = peritus_codec::sha256(payload);
+    if payload_size <= u64::try_from(page_bound).unwrap_or(u64::MAX) {
+        let mut payload = Vec::with_capacity(usize::try_from(payload_size).unwrap_or(page_bound));
+        for chunk in chunks {
+            payload.extend_from_slice(&chunk);
+        }
+        let digest = peritus_codec::sha256(&payload);
         let cursor = ReportContinuationCursor {
             report_id,
             payload_digest,
@@ -363,7 +480,7 @@ fn build_artifact_layout(
         return (
             vec![ReportArtifactObject {
                 digest,
-                bytes: payload.to_vec(),
+                bytes: payload,
                 dependencies: Vec::new(),
             }],
             0,
@@ -373,29 +490,29 @@ fn build_artifact_layout(
                 artifact_digest: digest,
                 artifact_size: payload_size,
                 payload_end: payload_size,
+                artifact_index: 0,
+                artifact_payload_start: 0,
+                artifact_payload_end: usize::try_from(payload_size).unwrap_or(page_bound),
             }],
         );
     }
 
-    let page_payload_bound =
-        page_bound.saturating_sub(REPORT_PAGE_ENVELOPE_ALLOWANCE).max(1);
-    let page_count = payload.len().div_ceil(page_payload_bound);
     let mut artifacts = Vec::new();
-    let mut pages = Vec::with_capacity(page_count);
-    let mut references = Vec::with_capacity(page_count);
+    let mut pages = Vec::with_capacity(chunks.len());
+    let mut references = Vec::with_capacity(chunks.len());
     let mut start = 0_usize;
-    for (ordinal, chunk) in payload.chunks(page_payload_bound).enumerate() {
+    for (ordinal, chunk) in chunks.into_iter().enumerate() {
         let end = start.saturating_add(chunk.len());
         let ordinal = u64::try_from(ordinal).unwrap_or(u64::MAX);
         let start_u64 = u64::try_from(start).unwrap_or(u64::MAX);
         let end_u64 = u64::try_from(end).unwrap_or(u64::MAX);
-        let bytes = super::canonical::encode_report_page(
+        let (bytes, payload_range) = super::canonical::encode_report_page(
             report_id,
             payload_digest,
             ordinal,
             start_u64,
             end_u64,
-            chunk,
+            &chunk,
         );
         let digest = peritus_codec::sha256(&bytes);
         let size = u64::try_from(bytes.len()).unwrap_or(u64::MAX);
@@ -405,12 +522,13 @@ fn build_artifact_layout(
             page_ordinal: ordinal,
             byte_offset: start_u64,
         };
-        let next_cursor = (end < payload.len()).then_some(ReportContinuationCursor {
+        let next_cursor = (end_u64 < payload_size).then_some(ReportContinuationCursor {
             report_id,
             payload_digest,
             page_ordinal: ordinal.saturating_add(1),
             byte_offset: end_u64,
         });
+        let artifact_index = artifacts.len();
         artifacts.push(ReportArtifactObject { digest, bytes, dependencies: Vec::new() });
         pages.push(ReportArtifactPage {
             cursor,
@@ -418,6 +536,9 @@ fn build_artifact_layout(
             artifact_digest: digest,
             artifact_size: size,
             payload_end: end_u64,
+            artifact_index,
+            artifact_payload_start: payload_range.start,
+            artifact_payload_end: payload_range.end,
         });
         references.push(ArtifactReference {
             digest,
@@ -461,9 +582,10 @@ fn build_artifact_layout(
     (artifacts, root_artifact, pages)
 }
 
-fn validate_timelines(
-    report: &DebuggerReport,
+fn validate_timelines<'a>(
+    report: &'a DebuggerReport,
     manifest: &TraceSelectionManifest,
+    validated: &mut BTreeSet<&'a EvidenceCitation>,
 ) -> Result<(), DebuggerError> {
     if report.timelines.len() != manifest.subjects().len()
         || report.timelines.windows(2).any(|pair| pair[0].subject_id() >= pair[1].subject_id())
@@ -475,15 +597,16 @@ fn validate_timelines(
             return Err(report_error("timeline subject binding differs"));
         }
         for entry in timeline.entries() {
-            entry.citation().validate_against(manifest)?;
+            validate_citation_once(entry.citation(), manifest, validated)?;
         }
     }
     Ok(())
 }
 
-fn validate_causes(
-    report: &DebuggerReport,
+fn validate_causes<'a>(
+    report: &'a DebuggerReport,
     manifest: &TraceSelectionManifest,
+    validated: &mut BTreeSet<&'a EvidenceCitation>,
 ) -> Result<(), DebuggerError> {
     if report.causes.windows(2).any(|pair| pair[0].id() >= pair[1].id()) {
         return Err(report_error("causes must be strictly ordered by stable identity"));
@@ -493,15 +616,16 @@ fn validate_causes(
             .support()
             .iter()
             .chain(cause.contrary())
-            .try_for_each(|citation| citation.validate_against(manifest))?;
+            .try_for_each(|citation| validate_citation_once(citation, manifest, validated))?;
     }
     Ok(())
 }
 
-fn validate_patterns(
-    report: &DebuggerReport,
+fn validate_patterns<'a>(
+    report: &'a DebuggerReport,
     manifest: &TraceSelectionManifest,
     limits: DebuggerLimits,
+    validated: &mut BTreeSet<&'a EvidenceCitation>,
 ) -> Result<(), DebuggerError> {
     if report.patterns.iter().any(|pattern| pattern.members().is_empty()) {
         return Err(report_error("pattern has no provenance members"));
@@ -541,9 +665,7 @@ fn validate_patterns(
         let first = &pattern.members()[0];
         for member in pattern.members() {
             let subject = manifest
-                .subjects()
-                .iter()
-                .find(|subject| subject.id() == member.subject_id())
+                .subject(member.subject_id())
                 .ok_or_else(|| report_error("pattern member subject is absent"))?;
             if member.environment_id() != subject.environment_id()
                 || member.harness_revision() != subject.harness_revision()
@@ -561,7 +683,7 @@ fn validate_patterns(
             member
                 .citations()
                 .iter()
-                .try_for_each(|citation| citation.validate_against(manifest))?;
+                .try_for_each(|citation| validate_citation_once(citation, manifest, validated))?;
         }
     }
     Ok(())
@@ -582,9 +704,10 @@ fn validate_correlations(report: &DebuggerReport) -> Result<(), DebuggerError> {
     Ok(())
 }
 
-fn validate_claims(
-    report: &DebuggerReport,
+fn validate_claims<'a>(
+    report: &'a DebuggerReport,
     manifest: &TraceSelectionManifest,
+    validated: &mut BTreeSet<&'a EvidenceCitation>,
 ) -> Result<(), DebuggerError> {
     if report.claims.windows(2).any(|pair| pair[0].id() >= pair[1].id()) {
         return Err(report_error("claims must be strictly ordered by stable identity"));
@@ -594,18 +717,30 @@ fn validate_claims(
             .support()
             .iter()
             .chain(claim.contrary())
-            .try_for_each(|citation| citation.validate_against(manifest))?;
+            .try_for_each(|citation| validate_citation_once(citation, manifest, validated))?;
         if let Some(parent) = claim.parent() {
             let parent = report
                 .claims
-                .iter()
-                .find(|claim| claim.id() == parent)
+                .binary_search_by_key(&parent, ReportClaim::id)
+                .ok()
+                .map(|index| &report.claims[index])
                 .ok_or_else(|| report_error("recommendation parent is absent"))?;
             if !matches!(parent.kind(), crate::ClaimKind::Observation | crate::ClaimKind::Inference)
             {
                 return Err(report_error("recommendation parent is not a supported claim"));
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_citation_once<'a>(
+    citation: &'a EvidenceCitation,
+    manifest: &TraceSelectionManifest,
+    validated: &mut BTreeSet<&'a EvidenceCitation>,
+) -> Result<(), DebuggerError> {
+    if validated.insert(citation) {
+        citation.validate_against(manifest)?;
     }
     Ok(())
 }

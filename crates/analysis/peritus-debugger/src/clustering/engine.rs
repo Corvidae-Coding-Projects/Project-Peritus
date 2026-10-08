@@ -1,11 +1,12 @@
 //! Input-order-invariant clustering with frozen integer similarity rules.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::{
     AnalysisFinding, AnalyzerSignature, DebuggerError, DebuggerLimit, DebuggerLimits,
     DebuggerOperation, EvidenceCitation, FailureCategory, OutcomeClass, PatternId, SubjectId,
-    TraceSelectionManifest,
+    TraceSelectionManifest, AnalysisContext, AnalysisControl, AnalysisStage,
 };
 use peritus_harness::domain::{ComponentKind, HarnessRevisionIdentity};
 use peritus_types::{EnvironmentId, ProviderProfileId, RevisionNumber};
@@ -38,7 +39,7 @@ pub struct PatternMember {
     workspace_revision: RevisionNumber,
     provider_profile_id: ProviderProfileId,
     component_kind: Option<ComponentKind>,
-    citations: Vec<EvidenceCitation>,
+    citations: Arc<[EvidenceCitation]>,
     fingerprint: PatternFingerprint,
 }
 
@@ -149,18 +150,65 @@ pub fn cluster_findings(
     manifest: &TraceSelectionManifest,
     limits: DebuggerLimits,
 ) -> Result<Vec<PatternCluster>, DebuggerError> {
-    let mut exact: BTreeMap<PatternFingerprint, Vec<PatternMember>> = BTreeMap::new();
-    for finding in findings {
+    let context = AnalysisContext::for_manifest(manifest);
+    cluster_findings_controlled(
+        findings,
+        manifest,
+        limits,
+        context,
+        &mut crate::work::RunToCompletion,
+    )
+}
+
+/// Clusters findings with manifest-bound progress and cooperative control.
+///
+/// # Errors
+/// Rejects context drift, cancellation, or missing subject bindings.
+pub fn cluster_findings_controlled(
+    findings: &[AnalysisFinding],
+    manifest: &TraceSelectionManifest,
+    limits: DebuggerLimits,
+    context: AnalysisContext,
+    control: &mut impl AnalysisControl,
+) -> Result<Vec<PatternCluster>, DebuggerError> {
+    context.validate(manifest, DebuggerOperation::ClusterPatterns)?;
+    type SimilarityKey = (
+        PatternKind,
+        Option<FailureCategory>,
+        AnalyzerSignature,
+        EnvironmentId,
+        HarnessRevisionIdentity,
+        RevisionNumber,
+        ProviderProfileId,
+        Option<ComponentKind>,
+    );
+    let mut grouped: BTreeMap<
+        SimilarityKey,
+        BTreeMap<PatternFingerprint, Vec<PatternMember>>,
+    > = BTreeMap::new();
+    crate::work::checkpoint(
+        control, context, AnalysisStage::ClusterPatterns, 0, findings.len(),
+        DebuggerOperation::ClusterPatterns,
+    )?;
+    for (index, finding) in findings.iter().enumerate() {
         let subject = manifest
-            .subjects()
-            .iter()
-            .find(|subject| subject.id() == finding.subject_id())
+            .subject(finding.subject_id())
             .ok_or_else(|| cluster_error("finding subject is absent from the manifest"))?;
         let component_kind = finding.category().and_then(|category| {
             crate::component::component_kinds_for_category(category).first().copied()
         });
         let fingerprint = PatternFingerprint::for_finding(finding, manifest, component_kind)?;
-        exact.entry(fingerprint).or_default().push(PatternMember {
+        let key = (
+            pattern_kind(finding.outcome()),
+            finding.category(),
+            finding.signature(),
+            subject.environment_id(),
+            subject.harness_revision(),
+            subject.revision().workspace_revision(),
+            subject.revision().provider_profile_id(),
+            component_kind,
+        );
+        grouped.entry(key).or_default().entry(fingerprint).or_default().push(PatternMember {
             subject_id: finding.subject_id(),
             outcome: finding.outcome(),
             category: finding.category(),
@@ -170,17 +218,29 @@ pub fn cluster_findings(
             workspace_revision: subject.revision().workspace_revision(),
             provider_profile_id: subject.revision().provider_profile_id(),
             component_kind,
-            citations: finding.citations().to_vec(),
+            citations: finding.shared_citations(),
             fingerprint,
         });
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::ClusterPatterns,
+            index.saturating_add(1),
+            findings.len(),
+            DebuggerOperation::ClusterPatterns,
+        )?;
     }
-    let mut groups: Vec<Vec<PatternMember>> = exact.into_values().collect();
-    for members in &mut groups {
-        members.sort_by(|left, right| {
-            (left.subject_id, &left.citations).cmp(&(right.subject_id, &right.citations))
-        });
+    let mut groups = Vec::with_capacity(grouped.len());
+    for exact in grouped.into_values() {
+        let mut combined = Vec::new();
+        for mut members in exact.into_values() {
+            members.sort_by(|left, right| {
+                (left.subject_id, &left.citations).cmp(&(right.subject_id, &right.citations))
+            });
+            combined.extend(members);
+        }
+        groups.push(combined);
     }
-    agglomerate(&mut groups);
     let member_page_size = usize::try_from(limits.get(DebuggerLimit::PatternMembers))
         .unwrap_or(usize::MAX)
         .max(1);
@@ -235,33 +295,6 @@ pub fn cluster_findings(
         (cluster.kind, cluster.fingerprint, cluster.members[0].subject_id, cluster.id)
     });
     Ok(clusters)
-}
-
-fn agglomerate(groups: &mut Vec<Vec<PatternMember>>) {
-    let mut index = 0;
-    while index < groups.len() {
-        let mut candidate = index + 1;
-        while candidate < groups.len() {
-            if similar(&groups[index][0], &groups[candidate][0]) {
-                let merged = groups.remove(candidate);
-                groups[index].extend(merged);
-            } else {
-                candidate += 1;
-            }
-        }
-        index += 1;
-    }
-}
-
-fn similar(left: &PatternMember, right: &PatternMember) -> bool {
-    pattern_kind(left.outcome) == pattern_kind(right.outcome)
-        && left.category == right.category
-        && left.analyzer == right.analyzer
-        && left.environment_id == right.environment_id
-        && left.harness_revision == right.harness_revision
-        && left.workspace_revision == right.workspace_revision
-        && left.provider_profile_id == right.provider_profile_id
-        && left.component_kind == right.component_kind
 }
 
 const fn pattern_kind(outcome: OutcomeClass) -> PatternKind {

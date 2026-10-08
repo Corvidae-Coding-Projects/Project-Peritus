@@ -11,6 +11,7 @@ use peritus_trace::{
     CausalBinding, ObservationKind, ObservedTime, RedactedValue, SafeAttribute, SpanId, TraceId,
 };
 use peritus_types::{EventId, Sha256Digest};
+use std::collections::BTreeMap;
 
 const MANIFEST_ID_DOMAIN: &[u8] = b"peritus-e2-selection-manifest-id-v1\0";
 const MANIFEST_DIGEST_DOMAIN: &[u8] = b"peritus-e2-selection-manifest-digest-v1\0";
@@ -269,6 +270,8 @@ pub struct TraceSelectionManifest {
     artifacts: Vec<SelectedArtifact>,
     counts: SelectionCounts,
     canonical_bytes: Vec<u8>,
+    event_indices: BTreeMap<EventId, usize>,
+    subject_ranges: BTreeMap<crate::SubjectId, (usize, usize)>,
 }
 
 impl TraceSelectionManifest {
@@ -287,7 +290,10 @@ impl TraceSelectionManifest {
             artifacts,
             counts,
             canonical_bytes: Vec::new(),
+            event_indices: BTreeMap::new(),
+            subject_ranges: BTreeMap::new(),
         };
+        manifest.rebuild_indexes()?;
         manifest.canonical_bytes = super::canonical::encode_manifest(&manifest);
         manifest.digest =
             crate::identity::domain_digest(MANIFEST_DIGEST_DOMAIN, &manifest.canonical_bytes);
@@ -338,7 +344,20 @@ impl TraceSelectionManifest {
     /// Looks up exactly one selected event.
     #[must_use]
     pub fn event(&self, event_id: EventId) -> Option<&SelectedEvidence> {
-        self.entries.iter().find(|entry| entry.event_id == event_id)
+        self.event_indices.get(&event_id).map(|index| &self.entries[*index])
+    }
+    /// Looks up one exact selected subject by stable identity.
+    #[must_use]
+    pub fn subject(&self, subject_id: crate::SubjectId) -> Option<&AnalysisSubject> {
+        self.subjects
+            .binary_search_by_key(&subject_id, AnalysisSubject::id)
+            .ok()
+            .map(|index| &self.subjects[index])
+    }
+    /// Borrows the contiguous canonical evidence range for one subject.
+    #[must_use]
+    pub fn entries_for_subject(&self, subject_id: crate::SubjectId) -> &[SelectedEvidence] {
+        self.subject_ranges.get(&subject_id).map_or(&[], |&(start, end)| &self.entries[start..end])
     }
     /// Looks up one selected ordinary artifact.
     #[must_use]
@@ -360,6 +379,8 @@ impl TraceSelectionManifest {
             artifacts: Vec::new(),
             counts: SelectionCounts::new(0, 0, 0, 0, 0, 0),
             canonical_bytes: Vec::new(),
+            event_indices: BTreeMap::new(),
+            subject_ranges: BTreeMap::new(),
         };
         manifest.canonical_bytes = super::canonical::encode_manifest(&manifest);
         manifest.digest =
@@ -367,5 +388,24 @@ impl TraceSelectionManifest {
         manifest.id = SelectionManifestId::derive(MANIFEST_ID_DOMAIN, manifest.digest.as_bytes())
             .expect("digest-derived test manifest identity");
         manifest
+    }
+
+    fn rebuild_indexes(&mut self) -> Result<(), DebuggerError> {
+        for (index, entry) in self.entries.iter().enumerate() {
+            if self.event_indices.insert(entry.event_id(), index).is_some() {
+                return Err(DebuggerError::new(
+                    DebuggerErrorKind::Selection,
+                    DebuggerOperation::SelectEvidence,
+                    DebuggerRecovery::RepairDependency,
+                    "selected evidence index repeats an event identity",
+                ));
+            }
+            let subject_id = entry.subject().id();
+            self.subject_ranges
+                .entry(subject_id)
+                .and_modify(|range| range.1 = index.saturating_add(1))
+                .or_insert((index, index.saturating_add(1)));
+        }
+        Ok(())
     }
 }

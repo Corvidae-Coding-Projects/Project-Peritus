@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use crate::{
     DebuggerError, DebuggerErrorKind, DebuggerLimit, DebuggerLimits, DebuggerOperation,
     DebuggerRecovery, EvidenceCitation, InfrastructureOutcome, OutcomeClass, SelectedEvidence,
-    SubjectId, TaskOutcome, TraceSelectionManifest,
+    SubjectId, TaskOutcome, TraceSelectionManifest, AnalysisContext, AnalysisControl, AnalysisStage,
 };
 use peritus_trace::{
     DiagnosticCode, ObservationKind, SafeAttributeKey, SafeAttributeValue, SpanId, SpanKind,
@@ -173,14 +173,30 @@ pub fn build_timelines(
     manifest: &TraceSelectionManifest,
     limits: DebuggerLimits,
 ) -> Result<Vec<Timeline>, DebuggerError> {
+    let context = AnalysisContext::for_manifest(manifest);
+    build_timelines_controlled(manifest, limits, context, &mut crate::work::RunToCompletion)
+}
+
+/// Builds timelines with manifest-bound progress and cooperative suspension or cancellation.
+///
+/// # Errors
+/// Rejects context drift, cancellation, incomplete evidence, invalid citations, or bounds.
+pub fn build_timelines_controlled(
+    manifest: &TraceSelectionManifest,
+    limits: DebuggerLimits,
+    context: AnalysisContext,
+    control: &mut impl AnalysisControl,
+) -> Result<Vec<Timeline>, DebuggerError> {
+    context.validate(manifest, DebuggerOperation::BuildTimeline)?;
     let mut timelines = Vec::with_capacity(manifest.subjects().len());
     let mut total_entries = 0_usize;
+    crate::work::checkpoint(
+        control, context, AnalysisStage::BuildTimelines, 0, manifest.entries().len(),
+        DebuggerOperation::BuildTimeline,
+    )?;
     for subject in manifest.subjects() {
-        let mut selected: Vec<&SelectedEvidence> = manifest
-            .entries()
-            .iter()
-            .filter(|entry| entry.subject().id() == subject.id())
-            .collect();
+        let mut selected: Vec<&SelectedEvidence> =
+            manifest.entries_for_subject(subject.id()).iter().collect();
         selected.sort_by_key(|entry| {
             (entry.time().monotonic_tick(), entry.journal_position(), entry.event_id())
         });
@@ -192,7 +208,16 @@ pub fn build_timelines(
             total_entries,
             DebuggerOperation::BuildTimeline,
         )?;
-        timelines.push(build_one(manifest, subject.id(), &selected, limits)?);
+        timelines.push(build_one(
+            manifest,
+            subject.id(),
+            &selected,
+            limits,
+            context,
+            control,
+            total_entries.saturating_sub(selected.len()),
+            manifest.entries().len(),
+        )?);
     }
     Ok(timelines)
 }
@@ -202,6 +227,10 @@ fn build_one(
     subject_id: SubjectId,
     selected: &[&SelectedEvidence],
     limits: DebuggerLimits,
+    context: AnalysisContext,
+    control: &mut impl AnalysisControl,
+    completed_before: usize,
+    total: usize,
 ) -> Result<Timeline, DebuggerError> {
     let positions: BTreeMap<EventId, u64> = selected
         .iter()
@@ -220,7 +249,7 @@ fn build_one(
             _ => None,
         })
         .collect();
-    for evidence in selected {
+    for (entry_index, evidence) in selected.iter().enumerate() {
         let citation = EvidenceCitation::new(
             manifest,
             subject_id,
@@ -250,6 +279,14 @@ fn build_one(
             monotonic_tick: evidence.time().monotonic_tick(),
             unix_nanos: evidence.time().unix_nanos(),
         });
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::BuildTimelines,
+            completed_before.saturating_add(entry_index).saturating_add(1),
+            total,
+            DebuggerOperation::BuildTimeline,
+        )?;
     }
     let mut clock_ambiguities = Vec::new();
     for pair in entries.windows(2) {

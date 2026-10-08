@@ -146,16 +146,20 @@ impl EvidenceCitation {
     }
 
     pub(crate) fn encode(&self, bytes: &mut Vec<u8>) {
-        bytes.extend_from_slice(self.manifest_id.as_bytes());
-        bytes.extend_from_slice(self.subject_id.as_bytes());
-        bytes.extend_from_slice(self.event_id.as_bytes());
-        bytes.extend_from_slice(&self.journal_position.to_be_bytes());
-        bytes.extend_from_slice(self.frame_digest.as_bytes());
-        bytes.push(u8::from(self.artifact.is_some()));
+        self.encode_to(|part| bytes.extend_from_slice(part));
+    }
+
+    pub(crate) fn encode_to(&self, mut write: impl FnMut(&[u8])) {
+        write(self.manifest_id.as_bytes());
+        write(self.subject_id.as_bytes());
+        write(self.event_id.as_bytes());
+        write(&self.journal_position.to_be_bytes());
+        write(self.frame_digest.as_bytes());
+        write(&[u8::from(self.artifact.is_some())]);
         if let Some(artifact) = self.artifact {
-            bytes.extend_from_slice(artifact.digest.as_bytes());
-            bytes.extend_from_slice(&artifact.start.to_be_bytes());
-            bytes.extend_from_slice(&artifact.end.to_be_bytes());
+            write(artifact.digest.as_bytes());
+            write(&artifact.start.to_be_bytes());
+            write(&artifact.end.to_be_bytes());
         }
     }
 }

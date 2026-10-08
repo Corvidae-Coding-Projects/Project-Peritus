@@ -22,6 +22,7 @@ mod runtime;
 mod selection;
 mod taxonomy;
 mod timeline;
+mod work;
 pub mod verified;
 mod wire;
 
@@ -43,4 +44,5 @@ pub use runtime::*;
 pub use selection::*;
 pub use taxonomy::*;
 pub use timeline::*;
+pub use work::*;
 pub use wire::*;

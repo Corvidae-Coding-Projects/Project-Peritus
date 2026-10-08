@@ -53,6 +53,17 @@ impl DebuggerEventFrame {
     ///
     /// Rejects invalid semantic payloads, broken fences, or successor-state disagreement.
     pub fn check(self, prior: Option<&DebuggerState>) -> Result<DebuggerEvent, DebuggerError> {
+        self.check_with_successor(prior).map(|(event, _)| event)
+    }
+
+    /// Activates inert event data and returns the already verified successor state.
+    ///
+    /// # Errors
+    /// Rejects invalid semantic payloads, broken fences, or successor-state disagreement.
+    pub fn check_with_successor(
+        self,
+        prior: Option<&DebuggerState>,
+    ) -> Result<(DebuggerEvent, DebuggerState), DebuggerError> {
         let command_kind = super::semantic::decode(&self.kind_bytes)?;
         let kind = command_to_event(command_kind);
         let event = DebuggerEvent::new(
@@ -67,8 +78,8 @@ impl DebuggerEventFrame {
             self.successor_state_digest,
             kind,
         );
-        let _ = apply_event(prior, &event)?;
-        Ok(event)
+        let successor = apply_event(prior, &event)?;
+        Ok((event, successor))
     }
 
     /// Event identity without activating semantic data.

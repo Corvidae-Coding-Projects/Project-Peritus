@@ -15,9 +15,7 @@ impl PatternFingerprint {
         component_kind: Option<ComponentKind>,
     ) -> Result<Self, DebuggerError> {
         let subject = manifest
-            .subjects()
-            .iter()
-            .find(|subject| subject.id() == finding.subject_id())
+            .subject(finding.subject_id())
             .ok_or_else(|| {
                 DebuggerError::new(
                     crate::DebuggerErrorKind::Binding,

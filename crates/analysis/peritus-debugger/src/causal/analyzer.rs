@@ -1,12 +1,14 @@
 //! Fixed deterministic analyzer registry.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use crate::{
     AlternativeCauses, AmbiguityFlag, CauseDerivation, ConfidenceBasis, ConfidenceMillionths,
     DebuggerError, DebuggerLimit, DebuggerLimits, DebuggerOperation, DiagnosticText,
     EvidenceCitation, FailureCategory, InfrastructureOutcome, OutcomeClass, RootCauseCandidate,
-    SubjectId, TaskOutcome, Timeline, TimelineEntry, TraceSelectionManifest,
+    SubjectId, TaskOutcome, Timeline, TimelineEntry, TraceSelectionManifest, AnalysisContext,
+    AnalysisControl, AnalysisStage,
 };
 use peritus_trace::{DiagnosticCode, SpanKind};
 
@@ -47,7 +49,7 @@ pub struct AnalysisFinding {
     signature: AnalyzerSignature,
     outcome: OutcomeClass,
     category: Option<FailureCategory>,
-    citations: Vec<EvidenceCitation>,
+    citations: Arc<[EvidenceCitation]>,
     cause_id: Option<crate::CauseId>,
 }
 
@@ -76,6 +78,9 @@ impl AnalysisFinding {
     #[must_use]
     pub fn citations(&self) -> &[EvidenceCitation] {
         &self.citations
+    }
+    pub(crate) fn shared_citations(&self) -> Arc<[EvidenceCitation]> {
+        Arc::clone(&self.citations)
     }
     /// Returns the associated candidate-cause identity, when failure-oriented.
     #[must_use]
@@ -114,13 +119,76 @@ pub fn analyze_timelines(
     timelines: &[Timeline],
     limits: DebuggerLimits,
 ) -> Result<DeterministicAnalysis, DebuggerError> {
+    let context = AnalysisContext::for_manifest(manifest);
+    analyze_timelines_controlled(
+        manifest,
+        timelines,
+        limits,
+        context,
+        &mut crate::work::RunToCompletion,
+    )
+}
+
+/// Runs deterministic analyzers with exact progress and cooperative control.
+///
+/// # Errors
+/// Rejects context drift, cancellation, bounds, or noncanonical analyzer output.
+pub fn analyze_timelines_controlled(
+    manifest: &TraceSelectionManifest,
+    timelines: &[Timeline],
+    limits: DebuggerLimits,
+    context: AnalysisContext,
+    control: &mut impl AnalysisControl,
+) -> Result<DeterministicAnalysis, DebuggerError> {
+    context.validate(manifest, DebuggerOperation::AnalyzeCauses)?;
     let mut findings = Vec::new();
     let mut causes = Vec::new();
-    for timeline in timelines {
+    let progress_total = timelines.len().saturating_mul(4);
+    crate::work::checkpoint(
+        control, context, AnalysisStage::AnalyzeCauses, 0, progress_total,
+        DebuggerOperation::AnalyzeCauses,
+    )?;
+    for (index, timeline) in timelines.iter().enumerate() {
+        let mut successes = super::rules::success_citations(timeline);
+        successes.sort();
+        successes.dedup();
+        let successes: Arc<[EvidenceCitation]> = Arc::from(successes);
         analyze_terminal(manifest, timeline, &mut findings, &mut causes)?;
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::AnalyzeCauses,
+            index.saturating_mul(4).saturating_add(1),
+            progress_total,
+            DebuggerOperation::AnalyzeCauses,
+        )?;
         analyze_incomplete(manifest, timeline, &mut findings, &mut causes)?;
-        analyze_diagnostics(manifest, timeline, &mut findings, &mut causes)?;
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::AnalyzeCauses,
+            index.saturating_mul(4).saturating_add(2),
+            progress_total,
+            DebuggerOperation::AnalyzeCauses,
+        )?;
+        analyze_diagnostics(manifest, timeline, &successes, &mut findings, &mut causes)?;
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::AnalyzeCauses,
+            index.saturating_mul(4).saturating_add(3),
+            progress_total,
+            DebuggerOperation::AnalyzeCauses,
+        )?;
         analyze_causal_gaps(manifest, timeline, &mut findings, &mut causes)?;
+        crate::work::checkpoint(
+            control,
+            context,
+            AnalysisStage::AnalyzeCauses,
+            index.saturating_add(1).saturating_mul(4),
+            progress_total,
+            DebuggerOperation::AnalyzeCauses,
+        )?;
     }
     findings.sort_by(|left, right| {
         (left.subject_id, left.signature, left.category, &left.citations).cmp(&(
@@ -222,6 +290,7 @@ fn analyze_incomplete(
 fn analyze_diagnostics(
     manifest: &TraceSelectionManifest,
     timeline: &Timeline,
+    successes: &Arc<[EvidenceCitation]>,
     findings: &mut Vec<AnalysisFinding>,
     causes: &mut Vec<RootCauseCandidate>,
 ) -> Result<(), DebuggerError> {
@@ -254,7 +323,7 @@ fn analyze_diagnostics(
             category,
             statement,
             support,
-            super::rules::success_citations(timeline),
+            Arc::clone(successes),
             alternatives,
             Vec::new(),
             findings,
@@ -292,14 +361,14 @@ fn analyze_causal_gaps(
 
 #[allow(clippy::too_many_arguments, reason = "analyzer output fields remain explicit")]
 fn push_cause(
-    manifest: &TraceSelectionManifest,
+    _manifest: &TraceSelectionManifest,
     timeline: &Timeline,
     signature: AnalyzerSignature,
     outcome: OutcomeClass,
     category: FailureCategory,
     statement: &'static str,
     mut support: Vec<EvidenceCitation>,
-    mut contrary: Vec<EvidenceCitation>,
+    contrary: impl Into<Arc<[EvidenceCitation]>>,
     alternatives: AlternativeCauses,
     mut ambiguities: Vec<AmbiguityFlag>,
     findings: &mut Vec<AnalysisFinding>,
@@ -307,8 +376,8 @@ fn push_cause(
 ) -> Result<(), DebuggerError> {
     support.sort();
     support.dedup();
-    contrary.sort();
-    contrary.dedup();
+    let support: Arc<[EvidenceCitation]> = Arc::from(support);
+    let contrary: Arc<[EvidenceCitation]> = contrary.into();
     if !timeline.clock_ambiguities().is_empty() {
         ambiguities.push(AmbiguityFlag::ClockDisagreement);
     }
@@ -321,11 +390,10 @@ fn push_cause(
         u32::try_from(support.len().saturating_sub(1)).unwrap_or(u32::MAX),
         u32::from(ambiguities.contains(&AmbiguityFlag::MissingCausalPredecessor)),
     );
-    let cause = RootCauseCandidate::new(
-        manifest,
+    let cause = RootCauseCandidate::new_prevalidated(
         category,
         DiagnosticText::new(statement)?,
-        support.clone(),
+        Arc::clone(&support),
         contrary,
         alternatives,
         ConfidenceMillionths::calculate(basis)?,
@@ -356,7 +424,7 @@ fn finding(
         signature,
         outcome,
         category,
-        citations: vec![entry.citation().clone()],
+        citations: Arc::from(vec![entry.citation().clone()]),
         cause_id: None,
     }
 }

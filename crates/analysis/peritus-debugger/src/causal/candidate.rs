@@ -5,6 +5,8 @@ use crate::{
     EvidenceCitation, FailureCategory, ModelAnalysisId, TraceSelectionManifest, validate_citations,
 };
 use peritus_types::Sha256Digest;
+use sha2::{Digest, Sha256};
+use std::sync::Arc;
 
 use super::ConfidenceMillionths;
 
@@ -97,8 +99,8 @@ pub struct RootCauseCandidate {
     id: CauseId,
     category: FailureCategory,
     statement: DiagnosticText,
-    support: Vec<EvidenceCitation>,
-    contrary: Vec<EvidenceCitation>,
+    support: Arc<[EvidenceCitation]>,
+    contrary: Arc<[EvidenceCitation]>,
     alternatives: AlternativeCauses,
     confidence: ConfidenceMillionths,
     ambiguities: Vec<AmbiguityFlag>,
@@ -124,11 +126,91 @@ impl RootCauseCandidate {
         ambiguities: Vec<AmbiguityFlag>,
         derivation: CauseDerivation,
     ) -> Result<Self, DebuggerError> {
-        validate_citations(&support, manifest)?;
+        Self::new_shared(
+            manifest,
+            category,
+            statement,
+            Arc::from(support),
+            Arc::from(contrary),
+            alternatives,
+            confidence,
+            ambiguities,
+            derivation,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "complete causal evidence remains explicit")]
+    pub(crate) fn new_shared(
+        manifest: &TraceSelectionManifest,
+        category: FailureCategory,
+        statement: DiagnosticText,
+        support: Arc<[EvidenceCitation]>,
+        contrary: Arc<[EvidenceCitation]>,
+        alternatives: AlternativeCauses,
+        confidence: ConfidenceMillionths,
+        ambiguities: Vec<AmbiguityFlag>,
+        derivation: CauseDerivation,
+    ) -> Result<Self, DebuggerError> {
+        Self::new_indexed(
+            Some(manifest),
+            category,
+            statement,
+            support,
+            contrary,
+            alternatives,
+            confidence,
+            ambiguities,
+            derivation,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "complete causal evidence remains explicit")]
+    pub(crate) fn new_prevalidated(
+        category: FailureCategory,
+        statement: DiagnosticText,
+        support: Arc<[EvidenceCitation]>,
+        contrary: Arc<[EvidenceCitation]>,
+        alternatives: AlternativeCauses,
+        confidence: ConfidenceMillionths,
+        ambiguities: Vec<AmbiguityFlag>,
+        derivation: CauseDerivation,
+    ) -> Result<Self, DebuggerError> {
+        Self::new_indexed(
+            None,
+            category,
+            statement,
+            support,
+            contrary,
+            alternatives,
+            confidence,
+            ambiguities,
+            derivation,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "complete causal evidence remains explicit")]
+    fn new_indexed(
+        manifest: Option<&TraceSelectionManifest>,
+        category: FailureCategory,
+        statement: DiagnosticText,
+        support: Arc<[EvidenceCitation]>,
+        contrary: Arc<[EvidenceCitation]>,
+        alternatives: AlternativeCauses,
+        confidence: ConfidenceMillionths,
+        ambiguities: Vec<AmbiguityFlag>,
+        derivation: CauseDerivation,
+    ) -> Result<Self, DebuggerError> {
+        if let Some(manifest) = manifest {
+            validate_citations(&support, manifest)?;
+        } else if support.is_empty() || support.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err(report_error("support citations must be nonempty and canonical"));
+        }
         if contrary.windows(2).any(|pair| pair[0] >= pair[1]) {
             return Err(report_error("contrary citations must be strictly ordered and unique"));
         }
-        contrary.iter().try_for_each(|citation| citation.validate_against(manifest))?;
+        if let Some(manifest) = manifest {
+            contrary.iter().try_for_each(|citation| citation.validate_against(manifest))?;
+        }
         if support.iter().any(|citation| contrary.binary_search(citation).is_ok()) {
             return Err(report_error("one citation cannot be both supporting and contrary"));
         }
@@ -141,7 +223,7 @@ impl RootCauseCandidate {
         {
             return Err(report_error("confidence basis does not match retained ambiguities"));
         }
-        let canonical = canonical_cause(
+        let id = derive_cause_id(
             category,
             &statement,
             &support,
@@ -150,9 +232,9 @@ impl RootCauseCandidate {
             confidence,
             &ambiguities,
             derivation,
-        );
+        )?;
         Ok(Self {
-            id: CauseId::derive(CAUSE_ID_DOMAIN, &canonical)?,
+            id,
             category,
             statement,
             support,
@@ -253,7 +335,7 @@ impl UnsupportedConclusion {
 }
 
 #[allow(clippy::too_many_arguments, reason = "canonical cause fields mirror the checked value")]
-fn canonical_cause(
+fn derive_cause_id(
     category: FailureCategory,
     statement: &DiagnosticText,
     support: &[EvidenceCitation],
@@ -262,23 +344,25 @@ fn canonical_cause(
     confidence: ConfidenceMillionths,
     ambiguities: &[AmbiguityFlag],
     derivation: CauseDerivation,
-) -> Vec<u8> {
-    let mut bytes = b"peritus-e2-root-cause-v1\0".to_vec();
-    bytes.extend_from_slice(&category.tag().to_be_bytes());
-    crate::query::encode_blob(&mut bytes, statement.as_str().as_bytes());
-    encode_citations(&mut bytes, support);
-    encode_citations(&mut bytes, contrary);
+) -> Result<CauseId, DebuggerError> {
+    let mut hash = Sha256::new();
+    hash.update(CAUSE_ID_DOMAIN);
+    hash.update(b"peritus-e2-root-cause-v1\0");
+    hash.update(category.tag().to_be_bytes());
+    encode_blob(&mut hash, statement.as_str().as_bytes());
+    encode_citations(&mut hash, support);
+    encode_citations(&mut hash, contrary);
     match alternatives {
-        AlternativeCauses::NoneKnown => bytes.push(0),
+        AlternativeCauses::NoneKnown => hash.update([0]),
         AlternativeCauses::Categories(categories) => {
-            bytes.push(1);
-            crate::query::encode_len(&mut bytes, categories.len());
+            hash.update([1]);
+            encode_len(&mut hash, categories.len());
             for category in categories {
-                bytes.extend_from_slice(&category.tag().to_be_bytes());
+                hash.update(category.tag().to_be_bytes());
             }
         }
     }
-    bytes.extend_from_slice(&confidence.value().to_be_bytes());
+    hash.update(confidence.value().to_be_bytes());
     let basis = confidence.basis();
     for value in [
         basis.support_count(),
@@ -287,27 +371,39 @@ fn canonical_cause(
         basis.recurrence_count(),
         basis.maximum_causal_distance(),
     ] {
-        bytes.extend_from_slice(&value.to_be_bytes());
+        hash.update(value.to_be_bytes());
     }
-    crate::query::encode_len(&mut bytes, ambiguities.len());
+    encode_len(&mut hash, ambiguities.len());
     for ambiguity in ambiguities {
-        bytes.push(ambiguity_tag(*ambiguity));
+        hash.update([ambiguity_tag(*ambiguity)]);
     }
     match derivation {
-        CauseDerivation::Deterministic => bytes.push(1),
+        CauseDerivation::Deterministic => hash.update([1]),
         CauseDerivation::ValidatedModel(id) => {
-            bytes.push(2);
-            bytes.extend_from_slice(id.as_bytes());
+            hash.update([2]);
+            hash.update(id.as_bytes());
         }
     }
-    bytes
+    let digest: [u8; 32] = hash.finalize().into();
+    let mut identity = [0_u8; 16];
+    identity.copy_from_slice(&digest[..16]);
+    CauseId::new(identity)
 }
 
-fn encode_citations(bytes: &mut Vec<u8>, citations: &[EvidenceCitation]) {
-    crate::query::encode_len(bytes, citations.len());
+fn encode_citations(hash: &mut Sha256, citations: &[EvidenceCitation]) {
+    encode_len(hash, citations.len());
     for citation in citations {
-        citation.encode(bytes);
+        citation.encode_to(|part| hash.update(part));
     }
+}
+
+fn encode_len(hash: &mut Sha256, length: usize) {
+    hash.update(u64::try_from(length).unwrap_or(u64::MAX).to_be_bytes());
+}
+
+fn encode_blob(hash: &mut Sha256, value: &[u8]) {
+    encode_len(hash, value.len());
+    hash.update(value);
 }
 
 #[allow(
