@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L630] Global projection replay rejects a changed revision or unsupported historic family before an unrelated fold can proceed (#684)
 - [L050] Retry attempts remain finite while elapsed retry horizon is absent (#149)
 - [L466] Provider-core metadata and credential bounds are compiled independently (#544)
 - [L049] Developer-loop admission and generation ceilings (#148)
