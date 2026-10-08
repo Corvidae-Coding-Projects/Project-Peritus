@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L431] E3 blocking stage effects cannot observe cancellation through the execution-port contract (#511)
 - [L602] macOS activation removes status ownership before fallible verification (#659)
 
 - Extend the frozen Terminal-Bench evidence with an emergent cross-component validation miss, a
