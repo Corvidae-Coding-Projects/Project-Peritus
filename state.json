@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4054,
-        "tip_oid": "6839578e47058f394f84a6779212a56e72f481bc",
-        "prefix_sha256": "d218a8e3ce1d6fbc37a94ee3275b833c498dcb8df9d822dba20636882199e1ca"
+        "sequence": 4055,
+        "tip_oid": "40c0b01eb4f22ec4b5b9dc690b4fd94f70a5e36b",
+        "prefix_sha256": "783a765bb7ef8a38f91f6588bcaa15c2723616f9f11cadbacbb09c09eed65694"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3230,
+  "next_comment_id": 3231,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16178,7 +16178,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.653646137Z",
-      "updated_at": "2026-10-06T13:27:50.655743815Z",
+      "updated_at": "2026-10-08T04:36:13.472481856Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16189,6 +16189,15 @@
           "content": "Systemic repair plan for L461: C5 nested admission and persistence checks can disagree under selected limits.\n\nOwning contract and implementation boundary: crates/model/peritus-model-protocol/src/request/validation.rs:35-67,77-101; src/canonical_decode/primitive.rs:57-90; src/canonical_decode/content.rs:132-138; src/event_codec/encode.rs:19-36,119-128; src/event_codec/decode.rs:159-164,206-218,290-302; src/message_codec.rs:17-31,39-57. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nuse one recursively checked admission contract for construction, encoding and reconstruction; preserve and version the exact selected limits with durable data. Reject incompatible selected limits before publication, and distinguish extension payload policy from tool JSON policy. No tests run.\n\nPreserve: definitely-unaccepted versus ambiguously-accepted request state, exact native thread/profile identity, ordered provider observations, tool-result protocol, explicit cancellation and real provider/model capabilities. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long provider outages and Retry-After, split transport chunks and large streams, ambiguous acceptance and duplicate events, cancellation during recovery, adapter restart and route changes, proving same-thread reconnection and no duplicated accepted request/effect. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "b59d98df-a357-439f-abbd-f9aea2c8824b": {
+          "display_id": 3230,
+          "author": "6ME5",
+          "content": "Code complete in commit 6bb8f832a. Recursive request/message/event admission consistently enforces caller-selected ProtocolLimits before writing and decoding, including dedicated extension payload policy. Requests retain exact selected limits and reject continuation policy drift; generic fixed message/event caps are removed while valid canonical bytes/fingerprints remain unchanged. Durable lifecycle binding is coordinated with #146. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T04:36:13.463870926Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAEOX4uyqiE/ayxJ9pMxJu5KBGeBV8+lFjktSUtE+DCad/gJT/RwCTZgz1gAxpyw7ZHynOCQtQ6w5kl2tmXwZyBw=="
         }
       }
     },
