@@ -93,6 +93,37 @@ impl Endpoint {
         Self::new(next.to_string())
     }
 
+    /// Appends a reviewed relative operation route without discarding the configured base path.
+    ///
+    /// The endpoint must denote a path prefix ending in `/` without an existing query. The route
+    /// may contain a nonsensitive query, but cannot be absolute, cross-origin, or traversing.
+    ///
+    /// # Errors
+    /// Rejects an invalid prefix or relative route and revalidates the resulting endpoint.
+    pub fn append_route(&self, route: &str) -> Result<Self, ProviderCoreError> {
+        if route.is_empty()
+            || route.starts_with('/')
+            || route.contains(['#', '\\'])
+            || route.chars().any(char::is_control)
+            || self.parsed.query().is_some()
+            || !self.parsed.path().ends_with('/')
+        {
+            return Err(invalid_endpoint(
+                "endpoint route requires a query-free path prefix and safe relative suffix",
+            ));
+        }
+        let path = route.split('?').next().unwrap_or(route);
+        validate_path_segments(path)?;
+        let next = self
+            .parsed
+            .join(route)
+            .map_err(|_| invalid_endpoint("endpoint route is not a valid relative URL"))?;
+        if next.origin() != self.parsed.origin() {
+            return Err(invalid_endpoint("endpoint route changed the configured origin"));
+        }
+        Self::new(next.to_string())
+    }
+
     pub(crate) const fn url(&self) -> &url::Url {
         &self.parsed
     }

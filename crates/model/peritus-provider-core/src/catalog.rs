@@ -10,7 +10,9 @@ use sha2::{Digest, Sha256};
 
 use crate::{Endpoint, ProviderCoreError, ProviderCoreErrorKind};
 
-pub use http::{CatalogDialect, discover_http_models};
+pub use http::{
+    CatalogDialect, CatalogProgress, HttpCatalogDiscovery, discover_http_models,
+};
 use parse::parse_runtime_models;
 pub use runtime::{AccountCatalog, discover_account_models};
 

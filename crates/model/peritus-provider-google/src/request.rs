@@ -8,6 +8,8 @@ mod value;
 use peritus_model_protocol::{Capability, ContentBlock, ModelRequest, WireDialect};
 use peritus_provider_core::{Endpoint, ProviderCoreError};
 
+use crate::config::GoogleConfig;
+
 pub struct EncodedRequest {
     pub endpoint: Endpoint,
     pub body: Vec<u8>,
@@ -16,7 +18,7 @@ pub struct EncodedRequest {
 
 pub fn encode(
     request: &ModelRequest,
-    base: &Endpoint,
+    config: &GoogleConfig,
 ) -> Result<EncodedRequest, ProviderCoreError> {
     validate(request)?;
     let value = match request.dialect() {
@@ -24,7 +26,7 @@ pub fn encode(
         WireDialect::GeminiGenerateContentV1 => generate::project(request)?,
         _ => return Err(invalid("request selected a non-Google wire dialect")),
     };
-    let endpoint = endpoint(request, base)?;
+    let endpoint = config.operation_endpoint(request.dialect(), request.model().as_str())?;
     let body = serde_json::to_vec(&value).map_err(|_| {
         ProviderCoreError::invalid_request("google_encode", "Google request serialization failed")
     })?;
@@ -84,18 +86,6 @@ fn valid_function_name(value: &str) -> bool {
         && value.bytes().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b':' | b'.' | b'-')
         })
-}
-
-fn endpoint(request: &ModelRequest, base: &Endpoint) -> Result<Endpoint, ProviderCoreError> {
-    match request.dialect() {
-        WireDialect::GeminiInteractionsV1 => base.with_path("/v1/interactions"),
-        WireDialect::GeminiGenerateContentV1 => Endpoint::new(format!(
-            "{}v1/models/{}:streamGenerateContent?alt=sse",
-            base.as_str(),
-            request.model().as_str()
-        )),
-        _ => Err(invalid("request selected a non-Google wire dialect")),
-    }
 }
 
 pub const fn invalid(detail: &'static str) -> ProviderCoreError {

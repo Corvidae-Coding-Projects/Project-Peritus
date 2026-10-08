@@ -54,10 +54,10 @@ pub fn direct(
         ),
         ProviderKind::GoogleGeminiApi => (
             format!(
-                "{}/v1beta/models?pageSize=1000",
+                "{}/v1/models?pageSize=1000",
                 endpoint.ok_or(OnboardingError::ModelCatalog)?.trim_end_matches('/')
             ),
-            CatalogDialect::Google,
+            CatalogDialect::GoogleV1,
             "x-goog-api-key",
             None,
         ),
