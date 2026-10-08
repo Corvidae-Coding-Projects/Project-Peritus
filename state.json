@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4034,
-        "tip_oid": "0512085948619e86409e6bf71386d0a34d85e285",
-        "prefix_sha256": "9c70c2648faf18fcd547f355b7992efe8c92bfec75f3b94434f1c2aeaf68dc68"
+        "sequence": 4035,
+        "tip_oid": "c4bf87a673136377cdd9cb33e0464352dfb711d3",
+        "prefix_sha256": "60295978fb6ddb9591b3dd49c02a330871e06b1b52c8fbcd6500829c8d8e0fab"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3220,
+  "next_comment_id": 3221,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16741,7 +16741,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.307165130Z",
-      "updated_at": "2026-10-06T13:27:51.309737031Z",
+      "updated_at": "2026-10-08T03:59:43.486973834Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16752,6 +16752,15 @@
           "content": "Systemic repair plan for L621: Evidence and bundle limits reject legitimate scale, sometimes after output has already been written.\n\nOwning contract and implementation boundary: crates/state/peritus-evidence/src/record.rs:10-13,58-69,103-110; src/manifest.rs:12,198-275; src/bundle/plan.rs:20-65,94-191,206-238; src/bundle/assemble.rs:43-70,80-119,137-159; src/bundle/verify.rs:15,54-75,227-275. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nVersion or stream large collections; preflight the exact serialized byte plan, publish completed output atomically, and expose resumable export cursors instead of forcing whole-export failure. Check remaining budgets before allocation. Source review only; no tests run.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "3d0e1d0c-3039-46c6-8f1d-bd7bb54c984f": {
+          "display_id": 3220,
+          "author": "6ME5",
+          "content": "Code complete in commit 30fb50d2c. Larger evidence records and manifests use versioned representations while retaining legacy bytes for old values. Bundle limits are optional with no implicit cumulative cap; planning binds exact bytes/export identity, assembly stages authenticated output with resumable cursors and atomic no-clobber path publication, and verification checks remaining budgets before incremental allocation. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:59:43.478249841Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAiJr4+aVYomudEgye0AS/sQPCXLwnMPHoSRuO7j+ZTBpcUda6QzFHRwsr1cw+fn1HvHAw7yNv1HEozrFBIe8uCQ=="
         }
       }
     },
