@@ -10,18 +10,22 @@ mod export;
 mod metrics;
 mod projection;
 mod recovery;
+mod spill;
 mod storage;
 pub mod verified;
 
 pub use buffer::{
-    BackpressurePolicy, BufferConfig, BufferCounters, EnqueueOutcome, TelemetryBuffer,
+    BufferConfig, BufferCounters, EnqueueOutcome, ObservationLossPolicy, RejectionReason,
+    TelemetryBuffer,
 };
 pub use error::{RecoveryClass, TelemetryError, TelemetryErrorKind};
 pub use export::{
-    ExportAck, ExportBatch, ExportItem, ExportRecord, ExportStreamId, Exporter, ExporterError,
-    ExporterErrorCode, FlushOutcome, ShutdownOutcome, TelemetryPump,
+    DrainAction, ExportAck, ExportBatch, ExportItem, ExportPhase, ExportPoll, ExportPollControl,
+    ExportProgress, ExportRecord, ExportStreamId, Exporter, ExporterError, ExporterErrorCode,
+    ExporterShutdownPoll, FlushOutcome, PendingTelemetry, ShutdownOutcome, TelemetryPump,
 };
 pub use metrics::{MetricIter, MetricName, MetricPoint, MetricState};
 pub use projection::{OtelEvent, OtelSpan, TelemetryProjection, project_telemetry};
 pub use recovery::{RecoveryReport, recover_buffer};
+pub use spill::SpillStore;
 pub use storage::{CheckpointStore, ExportCheckpoint};

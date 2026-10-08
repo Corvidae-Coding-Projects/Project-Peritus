@@ -1,4 +1,4 @@
-//! Focused durable-checkpoint and restart-recovery adversarial tests.
+//! Focused checkpoint, caller-owned spill, and restart-recovery adversarial tests.
 
 mod support;
 
@@ -9,9 +9,10 @@ use std::{
 };
 
 use peritus_telemetry::{
-    BackpressurePolicy, BufferConfig, CheckpointStore, ExportAck, ExportBatch, ExportCheckpoint,
-    ExportStreamId, Exporter, ExporterError, TelemetryBuffer, TelemetryErrorKind, TelemetryPump,
-    recover_buffer,
+    BufferConfig, CheckpointStore, ExportAck, ExportBatch, ExportCheckpoint, ExportPhase,
+    ExportPoll, ExportPollControl, ExportProgress, ExportStreamId, Exporter, ExporterError,
+    ExporterErrorCode, ExporterShutdownPoll, ObservationLossPolicy, SpillStore, TelemetryBuffer,
+    TelemetryErrorKind, TelemetryPump, recover_buffer,
 };
 use peritus_trace::DiagnosticCode;
 use tempfile::TempDir;
@@ -24,12 +25,13 @@ fn checkpoint_restart_replays_only_the_undisposed_projection_suffix() {
     let stream = ExportStreamId::new([41; 16]).expect("stream");
     let projection = projection(DiagnosticCode::RecoveryCompleted);
     assert_eq!(projection.records().len(), 3);
-    let config = config(8, 1);
-    let mut pump = TelemetryPump::new(stream, TelemetryBuffer::new(config));
+    let config = config(8, 1, ObservationLossPolicy::RejectNewest);
+    let buffer = TelemetryBuffer::new(config).expect("buffer");
+    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
     for record in projection.records() {
-        pump.buffer_mut().enqueue(record.clone()).expect("enqueue projection");
+        pump.enqueue(record.clone()).expect("enqueue projection");
     }
-    pump.flush_one(&mut AcceptingExporter).expect("ack first record");
+    flush_one(&mut pump);
     let checkpoint = ExportCheckpoint::from_pump(&pump);
     assert_eq!(checkpoint.disposed_through_sequence(), 1);
 
@@ -47,7 +49,9 @@ fn checkpoint_restart_replays_only_the_undisposed_projection_suffix() {
         CheckpointStore::open(temporary.path(), stream, NonZeroUsize::new(2).expect("retention"))
             .expect("reopen checkpoint store");
     let loaded = reopened.load_latest().expect("load checkpoint");
-    let report = recover_buffer(config, stream, loaded, &projection).expect("recover queue");
+    let recovered_buffer = TelemetryBuffer::new(config).expect("recovered buffer");
+    let report = recover_buffer(recovered_buffer, stream, loaded, &projection)
+        .expect("recover queue");
     assert_eq!(report.replayed(), 2);
     assert_eq!(report.dropped_during_recovery(), 0);
     let recovered = report.into_pump();
@@ -57,16 +61,45 @@ fn checkpoint_restart_replays_only_the_undisposed_projection_suffix() {
 }
 
 #[test]
+fn caller_owned_spill_recovers_all_canonical_records_without_loss() {
+    let temporary = TempDir::new().expect("temporary directory");
+    let stream = ExportStreamId::new([47; 16]).expect("stream");
+    let projection = projection(DiagnosticCode::RecoveryCompleted);
+    let config = config(1, 512, ObservationLossPolicy::LosslessSpill);
+    let spill = SpillStore::open(temporary.path().join("spill"), stream).expect("spill");
+    let buffer = TelemetryBuffer::with_spill(config, spill).expect("buffer");
+    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
+    for record in projection.records() {
+        pump.enqueue(record.clone()).expect("enqueue projection");
+    }
+    assert_eq!(pump.buffer().resident_len(), 1);
+    assert_eq!(pump.buffer().spilled_len(), 2);
+    drop(pump);
+
+    let spill = SpillStore::open(temporary.path().join("spill"), stream).expect("reopen spill");
+    let buffer = TelemetryBuffer::with_spill(config, spill).expect("recovered buffer");
+    let report = recover_buffer(buffer, stream, None, &projection).expect("recover spill");
+    assert_eq!(report.replayed(), 3);
+    assert_eq!(report.dropped_during_recovery(), 0);
+    assert_eq!(report.spilled_during_recovery(), 3);
+    let recovered = report.into_pump();
+    assert_eq!(recovered.pending().total(), 3);
+    assert_eq!(recovered.buffer().resident_len(), 0);
+    assert_eq!(recovered.buffer().spilled_len(), 3);
+}
+
+#[test]
 fn drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart() {
     let stream = ExportStreamId::new([44; 16]).expect("stream");
     let projection = projection(DiagnosticCode::RecoveryCompleted);
-    let config = config_with_policy(2, 1, BackpressurePolicy::DropOldest);
-    let mut pump = TelemetryPump::new(stream, TelemetryBuffer::new(config));
+    let config = config(2, 1, ObservationLossPolicy::DropOldest);
+    let buffer = TelemetryBuffer::new(config).expect("buffer");
+    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
     for record in projection.records() {
-        pump.buffer_mut().enqueue(record.clone()).expect("enqueue projection");
+        pump.enqueue(record.clone()).expect("enqueue projection");
     }
     assert_eq!(pump.buffer().counters().dropped(), 1);
-    pump.flush_one(&mut AcceptingExporter).expect("export sequence two");
+    flush_one(&mut pump);
 
     let checkpoint = ExportCheckpoint::from_pump(&pump);
     assert_eq!(checkpoint.disposed_through_sequence(), 2);
@@ -75,7 +108,9 @@ fn drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart(
     assert_eq!(checkpoint.counters().dropped(), 1);
     assert_eq!(checkpoint.counters().exported(), 1);
 
-    let report = recover_buffer(config, stream, Some(checkpoint), &projection).expect("recover");
+    let recovered_buffer = TelemetryBuffer::new(config).expect("recovered buffer");
+    let report = recover_buffer(recovered_buffer, stream, Some(checkpoint), &projection)
+        .expect("recover");
     assert_eq!(report.replayed(), 1);
     assert_eq!(report.dropped_during_recovery(), 0);
     let recovered = report.into_pump();
@@ -88,16 +123,17 @@ fn drop_oldest_checkpoint_preserves_eviction_before_later_export_across_restart(
 }
 
 #[test]
-fn reject_newest_checkpoint_preserves_trailing_gap_after_earlier_exports() {
+fn reject_newest_checkpoint_preserves_loss_markers_after_earlier_exports() {
     let stream = ExportStreamId::new([45; 16]).expect("stream");
     let projection = projection(DiagnosticCode::RecoveryCompleted);
-    let config = config_with_policy(2, 1, BackpressurePolicy::RejectNewest);
-    let mut pump = TelemetryPump::new(stream, TelemetryBuffer::new(config));
+    let config = config(2, 1, ObservationLossPolicy::RejectNewest);
+    let buffer = TelemetryBuffer::new(config).expect("buffer");
+    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
     for record in projection.records() {
-        pump.buffer_mut().enqueue(record.clone()).expect("enqueue projection");
+        pump.enqueue(record.clone()).expect("enqueue projection");
     }
-    pump.flush_one(&mut AcceptingExporter).expect("export sequence one");
-    pump.flush_one(&mut AcceptingExporter).expect("export sequence two");
+    flush_one(&mut pump);
+    flush_one(&mut pump);
 
     let checkpoint = ExportCheckpoint::from_pump(&pump);
     assert_eq!(checkpoint.disposed_through_sequence(), 3);
@@ -106,7 +142,9 @@ fn reject_newest_checkpoint_preserves_trailing_gap_after_earlier_exports() {
     assert_eq!(checkpoint.counters().dropped(), 1);
     assert_eq!(checkpoint.counters().exported(), 2);
 
-    let report = recover_buffer(config, stream, Some(checkpoint), &projection).expect("recover");
+    let recovered_buffer = TelemetryBuffer::new(config).expect("recovered buffer");
+    let report = recover_buffer(recovered_buffer, stream, Some(checkpoint), &projection)
+        .expect("recover");
     assert_eq!(report.replayed(), 0);
     assert_eq!(report.dropped_during_recovery(), 0);
     let recovered = report.into_pump();
@@ -120,13 +158,15 @@ fn recovery_rejects_a_checkpoint_from_changed_projection_history() {
     let stream = ExportStreamId::new([42; 16]).expect("stream");
     let original = projection(DiagnosticCode::RecoveryCompleted);
     let changed = projection(DiagnosticCode::RecoveryFailed);
-    let config = config(8, 1);
-    let mut pump = TelemetryPump::new(stream, TelemetryBuffer::new(config));
-    pump.buffer_mut().enqueue(original.records()[0].clone()).expect("enqueue");
-    pump.flush_one(&mut AcceptingExporter).expect("ack original prefix");
+    let config = config(8, 1, ObservationLossPolicy::RejectNewest);
+    let buffer = TelemetryBuffer::new(config).expect("buffer");
+    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
+    pump.enqueue(original.records()[0].clone()).expect("enqueue");
+    flush_one(&mut pump);
     let checkpoint = ExportCheckpoint::from_pump(&pump);
 
-    let error = recover_buffer(config, stream, Some(checkpoint), &changed)
+    let recovered_buffer = TelemetryBuffer::new(config).expect("recovered buffer");
+    let error = recover_buffer(recovered_buffer, stream, Some(checkpoint), &changed)
         .err()
         .expect("changed projection prefix");
     assert_eq!(error.kind(), TelemetryErrorKind::RecoveryMismatch);
@@ -139,7 +179,9 @@ fn corrupted_latest_generation_fails_closed_and_abandoned_temp_is_removed() {
     let store =
         CheckpointStore::open(temporary.path(), stream, NonZeroUsize::new(1).expect("retention"))
             .expect("checkpoint store");
-    let pump = TelemetryPump::new(stream, TelemetryBuffer::new(config(2, 1)));
+    let buffer = TelemetryBuffer::new(config(2, 512, ObservationLossPolicy::RejectNewest))
+        .expect("buffer");
+    let pump = TelemetryPump::new(stream, buffer).expect("pump");
     store.persist(ExportCheckpoint::from_pump(&pump)).expect("persist genesis");
     let checkpoint_path = fs::read_dir(temporary.path())
         .expect("directory")
@@ -189,28 +231,71 @@ fn version_one_checkpoint_marker_is_explicitly_unsupported() {
     );
 }
 
-fn config(capacity: usize, batch: usize) -> BufferConfig {
-    config_with_policy(capacity, batch, BackpressurePolicy::RejectNewest)
-}
-
-fn config_with_policy(capacity: usize, batch: usize, policy: BackpressurePolicy) -> BufferConfig {
+fn config(
+    pages: usize,
+    batch_bytes: usize,
+    policy: ObservationLossPolicy,
+) -> BufferConfig {
     BufferConfig::new(
-        NonZeroUsize::new(capacity).expect("capacity"),
-        NonZeroUsize::new(batch).expect("batch"),
+        NonZeroUsize::new(512).expect("page bytes"),
+        NonZeroUsize::new(pages).expect("pages"),
+        NonZeroUsize::new(batch_bytes).expect("batch bytes"),
         policy,
     )
     .expect("buffer config")
 }
 
-struct AcceptingExporter;
+fn flush_one(pump: &mut TelemetryPump) {
+    let mut exporter = AcceptingExporter { pending: None };
+    let outcome = pump
+        .poll_flush(
+            &mut exporter,
+            ExportPollControl::continue_with(NonZeroUsize::new(4_096).expect("poll bytes")),
+        )
+        .expect("flush one batch");
+    assert!(matches!(outcome, peritus_telemetry::FlushOutcome::Exported { .. }));
+}
+
+struct AcceptingExporter {
+    pending: Option<ExportAck>,
+}
 
 impl Exporter for AcceptingExporter {
-    fn export(&mut self, batch: &ExportBatch) -> Result<ExportAck, ExporterError> {
-        Ok(ExportAck::accept(batch))
+    fn begin_export(&mut self, batch: &ExportBatch) -> Result<ExportProgress, ExporterError> {
+        self.pending = Some(ExportAck::accept(batch));
+        Ok(ExportProgress::new(ExportPhase::Prepared, 0, None))
     }
 
-    fn shutdown(&mut self) -> Result<(), ExporterError> {
-        Ok(())
+    fn poll_export(&mut self, control: ExportPollControl) -> Result<ExportPoll, ExporterError> {
+        let ack = self.pending.take().ok_or_else(|| {
+            ExporterError::new(ExporterErrorCode::Protocol, false)
+        })?;
+        Ok(match control {
+            ExportPollControl::Continue { .. } => ExportPoll::Accepted {
+                ack,
+                progress: ExportProgress::new(ExportPhase::Complete, 0, None),
+            },
+            ExportPollControl::Cancel => ExportPoll::Cancelled(ExportProgress::new(
+                ExportPhase::Complete,
+                0,
+                None,
+            )),
+        })
+    }
+
+    fn begin_shutdown(&mut self) -> Result<ExportProgress, ExporterError> {
+        Ok(ExportProgress::new(ExportPhase::Cleaning, 0, None))
+    }
+
+    fn poll_shutdown(
+        &mut self,
+        _control: ExportPollControl,
+    ) -> Result<ExporterShutdownPoll, ExporterError> {
+        Ok(ExporterShutdownPoll::Complete(ExportProgress::new(
+            ExportPhase::Complete,
+            0,
+            None,
+        )))
     }
 }
 

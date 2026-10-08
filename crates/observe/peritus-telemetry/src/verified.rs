@@ -4,49 +4,73 @@ use vstd::prelude::*;
 
 verus! {
 
-/// Exact bounded queue accounting transition.
+/// Exact physical-page, spill, and explicit-loss accounting transition.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BufferFacts {
-    /// Queue length before enqueue.
-    pub length_before: u64,
-    /// Configured nonzero capacity.
-    pub capacity: u64,
-    /// Queue length after enqueue.
-    pub length_after: u64,
+    /// Resident page bytes before enqueue.
+    pub resident_bytes_before: u64,
+    /// Configured positive physical page size.
+    pub page_bytes: u64,
+    /// Configured positive physical page count.
+    pub page_count: u64,
+    /// Resident page bytes after enqueue.
+    pub resident_bytes_after: u64,
     /// Drop counter before enqueue.
     pub drops_before: u64,
     /// Drop counter after enqueue.
     pub drops_after: u64,
-    /// Whether the queue was full before enqueue.
-    pub was_full: bool,
+    /// Durable-spill counter before enqueue.
+    pub spilled_before: u64,
+    /// Durable-spill counter after enqueue.
+    pub spilled_after: u64,
+    /// Whether the arriving canonical record fits resident memory under the current prefix pin.
+    pub resident_fit: bool,
+    /// Whether the caller selected durable lossless spill for overflow.
+    pub lossless_spill: bool,
 }
 
-/// Mathematical bounded accounting predicate.
+/// Mathematical byte-residency and explicit overflow-disposition predicate.
 pub open spec fn bounded_accounting_spec(facts: BufferFacts) -> bool {
-    facts.capacity > 0
-        && facts.length_before <= facts.capacity
-        && facts.length_after <= facts.capacity
-        && facts.was_full == (facts.length_before == facts.capacity)
-        && if facts.was_full {
-            facts.drops_before < u64::MAX && facts.drops_after == facts.drops_before + 1
-        } else {
+    facts.page_bytes > 0
+        && facts.page_count > 0
+        && facts.page_count <= u64::MAX / facts.page_bytes
+        && facts.resident_bytes_before <= facts.page_bytes * facts.page_count
+        && facts.resident_bytes_after <= facts.page_bytes * facts.page_count
+        && if facts.resident_fit {
             facts.drops_after == facts.drops_before
+                && facts.spilled_after == facts.spilled_before
+        } else if facts.lossless_spill {
+            facts.drops_after == facts.drops_before
+                && facts.spilled_before < u64::MAX
+                && facts.spilled_after == facts.spilled_before + 1
+        } else {
+            facts.drops_before < u64::MAX
+                && facts.drops_after == facts.drops_before + 1
+                && facts.spilled_after == facts.spilled_before
         }
 }
 
-/// Checks queue bounds and exact drop accounting.
+/// Checks physical-page bounds and exact caller-selected spill or loss accounting.
 #[must_use]
 pub const fn bounded_accounting(facts: BufferFacts) -> (valid: bool)
     ensures valid == bounded_accounting_spec(facts),
 {
-    facts.capacity > 0
-        && facts.length_before <= facts.capacity
-        && facts.length_after <= facts.capacity
-        && facts.was_full == (facts.length_before == facts.capacity)
-        && if facts.was_full {
-            facts.drops_before < u64::MAX && facts.drops_after == facts.drops_before + 1
-        } else {
+    facts.page_bytes > 0
+        && facts.page_count > 0
+        && facts.page_count <= u64::MAX / facts.page_bytes
+        && facts.resident_bytes_before <= facts.page_bytes * facts.page_count
+        && facts.resident_bytes_after <= facts.page_bytes * facts.page_count
+        && if facts.resident_fit {
             facts.drops_after == facts.drops_before
+                && facts.spilled_after == facts.spilled_before
+        } else if facts.lossless_spill {
+            facts.drops_after == facts.drops_before
+                && facts.spilled_before < u64::MAX
+                && facts.spilled_after == facts.spilled_before + 1
+        } else {
+            facts.drops_before < u64::MAX
+                && facts.drops_after == facts.drops_before + 1
+                && facts.spilled_after == facts.spilled_before
         }
 }
 

@@ -1,12 +1,14 @@
-//! Export identities, records, batches, acknowledgements, and adapter contract.
+//! Export identities, canonical batches, progress, cancellation, and adapter ownership.
 
 use core::fmt;
+use std::num::NonZeroUsize;
 
 use peritus_types::Sha256Digest;
 
 use super::encoding::batch_digest;
 use crate::{
-    MetricPoint, OtelEvent, OtelSpan, TelemetryError, TelemetryErrorKind, buffer::BufferedRecord,
+    MetricPoint, OtelEvent, OtelSpan, TelemetryError, TelemetryErrorKind,
+    buffer::{BufferedRecord, DispositionPrefix},
 };
 
 /// Nonzero 16-byte logical export-stream identity.
@@ -41,7 +43,7 @@ impl ExportStreamId {
     }
 }
 
-/// Redaction-safe export value.
+/// Redaction-safe export value accepted from a telemetry projection.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ExportRecord {
     /// Completed OpenTelemetry-compatible span.
@@ -58,11 +60,14 @@ impl ExportRecord {
     }
 }
 
-/// One stable-sequence record inside an export batch.
+/// One stable-sequence canonical record inside an export batch.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExportItem {
     pub(super) sequence: u64,
-    pub(super) record: ExportRecord,
+    pub(super) canonical: Box<[u8]>,
+    prefix_digest: Sha256Digest,
+    accepted_total: u64,
+    gap_before: Option<DispositionPrefix>,
 }
 
 impl ExportItem {
@@ -71,10 +76,21 @@ impl ExportItem {
     pub const fn sequence(&self) -> u64 {
         self.sequence
     }
-    /// Borrows the redaction-safe record.
+    /// Borrows the exact redaction-safe canonical record bytes accepted by the buffer.
     #[must_use]
-    pub const fn record(&self) -> &ExportRecord {
-        &self.record
+    pub fn canonical_record(&self) -> &[u8] {
+        &self.canonical
+    }
+
+    fn into_buffered(self) -> BufferedRecord {
+        BufferedRecord {
+            sequence: self.sequence,
+            canonical: self.canonical,
+            prefix_digest: self.prefix_digest,
+            accepted_total: self.accepted_total,
+            gap_before: self.gap_before,
+            resident_bytes: 0,
+        }
     }
 }
 
@@ -95,7 +111,13 @@ impl ExportBatch {
     ) -> Result<Self, TelemetryError> {
         let items = records
             .into_iter()
-            .map(|record| ExportItem { sequence: record.sequence, record: record.record })
+            .map(|record| ExportItem {
+                sequence: record.sequence,
+                canonical: record.canonical,
+                prefix_digest: record.prefix_digest,
+                accepted_total: record.accepted_total,
+                gap_before: record.gap_before,
+            })
             .collect::<Vec<_>>();
         let first_sequence = items.first().map_or(0, ExportItem::sequence);
         let last_sequence = items.last().map_or(0, ExportItem::sequence);
@@ -133,13 +155,20 @@ impl ExportBatch {
     pub const fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
-    /// Borrows sequenced records.
+    /// Borrows sequenced canonical records.
     #[must_use]
     pub fn items(&self) -> &[ExportItem] {
         &self.items
     }
 
+    pub(crate) fn buffered_records(&self) -> Vec<BufferedRecord> {
+        self.items.clone().into_iter().map(ExportItem::into_buffered).collect()
+    }
+
     /// Encodes one complete redaction-safe batch for durable local-file export.
+    ///
+    /// Existing accepted canonical record bytes are copied verbatim; they are never decoded or
+    /// projected again while under export custody.
     ///
     /// # Errors
     ///
@@ -159,8 +188,7 @@ impl ExportBatch {
         })?;
         bytes.extend_from_slice(&count.to_be_bytes());
         for item in &self.items {
-            let record = item.record.canonical_bytes()?;
-            let length = u64::try_from(record.len()).map_err(|_| {
+            let length = u64::try_from(item.canonical.len()).map_err(|_| {
                 TelemetryError::new(
                     TelemetryErrorKind::SequenceOverflow,
                     "encode local telemetry batch",
@@ -169,7 +197,7 @@ impl ExportBatch {
             })?;
             bytes.extend_from_slice(&item.sequence.to_be_bytes());
             bytes.extend_from_slice(&length.to_be_bytes());
-            bytes.extend_from_slice(&record);
+            bytes.extend_from_slice(&item.canonical);
         }
         Ok(bytes)
     }
@@ -219,6 +247,111 @@ impl ExportAck {
     }
 }
 
+/// Stable phase reported by an exporter-owned operation.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ExportPhase {
+    /// Immutable input was accepted and the operation owns no externally visible result yet.
+    Prepared,
+    /// Canonical bytes are being transferred to exporter-owned storage or transport.
+    Writing,
+    /// Acceptance is being durably committed or verified.
+    Committing,
+    /// Exporter-owned temporary resources are being removed.
+    Cleaning,
+    /// Acceptance or cleanup has completed truthfully.
+    Complete,
+}
+
+/// Content-free progress for one exporter-owned operation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExportProgress {
+    phase: ExportPhase,
+    completed_bytes: u64,
+    total_bytes: Option<u64>,
+}
+
+impl ExportProgress {
+    /// Creates a progress snapshot with an optional exact byte total.
+    #[must_use]
+    pub const fn new(
+        phase: ExportPhase,
+        completed_bytes: u64,
+        total_bytes: Option<u64>,
+    ) -> Self {
+        Self { phase, completed_bytes, total_bytes }
+    }
+    /// Returns the current stable operation phase.
+    #[must_use]
+    pub const fn phase(self) -> ExportPhase {
+        self.phase
+    }
+    /// Returns bytes durably or transport-locally completed so far.
+    #[must_use]
+    pub const fn completed_bytes(self) -> u64 {
+        self.completed_bytes
+    }
+    /// Returns the exact operation byte total when the adapter knows it.
+    #[must_use]
+    pub const fn total_bytes(self) -> Option<u64> {
+        self.total_bytes
+    }
+}
+
+/// Caller-selected action for one finite exporter poll.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExportPollControl {
+    /// Advance by at most the supplied positive canonical-byte work budget.
+    Continue {
+        /// Positive byte budget for this poll only; it is never a session or export ceiling.
+        max_bytes: NonZeroUsize,
+    },
+    /// Cancel the active operation and truthfully clean up exporter-owned temporary state.
+    Cancel,
+}
+
+impl ExportPollControl {
+    /// Creates one positive finite-work continuation poll.
+    #[must_use]
+    pub const fn continue_with(max_bytes: NonZeroUsize) -> Self {
+        Self::Continue { max_bytes }
+    }
+    /// Returns the finite byte budget for a continuation poll.
+    #[must_use]
+    pub const fn max_bytes(self) -> Option<NonZeroUsize> {
+        match self {
+            Self::Continue { max_bytes } => Some(max_bytes),
+            Self::Cancel => None,
+        }
+    }
+}
+
+/// Result of polling an exporter-owned batch operation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExportPoll {
+    /// More caller-owned polling is required.
+    Pending(ExportProgress),
+    /// The complete exact batch was accepted.
+    Accepted {
+        /// Exact whole-batch acknowledgement.
+        ack: ExportAck,
+        /// Final exporter progress.
+        progress: ExportProgress,
+    },
+    /// Cancellation completed and the exporter accepted none of the batch.
+    Cancelled(ExportProgress),
+}
+
+/// Result of polling exporter resource shutdown.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ExporterShutdownPoll {
+    /// More caller-owned polling is required.
+    Pending(ExportProgress),
+    /// All exporter-owned resources were truthfully released.
+    Complete(ExportProgress),
+    /// Shutdown cancellation completed without claiming resource release.
+    Cancelled(ExportProgress),
+}
+
 /// Stable exporter failure class.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ExporterErrorCode {
@@ -232,28 +365,43 @@ pub enum ExporterErrorCode {
     Shutdown,
 }
 
-/// Content-free exporter error.
+/// Content-free exporter error with truthful owned-resource cleanup status.
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub struct ExporterError {
     code: ExporterErrorCode,
     retryable: bool,
+    cleanup_complete: bool,
 }
 
 impl ExporterError {
-    /// Creates a stable exporter failure without provider response text.
+    /// Creates a stable exporter failure after complete operation cleanup.
     #[must_use]
     pub const fn new(code: ExporterErrorCode, retryable: bool) -> Self {
-        Self { code, retryable }
+        Self { code, retryable, cleanup_complete: true }
+    }
+    /// Creates a stable exporter failure with explicit cleanup status.
+    #[must_use]
+    pub const fn with_cleanup_status(
+        code: ExporterErrorCode,
+        retryable: bool,
+        cleanup_complete: bool,
+    ) -> Self {
+        Self { code, retryable, cleanup_complete }
     }
     /// Returns the stable category.
     #[must_use]
     pub const fn code(self) -> ExporterErrorCode {
         self.code
     }
-    /// Returns whether the same exact batch may be retried.
+    /// Returns whether the same exact batch may be retried after complete cleanup.
     #[must_use]
     pub const fn retryable(self) -> bool {
         self.retryable
+    }
+    /// Returns whether the failed operation released every exporter-owned temporary resource.
+    #[must_use]
+    pub const fn cleanup_complete(self) -> bool {
+        self.cleanup_complete
     }
 }
 
@@ -263,30 +411,54 @@ impl fmt::Debug for ExporterError {
             .debug_struct("ExporterError")
             .field("code", &self.code)
             .field("retryable", &self.retryable)
+            .field("cleanup_complete", &self.cleanup_complete)
             .finish()
     }
 }
 
 impl fmt::Display for ExporterError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "telemetry exporter {:?} (retryable={})", self.code, self.retryable)
+        write!(
+            formatter,
+            "telemetry exporter {:?} (retryable={}, cleanup_complete={})",
+            self.code, self.retryable, self.cleanup_complete,
+        )
     }
 }
 
 impl std::error::Error for ExporterError {}
 
-/// Synchronous whole-batch exporter contract.
+/// Owned, explicitly polled whole-batch exporter contract.
+///
+/// An adapter owns at most one operation from `begin_*` until its corresponding poll reports a
+/// terminal result. It must perform no detached work. A poll error with incomplete cleanup leaves
+/// that same operation active so the caller can poll with [`ExportPollControl::Cancel`].
 pub trait Exporter {
-    /// Exports one immutable idempotent batch.
+    /// Begins ownership of one immutable idempotent batch without claiming acceptance.
     ///
     /// # Errors
     ///
-    /// Returns a content-free explicit adapter failure. The caller retains the complete batch.
-    fn export(&mut self, batch: &ExportBatch) -> Result<ExportAck, ExporterError>;
-    /// Flushes and releases exporter-owned resources.
+    /// Returns a content-free failure only when no operation was started.
+    fn begin_export(&mut self, batch: &ExportBatch) -> Result<ExportProgress, ExporterError>;
+    /// Advances or cancels the active export operation.
     ///
     /// # Errors
     ///
-    /// Returns a content-free explicit adapter shutdown failure.
-    fn shutdown(&mut self) -> Result<(), ExporterError>;
+    /// Returns a content-free explicit adapter failure with truthful cleanup status.
+    fn poll_export(&mut self, control: ExportPollControl) -> Result<ExportPoll, ExporterError>;
+    /// Begins exporter resource shutdown without claiming cleanup.
+    ///
+    /// # Errors
+    ///
+    /// Returns a content-free failure only when no shutdown operation was started.
+    fn begin_shutdown(&mut self) -> Result<ExportProgress, ExporterError>;
+    /// Advances or cancels the active exporter shutdown operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns a content-free explicit adapter failure with truthful cleanup status.
+    fn poll_shutdown(
+        &mut self,
+        control: ExportPollControl,
+    ) -> Result<ExporterShutdownPoll, ExporterError>;
 }

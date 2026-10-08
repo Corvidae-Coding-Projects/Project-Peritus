@@ -28,10 +28,9 @@ pub(super) fn batch_digest(
     put_len(&mut bytes, items.len())?;
     bytes.extend_from_slice(stream.as_bytes());
     for item in items {
-        let record = item.record.canonical_bytes()?;
         bytes.extend_from_slice(&item.sequence.to_be_bytes());
-        put_len(&mut bytes, record.len())?;
-        bytes.extend_from_slice(&record);
+        put_len(&mut bytes, item.canonical.len())?;
+        bytes.extend_from_slice(&item.canonical);
     }
     Ok(peritus_codec::sha256(&bytes))
 }

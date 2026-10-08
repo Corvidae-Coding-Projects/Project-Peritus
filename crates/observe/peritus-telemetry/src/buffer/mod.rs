@@ -1,4 +1,4 @@
-//! Deterministic bounded buffer and drop accounting.
+//! Byte-accounted telemetry buffering and explicit observation-loss policy.
 
 #![allow(
     clippy::redundant_pub_crate,
@@ -12,63 +12,102 @@ use std::num::NonZeroUsize;
 use crate::{TelemetryError, TelemetryErrorKind};
 
 pub use state::TelemetryBuffer;
-pub(crate) use state::{BufferedRecord, record_prefix};
+pub(crate) use state::{
+    BufferedRecord, DispositionPrefix, accepted_record_prefix, lost_record_prefix,
+};
 
-/// Hard upper bound preventing accidental giant in-memory queues.
-pub const MAX_BUFFER_ITEMS: usize = 1_000_000;
-
-/// Deterministic behavior when the queue is full.
+/// Caller-selected behavior when a canonical observation cannot remain resident in memory.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum BackpressurePolicy {
-    /// Reject the arriving record and retain every queued record.
+pub enum ObservationLossPolicy {
+    /// Reject the arriving observation and retain every pending observation.
     RejectNewest,
-    /// Evict exactly one oldest record and accept the arriving record.
+    /// Evict the oldest unpinned observations until the arriving observation fits.
     DropOldest,
+    /// Persist overflow observations to a caller-owned durable spill store without loss.
+    LosslessSpill,
 }
 
-/// Validated queue and batch limits.
+/// Reason an arriving observation was explicitly lost.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum RejectionReason {
+    /// No configured resident page was available.
+    MemoryFull,
+    /// The observation needs more resident pages than the complete memory budget.
+    RecordExceedsMemory,
+    /// Making room would have required evicting an in-flight export prefix.
+    InFlightPrefix,
+}
+
+/// Validated physical-memory and export-batch limits.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BufferConfig {
-    capacity: NonZeroUsize,
-    batch_size: NonZeroUsize,
-    policy: BackpressurePolicy,
+    memory_page_bytes: NonZeroUsize,
+    memory_pages: NonZeroUsize,
+    memory_capacity_bytes: NonZeroUsize,
+    batch_bytes: NonZeroUsize,
+    loss_policy: ObservationLossPolicy,
 }
 
 impl BufferConfig {
-    /// Creates fixed nonzero queue and batch limits.
+    /// Creates positive physical-page and per-batch byte limits.
+    ///
+    /// No cumulative record or work ceiling is imposed. Every resident record is charged in whole
+    /// caller-sized pages, and each batch is byte-bounded while still admitting one oversized
+    /// record so a durable spill can always make progress.
     ///
     /// # Errors
     ///
-    /// Rejects a capacity above one million or a batch larger than the queue.
-    pub const fn new(
-        capacity: NonZeroUsize,
-        batch_size: NonZeroUsize,
-        policy: BackpressurePolicy,
+    /// Rejects a page-size and page-count product that cannot be represented by this process.
+    pub fn new(
+        memory_page_bytes: NonZeroUsize,
+        memory_pages: NonZeroUsize,
+        batch_bytes: NonZeroUsize,
+        loss_policy: ObservationLossPolicy,
     ) -> Result<Self, TelemetryError> {
-        if capacity.get() > MAX_BUFFER_ITEMS || batch_size.get() > capacity.get() {
-            return Err(TelemetryError::new(
-                TelemetryErrorKind::InvalidConfiguration,
-                "validate telemetry buffer",
-                "capacity exceeds the hard bound or batch exceeds capacity",
-            ));
-        }
-        Ok(Self { capacity, batch_size, policy })
+        let memory_capacity_bytes = memory_page_bytes
+            .get()
+            .checked_mul(memory_pages.get())
+            .and_then(NonZeroUsize::new)
+            .ok_or_else(|| {
+                TelemetryError::new(
+                    TelemetryErrorKind::InvalidConfiguration,
+                    "validate telemetry buffer",
+                    "physical memory page product is not representable",
+                )
+            })?;
+        Ok(Self {
+            memory_page_bytes,
+            memory_pages,
+            memory_capacity_bytes,
+            batch_bytes,
+            loss_policy,
+        })
     }
 
-    /// Returns queue capacity.
+    /// Returns the caller's physical page size in bytes.
     #[must_use]
-    pub const fn capacity(self) -> usize {
-        self.capacity.get()
+    pub const fn memory_page_bytes(self) -> NonZeroUsize {
+        self.memory_page_bytes
     }
-    /// Returns maximum records per export batch.
+    /// Returns the positive number of resident pages.
     #[must_use]
-    pub const fn batch_size(self) -> usize {
-        self.batch_size.get()
+    pub const fn memory_pages(self) -> NonZeroUsize {
+        self.memory_pages
     }
-    /// Returns deterministic full-queue policy.
+    /// Returns the checked resident-memory budget in bytes.
     #[must_use]
-    pub const fn policy(self) -> BackpressurePolicy {
-        self.policy
+    pub const fn memory_capacity_bytes(self) -> NonZeroUsize {
+        self.memory_capacity_bytes
+    }
+    /// Returns the target canonical payload bytes per export batch.
+    #[must_use]
+    pub const fn batch_bytes(self) -> NonZeroUsize {
+        self.batch_bytes
+    }
+    /// Returns the explicit observation-loss policy.
+    #[must_use]
+    pub const fn loss_policy(self) -> ObservationLossPolicy {
+        self.loss_policy
     }
 }
 
@@ -87,12 +126,12 @@ impl BufferCounters {
     pub const fn submitted(self) -> u64 {
         self.submitted
     }
-    /// Returns records historically accepted into the queue.
+    /// Returns records historically accepted into resident memory or durable spill.
     #[must_use]
     pub const fn accepted(self) -> u64 {
         self.accepted
     }
-    /// Returns records rejected or evicted.
+    /// Returns records explicitly rejected or evicted under a lossy policy.
     #[must_use]
     pub const fn dropped(self) -> u64 {
         self.dropped
@@ -117,7 +156,7 @@ impl BufferCounters {
             return Err(TelemetryError::new(
                 TelemetryErrorKind::InvalidCheckpoint,
                 "restore telemetry counters",
-                "checkpoint counters violate bounded accounting",
+                "checkpoint counters violate observation accounting",
             ));
         }
         Ok(Self { submitted, accepted, dropped, exported })
@@ -127,21 +166,36 @@ impl BufferCounters {
 /// Result of one enqueue operation.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum EnqueueOutcome {
-    /// Record was accepted without eviction.
+    /// Observation was accepted into byte-accounted resident memory.
     Accepted {
         /// Stable submitted sequence.
         sequence: u64,
+        /// Physical page bytes charged to this resident observation.
+        resident_bytes: usize,
     },
-    /// Oldest record was evicted and the arriving record accepted.
+    /// Observation was accepted only after older observations were explicitly lost.
     DroppedOldest {
         /// Accepted arriving sequence.
         accepted_sequence: u64,
-        /// Evicted record sequence.
-        dropped_sequence: u64,
+        /// First evicted stable sequence.
+        first_dropped_sequence: u64,
+        /// Last evicted stable sequence.
+        last_dropped_sequence: u64,
+        /// Exact number of evicted observations.
+        count: u64,
     },
-    /// Arriving record was rejected.
+    /// Observation was durably accepted outside resident memory.
+    Spilled {
+        /// Stable submitted sequence.
+        sequence: u64,
+        /// Exact canonical payload bytes held by the spill record.
+        canonical_bytes: u64,
+    },
+    /// Arriving observation was explicitly lost.
     RejectedNewest {
         /// Rejected stable submitted sequence.
         rejected_sequence: u64,
+        /// Why the configured policy could not retain it.
+        reason: RejectionReason,
     },
 }

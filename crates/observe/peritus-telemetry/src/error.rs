@@ -63,6 +63,7 @@ pub struct TelemetryError {
     source_class: Option<&'static str>,
     exporter_code: Option<crate::ExporterErrorCode>,
     exporter_retryable: Option<bool>,
+    exporter_cleanup_complete: Option<bool>,
 }
 
 impl TelemetryError {
@@ -79,6 +80,7 @@ impl TelemetryError {
             source_class: None,
             exporter_code: None,
             exporter_retryable: None,
+            exporter_cleanup_complete: None,
         }
     }
 
@@ -96,6 +98,7 @@ impl TelemetryError {
             source_class: Some(source_class),
             exporter_code: None,
             exporter_retryable: None,
+            exporter_cleanup_complete: None,
         }
     }
 
@@ -112,6 +115,7 @@ impl TelemetryError {
             source_class: Some("exporter"),
             exporter_code: Some(error.code()),
             exporter_retryable: Some(error.retryable()),
+            exporter_cleanup_complete: Some(error.cleanup_complete()),
         }
     }
 
@@ -145,6 +149,11 @@ impl TelemetryError {
     pub const fn exporter_retryable(&self) -> Option<bool> {
         self.exporter_retryable
     }
+    /// Returns whether a failed exporter operation truthfully completed owned-resource cleanup.
+    #[must_use]
+    pub const fn exporter_cleanup_complete(&self) -> Option<bool> {
+        self.exporter_cleanup_complete
+    }
 }
 
 impl fmt::Debug for TelemetryError {
@@ -158,6 +167,7 @@ impl fmt::Debug for TelemetryError {
             .field("source", &self.source_class)
             .field("exporter_code", &self.exporter_code)
             .field("exporter_retryable", &self.exporter_retryable)
+            .field("exporter_cleanup_complete", &self.exporter_cleanup_complete)
             .finish()
     }
 }

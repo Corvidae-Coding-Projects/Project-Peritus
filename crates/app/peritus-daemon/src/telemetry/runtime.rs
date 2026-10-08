@@ -1,15 +1,21 @@
-//! C7 projection recovery, local export, and exact checkpoint ownership.
+//! Lossless C7 projection recovery, caller-owned spill, local export, and checkpoints.
 
 use std::{num::NonZeroUsize, path::Path};
 
 use peritus_journal::{SqliteJournal, StoreId};
 use peritus_telemetry::{
-    BackpressurePolicy, BufferConfig, CheckpointStore, ExportCheckpoint, ExportStreamId,
-    FlushOutcome, ShutdownOutcome, TelemetryPump, project_telemetry, recover_buffer,
+    BufferConfig, CheckpointStore, ExportCheckpoint, ExportPollControl, ExportStreamId,
+    FlushOutcome, ObservationLossPolicy, ShutdownOutcome, SpillStore, TelemetryBuffer,
+    TelemetryPump, project_telemetry, recover_buffer,
 };
 
 use super::local_file::LocalFileExporter;
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
+
+const MEMORY_PAGE_BYTES: usize = 4_096;
+const MEMORY_PAGES: usize = 4_096;
+const EXPORT_BATCH_BYTES: usize = 512 * 1_024;
+const EXPORT_POLL_BYTES: usize = 64 * 1_024;
 
 pub struct TelemetryRuntime {
     pump: TelemetryPump,
@@ -27,21 +33,23 @@ impl TelemetryRuntime {
         let traces = peritus_trace::recover_all(journal).map_err(component_error)?;
         let projection = project_telemetry(&traces).map_err(component_error)?;
         let stream = ExportStreamId::new(*store_id.as_bytes()).map_err(component_error)?;
-        let checkpoint_directory = directory.join("checkpoints");
         let checkpoints = CheckpointStore::open(
-            checkpoint_directory,
+            directory.join("checkpoints"),
             stream,
             NonZeroUsize::new(8).expect("positive checkpoint retention"),
         )
         .map_err(component_error)?;
         let checkpoint = checkpoints.load_latest().map_err(component_error)?;
         let config = BufferConfig::new(
-            NonZeroUsize::new(4_096).expect("positive telemetry capacity"),
-            NonZeroUsize::new(128).expect("positive telemetry batch"),
-            BackpressurePolicy::DropOldest,
+            NonZeroUsize::new(MEMORY_PAGE_BYTES).expect("positive telemetry page size"),
+            NonZeroUsize::new(MEMORY_PAGES).expect("positive telemetry page count"),
+            NonZeroUsize::new(EXPORT_BATCH_BYTES).expect("positive telemetry batch bytes"),
+            ObservationLossPolicy::LosslessSpill,
         )
         .map_err(component_error)?;
-        let pump = recover_buffer(config, stream, checkpoint, &projection)
+        let spill = SpillStore::open(directory.join("spill"), stream).map_err(component_error)?;
+        let buffer = TelemetryBuffer::with_spill(config, spill).map_err(component_error)?;
+        let pump = recover_buffer(buffer, stream, checkpoint, &projection)
             .map_err(component_error)?
             .into_pump();
         let exporter = LocalFileExporter::open(&directory.join("batches"), quota_bytes)
@@ -53,31 +61,64 @@ impl TelemetryRuntime {
 
     pub(crate) fn flush_pending(&mut self) -> Result<(), DaemonError> {
         loop {
-            match self.pump.flush_one(&mut self.exporter).map_err(component_error)? {
+            match self
+                .pump
+                .poll_flush(&mut self.exporter, poll_control())
+                .map_err(component_error)?
+            {
                 FlushOutcome::Empty => return Ok(()),
-                FlushOutcome::Exported { .. } => self
-                    .checkpoints
-                    .persist(ExportCheckpoint::from_pump(&self.pump))
-                    .map_err(component_error)?,
+                FlushOutcome::Pending(_) => {}
+                FlushOutcome::Exported { .. } => self.persist_checkpoint()?,
+                FlushOutcome::Cancelled { remaining, .. } => {
+                    return Err(cancelled_drain_error(remaining.total()));
+                }
             }
         }
     }
 
     pub(crate) fn shutdown(&mut self) -> Result<(), DaemonError> {
-        let batches = u64::try_from(self.pump.buffer().len()).unwrap_or(u64::MAX).max(1);
-        match self.pump.shutdown(&mut self.exporter, batches).map_err(component_error)? {
-            ShutdownOutcome::Complete => self
-                .checkpoints
-                .persist(ExportCheckpoint::from_pump(&self.pump))
-                .map_err(component_error),
-            ShutdownOutcome::Pending { remaining } => Err(DaemonError::new(
-                DaemonErrorCode::UncleanShutdown,
-                DaemonRecovery::Retry,
-                "shutdown telemetry exporter",
-                format!("{remaining} telemetry records remain queued"),
-            )),
+        loop {
+            let prior_disposition = self.pump.disposed_through_sequence();
+            let outcome = self
+                .pump
+                .poll_shutdown(&mut self.exporter, poll_control())
+                .map_err(component_error)?;
+            if self.pump.disposed_through_sequence() != prior_disposition {
+                self.persist_checkpoint()?;
+            }
+            match outcome {
+                ShutdownOutcome::Complete => {
+                    self.persist_checkpoint()?;
+                    return Ok(());
+                }
+                ShutdownOutcome::Pending { .. } => {}
+                ShutdownOutcome::Cancelled { remaining, .. } => {
+                    return Err(cancelled_drain_error(remaining.total()));
+                }
+            }
         }
     }
+
+    fn persist_checkpoint(&self) -> Result<(), DaemonError> {
+        self.checkpoints
+            .persist(ExportCheckpoint::from_pump(&self.pump))
+            .map_err(component_error)
+    }
+}
+
+fn poll_control() -> ExportPollControl {
+    ExportPollControl::continue_with(
+        NonZeroUsize::new(EXPORT_POLL_BYTES).expect("positive telemetry poll bytes"),
+    )
+}
+
+fn cancelled_drain_error(remaining: u64) -> DaemonError {
+    DaemonError::new(
+        DaemonErrorCode::UncleanShutdown,
+        DaemonRecovery::Retry,
+        "drain telemetry exporter",
+        format!("telemetry export was cancelled with {remaining} records still in custody"),
+    )
 }
 
 fn component_error(error: impl std::error::Error + Send + Sync + 'static) -> DaemonError {
