@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3957,
-        "tip_oid": "b7d46ff8b9450d7886cd0271577069debb587ae2",
-        "prefix_sha256": "26554603774e177e0bac2af09f377256ecc15b47b52e20023ebc3ab4540c22d7"
+        "sequence": 3958,
+        "tip_oid": "396dc100300c483d2c7c06503e28c408f401fa71",
+        "prefix_sha256": "8a4379f737226fc05dae7e90509972c108f8079f012c799beece714fae95fc77"
       },
       "NWAR": {
         "sequence": 39,
@@ -33019,12 +33019,13 @@
       "display_id": 134,
       "title": "[L035] Tool writes and completed-command receipts impose a tighter file ceiling",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L035.\n\n- `peritus-product-runner/src/developer_tools/executor.rs:27` defines **2 MiB per file**. `executor/effects.rs:203-208,234-253` rejects larger direct writes and larger patched final files. `checkpoint_observer.rs:129-170` repeats those checks during preflight.\n- `checkpoint_observer.rs:333-355` reads the completed command's changed scoped file and rejects its receipt above **2 MiB**, even after the command succeeded. This ceiling is tighter than the checkpoint's 8 MiB bound (L003) and independently blocks artifact-producing commands.\n- Structural issue: workspace state, file-edit payload, checkpoint capture, and post-command effect evidence have different capacities. A command can pass preflight under one capacity and fail durable settlement under another. Its later recovery/settlement caller remains pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.975347828Z",
-      "updated_at": "2026-10-08T01:50:31.410273110Z",
+      "updated_at": "2026-10-08T01:52:04.957214502Z",
+      "closed_at": "2026-10-08T01:52:04.954306670Z",
       "labels": [
         "daily-driving-limiter"
       ],
