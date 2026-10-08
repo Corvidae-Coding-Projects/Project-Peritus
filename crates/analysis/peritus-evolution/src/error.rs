@@ -13,6 +13,8 @@ pub enum EvolutionErrorKind {
     NonCanonical,
     /// Evidence is absent, incomplete, or unavailable.
     IncompleteEvidence,
+    /// A requested evidence or decision capability is not implemented.
+    UnsupportedCapability,
     /// Candidate or evidence crossed a sealed boundary.
     Contamination,
     /// Frozen promotion policy rejected the candidate.

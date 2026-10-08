@@ -31,6 +31,13 @@ pub fn attribute(
     {
         return Err(binding());
     }
+    if manifests
+        .iter()
+        .flat_map(ChangeManifest::predictions)
+        .any(Prediction::requires_unsupported_capability)
+    {
+        return Err(unsupported_mandatory_failure_class());
+    }
     let predicted = manifests.iter().map(|manifest| manifest.predictions().len()).sum::<usize>();
     if predicted == 0
         || limits.attribution_entries_limit().is_some_and(|maximum| {
@@ -189,5 +196,14 @@ const fn binding() -> EvolutionError {
         EvolutionOperation::Attribute,
         EvolutionRecovery::CorrectInput,
         "variant, manifest, and evaluation bindings differ",
+    )
+}
+
+const fn unsupported_mandatory_failure_class() -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::UnsupportedCapability,
+        EvolutionOperation::Attribute,
+        EvolutionRecovery::CorrectInput,
+        "accepted manifest has a mandatory failure-class prediction unsupported by E3; admit a corrected observable prediction in this campaign",
     )
 }

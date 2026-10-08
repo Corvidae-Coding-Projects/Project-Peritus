@@ -169,7 +169,7 @@ fn prediction(
     };
     let threshold = metric_value(reader)?;
     let rationale = text(reader, limits)?;
-    Prediction::new(
+    Prediction::from_exact_parts(
         subject,
         metric,
         direction,

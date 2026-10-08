@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 use crate::{
     BoundedText, ChangeManifestId, ComponentDelta, EvolutionError, EvolutionErrorKind,
     EvolutionLimits, EvolutionOperation, EvolutionRecovery, Prediction, PublishedDebuggerEvidence,
+    change::prediction::unsupported_mandatory_failure_class,
     identity::{digest_parts, push_bytes},
 };
 use peritus_harness::domain::{ComponentId, HarnessRevision, HarnessRevisionIdentity};
@@ -50,6 +51,9 @@ impl ChangeManifest {
     ) -> Result<Self, EvolutionError> {
         if !candidate.is_direct_successor_of(baseline) || rollback_target != baseline.identity() {
             return Err(binding("candidate is not a direct successor or rollback is not baseline"));
+        }
+        if predictions.iter().any(Prediction::requires_unsupported_capability) {
+            return Err(unsupported_mandatory_failure_class(EvolutionOperation::AdmitManifest));
         }
         if alternatives.is_empty()
             || alternatives.windows(2).any(|pair| pair[0] >= pair[1])

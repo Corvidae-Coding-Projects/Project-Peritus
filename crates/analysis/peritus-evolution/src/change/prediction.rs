@@ -147,8 +147,27 @@ impl Prediction {
     ///
     /// # Errors
     /// Rejects a threshold whose numeric representation is incompatible with the metric or a
-    /// task-scoped metric without an exact task identity.
+    /// task-scoped metric without an exact task identity. Mandatory failure-class predictions are
+    /// rejected because retained E3 evidence has no class-specific observation for them.
     pub fn new(
+        subject: PredictionSubject,
+        metric: PredictionMetric,
+        direction: PredictionDirection,
+        threshold: MetricValue,
+        rationale: BoundedText,
+        mandatory: bool,
+        critical: bool,
+    ) -> Result<Self, EvolutionError> {
+        let prediction = Self::from_exact_parts(
+            subject, metric, direction, threshold, rationale, mandatory, critical,
+        )?;
+        if prediction.requires_unsupported_capability() {
+            return Err(unsupported_mandatory_failure_class(EvolutionOperation::AdmitManifest));
+        }
+        Ok(prediction)
+    }
+
+    pub(crate) fn from_exact_parts(
         subject: PredictionSubject,
         metric: PredictionMetric,
         direction: PredictionDirection,
@@ -174,6 +193,10 @@ impl Prediction {
         );
         let digest = digest_parts(b"peritus.f0.prediction.v1\0", &[&bytes]);
         Ok(Self { subject, metric, direction, threshold, rationale, mandatory, critical, digest })
+    }
+
+    pub(crate) const fn requires_unsupported_capability(&self) -> bool {
+        self.mandatory && matches!(self.subject, PredictionSubject::FailureClass(_))
     }
 
     /// Returns the prediction scope.
@@ -216,6 +239,17 @@ impl Prediction {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+}
+
+pub(crate) const fn unsupported_mandatory_failure_class(
+    operation: EvolutionOperation,
+) -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::UnsupportedCapability,
+        operation,
+        EvolutionRecovery::CorrectInput,
+        "mandatory failure-class predictions require unavailable class-specific E3 evidence; use an observable campaign or task prediction",
+    )
 }
 
 fn prediction_bytes(
