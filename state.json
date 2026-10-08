@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4094,
-        "tip_oid": "8cd11368182d30098372e495967ce8ba23a8c0c4",
-        "prefix_sha256": "89a2bcb0fb1f983b4dfe8087ed74abc71e5da083f9095f8d0714246a362e7551"
+        "sequence": 4095,
+        "tip_oid": "e2b2e5f90811406ece6cfecb414ce8f5590a6b19",
+        "prefix_sha256": "4b9b09d0f764d5d1e751e5bab7ab56571b29ba82041b6b1ff7d6de3f43abd226"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3250,
+  "next_comment_id": 3251,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6921,7 +6921,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.695800571Z",
-      "updated_at": "2026-10-06T13:27:50.697959343Z",
+      "updated_at": "2026-10-08T05:47:50.296551428Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -6932,6 +6932,15 @@
           "content": "Systemic repair plan for L470: Compatible API defaults retain finite retry and private production capacities.\n\nOwning contract and implementation boundary: crates/model/peritus-provider-compatible/src/config.rs:21-22,159-172,189-204,242-262,315-331; src/client.rs:142-180,211-228,280-283. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nseparate retained session/recovery state from finite per-request budgets, expose deliberate capacity configuration and maintain cancellable provider-directed recovery rather than category-based restart. No tests run.\n\nPreserve: definitely-unaccepted versus ambiguously-accepted request state, exact native thread/profile identity, ordered provider observations, tool-result protocol, explicit cancellation and real provider/model capabilities. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long provider outages and Retry-After, split transport chunks and large streams, ambiguous acceptance and duplicate events, cancellation during recovery, adapter restart and route changes, proving same-thread reconnection and no duplicated accepted request/effect. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "6fd6247d-e120-4cb1-8fba-6794253f3e51": {
+          "display_id": 3250,
+          "author": "6ME5",
+          "content": "Code complete in commit 44b228d44. Compatible adapters default to caller-owned ongoing recovery; finite adapter budgets require explicit selection and admit exact encoded next-send bytes before effect. Public capacities align HTTP/framing/protocol/headers and remove hidden header narrowing. Multiple rate dimensions persist in order, while request/retry-after metadata, ambiguity and partial-stream safeguards remain intact. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T05:47:50.286973446Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARpwmvfkFYEng101Najam6T2VX3X2wI4MHVvGopIG7PYTuRjenxI6RLdhFtRZPLcHHgM6SdA0chZl3yHHIB/BCA=="
         }
       }
     },
