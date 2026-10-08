@@ -1,7 +1,9 @@
 use super::{
     ErrorCode, Manifest, PatchError, PatchOperationContext, PatchPlan, Path, RecoveryClass,
-    RollbackStatus, fs, io, sync_directory,
+    RollbackStatus,
 };
+#[cfg(unix)]
+use super::{fs, io, sync_directory};
 use crate::Preimage;
 use crate::transaction::{
     filesystem::{Observation, observation_matches, observe_target, observe_target_cancellable},
@@ -70,14 +72,6 @@ pub(super) fn validate_volume_modes(
         PatchError::io(PatchOperationContext::Plan, RollbackStatus::NotRequired, error)
     })?;
     sync_directory(transaction_root, RollbackStatus::NotRequired)
-}
-
-#[cfg(not(unix))]
-pub(super) fn validate_volume_modes(
-    _transaction_root: &Path,
-    _plan: &PatchPlan,
-) -> Result<(), PatchError> {
-    Ok(())
 }
 
 #[cfg(not(unix))]

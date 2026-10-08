@@ -5,7 +5,9 @@ mod validation;
 use install::{cancellation_error, check_fault, install_all};
 #[cfg(not(unix))]
 use validation::validate_platform_modes;
-use validation::{validate_volume_modes, verify_plan_preimages};
+#[cfg(unix)]
+use validation::validate_volume_modes;
+use validation::verify_plan_preimages;
 
 use std::{
     fs, io,
@@ -167,6 +169,7 @@ where
     #[cfg(not(unix))]
     validate_platform_modes(plan)?;
     let roots = prepare_roots(workspace_root, transaction_root)?;
+    #[cfg(unix)]
     validate_volume_modes(&roots.transaction_root, plan)?;
     if cancelled() {
         complete_action(completion, None)?;

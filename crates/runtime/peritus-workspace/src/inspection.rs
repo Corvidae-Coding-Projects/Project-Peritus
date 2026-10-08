@@ -2,7 +2,9 @@
 
 use std::{fs, path::PathBuf};
 
-use cap_std::fs::{Metadata as CapMetadata, MetadataExt as _};
+use cap_std::fs::Metadata as CapMetadata;
+#[cfg(unix)]
+use cap_std::fs::MetadataExt as _;
 use peritus_patch::WorkspacePath;
 
 use crate::{ErrorCode, ReadOnlyWorkspace, RecoveryClass, WorkspaceError, WorkspaceOperation};

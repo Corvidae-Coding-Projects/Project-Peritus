@@ -5,8 +5,8 @@ mod support;
 use peritus_patch::{FileMode, LineEndingPolicy, Preimage, WorkspacePath};
 use peritus_tools_fs::{
     CompiledMutation, CreateInput, DiscoverInput, FileContent, FsReadService, MetadataInput,
-    OmissionReason, PatchEdit, PatchInput, ReadInput, RenderedOutput, SearchInput,
-    WorkspaceVersion, descriptor_catalog, descriptor_digest,
+    PatchEdit, PatchInput, ReadInput, RenderedOutput, SearchInput, WorkspaceVersion,
+    descriptor_catalog, descriptor_digest,
 };
 use peritus_types::{Generation, RevisionNumber, WorkspaceId};
 
@@ -74,8 +74,11 @@ fn search_subpage_finishes_after_the_last_retained_match() {
 #[test]
 fn search_fragments_preserve_the_requested_match_cursor() {
     let fixture = support::read_fixture("fs-search-fragment-cursor");
-    std::fs::write(fixture.root.join("src/lib.rs"), format!("alpha{}\n", "x".repeat(2000)))
-        .expect("long match preview");
+    std::fs::write(
+        fixture.workspace.root().join("src/lib.rs"),
+        format!("alpha{}\n", "x".repeat(2000)),
+    )
+    .expect("long match preview");
     let observation = FsReadService::new(&fixture.workspace)
         .search(&SearchInput::new(None, "alpha".to_owned(), false, 8, 4096, 10).expect("input"))
         .expect("search");
@@ -94,6 +97,7 @@ fn search_fragments_preserve_the_requested_match_cursor() {
 #[cfg(unix)]
 #[test]
 fn immutable_inspection_omits_symlinks_without_following_external_targets() {
+    use peritus_tools_fs::OmissionReason;
     use std::os::unix::fs::symlink;
 
     let fixture = support::read_fixture("fs-symlink");
