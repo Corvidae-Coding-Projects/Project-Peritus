@@ -8,7 +8,9 @@ use peritus_types::{
 
 use crate::{
     ExecutionIdentity, ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
-    TerminalResult, WorkspaceAccess, platform::ProcessTreeIdentity,
+    TerminalResult, WorkspaceAccess,
+    native::observation::NativeObservationState,
+    platform::ProcessTreeIdentity,
 };
 
 mod codec;
@@ -73,6 +75,7 @@ pub(crate) struct ExecutionManifest {
     pub(crate) backend_digest: Sha256Digest,
     pub(crate) support_digest: Sha256Digest,
     pub(crate) preparation_digest: Sha256Digest,
+    pub(crate) native_observations: NativeObservationState,
     pub(crate) access: WorkspaceAccess,
     pub(crate) lease: Option<LeaseOwnership>,
     pub(crate) phase: LifecyclePhase,
@@ -102,6 +105,7 @@ impl ExecutionManifest {
             backend_digest: plan.backend().descriptor_digest(),
             support_digest: plan.backend().support_digest(),
             preparation_digest: plan.backend().preparation_digest(),
+            native_observations: NativeObservationState::Untracked,
             access: plan.working_directory().access(),
             lease: lease.map(LeaseOwnership::from_claim),
             phase: LifecyclePhase::Authorized,
@@ -122,6 +126,18 @@ impl ExecutionManifest {
         self.matches_terminal_facts(result)
             && self.tree_quiescent == result.tree_cleanup_complete()
             && self.support_tasks_joined == result.support_tasks_joined()
+    }
+
+    pub(crate) fn has_same_authorization(&self, other: &Self) -> bool {
+        self.identity == other.identity
+            && self.action_digest == other.action_digest
+            && self.plan_digest == other.plan_digest
+            && self.sandbox_digest == other.sandbox_digest
+            && self.backend_digest == other.backend_digest
+            && self.support_digest == other.support_digest
+            && self.preparation_digest == other.preparation_digest
+            && self.access == other.access
+            && self.lease == other.lease
     }
 
     pub(crate) fn retains_terminal(&self, result: &TerminalResult) -> bool {
