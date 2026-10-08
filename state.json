@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3936,
-        "tip_oid": "fbc289372c48653ffb9f873d90666dd351f21282",
-        "prefix_sha256": "7614ee13b1971d0a9eca8ea7b6a015c2924c49921ce148504dab79950cc63206"
+        "sequence": 3937,
+        "tip_oid": "19bb5e45c42f0fc35ed87cbe3079940bd701dd3e",
+        "prefix_sha256": "5ee80640ef9e958395b5a31ef3ec237f02272668addb9ccecd4d61899d1c567c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3171,
+  "next_comment_id": 3172,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -13275,11 +13275,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.540990696Z",
-      "updated_at": "2026-10-06T13:27:50.543530429Z",
+      "updated_at": "2026-10-08T01:17:51.654337817Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "88a0e36a-951e-4f73-b381-891e09e70a6e": {
+          "display_id": 3171,
+          "author": "6ME5",
+          "content": "Code complete in commit d4b07c4e1: E3 schedule/execution/publication transport drafts and claims use persistent delivery independently from finite or persistent logical retry policy. Exact row-bound delivery status/recovery distinguishes pending/waiting/reclaimable intent and rejects conflicting evidence. Immutable v6 migration upgrades legacy E3 rows and reopens exhausted unacknowledged delivery in place, retaining row/claim/payload/attempt identities. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:17:51.644165243Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7gZGIaFhTb9zzniXNHYkdUlSL4f3s6CsLPcGojpQcVCQeZt1FoXMU2FY9fTc1/TZfjnlRhl5gh40BsxP04iEBw=="
+        },
         "ec287490-de2e-4192-9c87-a426ede3ab18": {
           "display_id": 2587,
           "author": "6ME5",
