@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4074,
-        "tip_oid": "d3252a83245230937a13d526220bc545a1ca510f",
-        "prefix_sha256": "3bd1df9f113fbb76f322f54c1d8d87a02ff7c7b7fdaa9adbf00633e1c2ca19bd"
+        "sequence": 4075,
+        "tip_oid": "451087cd57f24fffe1413b3e60f20197570773bb",
+        "prefix_sha256": "1ba675e80b825d9a56a186541341de8a06d113fcf4827000e73effd66dd7be94"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3240,
+  "next_comment_id": 3241,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -4496,7 +4496,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.036977698Z",
-      "updated_at": "2026-10-06T13:19:08.039230089Z",
+      "updated_at": "2026-10-08T05:11:31.260985514Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -4507,6 +4507,15 @@
           "content": "Systemic repair plan for L049: Developer-loop admission and generation ceilings.\n\nOwning contract and implementation boundary: peritus-agent/src/developer/types.rs:25-41; developer/execution.rs:51,258-265,392-393; turn/provider.rs:34-38; developer/model_request.rs:71-102; execution.rs:103-104,154-156,177-182. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nSeparate in-flight batches and real provider generation capacity from total task work. Continue segments with the same durable tool/context frontier, permit safe recoverable provider retries without a mandatory attempt quota, and page cumulative counters/history. Batch admission must leave unexecuted calls pending with exact identities instead of losing them at a segment boundary.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "e271f287-9937-4c38-8f4c-fddff550058b": {
+          "display_id": 3240,
+          "author": "6ME5",
+          "content": "Code complete in commit c4c6d2035. Removed synthetic loop constructor/generation/compaction ceilings and retained actual negotiated/explicit provider capacity. Exact atomic pending tool batches checkpoint across physical segments and resume original identities; versioned cumulative progress/product counters retain legacy decoding and safe retry remains quota free. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T05:11:31.252445475Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAUgjLtNI5fGZTp5FM4MMxEG1lkbNrd1pXnNK/r5vDx1hkb+5D4HJZtoWP8GT7gPRgyByV0K1SChKPug9j51sDQ=="
         }
       }
     },
