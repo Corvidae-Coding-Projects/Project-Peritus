@@ -17,8 +17,7 @@ pub(super) fn append(
     let candidates = candidates(memory)?;
     let mut bytes_left =
         usize::try_from(memory.config.retrieved_evidence_max_tokens.saturating_mul(3))
-            .unwrap_or(usize::MAX)
-            .min(memory.config.max_read_bytes);
+            .unwrap_or(usize::MAX);
     for id in candidates {
         if bytes_left < 256 || selected.contains(&id) {
             continue;
@@ -96,7 +95,6 @@ fn candidates(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
                 source.kind == ArchiveKind::ToolOutput
                     && source.invocation < memory.transcript.invocation
             })
-            .take(8)
             .map(|source| source.sequence),
     );
     candidates.extend(
@@ -105,7 +103,6 @@ fn candidates(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
             .iter()
             .rev()
             .filter(|source| source.kind == ArchiveKind::ToolOutput && source.is_error)
-            .take(8)
             .map(|source| source.sequence),
     );
     candidates.extend(
@@ -117,7 +114,6 @@ fn candidates(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
                 source.kind == ArchiveKind::Assistant
                     && source.invocation < memory.transcript.invocation
             })
-            .take(8)
             .map(|source| source.sequence),
     );
     candidates.sort_unstable_by(|left, right| right.cmp(left));
