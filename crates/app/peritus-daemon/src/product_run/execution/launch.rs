@@ -202,7 +202,6 @@ impl ProductRunService {
                     runtime_handle.block_on(runner_service.with_goal_clock(
                         run_id,
                         cancelled,
-                        provider_cancellation,
                         goal_reconciliation,
                         execution,
                     ))

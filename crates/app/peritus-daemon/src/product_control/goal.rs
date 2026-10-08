@@ -63,6 +63,61 @@ pub(crate) struct PreparedGoalSettlement {
     intent: ControlIntent,
 }
 
+/// One exact monotonic accounting observation retained until its host operation reconciles.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct GoalProgressObservation {
+    elapsed_millis: u64,
+    retries: u32,
+    provider_failovers: u32,
+    compactions: u32,
+    workspace_bytes: u64,
+    workspace_growth_bytes: u64,
+    peak_rss_bytes: u64,
+}
+
+impl GoalProgressObservation {
+    #[allow(clippy::too_many_arguments, reason = "the exact accounting high-water stays explicit")]
+    pub(crate) const fn new(
+        elapsed_millis: u64,
+        retries: u32,
+        provider_failovers: u32,
+        compactions: u32,
+        workspace_bytes: u64,
+        workspace_growth_bytes: u64,
+        peak_rss_bytes: u64,
+    ) -> Self {
+        Self {
+            elapsed_millis,
+            retries,
+            provider_failovers,
+            compactions,
+            workspace_bytes,
+            workspace_growth_bytes,
+            peak_rss_bytes,
+        }
+    }
+
+    fn semantic(self) -> Vec<u8> {
+        let mut semantic = Vec::with_capacity(44);
+        semantic.extend_from_slice(&self.elapsed_millis.to_be_bytes());
+        semantic.extend_from_slice(&self.retries.to_be_bytes());
+        semantic.extend_from_slice(&self.provider_failovers.to_be_bytes());
+        semantic.extend_from_slice(&self.compactions.to_be_bytes());
+        semantic.extend_from_slice(&self.workspace_bytes.to_be_bytes());
+        semantic.extend_from_slice(&self.workspace_growth_bytes.to_be_bytes());
+        semantic.extend_from_slice(&self.peak_rss_bytes.to_be_bytes());
+        semantic
+    }
+}
+
+/// Prepared accounting delivery bound to the exact goal attempt and idempotent operation key.
+pub(crate) struct PreparedGoalProgress {
+    start: ControlOperation,
+    binding: GoalSemanticBinding,
+    semantic_key: Vec<u8>,
+    intent: ControlIntent,
+}
+
 impl PreparedGoalSettlement {
     #[must_use]
     pub(crate) const fn binding(&self) -> &GoalSemanticBinding {
@@ -226,25 +281,7 @@ impl ControlStore {
         workspace_growth_bytes: u64,
         peak_rss_bytes: u64,
     ) -> Result<bool, Error> {
-        let Some((record, goal)) = self.goal_record(start)? else {
-            return Ok(false);
-        };
-        if !matches!(goal.state(), GoalState::Active | GoalState::Pausing) {
-            return Ok(true);
-        }
-        let attempt = goal.attempt();
-        let goal_id = goal.id();
-        let mut semantic = Vec::with_capacity(44);
-        semantic.extend_from_slice(&elapsed_millis.to_be_bytes());
-        semantic.extend_from_slice(&retries.to_be_bytes());
-        semantic.extend_from_slice(&provider_failovers.to_be_bytes());
-        semantic.extend_from_slice(&compactions.to_be_bytes());
-        semantic.extend_from_slice(&workspace_bytes.to_be_bytes());
-        semantic.extend_from_slice(&workspace_growth_bytes.to_be_bytes());
-        semantic.extend_from_slice(&peak_rss_bytes.to_be_bytes());
-        let intent = ControlIntent::ObserveGoalProgress {
-            goal: goal_id,
-            attempt,
+        let observation = GoalProgressObservation::new(
             elapsed_millis,
             retries,
             provider_failovers,
@@ -252,10 +289,66 @@ impl ControlStore {
             workspace_bytes,
             workspace_growth_bytes,
             peak_rss_bytes,
+        );
+        let Some(prepared) = self.prepare_goal_progress(start, observation)? else {
+            return Ok(false);
+        };
+        self.commit_goal_progress(&prepared)?;
+        Ok(true)
+    }
+
+    /// Binds an accounting high-water to the current goal attempt without publishing it.
+    pub(crate) fn prepare_goal_progress(
+        &self,
+        start: &ControlOperation,
+        observation: GoalProgressObservation,
+    ) -> Result<Option<PreparedGoalProgress>, Error> {
+        let Some((record, goal)) = self.goal_record(start)? else {
+            return Ok(None);
+        };
+        if !matches!(goal.state(), GoalState::Active | GoalState::Pausing) {
+            return Ok(None);
+        }
+        let attempt = goal.attempt();
+        let goal_id = goal.id();
+        let intent = ControlIntent::ObserveGoalProgress {
+            goal: goal_id,
+            attempt,
+            elapsed_millis: observation.elapsed_millis,
+            retries: observation.retries,
+            provider_failovers: observation.provider_failovers,
+            compactions: observation.compactions,
+            workspace_bytes: observation.workspace_bytes,
+            workspace_growth_bytes: observation.workspace_growth_bytes,
+            peak_rss_bytes: observation.peak_rss_bytes,
             now_unix_millis: now_millis(),
         };
-        self.apply_host_goal(start, &record, goal_key(b"progress", attempt, &semantic), intent)?;
-        Ok(true)
+        Ok(Some(PreparedGoalProgress {
+            start: start.clone(),
+            binding: semantic_binding(start, &record, &goal)?,
+            semantic_key: goal_key(b"progress", attempt, &observation.semantic()),
+            intent,
+        }))
+    }
+
+    /// Reconciles the same prepared accounting operation after any failed or ambiguous write.
+    pub(crate) fn commit_goal_progress(
+        &mut self,
+        prepared: &PreparedGoalProgress,
+    ) -> Result<(), Error> {
+        let Some((record, goal)) = self.goal_record(&prepared.start)? else {
+            return Err(ControlError::NotFound.into());
+        };
+        if semantic_binding(&prepared.start, &record, &goal)? != prepared.binding {
+            return Err(ControlError::StaleRevision.into());
+        }
+        self.apply_host_goal(
+            &prepared.start,
+            &record,
+            prepared.semantic_key.clone(),
+            prepared.intent.clone(),
+        )?;
+        Ok(())
     }
 
     /// Publishes strict runner settlement evidence for the current goal attempt.

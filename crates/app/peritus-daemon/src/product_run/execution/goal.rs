@@ -8,6 +8,14 @@ use super::{
     GoalSettlement, ProductRunOutcome, ProductRunService, ProductRunServiceError, RunDisposition,
 };
 
+struct PendingGoalAccounting {
+    start: peritus_product_runner::control::ControlOperation,
+    cancellation: peritus_journal::JournalCancellation,
+    authoritative_revision: u64,
+    observation: crate::product_control::GoalProgressObservation,
+    prepared: Option<crate::product_control::PreparedGoalProgress>,
+}
+
 pub(super) struct PreparedWorkbenchGoal {
     start: peritus_product_runner::control::ControlOperation,
     reconciliation: crate::product_control::ControlReconciliation,
@@ -227,7 +235,6 @@ impl ProductRunService {
         &self,
         run: peritus_types::RunId,
         cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
-        provider_cancellation: peritus_provider_core::CancellationToken,
         recovery: std::sync::Arc<crate::product_control::ControlReconciliation>,
         execution: F,
     ) -> Result<ProductRunOutcome, peritus_product_runner::ProductRunnerError>
@@ -239,16 +246,18 @@ impl ProductRunService {
         let mut stopped = false;
         let mut tick_millis = 100;
         let mut governing_unavailable = None;
+        let mut pending = None;
         loop {
             tokio::select! {
                 result = &mut execution => {
                     if !stopped {
                         loop {
-                            match self.observe_goal_clock(
+                            match self.deliver_goal_accounting(
                                 run,
                                 &cancelled,
                                 &recovery,
                                 started.elapsed(),
+                                &mut pending,
                             ) {
                                 Ok(_) => {
                                     if governing_unavailable.take().is_some() {
@@ -275,7 +284,9 @@ impl ProductRunService {
                                     break;
                                 }
                                 Err(error) => {
-                                    self.record_goal_clock_failure(run, &error);
+                                    crate::diagnostic::report(&format!(
+                                        "peritusd: goal accounting delivery for {run:?} remains recoverable under its original operation: {error}",
+                                    ));
                                     break;
                                 }
                             }
@@ -284,11 +295,12 @@ impl ProductRunService {
                     return result;
                 }
                 () = tokio::time::sleep(std::time::Duration::from_millis(tick_millis)), if !stopped => {
-                    match self.observe_goal_clock(
+                    match self.deliver_goal_accounting(
                         run,
                         &cancelled,
                         &recovery,
                         started.elapsed(),
+                        &mut pending,
                     ) {
                         Err(ProductRunServiceError::GoverningStateUnavailable(unavailable)) => {
                             if cancelled.load(std::sync::atomic::Ordering::Acquire) {
@@ -305,9 +317,9 @@ impl ProductRunService {
                             }
                         }
                         Err(error) => {
-                            self.record_goal_clock_failure(run, &error);
-                            cancelled.store(true, std::sync::atomic::Ordering::Release);
-                            let _ = provider_cancellation.cancel();
+                            crate::diagnostic::report(&format!(
+                                "peritusd: goal accounting delivery for {run:?} is deferred under its original operation while execution remains active: {error}",
+                            ));
                             stopped = true;
                         }
                         Ok(true) => {
@@ -325,54 +337,95 @@ impl ProductRunService {
         }
     }
 
-    fn record_goal_clock_failure(&self, run: peritus_types::RunId, error: &ProductRunServiceError) {
-        if let Ok(records) = self.inner.records.read()
-            && let Some(record) = records.get(&run)
-        {
-            let options = &record.interaction;
-            options.record_persistence_failure(format!(
-                "Could not save goal progress: {}",
-                error.describe()
-            ));
-        }
-    }
-
-    fn observe_goal_clock(
+    fn deliver_goal_accounting(
         &self,
         run: peritus_types::RunId,
         attempt: &std::sync::Arc<std::sync::atomic::AtomicBool>,
         recovery: &std::sync::Arc<crate::product_control::ControlReconciliation>,
         elapsed: std::time::Duration,
+        pending: &mut Option<PendingGoalAccounting>,
     ) -> Result<bool, ProductRunServiceError> {
-        let records = self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
-        let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
-        let start = record.interaction.workbench.clone();
-        let progress = record.progress.clone();
-        let cancellation = record.control_cancellation.clone();
-        let authoritative_revision = record.interaction.incorporated;
-        drop(records);
+        if pending.is_none() {
+            let records =
+                self.inner.records.read().map_err(|_| ProductRunServiceError::Unavailable)?;
+            let record = records.get(&run).ok_or(ProductRunServiceError::NotFound)?;
+            if record.control_cancellation.is_cancelled()
+                || attempt.load(std::sync::atomic::Ordering::Acquire)
+            {
+                return Ok(false);
+            }
+            pending.replace(PendingGoalAccounting {
+                start: record.interaction.workbench.clone(),
+                cancellation: record.control_cancellation.clone(),
+                authoritative_revision: record.interaction.incorporated,
+                observation: crate::product_control::GoalProgressObservation::new(
+                    u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX),
+                    record.progress.retries,
+                    record.progress.provider_failovers,
+                    record.progress.compactions,
+                    record.progress.workspace_bytes,
+                    record.progress.workspace_growth_bytes,
+                    record.progress.peak_rss_bytes,
+                ),
+                prepared: None,
+            });
+        }
+        let delivery = pending.as_mut().ok_or(ProductRunServiceError::Unavailable)?;
+        if delivery.cancellation.is_cancelled()
+            || attempt.load(std::sync::atomic::Ordering::Acquire)
+        {
+            *pending = None;
+            return Ok(false);
+        }
+        if delivery.prepared.is_none() {
+            let prepared = self.with_control_reconciliation(recovery, |store| {
+                store.prepare_goal_progress(&delivery.start, delivery.observation)
+            });
+            match prepared {
+                Ok(Some(prepared)) => delivery.prepared = Some(prepared),
+                Ok(None) => {
+                    *pending = None;
+                    return Ok(false);
+                }
+                Err(error)
+                    if matches!(
+                        &error,
+                        crate::product_control::ControlStoreError::Journal(_)
+                            | crate::product_control::ControlStoreError::Io(_)
+                            | crate::product_control::ControlStoreError::Corrupt(_)
+                    ) => {
+                        return Err(ProductRunServiceError::GoverningStateUnavailable(
+                            super::super::GoverningStateUnavailable::new(
+                                run,
+                                delivery.start.clone(),
+                                delivery.authoritative_revision,
+                                "prepare durable goal accounting delivery",
+                                error,
+                                std::sync::Arc::clone(recovery),
+                            ),
+                        ));
+                    }
+                Err(error) => return Err(error.into()),
+            }
+        }
+        let prepared = delivery.prepared.as_ref().ok_or(ProductRunServiceError::Unavailable)?;
         let result = self.with_control_reconciliation(recovery, |store| {
-            if cancellation.is_cancelled()
+            if delivery.cancellation.is_cancelled()
                 || attempt.load(std::sync::atomic::Ordering::Acquire)
             {
                 return Err(crate::product_control::ControlStoreError::ContentionCancelled);
             }
-                store.observe_goal_progress(
-                    &start,
-                    u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX),
-                    progress.retries,
-                    progress.provider_failovers,
-                    progress.compactions,
-                    progress.workspace_bytes,
-                    progress.workspace_growth_bytes,
-                    progress.peak_rss_bytes,
-                )
+            store.commit_goal_progress(prepared)
         });
         match result {
+            Ok(()) => {
+                *pending = None;
+                Ok(true)
+            }
             Err(crate::product_control::ControlStoreError::ContentionCancelled)
-                if cancellation.is_cancelled()
-                    || attempt.load(std::sync::atomic::Ordering::Acquire) =>
-            {
+                if delivery.cancellation.is_cancelled()
+                    || attempt.load(std::sync::atomic::Ordering::Acquire) => {
+                *pending = None;
                 Ok(false)
             }
             Err(error)
@@ -384,9 +437,9 @@ impl ProductRunService {
                 ) => Err(ProductRunServiceError::GoverningStateUnavailable(
                     super::super::GoverningStateUnavailable::new(
                         run,
-                        start,
-                        authoritative_revision,
-                        "observe durable goal progress",
+                        delivery.start.clone(),
+                        delivery.authoritative_revision,
+                        "commit durable goal accounting delivery",
                         error,
                         std::sync::Arc::clone(recovery),
                     ),
