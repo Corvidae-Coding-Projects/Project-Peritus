@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4172,
-        "tip_oid": "9567a49cf8fb42b4dfaf44ce67be95545ad0efc3",
-        "prefix_sha256": "1b7ac6de742548a331fa4aa919912df9bdc3b462075653237363a1a6f89c061e"
+        "sequence": 4173,
+        "tip_oid": "ed26897f19f0c9edde4166dbdb5e2a1a80347e1d",
+        "prefix_sha256": "8fe4345275c5ec0cf425754da36e1798e837312669e09fba9bb8b8866c525ac4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3292,
+  "next_comment_id": 3293,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -2133,7 +2133,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.163787760Z",
-      "updated_at": "2026-10-07T06:11:13.265438419Z",
+      "updated_at": "2026-10-08T15:54:08.934472172Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -2144,6 +2144,15 @@
           "content": "Systemic repair plan for L078: Memory retrieval has small pages, scan caps, and conservative byte packing.\n\nOwning contract and implementation boundary: tools/read.rs:19-43,265-285; tools.rs:133-148; read.rs:87-91. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nProvide lossless cursor-based retrieval of all occurrences and byte ranges, using streamed artifact access and actual encoded page sizes. A too-large next entry must yield a smaller fragment with continuation rather than make pagination impossible. Stable source/offset identities and exact displayed coverage should let the model retrieve evidence without repeated full-artifact scans.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "67ecfb48-8eb1-4f34-8270-d3ba0b723ff7": {
+          "display_id": 3292,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L078 on fix/minimum-repair. Removed retrieval query/handle/source cutoffs and fit actual encoded pages, including continuation within a source fragment without a repeating metadata-only cursor.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T15:54:08.924230588Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArUz3NvO1/BIq1qoE7sqVFP3ynteQslm0diynkHOZRbW32/njzeMFQ1v3JB69XuyYByEOKjdF0UK2WbbobEHVDQ=="
         },
         "81ba296b-57d1-4ba2-9745-46dfc40acdbb": {
           "display_id": 3062,
