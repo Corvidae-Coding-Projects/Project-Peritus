@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4179,
-        "tip_oid": "68d4296be29c7f68e2f9c88b7a2dada379ce6d94",
-        "prefix_sha256": "3b2e08699a1a639d5bc0e5e464c444bde2fa464fcbbfc86ec0237ad3789bae9d"
+        "sequence": 4180,
+        "tip_oid": "e08c42cd029a8d2d25aa7a028bbad98229928bd0",
+        "prefix_sha256": "8073af3f8f6dfdfd1110a5fdb4450cd03dfc0b55c0a9b1cf96e2784877f1cef1"
       },
       "NWAR": {
         "sequence": 39,
@@ -16824,12 +16824,13 @@
       "display_id": 307,
       "title": "[L172] CSV validation has a fixed whole-file ceiling and a single mandatory dialect",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L172.\n\n- Source: `crates/app/peritus-product-runner/src/gates/artifact_csv.rs:7,19-56,65-95,122-245`.\n- A selected changed CSV file above **64 MiB** fails validation before reading. Accepted files are read entirely into memory and parsed synchronously without cancellation, paging, or a caller-selected byte allowance. This is a synthetic artifact ceiling rather than a CSV format requirement.\n- The parser requires UTF-8, nonempty data, comma separators, double-quote escaping, and consistent field counts based on the first record. It tolerates blank lines/BOM and quoted newlines, but rejects variable-width rows, other delimiters, backslash-escaped quotes, or text following a closing quote. These are fixed gate policies whose appropriateness depends on the requested artifact contract; preserve requested structural correctness rather than blindly accepting malformed results.\n- `run` marks any selected file failure as exit 1 and continues checking the rest. Missing selected paths fail metadata inspection; whether deleted CSV paths reach this gate remains a caller question. **Implementation and all inline tests read; invocation policy and large-file failure not exercised.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.689100092Z",
-      "updated_at": "2026-10-08T16:03:28.001963686Z",
+      "updated_at": "2026-10-08T16:05:03.207643909Z",
+      "closed_at": "2026-10-08T16:05:03.204134691Z",
       "labels": [
         "daily-driving-limiter"
       ],
