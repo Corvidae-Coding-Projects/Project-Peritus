@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3977,
-        "tip_oid": "b0258320886a475a200e728fe0741b7266c73801",
-        "prefix_sha256": "3d6955f434e0f16c68b5ba705336b73b237b0d4b7d38b6e0124348e2a9f2be0f"
+        "sequence": 3978,
+        "tip_oid": "4acc0cf3400fc41e19396066bbfdb9a475825780",
+        "prefix_sha256": "ced20e342534aa71423d13091a034a8ab6104a51c8e1890b9722b1a510cd1680"
       },
       "NWAR": {
         "sequence": 39,
@@ -28348,12 +28348,13 @@
       "display_id": 521,
       "title": "[L442] F0 has nine mandatory positive compiled bounds frozen into campaigns and pointers",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L442.\n\n- Evidence: `crates/analysis/peritus-evolution/src/limits.rs:7-94,96-153`, `src/campaign/command.rs:14-76`, `src/campaign/reducer/transition.rs:23-59,70-183`, `src/campaign/reducer/transition/collection.rs:18-69`, `src/binding/policy.rs:186-209`, `src/pointer/command.rs:13-52` in the same crate.\n- Behavior: EvolutionLimits permits only positive values no larger than 256 manifests, 128 variants, 256 citations per manifest, 128 deltas per manifest, 256 predictions per manifest, 65,536 attribution entries, 64 criteria, 16,384 bytes per text field and 256 activation-history entries. Campaign genesis freezes limits; neither campaign nor pointer has an amendment command. Baseline evidence and diagnoses also consume the manifests bound, while variant admission uses the minimum of frozen limits and policy maximum. Collection capacity is checked before duplicate identity handling.\n- Consequence: F0 cannot express an unbounded or caller-expanded population, even if durable storage can represent it. Campaign additions beyond the frozen count fail with ReduceScope; an identical resubmission is also rejected rather than treated as a receipt. These are evolution workload/schema limits, not proof that ordinary writer sessions use this authority or a wall timer.\n- Repair direction: Separate campaign workload policy from storage/schema representation, preserve exact duplicate receipts, and support authorized successor scopes without discarding completed evidence. Storage paging should not impose a hidden lifetime work limit. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.569864877Z",
-      "updated_at": "2026-10-08T02:21:34.262398175Z",
+      "updated_at": "2026-10-08T02:23:09.908858346Z",
+      "closed_at": "2026-10-08T02:23:09.906212374Z",
       "labels": [
         "daily-driving-limiter"
       ],
