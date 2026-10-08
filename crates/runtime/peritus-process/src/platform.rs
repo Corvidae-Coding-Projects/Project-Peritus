@@ -30,7 +30,7 @@ pub(crate) use ownership::current_start_token;
 #[cfg(unix)]
 pub(crate) use resource::process_group_count;
 pub(crate) use resource::{
-    local_resource_sampling_available, local_supervisor_resources_supported, sample_resources,
+    PlatformResourceCapabilities, local_resource_capabilities, sample_resources,
 };
 #[cfg(windows)]
 pub use self_memory::current_process_resident_memory_bytes;
@@ -126,6 +126,52 @@ pub(crate) enum NativeHandshakeStatus {
     Activated,
     Cancelled,
     Failed,
+}
+
+/// Capabilities supplied by the exact platform launch route selected for a plan.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct PlatformExecutionCapabilities {
+    complete_tree_containment: bool,
+    resources: PlatformResourceCapabilities,
+}
+
+impl PlatformExecutionCapabilities {
+    pub(crate) const fn complete_tree_containment(self) -> bool {
+        self.complete_tree_containment
+    }
+
+    pub(crate) const fn resources(self) -> PlatformResourceCapabilities {
+        self.resources
+    }
+}
+
+pub(crate) const fn local_execution_capabilities(
+    io_mode: crate::IoMode,
+) -> PlatformExecutionCapabilities {
+    #[cfg(windows)]
+    let complete_tree_containment = !matches!(io_mode, crate::IoMode::Pty(_));
+    #[cfg(not(windows))]
+    let complete_tree_containment = {
+        let _ = io_mode;
+        true
+    };
+    PlatformExecutionCapabilities {
+        complete_tree_containment,
+        resources: local_resource_capabilities(),
+    }
+}
+
+pub(crate) fn native_execution_capabilities(
+    descriptor: &peritus_sandbox::BackendDescriptor,
+) -> PlatformExecutionCapabilities {
+    PlatformExecutionCapabilities {
+        complete_tree_containment: descriptor
+            .supported_features()
+            .contains(peritus_sandbox::SandboxFeature::ProcessTree),
+        resources: PlatformResourceCapabilities::from_backend_features(
+            descriptor.supported_features(),
+        ),
+    }
 }
 
 pub(crate) struct PlatformLaunch {

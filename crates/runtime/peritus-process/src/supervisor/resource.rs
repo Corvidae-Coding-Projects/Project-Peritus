@@ -42,20 +42,13 @@ pub(crate) fn validate_launch(plan: &ExecutionPlan) -> Result<(), ProcessError> 
             "local execution requires explicit raw-effect authority",
         ));
     }
-    if plan.backend().resource_fidelity() != BackendResourceFidelity::Reference
-        && !platform::local_supervisor_resources_supported()
-    {
-        return Err(ProcessError::new(
-            ErrorCode::Unsupported,
-            ProcessOperation::Validate,
-            RecoveryClass::SelectBackend,
-            "the selected backend requires unavailable local resource enforcement",
-        ));
-    }
-    Ok(())
+    validate_capabilities(plan, platform::local_execution_capabilities(plan.io_mode()))
 }
 
-pub(crate) fn validate_native_launch(plan: &ExecutionPlan) -> Result<(), ProcessError> {
+pub(crate) fn validate_native_launch(
+    plan: &ExecutionPlan,
+    descriptor: &peritus_sandbox::BackendDescriptor,
+) -> Result<(), ProcessError> {
     platform::validate_native_admission(plan)?;
     if plan.isolation() != ExecutionIsolation::Restricted
         || plan.backend().resource_fidelity() == BackendResourceFidelity::Reference
@@ -67,7 +60,76 @@ pub(crate) fn validate_native_launch(plan: &ExecutionPlan) -> Result<(), Process
             "native execution requires restricted authority and a non-reference resource enforcer",
         ));
     }
+    validate_capabilities(plan, platform::native_execution_capabilities(descriptor))
+}
+
+fn validate_capabilities(
+    plan: &ExecutionPlan,
+    capabilities: platform::PlatformExecutionCapabilities,
+) -> Result<(), ProcessError> {
+    if !capabilities.complete_tree_containment() {
+        return Err(missing_capability(
+            "the selected launch path cannot provide complete process-tree containment",
+        ));
+    }
+    let resources = capabilities.resources();
+    let policy = plan.resource_policy();
+    for (selected, supported, detail) in [
+        (
+            policy.wall_millis().is_some(),
+            resources.wall_time(),
+            "the selected launch path cannot enforce the wall-time ceiling",
+        ),
+        (
+            policy.cpu_millis().is_some(),
+            resources.cpu_time(),
+            "the selected launch path cannot enforce the CPU-time ceiling",
+        ),
+        (
+            policy.memory_limit().is_some(),
+            resources.memory(),
+            "the selected launch path cannot enforce the memory ceiling",
+        ),
+        (
+            policy.disk_limit().is_some(),
+            resources.disk(),
+            "the selected launch path cannot enforce the disk ceiling",
+        ),
+        (
+            policy.output_limit().is_some(),
+            resources.output(),
+            "the selected launch path cannot enforce the output ceiling",
+        ),
+        (
+            policy.process_limit().is_some(),
+            resources.process_count(),
+            "the selected launch path cannot enforce the process-count ceiling",
+        ),
+        (
+            policy.file_descriptor_limit().is_some(),
+            resources.open_handles(),
+            "the selected launch path cannot enforce the open-handle ceiling",
+        ),
+        (
+            true,
+            resources.concurrency(),
+            "the selected launch path cannot enforce the concurrency ceiling",
+        ),
+    ] {
+        if selected && !supported {
+            return Err(missing_capability(detail));
+        }
+    }
     Ok(())
+}
+
+const fn missing_capability(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::Unsupported,
+        ProcessOperation::Validate,
+        RecoveryClass::SelectBackend,
+        detail,
+    )
 }
 
 pub(super) struct ResourceTracker {
@@ -85,22 +147,21 @@ impl ResourceTracker {
         reason = "preserves the owner construction boundary while sampling startup becomes evidence"
     )]
     pub(super) fn start(plan: &SupervisorPlan) -> Result<Self, ProcessError> {
-        let sampling_supported = platform::local_supervisor_resources_supported();
-        let sampling_available = platform::local_resource_sampling_available();
-        let sampler = if sampling_available {
+        let capabilities = platform::local_resource_capabilities();
+        let sampler = if capabilities.has_sampler() {
             ResourceSampler::start(plan.working_directory().to_path_buf()).ok()
         } else {
             None
         };
         let mut tracker = Self {
-            cpu: Metric::new(sampling_supported, 0),
-            memory: Metric::new(sampling_supported, 0),
-            disk: Metric::new(sampling_available, 0),
-            processes: Metric::new(sampling_available, 1),
-            handles: Metric::new(sampling_supported, 0),
+            cpu: Metric::new(capabilities.cpu_time(), 0),
+            memory: Metric::new(capabilities.memory(), 0),
+            disk: Metric::new(capabilities.disk(), 0),
+            processes: Metric::new(capabilities.process_count(), 1),
+            handles: Metric::new(capabilities.open_handles(), 0),
             sampler,
         };
-        if sampling_available && tracker.sampler.is_none() {
+        if capabilities.has_sampler() && tracker.sampler.is_none() {
             tracker.mark_process_unavailable();
             tracker.disk.unavailable();
         }

@@ -120,7 +120,7 @@ impl ExecutionGateway {
     {
         validate_native_binding(&plan, sandbox_plan, admission, &backend)?;
         let validation = validate_request(request, &plan)?;
-        supervisor::validate_native_launch(&plan)?;
+        supervisor::validate_native_launch(&plan, backend.descriptor())?;
         let permit = ExecutionPermit {
             _action_id: plan.identity().action_id(),
             _process_id: plan.identity().process_id(),
@@ -357,7 +357,7 @@ impl ExecutionGateway {
         let plan = retained.execution_plan().clone();
         let sandbox = retained.sandbox_plan();
         validate_native_binding(&plan, sandbox, admission, &backend)?;
-        supervisor::validate_native_launch(&plan)?;
+        supervisor::validate_native_launch(&plan, backend.descriptor())?;
         backend.validate_preparation_capacity(sandbox)?;
         if let Some(reason) = cancellation_requested() {
             // Backend construction may probe support, but the backend owns no prepared session or
