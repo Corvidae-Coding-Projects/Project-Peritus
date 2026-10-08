@@ -239,16 +239,21 @@ impl CandidateRecorder {
         expected: CandidateIdentity,
         conversation_revision: u64,
     ) -> Result<bool, ProductRunnerError> {
-        self.lock()?.ensure_active()?;
+        let recorder_state = self.lock()?;
+        recorder_state.ensure_active()?;
+        self.check_capture_cancelled()?;
         let (content, repository) = self.capture_candidate_axes()?;
-        Ok(candidate_material_matches(
+        self.check_capture_cancelled()?;
+        let matches = candidate_material_matches(
             expected,
             self.run_id,
             self.workspace_id,
             content,
             repository,
             conversation_revision,
-        ))
+        );
+        drop(recorder_state);
+        Ok(matches)
     }
 
     pub(super) fn record_gates_for_candidate(
@@ -274,16 +279,16 @@ impl CandidateRecorder {
         acquired: CheckpointEvidence,
         expected: Option<CandidateIdentity>,
     ) -> Result<(Option<CandidateCheckpoint>, bool), ProductRunnerError> {
-        self.lock()?.ensure_active()?;
-        let (has_workspace_candidate, content, repository) =
-            self.capture_candidate_observation()?;
         let mut recorder_state = self.lock()?;
         recorder_state.ensure_active()?;
+        self.check_capture_cancelled()?;
+        let (has_workspace_candidate, content, repository) =
+            self.capture_candidate_observation()?;
+        self.check_capture_cancelled()?;
         if !has_workspace_candidate && !recorder_state.external_effect_observed {
             // A fresh repository observation is authoritative: a reverted workspace must not
             // retain an older candidate merely because it once contained changes.
             recorder_state.reducer = SettlementReducer::new();
-            drop(recorder_state);
             return Ok((None, expected.is_none()));
         }
         let mut replacement = *recorder_state;
@@ -483,6 +488,11 @@ impl CandidateRecorder {
     fn capture_candidate_observation_inner(
         &self,
     ) -> Result<(bool, Sha256Digest, Sha256Digest), ProductRunnerError> {
+        self.check_capture_cancelled()?;
+        if let Some(observation) = self.baseline.snapshot_observation(&self.root)? {
+            self.check_capture_cancelled()?;
+            return Ok(observation.into_parts());
+        }
         loop {
             self.check_capture_cancelled()?;
             let before = self.baseline.checkpoint(&self.root)?.digest();
@@ -492,6 +502,7 @@ impl CandidateRecorder {
             let content = self.baseline.content_digest(&self.root)?;
             self.check_capture_cancelled()?;
             let after = self.baseline.checkpoint(&self.root)?.digest();
+            self.check_capture_cancelled()?;
             if before == after {
                 return Ok((has_workspace_candidate, content, after));
             }
@@ -503,6 +514,11 @@ impl CandidateRecorder {
     fn capture_candidate_axes_inner(
         &self,
     ) -> Result<(Sha256Digest, Sha256Digest), ProductRunnerError> {
+        self.check_capture_cancelled()?;
+        if let Some(observation) = self.baseline.snapshot_observation(&self.root)? {
+            self.check_capture_cancelled()?;
+            return Ok(observation.axes());
+        }
         loop {
             self.check_capture_cancelled()?;
             let before = self.baseline.checkpoint(&self.root)?.digest();
@@ -510,6 +526,7 @@ impl CandidateRecorder {
             let content = self.baseline.content_digest(&self.root)?;
             self.check_capture_cancelled()?;
             let after = self.baseline.checkpoint(&self.root)?.digest();
+            self.check_capture_cancelled()?;
             if before == after {
                 return Ok((content, after));
             }

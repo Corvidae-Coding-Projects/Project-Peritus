@@ -7,6 +7,8 @@ use std::{
 };
 
 pub mod managed;
+pub(crate) mod evidence;
+pub(crate) mod process;
 
 use crate::workspace_filter;
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
@@ -19,14 +21,32 @@ pub struct CandidateBaseline {
     in_place: Option<crate::workspace_delivery::scope::ScopedBaseline>,
 }
 
+/// One backend-owned observation of every axis used to publish a candidate identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct CandidateObservation {
+    has_workspace_candidate: bool,
+    content: peritus_types::Sha256Digest,
+    repository: peritus_types::Sha256Digest,
+}
+
+impl CandidateObservation {
+    pub(crate) const fn axes(self) -> (peritus_types::Sha256Digest, peritus_types::Sha256Digest) {
+        (self.content, self.repository)
+    }
+
+    pub(crate) const fn into_parts(
+        self,
+    ) -> (bool, peritus_types::Sha256Digest, peritus_types::Sha256Digest) {
+        (self.has_workspace_candidate, self.content, self.repository)
+    }
+}
+
 impl CandidateBaseline {
     /// Validates that the managed workspace has a committed comparison base.
     pub fn capture(root: &Path) -> Result<Self, ProductRunnerError> {
-        let output = Command::new("git")
-            .args(["rev-parse", "--verify", "HEAD"])
-            .current_dir(root)
-            .output()
-            .map_err(|error| repository("resolve candidate base", error.to_string()))?;
+        let mut command = Command::new("git");
+        command.args(["rev-parse", "--verify", "HEAD"]).current_dir(root);
+        let output = git_output(command, "resolve candidate base")?;
         if !output.status.success() {
             return Err(repository(
                 "resolve candidate base",
@@ -68,13 +88,13 @@ impl CandidateBaseline {
             return baseline.changed_paths(root);
         }
         let mut paths = BTreeSet::new();
-        let tracked = Command::new("git")
+        let mut command = Command::new("git");
+        command
             .args(["diff", "--no-ext-diff", "--name-only", "-z"])
             .arg(&self.head)
             .arg("--")
-            .current_dir(root)
-            .output()
-            .map_err(|error| repository("list tracked candidate paths", error.to_string()))?;
+            .current_dir(root);
+        let tracked = git_output(command, "list tracked candidate paths")?;
         if !tracked.status.success() {
             return Err(repository(
                 "list tracked candidate paths",
@@ -82,11 +102,9 @@ impl CandidateBaseline {
             ));
         }
         append_paths(&tracked.stdout, &mut paths, CandidatePathKind::Tracked)?;
-        let untracked = Command::new("git")
-            .args(["ls-files", "--others", "--exclude-standard", "-z"])
-            .current_dir(root)
-            .output()
-            .map_err(|error| repository("list untracked candidate paths", error.to_string()))?;
+        let mut command = Command::new("git");
+        command.args(["ls-files", "--others", "--exclude-standard", "-z"]).current_dir(root);
+        let untracked = git_output(command, "list untracked candidate paths")?;
         if !untracked.status.success() {
             return Err(repository(
                 "list untracked candidate paths",
@@ -146,10 +164,13 @@ impl CandidateBaseline {
         &self,
         root: &Path,
     ) -> Result<crate::progress::WorkspaceCheckpoint, ProductRunnerError> {
-        match &self.in_place {
-            Some(scope) => crate::progress::WorkspaceCheckpoint::scoped(root, scope.paths()?),
-            None => crate::progress::WorkspaceCheckpoint::capture(root),
+        if let Some(scope) = &self.in_place {
+            return crate::progress::WorkspaceCheckpoint::scoped(root, scope.paths()?);
         }
+        if let Some(managed) = &self.managed {
+            return managed.candidate_checkpoint(root);
+        }
+        crate::progress::WorkspaceCheckpoint::capture(root)
     }
 
     pub(crate) fn content_digest(
@@ -158,10 +179,38 @@ impl CandidateBaseline {
     ) -> Result<peritus_types::Sha256Digest, ProductRunnerError> {
         // An in-place run has no repository-history axis. Its exact enrolled file snapshot is both
         // the source-content observation and the handoff fence.
-        self.in_place.as_ref().map_or_else(
-            || managed::ManagedBaseline::source_digest(root),
-            |scope| scope.progress_checkpoint(root).map(|checkpoint| checkpoint.digest()),
-        )
+        if let Some(scope) = &self.in_place {
+            return scope.progress_checkpoint(root).map(|checkpoint| checkpoint.digest());
+        }
+        if let Some(managed) = &self.managed {
+            return managed.candidate_content_digest(root);
+        }
+        managed::ManagedBaseline::source_digest(root)
+    }
+
+    /// Captures presence, content, and repository identity from one snapshot-capable backend read.
+    /// Legacy Git baselines return `None` so their caller can fence independent observations.
+    pub(crate) fn snapshot_observation(
+        &self,
+        root: &Path,
+    ) -> Result<Option<CandidateObservation>, ProductRunnerError> {
+        if let Some(managed) = &self.managed {
+            let snapshot = managed.evidence_snapshot(root)?;
+            return Ok(Some(CandidateObservation {
+                has_workspace_candidate: !snapshot.entries.is_empty(),
+                content: snapshot.content_digest,
+                repository: snapshot.repository_digest,
+            }));
+        }
+        if let Some(scope) = &self.in_place {
+            let snapshot = scope.evidence_snapshot(root)?;
+            return Ok(Some(CandidateObservation {
+                has_workspace_candidate: !snapshot.entries.is_empty(),
+                content: snapshot.content_digest,
+                repository: snapshot.repository_digest,
+            }));
+        }
+        Ok(None)
     }
 }
 
@@ -178,21 +227,15 @@ fn append_nested_repository_changes(
         .collect::<Vec<_>>();
     for relative in nested_roots {
         let nested = root.join(&relative);
-        let head = Command::new("git")
-            .args(["rev-parse", "--verify", "HEAD"])
-            .current_dir(&nested)
-            .output()
-            .map_err(|error| {
-                repository("inspect nested candidate repository", error.to_string())
-            })?;
+        let mut command = Command::new("git");
+        command.args(["rev-parse", "--verify", "HEAD"]).current_dir(&nested);
+        let head = git_output(command, "inspect nested candidate repository")?;
         if !head.status.success() {
             continue;
         }
-        let changed = Command::new("git")
-            .args(["diff", "--name-only", "-z", "HEAD", "--"])
-            .current_dir(&nested)
-            .output()
-            .map_err(|error| repository("list nested candidate changes", error.to_string()))?;
+        let mut command = Command::new("git");
+        command.args(["diff", "--name-only", "-z", "HEAD", "--"]).current_dir(&nested);
+        let changed = git_output(command, "list nested candidate changes")?;
         if !changed.status.success() {
             return Err(repository(
                 "list nested candidate changes",
@@ -200,11 +243,9 @@ fn append_nested_repository_changes(
             ));
         }
         append_prefixed_paths(&relative, &changed.stdout, paths, CandidatePathKind::Tracked)?;
-        let untracked = Command::new("git")
-            .args(["ls-files", "--others", "--exclude-standard", "-z"])
-            .current_dir(&nested)
-            .output()
-            .map_err(|error| repository("list nested untracked paths", error.to_string()))?;
+        let mut command = Command::new("git");
+        command.args(["ls-files", "--others", "--exclude-standard", "-z"]).current_dir(&nested);
+        let untracked = git_output(command, "list nested untracked paths")?;
         if !untracked.status.success() {
             return Err(repository(
                 "list nested untracked paths",
@@ -264,6 +305,20 @@ impl CandidatePathKind {
 
 fn repository(operation: &'static str, detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Repository, operation, detail)
+}
+
+struct GitOutput {
+    status: std::process::ExitStatus,
+    stdout: Vec<u8>,
+}
+
+fn git_output(
+    command: Command,
+    operation: &'static str,
+) -> Result<GitOutput, ProductRunnerError> {
+    let mut stdout = Vec::new();
+    let completed = process::stream_current(command, None, &mut stdout, operation)?;
+    Ok(GitOutput { status: completed.status, stdout })
 }
 
 #[cfg(test)]
