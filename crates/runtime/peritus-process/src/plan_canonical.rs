@@ -400,7 +400,8 @@ mod tests {
     #[test]
     fn windows_native_path_encoding_preserves_utf16_units() {
         use std::os::windows::ffi::OsStringExt as _;
-        let path = std::path::PathBuf::from(std::ffi::OsString::from_wide(&[b'/' as u16, 0xd800]));
+        let path =
+            std::path::PathBuf::from(std::ffi::OsString::from_wide(&[u16::from(b'/'), 0xd800]));
         let mut writer = PlanWriter::new();
         writer.path(&path, true).expect("native path");
         assert_eq!(
@@ -408,7 +409,7 @@ mod tests {
             [
                 2_u8.to_be_bytes().as_slice(),
                 2_u32.to_be_bytes().as_slice(),
-                (b'/' as u16).to_be_bytes().as_slice(),
+                u16::from(b'/').to_be_bytes().as_slice(),
                 0xd800_u16.to_be_bytes().as_slice()
             ]
             .concat()

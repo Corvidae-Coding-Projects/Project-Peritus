@@ -16,7 +16,7 @@ use super::{
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DirectoryCursor {
     directory: Option<WorkspacePath>,
-    after: WorkspacePath,
+    after: Vec<u8>,
     version: DirectoryVersion,
 }
 
@@ -48,7 +48,7 @@ struct DirectoryVersion {
     last_write_time: u64,
 }
 
-/// One bounded page of direct children in canonical path order.
+/// One bounded page of direct children and diagnostics in native-name byte order.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DirectoryPage {
     entries: Vec<DirectoryEntry>,
@@ -63,7 +63,7 @@ impl DirectoryPage {
         &self.entries
     }
 
-    /// Unsupported children encountered while scanning this page's directory.
+    /// Unsupported children retained in this page, each reported once across a traversal.
     #[must_use]
     pub fn diagnostics(&self) -> &[DirectoryDiagnostic] {
         &self.diagnostics
@@ -89,7 +89,7 @@ const DIRECTORY_PAGE_SIZE: usize = 128;
 impl ReadOnlyWorkspace {
     /// Reads one canonical child page without retaining a complete wide directory listing.
     ///
-    /// Each page selects the next 128 paths after its opaque cursor from a checked no-follow
+    /// Each page selects the next 128 children, including diagnostics, after its opaque cursor from a checked no-follow
     /// directory scan. Directory and workspace identities are rechecked across pages; callers
     /// must resume only with the returned cursor.
     ///
@@ -123,9 +123,8 @@ impl ReadOnlyWorkspace {
             return Err(changed_directory());
         }
 
-        let after = cursor.map(|cursor| cursor.after.as_str());
-        let mut selected = BTreeMap::<String, DirectoryEntry>::new();
-        let mut diagnostics = Vec::new();
+        let after = cursor.map(|cursor| cursor.after.as_slice());
+        let mut selected = BTreeMap::<Vec<u8>, Result<DirectoryEntry, DirectoryDiagnostic>>::new();
         let retained_limit = DIRECTORY_PAGE_SIZE + 1;
         for entry in directory.entries().map_err(|_| inspect_io())? {
             if cancelled() {
@@ -133,40 +132,37 @@ impl ReadOnlyWorkspace {
             }
             let entry = entry.map_err(|_| inspect_io())?;
             let raw_name = entry.file_name();
-            let Ok(name) = raw_name.clone().into_string() else {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedName,
-                });
+            let key = raw_name.as_encoded_bytes().to_vec();
+            if after.is_some_and(|after| key.as_slice() <= after) {
                 continue;
+            }
+            let diagnostic = |kind| DirectoryDiagnostic {
+                directory: path.cloned(),
+                name_bytes: key.clone(),
+                kind,
             };
-            if super::protected_component(&name) {
-                continue;
-            }
-            let text = path.map_or_else(|| name.clone(), |parent| format!("{parent}/{name}"));
-            let Ok(child_path) = WorkspacePath::new(text) else {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedName,
-                });
-                continue;
+            let child = match raw_name.into_string() {
+                Ok(name) => {
+                    if super::protected_component(&name) {
+                        continue;
+                    }
+                    let text =
+                        path.map_or_else(|| name.clone(), |parent| format!("{parent}/{name}"));
+                    match WorkspacePath::new(text) {
+                        Ok(child_path) => {
+                            let metadata = entry.metadata().map_err(|_| inspect_io())?;
+                            if metadata.is_file() || metadata.is_dir() {
+                                Ok(DirectoryEntry(metadata_from_cap(child_path, &metadata)))
+                            } else {
+                                Err(diagnostic(DirectoryDiagnosticKind::UnsupportedType))
+                            }
+                        }
+                        Err(_) => Err(diagnostic(DirectoryDiagnosticKind::UnsupportedName)),
+                    }
+                }
+                Err(_) => Err(diagnostic(DirectoryDiagnosticKind::UnsupportedName)),
             };
-            if after.is_some_and(|after| child_path.as_str() <= after) {
-                continue;
-            }
-            let metadata = entry.metadata().map_err(|_| inspect_io())?;
-            if !metadata.is_file() && !metadata.is_dir() {
-                diagnostics.push(DirectoryDiagnostic {
-                    directory: path.cloned(),
-                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
-                    kind: DirectoryDiagnosticKind::UnsupportedType,
-                });
-                continue;
-            }
-            let child = DirectoryEntry(metadata_from_cap(child_path.clone(), &metadata));
-            selected.insert(child_path.as_str().to_owned(), child);
+            selected.insert(key, child);
             if selected.len() > retained_limit
                 && let Some(last) = selected.keys().next_back().cloned()
             {
@@ -190,19 +186,20 @@ impl ReadOnlyWorkspace {
         if has_more && let Some(last) = selected.keys().next_back().cloned() {
             selected.remove(&last);
         }
-        let entries = selected.into_values().collect::<Vec<_>>();
-        diagnostics.sort_unstable_by(|left, right| {
-            left.name_bytes.cmp(&right.name_bytes).then(left.kind.cmp(&right.kind))
-        });
         let next = if has_more {
-            let after = entries
-                .last()
-                .map(|entry| entry.metadata().path().clone())
-                .ok_or_else(changed_directory)?;
+            let after = selected.keys().next_back().cloned().ok_or_else(changed_directory)?;
             Some(DirectoryCursor { directory: path.cloned(), after, version })
         } else {
             None
         };
+        let mut entries = Vec::new();
+        let mut diagnostics = Vec::new();
+        for child in selected.into_values() {
+            match child {
+                Ok(entry) => entries.push(entry),
+                Err(diagnostic) => diagnostics.push(diagnostic),
+            }
+        }
         Ok(Some(DirectoryPage { entries, diagnostics, next }))
     }
 }

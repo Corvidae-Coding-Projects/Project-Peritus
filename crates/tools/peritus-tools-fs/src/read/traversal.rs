@@ -11,6 +11,11 @@ use peritus_workspace::{
 use super::{FsReadService, MetadataObservation, bound_error, inspection_error, project_metadata};
 use crate::{FsToolError, FsToolOperation, OmissionReason, ScopeOmission};
 
+pub(super) enum WalkEvent {
+    Diagnostic(ScopeOmission),
+    Entry { metadata: MetadataObservation, depth: u16, omission: Option<ScopeOmission> },
+}
+
 impl FsReadService<'_> {
     /// Visits a depth-first canonical traversal while retaining only ancestor directory pages.
     pub(super) fn walk_visit(
@@ -19,8 +24,7 @@ impl FsReadService<'_> {
         maximum_depth: u16,
         operation: FsToolOperation,
         cancelled: &dyn Fn() -> bool,
-        diagnostics: &mut Vec<ScopeOmission>,
-        mut visit: impl FnMut(MetadataObservation, u16, Option<ScopeOmission>) -> bool,
+        mut visit: impl FnMut(WalkEvent) -> bool,
     ) -> Result<bool, FsToolError> {
         struct Frame {
             directory: Option<WorkspacePath>,
@@ -35,7 +39,9 @@ impl FsReadService<'_> {
             .map_err(|error| inspection_error(operation, &error))?;
         let Some(first) = first else { return Ok(false) };
         let (children, page_diagnostics, cursor) = first.into_parts();
-        diagnostics.extend(page_diagnostics.iter().map(|value| project_diagnostic(root, value)));
+        if !visit_diagnostics(root, &page_diagnostics, cancelled, &mut visit) {
+            return Ok(false);
+        }
         let mut stack =
             vec![Frame { directory: root.cloned(), depth: 0, children: children.into(), cursor }];
         while !stack.is_empty() {
@@ -54,11 +60,9 @@ impl FsReadService<'_> {
                     .map_err(|error| inspection_error(operation, &error))?;
                 let Some(page) = page else { return Ok(false) };
                 let (children, page_diagnostics, cursor) = page.into_parts();
-                diagnostics.extend(
-                    page_diagnostics
-                        .iter()
-                        .map(|value| project_diagnostic(directory.as_ref(), value)),
-                );
+                if !visit_diagnostics(directory.as_ref(), &page_diagnostics, cancelled, &mut visit) {
+                    return Ok(false);
+                }
                 let Some(frame) = stack.last_mut() else {
                     return Err(bound_error(operation, "directory traversal stack was lost"));
                 };
@@ -84,11 +88,9 @@ impl FsReadService<'_> {
                         .map_err(|error| inspection_error(operation, &error))?;
                     let Some(children) = children else { return Ok(false) };
                     let (children, page_diagnostics, cursor) = children.into_parts();
-                    diagnostics.extend(
-                        page_diagnostics
-                            .iter()
-                            .map(|value| project_diagnostic(Some(&metadata.path), value)),
-                    );
+                    if !visit_diagnostics(Some(&metadata.path), &page_diagnostics, cancelled, &mut visit) {
+                        return Ok(false);
+                    }
                     stack.push(Frame {
                         directory: Some(metadata.path.clone()),
                         depth,
@@ -107,12 +109,23 @@ impl FsReadService<'_> {
                     OmissionReason::UnsafeEntry,
                 ));
             }
-            if !visit(metadata, depth, omission) {
+            if !visit(WalkEvent::Entry { metadata, depth, omission }) {
                 return Ok(false);
             }
         }
         Ok(true)
     }
+}
+
+fn visit_diagnostics(
+    directory: Option<&WorkspacePath>,
+    diagnostics: &[DirectoryDiagnostic],
+    cancelled: &dyn Fn() -> bool,
+    visit: &mut impl FnMut(WalkEvent) -> bool,
+) -> bool {
+    diagnostics.iter().all(|value| {
+        !cancelled() && visit(WalkEvent::Diagnostic(project_diagnostic(directory, value)))
+    })
 }
 
 fn project_diagnostic(

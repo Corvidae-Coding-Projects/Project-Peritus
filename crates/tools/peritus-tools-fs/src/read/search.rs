@@ -1,6 +1,7 @@
 //! Literal filesystem search with exact global continuation offsets.
 
 mod scanner;
+use super::traversal::WalkEvent;
 use super::{FsReadService, bound_error, inspection_error};
 use crate::{
     FsToolError, FsToolErrorKind, FsToolOperation, OmissionReason, RecoveryClass, ScopeOmission,
@@ -142,25 +143,18 @@ impl FsReadService<'_> {
         cancelled: &dyn Fn() -> bool,
     ) -> Result<Option<SearchObservation>, FsToolError> {
         let mut scan = SearchTraversal::new(input)?;
-        let mut diagnostics = Vec::new();
         let completed = self.walk_visit(
             input.root.as_ref(),
             input.maximum_depth,
             FsToolOperation::Search,
             cancelled,
-            &mut diagnostics,
-            |metadata, _depth, traversal_omission| {
-                scan.visit_entry(self.workspace, input, metadata, traversal_omission, cancelled)
+            |event| match event {
+                WalkEvent::Diagnostic(omission) => scan.record_omission(omission),
+                WalkEvent::Entry { metadata, omission, .. } => {
+                    scan.visit_entry(self.workspace, input, metadata, omission, cancelled)
+                }
             },
         )?;
-        diagnostics.sort_unstable_by(|left, right| {
-            left.native_path_bytes().cmp(right.native_path_bytes())
-        });
-        for diagnostic in diagnostics {
-            if !scan.record_omission(diagnostic) {
-                return scan.finish(false, cancelled());
-            }
-        }
         scan.finish(completed, cancelled())
     }
 }

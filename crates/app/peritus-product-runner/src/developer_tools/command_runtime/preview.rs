@@ -108,9 +108,15 @@ impl CommandRuntime {
             .active
             .values()
             .find(|command| command.plan.identity().process_id() == process_id)
-            .and_then(|command| command.control.clone());
-        if let Some(control) = active {
-            for stream in [OutputStream::Stdout, OutputStream::Stderr, OutputStream::Terminal] {
+            .and_then(|command| {
+                command.control.clone().map(|control| (control, command.plan.io_mode()))
+            });
+        if let Some((control, io_mode)) = active {
+            let streams: &[OutputStream] = match io_mode {
+                peritus_process::IoMode::Pipes => &[OutputStream::Stdout, OutputStream::Stderr],
+                peritus_process::IoMode::Pty(_) => &[OutputStream::Terminal],
+            };
+            for &stream in streams {
                 let bytes = control
                     .full_spooled_stream_output(stream)
                     .map_err(|error| preview_error(error.to_string()))?;
@@ -298,7 +304,26 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "subprocess fixture; invoked by the owned-pipe-preview test"]
+    fn controlled_pipe_preview_fixture() {
+        println!("READY state=0");
+        std::io::stdout().flush().expect("flush readiness");
+        loop {
+            thread::park();
+        }
+    }
+
+    #[test]
     fn owned_preview_launches_accepts_input_and_stops_explicitly() {
+        exercise_owned_preview(true);
+    }
+
+    #[test]
+    fn owned_pipe_preview_searches_only_its_available_live_streams() {
+        exercise_owned_preview(false);
+    }
+
+    fn exercise_owned_preview(interactive: bool) {
         let workspace = tempfile::tempdir().expect("workspace");
         let runtime =
             CommandRuntime::open_for_test(workspace.path(), RunId::new([91; 16]).expect("run"));
@@ -308,13 +333,16 @@ mod tests {
             vec![
                 "--ignored".to_owned(),
                 "--exact".to_owned(),
-                "developer_tools::command_runtime::preview::tests::controlled_preview_fixture"
-                    .to_owned(),
+                if interactive {
+                    "developer_tools::command_runtime::preview::tests::controlled_preview_fixture"
+                } else {
+                    "developer_tools::command_runtime::preview::tests::controlled_pipe_preview_fixture"
+                }.to_owned(),
                 "--nocapture".to_owned(),
             ],
             workspace.path().to_path_buf(),
             Duration::from_secs(10),
-            true,
+            interactive,
             24,
             80,
             "owned-preview-normal-flow".to_owned(),
@@ -336,25 +364,44 @@ mod tests {
             );
             thread::sleep(Duration::from_millis(10));
         };
+        // Raw Windows previews use pipes; Unix previews own a PTY terminal stream.
+        let stream = if cfg!(windows) || !interactive {
+            OutputStream::Stdout
+        } else {
+            OutputStream::Terminal
+        };
         let live_range = runtime
-            .preview_output_range(launch.process_id(), OutputStream::Terminal, readiness_offset, 9)
+            .preview_output_range(launch.process_id(), stream, readiness_offset, 9)
             .expect("live range");
         assert_eq!(live_range.bytes(), b"READY sta");
         assert!(live_range.total_bytes() >= 9);
         assert_eq!(live_range.digest(), None);
-        let observation =
-            runtime.interact_preview(&launch, b"MOVE_RIGHT\n".to_vec()).expect("interaction");
-        assert_eq!(observation.state(), PreviewProcessState::Running);
-        // interact_preview may consume the stdin acknowledgement itself. Confirm the
-        // child actually processed the bytes before stopping it, independent of poll timing.
-        wait_for_output(&runtime, &launch, "OBSERVED MOVE_RIGHT state=1");
+        assert!(
+            runtime
+                .preview_output_contains(launch.process_id(), "READY state=0")
+                .expect("live match")
+        );
+        assert!(
+            !runtime
+                .preview_output_contains(launch.process_id(), "ABSENT preview marker")
+                .expect("live miss")
+        );
+        if interactive {
+            let observation =
+                runtime.interact_preview(&launch, b"MOVE_RIGHT\n".to_vec()).expect("interaction");
+            assert_eq!(observation.state(), PreviewProcessState::Running);
+            // Observe the child's response even when interact_preview consumed the acknowledgement.
+            wait_for_output(&runtime, &launch, "OBSERVED MOVE_RIGHT state=1");
+        }
         let terminal = runtime.stop_preview(&launch).expect("explicit stop");
         let terminal = wait_for_terminal(&runtime, &launch, terminal);
         assert_eq!(terminal.state(), PreviewProcessState::Cancelled);
         assert!(terminal.stdout().contains("READY state=0"));
-        assert!(terminal.stdout().contains("OBSERVED MOVE_RIGHT state=1"));
+        if interactive {
+            assert!(terminal.stdout().contains("OBSERVED MOVE_RIGHT state=1"));
+        }
         let retained_range = runtime
-            .preview_output_range(launch.process_id(), OutputStream::Terminal, readiness_offset, 9)
+            .preview_output_range(launch.process_id(), stream, readiness_offset, 9)
             .expect("finalized range");
         assert_eq!(retained_range.bytes(), b"READY sta");
         assert_eq!(retained_range.digest().map(|value| value.len()), Some(32));

@@ -111,7 +111,7 @@ fn history_subject_bytes_continue_without_skipping_the_commit() {
                 "middle\n",
             )
             .expect("middle README");
-        source.commit_all(&format!("subject {}", "x".repeat(500))).expect("long subject commit");
+        source.commit_all(&format!("subject {}", "x".repeat(5_000))).expect("long subject commit");
         source
             .write_text(
                 &peritus_test_support::FixturePath::new("src/final.rs").expect("path"),
@@ -156,8 +156,17 @@ fn history_subject_bytes_continue_without_skipping_the_commit() {
     let next = service
         .history(HistoryInput::page(1, 1).expect("same commit page").with_subject_offset(64))
         .expect("continued subject range");
+    assert_eq!(first.commits()[0].subject().len(), 5_008);
     assert_eq!(next.offset(), first.offset());
     assert_eq!(next.commits()[0].commit(), first.commits()[0].commit());
+    let tail = service
+        .history(HistoryInput::page(1, 1).expect("tail page").with_subject_offset(4_992))
+        .expect("subject bytes beyond former limit");
+    let tail_output = RenderedOutput::history(&tail).expect("tail render");
+    assert!(
+        String::from_utf8_lossy(tail_output.structured().canonical_bytes())
+            .contains("\"next_subject_offset\":null")
+    );
     let continued = RenderedOutput::history(&next).expect("continued subject projection");
     assert!(continued.structured().canonical_bytes().windows(2).any(|window| window == b"xx"));
 }

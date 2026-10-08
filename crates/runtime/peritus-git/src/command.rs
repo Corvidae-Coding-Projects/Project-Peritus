@@ -70,6 +70,9 @@ impl GitRunner {
         let mut command = Command::new(&self.program);
         command.current_dir(cwd);
         command.arg("--no-pager");
+        // Shared shallow/graft metadata must not redefine immutable commit ancestry. Missing
+        // parent objects in an incomplete clone remain explicit Git command failures.
+        command.arg("--shallow-file").arg(null_device());
         if access != CommandAccess::ReadWithoutLiteralPathspecs {
             command.arg("--literal-pathspecs");
         }
@@ -91,6 +94,8 @@ impl GitRunner {
             .arg("core.untrackedCache=false")
             .arg("-c")
             .arg("core.autocrlf=false")
+            .arg("-c")
+            .arg("i18n.logOutputEncoding=UTF-8")
             .arg("-c")
             .arg("core.hooksPath=/dev/null");
         if let Some(repository) = repository {
@@ -151,6 +156,9 @@ fn apply_environment(command: &mut Command) {
         copy_parent(&parent, command, "SystemRoot");
         copy_parent(&parent, command, "ComSpec");
     }
+    // Object IDs must identify original immutable bytes across all observation pages.
+    command.env("GIT_NO_REPLACE_OBJECTS", "1");
+    command.env("GIT_GRAFT_FILE", null_device());
     command.env("GIT_CONFIG_NOSYSTEM", "1");
     command.env("GIT_CONFIG_GLOBAL", null_device());
     command.env("GIT_ATTR_NOSYSTEM", "1");

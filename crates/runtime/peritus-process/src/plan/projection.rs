@@ -57,11 +57,18 @@ fn validate_environment(
     let source_matches = match environment.source() {
         EnvironmentSource::Cleared => requirements.inherited_names().is_empty(),
         EnvironmentSource::Allowlisted(names) => {
-            names.len() == requirements.inherited_names().len()
-                && names
+            // Native environments retain platform ordering; sandbox names use uppercase ASCII.
+            // Compare canonical identities, not positions in differently ordered sequences.
+            let canonical = names
+                .iter()
+                .map(|name| name.to_ascii_uppercase())
+                .collect::<std::collections::BTreeSet<_>>();
+            canonical.len() == names.len()
+                && canonical.len() == requirements.inherited_names().len()
+                && canonical
                     .iter()
                     .zip(requirements.inherited_names())
-                    .all(|(left, right)| left.eq_ignore_ascii_case(right.as_str()))
+                    .all(|(left, right)| left == right.as_str())
         }
     };
     let names_allowed = environment.variables().iter().all(|variable| {
@@ -96,4 +103,45 @@ fn validate_resources(
         return Err(invalid("process resources differ from checked sandbox requirements"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_environment;
+    use crate::EnvironmentPlan;
+    use peritus_sandbox::{EnvironmentName, EnvironmentRequirements};
+
+    #[test]
+    fn environment_projection_compares_canonical_names_independent_of_native_order() {
+        let names = vec!["Z_PERITUS_PROJECTION".to_owned(), "a_peritus_projection".to_owned()];
+        let environment = EnvironmentPlan::allowlisted(names.clone(), Vec::new()).expect("plan");
+        let requirements = EnvironmentRequirements::new(
+            names.into_iter().map(|name| EnvironmentName::new(name).expect("name")).collect(),
+            Vec::new(),
+        )
+        .expect("requirements");
+        validate_environment(&environment, &requirements).expect("equal canonical names");
+        let wrong = EnvironmentRequirements::new(
+            vec![EnvironmentName::new("OTHER").expect("name")],
+            Vec::new(),
+        )
+        .expect("wrong requirements");
+        assert!(validate_environment(&environment, &wrong).is_err());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn environment_projection_rejects_ambiguous_case_folded_inheritance() {
+        let environment = EnvironmentPlan::allowlisted(
+            vec!["PERITUS_PROJECTION".to_owned(), "peritus_projection".to_owned()],
+            Vec::new(),
+        )
+        .expect("distinct native names");
+        let requirements = EnvironmentRequirements::new(
+            vec![EnvironmentName::new("PERITUS_PROJECTION").expect("name")],
+            Vec::new(),
+        )
+        .expect("requirements");
+        assert!(validate_environment(&environment, &requirements).is_err());
+    }
 }

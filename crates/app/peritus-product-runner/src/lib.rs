@@ -57,6 +57,7 @@ mod workspace_filter;
 mod workspace_kind;
 #[cfg(not(verus_only))]
 mod workspace_media;
+#[cfg(not(verus_only))]
 pub use workspace_media::{WorkspaceImageDiscovery, WorkspaceImagePage};
 
 mod api;

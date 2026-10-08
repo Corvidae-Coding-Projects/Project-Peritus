@@ -140,7 +140,8 @@ fn unreadable_or_invalid_selected_media_is_reported_without_dropping_valid_neigh
     let (prompt, attachments) = images.into_parts(task);
     assert_eq!(attachments.len(), 1);
     assert!(prompt.contains("Skipped selected media"));
-    assert!(prompt.contains("scans/broken.png"));
+    let expected_path = Path::new("scans").join("broken.png");
+    assert!(prompt.contains(&expected_path.display().to_string()));
 }
 
 #[test]

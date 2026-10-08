@@ -57,7 +57,7 @@ impl CommitObservation {
     pub const fn timestamp_seconds(&self) -> u64 {
         self.timestamp_seconds
     }
-    /// Returns the bounded UTF-8 commit subject.
+    /// Returns the complete UTF-8 commit subject for paged rendering.
     #[must_use]
     pub fn subject(&self) -> &str {
         &self.subject
@@ -196,6 +196,10 @@ impl GitRepository {
             "-z",
             "--format=%H%x00%P%x00%at%x00%s",
             "--no-decorate",
+            "--no-show-signature",
+            "--no-notes",
+            "--no-color",
+            "--no-patch",
         ]);
         arguments.push(OsString::from(format!("--max-count={}", request.maximum_commits + 1)));
         arguments.push(OsString::from(format!("--skip={}", request.offset)));
@@ -296,9 +300,6 @@ fn parse_history(
             .map_err(|_| protocol("Git history timestamp is invalid"))?;
         let subject = std::str::from_utf8(record[3])
             .map_err(|_| protocol("Git history subject is not UTF-8"))?;
-        if subject.len() > 4_096 || subject.bytes().any(|byte| byte == 0) {
-            return Err(protocol("Git history subject exceeds its bound"));
-        }
         commits.push(CommitObservation {
             commit,
             parents,

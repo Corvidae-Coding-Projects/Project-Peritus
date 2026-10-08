@@ -48,9 +48,22 @@ impl Writer {
         self.bytes(value.as_bytes())
     }
 
+    #[cfg(unix)]
     pub(crate) fn path(&mut self, value: &std::path::Path) -> Result<(), MacosError> {
         use std::os::unix::ffi::OsStrExt as _;
         self.bytes(value.as_os_str().as_bytes())
+    }
+
+    // The macOS wire format uses Unix path bytes. Other hosts may handle its UTF-8 subset
+    // exactly, but must reject native names that have no exact representation in that format.
+    #[cfg(not(unix))]
+    pub(crate) fn path(&mut self, value: &std::path::Path) -> Result<(), MacosError> {
+        self.string(value.to_str().ok_or_else(|| {
+            error::invalid(
+                MacosOperation::Manifest,
+                "path cannot be represented as Unix bytes on this host",
+            )
+        })?)
     }
 
     pub(crate) fn count(&mut self, value: usize) -> Result<(), MacosError> {
@@ -122,6 +135,7 @@ impl<'a> Reader<'a> {
         self.take(length)
     }
 
+    #[cfg(unix)]
     pub(crate) fn path(&mut self) -> Result<std::path::PathBuf, MacosError> {
         use std::os::unix::ffi::OsStringExt as _;
         let value = self.bytes()?;
@@ -131,6 +145,11 @@ impl<'a> Reader<'a> {
         })?;
         bytes.extend_from_slice(value);
         Ok(std::ffi::OsString::from_vec(bytes).into())
+    }
+
+    #[cfg(not(unix))]
+    pub(crate) fn path(&mut self) -> Result<std::path::PathBuf, MacosError> {
+        Ok(self.string()?.into())
     }
 
     pub(crate) fn string(&mut self) -> Result<String, MacosError> {
@@ -196,6 +215,28 @@ mod tests {
         let mut reader = Reader::new(&bytes);
         assert_eq!(reader.string().expect("long string"), long);
         assert_eq!(reader.count().expect("large count"), 4_097);
+    }
+
+    #[test]
+    fn portable_path_round_trip_preserves_wire_bytes() {
+        let path = PathBuf::from("/workspace/project");
+        let mut writer = Writer::new();
+        writer.path(&path).expect("portable path");
+        let bytes = writer.finish();
+        assert_eq!(bytes, [18_u32.to_be_bytes().as_slice(), b"/workspace/project"].concat());
+        let mut reader = Reader::new(&bytes);
+        assert_eq!(reader.path().expect("portable decoded path"), path);
+        reader.finish().expect("exact consumption");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn non_unix_host_rejects_unrepresentable_paths_without_loss() {
+        use std::os::windows::ffi::OsStringExt as _;
+        let path = PathBuf::from(std::ffi::OsString::from_wide(&[0xd800]));
+        assert!(Writer::new().path(&path).is_err());
+        let bytes = [1_u32.to_be_bytes().as_slice(), &[0xff]].concat();
+        assert!(Reader::new(&bytes).path().is_err());
     }
 
     #[cfg(unix)]

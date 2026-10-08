@@ -2,6 +2,7 @@
 
 mod search;
 mod traversal;
+use traversal::WalkEvent;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use peritus_patch::WorkspacePath;
@@ -358,7 +359,6 @@ impl<'a> FsReadService<'a> {
         let mut observed_count = 0_u64;
         let mut omission_count = 0_u64;
         let mut overflowed = false;
-        let mut diagnostics = Vec::new();
         let page_end =
             input.continuation_offset.checked_add(u64::from(input.maximum_entries)).ok_or_else(
                 || bound_error(FsToolOperation::Discover, "discovery continuation overflowed"),
@@ -372,17 +372,8 @@ impl<'a> FsReadService<'a> {
             input.maximum_depth,
             FsToolOperation::Discover,
             cancelled,
-            &mut diagnostics,
-            |metadata, depth, omission| {
-                let index = observed_count;
-                let omission_reason = omission.as_ref().map(ScopeOmission::reason);
-                digest.entry(&metadata, depth);
-                let Some(next_count) = observed_count.checked_add(1) else {
-                    overflowed = true;
-                    return false;
-                };
-                observed_count = next_count;
-                if let Some(omission) = omission {
+            |event| match event {
+                WalkEvent::Diagnostic(omission) => {
                     digest.omission(&omission);
                     let omission_index = omission_count;
                     let Some(next_omission_count) = omission_count.checked_add(1) else {
@@ -393,28 +384,37 @@ impl<'a> FsReadService<'a> {
                     if omission_index >= input.omission_offset && omission_index < omission_end {
                         omissions.push(omission);
                     }
+                    true
                 }
-                if index >= input.continuation_offset && index < page_end {
-                    entries.push(DiscoverEntry { metadata, depth, omission_reason });
+                WalkEvent::Entry { metadata, depth, omission } => {
+                    let index = observed_count;
+                    let omission_reason = omission.as_ref().map(ScopeOmission::reason);
+                    digest.entry(&metadata, depth);
+                    let Some(next_count) = observed_count.checked_add(1) else {
+                        overflowed = true;
+                        return false;
+                    };
+                    observed_count = next_count;
+                    if let Some(omission) = omission {
+                        digest.omission(&omission);
+                        let omission_index = omission_count;
+                        let Some(next_omission_count) = omission_count.checked_add(1) else {
+                            overflowed = true;
+                            return false;
+                        };
+                        omission_count = next_omission_count;
+                        if omission_index >= input.omission_offset && omission_index < omission_end
+                        {
+                            omissions.push(omission);
+                        }
+                    }
+                    if index >= input.continuation_offset && index < page_end {
+                        entries.push(DiscoverEntry { metadata, depth, omission_reason });
+                    }
+                    true
                 }
-                true
             },
         )?;
-        diagnostics.sort_unstable_by(|left, right| {
-            left.native_path_bytes().cmp(right.native_path_bytes())
-        });
-        for omission in diagnostics {
-            digest.omission(&omission);
-            let index = omission_count;
-            let Some(next_count) = omission_count.checked_add(1) else {
-                overflowed = true;
-                break;
-            };
-            omission_count = next_count;
-            if index >= input.omission_offset && index < omission_end {
-                omissions.push(omission);
-            }
-        }
         if !completed {
             if overflowed {
                 return Err(bound_error(FsToolOperation::Discover, "discovery count overflowed"));

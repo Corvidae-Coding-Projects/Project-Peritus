@@ -205,17 +205,20 @@ fn descriptor_catalog_is_complete_canonical_and_deterministic() {
 #[test]
 fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_children() {
     use base64::{Engine as _, engine::general_purpose::STANDARD};
-    use std::{
-        ffi::OsStr,
-        os::unix::{ffi::OsStrExt as _, fs::symlink},
-    };
+    use std::os::unix::fs::symlink;
+    #[cfg(target_os = "linux")]
+    use std::{ffi::OsStr, os::unix::ffi::OsStrExt as _};
 
     let fixture = support::read_fixture("fs-symlink-diagnostics");
     let root = fixture.root.clone();
     std::fs::write(root.join("searchable.txt"), b"needle\n").expect("ordinary sibling");
-    let invalid_name = b"invalid-\xff-name";
-    std::fs::write(root.join(OsStr::from_bytes(invalid_name)), b"unsupported name\n")
-        .expect("unsupported child name");
+    #[cfg(target_os = "linux")]
+    let invalid_name = {
+        let name = b"invalid-\xff-name";
+        std::fs::write(root.join(OsStr::from_bytes(name)), b"unsupported name\n")
+            .expect("unsupported child name");
+        name
+    };
     symlink("searchable.txt", root.join("linked.txt")).expect("unsupported symlink child");
 
     let service = FsReadService::new(&fixture.workspace);
@@ -226,6 +229,7 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
         .expect("discover diagnostics render");
     let discover_json =
         std::str::from_utf8(discover_json.structured().canonical_bytes()).expect("JSON");
+    #[cfg(target_os = "linux")]
     assert!(discover_json.contains(&STANDARD.encode(invalid_name)), "{discover_json}");
     assert!(discover_json.contains(&STANDARD.encode(b"linked.txt")), "{discover_json}");
     assert!(discover_json.contains("unsupported_name"), "{discover_json}");
@@ -249,6 +253,7 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
         .expect("search diagnostics render");
     let search_json =
         std::str::from_utf8(search_json.structured().canonical_bytes()).expect("JSON");
+    #[cfg(target_os = "linux")]
     assert!(search_json.contains(&STANDARD.encode(invalid_name)), "{search_json}");
     assert!(search_json.contains(&STANDARD.encode(b"linked.txt")), "{search_json}");
     assert!(search_json.contains("unsupported_name"), "{search_json}");
@@ -267,4 +272,46 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
         )
         .expect("next search diagnostic page");
     assert_eq!(next_search.omissions().len(), 1);
+}
+
+#[cfg(unix)]
+#[test]
+fn wide_directory_discovery_counts_each_unsupported_child_once() {
+    #[cfg(target_os = "linux")]
+    use std::os::unix::ffi::OsStrExt as _;
+    use std::os::unix::fs::symlink;
+    let fixture = support::read_fixture("fs-wide-diagnostics");
+    for index in 0..260 {
+        std::fs::write(fixture.root.join(format!("file-{index:03}")), b"x")
+            .expect("supported child");
+    }
+    symlink("README.md", fixture.root.join("zzzz-link")).expect("unsupported symlink");
+    #[cfg(target_os = "linux")]
+    std::fs::write(fixture.root.join(std::ffi::OsStr::from_bytes(b"invalid-\xff")), b"x")
+        .expect("non-UTF-8 child");
+    let service = FsReadService::new(&fixture.workspace);
+    let input = DiscoverInput::new(None, 4, 1000).expect("input");
+    let result = service.discover(&input).expect("discovery");
+    assert_eq!(result.observed_count(), 264);
+    #[cfg(target_os = "linux")]
+    assert_eq!(result.omission_count(), 2);
+    #[cfg(not(target_os = "linux"))]
+    assert_eq!(result.omission_count(), 1);
+    assert_eq!(
+        result.omissions().len(),
+        usize::try_from(result.omission_count()).expect("fixture omission count fits usize")
+    );
+    let names = result
+        .omissions()
+        .iter()
+        .map(peritus_tools_fs::ScopeOmission::native_path_bytes)
+        .collect::<std::collections::BTreeSet<_>>();
+    #[cfg(target_os = "linux")]
+    assert_eq!(
+        names,
+        std::collections::BTreeSet::from([b"invalid-\xff".as_slice(), b"zzzz-link".as_slice(),])
+    );
+    #[cfg(not(target_os = "linux"))]
+    assert_eq!(names, std::collections::BTreeSet::from([b"zzzz-link".as_slice()]));
+    assert_eq!(result.digest(), service.discover(&input).expect("repeat discovery").digest());
 }

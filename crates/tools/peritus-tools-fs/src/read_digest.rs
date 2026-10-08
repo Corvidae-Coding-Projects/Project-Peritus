@@ -14,7 +14,7 @@ impl DiscoverDigestBuilder {
     #[must_use]
     pub fn new(root: Option<&peritus_patch::WorkspacePath>) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"PERITUS-FS-DISCOVER-V3\0");
+        hasher.update(b"PERITUS-FS-DISCOVER-V4\0");
         put_bytes(&mut hasher, root.map_or("", peritus_patch::WorkspacePath::as_str));
         Self(hasher)
     }
@@ -49,7 +49,7 @@ impl SearchDigestBuilder {
     #[must_use]
     pub fn new(match_page_start: u64, omission_page_start: u64) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"PERITUS-FS-SEARCH-V3\0");
+        hasher.update(b"PERITUS-FS-SEARCH-V4\0");
         hasher.update(match_page_start.to_be_bytes());
         hasher.update(omission_page_start.to_be_bytes());
         Self(hasher)

@@ -257,10 +257,21 @@ fn accept_output(
     if accepted == 0 {
         return Ok(());
     }
-    spool_mut(spools, stream)?.write(&bytes[..accepted])?;
-    *total_spooled = total_spooled.saturating_add(u64::try_from(accepted).unwrap_or(u64::MAX));
-    emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes[..accepted].to_vec());
-    Ok(())
+    let spool = spool_mut(spools, stream)?;
+    let before = spool.written();
+    let result = spool.write(&bytes[..accepted]);
+    let written = spool.written() - before;
+    account.retain_written(written);
+    *total_spooled = total_spooled.saturating_add(written);
+    if result.is_err() {
+        account.fail();
+    }
+    if written > 0 {
+        let count = usize::try_from(written)
+            .map_err(|_| supervisor_error("spool prefix is unrepresentable"))?;
+        emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes[..count].to_vec());
+    }
+    result
 }
 
 #[allow(clippy::too_many_arguments)]

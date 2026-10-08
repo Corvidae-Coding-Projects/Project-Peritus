@@ -152,7 +152,11 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             query(workspace),
             run,
             launch.operation(),
-            WorkbenchPreviewOutputStream::Terminal,
+            if cfg!(windows) {
+                WorkbenchPreviewOutputStream::Stdout
+            } else {
+                WorkbenchPreviewOutputStream::Terminal
+            },
             0,
             64,
         )
