@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4128,
-        "tip_oid": "eb53569e7d29d5edd3a5680836b8106f25636f43",
-        "prefix_sha256": "2513ee21b5c732c9af7ddadf849fa656e3b1cef375273e228313190466f037f2"
+        "sequence": 4129,
+        "tip_oid": "a40a2476f087bc26ac7b2a0fb6caf9fbded1d53c",
+        "prefix_sha256": "6294b05a7509d974cd94134fb88dd7167bb6a631bc24a83dd0c54fc7d7acb35a"
       },
       "NWAR": {
         "sequence": 39,
@@ -32529,12 +32529,13 @@
       "display_id": 553,
       "title": "[L475] Compatible rejection recovery waits for the entire error body first",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L475.\n\n- Evidence: `crates/model/peritus-provider-compatible/src/client.rs:196-205,211-234`, `src/client/response.rs:10-23` in the same crate.\n- Behavior: even after a non-success status is known, start reads the entire bounded body to EOF before building the typed failure or planning an authorized retry. It stores the complete bytes to hash them. Transport/body cancellation is observed, but no incremental rejection event or recovery cursor is returned while the body is pending.\n- Consequence: a stalled error body can hold authentication/rate-limit/transient failure reporting and recovery pending indefinitely despite decisive headers already arriving. A body read/size failure replaces the original status classification. This is an ownership/progress blocker, not a reason to reintroduce arbitrary elapsed termination. No stalled live server reproduced.\n- Repair direction: durably expose the typed header rejection promptly, capture bounded body evidence with streaming digests and owned cancellation, and decouple optional body completion from safe recovery scheduling. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.717405747Z",
-      "updated_at": "2026-10-08T09:55:33.817867934Z",
+      "updated_at": "2026-10-08T09:56:58.668782537Z",
+      "closed_at": "2026-10-08T09:56:58.665956757Z",
       "labels": [
         "daily-driving-limiter"
       ],
