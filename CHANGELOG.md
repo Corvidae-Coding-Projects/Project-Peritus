@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L621] Evidence and bundle limits reject legitimate scale, sometimes after output has already been written (#676)
 - [L455] F0 repeats whole-state and whole-store work synchronously during attribution, commit and recovery (#534)
 - [L045] Tool output and filesystem-coverage exclusions (#144)
 - [L620] Evidence storage retains a five-second contention timer and fixed SQLite representation bounds (#675)
