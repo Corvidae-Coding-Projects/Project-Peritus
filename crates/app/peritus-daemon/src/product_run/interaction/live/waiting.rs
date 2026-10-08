@@ -14,9 +14,20 @@ pub(in crate::product_run::interaction) struct Notice {
     schema: u32,
     run: [u8; 16],
     start_operation: [u8; 16],
+    attempt_sequence: u64,
     model_requests: u32,
     provider_started: u64,
     activity_frontier: u64,
+    role: u8,
+    turn: u16,
+    provider_attempt: u64,
+    request_id_digest: [u8; 32],
+    request_fingerprint: [u8; 32],
+    provider_profile_id: [u8; 16],
+    provider_profile_revision: u64,
+    provider_name_digest: [u8; 32],
+    native_session_digest: Option<[u8; 32]>,
+    provider_selection_digest: Option<[u8; 32]>,
     elapsed_seconds: u64,
 }
 
@@ -24,6 +35,7 @@ pub(in crate::product_run::interaction) struct Notice {
 pub(super) fn capture(
     service: &ProductRunService,
     run: RunId,
+    expected_attempt: &std::sync::Arc<std::sync::atomic::AtomicBool>,
     elapsed_seconds: u64,
 ) -> Result<Notice, DeveloperLoopError> {
     let records = service.inner.records.try_read().map_err(|error| {
@@ -32,6 +44,11 @@ pub(super) fn capture(
     let record = records.get(&run).ok_or_else(|| {
         DeveloperLoopError::Trace("waiting projection has no exact run owner".to_owned())
     })?;
+    if !std::sync::Arc::ptr_eq(expected_attempt, &record.cancelled) {
+        return Err(DeveloperLoopError::Trace(
+            "waiting projection belongs to a superseded execution attempt".to_owned(),
+        ));
+    }
     let mut notice = pending(record).ok_or_else(|| {
         DeveloperLoopError::Trace("waiting projection has no pending provider request".to_owned())
     })?;
@@ -45,13 +62,25 @@ pub(in crate::product_run::interaction) fn pending(
     if record.cancelled.load(Ordering::Acquire) {
         return None;
     }
+    let request = record.progress.provider_request?;
     Some(Notice {
-        schema: 1,
+        schema: 2,
         run: *record.request.run_id().as_bytes(),
         start_operation: *record.interaction.workbench.id().as_bytes(),
+        attempt_sequence: record.attempt_sequence,
         model_requests: record.progress.model_requests,
         provider_started: record.progress.provider_started_unix_millis?,
         activity_frontier: record.interaction.next_sequence,
+        role: request.role,
+        turn: request.turn,
+        provider_attempt: request.attempt,
+        request_id_digest: request.request_id_digest,
+        request_fingerprint: request.request_fingerprint,
+        provider_profile_id: request.provider_profile_id,
+        provider_profile_revision: request.provider_profile_revision,
+        provider_name_digest: request.provider_name_digest,
+        native_session_digest: request.native_session_digest,
+        provider_selection_digest: request.provider_selection_digest,
         elapsed_seconds: 0,
     })
 }
@@ -60,7 +89,7 @@ pub(super) fn retain(
     service: &ProductRunService,
     notice: &Notice,
 ) -> Result<(), ProductRunServiceError> {
-    let path = path(service, &notice.run, notice.model_requests, notice.provider_started, notice.activity_frontier)?;
+    let path = path(service, notice)?;
     let parent = path.parent().ok_or(ProductRunServiceError::Unavailable)?;
     fs::create_dir_all(parent).map_err(|error| {
         ProductRunServiceError::persistence("create waiting status outbox", error)
@@ -102,7 +131,7 @@ pub(in crate::product_run::interaction) fn project(
     activities: &mut Vec<ProductActivity>,
 ) {
     let result = (|| -> Result<(), ProductRunServiceError> {
-        let path = path(service, &expected.run, expected.model_requests, expected.provider_started, expected.activity_frontier)?;
+        let path = path(service, expected)?;
         let file = match fs::File::open(path) {
             Ok(file) => file,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
@@ -111,7 +140,7 @@ pub(in crate::product_run::interaction) fn project(
         let notice: Notice = serde_json::from_reader(std::io::BufReader::new(file)).map_err(|error| {
             ProductRunServiceError::persistence("decode waiting status outbox", error)
         })?;
-        if notice.schema != 1 || notice.run != expected.run {
+        if notice.schema != 2 || notice.run != expected.run {
             return Err(ProductRunServiceError::internal("read waiting status outbox", "the notice belongs to another run or schema"));
         }
         // Later activity, provider settlement, explicit cancellation, or a new attempt supersedes
@@ -142,25 +171,45 @@ fn current(notice: &Notice, record: &crate::product_run::RunRecord) -> bool {
 fn same_frontier(notice: &Notice, expected: &Notice) -> bool {
     notice.run == expected.run
         && notice.start_operation == expected.start_operation
+        && notice.attempt_sequence == expected.attempt_sequence
         && notice.model_requests == expected.model_requests
         && notice.provider_started == expected.provider_started
         && notice.activity_frontier == expected.activity_frontier
+        && notice.role == expected.role
+        && notice.turn == expected.turn
+        && notice.provider_attempt == expected.provider_attempt
+        && notice.request_id_digest == expected.request_id_digest
+        && notice.request_fingerprint == expected.request_fingerprint
+        && notice.provider_profile_id == expected.provider_profile_id
+        && notice.provider_profile_revision == expected.provider_profile_revision
+        && notice.provider_name_digest == expected.provider_name_digest
+        && notice.native_session_digest == expected.native_session_digest
+        && notice.provider_selection_digest == expected.provider_selection_digest
 }
 
-fn path(
-    service: &ProductRunService,
-    run: &[u8; 16],
-    model_requests: u32,
-    provider_started: u64,
-    activity_frontier: u64,
-) -> Result<PathBuf, ProductRunServiceError> {
-    use std::fmt::Write as _;
-    let mut identity = String::with_capacity(32);
-    for byte in run {
-        write!(&mut identity, "{byte:02x}").map_err(|_| ProductRunServiceError::Unavailable)?;
-    }
+fn path(service: &ProductRunService, notice: &Notice) -> Result<PathBuf, ProductRunServiceError> {
+    let identity = hex(&notice.run)?;
+    let request = hex(&notice.request_id_digest)?;
     Ok(crate::product_run::persistence::record_directory(&service.inner.directory)?
         .join(".waiting-outbox")
         .join(identity)
-        .join(format!("{model_requests}-{provider_started}-{activity_frontier}.json")))
+        .join(format!(
+            "{}-{}-{}-{}-{}-{}.json",
+            notice.attempt_sequence,
+            notice.model_requests,
+            notice.provider_started,
+            notice.activity_frontier,
+            notice.provider_attempt,
+            request,
+        )))
+}
+
+fn hex(bytes: &[u8]) -> Result<String, ProductRunServiceError> {
+    use std::fmt::Write as _;
+    let mut identity = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        write!(&mut identity, "{byte:02x}")
+            .map_err(|_| ProductRunServiceError::Unavailable)?;
+    }
+    Ok(identity)
 }

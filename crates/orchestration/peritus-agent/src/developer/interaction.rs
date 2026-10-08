@@ -15,6 +15,88 @@ pub enum DeveloperModelRole {
     Fixer,
 }
 
+/// Exact accepted provider-request identity used by host-owned progress projections.
+///
+/// This is presentation metadata only. It cannot authorize a retry, continuation, or replacement
+/// request, and it remains separate from the raw provider trace and accounting authority.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DeveloperProviderRequestIdentity {
+    role: DeveloperModelRole,
+    turn: u16,
+    attempt: u64,
+    request_id_digest: peritus_types::Sha256Digest,
+    request_fingerprint: peritus_types::Sha256Digest,
+    provider_profile_id: peritus_types::ProviderProfileId,
+    provider_profile_revision: u64,
+    provider_name_digest: peritus_types::Sha256Digest,
+    native_session_digest: Option<peritus_types::Sha256Digest>,
+    provider_selection_digest: Option<peritus_types::Sha256Digest>,
+}
+
+impl DeveloperProviderRequestIdentity {
+    /// Reconstructs an identity from exact typed durable fields.
+    #[must_use]
+    #[allow(clippy::too_many_arguments, reason = "the identity preserves independent authority axes")]
+    pub const fn from_parts(
+        role: DeveloperModelRole,
+        turn: u16,
+        attempt: u64,
+        request_id_digest: peritus_types::Sha256Digest,
+        request_fingerprint: peritus_types::Sha256Digest,
+        provider_profile_id: peritus_types::ProviderProfileId,
+        provider_profile_revision: u64,
+        provider_name_digest: peritus_types::Sha256Digest,
+        native_session_digest: Option<peritus_types::Sha256Digest>,
+        provider_selection_digest: Option<peritus_types::Sha256Digest>,
+    ) -> Self {
+        Self {
+            role,
+            turn,
+            attempt,
+            request_id_digest,
+            request_fingerprint,
+            provider_profile_id,
+            provider_profile_revision,
+            provider_name_digest,
+            native_session_digest,
+            provider_selection_digest,
+        }
+    }
+
+    #[must_use]
+    pub const fn role(self) -> DeveloperModelRole { self.role }
+    #[must_use]
+    pub const fn turn(self) -> u16 { self.turn }
+    #[must_use]
+    pub const fn attempt(self) -> u64 { self.attempt }
+    #[must_use]
+    pub const fn request_id_digest(self) -> peritus_types::Sha256Digest {
+        self.request_id_digest
+    }
+    #[must_use]
+    pub const fn request_fingerprint(self) -> peritus_types::Sha256Digest {
+        self.request_fingerprint
+    }
+    #[must_use]
+    pub const fn provider_profile_id(self) -> peritus_types::ProviderProfileId {
+        self.provider_profile_id
+    }
+    #[must_use]
+    pub const fn provider_profile_revision(self) -> u64 { self.provider_profile_revision }
+    #[must_use]
+    pub const fn provider_name_digest(self) -> peritus_types::Sha256Digest {
+        self.provider_name_digest
+    }
+    #[must_use]
+    pub const fn native_session_digest(self) -> Option<peritus_types::Sha256Digest> {
+        self.native_session_digest
+    }
+    #[must_use]
+    pub const fn provider_selection_digest(self) -> Option<peritus_types::Sha256Digest> {
+        self.provider_selection_digest
+    }
+}
+
 /// One atomically resolved host provider choice plus optional explicit-selection provenance.
 pub struct DeveloperProviderSelection {
     provider: std::sync::Arc<dyn peritus_provider_core::ModelProvider>,
@@ -121,6 +203,8 @@ pub enum DeveloperActivity<'a> {
         model: &'a str,
         /// Reasoning control in the outgoing request, not an inferred provider outcome.
         reasoning: peritus_model_protocol::ReasoningPolicy,
+        /// Exact admitted request, profile, provider, native-session, and retry-attempt identity.
+        request: DeveloperProviderRequestIdentity,
     },
     /// No public text has arrived while a provider request remains pending.
     ModelWaiting { elapsed_seconds: u64 },

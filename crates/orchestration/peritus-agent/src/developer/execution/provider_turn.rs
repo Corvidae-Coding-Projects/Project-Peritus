@@ -2,8 +2,8 @@
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperRetryDisposition, DeveloperRetryRecovery, DeveloperToolExecutor, DeveloperTrace,
-    DeveloperTraceEvent, DeveloperUsage,
+    DeveloperProviderRequestIdentity, DeveloperRetryDisposition, DeveloperRetryRecovery,
+    DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
     retry::{DeveloperRetryPlanner, native_session_digest, wait_until_eligible},
 };
@@ -159,6 +159,8 @@ pub(super) async fn complete_turn(
             provider_selection,
             profile,
             &model_request,
+            turn,
+            attempt,
         )? {
             if let Some(current_selection) =
                 provider_selection_change(interaction, profile, provider_selection)?
@@ -376,6 +378,8 @@ fn admit_role_request(
     provider_selection: Option<peritus_types::Sha256Digest>,
     profile: &peritus_model_protocol::ProviderProfile,
     request: &ModelRequest,
+    turn: u16,
+    attempt: u64,
 ) -> Result<bool, DeveloperLoopError> {
     let Some((port, role, revision)) = interaction else { return Ok(true) };
     match port.prepare_selected_role_request(role, revision, provider_selection, request)? {
@@ -383,9 +387,22 @@ fn admit_role_request(
         DeveloperRequestAdmission::Stale => return Ok(false),
         DeveloperRequestAdmission::Stopped => return Err(DeveloperLoopError::Cancelled),
     }
+    let request_identity = DeveloperProviderRequestIdentity::from_parts(
+        role,
+        turn,
+        attempt,
+        peritus_codec::sha256(request.request_id().expose_for_wire().as_bytes()),
+        request.fingerprint()?.digest(),
+        request.profile_id(),
+        request.profile_revision(),
+        peritus_codec::sha256(request.provider().as_str().as_bytes()),
+        native_session_digest(request),
+        provider_selection,
+    );
     port.observe(DeveloperActivity::ModelStarted {
         model: profile.model().as_str(),
         reasoning: request.options().reasoning(),
+        request: request_identity,
     })?;
     Ok(true)
 }
@@ -414,7 +431,7 @@ async fn drive(
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
     // stop only this attempt, leaving the caller's token active for safe automatic reconnects.
     let attempt = AttemptCancellation(CancellationToken::new());
-    let mut progress = progress::ProviderProgress::new(interaction, &attempt.0);
+    let mut progress = progress::ProviderProgress::new(interaction);
     let mut session = progress
         .wait(async {
             ModelSession::start(provider, model_request, protocol_limits, attempt.0.clone())

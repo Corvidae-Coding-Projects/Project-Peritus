@@ -318,6 +318,7 @@ impl PersistedRecord {
                 && self.progress.resource_telemetry.is_none())
             || (self.format_version == LEGACY_FORMAT_VERSION
                 && self.progress.resource_telemetry.is_some())
+            || !self.progress.provider_request_is_valid()
             || (self.format_version < PAGED_RESUME_FORMAT_VERSION
                 && self.resume_root.is_some())
             || (self.resume_state.is_some() && self.resume_root.is_some())

@@ -28,7 +28,8 @@ pub use observation::developer_tool_page_bytes;
 pub use error::DeveloperLoopError;
 pub use interaction::{
     DeveloperActivity, DeveloperCompactionOwner, DeveloperControlFlow, DeveloperInteraction,
-    DeveloperModelRole, DeveloperProviderSelection, DeveloperRequestAdmission,
+    DeveloperModelRole, DeveloperProviderRequestIdentity, DeveloperProviderSelection,
+    DeveloperRequestAdmission,
     DeveloperReviewRetryReason, DeveloperToolEffect,
 };
 pub use tool_executor::{DeveloperToolExecution, DeveloperToolExecutor};

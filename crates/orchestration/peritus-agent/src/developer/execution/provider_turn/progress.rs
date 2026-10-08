@@ -1,28 +1,29 @@
 //! Honest waiting observations around an owned provider future, never simulated model output.
 
-use std::{future::Future, time::Duration};
+use std::{future::Future, pin::Pin, time::Duration};
 
-use peritus_provider_core::CancellationToken;
 use tokio::time::Instant;
 
-use super::{DeveloperActivity, DeveloperInteraction, DeveloperLoopError};
+use super::{DeveloperInteraction, DeveloperLoopError};
 
 const NOTICE_INTERVAL: Duration = Duration::from_secs(20);
+type NoticeFuture<'a> = Pin<Box<dyn Future<Output = Result<(), DeveloperLoopError>> + Send + 'a>>;
+struct NoticeDelivery<'a> {
+    observer: &'a dyn DeveloperInteraction,
+    operation: NoticeFuture<'a>,
+}
 
 pub(super) struct ProviderProgress<'a> {
     interaction: Option<&'a dyn DeveloperInteraction>,
-    cancellation: &'a CancellationToken,
+    delivery: Option<NoticeDelivery<'a>>,
     started: Instant,
     next_notice: Instant,
 }
 
 impl<'a> ProviderProgress<'a> {
-    pub(super) fn new(
-        interaction: Option<&'a dyn DeveloperInteraction>,
-        cancellation: &'a CancellationToken,
-    ) -> Self {
+    pub(super) fn new(interaction: Option<&'a dyn DeveloperInteraction>) -> Self {
         let started = Instant::now();
-        Self { interaction, cancellation, started, next_notice: started + NOTICE_INTERVAL }
+        Self { interaction, delivery: None, started, next_notice: started + NOTICE_INTERVAL }
     }
 
     pub(super) fn text_received(&mut self) {
@@ -42,15 +43,28 @@ impl<'a> ProviderProgress<'a> {
             tokio::select! {
                 biased;
                 result = &mut operation => return result,
+                delivered = async {
+                    match self.delivery.as_mut() {
+                        Some(delivery) => delivery.operation.as_mut().await,
+                        None => std::future::pending().await,
+                    }
+                }, if self.delivery.is_some() => {
+                    let delivery = self.delivery.take();
+                    if let Err(error) = delivered
+                        && let Some(delivery) = delivery
+                    {
+                        delivery.observer.waiting_observation_failed(&error);
+                    }
+                }
                 () = tokio::time::sleep_until(self.next_notice) => {
-                    if let Some(interaction) = self.interaction {
+                    if self.delivery.is_none()
+                        && let Some(interaction) = self.interaction
+                    {
                         let elapsed_seconds = self.started.elapsed().as_secs();
-                        if let Err(error) = interaction.observe(DeveloperActivity::ModelWaiting {
-                            elapsed_seconds,
-                        }) {
-                            let _ = self.cancellation.cancel();
-                            return Err(error);
-                        }
+                        self.delivery = Some(NoticeDelivery {
+                            observer: interaction,
+                            operation: interaction.observe_waiting(elapsed_seconds),
+                        });
                     }
                     self.next_notice = Instant::now() + NOTICE_INTERVAL;
                 }
@@ -97,8 +111,7 @@ mod tests {
     #[tokio::test]
     async fn notice_arrives_while_the_same_provider_future_is_still_pending() {
         let observer = Observer { notices: AtomicUsize::new(0), fail: false };
-        let cancellation = CancellationToken::new();
-        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        let mut progress = ProviderProgress::new(Some(&observer));
         progress.next_notice = Instant::now();
         let result = progress.wait(async {
             while observer.notices.load(Ordering::SeqCst) == 0 {
@@ -114,30 +127,34 @@ mod tests {
             "completed"
         );
         assert_eq!(observer.notices.load(Ordering::SeqCst), 1);
-        assert!(!cancellation.is_cancelled());
     }
 
     #[tokio::test]
-    async fn failed_observation_cancels_the_owned_pending_request() {
+    async fn failed_observation_does_not_settle_the_owned_provider_future() {
         let observer = Observer { notices: AtomicUsize::new(0), fail: true };
-        let cancellation = CancellationToken::new();
-        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        let mut progress = ProviderProgress::new(Some(&observer));
         progress.next_notice = Instant::now();
-        let result = progress.wait(std::future::pending::<Result<(), DeveloperLoopError>>());
-        assert!(
+        let result = progress.wait(async {
+            while observer.notices.load(Ordering::SeqCst) == 0 {
+                tokio::task::yield_now().await;
+            }
+            tokio::task::yield_now().await;
+            Ok("provider completed")
+        });
+        assert_eq!(
             tokio::time::timeout(Duration::from_secs(1), result)
                 .await
-                .expect("bounded failure")
-                .is_err()
+                .expect("provider completion remains live")
+                .expect("provider result"),
+            "provider completed"
         );
-        assert!(cancellation.is_cancelled());
+        assert_eq!(observer.notices.load(Ordering::SeqCst), 1);
     }
 
     #[tokio::test]
     async fn ready_results_and_streaming_text_do_not_get_wait_notices() {
         let observer = Observer { notices: AtomicUsize::new(0), fail: false };
-        let cancellation = CancellationToken::new();
-        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        let mut progress = ProviderProgress::new(Some(&observer));
         progress.next_notice = Instant::now();
         progress.wait(async { Ok(()) }).await.expect("ready result wins");
         progress.text_received();
@@ -154,12 +171,10 @@ mod tests {
     #[tokio::test]
     async fn pending_provider_turn_has_no_wall_clock_deadline() {
         let observer = Observer { notices: AtomicUsize::new(0), fail: false };
-        let cancellation = CancellationToken::new();
-        let mut progress = ProviderProgress::new(Some(&observer), &cancellation);
+        let mut progress = ProviderProgress::new(Some(&observer));
         progress.next_notice = Instant::now();
         let result = progress.wait(std::future::pending::<Result<(), DeveloperLoopError>>());
         assert!(tokio::time::timeout(Duration::from_millis(25), result).await.is_err());
         assert!(observer.notices.load(Ordering::SeqCst) > 0);
-        assert!(!cancellation.is_cancelled());
     }
 }

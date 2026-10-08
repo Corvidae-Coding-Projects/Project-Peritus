@@ -55,7 +55,8 @@ use continuation::PersistedResumeRoot;
 mod types;
 use types::{
     PersistedContinuationSource, PersistedDeliverable, PersistedPreviewOperation,
-    PersistedPreviewOutput, PersistedProgress, PersistedRecord, PersistedRejectedFindingUpdate, PersistedResourceCause,
+    PersistedPreviewOutput, PersistedProgress, PersistedProviderRequest, PersistedRecord,
+    PersistedRejectedFindingUpdate, PersistedResourceCause,
     PersistedResourceCoverage, PersistedResourceIoKind, PersistedResourceMeasurement,
     PersistedResourceOperation, PersistedResourceTelemetry,
 };

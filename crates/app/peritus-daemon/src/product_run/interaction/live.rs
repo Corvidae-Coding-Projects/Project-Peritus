@@ -368,7 +368,12 @@ impl DeveloperInteraction for LiveConversation {
         let service = self.service.clone();
         // Capture only cheap identity fields. Contention defers this projection; it never
         // monopolizes the provider poll or admits work against an invented owner.
-        let notice = waiting::capture(&service, self.run_id, elapsed_seconds);
+        let notice = waiting::capture(
+            &service,
+            self.run_id,
+            &self.attempt_cancelled,
+            elapsed_seconds,
+        );
         Box::pin(async move {
             let notice = notice?;
             tokio::task::spawn_blocking(move || {
@@ -574,8 +579,8 @@ impl DeveloperInteraction for LiveConversation {
                 progress.mark_event("provider summary received");
                 options.summary(bytes)
             }
-            DeveloperActivity::ModelStarted { model, reasoning } => {
-                progress.begin_provider_request();
+            DeveloperActivity::ModelStarted { model, reasoning, request } => {
+                progress.begin_provider_request(request);
                 options.streaming_text = false;
                 let effort = match reasoning {
                     peritus_model_protocol::ReasoningPolicy::Disabled => "not requested",

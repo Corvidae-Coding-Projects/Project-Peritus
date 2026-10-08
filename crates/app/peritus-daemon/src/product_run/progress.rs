@@ -2,10 +2,14 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use peritus_product_runner::ProductRunProgress;
+use peritus_product_runner::{
+    ProductRunProgress, ResourceMeasurement, ResourceMeasurementStatus, ResourceObservationCause,
+};
 
 #[derive(Clone)]
 pub(super) struct RunProgress {
+    /// Immutable durable catalog membership assigned at first admission.
+    pub(super) catalog_sequence: u64,
     pub(super) started_unix_millis: u64,
     pub(super) last_effect_unix_millis: u64,
     pub(super) model_requests: u32,
@@ -22,9 +26,52 @@ pub(super) struct RunProgress {
     pub(super) workspace_bytes: u64,
     pub(super) workspace_growth_bytes: u64,
     pub(super) peak_rss_bytes: u64,
+    pub(super) workspace_measurement: ResourceMeasurement,
+    pub(super) workspace_growth_measurement: ResourceMeasurement,
+    pub(super) peak_rss_measurement: ResourceMeasurement,
     pub(super) last_event: String,
     pub(super) provider_started_unix_millis: Option<u64>,
+    pub(super) provider_request: Option<ProviderRequestIdentity>,
     pub(super) attempt_base: AttemptBase,
+}
+
+/// Restart-stable presentation identity for the one provider request currently owned by a run.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct ProviderRequestIdentity {
+    pub(super) role: u8,
+    pub(super) turn: u16,
+    pub(super) attempt: u64,
+    pub(super) request_id_digest: [u8; 32],
+    pub(super) request_fingerprint: [u8; 32],
+    pub(super) provider_profile_id: [u8; 16],
+    pub(super) provider_profile_revision: u64,
+    pub(super) provider_name_digest: [u8; 32],
+    pub(super) native_session_digest: Option<[u8; 32]>,
+    pub(super) provider_selection_digest: Option<[u8; 32]>,
+}
+
+#[cfg(not(verus_only))]
+impl From<peritus_agent::DeveloperProviderRequestIdentity> for ProviderRequestIdentity {
+    fn from(value: peritus_agent::DeveloperProviderRequestIdentity) -> Self {
+        Self {
+            role: match value.role() {
+                peritus_agent::DeveloperModelRole::Writer => 1,
+                peritus_agent::DeveloperModelRole::Reviewer => 2,
+                peritus_agent::DeveloperModelRole::Fixer => 3,
+            },
+            turn: value.turn(),
+            attempt: value.attempt(),
+            request_id_digest: value.request_id_digest().into_bytes(),
+            request_fingerprint: value.request_fingerprint().into_bytes(),
+            provider_profile_id: value.provider_profile_id().into_bytes(),
+            provider_profile_revision: value.provider_profile_revision(),
+            provider_name_digest: value.provider_name_digest().into_bytes(),
+            native_session_digest: value.native_session_digest().map(|value| value.into_bytes()),
+            provider_selection_digest: value
+                .provider_selection_digest()
+                .map(|value| value.into_bytes()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -48,6 +95,7 @@ impl Default for RunProgress {
     fn default() -> Self {
         let now = now_millis();
         Self {
+            catalog_sequence: 0,
             started_unix_millis: now,
             last_effect_unix_millis: now,
             model_requests: 0,
@@ -64,8 +112,18 @@ impl Default for RunProgress {
             workspace_bytes: 0,
             workspace_growth_bytes: 0,
             peak_rss_bytes: 0,
+            workspace_measurement: ResourceMeasurement::unavailable(
+                ResourceObservationCause::NotObserved,
+            ),
+            workspace_growth_measurement: ResourceMeasurement::unavailable(
+                ResourceObservationCause::NotObserved,
+            ),
+            peak_rss_measurement: ResourceMeasurement::unavailable(
+                ResourceObservationCause::NotObserved,
+            ),
             last_event: "run started".to_owned(),
             provider_started_unix_millis: None,
+            provider_request: None,
             attempt_base: AttemptBase::default(),
         }
     }
@@ -92,6 +150,13 @@ impl RunProgress {
         self.last_effect_unix_millis = now_millis();
         "execution attempt started".clone_into(&mut self.last_event);
         self.provider_started_unix_millis = None;
+        self.provider_request = None;
+        self.workspace_measurement =
+            ResourceMeasurement::unavailable(ResourceObservationCause::NotObserved);
+        self.workspace_growth_measurement =
+            ResourceMeasurement::unavailable(ResourceObservationCause::NotObserved);
+        self.peak_rss_measurement =
+            ResourceMeasurement::unavailable(ResourceObservationCause::NotObserved);
     }
 
     pub(super) fn observe(&mut self, progress: ProductRunProgress) {
@@ -129,19 +194,33 @@ impl RunProgress {
         self.usage_observations = self.usage_observations.max(
             self.attempt_base.usage_observations.saturating_add(progress.usage_observations()),
         );
-        self.workspace_bytes = progress.workspace_bytes();
-        self.workspace_growth_bytes = self
-            .attempt_base
-            .workspace_growth_bytes
-            .saturating_add(progress.workspace_growth_bytes());
-        self.peak_rss_bytes = self.attempt_base.peak_rss_bytes.max(progress.peak_rss_bytes());
+        self.workspace_measurement = progress.workspace_measurement();
+        self.workspace_growth_measurement = progress.workspace_growth_measurement();
+        self.peak_rss_measurement = progress.peak_rss_measurement();
+        if let Some(value) = self.workspace_measurement.measured_value() {
+            self.workspace_bytes = value;
+        }
+        if let Some(value) = self.workspace_growth_measurement.measured_value() {
+            self.workspace_growth_bytes = self
+                .attempt_base
+                .workspace_growth_bytes
+                .saturating_add(value);
+        }
+        if let Some(value) = self.peak_rss_measurement.value() {
+            self.peak_rss_bytes = self.attempt_base.peak_rss_bytes.max(value);
+        }
         self.mark_event("runner progress checkpoint");
     }
 
-    pub(super) fn begin_provider_request(&mut self) {
+    #[cfg(not(verus_only))]
+    pub(super) fn begin_provider_request(
+        &mut self,
+        request: peritus_agent::DeveloperProviderRequestIdentity,
+    ) {
         let now = now_millis();
         self.last_effect_unix_millis = now;
         self.provider_started_unix_millis = Some(now);
+        self.provider_request = Some(request.into());
         self.model_requests = self.model_requests.saturating_add(1);
         "provider turn started".clone_into(&mut self.last_event);
     }
@@ -152,6 +231,7 @@ impl RunProgress {
     ) {
         self.mark_event("provider turn completed");
         self.provider_started_unix_millis = None;
+        self.provider_request = None;
         let values = [
             usage.input_tokens(),
             usage.cached_input_tokens(),
@@ -214,8 +294,12 @@ impl RunProgress {
         }
         fields.push(format!("counters {}", counters.join(" · ")));
         fields.push(format!("elapsed {}", duration(elapsed)));
-        fields.push(format!("{} workspace growth", bytes(self.workspace_growth_bytes)));
-        fields.push(format!("{} observed memory", bytes(self.peak_rss_bytes)));
+        fields.push(format!("workspace total {}", measurement(self.workspace_measurement)));
+        fields.push(format!(
+            "workspace growth {}",
+            measurement(self.workspace_growth_measurement)
+        ));
+        fields.push(format!("observed memory {}", measurement(self.peak_rss_measurement)));
         if self.usage_observations == 0 {
             fields.push("provider did not report token usage yet".to_owned());
         }
@@ -267,9 +351,96 @@ fn bytes(value: u64) -> String {
     }
 }
 
+fn measurement(value: ResourceMeasurement) -> String {
+    let numeric = value.value().map(bytes);
+    match value.status() {
+        ResourceMeasurementStatus::Measured => {
+            numeric.unwrap_or_else(|| "unavailable (invalid measured value)".to_owned())
+        }
+        ResourceMeasurementStatus::Partial => {
+            let coverage = value.coverage();
+            format!(
+                "{} (partial: {} entries, {} directories, {} unavailable, {} pending; {})",
+                numeric.map_or_else(
+                    || "unavailable".to_owned(),
+                    |value| format!("at least {value}"),
+                ),
+                coverage.entries_observed(),
+                coverage.directories_completed(),
+                coverage.items_unavailable(),
+                coverage.directories_pending(),
+                cause(value.cause()),
+            )
+        }
+        ResourceMeasurementStatus::Unavailable => {
+            format!("unavailable ({})", cause(value.cause()))
+        }
+    }
+}
+
+fn cause(value: Option<ResourceObservationCause>) -> String {
+    value.map_or_else(
+        || "cause was not retained".to_owned(),
+        |value| match value {
+            ResourceObservationCause::NotObserved => "not observed yet".to_owned(),
+            ResourceObservationCause::LegacyUnspecified => {
+                "legacy record did not retain measurement availability".to_owned()
+            }
+            ResourceObservationCause::BaselineEstablishedAfterStart => {
+                "baseline completed after execution admission".to_owned()
+            }
+            ResourceObservationCause::NotAuthorized => {
+                "recursive workspace observation was not authorized".to_owned()
+            }
+            ResourceObservationCause::ScanInProgress => "scan in progress".to_owned(),
+            ResourceObservationCause::Cancelled => "observation cancelled".to_owned(),
+            ResourceObservationCause::ArithmeticOverflow => {
+                "numeric representation overflow".to_owned()
+            }
+            ResourceObservationCause::WorkerUnavailable => {
+                "background observer unavailable".to_owned()
+            }
+            ResourceObservationCause::InvalidPlatformData => {
+                "platform returned invalid data".to_owned()
+            }
+            ResourceObservationCause::PlatformCommandFailed { exit_code, signal } => {
+                match (exit_code, signal) {
+                    (Some(code), _) => format!("platform observer exited with {code}"),
+                    (None, Some(signal)) => {
+                        format!("platform observer terminated from signal {signal}")
+                    }
+                    (None, None) => {
+                        "platform observer terminated without an exit code or signal".to_owned()
+                    }
+                }
+            }
+            ResourceObservationCause::Io { operation, kind, raw_os_error } => raw_os_error
+                .map_or_else(
+                    || format!("{operation:?} failed with {kind:?}"),
+                    |code| format!("{operation:?} failed with {kind:?} (OS error {code})"),
+                ),
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn provider_request() -> peritus_agent::DeveloperProviderRequestIdentity {
+        peritus_agent::DeveloperProviderRequestIdentity::from_parts(
+            peritus_agent::DeveloperModelRole::Writer,
+            2,
+            3,
+            peritus_types::Sha256Digest::new([1; 32]),
+            peritus_types::Sha256Digest::new([2; 32]),
+            peritus_types::ProviderProfileId::new([3; 16]).expect("profile"),
+            4,
+            peritus_types::Sha256Digest::new([5; 32]),
+            Some(peritus_types::Sha256Digest::new([6; 32])),
+            Some(peritus_types::Sha256Digest::new([7; 32])),
+        )
+    }
 
     #[test]
     fn live_status_distinguishes_silence_from_failure() {
@@ -293,7 +464,7 @@ mod tests {
     #[test]
     fn provider_events_are_live_and_completed_attempt_snapshots_cannot_roll_them_back() {
         let mut progress = RunProgress::default();
-        progress.begin_provider_request();
+        progress.begin_provider_request(provider_request());
         progress.begin_tool("workspace_read");
         let status = progress.live_status("Writer is working");
         assert!(status.contains("counters 1 requests · 1 tools"));
@@ -318,5 +489,6 @@ mod tests {
         assert_eq!(progress.total_tokens, 13);
         assert_eq!(progress.usage_observations, 1);
         assert!(progress.provider_started_unix_millis.is_none());
+        assert!(progress.provider_request.is_none());
     }
 }

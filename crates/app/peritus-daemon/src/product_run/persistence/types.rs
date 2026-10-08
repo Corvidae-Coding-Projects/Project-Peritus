@@ -144,12 +144,31 @@ pub(super) struct PersistedProgress {
     pub(super) last_event: String,
     #[serde(default)]
     pub(super) provider_started_unix_millis: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) provider_request: Option<PersistedProviderRequest>,
     #[serde(
         default,
         rename = "provider_deadline_seconds",
         skip_serializing_if = "Option::is_none"
     )]
     pub(super) _legacy_provider_deadline_seconds: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct PersistedProviderRequest {
+    pub(super) role: u8,
+    pub(super) turn: u16,
+    pub(super) attempt: u64,
+    pub(super) request_id_digest: [u8; 32],
+    pub(super) request_fingerprint: [u8; 32],
+    pub(super) provider_profile_id: [u8; 16],
+    pub(super) provider_profile_revision: u64,
+    pub(super) provider_name_digest: [u8; 32],
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) native_session_digest: Option<[u8; 32]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) provider_selection_digest: Option<[u8; 32]>,
 }
 
 #[derive(Serialize, Deserialize)]
