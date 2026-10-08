@@ -50,7 +50,7 @@ impl GitRepository {
         )?;
         let tree = self.write_tree(request.worktree, Operation::CreateCandidate)?;
         let status = self.status(request.worktree)?;
-        if status.head() != request.expected_head
+        if status.head() != Some(request.expected_head)
             || !status.is_detached()
             || status.index_tree() != Some(tree)
         {
@@ -93,7 +93,7 @@ impl GitRepository {
     ) -> Result<CandidateSnapshot, GitError> {
         validate_candidate_binding(self, request.worktree, request.candidate)?;
         let current = self.status(request.worktree)?;
-        if current.head() != request.candidate.head()
+        if current.head() != Some(request.candidate.head())
             || !current.is_detached()
             || current.index_tree() != Some(request.candidate.tree())
             || current.digest() != request.candidate.status().digest()
@@ -232,7 +232,7 @@ impl GitRepository {
             ));
         }
         let status = self.status(request.worktree)?;
-        if status.head() != request.expected_head
+        if status.head() != Some(request.expected_head)
             || !status.is_detached()
             || status.index_tree() != Some(restored_tree)
         {

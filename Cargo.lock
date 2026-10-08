@@ -3497,6 +3497,7 @@ dependencies = [
  "peritus-tool-router",
  "peritus-types",
  "peritus-workspace",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]

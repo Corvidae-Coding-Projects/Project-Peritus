@@ -1,24 +1,28 @@
 //! Atomic multi-file application using staged finals and durable backups.
 
-use std::{fs, io, path::Path};
+mod install;
+mod validation;
+use install::{cancellation_error, check_fault, install_all};
+#[cfg(not(unix))]
+use validation::validate_platform_modes;
+use validation::{validate_volume_modes, verify_plan_preimages};
+
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+};
 
 use crate::{
-    ErrorCode, PatchError, PatchOperationContext, PatchPlan, Preimage, RecoveryClass,
-    RollbackStatus,
+    ErrorCode, PatchError, PatchOperationContext, PatchPlan, RecoveryClass, RollbackStatus,
 };
 
 use super::{
     AppliedPatch, FaultInjector, NoFaults, TransactionFaultPoint,
-    filesystem::{
-        Observation, checked_target_path, create_directory, discover_missing_directories,
-        observation_matches, observe_target, preserve_replacement_permissions, sync_directory,
-    },
-    manifest::{FileIdentity, Manifest, TransactionPhase},
+    filesystem::{discover_missing_directories, sync_directory},
+    manifest::{Manifest, TransactionPhase},
     recover::rollback_workspace,
     roots::prepare_roots,
-    storage::{
-        backup_path, cleanup_transaction, persist_manifest, prepare_transaction, staged_path,
-    },
+    storage::{cleanup_transaction, persist_manifest, prepare_transaction},
 };
 
 /// Applies a checked plan as one recoverable multi-file filesystem transaction.
@@ -42,15 +46,118 @@ pub fn apply_patch(
     transaction_root: impl AsRef<Path>,
     plan: &PatchPlan,
 ) -> Result<AppliedPatch, PatchError> {
-    apply_with_faults(workspace_root.as_ref(), transaction_root.as_ref(), plan, &NoFaults)
+    apply_patch_with_completion(workspace_root, transaction_root, plan, |_| Ok(()))
 }
 
+/// Applies a patch and records its terminal result before removing transaction evidence.
+///
+/// `completion` receives the durable applied result after every postimage is verified, or `None`
+/// after an application failure has been rolled back and verified. Preparation failures that
+/// precede a terminal workspace outcome leave their durable transaction manifest available for
+/// recovery and do not invoke the callback.
+///
+/// # Errors
+///
+/// Returns a patch or callback error. An indeterminate transaction remains available for recovery.
+pub fn apply_patch_with_completion(
+    workspace_root: impl AsRef<Path>,
+    transaction_root: impl AsRef<Path>,
+    plan: &PatchPlan,
+    completion: impl FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+) -> Result<AppliedPatch, PatchError> {
+    apply_with_completion(
+        workspace_root.as_ref(),
+        transaction_root.as_ref(),
+        plan,
+        &NoFaults,
+        &|| false,
+        completion,
+    )
+    .and_then(|applied| applied.ok_or_else(cancellation_error))
+}
+
+/// Applies a patch while allowing cancellation before the first workspace target mutation.
+///
+/// Cancellation after that point is deferred until the transaction reaches a verified terminal
+/// state. When cancellation is observed at a safe point, the completion callback records the
+/// unchanged workspace as rolled back, transaction evidence is removed, and this returns `Ok(None)`.
+///
+/// # Errors
+///
+/// Returns a patch or callback error. An indeterminate transaction remains available for recovery.
+pub fn apply_patch_with_completion_and_cancellation(
+    workspace_root: impl AsRef<Path>,
+    transaction_root: impl AsRef<Path>,
+    plan: &PatchPlan,
+    cancelled: impl Fn() -> bool,
+    completion: impl FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+) -> Result<Option<AppliedPatch>, PatchError> {
+    apply_with_completion(
+        workspace_root.as_ref(),
+        transaction_root.as_ref(),
+        plan,
+        &NoFaults,
+        &cancelled,
+        completion,
+    )
+}
+
+#[cfg(test)]
 pub(super) fn apply_with_faults(
     workspace_root: &Path,
     transaction_root: &Path,
     plan: &PatchPlan,
     faults: &dyn FaultInjector,
 ) -> Result<AppliedPatch, PatchError> {
+    apply_with_completion(workspace_root, transaction_root, plan, faults, &|| false, |_| Ok(()))
+        .and_then(|applied| applied.ok_or_else(cancellation_error))
+}
+
+fn apply_with_completion(
+    workspace_root: &Path,
+    transaction_root: &Path,
+    plan: &PatchPlan,
+    faults: &dyn FaultInjector,
+    cancelled: &dyn Fn() -> bool,
+    completion: impl FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+) -> Result<Option<AppliedPatch>, PatchError> {
+    let mut completion = Some(completion);
+    let Some(prepared) = prepare_transaction_for_apply(
+        workspace_root,
+        transaction_root,
+        plan,
+        faults,
+        cancelled,
+        &mut completion,
+    )?
+    else {
+        return Ok(None);
+    };
+    finish_application(prepared, plan, faults, cancelled, &mut completion)
+}
+
+struct PreparedTransaction {
+    workspace: PathBuf,
+    transaction_root: PathBuf,
+    directory: PathBuf,
+    manifest: Manifest,
+}
+
+fn prepare_transaction_for_apply<F>(
+    workspace_root: &Path,
+    transaction_root: &Path,
+    plan: &PatchPlan,
+    faults: &dyn FaultInjector,
+    cancelled: &dyn Fn() -> bool,
+    completion: &mut Option<F>,
+) -> Result<Option<PreparedTransaction>, PatchError>
+where
+    F: FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+{
+    if cancelled() {
+        complete_action(completion, None)?;
+        return Ok(None);
+    }
     check_fault(
         faults,
         TransactionFaultPoint::BeforePrepare,
@@ -60,7 +167,18 @@ pub(super) fn apply_with_faults(
     #[cfg(not(unix))]
     validate_platform_modes(plan)?;
     let roots = prepare_roots(workspace_root, transaction_root)?;
-    verify_plan_preimages(&roots.workspace, plan)?;
+    validate_volume_modes(&roots.transaction_root, plan)?;
+    if cancelled() {
+        complete_action(completion, None)?;
+        return Ok(None);
+    }
+    if let Err(error) = verify_plan_preimages(&roots.workspace, plan, cancelled) {
+        if error.code() == ErrorCode::Cancelled {
+            complete_action(completion, None)?;
+            return Ok(None);
+        }
+        return Err(error);
+    }
     let created_directories = discover_missing_directories(
         &roots.workspace,
         plan.operations().iter().map(|operation| operation.path().clone()),
@@ -87,36 +205,70 @@ pub(super) fn apply_with_faults(
         }
     }
 
-    let mut manifest = Manifest::from_plan(plan, created_directories);
-    if let Err(error) =
-        prepare_transaction(&roots.workspace, &transaction_directory, plan, &manifest, faults)
-    {
-        let _cleanup_result = cleanup_transaction(&transaction_directory, &roots.transaction_root);
-        return Err(error);
+    if cancelled() {
+        complete_action(completion, None)?;
+        cleanup_cancelled_transaction(&transaction_directory, &roots.transaction_root)?;
+        return Ok(None);
     }
 
-    manifest.phase = TransactionPhase::Installing;
-    let installing = manifest.encode()?;
-    if let Err(error) = persist_manifest(&transaction_directory, &installing) {
-        let _cleanup_result = cleanup_transaction(&transaction_directory, &roots.transaction_root);
-        return Err(error);
-    }
-    let mut mutated = false;
-    let application = install_all(
+    let manifest = Manifest::from_plan(plan, created_directories);
+    if let Err(error) = prepare_transaction(
         &roots.workspace,
         &transaction_directory,
         plan,
-        &mut manifest,
+        &manifest,
         faults,
-        &mut mutated,
-    );
+        cancelled,
+    ) {
+        if error.code() == ErrorCode::Cancelled {
+            complete_action(completion, None)?;
+            cleanup_cancelled_transaction(&transaction_directory, &roots.transaction_root)?;
+            return Ok(None);
+        }
+        return Err(error);
+    }
+
+    if cancelled() {
+        complete_action(completion, None)?;
+        cleanup_cancelled_transaction(&transaction_directory, &roots.transaction_root)?;
+        return Ok(None);
+    }
+
+    Ok(Some(PreparedTransaction {
+        workspace: roots.workspace,
+        transaction_root: roots.transaction_root,
+        directory: transaction_directory,
+        manifest,
+    }))
+}
+
+fn finish_application<F>(
+    prepared: PreparedTransaction,
+    plan: &PatchPlan,
+    faults: &dyn FaultInjector,
+    cancelled: &dyn Fn() -> bool,
+    completion: &mut Option<F>,
+) -> Result<Option<AppliedPatch>, PatchError>
+where
+    F: FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+{
+    let PreparedTransaction { workspace, transaction_root, directory, mut manifest } = prepared;
+    manifest.phase = TransactionPhase::Installing;
+    let installing = manifest.encode()?;
+    persist_manifest(&directory, &installing)?;
+    let mut mutated = false;
+    let application =
+        install_all(&workspace, &directory, plan, &mut manifest, faults, &mut mutated, cancelled);
 
     let installed_manifest = match application {
         Ok(installed) => installed,
         Err(error) => {
             if !mutated {
-                let _cleanup_result =
-                    cleanup_transaction(&transaction_directory, &roots.transaction_root);
+                if error.code() == ErrorCode::Cancelled {
+                    complete_action(completion, None)?;
+                    cleanup_cancelled_transaction(&directory, &transaction_root)?;
+                    return Ok(None);
+                }
                 return Err(error.with_rollback(RollbackStatus::NotRequired));
             }
             if check_fault(
@@ -126,15 +278,30 @@ pub(super) fn apply_with_faults(
                 RollbackStatus::Indeterminate,
             )
             .is_err()
-                || rollback_workspace(&roots.workspace, &transaction_directory, &manifest).is_err()
+                || rollback_workspace(&workspace, &directory, &manifest).is_err()
             {
                 return Err(PatchError::indeterminate(PatchOperationContext::Rollback));
             }
-            let _cleanup_result =
-                cleanup_transaction(&transaction_directory, &roots.transaction_root);
+            if let Err(receipt_error) = complete_action(completion, None) {
+                return Err(receipt_error.with_rollback(RollbackStatus::Indeterminate));
+            }
+            if cleanup_transaction(&directory, &transaction_root).is_err() {
+                return Err(PatchError::message(
+                    ErrorCode::InterruptedTransaction,
+                    RecoveryClass::RecoverTransaction,
+                    PatchOperationContext::Cleanup,
+                    RollbackStatus::Restored,
+                    "workspace rollback was verified but transaction cleanup remains pending",
+                ));
+            }
             return Err(error.with_rollback(RollbackStatus::Restored));
         }
     };
+
+    let applied = AppliedPatch::new(plan.identity(), installed_manifest, false);
+    if let Err(error) = complete_action(completion, Some(&applied)) {
+        return Err(error.with_rollback(RollbackStatus::Indeterminate));
+    }
 
     let cleanup_pending = check_fault(
         faults,
@@ -143,233 +310,34 @@ pub(super) fn apply_with_faults(
         RollbackStatus::NotRequired,
     )
     .is_err()
-        || cleanup_transaction(&transaction_directory, &roots.transaction_root).is_err();
-    Ok(AppliedPatch::new(plan.identity(), installed_manifest, cleanup_pending))
+        || cleanup_transaction(&directory, &transaction_root).is_err();
+    Ok(Some(AppliedPatch::new(plan.identity(), applied.installed_manifest, cleanup_pending)))
 }
 
-#[cfg(not(unix))]
-fn validate_platform_modes(plan: &PatchPlan) -> Result<(), PatchError> {
-    for operation in plan.operations() {
-        let executable_preimage = matches!(
-            operation.preimage(),
-            Preimage::Present { mode: crate::FileMode::Executable, .. }
-        );
-        let executable_final = operation
-            .final_file()
-            .is_some_and(|final_file| final_file.mode() == crate::FileMode::Executable);
-        if executable_preimage || executable_final {
-            return Err(PatchError::message(
-                ErrorCode::InvalidContent,
-                RecoveryClass::CorrectPatch,
-                PatchOperationContext::Plan,
-                RollbackStatus::NotRequired,
-                "executable file mode is unsupported on this platform",
-            )
-            .at(operation.path().clone()));
-        }
-    }
-    Ok(())
+fn complete_action<F>(
+    completion: &mut Option<F>,
+    applied: Option<&AppliedPatch>,
+) -> Result<(), PatchError>
+where
+    F: FnOnce(Option<&AppliedPatch>) -> Result<(), PatchError>,
+{
+    completion.take().map_or_else(
+        || Err(PatchError::indeterminate(PatchOperationContext::PersistManifest)),
+        |completion| completion(applied),
+    )
 }
 
-fn install_all(
-    workspace: &Path,
+fn cleanup_cancelled_transaction(
     transaction_directory: &Path,
-    plan: &PatchPlan,
-    manifest: &mut Manifest,
-    faults: &dyn FaultInjector,
-    mutated: &mut bool,
-) -> Result<Vec<u8>, PatchError> {
-    check_fault(
-        faults,
-        TransactionFaultPoint::AfterInstallingManifest,
-        PatchOperationContext::PersistManifest,
-        RollbackStatus::NotRequired,
-    )?;
-    for directory in &manifest.created_directories {
-        create_directory(workspace, directory, mutated)?;
-        check_fault(
-            faults,
-            TransactionFaultPoint::AfterCreateDirectory,
-            PatchOperationContext::InstallFinal,
-            RollbackStatus::Indeterminate,
-        )?;
-    }
-    for (index, operation) in plan.operations().iter().enumerate() {
-        install_operation(workspace, transaction_directory, index, operation, faults, mutated)?;
-    }
-    check_fault(
-        faults,
-        TransactionFaultPoint::BeforeVerifyResult,
-        PatchOperationContext::VerifyResult,
-        RollbackStatus::Indeterminate,
-    )?;
-    verify_manifest_postimages(workspace, manifest)?;
-    manifest.phase = TransactionPhase::Installed;
-    let installed = manifest.encode()?;
-    persist_manifest(transaction_directory, &installed)?;
-    Ok(installed)
-}
-
-fn install_operation(
-    workspace: &Path,
-    transaction_directory: &Path,
-    index: usize,
-    operation: &crate::PatchOperation,
-    faults: &dyn FaultInjector,
-    mutated: &mut bool,
+    transaction_root: &Path,
 ) -> Result<(), PatchError> {
-    let observed = observe_target(
-        workspace,
-        operation.path(),
-        PatchOperationContext::InspectPreimage,
-        RollbackStatus::Indeterminate,
-    )?;
-    if !observation_matches(observed, FileIdentity::from_preimage(operation.preimage())) {
-        return Err(PatchError::message(
-            ErrorCode::PreimageMismatch,
-            RecoveryClass::ReinspectWorkspace,
-            PatchOperationContext::InspectPreimage,
-            RollbackStatus::Indeterminate,
-            "target changed after transaction preparation",
-        )
-        .at(operation.path().clone()));
-    }
-    let target = checked_target_path(
-        workspace,
-        operation.path(),
-        PatchOperationContext::InstallFinal,
-        RollbackStatus::Indeterminate,
-    )?;
-    let parent = target
-        .parent()
-        .ok_or_else(|| PatchError::indeterminate(PatchOperationContext::InstallFinal))?;
-    if matches!(
-        operation.kind(),
-        crate::PatchOperationKind::Replace | crate::PatchOperationKind::Delete
-    ) {
-        let backup = backup_path(transaction_directory, index);
-        fs::rename(&target, &backup).map_err(|error| {
-            PatchError::io(
-                PatchOperationContext::BackupOriginal,
-                RollbackStatus::Indeterminate,
-                error,
-            )
-            .at(operation.path().clone())
-        })?;
-        *mutated = true;
-        check_fault(
-            faults,
-            TransactionFaultPoint::AfterBackupOriginal,
-            PatchOperationContext::BackupOriginal,
-            RollbackStatus::Indeterminate,
-        )?;
-        sync_with_fault(faults, parent, RollbackStatus::Indeterminate)?;
-        sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
-    }
-    if let Some(final_file) = operation.final_file() {
-        if operation.kind() == crate::PatchOperationKind::Replace {
-            preserve_replacement_permissions(
-                &staged_path(transaction_directory, index),
-                &backup_path(transaction_directory, index),
-                final_file.mode(),
-            )?;
-        }
-        fs::rename(staged_path(transaction_directory, index), &target).map_err(|error| {
-            PatchError::io(
-                PatchOperationContext::InstallFinal,
-                RollbackStatus::Indeterminate,
-                error,
-            )
-            .at(operation.path().clone())
-        })?;
-        *mutated = true;
-        check_fault(
-            faults,
-            TransactionFaultPoint::AfterInstallFinal,
-            PatchOperationContext::InstallFinal,
-            RollbackStatus::Indeterminate,
-        )?;
-        sync_with_fault(faults, parent, RollbackStatus::Indeterminate)?;
-        sync_directory(transaction_directory, RollbackStatus::Indeterminate)?;
-    }
-    Ok(())
-}
-
-fn verify_plan_preimages(workspace: &Path, plan: &PatchPlan) -> Result<(), PatchError> {
-    for operation in plan.operations() {
-        let observed = observe_target(
-            workspace,
-            operation.path(),
-            PatchOperationContext::InspectPreimage,
+    cleanup_transaction(transaction_directory, transaction_root).map_err(|_| {
+        PatchError::message(
+            ErrorCode::InterruptedTransaction,
+            RecoveryClass::RecoverTransaction,
+            PatchOperationContext::Cleanup,
             RollbackStatus::NotRequired,
-        )?;
-        let expected = FileIdentity::from_preimage(operation.preimage());
-        if !observation_matches(observed, expected) {
-            let (code, detail) = match (observed, operation.preimage()) {
-                (Observation::Absent, Preimage::Present { .. }) => {
-                    (ErrorCode::PreimageMissing, "required preimage file is absent")
-                }
-                (Observation::Present(_), Preimage::Absent) => {
-                    (ErrorCode::PreimageUnexpected, "create target already exists")
-                }
-                _ => {
-                    (ErrorCode::PreimageMismatch, "file bytes, size, or mode do not match preimage")
-                }
-            };
-            return Err(PatchError::message(
-                code,
-                RecoveryClass::ReinspectWorkspace,
-                PatchOperationContext::InspectPreimage,
-                RollbackStatus::NotRequired,
-                detail,
-            )
-            .at(operation.path().clone()));
-        }
-    }
-    Ok(())
-}
-
-fn verify_manifest_postimages(workspace: &Path, manifest: &Manifest) -> Result<(), PatchError> {
-    for entry in &manifest.entries {
-        let observed = observe_target(
-            workspace,
-            &entry.path,
-            PatchOperationContext::VerifyResult,
-            RollbackStatus::Indeterminate,
-        )?;
-        if !observation_matches(observed, entry.postimage) {
-            return Err(PatchError::message(
-                ErrorCode::InvalidContent,
-                RecoveryClass::FenceWorkspace,
-                PatchOperationContext::VerifyResult,
-                RollbackStatus::Indeterminate,
-                "installed target does not match the declared postimage",
-            )
-            .at(entry.path.clone()));
-        }
-    }
-    Ok(())
-}
-
-fn sync_with_fault(
-    faults: &dyn FaultInjector,
-    directory: &Path,
-    rollback: RollbackStatus,
-) -> Result<(), PatchError> {
-    check_fault(
-        faults,
-        TransactionFaultPoint::BeforeDirectorySync,
-        PatchOperationContext::SynchronizeDirectory,
-        rollback,
-    )?;
-    sync_directory(directory, rollback)
-}
-
-fn check_fault(
-    faults: &dyn FaultInjector,
-    point: TransactionFaultPoint,
-    operation: PatchOperationContext,
-    rollback: RollbackStatus,
-) -> Result<(), PatchError> {
-    faults.check(point).map_err(|error| PatchError::io(operation, rollback, error))
+            "cancellation was recorded but prepared transaction cleanup remains pending",
+        )
+    })
 }

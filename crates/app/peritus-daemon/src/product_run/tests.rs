@@ -170,6 +170,7 @@ fn service(
             folders: BTreeMap::new(),
             processes,
             tasks: tokio::sync::Mutex::new(Vec::new()),
+            command_recoveries: std::sync::Mutex::new(std::collections::BTreeSet::new()),
             model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),

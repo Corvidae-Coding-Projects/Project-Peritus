@@ -28,5 +28,7 @@ pub use preimage::{FileMode, Preimage};
 pub use set::{MAX_FILE_BYTES, MAX_PATCH_BYTES, MAX_PATCH_OPERATIONS, PatchSet};
 pub use transaction::{
     AppliedPatch, RecoveryBinding, RecoveryOutcome, RecoveryState, TransactionFaultPoint,
-    TransactionPhase, apply_patch, recover_transaction,
+    TransactionPhase, apply_patch, apply_patch_with_completion,
+    apply_patch_with_completion_and_cancellation, cleanup_applied_transaction, recover_transaction,
+    recover_transaction_with_completion,
 };

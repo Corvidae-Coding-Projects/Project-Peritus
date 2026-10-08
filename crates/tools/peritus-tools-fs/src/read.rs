@@ -1,16 +1,18 @@
 //! Bounded immutable filesystem observations.
 
-use std::collections::VecDeque;
+mod search;
+mod traversal;
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use peritus_patch::WorkspacePath;
 use peritus_types::Sha256Digest;
-use peritus_workspace::{ReadOnlyWorkspace, WorkspaceEntryKind, WorkspaceError, WorkspaceMetadata};
+use peritus_workspace::{
+    FileReadSelection, ReadOnlyWorkspace, WorkspaceEntryKind, WorkspaceError, WorkspaceMetadata,
+};
 
 use crate::{
     DiscoverInput, FsToolError, FsToolErrorKind, FsToolOperation, MetadataInput, ReadInput,
-    RecoveryClass, SearchInput,
-    read_digest::{discover_digest, search_digest},
+    RecoveryClass, read_digest::DiscoverDigestBuilder,
 };
 
 /// Stable metadata projected for a filesystem tool result.
@@ -50,6 +52,7 @@ impl MetadataObservation {
 pub struct DiscoverEntry {
     metadata: MetadataObservation,
     depth: u16,
+    omission_reason: Option<OmissionReason>,
 }
 
 impl DiscoverEntry {
@@ -63,6 +66,11 @@ impl DiscoverEntry {
     pub const fn depth(&self) -> u16 {
         self.depth
     }
+    /// Returns the reason this entry was omitted from recursive processing, if any.
+    #[must_use]
+    pub const fn omission_reason(&self) -> Option<OmissionReason> {
+        self.omission_reason
+    }
 }
 
 /// Complete bounded deterministic subtree observation.
@@ -70,6 +78,11 @@ impl DiscoverEntry {
 pub struct DiscoverObservation {
     root: Option<WorkspacePath>,
     entries: Vec<DiscoverEntry>,
+    omissions: Vec<ScopeOmission>,
+    page_start: u64,
+    next_offset: Option<u64>,
+    observed_count: u64,
+    omission_count: u64,
     digest: Sha256Digest,
 }
 
@@ -79,15 +92,73 @@ impl DiscoverObservation {
     pub const fn root(&self) -> Option<&WorkspacePath> {
         self.root.as_ref()
     }
-    /// Returns canonical traversal-order entries.
+    /// Returns canonical traversal-order entries retained for the requested page.
     #[must_use]
     pub fn entries(&self) -> &[DiscoverEntry] {
         &self.entries
+    }
+    /// Returns page-local paths intentionally outside the reported traversal scope.
+    #[must_use]
+    pub fn omissions(&self) -> &[ScopeOmission] {
+        &self.omissions
+    }
+    /// Returns the global entry index represented by the first page entry.
+    #[must_use]
+    pub const fn page_start(&self) -> u64 {
+        self.page_start
+    }
+    /// Returns the next global entry index, if more entries remain.
+    #[must_use]
+    pub const fn next_offset(&self) -> Option<u64> {
+        self.next_offset
+    }
+    /// Returns the exact entry count for the complete traversal.
+    #[must_use]
+    pub const fn observed_count(&self) -> u64 {
+        self.observed_count
+    }
+    /// Returns the exact omission count for the complete traversal.
+    #[must_use]
+    pub const fn omission_count(&self) -> u64 {
+        self.omission_count
     }
     /// Returns the digest over the complete structured observation.
     #[must_use]
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
+    }
+}
+
+/// Reason one path was observed but excluded from recursive or textual processing.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum OmissionReason {
+    /// Recursion stopped because the caller-selected maximum depth was reached.
+    DepthLimit,
+    /// Entry is a symlink or special node and was not opened or followed.
+    UnsafeEntry,
+    /// File exceeds the caller-selected per-file search byte bound.
+    FileByteLimit,
+    /// File does not contain valid UTF-8 search text.
+    BinaryContent,
+}
+
+/// Explicit path and reason for a scope omission.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScopeOmission {
+    path: WorkspacePath,
+    reason: OmissionReason,
+}
+
+impl ScopeOmission {
+    /// Returns the exact path that was skipped.
+    #[must_use]
+    pub const fn path(&self) -> &WorkspacePath {
+        &self.path
+    }
+    /// Returns the stable omission reason.
+    #[must_use]
+    pub const fn reason(&self) -> OmissionReason {
+        self.reason
     }
 }
 
@@ -106,6 +177,9 @@ pub struct FileObservation {
     metadata: MetadataObservation,
     content: FileContent,
     content_digest: Sha256Digest,
+    source_digest: Sha256Digest,
+    range: (u64, u64),
+    continuation_offset: Option<u64>,
 }
 
 impl FileObservation {
@@ -124,71 +198,24 @@ impl FileObservation {
     pub const fn content_digest(&self) -> Sha256Digest {
         self.content_digest
     }
-}
-
-/// One bounded literal search match.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchMatch {
-    path: WorkspacePath,
-    line: u64,
-    column_bytes: u32,
-    preview: String,
-}
-
-impl SearchMatch {
-    /// Returns the matched path.
+    /// Returns the complete source digest that binds every range page.
     #[must_use]
-    pub const fn path(&self) -> &WorkspacePath {
-        &self.path
+    pub const fn source_digest(&self) -> Sha256Digest {
+        self.source_digest
     }
-    /// Returns the one-based line number.
+    /// Returns the exact half-open byte range returned in this page.
     #[must_use]
-    pub const fn line(&self) -> u64 {
-        self.line
+    pub const fn range(&self) -> (u64, u64) {
+        self.range
     }
-    /// Returns the zero-based UTF-8 byte column.
+    /// Returns the next byte offset, or `None` when the source is complete.
     #[must_use]
-    pub const fn column_bytes(&self) -> u32 {
-        self.column_bytes
-    }
-    /// Returns a bounded line preview.
-    #[must_use]
-    pub fn preview(&self) -> &str {
-        &self.preview
+    pub const fn continuation_offset(&self) -> Option<u64> {
+        self.continuation_offset
     }
 }
 
-/// Complete bounded literal-search observation.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct SearchObservation {
-    matches: Vec<SearchMatch>,
-    scanned_files: u32,
-    scanned_bytes: u64,
-    digest: Sha256Digest,
-}
-
-impl SearchObservation {
-    /// Returns canonical path/line/column-ordered matches.
-    #[must_use]
-    pub fn matches(&self) -> &[SearchMatch] {
-        &self.matches
-    }
-    /// Returns the number of UTF-8 regular files searched.
-    #[must_use]
-    pub const fn scanned_files(&self) -> u32 {
-        self.scanned_files
-    }
-    /// Returns exact bytes searched.
-    #[must_use]
-    pub const fn scanned_bytes(&self) -> u64 {
-        self.scanned_bytes
-    }
-    /// Returns the digest over the complete structured result.
-    #[must_use]
-    pub const fn digest(&self) -> Sha256Digest {
-        self.digest
-    }
-}
+pub use search::{SearchMatch, SearchObservation};
 
 /// Read-only filesystem service fixed to one C1 immutable snapshot handle.
 pub struct FsReadService<'a> {
@@ -218,18 +245,49 @@ impl<'a> FsReadService<'a> {
     /// # Errors
     /// Returns a typed no-follow C1 inspection or drift failure.
     pub fn read(&self, input: &ReadInput) -> Result<FileObservation, FsToolError> {
+        self.read_cancellable(input, &|| false)?.ok_or_else(|| {
+            bound_error(FsToolOperation::Read, "file read was cancelled without an outcome")
+        })
+    }
+
+    /// Reads an exact source range with cancellation checks between hashed chunks.
+    ///
+    /// # Errors
+    /// Returns a typed no-follow C1 inspection or drift failure.
+    pub fn read_cancellable(
+        &self,
+        input: &ReadInput,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Option<FileObservation>, FsToolError> {
         let metadata = self
             .workspace
             .metadata(&input.path)
             .map_err(|error| inspection_error(FsToolOperation::Read, &error))?;
-        let bytes = self
-            .workspace
-            .read_file(&input.path, input.maximum_bytes)
+        let end = input.offset.saturating_add(input.maximum_bytes).min(metadata.size());
+        let selection = FileReadSelection::bytes(input.offset, end)
             .map_err(|error| inspection_error(FsToolOperation::Read, &error))?;
+        let inspected = self
+            .workspace
+            .read_file_selection_cancellable(&input.path, selection, input.maximum_bytes, || {
+                cancelled()
+            })
+            .map_err(|error| inspection_error(FsToolOperation::Read, &error))?;
+        let Some(inspected) = inspected else {
+            return Ok(None);
+        };
+        let bytes = inspected.bytes().to_vec();
         let content_digest = peritus_codec::sha256(&bytes);
         let content = String::from_utf8(bytes.clone())
             .map_or_else(|_| FileContent::Base64(STANDARD.encode(bytes)), FileContent::Utf8);
-        Ok(FileObservation { metadata: project_metadata(&metadata), content, content_digest })
+        let (start, next) = inspected.range();
+        Ok(Some(FileObservation {
+            metadata: project_metadata(&metadata),
+            content,
+            content_digest,
+            source_digest: inspected.source_digest(),
+            range: (start, next),
+            continuation_offset: (next < inspected.source_bytes()).then_some(next),
+        }))
     }
 
     /// Discovers a bounded subtree without following any symlink.
@@ -237,132 +295,80 @@ impl<'a> FsReadService<'a> {
     /// # Errors
     /// Returns a typed C1 failure or rejects a result exceeding caller-selected bounds.
     pub fn discover(&self, input: &DiscoverInput) -> Result<DiscoverObservation, FsToolError> {
-        let entries = self.walk(
-            input.root.as_ref(),
-            input.maximum_depth,
-            input.maximum_entries,
-            FsToolOperation::Discover,
-        )?;
-        let entries = entries
-            .into_iter()
-            .map(|(metadata, depth)| DiscoverEntry { metadata, depth })
-            .collect::<Vec<_>>();
-        let digest = discover_digest(input.root.as_ref(), &entries);
-        Ok(DiscoverObservation { root: input.root.clone(), entries, digest })
+        self.discover_cancellable(input, &|| false)?.ok_or_else(|| {
+            bound_error(FsToolOperation::Discover, "discovery was cancelled without an outcome")
+        })
     }
 
-    /// Searches literal UTF-8 content under explicit traversal and byte bounds.
-    ///
-    /// Binary and over-per-file-bound files are represented by traversal but not searched.
+    /// Discovers a subtree with cancellation checks between deterministically ordered entries.
     ///
     /// # Errors
-    /// Returns typed inspection, traversal, aggregate-byte, or match-bound failure.
-    pub fn search(&self, input: &SearchInput) -> Result<SearchObservation, FsToolError> {
-        let entries = self.walk(
+    /// Returns a typed C1 inspection or traversal failure.
+    pub fn discover_cancellable(
+        &self,
+        input: &DiscoverInput,
+        cancelled: &dyn Fn() -> bool,
+    ) -> Result<Option<DiscoverObservation>, FsToolError> {
+        let mut entries = Vec::new();
+        let mut omissions = Vec::new();
+        let mut digest = DiscoverDigestBuilder::new(input.root.as_ref());
+        let mut observed_count = 0_u64;
+        let mut omission_count = 0_u64;
+        let mut overflowed = false;
+        let page_end =
+            input.continuation_offset.checked_add(u64::from(input.maximum_entries)).ok_or_else(
+                || bound_error(FsToolOperation::Discover, "discovery continuation overflowed"),
+            )?;
+        let completed = self.walk_visit(
             input.root.as_ref(),
             input.maximum_depth,
-            input.maximum_entries,
-            FsToolOperation::Search,
+            FsToolOperation::Discover,
+            cancelled,
+            |metadata, depth, omission| {
+                let index = observed_count;
+                let omission_reason = omission.as_ref().map(ScopeOmission::reason);
+                digest.entry(&metadata, depth);
+                let Some(next_count) = observed_count.checked_add(1) else {
+                    overflowed = true;
+                    return false;
+                };
+                observed_count = next_count;
+                if let Some(omission) = omission {
+                    digest.omission(&omission);
+                    let Some(next_omission_count) = omission_count.checked_add(1) else {
+                        overflowed = true;
+                        return false;
+                    };
+                    omission_count = next_omission_count;
+                    if index >= input.continuation_offset && index < page_end {
+                        omissions.push(omission);
+                    }
+                }
+                if index >= input.continuation_offset && index < page_end {
+                    entries.push(DiscoverEntry { metadata, depth, omission_reason });
+                }
+                true
+            },
         )?;
-        let mut observation = SearchObservation {
-            matches: Vec::new(),
-            scanned_files: 0,
-            scanned_bytes: 0,
-            digest: Sha256Digest::new([0; 32]),
-        };
-        for (metadata, _) in entries {
-            if metadata.kind != WorkspaceEntryKind::File || metadata.size > input.maximum_file_bytes
-            {
-                continue;
+        if !completed {
+            if overflowed {
+                return Err(bound_error(FsToolOperation::Discover, "discovery count overflowed"));
             }
-            let bytes = self
-                .workspace
-                .read_file(&metadata.path, input.maximum_file_bytes)
-                .map_err(|error| inspection_error(FsToolOperation::Search, &error))?;
-            let Ok(text) = std::str::from_utf8(&bytes) else { continue };
-            observation.scanned_bytes = observation
-                .scanned_bytes
-                .checked_add(bytes.len() as u64)
-                .filter(|total| *total <= input.maximum_total_bytes)
-                .ok_or_else(|| {
-                    bound_error(FsToolOperation::Search, "search byte bound exceeded")
-                })?;
-            observation.scanned_files = observation.scanned_files.saturating_add(1);
-            collect_matches(input, &metadata.path, text, &mut observation.matches)?;
+            return Ok(None);
         }
-        observation.digest = search_digest(&observation);
-        Ok(observation)
+        let next_offset = (observed_count > page_end).then_some(page_end);
+        let digest = digest.finish(observed_count, omission_count);
+        Ok(Some(DiscoverObservation {
+            root: input.root.clone(),
+            entries,
+            omissions,
+            page_start: input.continuation_offset,
+            next_offset,
+            observed_count,
+            omission_count,
+            digest,
+        }))
     }
-
-    fn walk(
-        &self,
-        root: Option<&WorkspacePath>,
-        maximum_depth: u16,
-        maximum_entries: u32,
-        operation: FsToolOperation,
-    ) -> Result<Vec<(MetadataObservation, u16)>, FsToolError> {
-        let mut pending = VecDeque::from([(root.cloned(), 0_u16)]);
-        let mut observed = Vec::new();
-        while let Some((directory, parent_depth)) = pending.pop_front() {
-            let children = self
-                .workspace
-                .list_directory(directory.as_ref())
-                .map_err(|error| inspection_error(operation, &error))?;
-            for child in children {
-                if observed.len() >= maximum_entries as usize {
-                    return Err(bound_error(operation, "workspace traversal entry bound exceeded"));
-                }
-                let depth = parent_depth.saturating_add(1);
-                let metadata = project_metadata(child.metadata());
-                if metadata.kind == WorkspaceEntryKind::Directory && depth < maximum_depth {
-                    pending.push_back((Some(metadata.path.clone()), depth));
-                }
-                observed.push((metadata, depth));
-            }
-        }
-        Ok(observed)
-    }
-}
-
-fn collect_matches(
-    input: &SearchInput,
-    path: &WorkspacePath,
-    text: &str,
-    matches: &mut Vec<SearchMatch>,
-) -> Result<(), FsToolError> {
-    let needle = if input.case_sensitive {
-        input.literal.clone()
-    } else {
-        input.literal.to_ascii_lowercase()
-    };
-    for (line_index, line) in text.lines().enumerate() {
-        let haystack =
-            if input.case_sensitive { line.to_owned() } else { line.to_ascii_lowercase() };
-        for (column, _) in haystack.match_indices(&needle) {
-            if matches.len() >= input.maximum_matches as usize {
-                return Err(bound_error(FsToolOperation::Search, "search match bound exceeded"));
-            }
-            matches.push(SearchMatch {
-                path: path.clone(),
-                line: line_index as u64 + 1,
-                column_bytes: u32::try_from(column).unwrap_or(u32::MAX),
-                preview: bounded_preview(line),
-            });
-        }
-    }
-    Ok(())
-}
-
-fn bounded_preview(line: &str) -> String {
-    const LIMIT: usize = 512;
-    if line.len() <= LIMIT {
-        return line.to_owned();
-    }
-    let mut end = LIMIT;
-    while !line.is_char_boundary(end) {
-        end -= 1;
-    }
-    line[..end].to_owned()
 }
 
 fn project_metadata(value: &WorkspaceMetadata) -> MetadataObservation {

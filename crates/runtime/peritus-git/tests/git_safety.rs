@@ -88,7 +88,7 @@ fn status_overrides_local_submodule_ignore_configuration() {
 
     let status = repository.status(&worktree).expect("status");
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "child"
+        entry.path() == b"child"
             && matches!(
                 entry.kind(),
                 StatusKind::Ordinary { submodule, .. } if submodule.modified_content()
@@ -128,7 +128,7 @@ fn attached_head_at_same_commit_is_not_accepted_as_managed_topology() {
 
     let status = repository.status(&worktree).expect("attached status");
     assert!(!status.is_detached());
-    assert_eq!(status.head(), baseline.commit());
+    assert_eq!(status.head(), Some(baseline.commit()));
     let reconciled = repository
         .reconcile(ReconcileExpectation::new(&worktree, baseline.commit(), baseline.tree()))
         .expect("reconcile attached topology");

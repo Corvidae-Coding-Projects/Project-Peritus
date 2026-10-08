@@ -2,6 +2,7 @@
 
 mod codec;
 mod inspection;
+mod owner;
 mod replay;
 mod storage;
 
@@ -9,24 +10,35 @@ pub use inspection::{
     UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,
 };
 
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use peritus_agent::DeveloperLoopError;
 use peritus_model_protocol::CompletedToolCall;
+use peritus_types::{ActionId, ProcessId, RunId};
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 
 use super::path::tool;
 
-const FORMAT_VERSION: u32 = 1;
-const MAX_LEDGER_BYTES: usize = 128 * 1024 * 1024;
-const MAX_RECORD_BYTES: usize = 2 * 1024 * 1024;
+const FORMAT_VERSION: u32 = 2;
 
 pub(super) enum ReceiptDecision {
     Execute,
     Replay { value: Value, is_error: bool },
     RecoverCheckpoint { value: Value, is_error: bool },
+    RecoverCommandOwner { owner: NativeCommandOwner, scope: String, ordinal: u32 },
     Refuse { detail: String, ambiguous: bool },
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct NativeCommandOwner {
+    pub(super) source_run: RunId,
+    pub(super) execution_run: RunId,
+    pub(super) action: ActionId,
+    pub(super) process: ProcessId,
 }
 
 pub(super) struct EffectReceiptLedger {
@@ -47,6 +59,8 @@ struct ReceiptRecord {
     tool: String,
     request_sha256: String,
     state: ReceiptState,
+    native_owner: Option<NativeCommandOwner>,
+    owner_inactive: bool,
     output: Option<Value>,
     is_error: Option<bool>,
 }
@@ -84,66 +98,7 @@ impl EffectReceiptLedger {
         let ordinal = self.next_ordinal;
         let digest = request_digest(call);
         if let Some(existing) = self.entries.get(&ordinal).cloned() {
-            if existing.tool != call.name().as_str() || existing.request_sha256 != digest {
-                return Ok(ReceiptDecision::Refuse {
-                    detail: format!(
-                        "effect receipt conflict at {} effect {}: the recovered request differs from the durably started request",
-                        self.scope, ordinal
-                    ),
-                    ambiguous: false,
-                });
-            }
-            return match existing.state {
-                ReceiptState::Completed => Ok(ReceiptDecision::Replay {
-                    value: existing
-                        .output
-                        .ok_or_else(|| tool("completed receipt lost its result"))?,
-                    is_error: existing
-                        .is_error
-                        .ok_or_else(|| tool("completed receipt lost its result status"))?,
-                }),
-                ReceiptState::Applied => Ok(ReceiptDecision::RecoverCheckpoint {
-                    value: existing
-                        .output
-                        .ok_or_else(|| tool("applied receipt lost its result"))?,
-                    is_error: existing
-                        .is_error
-                        .ok_or_else(|| tool("applied receipt lost its result status"))?,
-                }),
-                ReceiptState::Ambiguous => Ok(ReceiptDecision::Refuse {
-                    detail: ambiguous(&self.scope, ordinal, &existing.call_id),
-                    ambiguous: true,
-                }),
-                ReceiptState::Reviewed => Ok(ReceiptDecision::Replay {
-                    value: existing
-                        .output
-                        .ok_or_else(|| tool("reviewed receipt lost its result"))?,
-                    is_error: existing
-                        .is_error
-                        .ok_or_else(|| tool("reviewed receipt lost its result status"))?,
-                }),
-                ReceiptState::Started
-                    if matches!(
-                        call.name().as_str(),
-                        "run_command"
-                            | "command_start"
-                            | "command_stdin"
-                            | "command_resize"
-                            | "command_signal"
-                            | "command_cancel"
-                    ) =>
-                {
-                    let record = ReceiptRecord { state: ReceiptState::Ambiguous, ..existing };
-                    self.append(&record)?;
-                    self.entries.insert(ordinal, record.clone());
-                    self.all_entries.insert((record.scope.clone(), ordinal), record.clone());
-                    Ok(ReceiptDecision::Refuse {
-                        detail: ambiguous(&self.scope, ordinal, &record.call_id),
-                        ambiguous: true,
-                    })
-                }
-                ReceiptState::Started => Ok(ReceiptDecision::Execute),
-            };
+            return self.decision_for_existing(call, ordinal, &digest, existing);
         }
         if self.entries.values().any(|record| record.call_id == call.id().expose_for_wire()) {
             return Ok(ReceiptDecision::Refuse {
@@ -160,6 +115,8 @@ impl EffectReceiptLedger {
             tool: call.name().as_str().to_owned(),
             request_sha256: digest,
             state: ReceiptState::Started,
+            native_owner: None,
+            owner_inactive: false,
             output: None,
             is_error: None,
         };
@@ -167,6 +124,79 @@ impl EffectReceiptLedger {
         self.entries.insert(ordinal, record.clone());
         self.all_entries.insert((record.scope.clone(), ordinal), record);
         Ok(ReceiptDecision::Execute)
+    }
+
+    fn decision_for_existing(
+        &mut self,
+        call: &CompletedToolCall,
+        ordinal: u32,
+        digest: &str,
+        existing: ReceiptRecord,
+    ) -> Result<ReceiptDecision, DeveloperLoopError> {
+        if existing.tool != call.name().as_str() || existing.request_sha256 != digest {
+            return Ok(ReceiptDecision::Refuse {
+                detail: format!(
+                    "effect receipt conflict at {} effect {}: the recovered request differs from the durably started request",
+                    self.scope, ordinal
+                ),
+                ambiguous: false,
+            });
+        }
+        match existing.state {
+            ReceiptState::Completed => Ok(ReceiptDecision::Replay {
+                value: existing.output.ok_or_else(|| tool("completed receipt lost its result"))?,
+                is_error: existing
+                    .is_error
+                    .ok_or_else(|| tool("completed receipt lost its result status"))?,
+            }),
+            ReceiptState::Applied => Ok(ReceiptDecision::RecoverCheckpoint {
+                value: existing.output.ok_or_else(|| tool("applied receipt lost its result"))?,
+                is_error: existing
+                    .is_error
+                    .ok_or_else(|| tool("applied receipt lost its result status"))?,
+            }),
+            ReceiptState::Reviewed => Ok(ReceiptDecision::Replay {
+                value: existing.output.ok_or_else(|| tool("reviewed receipt lost its result"))?,
+                is_error: existing
+                    .is_error
+                    .ok_or_else(|| tool("reviewed receipt lost its result status"))?,
+            }),
+            ReceiptState::Started if command_effect(call.name().as_str()) => {
+                if let Some(owner) = existing.native_owner {
+                    return Ok(ReceiptDecision::RecoverCommandOwner {
+                        owner,
+                        scope: existing.scope,
+                        ordinal,
+                    });
+                }
+                let record = ReceiptRecord { state: ReceiptState::Ambiguous, ..existing };
+                self.append(&record)?;
+                self.entries.insert(ordinal, record.clone());
+                self.all_entries.insert((record.scope.clone(), ordinal), record.clone());
+                Ok(ReceiptDecision::Refuse {
+                    detail: ambiguous(&self.scope, ordinal, &record.call_id),
+                    ambiguous: true,
+                })
+            }
+            ReceiptState::Ambiguous if command_effect(call.name().as_str()) => {
+                if let Some(owner) = existing.native_owner {
+                    return Ok(ReceiptDecision::RecoverCommandOwner {
+                        owner,
+                        scope: existing.scope,
+                        ordinal,
+                    });
+                }
+                Ok(ReceiptDecision::Refuse {
+                    detail: ambiguous(&self.scope, ordinal, &existing.call_id),
+                    ambiguous: true,
+                })
+            }
+            ReceiptState::Started => Ok(ReceiptDecision::Execute),
+            ReceiptState::Ambiguous => Ok(ReceiptDecision::Refuse {
+                detail: ambiguous(&self.scope, ordinal, &existing.call_id),
+                ambiguous: true,
+            }),
+        }
     }
 
     pub(super) fn complete(
@@ -226,6 +256,31 @@ impl EffectReceiptLedger {
         call: &CompletedToolCall,
         request_sha256: &str,
     ) -> Result<Option<ReceiptDecision>, DeveloperLoopError> {
+        if call.name().as_str() == "command_cancel"
+            && serde_json::from_slice::<Value>(call.arguments().canonical_bytes())
+                .ok()
+                .and_then(|arguments| {
+                    arguments.get("handle").and_then(Value::as_str).map(str::to_owned)
+                })
+                .is_some_and(|handle| {
+                    self.all_entries.values().any(|record| {
+                        same_receipt_epoch(&record.scope, &self.scope)
+                            && matches!(
+                                record.state,
+                                ReceiptState::Started
+                                    | ReceiptState::Ambiguous
+                                    | ReceiptState::Reviewed
+                            )
+                            && record
+                                .native_owner
+                                .is_some_and(|owner| native_action_hex(owner.action) == handle)
+                    })
+                })
+        {
+            // The explicit cancellation tool will create its own receipt and bind the exact
+            // retained owner before signaling it. Other effects remain fenced by the barrier.
+            return Ok(None);
+        }
         let Some(record) = self.all_entries.values().find(|record| {
             record.scope != self.scope
                 && same_receipt_epoch(&record.scope, &self.scope)
@@ -266,6 +321,23 @@ impl EffectReceiptLedger {
             }
         }
     }
+}
+
+/// Inspects every exact command owner in the latest receipt frames without repairing a partial
+/// tail or changing any receipt state.
+pub(super) fn receipt_linked_native_owners(
+    path: &Path,
+) -> Result<Vec<NativeCommandOwner>, DeveloperLoopError> {
+    let mut owners = Vec::new();
+    for record in storage::inspect(path)? {
+        if command_effect(&record.tool)
+            && let Some(owner) = record.native_owner
+            && !owners.contains(&owner)
+        {
+            owners.push(owner);
+        }
+    }
+    Ok(owners)
 }
 
 fn invocation_epoch(scope: &str) -> &str {
@@ -334,7 +406,20 @@ fn command_effect(tool: &str) -> bool {
     )
 }
 
+fn native_action_hex(action_id: ActionId) -> String {
+    use core::fmt::Write as _;
+
+    let mut output = String::with_capacity(32);
+    for byte in action_id.as_bytes() {
+        let _ = write!(output, "{byte:02x}");
+    }
+    output
+}
+
 fn fields_are_consistent(record: &ReceiptRecord) -> bool {
+    if record.owner_inactive && record.native_owner.is_none() {
+        return false;
+    }
     match record.state {
         ReceiptState::Started | ReceiptState::Ambiguous => {
             record.output.is_none() && record.is_error.is_none()

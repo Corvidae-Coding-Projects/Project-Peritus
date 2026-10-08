@@ -33,8 +33,8 @@ impl Drop for TestDirectory {
 fn policy() -> ArchitecturePolicy {
     ArchitecturePolicy {
         schema: 1,
-        soft_source_lines: 400,
-        hard_source_lines: 700,
+        soft_source_lines: 500,
+        hard_source_lines: 500,
         root_module_lines: 80,
         required_license: "MIT".to_owned(),
         ignored_directories: Vec::new(),

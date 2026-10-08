@@ -10,7 +10,7 @@ use peritus_leases::LeaseClaim;
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{
-    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
+    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessControl, ProcessError, StopTrigger,
     platform::ProcessTreeIdentity,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
@@ -38,6 +38,7 @@ struct StoreState {
     manifests: BTreeMap<ProcessId, ExecutionManifest>,
     claims: BTreeMap<ProcessId, ConsumptionClaim>,
     quarantined_records: Vec<PathBuf>,
+    controls: BTreeMap<ProcessId, ProcessControl>,
 }
 
 struct StoreInner {
@@ -121,6 +122,7 @@ impl ProcessStore {
             manifests: BTreeMap::new(),
             claims: BTreeMap::new(),
             quarantined_records: load_quarantine(&quarantine)?,
+            controls: BTreeMap::new(),
         };
         load_claims(&claims, &quarantine, &mut state.claims, &mut state.quarantined_records)?;
         load_manifests(
@@ -156,6 +158,40 @@ impl ProcessStore {
     #[must_use]
     pub fn root(&self) -> &Path {
         &self.inner.root
+    }
+
+    /// Returns a live control handle only for one exact durable process owner.
+    ///
+    /// The process, action, and run identities must all match the retained manifest and its
+    /// consumption claim. Reopened stores do not synthesize controls for processes they do not
+    /// still own in memory.
+    #[must_use]
+    pub fn control_exact(
+        &self,
+        run_id: peritus_types::RunId,
+        action_id: peritus_types::ActionId,
+        process_id: ProcessId,
+    ) -> Option<ProcessControl> {
+        let (manifests, mut claims) = self.recovery_records();
+        let manifest =
+            manifests.into_iter().find(|manifest| manifest.identity.process_id() == process_id)?;
+        let claim_matches =
+            claims.remove(&process_id).is_some_and(|claim| claim.matches_manifest(&manifest));
+        if !claim_matches
+            || manifest.identity.run_id() != run_id
+            || manifest.identity.action_id() != action_id
+        {
+            return None;
+        }
+        self.lock_state().controls.get(&process_id).cloned()
+    }
+
+    pub(crate) fn retain_control(&self, process_id: ProcessId, control: ProcessControl) {
+        self.lock_state().controls.insert(process_id, control);
+    }
+
+    pub(crate) fn release_control(&self, process_id: ProcessId) {
+        self.lock_state().controls.remove(&process_id);
     }
 
     pub(crate) fn crash_watchdog(&self) -> Option<&Path> {

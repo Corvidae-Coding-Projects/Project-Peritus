@@ -1,17 +1,21 @@
 //! Exact router and authority assembly for filesystem production-flow tests.
 
-use std::sync::Arc;
+use std::{
+    sync::{Arc, Mutex},
+    thread,
+};
 
 use peritus_policy::{
     ActorRole, AuthorityInstant, OperationDescriptor, OperationRegistry, RiskSet,
 };
 use peritus_protocol::ActionIntentDto;
 use peritus_tool_protocol::{
-    BoundedJson, CallLimits, IdempotencyKey, JsonLimits, PreparedToolCall, SemanticVersion,
-    ToolCall, ToolDescriptor,
+    BoundedJson, CallLimits, IdempotencyKey, JsonLimits, PreparedToolCall, ResultStatus,
+    SemanticVersion, ToolCall, ToolDescriptor,
 };
 use peritus_tool_router::{
-    RouterLimits, ToolAuthorizationRequest, ToolRegistry, ToolRouter, tool_action_intent,
+    DispatchOutcome, RouterLimits, ToolAuthorizationRequest, ToolRegistry, ToolRouter,
+    tool_action_intent,
 };
 use peritus_tools_fs::{CompiledMutation, FsDispatchKind, FsDispatcher, descriptor_catalog};
 use peritus_workspace::{
@@ -72,12 +76,12 @@ pub fn dispatch(
     temp: &TempDir,
     lower: &Ids,
     parent: &Ids,
-    gateway: &mut WorkspaceGateway,
+    gateway: &Arc<Mutex<WorkspaceGateway>>,
     kind: FsDispatchKind,
     prepared: PreparedToolCall,
-    mut router: ToolRouter,
+    router: ToolRouter,
     mutation: CompiledMutation,
-) -> (peritus_tool_router::DispatchOutcome, Option<MutationOutcome>) {
+) -> (DispatchOutcome, Option<MutationOutcome>) {
     let caller = caller(&prepared, parent);
     let patch = mutation.into_patch();
     let lower_intent =
@@ -94,14 +98,35 @@ pub fn dispatch(
     );
     let parent_receipts = authority_support::receipts(temp, parent, &parent_intent);
     let parent_request = tool_request(parent, &parent_intent, &parent_receipts, &prepared);
-    let mut dispatcher = FsDispatcher::mutation(kind, gateway, &lower_request).expect("dispatcher");
-    let outcome =
-        router.dispatch(prepared, &parent_request, &mut dispatcher).expect("router dispatch");
+    let mut dispatcher =
+        FsDispatcher::mutation(kind, Arc::clone(gateway), &lower_request).expect("dispatcher");
+    let outcome = dispatch_prepared(router, prepared, &parent_request, &mut dispatcher);
     let mutation = dispatcher.take_mutation_outcome();
     (outcome, mutation)
 }
 
-const fn tool_request<'a>(
+pub fn dispatch_prepared(
+    mut router: ToolRouter,
+    prepared: PreparedToolCall,
+    parent_request: &ToolAuthorizationRequest<'_>,
+    dispatcher: &mut FsDispatcher<'_>,
+) -> DispatchOutcome {
+    let dispatch_result =
+        router.dispatch(prepared, parent_request, dispatcher).expect("router dispatch");
+    match dispatch_result {
+        DispatchOutcome::Active(handle) => loop {
+            let observed_at = AuthorityInstant::new(peritus_types::Generation::first(), 21);
+            let update = router.poll(handle, observed_at).expect("filesystem mutation poll");
+            if let Some(result) = update.terminal() {
+                break DispatchOutcome::Completed(result.clone());
+            }
+            thread::yield_now();
+        },
+        outcome => outcome,
+    }
+}
+
+pub const fn tool_request<'a>(
     ids: &Ids,
     intent: &'a ActionIntentDto,
     receipts: &'a AuthorityReceipts,
@@ -139,16 +164,16 @@ pub const fn workspace_version(ids: &Ids) -> peritus_tools_fs::WorkspaceVersion 
     )
 }
 
-pub fn assert_success(outcome: peritus_tool_router::DispatchOutcome) {
-    let peritus_tool_router::DispatchOutcome::Completed(result) = outcome else {
+pub fn assert_success(outcome: DispatchOutcome) {
+    let DispatchOutcome::Completed(result) = outcome else {
         panic!("filesystem mutation did not complete synchronously");
     };
-    assert_eq!(result.status(), peritus_tool_protocol::ResultStatus::Succeeded);
+    assert_eq!(result.status(), ResultStatus::Succeeded);
 }
 
-pub fn assert_failure(outcome: peritus_tool_router::DispatchOutcome) {
-    let peritus_tool_router::DispatchOutcome::Completed(result) = outcome else {
+pub fn assert_failure(outcome: DispatchOutcome) {
+    let DispatchOutcome::Completed(result) = outcome else {
         panic!("filesystem rejection did not complete synchronously");
     };
-    assert_eq!(result.status(), peritus_tool_protocol::ResultStatus::Failed);
+    assert_eq!(result.status(), ResultStatus::Failed);
 }

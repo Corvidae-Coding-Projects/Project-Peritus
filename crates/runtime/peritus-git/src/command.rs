@@ -9,9 +9,6 @@ use std::thread;
 
 use crate::{ErrorKind, GitError, Operation, RecoveryClass};
 
-pub const DEFAULT_OUTPUT_LIMIT: usize = 16 * 1024 * 1024;
-pub const MAX_OUTPUT_LIMIT: usize = 64 * 1024 * 1024;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommandAccess {
     Read,
@@ -34,12 +31,11 @@ pub struct CommandOutput {
 #[derive(Clone, Debug)]
 pub struct GitRunner {
     program: OsString,
-    output_limit: usize,
 }
 
 impl GitRunner {
-    pub(crate) const fn new(program: OsString, output_limit: usize) -> Self {
-        Self { program, output_limit }
+    pub(crate) const fn new(program: OsString) -> Self {
+        Self { program }
     }
 
     pub(crate) fn checked(
@@ -111,10 +107,8 @@ impl GitRunner {
             child.stdout.take().ok_or_else(|| protocol(operation, "Git stdout pipe missing"))?;
         let stderr =
             child.stderr.take().ok_or_else(|| protocol(operation, "Git stderr pipe missing"))?;
-        let stdout_limit = self.output_limit;
-        let stderr_limit = self.output_limit.min(crate::error::MAX_ERROR_STDERR_BYTES * 4);
-        let stdout_reader = thread::spawn(move || read_bounded(stdout, stdout_limit));
-        let stderr_reader = thread::spawn(move || read_bounded(stderr, stderr_limit));
+        let stdout_reader = thread::spawn(move || read_all(stdout));
+        let stderr_reader = thread::spawn(move || read_all(stderr));
         let stdin_writer = match (stdin, child.stdin.take()) {
             (Some(bytes), Some(mut pipe)) => {
                 let bytes = bytes.to_vec();
@@ -129,11 +123,8 @@ impl GitRunner {
         if let Some(writer) = stdin_writer {
             join_io(writer, operation, "write Git stdin")?;
         }
-        let (stdout, stdout_overflow) = join_reader(stdout_reader, operation, "read Git stdout")?;
-        let (stderr, stderr_overflow) = join_reader(stderr_reader, operation, "read Git stderr")?;
-        if stdout_overflow || stderr_overflow {
-            return Err(protocol(operation, "Git output exceeded the configured byte limit"));
-        }
+        let stdout = join_reader(stdout_reader, operation, "read Git stdout")?;
+        let stderr = join_reader(stderr_reader, operation, "read Git stderr")?;
         Ok(CommandOutput { status, stdout, stderr })
     }
 }
@@ -210,28 +201,24 @@ const fn null_device() -> &'static str {
     "NUL"
 }
 
-fn read_bounded(mut reader: impl Read, limit: usize) -> io::Result<(Vec<u8>, bool)> {
-    let mut output = Vec::with_capacity(limit.min(64 * 1024));
-    let mut overflow = false;
+fn read_all(mut reader: impl Read) -> io::Result<Vec<u8>> {
+    let mut output = Vec::new();
     let mut buffer = [0_u8; 8_192];
     loop {
         let count = reader.read(&mut buffer)?;
         if count == 0 {
             break;
         }
-        let remaining = limit.saturating_sub(output.len());
-        let retained = count.min(remaining);
-        output.extend_from_slice(&buffer[..retained]);
-        overflow |= retained != count;
+        output.extend_from_slice(&buffer[..count]);
     }
-    Ok((output, overflow))
+    Ok(output)
 }
 
 fn join_reader(
-    handle: thread::JoinHandle<io::Result<(Vec<u8>, bool)>>,
+    handle: thread::JoinHandle<io::Result<Vec<u8>>>,
     operation: Operation,
     detail: &'static str,
-) -> Result<(Vec<u8>, bool), GitError> {
+) -> Result<Vec<u8>, GitError> {
     handle
         .join()
         .map_err(|_| protocol(operation, "Git pipe reader panicked"))?

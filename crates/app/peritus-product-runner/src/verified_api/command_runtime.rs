@@ -1,10 +1,13 @@
 //! Fail-closed projection of effectful command-runtime ownership.
 
-use std::{convert::Infallible, path::PathBuf};
+use std::{
+    convert::Infallible,
+    path::{Path, PathBuf},
+};
 
 use peritus_leases::LeaseHolder;
 use peritus_process::{ExecutionPlan, ProcessControl, ProcessStore, TerminalResult};
-use peritus_types::{EnvironmentId, ResourceId, RevisionTuple, RunId};
+use peritus_types::{ActionId, EnvironmentId, ProcessId, ResourceId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
@@ -87,6 +90,22 @@ impl FolderPatchAuthority {
 }
 
 impl CommandRuntime {
+    /// Verification-only builds cannot inspect native command receipt owners.
+    pub fn receipt_linked_live_owners(
+        receipt_path: &Path,
+        source_run: RunId,
+        processes: &ProcessStore,
+    ) -> Result<Vec<(RunId, ActionId, ProcessId)>, ProductRunnerError> {
+        let _ = (receipt_path, source_run, processes);
+        Err(unavailable("inspect receipt-linked native command owners"))
+    }
+
+    /// Verification-only builds cannot inspect or reconcile native command receipts.
+    pub fn reconcile_effect_receipts(&self, receipt_path: &Path) -> Result<(), ProductRunnerError> {
+        let _ = (self, receipt_path);
+        Err(unavailable("reconcile native command receipts"))
+    }
+
     /// Projects terminal borrowing without constructing an effect owner during verification.
     pub fn preview_terminal(
         &self,

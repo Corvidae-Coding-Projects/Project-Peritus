@@ -41,7 +41,7 @@ fn structured_status_diff_history_and_snapshot_use_real_git_observations() {
     assert!(!RenderedOutput::history(&history).expect("history render").truncated());
 
     let snapshot = service.current_snapshot();
-    assert_eq!(snapshot.commit(), status.head());
+    assert_eq!(Some(snapshot.commit()), status.head());
     assert_eq!(snapshot.workspace_id(), fixture.workspace.snapshot().workspace_id());
     assert!(!RenderedOutput::snapshot(&snapshot).expect("snapshot render").truncated());
 }

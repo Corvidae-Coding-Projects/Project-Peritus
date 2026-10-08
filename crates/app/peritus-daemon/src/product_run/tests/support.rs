@@ -16,7 +16,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream, ProviderCoreError,
 };
-use peritus_types::{ProviderProfileId, Sha256Digest};
+use peritus_types::{ProviderProfileId, RunId, Sha256Digest};
 use serde_json::{Map, Value};
 
 pub(super) const CORRECT: &str = "pub const fn answer() -> u32 {\n    42\n}\n\n#[cfg(test)]\nmod tests {\n    #[test]\n    fn answer_is_42() {\n        assert_eq!(super::answer(), 42);\n    }\n}\n";
@@ -365,4 +365,45 @@ fn command(root: &Path, executable: &str, arguments: &[&str]) {
         "{executable} failed: {}",
         String::from_utf8_lossy(&output.stderr),
     );
+}
+
+pub(super) fn exact_command_owner_fixture(run: RunId) -> Value {
+    let source_run = identity_hex(run.into_bytes());
+    serde_json::json!({
+        "source_run_id": source_run,
+        "run_id": identity_hex(run.into_bytes()),
+        "action_id": identity_hex([0xd1; 16]),
+        "process_id": identity_hex([0xd2; 16]),
+    })
+}
+
+pub(super) fn write_command_receipt(
+    path: &Path,
+    scope: &str,
+    version: u32,
+    native_owner: Option<Value>,
+    owner_inactive: bool,
+) {
+    let mut receipt = serde_json::json!({
+        "version": version,
+        "scope": scope,
+        "ordinal": 1,
+        "call_id": "call-1",
+        "tool": "run_command",
+        "request_sha256": "00",
+        "state": "started",
+    });
+    if version == 2 {
+        receipt["native_owner"] = native_owner.unwrap_or(Value::Null);
+        receipt["owner_inactive"] = Value::Bool(owner_inactive);
+    }
+    let payload = serde_json::to_vec(&receipt).expect("encode command receipt fixture");
+    let mut bytes =
+        u64::try_from(payload.len()).expect("command receipt length").to_le_bytes().to_vec();
+    bytes.extend(payload);
+    fs::write(path, bytes).expect("persist command receipt fixture");
+}
+
+fn identity_hex(bytes: [u8; 16]) -> String {
+    format!("{:032x}", u128::from_be_bytes(bytes))
 }

@@ -200,7 +200,7 @@ AcTor delivery loop E0. Both are delivered sequentially by the same goal and mig
 - **E0-R051:** The crate contains no `assume`, `admit`, axiom, trusted body, `unsafe`, hidden public
   precondition, placeholder, ignored test, state-machine macro, or convenience authority bypass.
 - **E0-R052:** Public fields remain private; domain constructors are total and typed. `lib.rs` is
-  below 80 lines. Production modules target 400 lines and never exceed 700. Domain, integration
+  below 80 lines. Production modules stay at or below 500 lines. Domain, integration
   records, reducer, wire, durability, driver, recovery, and projections remain separate modules.
 - **E0-R053:** E0 depends on public contracts from B0/B1/B2/C0/C1/D0-D3. It shall not depend on
   concrete provider adapters, process/shell tools, OS sandboxes, or workspace/Git implementations.

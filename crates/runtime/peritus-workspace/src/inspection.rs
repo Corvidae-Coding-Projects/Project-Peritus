@@ -2,12 +2,13 @@
 
 use std::{fs, path::PathBuf};
 
+use cap_std::fs::{Metadata as CapMetadata, MetadataExt as _};
 use peritus_patch::WorkspacePath;
 
 use crate::{ErrorCode, ReadOnlyWorkspace, RecoveryClass, WorkspaceError, WorkspaceOperation};
 
-/// Hard maximum returned by one immutable file read.
-pub const MAX_INSPECTION_FILE_BYTES: u64 = 8 * 1_024 * 1_024;
+mod directory;
+pub use directory::{DirectoryCursor, DirectoryPage};
 
 /// Closed filesystem entry vocabulary returned by C1 inspection.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -16,6 +17,8 @@ pub enum WorkspaceEntryKind {
     File,
     /// Directory.
     Directory,
+    /// Symlink or special node observed as a child without opening or following it.
+    Other,
 }
 
 /// Stable metadata for one no-follow workspace entry.
@@ -79,7 +82,7 @@ impl ReadOnlyWorkspace {
                 "workspace entry metadata could not be observed",
             )
         })?;
-        metadata_from(path.clone(), &metadata)
+        Ok(metadata_from(path.clone(), &metadata))
     }
 
     /// Lists direct children in canonical path order without following symlinks.
@@ -92,6 +95,19 @@ impl ReadOnlyWorkspace {
         &self,
         path: Option<&WorkspacePath>,
     ) -> Result<Vec<DirectoryEntry>, WorkspaceError> {
+        self.list_directory_cancellable(path, || false)?
+            .ok_or_else(|| invalid("workspace directory listing was cancelled without a request"))
+    }
+
+    /// Lists direct children in canonical order while checking cancellation during enumeration.
+    ///
+    /// # Errors
+    /// Returns the same no-follow inspection failures as `list_directory`.
+    pub fn list_directory_cancellable(
+        &self,
+        path: Option<&WorkspacePath>,
+        mut cancelled: impl FnMut() -> bool,
+    ) -> Result<Option<Vec<DirectoryEntry>>, WorkspaceError> {
         let directory = match path {
             Some(path) => checked_target(self, path)?,
             None => self.root().to_path_buf(),
@@ -108,6 +124,9 @@ impl ReadOnlyWorkspace {
         }
         let mut entries = Vec::new();
         for entry in fs::read_dir(&directory).map_err(|_| inspect_io())? {
+            if cancelled() {
+                return Ok(None);
+            }
             let entry = entry.map_err(|_| inspect_io())?;
             let name = entry
                 .file_name()
@@ -120,10 +139,41 @@ impl ReadOnlyWorkspace {
             let child = WorkspacePath::new(value)
                 .map_err(|_| invalid("workspace child path is not representable"))?;
             let metadata = fs::symlink_metadata(entry.path()).map_err(|_| inspect_io())?;
-            entries.push(DirectoryEntry(metadata_from(child, &metadata)?));
+            entries.push(DirectoryEntry(metadata_from(child, &metadata)));
         }
         entries.sort_unstable_by(|left, right| left.0.path.cmp(&right.0.path));
-        Ok(entries)
+        if cancelled() { Ok(None) } else { Ok(Some(entries)) }
+    }
+
+    /// Visits direct children in canonical order and permits cancellation between entries.
+    ///
+    /// Each bounded page is sorted before callbacks, preserving `list_directory` ordering without
+    /// retaining the complete directory in the caller.
+    ///
+    /// # Errors
+    /// Returns the same no-follow inspection failures as `list_directory`.
+    pub fn visit_directory(
+        &self,
+        path: Option<&WorkspacePath>,
+        mut cancelled: impl FnMut() -> bool,
+        mut visit: impl FnMut(DirectoryEntry) -> bool,
+    ) -> Result<bool, WorkspaceError> {
+        let mut cursor = None;
+        loop {
+            let Some(page) =
+                self.list_directory_page_cancellable(path, cursor.as_ref(), &mut cancelled)?
+            else {
+                return Ok(false);
+            };
+            let (entries, next) = page.into_parts();
+            for entry in entries {
+                if cancelled() || !visit(entry) {
+                    return Ok(false);
+                }
+            }
+            let Some(next) = next else { return Ok(true) };
+            cursor = Some(next);
+        }
     }
 
     /// Reads one exact regular file without following symlinks.
@@ -135,9 +185,48 @@ impl ReadOnlyWorkspace {
         path: &WorkspacePath,
         maximum_bytes: u64,
     ) -> Result<Vec<u8>, WorkspaceError> {
-        self.file_inspection()
-            .read_file(path, crate::FileReadSelection::all(), maximum_bytes)
+        self.read_file_selection(path, crate::FileReadSelection::all(), maximum_bytes)
             .map(crate::InspectedFile::into_bytes)
+    }
+
+    /// Reads an exact whole-file, byte-range, or line selection while hashing the complete source.
+    ///
+    /// # Errors
+    /// Returns a typed failure for invalid bounds, unsafe paths, source drift, or I/O failure.
+    pub fn read_file_selection(
+        &self,
+        path: &WorkspacePath,
+        selection: crate::FileReadSelection,
+        maximum_bytes: u64,
+    ) -> Result<crate::InspectedFile, WorkspaceError> {
+        self.file_inspection().read_file(path, selection, maximum_bytes)
+    }
+
+    /// Reads an exact selection while checking cancellation between source chunks.
+    ///
+    /// # Errors
+    /// Returns a typed failure for invalid bounds, unsafe paths, drift, or I/O failure.
+    pub fn read_file_selection_cancellable(
+        &self,
+        path: &WorkspacePath,
+        selection: crate::FileReadSelection,
+        maximum_bytes: u64,
+        cancelled: impl FnMut() -> bool,
+    ) -> Result<Option<crate::InspectedFile>, WorkspaceError> {
+        self.file_inspection().read_file_cancellable(path, selection, maximum_bytes, cancelled)
+    }
+
+    /// Streams one exact no-follow file with cancellation checks between chunks.
+    ///
+    /// # Errors
+    /// Returns a typed failure for an unsafe, changed, or unavailable source.
+    pub fn scan_file_chunks(
+        &self,
+        path: &WorkspacePath,
+        cancelled: impl FnMut() -> bool,
+        visit: impl FnMut(u64, &[u8]),
+    ) -> Result<Option<(u64, peritus_types::Sha256Digest)>, WorkspaceError> {
+        self.file_inspection().scan_file_chunks(path, cancelled, visit)
     }
 }
 
@@ -158,16 +247,13 @@ fn checked_target(
     Ok(current)
 }
 
-fn metadata_from(
-    path: WorkspacePath,
-    metadata: &fs::Metadata,
-) -> Result<WorkspaceMetadata, WorkspaceError> {
+fn metadata_from(path: WorkspacePath, metadata: &fs::Metadata) -> WorkspaceMetadata {
     let kind = if metadata.is_file() {
         WorkspaceEntryKind::File
     } else if metadata.is_dir() {
         WorkspaceEntryKind::Directory
     } else {
-        return Err(invalid("workspace inspection refuses symlinks and special nodes"));
+        WorkspaceEntryKind::Other
     };
     #[cfg(unix)]
     let executable = {
@@ -176,12 +262,32 @@ fn metadata_from(
     };
     #[cfg(not(unix))]
     let executable = false;
-    Ok(WorkspaceMetadata {
+    WorkspaceMetadata {
         path,
         kind,
         size: if kind == WorkspaceEntryKind::File { metadata.len() } else { 0 },
         executable,
-    })
+    }
+}
+
+fn metadata_from_cap(path: WorkspacePath, metadata: &CapMetadata) -> WorkspaceMetadata {
+    let kind = if metadata.is_file() {
+        WorkspaceEntryKind::File
+    } else if metadata.is_dir() {
+        WorkspaceEntryKind::Directory
+    } else {
+        WorkspaceEntryKind::Other
+    };
+    #[cfg(unix)]
+    let executable = kind == WorkspaceEntryKind::File && metadata.mode() & 0o111 != 0;
+    #[cfg(not(unix))]
+    let executable = false;
+    WorkspaceMetadata {
+        path,
+        kind,
+        size: if kind == WorkspaceEntryKind::File { metadata.len() } else { 0 },
+        executable,
+    }
 }
 
 fn protected_component(value: &str) -> bool {

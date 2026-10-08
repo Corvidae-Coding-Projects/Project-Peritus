@@ -83,7 +83,8 @@ impl RenderedOutput {
             .map(|entry| {
                 object(vec![
                     ("kind", string(status_kind(entry.kind()).to_owned())),
-                    ("path", string(entry.path().to_owned())),
+                    ("path", string(String::from_utf8_lossy(entry.path()).into_owned())),
+                    ("path_bytes_base64", string(STANDARD.encode(entry.path()))),
                 ])
             })
             .collect::<Result<Vec<_>, _>>()?;
@@ -92,7 +93,12 @@ impl RenderedOutput {
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
             ("entry_count", Ok(integer(usize_integer(value.entries().len())))),
-            ("head", string(value.head().to_string())),
+            (
+                "head",
+                value
+                    .head()
+                    .map_or_else(|| Ok(BoundedJson::null()), |head| string(head.to_string())),
+            ),
             (
                 "index_tree",
                 value

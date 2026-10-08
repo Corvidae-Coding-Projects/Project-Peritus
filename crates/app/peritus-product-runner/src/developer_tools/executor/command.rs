@@ -10,6 +10,7 @@ use crate::developer_tools::{
     command_runtime::StartCommand,
     effect::reject_destructive_command,
     path::{checked, tool},
+    receipt::NativeCommandOwner,
     wire::{bounded_u64, required_string, string},
 };
 
@@ -43,17 +44,30 @@ impl WorkspaceDeveloperTools {
             return self.exhausted_result(command.requested_timeout_seconds);
         }
         let unowned_before = self.ownership.unowned_files(&self.root);
-        let result = self.command_runtime()?.run(StartCommand {
-            program: &command.program,
-            arguments: &command.arguments,
-            cwd: &command.cwd,
-            timeout: command.timeout,
-            interactive: false,
-            rows: u16::try_from(DEFAULT_TERMINAL_ROWS).expect("bounded terminal rows"),
-            columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS).expect("bounded terminal columns"),
-            idempotency_key: call_id,
-            environment: self.resources.environment_bindings(),
-        });
+        let runtime = self
+            .command_runtime
+            .as_ref()
+            .ok_or_else(|| tool("writable tools have no command runtime"))?;
+        let result = {
+            let receipts = self
+                .receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?;
+            let mut register_owner =
+                |owner: NativeCommandOwner| receipts.bind_native_command_owner(call_id, owner);
+            runtime.run(StartCommand {
+                program: &command.program,
+                arguments: &command.arguments,
+                cwd: &command.cwd,
+                timeout: command.timeout,
+                interactive: false,
+                rows: u16::try_from(DEFAULT_TERMINAL_ROWS).expect("bounded terminal rows"),
+                columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS).expect("bounded terminal columns"),
+                idempotency_key: call_id,
+                environment: self.resources.environment_bindings(),
+                owner_registered: Some(&mut register_owner),
+            })
+        };
         self.ownership.record_command_creations(&self.root, &unowned_before);
         annotate_result(self, result?, &command)
     }
@@ -72,17 +86,30 @@ impl WorkspaceDeveloperTools {
         let columns =
             bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
         let unowned_before = self.ownership.unowned_files(&self.root);
-        let result = self.command_runtime()?.start(StartCommand {
-            program: &command.program,
-            arguments: &command.arguments,
-            cwd: &command.cwd,
-            timeout: command.timeout,
-            interactive,
-            rows: u16::try_from(rows).expect("bounded terminal rows"),
-            columns: u16::try_from(columns).expect("bounded terminal columns"),
-            idempotency_key: call_id,
-            environment: self.resources.environment_bindings(),
-        })?;
+        let runtime = self
+            .command_runtime
+            .as_ref()
+            .ok_or_else(|| tool("writable tools have no command runtime"))?;
+        let result = {
+            let receipts = self
+                .receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?;
+            let mut register_owner =
+                |owner: NativeCommandOwner| receipts.bind_native_command_owner(call_id, owner);
+            runtime.start(StartCommand {
+                program: &command.program,
+                arguments: &command.arguments,
+                cwd: &command.cwd,
+                timeout: command.timeout,
+                interactive,
+                rows: u16::try_from(rows).expect("bounded terminal rows"),
+                columns: u16::try_from(columns).expect("bounded terminal columns"),
+                idempotency_key: call_id,
+                environment: self.resources.environment_bindings(),
+                owner_registered: Some(&mut register_owner),
+            })?
+        };
         let result = annotate_result(self, result, &command)?;
         self.active_commands.started(arguments, &result, unowned_before)?;
         Ok(result)

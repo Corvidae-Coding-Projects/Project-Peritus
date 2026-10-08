@@ -192,6 +192,23 @@ pub fn try_reopen_fixture_at(
     ids: &Ids,
     transaction_root: &std::path::Path,
 ) -> Result<WorkspaceGateway, peritus_workspace::WorkspaceError> {
+    try_reopen_fixture_at_condition(persistence, ids, transaction_root, WorkspaceCondition::Clean)
+}
+
+pub fn try_reopen_fixture_with_condition(
+    persistence: &ReopenFixture,
+    ids: &Ids,
+    condition: WorkspaceCondition,
+) -> Result<WorkspaceGateway, peritus_workspace::WorkspaceError> {
+    try_reopen_fixture_at_condition(persistence, ids, &persistence.transaction_root, condition)
+}
+
+fn try_reopen_fixture_at_condition(
+    persistence: &ReopenFixture,
+    ids: &Ids,
+    transaction_root: &std::path::Path,
+    condition: WorkspaceCondition,
+) -> Result<WorkspaceGateway, peritus_workspace::WorkspaceError> {
     let repository = GitRepository::open(RepositoryOptions::new(&persistence.source_root))
         .expect("reopen repository");
     let worktree_manifest = WorktreeRegistrationManifest::decode(&persistence.worktree_manifest)
@@ -222,7 +239,7 @@ pub fn try_reopen_fixture_at(
             snapshot.tree(),
         ),
         ids.holder(),
-        WorkspaceCondition::Clean,
+        condition,
     )
     .expect("workspace state");
     let workspace = WritableWorkspace::open(WritableOpenRequest::new(

@@ -6,7 +6,7 @@ use peritus_journal::{
 };
 use peritus_policy::AuthorityInstant;
 use peritus_protocol::ActionIntentDto;
-use peritus_types::{Generation, RevisionNumber, RevisionTuple, SessionId};
+use peritus_types::{ActionId, Generation, RevisionNumber, RevisionTuple, SessionId};
 
 use crate::WorkspaceCallerBinding;
 
@@ -67,6 +67,12 @@ impl<'a> WorkspaceAuthorizationRequest<'a> {
     #[must_use]
     pub const fn caller_binding(&self) -> Option<&WorkspaceCallerBinding> {
         self.caller.as_ref()
+    }
+
+    /// Returns the lower C1 authorization action identifier.
+    #[must_use]
+    pub const fn action_id(&self) -> ActionId {
+        self.intent.action_id
     }
 
     pub(crate) const fn intent(&self) -> &ActionIntentDto {

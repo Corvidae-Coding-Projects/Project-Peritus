@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Remove workspace source/range ceilings and continue exact ranged reads and filesystem discovery/search through encoded-byte-sized pages (L007, L634, L635, L636).
+- Remove local-context archive limits and support absent aggregate artifact quotas while retaining referenced history and checked storage accounting (L057, L062, L065, L067).
+- Remove the discard-state size policy and recognize interrupted owned preparation without deleting foreign files (L148, L149).
+- Stream effect receipt frames without per-record or lifetime quotas, retain full results once, and reject unsupported receipt versions explicitly (L165, L167).
+- Bind command receipts to exact native owners, preserve receipt-linked live commands across observer replacement and startup recovery, reconcile terminal output before daemon control decisions, and require confirmed inactive ownership before acknowledging unknown effects (L166, L183).
+- Remove Git output and status quotas, preserve native status path bytes, represent unborn HEAD, and propagate index failures (L525, L527).
+- Retain patch preparation and terminal outcomes before cleanup, recover exact mutation handoff, and honor cancellation before the first target change (L552, L553, L554, L637).
 - Remove checkpoint capture file and aggregate byte quotas while retaining path safety (L003; Crosslink #104).
 - Remove patch file, byte, and operation quotas while retaining preimage checks and atomic application (L006; Crosslink #106).
 - Remove u16 checkpoint collection and index ceilings while preserving legacy identities and complete exclusion facts (L010; Crosslink #110).
@@ -483,7 +490,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
-- [L010] Checkpoint manifest count and text-field ceilings (#110)
 
 - Extend the frozen Terminal-Bench evidence with an emergent cross-component validation miss, a
   slow-source deadline recurrence, another pre-model large-inventory recurrence, and a fifth

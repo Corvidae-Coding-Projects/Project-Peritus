@@ -5,7 +5,8 @@ mod workspace;
 pub use journal::open as open_journal;
 pub use workspace::{
     artifact_store, authorized_patch, intent, mismatched_preimage_patch, receipts, reopen_fixture,
-    try_reopen_fixture, try_reopen_fixture_at, workspace_fixture,
+    try_reopen_fixture, try_reopen_fixture_at, try_reopen_fixture_with_condition,
+    workspace_fixture,
 };
 
 use std::fs;

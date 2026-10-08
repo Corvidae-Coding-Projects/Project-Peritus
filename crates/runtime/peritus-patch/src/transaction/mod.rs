@@ -18,9 +18,13 @@ use crate::{
     RollbackStatus,
 };
 
-pub use apply::apply_patch;
+pub use apply::{
+    apply_patch, apply_patch_with_completion, apply_patch_with_completion_and_cancellation,
+};
 pub use manifest::TransactionPhase;
-pub use recover::recover_transaction;
+pub use recover::{
+    cleanup_applied_transaction, recover_transaction, recover_transaction_with_completion,
+};
 
 pub fn validate_patch_manifest_capacity(patch: &PatchSet) -> Result<(), PatchError> {
     manifest::validate_patch_capacity(patch).map_err(|_| {
@@ -111,6 +115,28 @@ impl AppliedPatch {
     ) -> Self {
         let manifest_digest = peritus_codec::sha256(&installed_manifest);
         Self { identity, installed_manifest, manifest_digest, cleanup_pending }
+    }
+
+    /// Reconstructs an applied result from a retained installed manifest.
+    ///
+    /// # Errors
+    /// Rejects a manifest that is malformed, belongs to another patch, or is not installed.
+    pub fn from_installed_manifest(
+        identity: PatchIdentity,
+        installed_manifest: Vec<u8>,
+        cleanup_pending: bool,
+    ) -> Result<Self, PatchError> {
+        let manifest = manifest::Manifest::decode(&installed_manifest)?;
+        if manifest.identity != identity || manifest.phase != TransactionPhase::Installed {
+            return Err(PatchError::message(
+                ErrorCode::CorruptManifest,
+                RecoveryClass::FenceWorkspace,
+                PatchOperationContext::Recover,
+                RollbackStatus::Indeterminate,
+                "retained patch result is not an exact installed manifest",
+            ));
+        }
+        Ok(Self::new(identity, installed_manifest, cleanup_pending))
     }
 
     /// Returns the applied patch identity.

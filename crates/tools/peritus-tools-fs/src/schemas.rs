@@ -5,12 +5,14 @@ use peritus_tool_protocol::{BoundedJson, JsonLimits, Schema, SchemaProperty};
 use crate::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
 
 const PATH_MAX: u32 = 4_096;
-const CONTENT_MAX: u32 = 65_536;
+const INLINE_CONTENT_MAX: u32 = u32::MAX;
 
 pub fn discover_schema() -> Result<Schema, FsToolError> {
     object(vec![
-        property("maximum_depth", integer(1, 64)?, true)?,
-        property("maximum_entries", integer(1, 100_000)?, true)?,
+        property("continuation_offset", integer(0, i64::MAX)?, false)?,
+        property("maximum_depth", integer(1, i64::from(u16::MAX))?, true)?,
+        property("maximum_entries", integer(1, i64::from(u32::MAX))?, true)?,
+        property("path_offset", integer(0, i64::MAX)?, false)?,
         property("root", path()?, false)?,
     ])
 }
@@ -21,7 +23,8 @@ pub fn metadata_schema() -> Result<Schema, FsToolError> {
 
 pub fn read_schema() -> Result<Schema, FsToolError> {
     object(vec![
-        property("maximum_bytes", integer(1, 48 * 1_024)?, true)?,
+        property("maximum_bytes", integer(1, i64::MAX)?, true)?,
+        property("offset", integer(0, i64::MAX)?, false)?,
         property("path", path()?, true)?,
     ])
 }
@@ -29,12 +32,15 @@ pub fn read_schema() -> Result<Schema, FsToolError> {
 pub fn search_schema() -> Result<Schema, FsToolError> {
     object(vec![
         property("case_sensitive", Schema::boolean(), true)?,
+        property("continuation_offset", integer(0, i64::MAX)?, false)?,
         property("literal", Schema::string(1, 4_096).map_err(|_| schema_error())?, true)?,
-        property("maximum_depth", integer(1, 64)?, true)?,
-        property("maximum_entries", integer(1, 100_000)?, true)?,
-        property("maximum_file_bytes", integer(1, 8 * 1_024 * 1_024)?, true)?,
-        property("maximum_matches", integer(1, 10_000)?, true)?,
-        property("maximum_total_bytes", integer(1, 64 * 1_024 * 1_024)?, true)?,
+        property("match_field", enumeration(&["path", "preview"])?, false)?,
+        property("match_field_offset", integer(0, i64::MAX)?, false)?,
+        property("maximum_depth", integer(1, i64::from(u16::MAX))?, true)?,
+        property("maximum_file_bytes", integer(1, i64::MAX)?, true)?,
+        property("maximum_matches", integer(1, i64::from(u32::MAX))?, true)?,
+        property("omission_offset", integer(0, i64::MAX)?, false)?,
+        property("omission_path_offset", integer(0, i64::MAX)?, false)?,
         property("root", path()?, false)?,
     ])
 }
@@ -60,7 +66,12 @@ pub fn replace_schema() -> Result<Schema, FsToolError> {
 
 pub fn patch_schema() -> Result<Schema, FsToolError> {
     let edit = object(vec![
-        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, false)?,
+        property("artifact", artifact_reference_schema()?, false)?,
+        property(
+            "content",
+            Schema::string(0, INLINE_CONTENT_MAX).map_err(|_| schema_error())?,
+            false,
+        )?,
         property("content_encoding", content_encoding()?, false)?,
         property("line_endings", line_endings()?, false)?,
         property("mode", mode()?, false)?,
@@ -70,15 +81,20 @@ pub fn patch_schema() -> Result<Schema, FsToolError> {
     ])?;
     object(vec![property(
         "edits",
-        Schema::array(edit, 1, 1_024).map_err(|_| schema_error())?,
+        Schema::array(edit, 1, u32::MAX).map_err(|_| schema_error())?,
         true,
     )?])
 }
 
 fn final_file_schema(include_preimage: bool) -> Result<Schema, FsToolError> {
     let mut properties = vec![
-        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, true)?,
-        property("content_encoding", content_encoding()?, true)?,
+        property("artifact", artifact_reference_schema()?, false)?,
+        property(
+            "content",
+            Schema::string(0, INLINE_CONTENT_MAX).map_err(|_| schema_error())?,
+            false,
+        )?,
+        property("content_encoding", content_encoding()?, false)?,
         property("line_endings", line_endings()?, true)?,
         property("mode", mode()?, true)?,
         property("path", path()?, true)?,
@@ -92,8 +108,13 @@ fn final_file_schema(include_preimage: bool) -> Result<Schema, FsToolError> {
 
 fn replacement_schema() -> Result<Schema, FsToolError> {
     object(vec![
-        property("content", Schema::string(0, CONTENT_MAX).map_err(|_| schema_error())?, true)?,
-        property("content_encoding", content_encoding()?, true)?,
+        property("artifact", artifact_reference_schema()?, false)?,
+        property(
+            "content",
+            Schema::string(0, INLINE_CONTENT_MAX).map_err(|_| schema_error())?,
+            false,
+        )?,
+        property("content_encoding", content_encoding()?, false)?,
         property("line_endings", line_endings()?, true)?,
         property("mode", mode()?, true)?,
         property("path", path()?, true)?,
@@ -105,12 +126,27 @@ fn preimage_schema(allow_absent: bool) -> Result<Schema, FsToolError> {
     object(vec![
         property("digest", Schema::string(64, 64).map_err(|_| schema_error())?, false)?,
         property("mode", mode()?, false)?,
-        property("size", integer(0, 8 * 1_024 * 1_024)?, false)?,
+        property("size", integer(0, i64::MAX)?, false)?,
         property(
             "state",
             enumeration(if allow_absent { &["absent", "present"][..] } else { &["present"][..] })?,
             true,
         )?,
+    ])
+}
+
+fn artifact_reference_schema() -> Result<Schema, FsToolError> {
+    let provenance = object(vec![
+        property("action_id", Schema::string(32, 32).map_err(|_| schema_error())?, true)?,
+        property("prepared_digest", Schema::string(64, 64).map_err(|_| schema_error())?, true)?,
+    ])?;
+    object(vec![
+        property("completeness", enumeration(&["complete", "indeterminate", "truncated"])?, true)?,
+        property("digest", Schema::string(64, 64).map_err(|_| schema_error())?, true)?,
+        property("label", Schema::string(1, 16 * 1_024).map_err(|_| schema_error())?, true)?,
+        property("media_type", Schema::string(1, 16 * 1_024).map_err(|_| schema_error())?, true)?,
+        property("provenance", provenance, true)?,
+        property("size", integer(1, i64::MAX)?, true)?,
     ])
 }
 

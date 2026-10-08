@@ -51,6 +51,137 @@ fn artifact_contract(root: &std::path::Path) {
         .expect("pre-existing artifact verification contract");
 }
 
+async fn wait_for_owned_run_task(service: &ProductRunService, run_id: RunId) {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let finished = {
+                let tasks = service.inner.tasks.lock().await;
+                tasks
+                    .iter()
+                    .find(|(owner, _)| *owner == run_id)
+                    .expect("the daemon retains the exact run task")
+                    .1
+                    .is_finished()
+            };
+            if finished {
+                return;
+            }
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("daemon-owned task completion");
+}
+
+fn effect_receipt_frames(bytes: &[u8]) -> Vec<(usize, serde_json::Value)> {
+    let mut frames = Vec::new();
+    let mut offset = 0_usize;
+    while offset < bytes.len() {
+        let header_end = offset.checked_add(8).expect("receipt header end");
+        let mut length_bytes = [0_u8; 8];
+        length_bytes
+            .copy_from_slice(bytes.get(offset..header_end).expect("complete receipt header"));
+        let length =
+            usize::try_from(u64::from_le_bytes(length_bytes)).expect("receipt frame length");
+        let frame_end = header_end.checked_add(length).expect("receipt frame end");
+        let payload = bytes.get(header_end..frame_end).expect("complete receipt frame");
+        frames.push((frame_end, serde_json::from_slice(payload).expect("receipt JSON")));
+        offset = frame_end;
+    }
+    frames
+}
+
+fn recover_lost_native_command_observer(
+    service: &ProductRunService,
+    writer: &ScriptedProvider,
+    root: &std::path::Path,
+    run_id: RunId,
+) {
+    let requests_before_recovery = writer.requests.lock().expect("provider requests").len();
+    let run_hex = run_id.as_bytes().iter().fold(String::new(), |mut value, byte| {
+        use std::fmt::Write as _;
+        let _ = write!(value, "{byte:02x}");
+        value
+    });
+    let effects = service.inner.directory.join(format!("{run_hex}.effects.bin"));
+    let original_receipt_bytes = fs::read(&effects).expect("completed command ledger");
+    let original_frames = effect_receipt_frames(&original_receipt_bytes);
+    assert_eq!(original_frames.len(), 4, "one command has admission and terminal frames");
+    assert_eq!(original_frames[0].1["state"], "started");
+    assert!(original_frames[0].1["native_owner"].is_null());
+    assert_eq!(original_frames[1].1["state"], "started");
+    assert!(original_frames[1].1["native_owner"].is_object());
+    let retained_bytes = u64::try_from(original_frames[1].0).expect("retained ledger length");
+    let ledger = fs::OpenOptions::new().write(true).open(&effects).expect("open command ledger");
+    ledger.set_len(retained_bytes).expect("simulate lost terminal observer");
+    ledger.sync_data().expect("persist truncated command ledger");
+    drop(ledger);
+    let pending = peritus_product_runner::uncertain_effects(&effects)
+        .expect("inspect truncated command receipt");
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].state(), peritus_product_runner::UncertainEffectState::Started);
+    assert!(!pending[0].owner_inactive());
+
+    {
+        let mut records = service.inner.records.write().expect("records");
+        let record = records.get_mut(&run_id).expect("completed command run");
+        let completed = record.snapshot.clone();
+        record.snapshot = crate::product_run::snapshot::replace_snapshot(
+            &completed,
+            ProductRunPhase::RecoveryRequired,
+            "The terminal native command observer was lost",
+            completed.summary(),
+        )
+        .expect("recovery snapshot");
+        "The run was interrupted after its native command completed"
+            .clone_into(&mut record.interruption_cause);
+        crate::product_run::persistence::persist_record(&service.inner.directory, record)
+            .expect("persist recovery state");
+    }
+
+    let observations = service
+        .query_observations(ProductRunQuery::exact(run_id))
+        .expect("reconcile exact native command before retry");
+    assert!(
+        !service
+            .inner
+            .command_recoveries
+            .lock()
+            .expect("command recovery markers")
+            .contains(&run_id),
+        "the exact run recovery marker is released after projection"
+    );
+    let recovered = observations.first().expect("exact run observation").snapshot();
+    let operation = recovered.operation();
+    assert_eq!(recovered.phase(), ProductRunPhase::RecoveryRequired);
+    assert_eq!(operation.kind(), peritus_app_protocol::ProductRunOperationKind::Execution);
+    assert_eq!(operation.state(), peritus_app_protocol::ProductRunOperationState::RecoveryRequired);
+    assert!(operation.legal_controls().retry());
+    service
+        .ensure_control_legal(run_id, ProductRunControlAction::Retry)
+        .expect("daemon control path permits exact retry");
+    assert!(
+        peritus_product_runner::uncertain_effects(&effects)
+            .expect("recovered command receipt")
+            .is_empty(),
+        "the real terminal owner result completes the receipt"
+    );
+    let recovered_bytes = fs::read(&effects).expect("recovered command ledger");
+    let recovered_frames = effect_receipt_frames(&recovered_bytes);
+    assert_eq!(recovered_frames.len(), 4, "recovery appends only Applied and Completed");
+    let applied = &recovered_frames[recovered_frames.len() - 2].1;
+    assert_eq!(applied["state"], "applied");
+    assert!(applied["output"]["success"].as_bool().expect("terminal success"));
+    assert_eq!(applied["output"]["exit_code"], 0);
+    assert!(applied["owner_inactive"].as_bool().expect("inactive command owner"));
+    assert_eq!(recovered_frames.last().expect("completed recovery frame").1["state"], "completed");
+    assert_eq!(writer.requests.lock().expect("provider requests").len(), requests_before_recovery);
+    assert_eq!(
+        fs::read_to_string(root.join("command-result.txt")).expect("single command effect"),
+        "requested"
+    );
+}
+
 pub(super) fn folder_service(
     root: &std::path::Path,
     writer: &Arc<ScriptedProvider>,
@@ -254,6 +385,7 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
             .await
             .expect("start");
         let result = wait_for_terminal(&service, id).await;
+        wait_for_owned_run_task(&service, id).await;
         assert_eq!(result.phase(), ProductRunPhase::Complete, "{}", result.summary());
         let snapshot =
             service.query_interaction(ProductInteractionQuery::new(id)).expect("snapshot");
@@ -283,6 +415,8 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
             fs::read_to_string(root.path().join("command-result.txt")).expect("command effect"),
             "requested"
         );
+
+        recover_lost_native_command_observer(&service, &writer, root.path(), id);
         assert!(!root.path().join(".git").exists());
         service.shutdown(Duration::from_secs(5)).await;
     });

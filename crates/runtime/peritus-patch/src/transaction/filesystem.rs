@@ -27,8 +27,19 @@ pub(super) fn observe_target(
     operation: PatchOperationContext,
     rollback: RollbackStatus,
 ) -> Result<Observation, PatchError> {
+    observe_target_cancellable(workspace, path, operation, rollback, &|| false)
+}
+
+pub(super) fn observe_target_cancellable(
+    workspace: &Path,
+    path: &WorkspacePath,
+    operation: PatchOperationContext,
+    rollback: RollbackStatus,
+    cancelled: &dyn Fn() -> bool,
+) -> Result<Observation, PatchError> {
     let target = checked_target_path(workspace, path, operation, rollback)?;
-    observe_absolute(&target, operation, rollback).map_err(|error| error.at(path.clone()))
+    observe_absolute_cancellable(&target, operation, rollback, cancelled)
+        .map_err(|error| error.at(path.clone()))
 }
 
 pub(super) fn observe_absolute(
@@ -36,6 +47,16 @@ pub(super) fn observe_absolute(
     operation: PatchOperationContext,
     rollback: RollbackStatus,
 ) -> Result<Observation, PatchError> {
+    observe_absolute_cancellable(path, operation, rollback, &|| false)
+}
+
+pub(super) fn observe_absolute_cancellable(
+    path: &Path,
+    operation: PatchOperationContext,
+    rollback: RollbackStatus,
+    cancelled: &dyn Fn() -> bool,
+) -> Result<Observation, PatchError> {
+    check_cancelled(cancelled)?;
     let metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Observation::Absent),
@@ -53,6 +74,7 @@ pub(super) fn observe_absolute(
     let mut size = 0_u64;
     let mut buffer = vec![0_u8; 64 * 1024];
     loop {
+        check_cancelled(cancelled)?;
         let count =
             file.read(&mut buffer).map_err(|error| PatchError::io(operation, rollback, error))?;
         if count == 0 {
@@ -81,6 +103,20 @@ pub(super) fn observe_absolute(
         size,
         mode: mode_from_metadata(&after),
     }))
+}
+
+fn check_cancelled(cancelled: &dyn Fn() -> bool) -> Result<(), PatchError> {
+    if cancelled() {
+        Err(PatchError::message(
+            ErrorCode::Cancelled,
+            RecoveryClass::Retry,
+            PatchOperationContext::Cancellation,
+            RollbackStatus::NotRequired,
+            "cancellation was observed before workspace mutation",
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 fn same_file_version(before: &Metadata, after: &Metadata) -> bool {

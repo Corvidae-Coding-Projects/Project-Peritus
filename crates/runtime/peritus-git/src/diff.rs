@@ -9,6 +9,8 @@ use crate::{
     command::CommandAccess,
 };
 
+const MAX_DIFF_PATH_BYTES: usize = 4_096;
+
 /// Maximum structured paths in one diff observation.
 pub const MAX_DIFF_ENTRIES: u32 = 100_000;
 /// Maximum retained textual patch bytes.
@@ -217,7 +219,7 @@ fn parse_names(bytes: &[u8], maximum: u32) -> Result<Vec<DiffEntry>, GitError> {
         let path = std::str::from_utf8(pair[1])
             .map_err(|_| protocol("Git diff path is not UTF-8"))?
             .to_owned();
-        if path.is_empty() || path.len() > crate::status::MAX_STATUS_PATH_BYTES {
+        if path.is_empty() || path.len() > MAX_DIFF_PATH_BYTES {
             return Err(protocol("Git diff path is empty or exceeds its bound"));
         }
         entries.push(DiffEntry { path, change });

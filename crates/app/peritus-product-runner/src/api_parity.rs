@@ -4,7 +4,7 @@ use std::{path::PathBuf, time::Duration};
 
 use peritus_process::ProcessStore;
 use peritus_run_settlement::CandidateCheckpoint;
-use peritus_types::{RevisionTuple, RunId};
+use peritus_types::{ActionId, ProcessId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
@@ -27,6 +27,12 @@ fn constructors(
     direct_process_store: ProcessStore,
     local_context: LocalContextConfig,
 ) {
+    let _: Result<Vec<(RunId, ActionId, ProcessId)>, ProductRunnerError> =
+        CommandRuntime::receipt_linked_live_owners(
+            std::path::Path::new("effects.bin"),
+            run_id,
+            &process_store,
+        );
     let _: Result<CommandRuntime, ProductRunnerError> =
         CommandRuntime::open(state_root, workspace_root, run_id, process_store)
             .and_then(|runtime| runtime.with_local_context(local_context));
@@ -46,6 +52,8 @@ fn command_effects(
     command: &PreviewCommand,
     launch: &PreviewLaunch,
 ) {
+    let _: Result<(), ProductRunnerError> =
+        runtime.reconcile_effect_receipts(std::path::Path::new("effects.bin"));
     let _: Result<FolderPatchAuthorityPlan, ProductRunnerError> =
         runtime.plan_folder_patch_authority(request);
     let _: RevisionTuple = plan.revision();
@@ -135,6 +143,7 @@ fn uncertain_effect(effect: &UncertainEffect, path: &std::path::Path) {
     let _: &str = effect.tool();
     let _: UncertainEffectState = effect.state();
     let _: Option<u64> = effect.requirements_revision();
+    let _: bool = effect.owner_inactive();
     let _: Result<Vec<UncertainEffect>, ProductRunnerError> = uncertain_effects(path);
     let _: Result<(), ProductRunnerError> = acknowledge_uncertain_effect(path, effect.identity());
 }

@@ -315,8 +315,8 @@ scaffolding-only substitutions in the acceptance criteria.
   illegal transition, idempotency conflict, journal, artifact, evidence, migration, recovery, and
   corruption. Display/debug output is redaction-safe and never includes model/trace/artifact bytes.
 - **E2-R081:** `lib.rs` only declares modules and re-exports intentional APIs. Public fields remain
-  private. Constructors validate complete invariants. Production modules are cohesive, normally
-  below 400 lines and always below the 700-line hard limit without a reviewed exception. Generic
+  private. Constructors validate complete invariants. Production modules are cohesive and stay
+  at or below the 500-line limit without a reviewed exception. Generic
   `utils`, `helpers`, `common`, `misc`, and `manager` modules are forbidden.
 - **E2-R082:** No production `TODO`, `FIXME`, `todo!`, `unimplemented!`, fake adapter, unchecked
   constructor, broad trusted wrapper, `assume`, `admit`, axiom, `external_body`, authority bypass,

@@ -227,7 +227,11 @@ impl ArtifactStore {
     ///
     /// Returns overflow or quota exhaustion for an invalid observation.
     pub fn quota_snapshot(&self, reserved_bytes: u64) -> Result<QuotaSnapshot, ArtifactStoreError> {
-        QuotaSnapshot::new(self.catalog.used_bytes()?, reserved_bytes, self.config.quota_bytes())
+        let used_bytes = self.catalog.used_bytes()?;
+        self.config.quota_bytes().map_or_else(
+            || QuotaSnapshot::without_limit(used_bytes, reserved_bytes),
+            |limit| QuotaSnapshot::new(used_bytes, reserved_bytes, limit),
+        )
     }
 
     /// Plans a quota reservation against durable artifact accounting.

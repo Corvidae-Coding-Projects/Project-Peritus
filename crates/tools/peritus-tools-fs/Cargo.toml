@@ -20,6 +20,7 @@ peritus-tool-protocol = { version = "=0.0.5", path = "../peritus-tool-protocol" 
 peritus-tool-router = { version = "=0.0.5", path = "../peritus-tool-router" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspace" }
+sha2.workspace = true
 vstd.workspace = true
 
 [dev-dependencies]

@@ -115,7 +115,7 @@ impl ProductRunService {
                 FileReadSelection::bytes(start, end)
             }
             peritus_app_protocol::WorkbenchFileRange::Lines { first, last } => {
-                FileReadSelection::lines(first, last)
+                FileReadSelection::lines(u64::from(first), u64::from(last))
             }
         }
         .map_err(|_| app_error(Code::MalformedFrame))?;

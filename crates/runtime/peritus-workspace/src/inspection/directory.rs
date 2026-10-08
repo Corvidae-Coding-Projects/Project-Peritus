@@ -1,0 +1,206 @@
+//! Bounded, deterministic paging of direct workspace directory entries.
+
+use std::collections::BTreeMap;
+
+use cap_std::{fs::Metadata as CapMetadata, time::SystemTime};
+use peritus_patch::WorkspacePath;
+
+use crate::{ErrorCode, FolderIdentity, ReadOnlyWorkspace, RecoveryClass, WorkspaceError};
+
+use super::{DirectoryEntry, inspect_io, invalid, metadata_from_cap};
+
+/// Exact opaque continuation for one sorted direct-directory page.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DirectoryCursor {
+    directory: Option<WorkspacePath>,
+    after: WorkspacePath,
+    version: DirectoryVersion,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct DirectoryVersion {
+    length: u64,
+    modified: SystemTime,
+    #[cfg(unix)]
+    device: u64,
+    #[cfg(unix)]
+    inode: u64,
+    #[cfg(unix)]
+    modified_seconds: i64,
+    #[cfg(unix)]
+    modified_nanoseconds: i64,
+    #[cfg(unix)]
+    changed_seconds: i64,
+    #[cfg(unix)]
+    changed_nanoseconds: i64,
+    #[cfg(windows)]
+    device: u64,
+    #[cfg(windows)]
+    inode: u64,
+    #[cfg(windows)]
+    attributes: u32,
+    #[cfg(windows)]
+    creation_time: u64,
+    #[cfg(windows)]
+    last_write_time: u64,
+}
+
+/// One bounded page of direct children in canonical path order.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DirectoryPage {
+    entries: Vec<DirectoryEntry>,
+    next: Option<DirectoryCursor>,
+}
+
+impl DirectoryPage {
+    /// Returns the sorted direct children retained in this page.
+    #[must_use]
+    pub fn entries(&self) -> &[DirectoryEntry] {
+        &self.entries
+    }
+
+    /// Returns a cursor for the next page, or `None` when the directory is exhausted.
+    #[must_use]
+    pub const fn next_cursor(&self) -> Option<&DirectoryCursor> {
+        self.next.as_ref()
+    }
+
+    /// Consumes the page and returns its bounded children and continuation.
+    #[must_use]
+    pub fn into_parts(self) -> (Vec<DirectoryEntry>, Option<DirectoryCursor>) {
+        (self.entries, self.next)
+    }
+}
+
+const DIRECTORY_PAGE_SIZE: usize = 128;
+
+impl ReadOnlyWorkspace {
+    /// Reads one canonical child page without retaining a complete wide directory listing.
+    ///
+    /// Each page selects the next 128 paths after its opaque cursor from a checked no-follow
+    /// directory scan. Directory and workspace identities are rechecked across pages; callers
+    /// must resume only with the returned cursor.
+    ///
+    /// # Errors
+    /// Returns a typed failure for invalid cursors, unsafe entries, or directory/workspace drift.
+    pub fn list_directory_page_cancellable(
+        &self,
+        path: Option<&WorkspacePath>,
+        cursor: Option<&DirectoryCursor>,
+        mut cancelled: impl FnMut() -> bool,
+    ) -> Result<Option<DirectoryPage>, WorkspaceError> {
+        if cursor.is_some_and(|cursor| cursor.directory.as_ref() != path) {
+            return Err(invalid("directory cursor belongs to another directory"));
+        }
+        let directory = self.file_inspection().open_directory(path)?;
+        let before = directory.dir_metadata().map_err(|_| inspect_io())?;
+        if !before.is_dir() || before.is_symlink() {
+            return Err(invalid("workspace inspection target is not a no-follow directory"));
+        }
+        let version = directory_version(&before)?;
+        if cursor.is_some_and(|cursor| cursor.version != version) {
+            return Err(changed_directory());
+        }
+        let root_identity =
+            FolderIdentity::observe(self.root()).map_err(|_| changed_directory())?;
+        if &root_identity != self.file_inspection().identity() {
+            return Err(changed_directory());
+        }
+
+        let after = cursor.map(|cursor| cursor.after.as_str());
+        let mut selected = BTreeMap::<String, DirectoryEntry>::new();
+        let retained_limit = DIRECTORY_PAGE_SIZE + 1;
+        for entry in directory.entries().map_err(|_| inspect_io())? {
+            if cancelled() {
+                return Ok(None);
+            }
+            let entry = entry.map_err(|_| inspect_io())?;
+            let name = entry
+                .file_name()
+                .into_string()
+                .map_err(|_| invalid("workspace contains a non-UTF-8 entry name"))?;
+            if super::protected_component(&name) {
+                continue;
+            }
+            let text = path.map_or_else(|| name.clone(), |parent| format!("{parent}/{name}"));
+            let child_path = WorkspacePath::new(text)
+                .map_err(|_| invalid("workspace child path is not representable"))?;
+            if after.is_some_and(|after| child_path.as_str() <= after) {
+                continue;
+            }
+            let metadata = entry.metadata().map_err(|_| inspect_io())?;
+            let child = DirectoryEntry(metadata_from_cap(child_path.clone(), &metadata));
+            selected.insert(child_path.as_str().to_owned(), child);
+            if selected.len() > retained_limit
+                && let Some(last) = selected.keys().next_back().cloned()
+            {
+                selected.remove(&last);
+            }
+        }
+        if cancelled() {
+            return Ok(None);
+        }
+        let after_metadata = directory.dir_metadata().map_err(|_| inspect_io())?;
+        let current_directory = self.file_inspection().open_directory(path)?;
+        let current_metadata = current_directory.dir_metadata().map_err(|_| inspect_io())?;
+        if directory_version(&after_metadata)? != version
+            || directory_version(&current_metadata)? != version
+            || FolderIdentity::observe(self.root()).map_err(|_| changed_directory())?
+                != root_identity
+        {
+            return Err(changed_directory());
+        }
+        let has_more = selected.len() > DIRECTORY_PAGE_SIZE;
+        if has_more && let Some(last) = selected.keys().next_back().cloned() {
+            selected.remove(&last);
+        }
+        let entries = selected.into_values().collect::<Vec<_>>();
+        let next = if has_more {
+            let after = entries
+                .last()
+                .map(|entry| entry.metadata().path().clone())
+                .ok_or_else(changed_directory)?;
+            Some(DirectoryCursor { directory: path.cloned(), after, version })
+        } else {
+            None
+        };
+        Ok(Some(DirectoryPage { entries, next }))
+    }
+}
+
+fn directory_version(metadata: &CapMetadata) -> Result<DirectoryVersion, WorkspaceError> {
+    Ok(DirectoryVersion {
+        length: metadata.len(),
+        modified: metadata.modified().map_err(|_| inspect_io())?,
+        #[cfg(unix)]
+        device: cap_std::fs::MetadataExt::dev(metadata),
+        #[cfg(unix)]
+        inode: cap_std::fs::MetadataExt::ino(metadata),
+        #[cfg(unix)]
+        modified_seconds: cap_std::fs::MetadataExt::mtime(metadata),
+        #[cfg(unix)]
+        modified_nanoseconds: cap_std::fs::MetadataExt::mtime_nsec(metadata),
+        #[cfg(unix)]
+        changed_seconds: cap_std::fs::MetadataExt::ctime(metadata),
+        #[cfg(unix)]
+        changed_nanoseconds: cap_std::fs::MetadataExt::ctime_nsec(metadata),
+        #[cfg(windows)]
+        device: cap_fs_ext::MetadataExt::dev(metadata),
+        #[cfg(windows)]
+        inode: cap_fs_ext::MetadataExt::ino(metadata),
+        #[cfg(windows)]
+        attributes: cap_std::fs::MetadataExt::file_attributes(metadata),
+        #[cfg(windows)]
+        creation_time: cap_std::fs::MetadataExt::creation_time(metadata),
+        #[cfg(windows)]
+        last_write_time: cap_std::fs::MetadataExt::last_write_time(metadata),
+    })
+}
+
+const fn changed_directory() -> WorkspaceError {
+    super::inspect_error(
+        ErrorCode::Indeterminate,
+        RecoveryClass::Reobserve,
+        "workspace directory changed during paged inspection",
+    )
+}

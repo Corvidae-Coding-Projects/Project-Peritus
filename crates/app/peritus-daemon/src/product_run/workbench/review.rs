@@ -133,7 +133,7 @@ pub(super) async fn resume_feedback(
             workspace,
         )?;
         let record = records.get_mut(&run).ok_or(ProductRunServiceError::NotFound)?;
-        if !super::super::operation::may_start_execution(&service.inner.directory, record)? {
+        if !super::super::operation::may_start_execution(service, record)? {
             return Err(ProductRunServiceError::InvalidState);
         }
         let mut options = record.interaction.clone();
@@ -274,7 +274,7 @@ fn current_targets(
     {
         return Err(ControlError::ScopeMismatch.into());
     }
-    if !super::super::operation::may_start_execution(&service.inner.directory, record)
+    if !super::super::operation::may_start_execution(service, record)
         .map_err(|_| Error::Corrupt("operation projection unavailable"))?
     {
         return Err(ControlError::InvalidInput.into());

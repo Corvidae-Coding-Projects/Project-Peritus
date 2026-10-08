@@ -24,6 +24,7 @@ pub(super) fn publish_spools(
     let mut result =
         process_store.terminal_result(process_id).map_err(WaitAndPublishError::owner)?;
     if result.artifact_publication_complete() {
+        process_store.release_control(process_id);
         return Ok(result);
     }
     let pending: Vec<_> = result
@@ -48,6 +49,9 @@ pub(super) fn publish_spools(
         result = process_store
             .complete_artifact_publication(process_id)
             .map_err(|error| WaitAndPublishError::publication(result.clone(), error))?;
+    }
+    if result.artifact_publication_complete() {
+        process_store.release_control(process_id);
     }
     Ok(result)
 }

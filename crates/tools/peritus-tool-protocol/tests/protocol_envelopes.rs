@@ -176,17 +176,16 @@ fn canonical_json_rejects_duplicate_keys_at_every_depth() {
 }
 
 #[test]
-fn json_limit_construction_can_only_narrow_production_ceilings() {
+fn json_limit_construction_accepts_explicit_nonzero_capacities() {
     assert!(JsonLimits::new(1024, 8, 64, 256).is_ok());
-    assert!(
-        JsonLimits::new(
-            JsonLimits::PRODUCTION.max_bytes() + 1,
-            JsonLimits::PRODUCTION.max_depth(),
-            JsonLimits::PRODUCTION.max_members(),
-            JsonLimits::PRODUCTION.max_string_bytes(),
-        )
-        .is_err(),
-    );
+    let expanded = JsonLimits::new(
+        JsonLimits::PRODUCTION.max_bytes() + 1,
+        JsonLimits::PRODUCTION.max_depth() + 1,
+        JsonLimits::PRODUCTION.max_members() + 1,
+        JsonLimits::PRODUCTION.max_string_bytes() + 1,
+    )
+    .expect("explicit wider output capacity");
+    assert_eq!(expanded.max_bytes(), JsonLimits::PRODUCTION.max_bytes() + 1);
 }
 
 #[test]

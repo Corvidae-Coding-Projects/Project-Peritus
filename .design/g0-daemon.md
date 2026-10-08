@@ -273,7 +273,7 @@ commit-before-effect ordering and invites synchronous locks across asynchronous 
   responsible subsystem, and redacted source context. Public diagnostics never depend on prose
   matching.
 - **G0-R057 — Decomposition.** `lib.rs` is a documented facade and `main.rs` only parses/constructs.
-  Production modules normally remain below 400 lines and never exceed 700 without a reviewed
+  Production modules never exceed 500 lines without a reviewed
   architecture exception. Generic `manager`, `helper`, or `utils` god modules are prohibited.
 - **G0-R058 — Production evidence.** Focused tests, A2 daemon conformance, protocol/schema fixture
   drift, migration upgrades, platform IPC tests, crash matrices, strict Clippy/rustdoc, formal

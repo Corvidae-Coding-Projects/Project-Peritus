@@ -221,8 +221,8 @@ an acceptance decision.
   no model-to-effect authority, bounded counters, capability/exposure gating facts, stable tool
   result ordering, and completion eligibility.
 - **D0-R091:** Public structs shall keep fields private and expose checked constructors/accessors.
-- **D0-R092:** The crate root shall remain below 80 lines. Ordinary source files shall target fewer
-  than 400 lines and must remain below the repository hard limit. Tests shall be split by behavior.
+- **D0-R092:** The crate root shall remain below 80 lines. Ordinary source files shall remain
+  at or below the repository limit of 500 lines. Tests shall be split by behavior.
 - **D0-R093:** D0 shall add formal obligations, proof-impact registration, architecture ownership,
   ordinary-API checks, compatibility fixtures, conformance coverage, crate/root documentation, and
   a detailed changelog entry.

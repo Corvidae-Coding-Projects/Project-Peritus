@@ -30,7 +30,8 @@ use tempfile::TempDir;
 
 use authority_support::{
     Ids, artifact_store, authorized_patch, commit_authority, intent, mismatched_preimage_patch,
-    open_journal, receipts, reopen_fixture, try_reopen_fixture, workspace_fixture,
+    open_journal, receipts, reopen_fixture, try_reopen_fixture, try_reopen_fixture_with_condition,
+    workspace_fixture,
 };
 use tool_binding::tool_binding;
 #[path = "authorized_gateway/reconciliation.rs"]
@@ -239,6 +240,10 @@ fn durable_action_marker_rejects_receipt_replay_after_full_reopen() {
         gateway.apply_patch(&request, failed_patch.clone()).err().expect("preimage mismatch");
     assert_eq!(first.code(), peritus_workspace::ErrorCode::Patch);
     assert_eq!(gateway.state().condition(), WorkspaceCondition::Clean);
+    assert!(matches!(
+        gateway.recover_mutation(&request, failed_patch.clone()).expect("prove no transaction"),
+        peritus_workspace::MutationRecoveryOutcome::NotAttempted
+    ));
     drop(gateway.into_workspace());
 
     let mut reopened = reopen_fixture(&persistence, &ids);
@@ -249,6 +254,69 @@ fn durable_action_marker_rejects_receipt_replay_after_full_reopen() {
         std::fs::read(reopened.state().binding().root().join("README.md")).expect("baseline file"),
         b"baseline\n"
     );
+}
+
+#[test]
+fn prestart_patch_cancellation_persists_rolled_back_replay() {
+    let temp = TempDir::new().expect("temporary root");
+    let ids = Ids::new();
+    let fixture = workspace_fixture(&temp, &ids, "cancel-prepared-patch");
+    let persistence = fixture.persistence.clone();
+    let mut gateway = fixture.gateway;
+    let patch = fixture.patch;
+    let action = intent(&ids, patch_authorization_payload(&patch));
+    let committed = receipts(&temp, &ids, &action);
+    let request = exact_request(&action, &committed, &ids);
+
+    let prepared = gateway.prepare_patch(&request, patch.clone()).expect("prepare patch");
+    gateway.cancel_prepared_patch(prepared).expect("cancel before transaction");
+    assert_eq!(gateway.state().condition(), WorkspaceCondition::Clean);
+    assert!(!gateway.state().binding().root().join("authorized.txt").exists());
+    assert!(matches!(
+        gateway.recover_mutation(&request, patch.clone()).expect("replay cancellation"),
+        peritus_workspace::MutationRecoveryOutcome::RolledBack
+    ));
+    drop(gateway.into_workspace());
+
+    let mut reopened = reopen_fixture(&persistence, &ids);
+    assert!(matches!(
+        reopened.recover_mutation(&request, patch).expect("replay cancellation after reopen"),
+        peritus_workspace::MutationRecoveryOutcome::RolledBack
+    ));
+}
+
+#[test]
+fn applied_patch_result_replays_from_the_action_marker_after_reopen() {
+    let temp = TempDir::new().expect("temporary root");
+    let ids = Ids::new();
+    let fixture = workspace_fixture(&temp, &ids, "mutation-recovery");
+    let persistence = fixture.persistence.clone();
+    let mut gateway = fixture.gateway;
+    let patch = fixture.patch;
+    let action = intent(&ids, patch_authorization_payload(&patch));
+    let committed = receipts(&temp, &ids, &action);
+    let request = exact_request(&action, &committed, &ids);
+    let identity = patch.identity();
+    let _outcome = gateway.apply_patch(&request, patch.clone()).expect("apply patch");
+    let recovered =
+        gateway.recover_mutation(&request, patch.clone()).expect("replay retained mutation result");
+    assert!(matches!(
+        recovered,
+        peritus_workspace::MutationRecoveryOutcome::AlreadyApplied(outcome)
+            if outcome.patch_identity() == identity
+    ));
+    drop(gateway.into_workspace());
+
+    let mut reopened =
+        try_reopen_fixture_with_condition(&persistence, &ids, WorkspaceCondition::Dirty)
+            .expect("reopen workspace with its mutation result dirty");
+    let recovered =
+        reopened.recover_mutation(&request, patch).expect("replay action marker after reopen");
+    assert!(matches!(
+        recovered,
+        peritus_workspace::MutationRecoveryOutcome::AlreadyApplied(outcome)
+            if outcome.patch_identity() == identity
+    ));
 }
 
 #[test]

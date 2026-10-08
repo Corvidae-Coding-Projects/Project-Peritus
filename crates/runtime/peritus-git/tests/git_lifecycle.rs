@@ -109,13 +109,13 @@ fn parses_tracked_untracked_ignored_and_renamed_status() {
     checked_git(worktree.root(), &["add", "--", ".gitignore", "renamed.txt", "tracked.txt"]);
     let status = repository.status(&worktree).expect("status");
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "renamed.txt" && matches!(entry.kind(), StatusKind::Renamed { .. })
+        entry.path() == b"renamed.txt" && matches!(entry.kind(), StatusKind::Renamed { .. })
     }));
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "untracked.txt" && matches!(entry.kind(), StatusKind::Untracked)
+        entry.path() == b"untracked.txt" && matches!(entry.kind(), StatusKind::Untracked)
     }));
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "ignored.log" && matches!(entry.kind(), StatusKind::Ignored)
+        entry.path() == b"ignored.log" && matches!(entry.kind(), StatusKind::Ignored)
     }));
     repository
         .remove_worktree(&worktree, RemovalPolicy::ForceRegistered)
@@ -148,7 +148,7 @@ fn parses_real_unmerged_index_as_indeterminate_reconciliation() {
     let status = repository.status(&worktree).expect("conflicted porcelain status");
     assert!(status.index_tree().is_none());
     assert!(status.entries().iter().any(|entry| {
-        entry.path() == "tracked.txt" && matches!(entry.kind(), StatusKind::Unmerged { .. })
+        entry.path() == b"tracked.txt" && matches!(entry.kind(), StatusKind::Unmerged { .. })
     }));
     let reconciled = repository
         .reconcile(ReconcileExpectation::new(&worktree, baseline.commit(), baseline.tree()))

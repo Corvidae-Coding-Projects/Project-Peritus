@@ -39,6 +39,13 @@ pub(super) fn component_inventory(
             match metadata.kind() {
                 WorkspaceEntryKind::File => files.push(metadata.path().clone()),
                 WorkspaceEntryKind::Directory => pending.push(metadata.path().clone()),
+                WorkspaceEntryKind::Other => {
+                    return Err(ManifestError::at(
+                        ManifestErrorKind::UnsafeEntry,
+                        metadata.path().as_str(),
+                        "component inventory contains a symlink or special entry",
+                    ));
+                }
             }
         }
     }

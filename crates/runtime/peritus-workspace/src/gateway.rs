@@ -122,7 +122,7 @@ impl AuthorizationTarget {
         Self { workspace_id, resource_id, environment_id, generation, revision, lease_holder }
     }
 
-    const fn from_workspace(state: &WorkspaceState) -> Self {
+    pub(crate) const fn from_workspace(state: &WorkspaceState) -> Self {
         Self::new(
             state.binding().workspace_id(),
             state.binding().resource_id(),

@@ -3,7 +3,7 @@
 use std::{
     collections::BTreeMap,
     fs::{self, OpenOptions},
-    io::{ErrorKind, Write},
+    io::{ErrorKind, Seek as _, SeekFrom, Write},
     path::{Path, PathBuf},
 };
 
@@ -15,11 +15,26 @@ use crate::{
     ErrorCode, RecoveryClass, WorkspaceError, WorkspaceOperation, WorkspaceState, WritableWorkspace,
 };
 
-const MAGIC: &[u8] = b"PERITUS-WORKSPACE-ACTION-V1\0";
-const MARKER_BYTES: usize = MAGIC.len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
+const MAGIC_V1: &[u8] = b"PERITUS-WORKSPACE-ACTION-V1\0";
+const MAGIC_V2: &[u8] = b"PERITUS-WORKSPACE-ACTION-V2\0";
+const HEADER_BYTES_V1: usize = MAGIC_V1.len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
+const HEADER_BYTES_V2: usize = MAGIC_V2.len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
 const MAX_ACTIONS_PER_REVISION: usize = 1_024;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ActionTerminalRecord {
+    Applied { patch_identity: peritus_patch::PatchIdentity, installed_manifest: Vec<u8> },
+    RolledBack,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ActionRecord {
+    pub(crate) action_digest: Sha256Digest,
+    pub(crate) terminal: Option<ActionTerminalRecord>,
+    pub(crate) legacy: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ActionConsumptionBinding {
     workspace_id: WorkspaceId,
     resource_id: ResourceId,
@@ -39,7 +54,7 @@ impl ActionConsumptionBinding {
         Self { workspace_id, resource_id, environment_id, generation, revision }
     }
 
-    const fn from_state(state: &WorkspaceState) -> Self {
+    pub(crate) const fn from_state(state: &WorkspaceState) -> Self {
         Self::new(
             state.binding().workspace_id(),
             state.binding().resource_id(),
@@ -114,12 +129,12 @@ pub fn restore(
         }
         let bytes = fs::read(entry.path())
             .map_err(|_| consumption_error("action marker cannot be read"))?;
-        let (action_id, action_digest) = decode_marker(binding, &bytes)?;
+        let (action_id, record, _) = decode_record(binding, &bytes)?;
         let expected_name = marker_name(action_id);
         if entry.file_name() != std::ffi::OsStr::new(&expected_name) {
             return Err(consumption_error("action marker name differs from its identity"));
         }
-        if actions.insert(action_id, action_digest).is_some() {
+        if actions.insert(action_id, record.action_digest).is_some() {
             return Err(consumption_error("action ledger contains a duplicate identity"));
         }
     }
@@ -144,7 +159,7 @@ pub fn commit(
         Err(error) if error.kind() == ErrorKind::AlreadyExists => return Err(reused_error()),
         Err(_) => return Err(consumption_error("action marker cannot be created exclusively")),
     };
-    let bytes = encode_marker(binding, action_id, action_digest);
+    let bytes = encode_header(binding, action_id, action_digest);
     marker
         .write_all(&bytes)
         .and_then(|()| marker.sync_all())
@@ -152,6 +167,61 @@ pub fn commit(
     crate::filesystem::sync_directory(&directory)
         .map_err(|_| consumption_error("action ledger directory cannot be synchronized"))?;
     Ok(())
+}
+
+pub fn action_record(
+    transaction_root: &Path,
+    binding: ActionConsumptionBinding,
+    action_id: ActionId,
+) -> Result<Option<ActionRecord>, WorkspaceError> {
+    let path = revision_directory(transaction_root, binding).join(marker_name(action_id));
+    match fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err(consumption_error("action marker cannot be inspected")),
+        Ok(_) => {}
+    }
+    let bytes = read_action_bytes(&path)?;
+    let (actual_id, record, _) = decode_record(binding, &bytes)?;
+    if actual_id != action_id {
+        return Err(consumption_error("action marker differs from its file identity"));
+    }
+    Ok(Some(record))
+}
+
+pub fn complete_action(
+    transaction_root: &Path,
+    binding: ActionConsumptionBinding,
+    action_id: ActionId,
+    action_digest: Sha256Digest,
+    terminal: &ActionTerminalRecord,
+) -> Result<(), WorkspaceError> {
+    let directory = revision_directory(transaction_root, binding);
+    let path = directory.join(marker_name(action_id));
+    let bytes = read_action_bytes(&path)?;
+    let (actual_id, record, offset) = decode_record(binding, &bytes)?;
+    if actual_id != action_id || record.action_digest != action_digest {
+        return Err(consumption_error("action completion differs from its consumed authorization"));
+    }
+    if let Some(existing) = record.terminal {
+        return if &existing == terminal {
+            Ok(())
+        } else {
+            Err(consumption_error("action already has a conflicting terminal result"))
+        };
+    }
+    let frame = encode_terminal(terminal)?;
+    let mut marker = OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .map_err(|_| consumption_error("action marker cannot be opened for completion"))?;
+    marker
+        .set_len(offset)
+        .and_then(|()| marker.seek(SeekFrom::Start(offset)))
+        .and_then(|_| marker.write_all(&frame))
+        .and_then(|()| marker.sync_all())
+        .map_err(|_| consumption_error("action completion cannot be synchronized"))?;
+    crate::filesystem::sync_directory(&directory)
+        .map_err(|_| consumption_error("action ledger directory cannot be synchronized"))
 }
 
 pub fn contains_action(
@@ -201,13 +271,13 @@ fn marker_name(action_id: ActionId) -> String {
     result
 }
 
-fn encode_marker(
+fn encode_header(
     binding: ActionConsumptionBinding,
     action_id: ActionId,
     action_digest: Sha256Digest,
 ) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(MARKER_BYTES);
-    bytes.extend_from_slice(MAGIC);
+    let mut bytes = Vec::with_capacity(HEADER_BYTES_V2);
+    bytes.extend_from_slice(MAGIC_V2);
     bytes.extend_from_slice(binding.workspace_id.as_bytes());
     bytes.extend_from_slice(binding.resource_id.as_bytes());
     bytes.extend_from_slice(binding.environment_id.as_bytes());
@@ -218,14 +288,21 @@ fn encode_marker(
     bytes
 }
 
-fn decode_marker(
+fn decode_record(
     binding: ActionConsumptionBinding,
     bytes: &[u8],
-) -> Result<(ActionId, Sha256Digest), WorkspaceError> {
-    if bytes.len() != MARKER_BYTES || !bytes.starts_with(MAGIC) {
-        return Err(consumption_error("action marker has invalid canonical bytes"));
+) -> Result<(ActionId, ActionRecord, u64), WorkspaceError> {
+    let (magic, legacy, header_bytes) = if bytes.starts_with(MAGIC_V2) {
+        (MAGIC_V2, false, HEADER_BYTES_V2)
+    } else if bytes.starts_with(MAGIC_V1) {
+        (MAGIC_V1, true, HEADER_BYTES_V1)
+    } else {
+        return Err(consumption_error("action marker has an unsupported format"));
+    };
+    if bytes.len() < header_bytes {
+        return Err(consumption_error("action marker header is incomplete"));
     }
-    let mut offset = MAGIC.len();
+    let mut offset = magic.len();
     let workspace = take_array::<16>(bytes, &mut offset);
     let resource = take_array::<16>(bytes, &mut offset);
     let environment = take_array::<16>(bytes, &mut offset);
@@ -243,7 +320,112 @@ fn decode_marker(
     }
     let action_id = ActionId::new(action)
         .map_err(|_| consumption_error("action marker contains an invalid action identity"))?;
-    Ok((action_id, Sha256Digest::new(digest)))
+    let mut record =
+        ActionRecord { action_digest: Sha256Digest::new(digest), terminal: None, legacy };
+    let mut consumed = header_bytes;
+    if let Some((terminal, frame_bytes)) = decode_terminal(&bytes[header_bytes..])? {
+        record.terminal = Some(terminal);
+        consumed = consumed
+            .checked_add(frame_bytes)
+            .ok_or_else(|| consumption_error("action marker length overflowed"))?;
+        if decode_terminal(&bytes[consumed..])?.is_some() {
+            return Err(consumption_error("action marker contains multiple terminal results"));
+        }
+    }
+    let consumed = u64::try_from(consumed)
+        .map_err(|_| consumption_error("action marker exceeds this platform"))?;
+    Ok((action_id, record, consumed))
+}
+
+fn read_action_bytes(path: &Path) -> Result<Vec<u8>, WorkspaceError> {
+    let metadata = fs::symlink_metadata(path)
+        .map_err(|_| consumption_error("action marker cannot be inspected"))?;
+    if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+        return Err(consumption_error("action marker is not a regular file"));
+    }
+    fs::read(path).map_err(|_| consumption_error("action marker cannot be read"))
+}
+
+fn encode_terminal(terminal: &ActionTerminalRecord) -> Result<Vec<u8>, WorkspaceError> {
+    let mut payload = Vec::new();
+    match terminal {
+        ActionTerminalRecord::Applied { patch_identity, installed_manifest } => {
+            payload.push(1);
+            payload.extend_from_slice(patch_identity.as_bytes());
+            let digest = peritus_codec::sha256(installed_manifest);
+            payload.extend_from_slice(digest.as_bytes());
+            let length = u64::try_from(installed_manifest.len())
+                .map_err(|_| consumption_error("installed patch manifest exceeds this platform"))?;
+            payload.extend_from_slice(&length.to_le_bytes());
+            payload.extend_from_slice(installed_manifest);
+        }
+        ActionTerminalRecord::RolledBack => payload.push(2),
+    }
+    let length = u64::try_from(payload.len())
+        .map_err(|_| consumption_error("action result exceeds this platform"))?;
+    let mut frame = Vec::with_capacity(payload.len().saturating_add(40));
+    frame.extend_from_slice(&length.to_le_bytes());
+    frame.extend_from_slice(&payload);
+    frame.extend_from_slice(peritus_codec::sha256(&payload).as_bytes());
+    Ok(frame)
+}
+
+fn decode_terminal(bytes: &[u8]) -> Result<Option<(ActionTerminalRecord, usize)>, WorkspaceError> {
+    if bytes.len() < 8 {
+        return Ok(None);
+    }
+    let length = u64::from_le_bytes(
+        bytes[..8]
+            .try_into()
+            .map_err(|_| consumption_error("action result length is malformed"))?,
+    );
+    let length = usize::try_from(length)
+        .map_err(|_| consumption_error("action result exceeds this platform"))?;
+    let payload_end = 8_usize
+        .checked_add(length)
+        .ok_or_else(|| consumption_error("action result length overflowed"))?;
+    let frame_end = payload_end
+        .checked_add(32)
+        .ok_or_else(|| consumption_error("action result length overflowed"))?;
+    if frame_end > bytes.len() {
+        return Ok(None);
+    }
+    let payload = &bytes[8..payload_end];
+    if peritus_codec::sha256(payload).as_bytes() != &bytes[payload_end..frame_end] {
+        return Err(consumption_error("action result checksum does not match"));
+    }
+    let terminal = match payload.first().copied() {
+        Some(1) if payload.len() >= 73 => {
+            let identity = peritus_patch::PatchIdentity::from_digest(Sha256Digest::new(
+                payload[1..33]
+                    .try_into()
+                    .map_err(|_| consumption_error("patch identity is malformed"))?,
+            ));
+            let manifest_digest = &payload[33..65];
+            let manifest_length = u64::from_le_bytes(
+                payload[65..73]
+                    .try_into()
+                    .map_err(|_| consumption_error("patch manifest length is malformed"))?,
+            );
+            let manifest_length = usize::try_from(manifest_length)
+                .map_err(|_| consumption_error("patch manifest exceeds this platform"))?;
+            let end = 73_usize
+                .checked_add(manifest_length)
+                .ok_or_else(|| consumption_error("patch manifest length overflowed"))?;
+            if end != payload.len()
+                || peritus_codec::sha256(&payload[73..end]).as_bytes() != manifest_digest
+            {
+                return Err(consumption_error("installed patch manifest is malformed"));
+            }
+            ActionTerminalRecord::Applied {
+                patch_identity: identity,
+                installed_manifest: payload[73..end].to_vec(),
+            }
+        }
+        Some(2) if payload.len() == 1 => ActionTerminalRecord::RolledBack,
+        _ => return Err(consumption_error("action result state is unsupported")),
+    };
+    Ok(Some((terminal, frame_end)))
 }
 
 fn take_array<const N: usize>(bytes: &[u8], offset: &mut usize) -> [u8; N] {
