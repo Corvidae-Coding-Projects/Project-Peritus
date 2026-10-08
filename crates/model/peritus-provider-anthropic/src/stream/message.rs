@@ -49,6 +49,7 @@ pub(super) fn delta(
     digest: peritus_types::Sha256Digest,
     event_id: Option<&str>,
 ) -> Result<(), ProviderCoreError> {
+    let limits = state.limits();
     if !matches!(state.phase, Phase::Content) || !state.blocks.is_empty() {
         return Err(invalid("Anthropic message_delta preceded content completion"));
     }
@@ -56,8 +57,8 @@ pub(super) fn delta(
     update_usage(state, value.get("usage"))?;
     state.phase = Phase::MessageDelta;
     state.emit(usage_event(&state.usage, UsageScope::Final), digest, event_id)?;
-    state.emit(provider_event("anthropic.stop_metadata", value)?, digest, event_id)?;
-    state.emit(ModelEvent::Finish(finish_reason(stop)?), digest, event_id)
+    state.emit(provider_event("anthropic.stop_metadata", value, limits)?, digest, event_id)?;
+    state.emit(ModelEvent::Finish(finish_reason(stop, limits)?), digest, event_id)
 }
 
 pub(super) fn stop(

@@ -4,8 +4,8 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use peritus_model_protocol::{
     CachePolicy, Capability, ContentBlock, MediaInput, MediaKind, MediaReferenceKind, ModelRequest,
-    ParallelToolPolicy, ReasoningEffort, ReasoningPolicy, Role, SchemaDialect, StructuredOutput,
-    SummaryPolicy, ToolChoice,
+    ParallelToolPolicy, ProtocolLimits, ReasoningEffort, ReasoningPolicy, Role, SchemaDialect,
+    StructuredOutput, SummaryPolicy, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -22,6 +22,7 @@ pub fn encode(
     config: &AnthropicConfig,
 ) -> Result<Vec<u8>, ProviderCoreError> {
     validate(request, config)?;
+    let limits = request.protocol_limits();
     let mut system = Vec::new();
     let mut messages = Vec::new();
     for message in request.messages() {
@@ -36,7 +37,7 @@ pub fn encode(
                 content: message
                     .content()
                     .iter()
-                    .map(|block| content_block(block, config))
+                    .map(|block| content_block(block, config, limits))
                     .collect::<Result<Vec<_>, _>>()?,
             }),
         }
@@ -82,6 +83,7 @@ pub(crate) fn validate(
     config: &AnthropicConfig,
 ) -> Result<(), ProviderCoreError> {
     validate_controls(request)?;
+    let limits = request.protocol_limits();
     let mut conversational_message = false;
     for message in request.messages() {
         match message.role() {
@@ -94,7 +96,7 @@ pub(crate) fn validate(
                 let _ = message_role(role)?;
                 conversational_message = true;
                 for block in message.content() {
-                    validate_content_block(block, config)?;
+                    validate_content_block(block, config, limits)?;
                 }
             }
         }
@@ -154,6 +156,7 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
 fn validate_content_block(
     block: &ContentBlock,
     config: &AnthropicConfig,
+    limits: ProtocolLimits,
 ) -> Result<(), ProviderCoreError> {
     match block {
         ContentBlock::Image(media)
@@ -172,7 +175,7 @@ fn validate_content_block(
             }
             Ok(())
         }
-        _ => content_block(block, config).map(drop),
+        _ => content_block(block, config, limits).map(drop),
     }
 }
 
@@ -221,6 +224,7 @@ const fn message_role(role: Role) -> Result<&'static str, ProviderCoreError> {
 fn content_block(
     block: &ContentBlock,
     config: &AnthropicConfig,
+    limits: ProtocolLimits,
 ) -> Result<Value, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => Ok(wire_object([
@@ -242,7 +246,7 @@ fn content_block(
             ("content", wire_string(&result.output().to_wire_string())),
             ("is_error", Value::Bool(result.is_error())),
         ])),
-        ContentBlock::Reasoning(replay) => reasoning_replay(replay),
+        ContentBlock::Reasoning(replay) => reasoning_replay(replay, limits),
         ContentBlock::ProviderExtension(_) => {
             Err(invalid("Anthropic request provider extensions are not profile-authorized"))
         }
@@ -290,14 +294,13 @@ fn media_block(
 
 fn reasoning_replay(
     replay: &peritus_model_protocol::ReasoningReplay,
+    limits: ProtocolLimits,
 ) -> Result<Value, ProviderCoreError> {
     let text = core::str::from_utf8(replay.opaque_for_wire())
         .map_err(|_| invalid("Anthropic reasoning replay state is not UTF-8"))?;
     let canonical = peritus_model_protocol::CanonicalJson::parse(
         text,
-        peritus_model_protocol::JsonBounds::value(
-            peritus_model_protocol::ProtocolLimits::PRODUCTION,
-        ),
+        peritus_model_protocol::JsonBounds::value(limits),
     )
     .map_err(|_| invalid("Anthropic reasoning replay state is malformed or unbounded"))?;
     let value = json_value(canonical.canonical_bytes())?;

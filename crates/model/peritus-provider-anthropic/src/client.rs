@@ -66,6 +66,7 @@ impl AnthropicClient {
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
             self.validate_request(&request)?;
+            let protocol_limits = request.protocol_limits();
             let body = crate::request::encode(&request, &self.config)?;
             let endpoint = self.config.operation_endpoint()?;
             let started = Instant::now();
@@ -113,8 +114,10 @@ impl AnthropicClient {
                     Err(_error) => {
                         let failure =
                             ambiguous_transport(self.config.profile().provider().clone())?;
-                        let stream =
-                            AnthropicStream::terminal(ModelEvent::ResponseFailed(failure))?;
+                        let stream = AnthropicStream::terminal(
+                            ModelEvent::ResponseFailed(failure),
+                            protocol_limits,
+                        )?;
                         return Ok(OwnedModelStream::new(stream, cancellation));
                     }
                 };
@@ -126,14 +129,18 @@ impl AnthropicClient {
                             false,
                             "anthropic.http.content_type",
                         )?;
-                        let stream =
-                            AnthropicStream::terminal(ModelEvent::ResponseFailed(failure))?;
+                        let stream = AnthropicStream::terminal(
+                            ModelEvent::ResponseFailed(failure),
+                            protocol_limits,
+                        )?;
                         return Ok(OwnedModelStream::new(stream, cancellation));
                     }
-                    let stream = AnthropicStream::new(
+                    let stream = AnthropicStream::with_limits(
                         response,
                         self.config.profile().provider().clone(),
                         self.config.framing_limits(),
+                        protocol_limits,
+                        self.config.http_limits().max_response_body_bytes(),
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
@@ -166,7 +173,10 @@ impl AnthropicClient {
                 }
                 let plan = self.config.retry_policy().plan(observation)?;
                 if plan.action() != RetryAction::RetryFresh {
-                    let stream = AnthropicStream::terminal(ModelEvent::ResponseFailed(failure))?;
+                    let stream = AnthropicStream::terminal(
+                        ModelEvent::ResponseFailed(failure),
+                        protocol_limits,
+                    )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
                 wait_for_backoff(plan, &cancellation).await?;

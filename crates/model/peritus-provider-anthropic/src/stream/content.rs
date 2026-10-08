@@ -7,7 +7,7 @@ use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
 
 use super::state::{ActiveBlock, NormalizeState, Phase};
-use super::value::{invalid, item_id, provider_event, replay_fragment, required_str, required_u32};
+use super::value::{ReplayKind, invalid, item_id, provider_event, required_str, required_u32};
 
 pub(super) fn start(
     state: &mut NormalizeState,
@@ -15,6 +15,7 @@ pub(super) fn start(
     digest: peritus_types::Sha256Digest,
     event_id: Option<&str>,
 ) -> Result<(), ProviderCoreError> {
+    let limits = state.limits();
     let index = required_u32(value, "/index")?;
     if !matches!(state.phase, Phase::Content)
         || index != state.next_block
@@ -39,7 +40,7 @@ pub(super) fn start(
             if let Some(text) = value.pointer("/content_block/text").and_then(Value::as_str)
                 && !text.is_empty()
             {
-                state.emit(text_delta(item.clone(), text)?, digest, event_id)?;
+                state.emit(text_delta(item.clone(), text, limits)?, digest, event_id)?;
             }
             ActiveBlock::Text { item_id: item }
         }
@@ -81,7 +82,7 @@ pub(super) fn start(
             if let Some(thinking) = value.pointer("/content_block/thinking").and_then(Value::as_str)
                 && !thinking.is_empty()
             {
-                state.emit(reasoning_delta(item.clone(), thinking)?, digest, event_id)?;
+                state.emit(reasoning_delta(item.clone(), thinking, limits)?, digest, event_id)?;
             }
             ActiveBlock::Thinking { item_id: item, signature: false }
         }
@@ -92,8 +93,13 @@ pub(super) fn start(
                 digest,
                 event_id,
             )?;
-            let bytes = replay_fragment("redacted_thinking", "data", data)?;
-            state.emit(replay_delta(item.clone(), bytes)?, digest, event_id)?;
+            state.defer_replay(
+                item.clone(),
+                ReplayKind::RedactedThinking,
+                data,
+                digest,
+                event_id,
+            )?;
             ActiveBlock::Redacted { item_id: item }
         }
         _ => return Err(invalid("Anthropic emitted an unknown correctness-critical block type")),
@@ -111,6 +117,7 @@ pub(super) fn delta(
     digest: peritus_types::Sha256Digest,
     event_id: Option<&str>,
 ) -> Result<(), ProviderCoreError> {
+    let limits = state.limits();
     let index = required_u32(value, "/index")?;
     if !matches!(state.phase, Phase::Content) {
         return Err(invalid("Anthropic content delta is outside the content phase"));
@@ -122,34 +129,45 @@ pub(super) fn delta(
         .ok_or_else(|| invalid("Anthropic content delta targets no open block"))?;
     let event = match (&mut block, delta_type) {
         (ActiveBlock::Text { item_id }, "text_delta") => {
-            text_delta(item_id.clone(), required_str(value, "/delta/text")?)?
+            Some(text_delta(item_id.clone(), required_str(value, "/delta/text")?, limits)?)
         }
         (ActiveBlock::Text { .. }, "citations_delta") => {
-            provider_event("anthropic.citation", value)?
+            Some(provider_event("anthropic.citation", value, limits)?)
         }
         (ActiveBlock::Tool { arguments, .. }, "input_json_delta") => {
             let partial = required_str(value, "/delta/partial_json")?.as_bytes();
             if partial.is_empty() {
                 return Err(invalid("Anthropic tool argument fragment is empty"));
             }
-            arguments.append(partial, ProtocolLimits::PRODUCTION)?;
-            ModelEvent::Heartbeat
+            arguments.append(partial, limits)?;
+            Some(ModelEvent::Heartbeat)
         }
         (ActiveBlock::Thinking { item_id, .. }, "thinking_delta") => {
-            reasoning_delta(item_id.clone(), required_str(value, "/delta/thinking")?)?
+            Some(reasoning_delta(
+                item_id.clone(),
+                required_str(value, "/delta/thinking")?,
+                limits,
+            )?)
         }
         (ActiveBlock::Thinking { item_id, signature }, "signature_delta") => {
             if *signature {
                 return Err(invalid("Anthropic thinking block emitted multiple signatures"));
             }
             *signature = true;
-            let bytes =
-                replay_fragment("thinking", "signature", required_str(value, "/delta/signature")?)?;
-            replay_delta(item_id.clone(), bytes)?
+            state.defer_replay(
+                item_id.clone(),
+                ReplayKind::ThinkingSignature,
+                required_str(value, "/delta/signature")?,
+                digest,
+                event_id,
+            )?;
+            None
         }
         _ => return Err(invalid("Anthropic content delta contradicts its open block")),
     };
-    state.emit(event, digest, event_id)?;
+    if let Some(event) = event {
+        state.emit(event, digest, event_id)?;
+    }
     state.blocks.insert(index, block);
     Ok(())
 }
@@ -160,6 +178,7 @@ pub(super) fn stop(
     digest: peritus_types::Sha256Digest,
     event_id: Option<&str>,
 ) -> Result<(), ProviderCoreError> {
+    let limits = state.limits();
     let index = required_u32(value, "/index")?;
     if !matches!(state.phase, Phase::Content) {
         return Err(invalid("Anthropic content stop is outside the content phase"));
@@ -177,9 +196,9 @@ pub(super) fn stop(
         }
         ActiveBlock::Tool { item_id, call_id, mut arguments } => {
             if arguments.as_bytes().is_empty() {
-                arguments.append(b"{}", ProtocolLimits::PRODUCTION)?;
+                arguments.append(b"{}", limits)?;
             }
-            for event in arguments.complete(&call_id, ProtocolLimits::PRODUCTION)? {
+            for event in arguments.complete(&call_id, limits)? {
                 state.emit(event, digest, event_id)?;
             }
             item_id
@@ -191,29 +210,28 @@ pub(super) fn stop(
 fn text_delta(
     item_id: peritus_model_protocol::ItemId,
     text: &str,
+    limits: ProtocolLimits,
 ) -> Result<ModelEvent, ProviderCoreError> {
-    Ok(ModelEvent::TextDelta { item_id, fragment: fragment(text.as_bytes())? })
+    Ok(ModelEvent::TextDelta { item_id, fragment: fragment(text.as_bytes(), limits)? })
 }
 
 fn reasoning_delta(
     item_id: peritus_model_protocol::ItemId,
     text: &str,
+    limits: ProtocolLimits,
 ) -> Result<ModelEvent, ProviderCoreError> {
-    Ok(ModelEvent::ReasoningSummaryDelta { item_id, fragment: fragment(text.as_bytes())? })
-}
-
-fn replay_delta(
-    item_id: peritus_model_protocol::ItemId,
-    bytes: Vec<u8>,
-) -> Result<ModelEvent, ProviderCoreError> {
-    Ok(ModelEvent::ReasoningReplayDelta {
+    Ok(ModelEvent::ReasoningSummaryDelta {
         item_id,
-        fragment: StreamFragment::new(bytes, ProtocolLimits::PRODUCTION)
-            .map_err(|_| invalid("Anthropic reasoning replay fragment is invalid"))?,
+        fragment: fragment(text.as_bytes(), limits)?,
     })
 }
 
-fn fragment(bytes: &[u8]) -> Result<StreamFragment, ProviderCoreError> {
-    StreamFragment::new(bytes.to_vec(), ProtocolLimits::PRODUCTION)
+fn fragment(bytes: &[u8], limits: ProtocolLimits) -> Result<StreamFragment, ProviderCoreError> {
+    let mut owned = Vec::new();
+    owned
+        .try_reserve_exact(bytes.len())
+        .map_err(|_| invalid("Anthropic content fragment capacity is unavailable"))?;
+    owned.extend_from_slice(bytes);
+    StreamFragment::new(owned, limits)
         .map_err(|_| invalid("Anthropic content fragment is empty or exceeds bounds"))
 }

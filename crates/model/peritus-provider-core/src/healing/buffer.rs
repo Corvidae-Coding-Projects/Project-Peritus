@@ -45,6 +45,8 @@ impl ToolArgumentBuffer {
         {
             return Err(invalid());
         }
+        self.bytes.try_reserve(bytes.len()).map_err(|_| invalid())?;
+        self.ends.try_reserve(1).map_err(|_| invalid())?;
         self.bytes.extend_from_slice(bytes);
         self.ends.push(self.bytes.len());
         Ok(())
@@ -64,9 +66,13 @@ impl ToolArgumentBuffer {
             .is_ok_and(|value| value.is_object())
         {
             let mut start = 0;
-            let mut events = Vec::with_capacity(self.ends.len());
+            let mut events = Vec::new();
+            events.try_reserve_exact(self.ends.len()).map_err(|_| invalid())?;
             for end in &self.ends {
-                let fragment = StreamFragment::new(self.bytes[start..*end].to_vec(), limits)
+                let mut bytes = Vec::new();
+                bytes.try_reserve_exact(*end - start).map_err(|_| invalid())?;
+                bytes.extend_from_slice(&self.bytes[start..*end]);
+                let fragment = StreamFragment::new(bytes, limits)
                     .map_err(|_| invalid())?;
                 events.push(ModelEvent::ToolArgumentDelta { call_id: call_id.clone(), fragment });
                 start = *end;

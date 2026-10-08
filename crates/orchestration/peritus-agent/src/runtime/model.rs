@@ -3,9 +3,9 @@
 use core::fmt;
 
 use peritus_model_protocol::{
-    EventEnvelope, ModelFailure, ProtocolError, ProtocolLimits, ReducedItem, ReducerTransition,
-    RequestFingerprint, ResponseId, ResponseReducer, TerminalOutcome, UsageCounters,
-    encode_event_envelope,
+    EventEnvelope, ModelFailure, ProtocolError, ProtocolErrorKind, ProtocolLimits, ReducedItem,
+    ReducerTransition, RequestFingerprint, ResponseId, ResponseReducer, TerminalOutcome,
+    UsageCounters, encode_event_envelope,
 };
 use peritus_provider_core::{
     CancellationToken, ModelProvider, OwnedModelStream, ProviderCoreError,
@@ -80,6 +80,21 @@ impl From<ProtocolError> for ModelDriveError {
     }
 }
 
+fn exact_protocol_limits(
+    request: &peritus_model_protocol::ModelRequest,
+    reducer_limits: ProtocolLimits,
+) -> Result<ProtocolLimits, ModelDriveError> {
+    let request_limits = request.protocol_limits();
+    if reducer_limits != request_limits {
+        return Err(ModelDriveError::Protocol(ProtocolError::at(
+            ProtocolErrorKind::InvalidLimit,
+            "model_session.limits",
+            "request, stream, durable codec, and reducer limits must match",
+        )));
+    }
+    Ok(request_limits)
+}
+
 /// One owned provider response and its C5 normalized response reducer.
 ///
 /// `pull_one` retains an envelope without applying it. The caller must first commit that exact
@@ -108,6 +123,7 @@ impl ModelSession {
         limits: ProtocolLimits,
         cancellation: CancellationToken,
     ) -> Result<Self, ModelDriveError> {
+        let limits = exact_protocol_limits(&request, limits)?;
         let fingerprint = request.fingerprint()?;
         let reducer = ResponseReducer::new(request.provider().clone(), limits);
         let stream = provider.start(request, cancellation).await?;
@@ -134,6 +150,7 @@ impl ModelSession {
         if prefix.is_empty() {
             return Err(ModelDriveError::InvalidContinuation);
         }
+        let limits = exact_protocol_limits(&request, limits)?;
         let fingerprint = request.fingerprint()?;
         let mut reducer = ResponseReducer::new(request.provider().clone(), limits);
         for envelope in prefix {
@@ -272,6 +289,7 @@ impl ModelSession {
         self.reducer.usage_high_water()
     }
 }
+
 
 impl fmt::Debug for ModelSession {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
