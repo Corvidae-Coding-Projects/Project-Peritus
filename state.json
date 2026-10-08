@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4037,
-        "tip_oid": "1eee34f96ae64d528b62ea7148e8c9d878592cd7",
-        "prefix_sha256": "7cb278898fc68a859ec3efcfa3856a1052bee33a0c990281f072c8a98d14312d"
+        "sequence": 4038,
+        "tip_oid": "6e0648212699303f63208274e5cba414d0c617ca",
+        "prefix_sha256": "4196d9292c63d078cbc7a5a7e022a00de261ac6d9c940ca7142d0a79a53bb9a3"
       },
       "NWAR": {
         "sequence": 39,
@@ -40300,12 +40300,13 @@
       "display_id": 677,
       "title": "[L622] Admitted causal history across revisions cannot be represented by the current portable bundle policy",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L622.\n\n- Evidence: `crates/state/peritus-evidence/src/causality.rs:35-67`; `src/bundle/plan.rs:94-119,206-238`; `src/freshness.rs:35-76`; `tests/admission.rs:137-176`; `tests/freshness.rs:27-89` in the same crate.\n- Behavior: Admission requires causal parents to exist and have earlier journal positions; it does not require their revision to equal the child's. Bundle planning requires all records to be current against one supplied revision, every causal parent to be included, and all included records to share the same exact revision tuple. Explicit invalidation is durable and dominates drift; no elapsed-time TTL appears in this freshness implementation.\n- Consequence: A valid current record citing an older-revision parent has no successful bundle selection: omitting the parent breaks ancestry, while including it breaks currentness/revision equality. This is a source-derived history/export incompatibility, not proof that the installed run hit this path. The ancestry test only uses one revision.\n- Repair direction: Distinguish historical causal provenance from a present-tense authority assertion. Preserve and export historical ancestors with their original bindings while checking current authority only where required. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.312354044Z",
-      "updated_at": "2026-10-08T04:03:02.295390502Z",
+      "updated_at": "2026-10-08T04:04:43.941821011Z",
+      "closed_at": "2026-10-08T04:04:43.939061208Z",
       "labels": [
         "daily-driving-limiter"
       ],
