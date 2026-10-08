@@ -267,30 +267,36 @@ impl PluginHost {
             }
         };
         validate_grant(capability_name, &grant)?;
-        let _permit = instance.quotas.reserve()?;
         let deadline_millis = min_optional_millis(
             instance.quotas.limits().invocation_millis,
             grant.deadline_millis(),
         );
-        let context = InvocationContext {
-            session_id: subject.session_id().to_owned(),
-            actor_id: subject.actor_id().to_owned(),
-            role: InvocationGrant::role(),
-            granted_capabilities: grant.granted_capabilities().to_vec(),
-            authority_generation: subject.authority_generation(),
+        let context = InvocationContext::new(
+            subject.session_id(),
+            subject.actor_id(),
+            InvocationGrant::role(),
+            grant.granted_capabilities().to_vec(),
+            subject.authority_generation(),
             deadline_millis,
-        };
+        )
+        .map_err(plugin_protocol_error)?;
         let request = PluginRequestEnvelope {
             protocol_version: instance.protocol_version,
             request_id,
             request: HostRequest::Invoke { capability: capability_name.to_owned(), input, context },
         };
         let timeout = deadline_millis.map(Duration::from_millis);
-        let response = instance.connection.exchange(request, timeout, cancellation).await;
+        let mut permit = instance.quotas.reserve()?;
+        let response = instance
+            .connection
+            .exchange_admitted(request, timeout, cancellation, &mut permit)
+            .await;
         let response = match response {
             Ok(response) => response,
             Err(error) => {
-                *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                if permit.is_admitted() || error.class() == HostFailureClass::Infrastructure {
+                    *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                }
                 return Err(error);
             }
         };

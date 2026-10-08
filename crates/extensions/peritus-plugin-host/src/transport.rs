@@ -14,7 +14,9 @@ use tokio::{
     sync::Mutex,
 };
 
-use crate::{HostCancellation, HostError, HostFailureClass, RecoveryDisposition};
+use crate::{
+    HostCancellation, HostError, HostFailureClass, RecoveryDisposition, quota::QuotaPermit,
+};
 
 #[derive(Clone, Debug)]
 pub enum LaunchPlan {
@@ -106,11 +108,31 @@ impl PluginConnection {
         timeout: Option<Duration>,
         cancellation: &HostCancellation,
     ) -> Result<PluginResponseEnvelope, HostError> {
+        self.exchange_inner(request, timeout, cancellation, None).await
+    }
+
+    pub(crate) async fn exchange_admitted(
+        &self,
+        request: PluginRequestEnvelope,
+        timeout: Option<Duration>,
+        cancellation: &HostCancellation,
+        permit: &mut QuotaPermit<'_>,
+    ) -> Result<PluginResponseEnvelope, HostError> {
+        self.exchange_inner(request, timeout, cancellation, Some(permit)).await
+    }
+
+    async fn exchange_inner(
+        &self,
+        request: PluginRequestEnvelope,
+        timeout: Option<Duration>,
+        cancellation: &HostCancellation,
+        permit: Option<&mut QuotaPermit<'_>>,
+    ) -> Result<PluginResponseEnvelope, HostError> {
         let _transaction = self.transaction.lock().await;
         if cancellation.is_cancelled() {
             return Err(cancelled());
         }
-        self.write(&request).await?;
+        self.write_inner(&request, permit).await?;
         let response = match self.wait_for_response(timeout, cancellation).await {
             ResponseWait::Cancelled => {
                 let cancel = PluginRequestEnvelope {
@@ -189,6 +211,14 @@ impl PluginConnection {
     }
 
     async fn write(&self, request: &PluginRequestEnvelope) -> Result<(), HostError> {
+        self.write_inner(request, None).await
+    }
+
+    async fn write_inner(
+        &self,
+        request: &PluginRequestEnvelope,
+        mut permit: Option<&mut QuotaPermit<'_>>,
+    ) -> Result<(), HostError> {
         let frame = encode_frame(request, self.request_policy).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
@@ -199,7 +229,26 @@ impl PluginConnection {
             )
         })?;
         let mut stdin = self.stdin.lock().await;
-        stdin.write_all(&frame).await.map_err(|error| io_error("write plugin request", error))?;
+        let written = stdin
+            .write(&frame)
+            .await
+            .map_err(|error| io_error("write plugin request", error))?;
+        if written == 0 {
+            return Err(io_error(
+                "write plugin request",
+                std::io::Error::new(
+                    std::io::ErrorKind::WriteZero,
+                    "plugin request transport accepted no bytes",
+                ),
+            ));
+        }
+        if let Some(permit) = permit.as_mut() {
+            permit.admit();
+        }
+        stdin
+            .write_all(&frame[written..])
+            .await
+            .map_err(|error| io_error("write plugin request", error))?;
         stdin.flush().await.map_err(|error| io_error("flush plugin request", error))
     }
 
