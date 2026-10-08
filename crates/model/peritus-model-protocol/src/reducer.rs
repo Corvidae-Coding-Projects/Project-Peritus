@@ -150,6 +150,8 @@ struct ItemAssembly {
     index: u32,
     kind: ItemKind,
     content: Vec<u8>,
+    structured_progress_revision: u64,
+    structured_progress: Vec<u8>,
     replay: Vec<u8>,
     call: Option<ToolAssembly>,
     complete: bool,

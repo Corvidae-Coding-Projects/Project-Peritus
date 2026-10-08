@@ -112,6 +112,15 @@ pub enum ModelEvent {
         /// Ordered bytes, possibly splitting UTF-8.
         fragment: StreamFragment,
     },
+    /// Untrusted structured-output progress observed before complete JSON validation.
+    StructuredOutputProgress {
+        /// Target structured-output item.
+        item_id: ItemId,
+        /// Monotonic per-item progress revision, beginning at one.
+        revision: u64,
+        /// Exact provider fragment, retained for progress and audit only.
+        fragment: StreamFragment,
+    },
     /// Visible reasoning-summary bytes.
     ReasoningSummaryDelta {
         /// Target reasoning item.
@@ -187,17 +196,17 @@ pub enum ModelEvent {
 impl ModelEvent {
     fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
         match self {
-            Self::TextDelta { fragment, .. }
-            | Self::ReasoningSummaryDelta { fragment, .. }
+            Self::TextDelta { fragment, .. } | Self::ReasoningSummaryDelta { fragment, .. }
             | Self::ReasoningReplayDelta { fragment, .. }
             | Self::RefusalDelta { fragment, .. }
             | Self::ToolArgumentDelta { fragment, .. } => fragment.validate_under(limits),
-            Self::ToolArgumentProgress { revision, fragment, .. } => {
+            Self::StructuredOutputProgress { revision, fragment, .. }
+            | Self::ToolArgumentProgress { revision, fragment, .. } => {
                 if *revision == 0 {
                     return Err(ProtocolError::at(
                         ProtocolErrorKind::InvalidEvent,
-                        "event.tool_argument_progress",
-                        "tool argument progress revision must be nonzero",
+                        "event.progress",
+                        "semantic progress revision must be nonzero",
                     ));
                 }
                 fragment.validate_under(limits)

@@ -43,12 +43,19 @@ pub(super) fn tool_name(value: &str) -> Result<ToolName, ProviderCoreError> {
     ToolName::new(value.to_owned()).map_err(|_| invalid("Google tool name is invalid"))
 }
 
-pub(super) fn fragment(bytes: Vec<u8>) -> Result<StreamFragment, ProviderCoreError> {
-    StreamFragment::new(bytes, ProtocolLimits::PRODUCTION)
+pub(super) fn fragment(
+    bytes: Vec<u8>,
+    limits: ProtocolLimits,
+) -> Result<StreamFragment, ProviderCoreError> {
+    StreamFragment::new(bytes, limits)
         .map_err(|_| invalid("Google stream fragment exceeds its bound"))
 }
 
-pub(super) fn provider_event(name: &str, value: &Value) -> Result<ModelEvent, ProviderCoreError> {
+pub(super) fn provider_event(
+    name: &str,
+    value: &Value,
+    limits: ProtocolLimits,
+) -> Result<ModelEvent, ProviderCoreError> {
     if name.is_empty()
         || name.len() > 96
         || !name
@@ -63,7 +70,7 @@ pub(super) fn provider_event(name: &str, value: &Value) -> Result<ModelEvent, Pr
         .map_err(|_| invalid("Google ancillary event could not be serialized"))?;
     let value = CanonicalJson::parse(
         core::str::from_utf8(&bytes).map_err(|_| invalid("Google ancillary event is not UTF-8"))?,
-        JsonBounds::value(ProtocolLimits::PRODUCTION),
+        JsonBounds::value(limits),
     )
     .map_err(|_| invalid("Google ancillary event exceeds JSON bounds"))?;
     Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)))
@@ -104,7 +111,10 @@ pub(super) fn cache(value: &Value, interactions: bool) -> Option<ModelEvent> {
     })
 }
 
-pub(super) fn metadata_events(headers: &HttpHeaders) -> Result<Vec<ModelEvent>, ProviderCoreError> {
+pub(super) fn metadata_events(
+    headers: &HttpHeaders,
+    limits: ProtocolLimits,
+) -> Result<Vec<ModelEvent>, ProviderCoreError> {
     let mut events = Vec::new();
     for name in ["x-request-id", "x-goog-request-id"] {
         if let Some(value) = headers
@@ -114,7 +124,7 @@ pub(super) fn metadata_events(headers: &HttpHeaders) -> Result<Vec<ModelEvent>, 
         {
             let mut metadata = Map::new();
             metadata.insert("request_id".to_owned(), Value::String(value.to_owned()));
-            events.push(provider_event("request_metadata", &Value::Object(metadata))?);
+            events.push(provider_event("request_metadata", &Value::Object(metadata), limits)?);
             break;
         }
     }

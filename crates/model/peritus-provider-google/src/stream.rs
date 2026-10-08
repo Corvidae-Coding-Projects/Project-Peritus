@@ -133,6 +133,17 @@ impl ModelStream for GoogleStream {
                 if let Some(event) = self.pending.pop_front() {
                     return Ok(Some(event));
                 }
+                if self.state.has_deferred() {
+                    match self.state.resume_deferred() {
+                        Ok(true) => self.drain_state(),
+                        Ok(false) => {}
+                        Err(_error) => self.fail(
+                            FailureCategory::MalformedPayload,
+                            "google.stream.completion",
+                        )?,
+                    }
+                    continue;
+                }
                 if let Some(event) = self.state.take_staged_terminal() {
                     self.ended = true;
                     self.body = None;

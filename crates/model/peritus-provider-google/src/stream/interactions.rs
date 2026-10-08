@@ -3,8 +3,8 @@
 use std::collections::BTreeSet;
 
 use peritus_model_protocol::{
-    FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits,
-    ResponseId, ToolCallId, UsageScope,
+    FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ResponseId, ToolCallId,
+    UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -20,12 +20,14 @@ enum ActiveStep {
     Message {
         item: ItemId,
         has_content: bool,
-        json: peritus_provider_core::healing::ToolArgumentBuffer,
+        json: peritus_provider_core::healing::StructuredOutputBuffer,
+        progress_revision: u64,
     },
     Tool {
         item: ItemId,
         call: ToolCallId,
         arguments: peritus_provider_core::healing::ToolArgumentBuffer,
+        progress_revision: u64,
     },
     Thought {
         item: ItemId,
@@ -81,7 +83,11 @@ impl InteractionState {
         match kind {
             "interaction.created" => self.created(owner, value, digest, frame.id()),
             "interaction.status_update" => {
-                owner.emit(provider_event("interaction.status_update", value)?, digest, frame.id())
+                owner.emit(
+                    provider_event("interaction.status_update", value, owner.limits())?,
+                    digest,
+                    frame.id(),
+                )
             }
             "step.start" => self.start(owner, value, digest, frame.id()),
             "step.delta" => self.delta(owner, value, digest, frame.id()),
@@ -92,7 +98,11 @@ impl InteractionState {
             unknown if correctness_critical(unknown) => {
                 Err(invalid("Google emitted an unknown correctness-critical interaction event"))
             }
-            unknown => owner.emit(provider_event(unknown, value)?, digest, frame.id()),
+            unknown => owner.emit(
+                provider_event(unknown, value, owner.limits())?,
+                digest,
+                frame.id(),
+            ),
         }
     }
 
@@ -159,7 +169,8 @@ impl InteractionState {
                 self.active = Some(ActiveStep::Message {
                     item,
                     has_content: false,
-                    json: peritus_provider_core::healing::ToolArgumentBuffer::new(),
+                    json: peritus_provider_core::healing::StructuredOutputBuffer::new(),
+                    progress_revision: 0,
                 });
             }
             "function_call" => {
@@ -193,6 +204,7 @@ impl InteractionState {
                     item,
                     call,
                     arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                    progress_revision: 0,
                 });
             }
             "thought" => {
@@ -225,33 +237,68 @@ impl InteractionState {
         }
         let kind = required_str(value, "/delta/type")?;
         match (&mut self.active, kind) {
-            (Some(ActiveStep::Message { item, has_content, json }), "text") => {
+            (
+                Some(ActiveStep::Message {
+                    item,
+                    has_content,
+                    json,
+                    progress_revision,
+                }),
+                "text",
+            ) => {
                 let text = required_str(value, "/delta/text")?;
                 *has_content = true;
                 if self.structured {
-                    json.append(text.as_bytes(), ProtocolLimits::PRODUCTION)?;
-                    return owner.emit(ModelEvent::Heartbeat, digest, event_id);
+                    json.append(text.as_bytes(), owner.limits())?;
+                    return owner.emit_structured_progress(
+                        item,
+                        progress_revision,
+                        text.as_bytes(),
+                        digest,
+                        event_id,
+                    );
+                }
+                if text.is_empty() {
+                    return owner.emit_empty_text_observation(digest, event_id);
                 }
                 owner.emit(
                     ModelEvent::TextDelta {
                         item_id: item.clone(),
-                        fragment: fragment(text.as_bytes().to_vec())?,
+                        fragment: fragment(text.as_bytes().to_vec(), owner.limits())?,
                     },
                     digest,
                     event_id,
                 )
             }
-            (Some(ActiveStep::Tool { arguments, .. }), "arguments_delta") => {
-                let bytes = required_str(value, "/delta/arguments")?.as_bytes().to_vec();
-                arguments.append(&bytes, ProtocolLimits::PRODUCTION)?;
-                owner.emit(ModelEvent::Heartbeat, digest, event_id)
+            (
+                Some(ActiveStep::Tool {
+                    call,
+                    arguments,
+                    progress_revision,
+                    ..
+                }),
+                "arguments_delta",
+            ) => {
+                let bytes = required_str(value, "/delta/arguments")?.as_bytes();
+                arguments.append(bytes, owner.limits())?;
+                owner.emit_tool_progress(
+                    call,
+                    progress_revision,
+                    bytes,
+                    digest,
+                    event_id,
+                )
             }
             (Some(ActiveStep::Thought { item, .. }), "thought_summary") => {
                 for text in summary_texts(value)? {
+                    if text.is_empty() {
+                        owner.emit_empty_text_observation(digest, event_id)?;
+                        continue;
+                    }
                     owner.emit(
                         ModelEvent::ReasoningSummaryDelta {
                             item_id: item.clone(),
-                            fragment: fragment(text.as_bytes().to_vec())?,
+                            fragment: fragment(text.as_bytes().to_vec(), owner.limits())?,
                         },
                         digest,
                         event_id,
@@ -288,7 +335,11 @@ impl InteractionState {
                 }
             }
             (Some(_), "text_annotation_delta") => {
-                owner.emit(provider_event("text_annotation_delta", value)?, digest, event_id)
+                owner.emit(
+                    provider_event("text_annotation_delta", value, owner.limits())?,
+                    digest,
+                    event_id,
+                )
             }
             _ => Err(invalid("Google interaction delta contradicts its active step")),
         }
@@ -307,25 +358,19 @@ impl InteractionState {
         }
         let active = self.active.take().ok_or_else(|| invalid("Google stopped no active step"))?;
         let item = match active {
-            ActiveStep::Message { item, has_content, json } => {
+            ActiveStep::Message { item, has_content, json, .. } => {
                 if !has_content {
                     return Err(invalid("Google model-output step ended empty"));
                 }
                 if self.structured {
-                    for event in peritus_provider_core::healing::structured_output(
-                        json.as_bytes(),
-                        &item,
-                        ProtocolLimits::PRODUCTION,
-                    )? {
-                        owner.emit(event, digest, event_id)?;
-                    }
+                    let cursor = json.into_completion(item.clone(), owner.limits())?;
+                    owner.defer_completion(cursor, digest, event_id)?;
                 }
                 item
             }
-            ActiveStep::Tool { item, call, arguments } => {
-                for event in arguments.complete(&call, ProtocolLimits::PRODUCTION)? {
-                    owner.emit(event, digest, event_id)?;
-                }
+            ActiveStep::Tool { item, call, arguments, .. } => {
+                let cursor = arguments.into_completion(call, owner.limits())?;
+                owner.defer_completion(cursor, digest, event_id)?;
                 item
             }
             ActiveStep::Thought { item, signature: Some(signature) } => {

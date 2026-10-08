@@ -91,6 +91,11 @@ fn decode_event(
             item_id: item_id(reader)?,
             fragment: fragment(reader, limits)?,
         }),
+        23 if schema >= 6 => Ok(ModelEvent::StructuredOutputProgress {
+            item_id: item_id(reader)?,
+            revision: reader.read_u64().map_err(read_codec)?,
+            fragment: fragment(reader, limits)?,
+        }),
         5 => Ok(ModelEvent::ReasoningSummaryDelta {
             item_id: item_id(reader)?,
             fragment: fragment(reader, limits)?,

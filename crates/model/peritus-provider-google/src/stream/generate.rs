@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 
 use peritus_model_protocol::{
     BoundedText, FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName,
-    ProtocolLimits, ResponseId, ToolCallId, UsageScope,
+    ResponseId, ToolCallId, UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -22,7 +22,8 @@ pub(super) struct GenerateState {
     calls: u32,
     call_ids: BTreeSet<ToolCallId>,
     controls: crate::request::ToolControls,
-    json: peritus_provider_core::healing::ToolArgumentBuffer,
+    json: peritus_provider_core::healing::StructuredOutputBuffer,
+    structured_revision: u64,
 }
 
 impl GenerateState {
@@ -40,7 +41,8 @@ impl GenerateState {
             calls: 0,
             call_ids: BTreeSet::new(),
             controls,
-            json: peritus_provider_core::healing::ToolArgumentBuffer::new(),
+            json: peritus_provider_core::healing::StructuredOutputBuffer::new(),
+            structured_revision: 0,
         }
     }
 
@@ -69,7 +71,11 @@ impl GenerateState {
         let blocked =
             value.pointer("/promptFeedback/blockReason").and_then(Value::as_str).is_some();
         if let Some(feedback) = value.get("promptFeedback") {
-            owner.emit(provider_event("prompt_feedback", feedback)?, digest, frame.id())?;
+            owner.emit(
+                provider_event("prompt_feedback", feedback, owner.limits())?,
+                digest,
+                frame.id(),
+            )?;
         }
         let candidates = value.get("candidates").and_then(Value::as_array);
         let mut finish_reason = None;
@@ -85,7 +91,7 @@ impl GenerateState {
                 finish_reason = candidate.get("finishReason").and_then(Value::as_str);
                 if let Some(ratings) = candidate.get("safetyRatings") {
                     owner.emit(
-                        provider_event("candidate.safety_ratings", ratings)?,
+                        provider_event("candidate.safety_ratings", ratings, owner.limits())?,
                         digest,
                         frame.id(),
                     )?;
@@ -131,7 +137,11 @@ impl GenerateState {
         }
         if !unknown.is_empty() {
             owner.emit(
-                provider_event("generate.ancillary", &Value::Object(unknown))?,
+                provider_event(
+                    "generate.ancillary",
+                    &Value::Object(unknown),
+                    owner.limits(),
+                )?,
                 digest,
                 event_id,
             )?;
@@ -239,21 +249,40 @@ impl GenerateState {
                     ItemKind::Message
                 };
                 let item = self.ensure_item(owner, kind, digest, event_id)?;
-                let event = if thought {
-                    ModelEvent::ReasoningSummaryDelta {
-                        item_id: item,
-                        fragment: fragment(text.as_bytes().to_vec())?,
-                    }
-                } else if kind == ItemKind::StructuredOutput {
-                    self.json.append(text.as_bytes(), ProtocolLimits::PRODUCTION)?;
-                    ModelEvent::Heartbeat
+                if kind == ItemKind::StructuredOutput {
+                    self.json.append(text.as_bytes(), owner.limits())?;
+                    owner.emit_structured_progress(
+                        &item,
+                        &mut self.structured_revision,
+                        text.as_bytes(),
+                        digest,
+                        event_id,
+                    )?;
+                } else if text.is_empty() {
+                    owner.emit_empty_text_observation(digest, event_id)?;
                 } else {
-                    ModelEvent::TextDelta {
-                        item_id: item,
-                        fragment: fragment(text.as_bytes().to_vec())?,
-                    }
-                };
-                owner.emit(event, digest, event_id)?;
+                    owner.emit(
+                        if thought {
+                            ModelEvent::ReasoningSummaryDelta {
+                                item_id: item,
+                                fragment: fragment(
+                                    text.as_bytes().to_vec(),
+                                    owner.limits(),
+                                )?,
+                            }
+                        } else {
+                            ModelEvent::TextDelta {
+                                item_id: item,
+                                fragment: fragment(
+                                    text.as_bytes().to_vec(),
+                                    owner.limits(),
+                                )?,
+                            }
+                        },
+                        digest,
+                        event_id,
+                    )?;
+                }
             }
             if let Some(signature) = signature {
                 let item = self.ensure_item(owner, ItemKind::Reasoning, digest, event_id)?;
@@ -339,13 +368,18 @@ impl GenerateState {
         )?;
         let bytes = serde_json::to_vec(arguments)
             .map_err(|_| invalid("Generate Content function arguments could not be serialized"))?;
-        for event in peritus_provider_core::healing::tool_arguments(
-            &bytes,
+        let mut arguments = peritus_provider_core::healing::ToolArgumentBuffer::new();
+        arguments.append(&bytes, owner.limits())?;
+        let mut progress_revision = 0;
+        owner.emit_tool_progress(
             &call_id,
-            ProtocolLimits::PRODUCTION,
-        )? {
-            owner.emit(event, digest, event_id)?;
-        }
+            &mut progress_revision,
+            &bytes,
+            digest,
+            event_id,
+        )?;
+        let cursor = arguments.into_completion(call_id, owner.limits())?;
+        owner.defer_completion(cursor, digest, event_id)?;
         self.close_active(owner, digest, event_id)?;
         self.saw_tool = true;
         Ok(())
@@ -359,14 +393,10 @@ impl GenerateState {
     ) -> Result<(), ProviderCoreError> {
         if let Some((item, kind)) = self.active.take() {
             if kind == ItemKind::StructuredOutput {
-                for event in peritus_provider_core::healing::structured_output(
-                    self.json.as_bytes(),
-                    &item,
-                    ProtocolLimits::PRODUCTION,
-                )? {
-                    owner.emit(event, digest, event_id)?;
-                }
-                self.json = peritus_provider_core::healing::ToolArgumentBuffer::new();
+                let json = core::mem::take(&mut self.json);
+                self.structured_revision = 0;
+                let cursor = json.into_completion(item.clone(), owner.limits())?;
+                owner.defer_completion(cursor, digest, event_id)?;
             }
             owner.emit(ModelEvent::ItemCompleted(item), digest, event_id)?;
         }
@@ -391,7 +421,7 @@ impl GenerateState {
             }
             "MALFORMED_FUNCTION_CALL" | "UNEXPECTED_TOOL_CALL" => FinishReason::Incomplete,
             raw => FinishReason::Provider(
-                BoundedText::new(raw.to_owned(), ProtocolLimits::PRODUCTION)
+                BoundedText::new(raw.to_owned(), owner.limits())
                     .map_err(|_| invalid("Generate Content finish reason is invalid"))?,
             ),
         };

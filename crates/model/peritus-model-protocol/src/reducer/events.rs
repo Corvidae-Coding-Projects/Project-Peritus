@@ -22,6 +22,9 @@ impl ResponseReducer {
                     &[ItemKind::Message, ItemKind::StructuredOutput, ItemKind::ProviderNative],
                 )?;
             }
+            ModelEvent::StructuredOutputProgress { item_id, revision, fragment } => {
+                self.append_structured_progress(&item_id, revision, fragment.expose())?;
+            }
             ModelEvent::ReasoningSummaryDelta { item_id, fragment } => {
                 self.append_item(&item_id, fragment.expose(), &[ItemKind::Reasoning])?;
             }
@@ -103,6 +106,8 @@ impl ResponseReducer {
                 index,
                 kind,
                 content: Vec::new(),
+                structured_progress_revision: 0,
+                structured_progress: Vec::new(),
                 replay: Vec::new(),
                 call: None,
                 complete: false,
@@ -140,6 +145,37 @@ impl ResponseReducer {
             return self.reject_unit("reasoning replay state exceeds its byte bound");
         }
         item.replay.extend_from_slice(bytes);
+        Ok(())
+    }
+
+    fn append_structured_progress(
+        &mut self,
+        item_id: &ItemId,
+        revision: u64,
+        bytes: &[u8],
+    ) -> Result<(), ProtocolError> {
+        let Some(item) = self.items.get_mut(item_id) else {
+            return self.reject_unit("structured progress preceded item start");
+        };
+        let Some(expected_revision) = item.structured_progress_revision.checked_add(1) else {
+            return self.reject_unit("structured progress revision overflowed");
+        };
+        if item.complete
+            || item.kind != ItemKind::StructuredOutput
+            || !item.content.is_empty()
+            || revision != expected_revision
+        {
+            return self.reject_unit(
+                "structured progress targeted a closed item or skipped its revision",
+            );
+        }
+        if item.structured_progress.len().saturating_add(bytes.len())
+            > self.limits.max_output_bytes()
+        {
+            return self.reject_unit("structured progress exceeds its byte bound");
+        }
+        item.structured_progress.extend_from_slice(bytes);
+        item.structured_progress_revision = revision;
         Ok(())
     }
 
@@ -244,6 +280,7 @@ impl ResponseReducer {
             .is_none_or(|call| call.arguments.len() <= self.limits.max_output_bytes());
         if !crate::verified::fragment_completion_legal(FragmentCompletionFacts {
             bytes_bounded: item.content.len() <= self.limits.max_output_bytes()
+                && item.structured_progress.len() <= self.limits.max_output_bytes()
                 && item.replay.len() <= self.limits.max_extension_bytes()
                 && call_bytes_bounded,
             // Successful ReducedItem construction proves the applicable UTF-8 and JSON checks.

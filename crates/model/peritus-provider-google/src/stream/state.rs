@@ -4,9 +4,11 @@ use std::collections::{BTreeMap, VecDeque};
 
 use peritus_model_protocol::{
     CacheObservation, EventEnvelope, EventId, ItemId, ModelEvent, ProtocolLimits, ProviderName,
-    StreamFragment, WireDialect,
+    StreamFragment, ToolCallId, WireDialect,
 };
-use peritus_provider_core::{HttpHeaders, ProviderCoreError, SseFrame, SseItem};
+use peritus_provider_core::{
+    HttpHeaders, ProviderCoreError, SseFrame, SseItem, healing::JsonCompletionCursor,
+};
 use peritus_types::Sha256Digest;
 use serde_json::Value;
 
@@ -20,12 +22,43 @@ enum DialectState {
     Vacant,
 }
 
+struct DeferredEvent {
+    event: ModelEvent,
+    digest: Sha256Digest,
+    provider_event_id: Option<EventId>,
+}
+
+enum DeferredEmission {
+    Event(DeferredEvent),
+    Completion {
+        cursor: JsonCompletionCursor,
+        digest: Sha256Digest,
+        provider_event_id: Option<EventId>,
+    },
+}
+
+impl DeferredEmission {
+    fn is_terminal(&self) -> bool {
+        matches!(
+            self,
+            Self::Event(DeferredEvent {
+                event: ModelEvent::ResponseCompleted
+                    | ModelEvent::ResponseFailed(_)
+                    | ModelEvent::ResponseCancelled,
+                ..
+            })
+        )
+    }
+}
+
 pub(super) struct NormalizeState {
     pub(super) provider: ProviderName,
     dialect: DialectState,
     limits: ProtocolLimits,
     sequence: u64,
     pending: VecDeque<EventEnvelope>,
+    deferred: VecDeque<DeferredEmission>,
+    deferred_events: usize,
     staged_terminal: Option<EventEnvelope>,
     seen: BTreeMap<EventId, Sha256Digest>,
     active_event_id: Option<EventId>,
@@ -58,11 +91,13 @@ impl NormalizeState {
             limits,
             sequence: 0,
             pending: VecDeque::new(),
+            deferred: VecDeque::new(),
+            deferred_events: 0,
             staged_terminal: None,
             seen: BTreeMap::new(),
             active_event_id: None,
             last_cache: None,
-            metadata: metadata_events(headers)?,
+            metadata: metadata_events(headers, limits)?,
             observed_semantics: false,
         })
     }
@@ -91,6 +126,19 @@ impl NormalizeState {
         self.staged_terminal.is_some()
     }
 
+    pub(super) fn is_terminal(&self) -> bool {
+        self.staged_terminal.is_some() || self.deferred.iter().any(DeferredEmission::is_terminal)
+    }
+
+    pub(super) const fn has_deferred(&self) -> bool {
+        !self.deferred.is_empty()
+    }
+
+    pub(super) fn clear_deferred(&mut self) {
+        self.deferred.clear();
+        self.deferred_events = 0;
+    }
+
     pub(super) fn cancel_unpublished(&mut self) -> Result<bool, ProviderCoreError> {
         let replaceable = self.staged_terminal.as_ref().is_none_or(|terminal| {
             matches!(terminal.event(), ModelEvent::ResponseCompleted)
@@ -98,12 +146,177 @@ impl NormalizeState {
         if !replaceable {
             return Ok(false);
         }
+        self.clear_deferred();
         self.push_synthetic(ModelEvent::ResponseCancelled)?;
         Ok(true)
     }
 
     pub(super) const fn has_observed_semantics(&self) -> bool {
         self.observed_semantics
+    }
+
+    pub(super) const fn limits(&self) -> ProtocolLimits {
+        self.limits
+    }
+
+    pub(super) fn emit_structured_progress(
+        &mut self,
+        item_id: &ItemId,
+        revision: &mut u64,
+        bytes: &[u8],
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        if bytes.is_empty() {
+            return self.emit_empty_progress(digest, event_id);
+        }
+        let maximum = self.limits.max_event_bytes();
+        if maximum == 0 {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google structured progress fragment bound was zero",
+            ));
+        }
+        for chunk in bytes.chunks(maximum) {
+            *revision = revision.checked_add(1).ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "google_stream",
+                    "Google structured progress revision overflowed",
+                )
+            })?;
+            let fragment = StreamFragment::new(chunk.to_vec(), self.limits)
+                .map_err(|_| invalid("Google structured progress fragment exceeds its bound"))?;
+            self.emit(
+                ModelEvent::StructuredOutputProgress {
+                    item_id: item_id.clone(),
+                    revision: *revision,
+                    fragment,
+                },
+                digest,
+                event_id,
+            )?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn emit_tool_progress(
+        &mut self,
+        call_id: &ToolCallId,
+        revision: &mut u64,
+        bytes: &[u8],
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        if bytes.is_empty() {
+            return self.emit_empty_progress(digest, event_id);
+        }
+        let maximum = self.limits.max_event_bytes();
+        if maximum == 0 {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google tool progress fragment bound was zero",
+            ));
+        }
+        for chunk in bytes.chunks(maximum) {
+            *revision = revision.checked_add(1).ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "google_stream",
+                    "Google tool progress revision overflowed",
+                )
+            })?;
+            let fragment = StreamFragment::new(chunk.to_vec(), self.limits)
+                .map_err(|_| invalid("Google tool progress fragment exceeds its bound"))?;
+            self.emit(
+                ModelEvent::ToolArgumentProgress {
+                    call_id: call_id.clone(),
+                    revision: *revision,
+                    fragment,
+                },
+                digest,
+                event_id,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn emit_empty_progress(
+        &mut self,
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        self.observed_semantics = true;
+        self.emit(ModelEvent::Heartbeat, digest, event_id)
+    }
+
+    pub(super) fn emit_empty_text_observation(
+        &mut self,
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        self.emit_empty_progress(digest, event_id)
+    }
+
+    pub(super) fn defer_completion(
+        &mut self,
+        cursor: JsonCompletionCursor,
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        let remaining = cursor.remaining_events();
+        self.admit_deferred(remaining)?;
+        let provider_event_id = event_id.and_then(|_| self.active_event_id.take());
+        self.observed_semantics = true;
+        self.deferred.push_back(DeferredEmission::Completion {
+            cursor,
+            digest,
+            provider_event_id,
+        });
+        self.deferred_events = self
+            .deferred_events
+            .checked_add(remaining)
+            .ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "google_stream",
+                    "Google deferred completion event count overflowed",
+                )
+            })?;
+        Ok(())
+    }
+
+    pub(super) fn resume_deferred(&mut self) -> Result<bool, ProviderCoreError> {
+        loop {
+            let Some(emission) = self.deferred.pop_front() else { return Ok(false) };
+            match emission {
+                DeferredEmission::Event(event) => {
+                    self.deferred_events = self
+                        .deferred_events
+                        .checked_sub(1)
+                        .ok_or_else(|| invalid("Google deferred event count underflowed"))?;
+                    self.emit_now(event.event, event.digest, event.provider_event_id)?;
+                    return Ok(true);
+                }
+                DeferredEmission::Completion {
+                    mut cursor,
+                    digest,
+                    mut provider_event_id,
+                } => {
+                    let Some(event) = cursor.next_event()? else { continue };
+                    self.deferred_events = self
+                        .deferred_events
+                        .checked_sub(1)
+                        .ok_or_else(|| invalid("Google deferred event count underflowed"))?;
+                    if cursor.remaining_events() > 0 {
+                        self.deferred.push_front(DeferredEmission::Completion {
+                            cursor,
+                            digest,
+                            provider_event_id: None,
+                        });
+                    }
+                    self.emit_now(event, digest, provider_event_id.take())?;
+                    return Ok(true);
+                }
+            }
+        }
     }
 
     pub(super) fn emit_replay(
@@ -210,6 +423,47 @@ impl NormalizeState {
         Ok(fragment_bytes)
     }
 
+    fn admit_deferred(&self, additional: usize) -> Result<(), ProviderCoreError> {
+        let emitted = usize::try_from(self.sequence).unwrap_or(usize::MAX);
+        let projected = emitted
+            .checked_add(self.deferred_events)
+            .and_then(|count| count.checked_add(additional))
+            .ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "google_stream",
+                    "Google deferred event count overflowed",
+                )
+            })?;
+        if projected > self.limits.max_events() {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google deferred output exceeds the selected event bound",
+            ));
+        }
+        Ok(())
+    }
+
+    fn queue_event(
+        &mut self,
+        event: ModelEvent,
+        digest: Sha256Digest,
+        provider_event_id: Option<EventId>,
+    ) -> Result<(), ProviderCoreError> {
+        self.admit_deferred(1)?;
+        self.deferred.push_back(DeferredEmission::Event(DeferredEvent {
+            event,
+            digest,
+            provider_event_id,
+        }));
+        self.deferred_events = self.deferred_events.checked_add(1).ok_or_else(|| {
+            ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google deferred event count overflowed",
+            )
+        })?;
+        Ok(())
+    }
+
     pub(super) fn emit(
         &mut self,
         event: ModelEvent,
@@ -232,6 +486,29 @@ impl NormalizeState {
             }
             self.last_cache = Some(observation.clone());
         }
+        if self.staged_terminal.is_some()
+            && !matches!(
+                event,
+                ModelEvent::ResponseCompleted
+                    | ModelEvent::ResponseFailed(_)
+                    | ModelEvent::ResponseCancelled
+            )
+        {
+            return Err(invalid("Google event followed a terminal event"));
+        }
+        self.observed_semantics |= !matches!(event, ModelEvent::Heartbeat);
+        if !self.deferred.is_empty() {
+            return self.queue_event(event, digest, provider_event_id);
+        }
+        self.emit_now(event, digest, provider_event_id)
+    }
+
+    fn emit_now(
+        &mut self,
+        event: ModelEvent,
+        digest: Sha256Digest,
+        provider_event_id: Option<EventId>,
+    ) -> Result<(), ProviderCoreError> {
         let terminal = matches!(
             event,
             ModelEvent::ResponseCompleted
@@ -250,7 +527,6 @@ impl NormalizeState {
         } else {
             self.next_sequence()?
         };
-        self.observed_semantics |= !matches!(event, ModelEvent::Heartbeat);
         let envelope = EventEnvelope::new(sequence, None, provider_event_id, digest, event)
             .map_err(|_| invalid("normalized Google event envelope is invalid"))?;
         if terminal {
@@ -320,13 +596,20 @@ impl NormalizeState {
     }
 
     fn next_sequence(&mut self) -> Result<u64, ProviderCoreError> {
-        self.sequence = self.sequence.checked_add(1).ok_or_else(|| {
+        let sequence = self.sequence.checked_add(1).ok_or_else(|| {
             ProviderCoreError::limit_exceeded(
                 "google_stream",
                 "normalized event sequence overflowed",
             )
         })?;
-        Ok(self.sequence)
+        if usize::try_from(sequence).unwrap_or(usize::MAX) > self.limits.max_events() {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "normalized events exceed the selected event bound",
+            ));
+        }
+        self.sequence = sequence;
+        Ok(sequence)
     }
 
     fn emit_synthetic(&mut self, event: ModelEvent) -> Result<(), ProviderCoreError> {

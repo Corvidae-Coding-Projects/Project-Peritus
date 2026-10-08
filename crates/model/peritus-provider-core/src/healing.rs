@@ -13,7 +13,7 @@ use crate::ProviderCoreError;
 
 mod buffer;
 mod syntax;
-pub use buffer::ToolArgumentBuffer;
+pub use buffer::{JsonCompletionCursor, StructuredOutputBuffer, ToolArgumentBuffer};
 #[cfg(test)]
 mod tests;
 
