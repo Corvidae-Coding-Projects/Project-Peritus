@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3885,
-        "tip_oid": "b696d835c715a2e580dce400cc1f5a2bb30cb7a3",
-        "prefix_sha256": "3e29dac058cc8eed046696bb7600e8ad316d07da395c547b84854315e9020a58"
+        "sequence": 3886,
+        "tip_oid": "7a0be38616405cd3edc29d67dfc30ec1ed795029",
+        "prefix_sha256": "47e84fef8f266f3ff0271b4ef47aa74c3d3ed067d2a62f4ec0a556ef525fca32"
       },
       "NWAR": {
         "sequence": 39,
@@ -1136,12 +1136,13 @@
       "display_id": 503,
       "title": "[L422] E2 exact durable retry depends on the current checkpoint and the original claim fence",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L422.\n\n- Evidence: `crates/analysis/peritus-debugger/src/aggregate/reducer.rs:99-137`, `src/durability/commit.rs:81-120,196-244`, `src/durability/commit/claim.rs:65-77,126-139` in the same crate.\n- Behavior: Pure reduction checks the latest state fence and terminal status before doing work. The commit layer correctly resolves an existing exact request before current-head checks, but only returns its batch when the current checkpoint is the exact successor; an advanced checkpoint returns ReplayAggregate. Claimed-start and settlement request digests include the C0 claim fence, so a newly reclaimed fence is a different exact request even with the original transition identities.\n- Consequence: A generic retry that simply reconstructs the original transition from current state, or repeats it under a replacement claim, cannot transparently recover the original result. Recovery must first resolve the original operation and distinguish durable completion from still-owned work. This is a required recovery contract, not evidence that replay errors delete context; returning replay for an advanced checkpoint is explicit and preferable to falsely returning the older state.\n- Repair direction: Retain the original request/claim receipt and authoritative outcome separately from current state. Resume from the latest reconstructed state while preserving historical completed-operation recognition across claim replacement. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.480484232Z",
-      "updated_at": "2026-10-07T23:58:44.120443986Z",
+      "updated_at": "2026-10-08T00:00:01.971340633Z",
+      "closed_at": "2026-10-08T00:00:01.968356214Z",
       "labels": [
         "daily-driving-limiter"
       ],
