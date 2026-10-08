@@ -209,12 +209,15 @@ impl ModelProvider for CompatibleClient {
                         self.config.http_limits().max_response_body_bytes(),
                     )
                     .await?;
-                    let retry = metadata::retry_directive(&self.config, status, &headers)?;
+                    let retry_after = metadata::retry_after(&self.config, &headers)?;
+                    let retry =
+                        metadata::retry_directive(&self.config, status, &retry_after);
                     let event = metadata::http_failure(
                         &self.config,
                         status,
                         &headers,
                         self.profile.provider_profile().provider(),
+                        &retry_after,
                     )?;
                     if let (Some(policy), Some((failure, retry_after))) = (retry_policy, retry) {
                         let mut observation = RetryObservation::new(

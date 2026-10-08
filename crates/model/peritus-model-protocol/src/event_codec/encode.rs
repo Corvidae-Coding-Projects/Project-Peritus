@@ -6,14 +6,15 @@ use super::primitive::{
 use crate::{
     CacheObservation, CacheStatus, EventEnvelope, FailureCategory, FinishReason, ItemKind,
     ModelEvent, ModelFailure, OutcomeCertainty, RateLimitDimension, RateLimitObservation,
-    ResetTime, Retryability, TransportPhase, UsageCounters, UsageObservation, UsageScope,
+    ResetTime, RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase, UsageCounters,
+    UsageObservation, UsageScope,
 };
 
-/// Encodes one normalized event envelope into canonical schema-version-one bytes.
+/// Encodes one normalized event envelope into canonical versioned bytes.
 ///
-/// Provider raw bytes are not included; the envelope's exact provider digest and all normalized
-/// semantics are retained. Encoding does not validate stream ordering, which remains the
-/// responsibility of [`crate::ResponseReducer`].
+/// Provider payload bytes are not included; bounded retry scheduling evidence, the envelope's
+/// exact provider digest, and all normalized semantics are retained. Encoding does not validate
+/// stream ordering, which remains the responsibility of [`crate::ResponseReducer`].
 ///
 /// # Errors
 ///
@@ -48,8 +49,9 @@ fn envelope_value(
     writer: &mut impl CanonicalWrite,
     envelope: &EventEnvelope,
 ) -> Result<(), crate::ProtocolError> {
+    let schema = envelope_schema(envelope);
     writer.write_fixed(&MAGIC).map_err(write_codec)?;
-    writer.write_u16(super::EVENT_ENVELOPE_SCHEMA_VERSION).map_err(write_codec)?;
+    writer.write_u16(schema).map_err(write_codec)?;
     writer.write_u16(envelope.protocol().major()).map_err(write_codec)?;
     writer.write_u16(envelope.protocol().minor()).map_err(write_codec)?;
     writer.write_u64(envelope.sequence()).map_err(write_codec)?;
@@ -59,11 +61,24 @@ fn envelope_value(
         writer.write_str(id.expose_for_wire()).map_err(write_codec)?;
     }
     writer.write_fixed(envelope.provider_digest().as_bytes()).map_err(write_codec)?;
-    event(writer, envelope.event())?;
+    event(writer, envelope.event(), schema)?;
     Ok(())
 }
 
-fn event(writer: &mut impl CanonicalWrite, event: &ModelEvent) -> Result<(), crate::ProtocolError> {
+const fn envelope_schema(envelope: &EventEnvelope) -> u16 {
+    match envelope.event() {
+        ModelEvent::ResponseFailed(failure) if failure.retry_after_observation().is_some() => {
+            super::EVENT_ENVELOPE_SCHEMA_VERSION
+        }
+        _ => 1,
+    }
+}
+
+fn event(
+    writer: &mut impl CanonicalWrite,
+    event: &ModelEvent,
+    schema: u16,
+) -> Result<(), crate::ProtocolError> {
     match event {
         ModelEvent::ResponseStarted { response_id, model } => {
             writer.write_u8(1).map_err(write_codec)?;
@@ -136,7 +151,7 @@ fn event(writer: &mut impl CanonicalWrite, event: &ModelEvent) -> Result<(), cra
         ModelEvent::ResponseCompleted => writer.write_u8(17).map_err(write_codec)?,
         ModelEvent::ResponseFailed(failure) => {
             writer.write_u8(18).map_err(write_codec)?;
-            failure_value(writer, failure)?;
+            failure_value(writer, failure, schema)?;
         }
         ModelEvent::ResponseCancelled => writer.write_u8(19).map_err(write_codec)?,
     }
@@ -286,6 +301,7 @@ fn finish(
 fn failure_value(
     writer: &mut impl CanonicalWrite,
     failure: &ModelFailure,
+    schema: u16,
 ) -> Result<(), crate::ProtocolError> {
     writer.write_str(failure.provider().as_str()).map_err(write_codec)?;
     writer.write_u8(failure_category(failure.category())).map_err(write_codec)?;
@@ -302,7 +318,44 @@ fn failure_value(
     writer.write_str(diagnostic.code()).map_err(write_codec)?;
     write_option_u64(writer, diagnostic.request_bytes())?;
     write_option_u64(writer, diagnostic.response_bytes())?;
-    write_option_u64(writer, diagnostic.elapsed_millis())
+    write_option_u64(writer, diagnostic.elapsed_millis())?;
+    if schema >= 2 {
+        let observation = failure.retry_after_observation().ok_or_else(|| {
+            invalid(
+                "canonical_event.retry_after",
+                "schema version two requires retry-after parsing evidence",
+            )
+        })?;
+        writer.write_u64(observation.raw_bytes()).map_err(write_codec)?;
+        writer.write_fixed(observation.raw_digest().as_bytes()).map_err(write_codec)?;
+        writer.write_option_tag(observation.raw_value().is_some()).map_err(write_codec)?;
+        if let Some(raw_value) = observation.raw_value() {
+            writer.write_bytes(raw_value).map_err(write_codec)?;
+        }
+        writer.write_u8(retry_after_unit(observation.unit())).map_err(write_codec)?;
+        writer
+            .write_u8(retry_after_parse_status(observation.parse_status()))
+            .map_err(write_codec)?;
+        write_option_u64(writer, observation.eligible_unix_millis())?;
+    }
+    Ok(())
+}
+
+const fn retry_after_unit(value: RetryAfterUnit) -> u8 {
+    match value {
+        RetryAfterUnit::DeltaSeconds => 1,
+        RetryAfterUnit::HttpDate => 2,
+        RetryAfterUnit::Unsupported => 3,
+    }
+}
+
+const fn retry_after_parse_status(value: RetryAfterParseStatus) -> u8 {
+    match value {
+        RetryAfterParseStatus::Parsed => 1,
+        RetryAfterParseStatus::AlreadyEligible => 2,
+        RetryAfterParseStatus::Invalid => 3,
+        RetryAfterParseStatus::Unrepresentable => 4,
+    }
 }
 
 const fn failure_category(value: FailureCategory) -> u8 {

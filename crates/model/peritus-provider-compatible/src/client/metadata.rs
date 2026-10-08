@@ -1,7 +1,9 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use peritus_model_protocol::{
     CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, OutcomeCertainty,
     ProviderExtension, ProviderName, RateLimitObservation, RateLimitWindow, ResetTime, ResponseId,
-    Retryability, TransportPhase,
+    RetryAfterObservation, RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, RetryFailure, StatusCode};
 
@@ -54,12 +56,13 @@ pub(super) fn http_failure(
     status: StatusCode,
     headers: &HttpHeaders,
     provider: &ProviderName,
+    retry_after: &CompatibleRetryAfter,
 ) -> Result<ModelEvent, ProviderCoreError> {
     let status_number = status.as_u16();
     let (category, certainty, retryability, code) =
         classify(status_number, config.retry_statuses());
     let request_id = mapped_request_id(config.response_headers(), headers)?;
-    let failure = error::failure(
+    let mut failure = error::failure(
         provider,
         category,
         TransportPhase::ReadingBody,
@@ -67,23 +70,204 @@ pub(super) fn http_failure(
         retryability,
         Some(status_number),
         request_id,
-        retry_after(headers)?,
+        retry_after.delay_millis,
         code,
     )?;
+    if let Some(observation) = retry_after.observation.clone() {
+        failure = failure.with_retry_after_observation(observation).map_err(|_| {
+            error::malformed("compatible retry-after observation was inconsistent")
+        })?;
+    }
     Ok(ModelEvent::ResponseFailed(failure))
 }
 
 pub(super) fn retry_directive(
     config: &CompatibleConfig,
     status: StatusCode,
-    headers: &HttpHeaders,
-) -> Result<Option<(RetryFailure, Option<u64>)>, ProviderCoreError> {
+    retry_after: &CompatibleRetryAfter,
+) -> Option<(RetryFailure, Option<u64>)> {
+    if !retry_after.local_scheduling_available {
+        return None;
+    }
     let failure = match status.as_u16() {
         429 if config.retry_statuses().rate_limited() => Some(RetryFailure::RateLimited),
         500..=599 if config.retry_statuses().server_errors() => Some(RetryFailure::Server),
         _ => None,
     };
-    failure.map(|failure| Ok((failure, retry_after(headers)?))).transpose()
+    failure.map(|failure| (failure, retry_after.delay_millis))
+}
+
+#[derive(Clone)]
+pub(super) struct CompatibleRetryAfter {
+    delay_millis: Option<u64>,
+    observation: Option<RetryAfterObservation>,
+    local_scheduling_available: bool,
+}
+
+pub(super) fn retry_after(
+    config: &CompatibleConfig,
+    headers: &HttpHeaders,
+) -> Result<CompatibleRetryAfter, ProviderCoreError> {
+    let Some(value) = headers.first("retry-after") else {
+        return Ok(CompatibleRetryAfter {
+            delay_millis: None,
+            observation: None,
+            local_scheduling_available: true,
+        });
+    };
+    let Some(raw_value) = value.nonsensitive_bytes() else {
+        return Ok(CompatibleRetryAfter {
+            delay_millis: None,
+            observation: None,
+            local_scheduling_available: true,
+        });
+    };
+    parse_retry_after(config, raw_value)
+}
+
+fn parse_retry_after(
+    config: &CompatibleConfig,
+    raw_value: &[u8],
+) -> Result<CompatibleRetryAfter, ProviderCoreError> {
+    let Ok(text) = core::str::from_utf8(raw_value) else {
+        return unschedulable_retry_after(
+            config,
+            raw_value,
+            RetryAfterUnit::Unsupported,
+            RetryAfterParseStatus::Invalid,
+        );
+    };
+    let value = text.trim_matches(|character| matches!(character, ' ' | '\t'));
+    if !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()) {
+        let Ok(seconds) = value.parse::<u64>() else {
+            return unschedulable_retry_after(
+                config,
+                raw_value,
+                RetryAfterUnit::DeltaSeconds,
+                RetryAfterParseStatus::Unrepresentable,
+            );
+        };
+        let Some(delay_millis) = seconds.checked_mul(1_000) else {
+            return unschedulable_retry_after(
+                config,
+                raw_value,
+                RetryAfterUnit::DeltaSeconds,
+                RetryAfterParseStatus::Unrepresentable,
+            );
+        };
+        let legacy_accepted = raw_value.len() <= 64 && value == text && seconds <= 86_400;
+        let observation = (!legacy_accepted)
+            .then(|| {
+                retry_after_observation(
+                    config,
+                    raw_value,
+                    RetryAfterUnit::DeltaSeconds,
+                    RetryAfterParseStatus::Parsed,
+                    None,
+                )
+            })
+            .transpose()?;
+        return Ok(CompatibleRetryAfter {
+            delay_millis: Some(delay_millis),
+            observation,
+            local_scheduling_available: true,
+        });
+    }
+    let Ok(eligible) = httpdate::parse_http_date(value) else {
+        return unschedulable_retry_after(
+            config,
+            raw_value,
+            RetryAfterUnit::Unsupported,
+            RetryAfterParseStatus::Invalid,
+        );
+    };
+    parsed_http_date(config, raw_value, eligible)
+}
+
+fn parsed_http_date(
+    config: &CompatibleConfig,
+    raw_value: &[u8],
+    eligible: SystemTime,
+) -> Result<CompatibleRetryAfter, ProviderCoreError> {
+    let eligible_unix_millis = match eligible.duration_since(UNIX_EPOCH) {
+        Ok(duration) => match u64::try_from(duration.as_millis()) {
+            Ok(value) => value,
+            Err(_) => {
+                return unschedulable_retry_after(
+                    config,
+                    raw_value,
+                    RetryAfterUnit::HttpDate,
+                    RetryAfterParseStatus::Unrepresentable,
+                );
+            }
+        },
+        Err(_) => 0,
+    };
+    let Some(observed_unix_millis) = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+    else {
+        return unschedulable_retry_after(
+            config,
+            raw_value,
+            RetryAfterUnit::HttpDate,
+            RetryAfterParseStatus::Unrepresentable,
+        );
+    };
+    let parse_status = if eligible_unix_millis <= observed_unix_millis {
+        RetryAfterParseStatus::AlreadyEligible
+    } else {
+        RetryAfterParseStatus::Parsed
+    };
+    let delay_millis = eligible_unix_millis.saturating_sub(observed_unix_millis);
+    Ok(CompatibleRetryAfter {
+        delay_millis: Some(delay_millis),
+        observation: Some(retry_after_observation(
+            config,
+            raw_value,
+            RetryAfterUnit::HttpDate,
+            parse_status,
+            Some(eligible_unix_millis),
+        )?),
+        local_scheduling_available: true,
+    })
+}
+
+fn unschedulable_retry_after(
+    config: &CompatibleConfig,
+    raw_value: &[u8],
+    unit: RetryAfterUnit,
+    parse_status: RetryAfterParseStatus,
+) -> Result<CompatibleRetryAfter, ProviderCoreError> {
+    Ok(CompatibleRetryAfter {
+        delay_millis: None,
+        observation: Some(retry_after_observation(
+            config,
+            raw_value,
+            unit,
+            parse_status,
+            None,
+        )?),
+        local_scheduling_available: false,
+    })
+}
+
+fn retry_after_observation(
+    config: &CompatibleConfig,
+    raw_value: &[u8],
+    unit: RetryAfterUnit,
+    parse_status: RetryAfterParseStatus,
+    eligible_unix_millis: Option<u64>,
+) -> Result<RetryAfterObservation, ProviderCoreError> {
+    RetryAfterObservation::new(
+        raw_value,
+        unit,
+        parse_status,
+        eligible_unix_millis,
+        config.protocol_limits(),
+    )
+    .map_err(|_| error::malformed("compatible retry-after observation was invalid"))
 }
 
 const fn classify(
@@ -165,15 +349,6 @@ fn mapped_request_id(
                 .map_err(|_| error::malformed("mapped compatible request identity was invalid"))
         })
         .transpose()
-}
-
-fn retry_after(headers: &HttpHeaders) -> Result<Option<u64>, ProviderCoreError> {
-    let Some(value) = text_header(headers, "retry-after", 64)? else { return Ok(None) };
-    Ok(value
-        .parse::<u64>()
-        .ok()
-        .filter(|seconds| *seconds <= 86_400)
-        .and_then(|seconds| seconds.checked_mul(1_000)))
 }
 
 fn integer_header(headers: &HttpHeaders, name: &str) -> Result<Option<u64>, ProviderCoreError> {

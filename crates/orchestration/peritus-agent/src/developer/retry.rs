@@ -3,8 +3,9 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use peritus_model_protocol::{
-    IdempotencyGuarantee, ModelRequest, OutcomeCertainty, RetryCause, RetryDecision, Retryability,
-    TerminalOutcome, UnboundedRetryInput, plan_unbounded_retry,
+    IdempotencyGuarantee, ModelFailure, ModelRequest, OutcomeCertainty, RetryAfterParseStatus,
+    RetryAfterUnit, RetryCause, RetryDecision, Retryability, TerminalOutcome, UnboundedRetryInput,
+    plan_unbounded_retry,
 };
 use peritus_provider_core::{CancellationToken, ProviderCoreErrorKind, cancel_first};
 use peritus_types::Sha256Digest;
@@ -76,11 +77,16 @@ impl<'a> DeveloperRetryPlanner<'a> {
                 if failure.retryability() == Retryability::SafeNewRequest
                     && failure.certainty() == OutcomeCertainty::DefinitelyNotAccepted =>
             {
+                let FailureRetrySchedule::Available(retry_after_millis) =
+                    failure_retry_schedule(failure)?
+                else {
+                    return Ok(None);
+                };
                 self.plan(
                     request,
                     attempt,
                     RetryCause::SafeNewRequest,
-                    failure.retry_after_millis(),
+                    retry_after_millis,
                     DeveloperRetryReason::RetryableProviderResponse,
                 )
             }
@@ -185,6 +191,38 @@ impl<'a> DeveloperRetryPlanner<'a> {
             }
             RetryDecision::Stop(_) | RetryDecision::Resume { .. } => None,
         })
+    }
+}
+
+enum FailureRetrySchedule {
+    Available(Option<u64>),
+    Unavailable,
+}
+
+fn failure_retry_schedule(
+    failure: &ModelFailure,
+) -> Result<FailureRetrySchedule, DeveloperLoopError> {
+    let Some(observation) = failure.retry_after_observation() else {
+        return Ok(FailureRetrySchedule::Available(
+            failure.retry_after_millis(),
+        ));
+    };
+    match (observation.unit(), observation.parse_status()) {
+        (RetryAfterUnit::DeltaSeconds, RetryAfterParseStatus::Parsed) => Ok(
+            FailureRetrySchedule::Available(failure.retry_after_millis()),
+        ),
+        (
+            RetryAfterUnit::HttpDate,
+            RetryAfterParseStatus::Parsed | RetryAfterParseStatus::AlreadyEligible,
+        ) => {
+            let Some(eligible_unix_millis) = observation.eligible_unix_millis() else {
+                return Ok(FailureRetrySchedule::Unavailable);
+            };
+            Ok(FailureRetrySchedule::Available(Some(
+                eligible_unix_millis.saturating_sub(unix_millis()?),
+            )))
+        }
+        _ => Ok(FailureRetrySchedule::Unavailable),
     }
 }
 

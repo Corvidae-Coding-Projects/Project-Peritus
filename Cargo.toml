@@ -111,6 +111,7 @@ futures-core = "=0.3.34"
 getrandom = "=0.4.3"
 half = { version = "=2.4.1", default-features = false, features = ["std"] }
 html5ever = "=0.39.0"
+httpdate = "=1.0.3"
 image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp"] }
 futures-util = "=0.3.34"
 keyring = { version = "=4.1.6", default-features = false }
@@ -118,6 +119,7 @@ landlock = { version = "=0.4.7", default-features = false }
 libfuzzer-sys = "=0.4.13"
 libc = "=0.2.189"
 markup5ever_rcdom = "=0.39.0"
+mio = { version = "=1.2.2", default-features = false, features = ["net", "os-poll"] }
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }
 portable-pty = { version = "=0.9.0", default-features = false }
 process-wrap = { version = "=9.1.0", default-features = false, features = ["creation-flags", "job-object", "process-group", "process-session", "std"] }

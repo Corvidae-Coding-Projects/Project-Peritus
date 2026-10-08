@@ -2793,6 +2793,7 @@ name = "peritus-network"
 version = "0.0.5"
 dependencies = [
  "base64",
+ "mio",
  "nix 0.31.3",
  "peritus-codec",
  "peritus-sandbox",
@@ -2949,6 +2950,7 @@ dependencies = [
  "peritus-types",
  "portable-pty",
  "process-wrap",
+ "rusqlite",
  "sha2 0.11.0",
  "tempfile",
  "vstd",
@@ -2972,6 +2974,7 @@ dependencies = [
  "peritus-kernel",
  "peritus-leases",
  "peritus-model-protocol",
+ "peritus-network",
  "peritus-obligations",
  "peritus-orchestrator",
  "peritus-patch",
@@ -3076,6 +3079,7 @@ name = "peritus-provider-compatible"
 version = "0.0.5"
 dependencies = [
  "base64",
+ "httpdate",
  "peritus-codec",
  "peritus-conformance",
  "peritus-model-protocol",
@@ -3461,6 +3465,7 @@ dependencies = [
 name = "peritus-tool-router"
 version = "0.0.5"
 dependencies = [
+ "getrandom 0.4.3",
  "peritus-approval",
  "peritus-budget",
  "peritus-codec",
@@ -3623,13 +3628,19 @@ version = "0.0.5"
 dependencies = [
  "axum",
  "base64",
+ "fs4",
+ "futures-util",
  "getrandom 0.4.3",
+ "libc",
  "peritus-app-client",
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-local-socket",
+ "peritus-process",
+ "peritus-product-state",
  "peritus-types",
  "portable-pty",
+ "rusqlite",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -3638,6 +3649,7 @@ dependencies = [
  "toml",
  "tower",
  "tower-http",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

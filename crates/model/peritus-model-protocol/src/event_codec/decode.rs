@@ -9,11 +9,12 @@ use crate::{
     ExtensionName, FailureCategory, FinishReason, ItemId, ItemKind, JsonBounds, ModelEvent,
     ModelFailure, ModelName, OutcomeCertainty, ProtocolError, ProtocolErrorKind, ProtocolLimits,
     ProtocolVersion, ProviderExtension, ProviderName, RateLimitDimension, RateLimitObservation,
-    RateLimitWindow, RedactedDiagnostic, ResetTime, ResponseId, Retryability, StreamFragment,
-    ToolCallId, ToolName, TransportPhase, UsageCounters, UsageObservation, UsageScope,
+    RateLimitWindow, RedactedDiagnostic, ResetTime, ResponseId, RetryAfterObservation,
+    RetryAfterParseStatus, RetryAfterUnit, Retryability, StreamFragment, ToolCallId, ToolName,
+    TransportPhase, UsageCounters, UsageObservation, UsageScope,
 };
 
-/// Decodes canonical normalized-event schema-version-one bytes.
+/// Decodes supported canonical normalized-event schema bytes.
 ///
 /// Decoding reconstructs inert normalized data only. Stream legality and terminal semantics are
 /// revalidated when the returned envelope is replayed through [`crate::ResponseReducer`].
@@ -31,7 +32,7 @@ pub fn decode_event_envelope(
         return Err(invalid("canonical_event.magic", "canonical event magic is invalid"));
     }
     let schema = reader.read_u16().map_err(read_codec)?;
-    if schema != super::EVENT_ENVELOPE_SCHEMA_VERSION {
+    if !(1..=super::EVENT_ENVELOPE_SCHEMA_VERSION).contains(&schema) {
         return Err(ProtocolError::at(
             ProtocolErrorKind::UnsupportedVersion,
             "canonical_event.schema_version",
@@ -57,7 +58,7 @@ pub fn decode_event_envelope(
         None
     };
     let provider_digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(read_codec)?);
-    let event = decode_event(&mut reader, limits)?;
+    let event = decode_event(&mut reader, limits, schema)?;
     reader.finish().map_err(read_codec)?;
     let envelope =
         EventEnvelope::new(sequence, provider_sequence, provider_event_id, provider_digest, event)?;
@@ -70,6 +71,7 @@ pub fn decode_event_envelope(
 fn decode_event(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
+    schema: u16,
 ) -> Result<ModelEvent, ProtocolError> {
     match reader.read_u8().map_err(read_codec)? {
         1 => Ok(ModelEvent::ResponseStarted {
@@ -116,7 +118,7 @@ fn decode_event(
         15 => provider_extension(reader, limits).map(ModelEvent::ProviderEvent),
         16 => Ok(ModelEvent::Heartbeat),
         17 => Ok(ModelEvent::ResponseCompleted),
-        18 => failure(reader).map(ModelEvent::ResponseFailed),
+        18 => failure(reader, limits, schema).map(ModelEvent::ResponseFailed),
         19 => Ok(ModelEvent::ResponseCancelled),
         _ => Err(unknown("model_event")),
     }
@@ -307,7 +309,11 @@ fn provider_extension(
     Ok(ProviderExtension::new(name, extension_json(reader, limits)?))
 }
 
-fn failure(reader: &mut CanonicalReader<'_>) -> Result<ModelFailure, ProtocolError> {
+fn failure(
+    reader: &mut CanonicalReader<'_>,
+    limits: ProtocolLimits,
+    schema: u16,
+) -> Result<ModelFailure, ProtocolError> {
     let provider = ProviderName::new(reader.read_str().map_err(read_codec)?.to_owned())?;
     let category = failure_category(reader.read_u8().map_err(read_codec)?)?;
     let phase = transport_phase(reader.read_u8().map_err(read_codec)?)?;
@@ -322,7 +328,7 @@ fn failure(reader: &mut CanonicalReader<'_>) -> Result<ModelFailure, ProtocolErr
         option_u64(reader)?,
         option_u64(reader)?,
     )?;
-    Ok(ModelFailure::new(
+    let failure = ModelFailure::new(
         provider,
         category,
         phase,
@@ -332,7 +338,64 @@ fn failure(reader: &mut CanonicalReader<'_>) -> Result<ModelFailure, ProtocolErr
         response_id,
         retry_after,
         diagnostic,
-    ))
+    );
+    if schema == 1 {
+        return Ok(failure);
+    }
+    let raw_bytes = reader.read_u64().map_err(read_codec)?;
+    let raw_digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(read_codec)?);
+    let raw_value = if reader.read_option_tag().map_err(read_codec)? {
+        let encoded = reader.read_bytes().map_err(read_codec)?;
+        if encoded.len() > limits.max_extension_bytes() {
+            return Err(invalid(
+                "canonical_event.retry_after.raw_value",
+                "retained retry-after bytes exceed their selected bound",
+            ));
+        }
+        let mut value = Vec::new();
+        value.try_reserve_exact(encoded.len()).map_err(|_| {
+            invalid(
+                "canonical_event.retry_after.raw_value",
+                "retry-after byte allocation is unavailable",
+            )
+        })?;
+        value.extend_from_slice(encoded);
+        Some(value)
+    } else {
+        None
+    };
+    let unit = decode_retry_after_unit(reader.read_u8().map_err(read_codec)?)?;
+    let parse_status = decode_retry_after_parse_status(reader.read_u8().map_err(read_codec)?)?;
+    let eligible_unix_millis = option_u64(reader)?;
+    let observation = RetryAfterObservation::from_encoded(
+        raw_value,
+        raw_digest,
+        raw_bytes,
+        unit,
+        parse_status,
+        eligible_unix_millis,
+        limits,
+    )?;
+    failure.with_retry_after_observation(observation)
+}
+
+fn decode_retry_after_unit(tag: u8) -> Result<RetryAfterUnit, ProtocolError> {
+    match tag {
+        1 => Ok(RetryAfterUnit::DeltaSeconds),
+        2 => Ok(RetryAfterUnit::HttpDate),
+        3 => Ok(RetryAfterUnit::Unsupported),
+        _ => Err(unknown("retry_after_unit")),
+    }
+}
+
+fn decode_retry_after_parse_status(tag: u8) -> Result<RetryAfterParseStatus, ProtocolError> {
+    match tag {
+        1 => Ok(RetryAfterParseStatus::Parsed),
+        2 => Ok(RetryAfterParseStatus::AlreadyEligible),
+        3 => Ok(RetryAfterParseStatus::Invalid),
+        4 => Ok(RetryAfterParseStatus::Unrepresentable),
+        _ => Err(unknown("retry_after_parse_status")),
+    }
 }
 
 fn failure_category(tag: u8) -> Result<FailureCategory, ProtocolError> {

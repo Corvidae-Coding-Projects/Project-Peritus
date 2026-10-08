@@ -48,7 +48,10 @@ pub use event_codec::{
     decode_event_envelope, decode_next_event_archive_page, encode_event_archive_page,
     encode_event_envelope, is_event_archive_page,
 };
-pub use failure::{FailureCategory, ModelFailure, OutcomeCertainty, Retryability, TransportPhase};
+pub use failure::{
+    FailureCategory, ModelFailure, OutcomeCertainty, RetryAfterObservation, RetryAfterParseStatus,
+    RetryAfterUnit, Retryability, TransportPhase,
+};
 pub use finish::{FinishReason, TerminalOutcome};
 pub use identity::{
     CacheKey, EventId, ExtensionName, IdempotencyKey, ItemId, ModelName, OutputName, ProviderName,

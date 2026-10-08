@@ -197,8 +197,8 @@ impl ModelEvent {
             | Self::Finish(_)
             | Self::Heartbeat
             | Self::ResponseCompleted
-            | Self::ResponseFailed(_)
             | Self::ResponseCancelled => Ok(()),
+            Self::ResponseFailed(failure) => failure.validate_under(limits),
         }
     }
 }

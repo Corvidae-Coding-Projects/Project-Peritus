@@ -12,5 +12,5 @@ pub use page::{
     encode_event_archive_page, is_event_archive_page,
 };
 
-/// Canonical normalized-event schema version.
-pub const EVENT_ENVELOPE_SCHEMA_VERSION: u16 = 1;
+/// Latest canonical normalized-event schema version.
+pub const EVENT_ENVELOPE_SCHEMA_VERSION: u16 = 2;
