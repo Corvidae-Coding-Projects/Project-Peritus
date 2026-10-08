@@ -6,8 +6,8 @@ use peritus_types::{EvidenceId, Generation, RevisionNumber, RunId, WorkspaceId};
 
 use crate::{
     ActivationAuthorization, DiagnosisCitation, EvolutionError, EvolutionLimits,
-    InstalledSnapshotBinding, Objective, ProductionHarnessBinding, PromotionPolicy,
-    PromotionPolicyBinding, PromotionReviewEvidence, PromotionThresholds,
+    InstalledSnapshotBinding, MeasurementRequirement, Objective, ProductionHarnessBinding,
+    PromotionPolicy, PromotionPolicyBinding, PromotionReviewEvidence, PromotionThresholds,
     PublishedDebuggerEvidence,
 };
 
@@ -105,6 +105,10 @@ pub(super) fn write_policy(
     writer.write_fixed(value.component_digest().as_bytes()).map_err(scalar::codec)?;
     let policy = value.policy();
     let thresholds = policy.thresholds();
+    if policy.has_explicit_measurements() {
+        writer.write_fixed(&i32::MIN.to_be_bytes()).map_err(scalar::codec)?;
+        writer.write_u8(2).map_err(scalar::codec)?;
+    }
     writer
         .write_fixed(&thresholds.minimum_paired_lower_millionths().to_be_bytes())
         .map_err(scalar::codec)?;
@@ -114,10 +118,20 @@ pub(super) fn write_policy(
     writer
         .write_u32(thresholds.minimum_attribution_coverage_millionths())
         .map_err(scalar::codec)?;
-    writer.write_u64(thresholds.maximum_latency_p95_micros()).map_err(scalar::codec)?;
-    writer.write_u64(thresholds.maximum_cost_mean_microunits()).map_err(scalar::codec)?;
-    writer.write_u64(thresholds.maximum_input_tokens_mean()).map_err(scalar::codec)?;
-    writer.write_u64(thresholds.maximum_output_tokens_mean()).map_err(scalar::codec)?;
+    for requirement in [
+        thresholds.measurement(crate::PromotionMeasurement::LatencyP95),
+        thresholds.measurement(crate::PromotionMeasurement::CostMean),
+        thresholds.measurement(crate::PromotionMeasurement::InputTokensMean),
+        thresholds.measurement(crate::PromotionMeasurement::OutputTokensMean),
+    ] {
+        if policy.has_explicit_measurements() {
+            write_measurement_requirement(writer, requirement)?;
+        } else {
+            writer
+                .write_u64(requirement.maximum().ok_or_else(scalar::protocol)?)
+                .map_err(scalar::codec)?;
+        }
+    }
     writer.write_bool(thresholds.require_complete_trace()).map_err(scalar::codec)?;
     writer.write_bool(thresholds.require_complete_teardown()).map_err(scalar::codec)?;
     writer.write_collection_len(policy.objectives().len()).map_err(scalar::codec)?;
@@ -139,19 +153,74 @@ pub(super) fn policy(
     let production_revision = scalar::harness_revision(reader)?;
     let component_id = scalar::component_id(reader)?;
     let component_digest = scalar::digest(reader)?;
-    let thresholds = PromotionThresholds::new(
-        i32::from_be_bytes(reader.read_fixed().map_err(scalar::codec)?),
-        reader.read_u32().map_err(scalar::codec)?,
-        reader.read_u32().map_err(scalar::codec)?,
-        reader.read_u32().map_err(scalar::codec)?,
-        reader.read_u32().map_err(scalar::codec)?,
-        reader.read_u64().map_err(scalar::codec)?,
-        reader.read_u64().map_err(scalar::codec)?,
-        reader.read_u64().map_err(scalar::codec)?,
-        reader.read_u64().map_err(scalar::codec)?,
-        reader.read_bool().map_err(scalar::codec)?,
-        reader.read_bool().map_err(scalar::codec)?,
-    )?;
+    let marker_or_minimum = i32::from_be_bytes(reader.read_fixed().map_err(scalar::codec)?);
+    let explicit_measurements = marker_or_minimum == i32::MIN;
+    let minimum_paired_lower_millionths = if explicit_measurements {
+        if reader.read_u8().map_err(scalar::codec)? != 2 {
+            return Err(scalar::protocol());
+        }
+        i32::from_be_bytes(reader.read_fixed().map_err(scalar::codec)?)
+    } else {
+        marker_or_minimum
+    };
+    let maximum_critical_regressions = reader.read_u32().map_err(scalar::codec)?;
+    let maximum_safety_failures = reader.read_u32().map_err(scalar::codec)?;
+    let minimum_reliability_lower_millionths = reader.read_u32().map_err(scalar::codec)?;
+    let minimum_attribution_coverage_millionths = reader.read_u32().map_err(scalar::codec)?;
+    let measurements = if explicit_measurements {
+        [
+            measurement_requirement(reader)?,
+            measurement_requirement(reader)?,
+            measurement_requirement(reader)?,
+            measurement_requirement(reader)?,
+        ]
+    } else {
+        [
+            MeasurementRequirement::RequiredMaximum(
+                reader.read_u64().map_err(scalar::codec)?,
+            ),
+            MeasurementRequirement::RequiredMaximum(
+                reader.read_u64().map_err(scalar::codec)?,
+            ),
+            MeasurementRequirement::RequiredMaximum(
+                reader.read_u64().map_err(scalar::codec)?,
+            ),
+            MeasurementRequirement::RequiredMaximum(
+                reader.read_u64().map_err(scalar::codec)?,
+            ),
+        ]
+    };
+    let require_complete_trace = reader.read_bool().map_err(scalar::codec)?;
+    let require_complete_teardown = reader.read_bool().map_err(scalar::codec)?;
+    let thresholds = if explicit_measurements {
+        PromotionThresholds::new_with_measurements(
+            minimum_paired_lower_millionths,
+            maximum_critical_regressions,
+            maximum_safety_failures,
+            minimum_reliability_lower_millionths,
+            minimum_attribution_coverage_millionths,
+            measurements[0],
+            measurements[1],
+            measurements[2],
+            measurements[3],
+            require_complete_trace,
+            require_complete_teardown,
+        )?
+    } else {
+        PromotionThresholds::new(
+            minimum_paired_lower_millionths,
+            maximum_critical_regressions,
+            maximum_safety_failures,
+            minimum_reliability_lower_millionths,
+            minimum_attribution_coverage_millionths,
+            measurements[0].maximum().ok_or_else(scalar::protocol)?,
+            measurements[1].maximum().ok_or_else(scalar::protocol)?,
+            measurements[2].maximum().ok_or_else(scalar::protocol)?,
+            measurements[3].maximum().ok_or_else(scalar::protocol)?,
+            require_complete_trace,
+            require_complete_teardown,
+        )?
+    };
     let objective_count = reader.read_collection_len(1).map_err(scalar::codec)?;
     let mut objectives = reader.reserve_collection(objective_count).map_err(scalar::codec)?;
     for _ in 0..objective_count {
@@ -176,6 +245,31 @@ pub(super) fn policy(
         component_digest,
         policy,
     )
+}
+
+fn write_measurement_requirement(
+    writer: &mut CanonicalWriter,
+    requirement: MeasurementRequirement,
+) -> Result<(), EvolutionError> {
+    match requirement {
+        MeasurementRequirement::Optional => writer.write_u8(0).map_err(scalar::codec),
+        MeasurementRequirement::RequiredMaximum(maximum) => {
+            writer.write_u8(1).map_err(scalar::codec)?;
+            writer.write_u64(maximum).map_err(scalar::codec)
+        }
+    }
+}
+
+fn measurement_requirement(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<MeasurementRequirement, EvolutionError> {
+    match reader.read_u8().map_err(scalar::codec)? {
+        0 => Ok(MeasurementRequirement::Optional),
+        1 => Ok(MeasurementRequirement::RequiredMaximum(
+            reader.read_u64().map_err(scalar::codec)?,
+        )),
+        _ => Err(scalar::protocol()),
+    }
 }
 
 const fn objective(tag: u8) -> Result<Objective, EvolutionError> {

@@ -2,7 +2,9 @@
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 
-use crate::{CampaignCommandKind, EvolutionError, EvolutionLimits, VariantId};
+use crate::{
+    CampaignCommandKind, EvolutionError, EvolutionLimits, MeasurementCapabilities, VariantId,
+};
 
 use super::{super::scalar, attribution, binding, change, evaluation, proposal, selection};
 
@@ -17,6 +19,10 @@ pub(crate) fn encode_kind(kind: &CampaignCommandKind) -> Result<Vec<u8>, Evoluti
             binding::write_policy(&mut writer, policy)?;
         }
         CampaignCommandKind::FreezeCampaign => writer.write_u8(2).map_err(scalar::codec)?,
+        CampaignCommandKind::FreezeCampaignWithMeasurements { available_measurements } => {
+            writer.write_u8(17).map_err(scalar::codec)?;
+            writer.write_u8(available_measurements.bits()).map_err(scalar::codec)?;
+        }
         CampaignCommandKind::ExpandScope { limits } => {
             writer.write_u8(15).map_err(scalar::codec)?;
             binding::write_limits(&mut writer, *limits)?;
@@ -92,6 +98,12 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, Evolution
             CampaignCommandKind::CreateCampaign { project_id, baseline, policy, limits }
         }
         2 => CampaignCommandKind::FreezeCampaign,
+        17 => CampaignCommandKind::FreezeCampaignWithMeasurements {
+            available_measurements: MeasurementCapabilities::from_bits(
+                reader.read_u8().map_err(scalar::codec)?,
+            )
+            .ok_or_else(scalar::protocol)?,
+        },
         3 => CampaignCommandKind::RecordBaselineEvidence {
             artifact_digest: scalar::digest(&mut reader)?,
             evidence_digest: scalar::digest(&mut reader)?,

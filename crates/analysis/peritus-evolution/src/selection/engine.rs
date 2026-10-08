@@ -5,7 +5,8 @@ use core::cmp::Ordering;
 use crate::{
     AttributionRecord, CompatibilityEffect, Criterion, CriterionOutcome, CriterionResult,
     EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery, MetricValue,
-    Objective, ObjectiveVector, PromotionPolicy, PromotionReviewEvidence,
+    MeasurementRequirement, Objective, ObjectiveVector, PromotionMeasurement, PromotionPolicy,
+    PromotionReviewEvidence,
     PublishedEvaluationEvidence, SelectionDecision, SelectionRecord, VariantAssessment,
     VariantDefinition, VariantRejection,
 };
@@ -88,30 +89,43 @@ pub fn assess_variant(
             attribution.mandatory_failures() == 0,
             attribution.digest(),
         ),
-        metric_result(
+    ];
+    for result in [
+        resource_result(
             Criterion::Latency,
-            latency.map(MetricValue::Quantity),
-            latency.is_some_and(|value| value <= thresholds.maximum_latency_p95_micros()),
+            latency,
+            thresholds.measurement(PromotionMeasurement::LatencyP95),
+            policy.objectives().contains(&Objective::Latency),
             evaluation.digest(),
         ),
-        metric_result(
+        resource_result(
             Criterion::Cost,
-            cost.map(MetricValue::Quantity),
-            cost.is_some_and(|value| value <= thresholds.maximum_cost_mean_microunits()),
+            cost,
+            thresholds.measurement(PromotionMeasurement::CostMean),
+            policy.objectives().contains(&Objective::Cost),
             evaluation.digest(),
         ),
-        metric_result(
+        resource_result(
             Criterion::InputTokens,
-            input.map(MetricValue::Quantity),
-            input.is_some_and(|value| value <= thresholds.maximum_input_tokens_mean()),
+            input,
+            thresholds.measurement(PromotionMeasurement::InputTokensMean),
+            policy.objectives().contains(&Objective::InputTokens),
             evaluation.digest(),
         ),
-        metric_result(
+        resource_result(
             Criterion::OutputTokens,
-            output.map(MetricValue::Quantity),
-            output.is_some_and(|value| value <= thresholds.maximum_output_tokens_mean()),
+            output,
+            thresholds.measurement(PromotionMeasurement::OutputTokensMean),
+            policy.objectives().contains(&Objective::OutputTokens),
             evaluation.digest(),
         ),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        criteria.push(result);
+    }
+    criteria.extend([
         completeness_result(
             Criterion::TraceCompleteness,
             thresholds.require_complete_trace(),
@@ -150,7 +164,7 @@ pub fn assess_variant(
             None,
             variant.digest(),
         ),
-    ];
+    ]);
     criteria.sort_unstable_by_key(|result| result.criterion());
     let objectives = ObjectiveVector {
         paired_lower: paired.unwrap_or(i32::MIN),
@@ -264,6 +278,25 @@ const fn count_result(
     evidence: Sha256Digest,
 ) -> CriterionResult {
     metric_result(criterion, Some(MetricValue::Count(observed)), passed, evidence)
+}
+
+fn resource_result(
+    criterion: Criterion,
+    observed: Option<u64>,
+    requirement: MeasurementRequirement,
+    ranking_objective: bool,
+    evidence: Sha256Digest,
+) -> Option<CriterionResult> {
+    let maximum = requirement.maximum();
+    if maximum.is_none() && !ranking_objective {
+        return None;
+    }
+    Some(metric_result(
+        criterion,
+        observed.map(MetricValue::Quantity),
+        observed.is_some_and(|value| maximum.is_none_or(|maximum| value <= maximum)),
+        evidence,
+    ))
 }
 
 fn completeness_result(

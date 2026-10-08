@@ -187,6 +187,7 @@ pub(super) fn artifact_dependencies(kind: &CampaignCommandKind) -> Vec<ArtifactD
         }
         CampaignCommandKind::CreateCampaign { .. }
         | CampaignCommandKind::FreezeCampaign
+        | CampaignCommandKind::FreezeCampaignWithMeasurements { .. }
         | CampaignCommandKind::ExpandScope { .. }
         | CampaignCommandKind::AdmitVariant(_)
         | CampaignCommandKind::CompleteAttribution { .. }

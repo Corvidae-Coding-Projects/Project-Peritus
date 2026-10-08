@@ -7,9 +7,9 @@ use peritus_types::{CommandId, EventId, ProjectId, Sha256Digest};
 
 use crate::{
     CampaignCommand, CampaignCommandKind, CampaignState, EvolutionCampaignId, EvolutionLimits,
-    PointerCommand, PointerCommandKind, ProductionHarnessState, PromotionProposal,
-    commit_campaign_transition, commit_pointer_transition, decide_campaign, decide_pointer,
-    finalize_evolution_artifact, recover_campaign,
+    MeasurementCapabilities, PointerCommand, PointerCommandKind, ProductionHarnessState,
+    PromotionProposal, commit_campaign_transition, commit_pointer_transition, decide_campaign,
+    decide_pointer, finalize_evolution_artifact, recover_campaign,
     wire::{CampaignCommandFrame, CampaignEventFrame, CampaignStateFrame},
 };
 
@@ -39,7 +39,9 @@ pub(super) fn seed_campaign(
             policy: fixture.policy.clone(),
             limits: EvolutionLimits::default(),
         },
-        CampaignCommandKind::FreezeCampaign,
+        CampaignCommandKind::FreezeCampaignWithMeasurements {
+            available_measurements: MeasurementCapabilities::ALL,
+        },
         CampaignCommandKind::RecordBaselineEvidence {
             artifact_digest: artifacts.baseline,
             evidence_digest: artifacts.baseline_evidence,

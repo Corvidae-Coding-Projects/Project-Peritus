@@ -3,9 +3,9 @@
 use crate::{
     AttributionRecord, CampaignPublication, ChangeManifest, EvaluationSupersession,
     EvolutionCampaignId, EvolutionError, EvolutionErrorKind, EvolutionLimits, EvolutionOperation,
-    EvolutionRecovery, ProductionHarnessBinding, PromotionPolicyBinding, PromotionProposal,
-    PublishedDebuggerEvidence, PublishedEvaluationEvidence, SelectionRecord, VariantAssessment,
-    VariantDefinition, VariantId, identity::digest_parts,
+    EvolutionRecovery, MeasurementCapabilities, ProductionHarnessBinding, PromotionPolicyBinding,
+    PromotionProposal, PublishedDebuggerEvidence, PublishedEvaluationEvidence, SelectionRecord,
+    VariantAssessment, VariantDefinition, VariantId, identity::digest_parts,
 };
 use peritus_types::{CommandId, EventId, ProjectId, Sha256Digest};
 
@@ -25,6 +25,11 @@ pub enum CampaignCommandKind {
     },
     /// Freezes all immutable campaign inputs.
     FreezeCampaign,
+    /// Freezes explicit measurement policy after evaluator capability validation.
+    FreezeCampaignWithMeasurements {
+        /// Resource measurements the selected evaluator can actually produce.
+        available_measurements: MeasurementCapabilities,
+    },
     /// Atomically adopts a strictly broader owner-selected workload policy.
     ExpandScope {
         /// Monotonic successor policy; all accepted evidence remains in the same aggregate.
@@ -230,6 +235,10 @@ pub(crate) fn semantic_digest(kind: &CampaignCommandKind) -> Sha256Digest {
             bytes.extend_from_slice(limits.digest().as_bytes());
         }
         CampaignCommandKind::FreezeCampaign => bytes.push(2),
+        CampaignCommandKind::FreezeCampaignWithMeasurements { available_measurements } => {
+            bytes.push(17);
+            bytes.push(available_measurements.bits());
+        }
         CampaignCommandKind::ExpandScope { limits } => {
             bytes.push(15);
             bytes.extend_from_slice(limits.digest().as_bytes());

@@ -37,7 +37,7 @@ pub(super) struct HarnessFixture {
 impl HarnessFixture {
     pub(super) fn build(store: StoreId) -> Result<Self, crate::EvolutionError> {
         let policy = policy()?;
-        let policy_bytes = policy_component_bytes(&policy);
+        let policy_bytes = policy_component_bytes(&policy)?;
         if peritus_codec::sha256(&policy_bytes) != policy.digest() {
             return Err(invalid("qualification policy bytes differ from the typed policy"));
         }
@@ -189,7 +189,9 @@ fn declaration(
     .map_err(|_| invalid("construct qualification component declaration"))
 }
 
-fn policy_component_bytes(policy: &PromotionPolicy) -> Vec<u8> {
+fn policy_component_bytes(
+    policy: &PromotionPolicy,
+) -> Result<Vec<u8>, crate::EvolutionError> {
     let thresholds = policy.thresholds();
     let mut semantic = Vec::new();
     semantic.extend_from_slice(&thresholds.minimum_paired_lower_millionths().to_be_bytes());
@@ -197,10 +199,30 @@ fn policy_component_bytes(policy: &PromotionPolicy) -> Vec<u8> {
     semantic.extend_from_slice(&thresholds.maximum_safety_failures().to_be_bytes());
     semantic.extend_from_slice(&thresholds.minimum_reliability_lower_millionths().to_be_bytes());
     semantic.extend_from_slice(&thresholds.minimum_attribution_coverage_millionths().to_be_bytes());
-    semantic.extend_from_slice(&thresholds.maximum_latency_p95_micros().to_be_bytes());
-    semantic.extend_from_slice(&thresholds.maximum_cost_mean_microunits().to_be_bytes());
-    semantic.extend_from_slice(&thresholds.maximum_input_tokens_mean().to_be_bytes());
-    semantic.extend_from_slice(&thresholds.maximum_output_tokens_mean().to_be_bytes());
+    semantic.extend_from_slice(
+        &thresholds
+            .maximum_latency_p95_micros()
+            .ok_or_else(|| invalid("qualification policy latency is optional"))?
+            .to_be_bytes(),
+    );
+    semantic.extend_from_slice(
+        &thresholds
+            .maximum_cost_mean_microunits()
+            .ok_or_else(|| invalid("qualification policy cost is optional"))?
+            .to_be_bytes(),
+    );
+    semantic.extend_from_slice(
+        &thresholds
+            .maximum_input_tokens_mean()
+            .ok_or_else(|| invalid("qualification policy input tokens are optional"))?
+            .to_be_bytes(),
+    );
+    semantic.extend_from_slice(
+        &thresholds
+            .maximum_output_tokens_mean()
+            .ok_or_else(|| invalid("qualification policy output tokens are optional"))?
+            .to_be_bytes(),
+    );
     semantic.push(u8::from(thresholds.require_complete_trace()));
     semantic.push(u8::from(thresholds.require_complete_teardown()));
     push_len_prefixed(
@@ -215,7 +237,7 @@ fn policy_component_bytes(policy: &PromotionPolicy) -> Vec<u8> {
     semantic.extend_from_slice(&policy.maximum_variants().to_be_bytes());
     let mut preimage = b"peritus.f0.promotion-policy.v1\0".to_vec();
     push_len_prefixed(&mut preimage, &semantic);
-    preimage
+    Ok(preimage)
 }
 
 fn push_len_prefixed(output: &mut Vec<u8>, value: &[u8]) {

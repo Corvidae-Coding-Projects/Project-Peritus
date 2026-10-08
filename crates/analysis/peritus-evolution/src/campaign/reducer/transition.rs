@@ -59,6 +59,18 @@ pub(super) fn apply_kind(
         CampaignCommandKind::CreateCampaign { .. } => return Err(transition()),
         CampaignCommandKind::FreezeCampaign => {
             require(&state, &[CampaignPhase::Draft])?;
+            if state.policy.policy().has_explicit_measurements() {
+                return Err(measurement_capability());
+            }
+            state.phase = CampaignPhase::Frozen;
+        }
+        CampaignCommandKind::FreezeCampaignWithMeasurements { available_measurements } => {
+            require(&state, &[CampaignPhase::Draft])?;
+            if !available_measurements
+                .satisfies(state.policy.policy().required_measurements())
+            {
+                return Err(measurement_capability());
+            }
             state.phase = CampaignPhase::Frozen;
         }
         CampaignCommandKind::ExpandScope { limits } => {
@@ -409,6 +421,15 @@ fn campaign_binding_digest(
 
 fn require(state: &CampaignState, allowed: &[CampaignPhase]) -> Result<(), EvolutionError> {
     if allowed.contains(&state.phase()) { Ok(()) } else { Err(transition()) }
+}
+
+const fn measurement_capability() -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::UnsupportedCapability,
+        EvolutionOperation::TransitionCampaign,
+        EvolutionRecovery::SuccessorCampaign,
+        "evaluator cannot produce every measurement required by the promotion policy",
+    )
 }
 
 fn require_work_open(state: &CampaignState) -> Result<(), EvolutionError> {
