@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3902,
-        "tip_oid": "90f61ec478c3995d64144a571e962353a8886e83",
-        "prefix_sha256": "1e0dfc4c32be74a60e4deafc03ba2e581f81a81e1098bb8245f25b21a5c08f5b"
+        "sequence": 3903,
+        "tip_oid": "89d88932b8918a30d01ab6ccfa9ac52175484c2c",
+        "prefix_sha256": "8d924f22daab9f68ed99d6e2ac2a7a67099f8e4f737f6f520f96e5cfbcb87986"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3154,
+  "next_comment_id": 3155,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -19622,7 +19622,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.500049823Z",
-      "updated_at": "2026-10-06T13:27:50.502511275Z",
+      "updated_at": "2026-10-08T00:27:31.385762802Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -19633,6 +19633,15 @@
           "content": "Systemic repair plan for L426: E2 supported observations are rejected by five English substring heuristics.\n\nOwning contract and implementation boundary: crates/analysis/peritus-debugger/src/report/claim.rs:56-79; src/causal/candidate.rs:17-37. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nEncode the observation/inference distinction through typed evidence obligations and provenance rather than English word matching. Store complete supported statements with bounded display pages. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "463d02ce-69cf-4a0b-a714-13085adf68bf": {
+          "display_id": 3154,
+          "author": "6ME5",
+          "content": "Code complete in commit 9a4b38204. Removed English substring gates from typed cited observations, retained complete valid statements, added digest-bound UTF-8 display pages and incremental identity hashing, and removed contradictory model statement-length schema caps. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:27:31.376853854Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATevflODrRROoTGwmbs29DGujt51+83C6pIyt90wDTyr9y1a1yf7+eQXX0oPoDdX5wYqisXiUlDYT83gemrhVBg=="
         }
       }
     },
