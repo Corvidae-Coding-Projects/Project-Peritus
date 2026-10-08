@@ -20,7 +20,7 @@ mod verified;
 mod wire;
 
 pub use artifact::{ArtifactCompleteness, ArtifactProvenance, ArtifactReference};
-pub use call::{CallLimits, ToolCall};
+pub use call::{CallLimits, ProgressContract, ToolCall};
 pub use control::{CancellationReason, ControlSet, ToolControl};
 pub use descriptor::{
     IdempotencySemantics, LeaseRequirement, ProtocolCompatibility, SideEffectClass, ToolDescriptor,
@@ -39,7 +39,7 @@ pub use result::{
     FailureCategory, RecoveryRoute, ResponsibleSubsystem, ResultStatus, Retryability, ToolFailure,
     ToolResult, ToolTiming, Truncation, TruncationMetadata,
 };
-pub use schema::{BoundedJson, Schema, SchemaCompatibility, SchemaProperty};
+pub use schema::{BoundedJson, Schema, SchemaCompatibility, SchemaContract, SchemaProperty};
 pub use verified::{
     ProtocolBoundFacts, canonical_order_complete, protocol_bounds_complete, schema_shape_complete,
 };

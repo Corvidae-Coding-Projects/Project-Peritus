@@ -14,7 +14,7 @@ pub(super) fn classify(current: &Schema, successor: &Schema) -> SchemaCompatibil
 }
 
 fn additive(current: &Schema, successor: &Schema) -> bool {
-    if current.enum_values != successor.enum_values {
+    if current.contract != successor.contract || current.enum_values != successor.enum_values {
         return false;
     }
     match (&current.kind, &successor.kind) {

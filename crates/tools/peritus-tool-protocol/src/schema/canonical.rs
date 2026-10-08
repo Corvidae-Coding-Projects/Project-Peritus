@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-use super::{BoundedJson, JsonValue, Schema, SchemaKind};
+use super::{BoundedJson, JsonValue, Schema, SchemaContract, SchemaKind};
 use crate::{JsonLimits, ProtocolError, ProtocolErrorKind};
 
 pub(super) fn parse(input: &str, limits: JsonLimits) -> Result<BoundedJson, ProtocolError> {
@@ -132,11 +132,21 @@ pub(super) fn from_bounded_object(
 }
 
 pub(super) fn schema_bytes(schema: &Schema) -> Vec<u8> {
-    finish(schema_value(schema)).canonical
+    finish(schema_value(schema, true)).canonical
 }
 
-fn schema_value(schema: &Schema) -> JsonValue {
+pub(super) fn validate_schema(schema: &Schema, limits: JsonLimits) -> Result<(), ProtocolError> {
+    finish_checked(schema_value(schema, true), limits).map(|_| ())
+}
+
+fn schema_value(schema: &Schema, root: bool) -> JsonValue {
     let mut fields: BTreeMap<String, JsonValue> = BTreeMap::new();
+    if root && schema.contract == SchemaContract::JsonSchema202012 {
+        fields.insert(
+            "$schema".to_owned(),
+            JsonValue::String("https://json-schema.org/draft/2020-12/schema".to_owned()),
+        );
+    }
     match &schema.kind {
         SchemaKind::Null => {
             fields.insert("type".to_owned(), JsonValue::String("null".to_owned()));
@@ -153,20 +163,20 @@ fn schema_value(schema: &Schema) -> JsonValue {
                 fields.insert("minimum".to_owned(), JsonValue::Integer(*value));
             }
         }
-        SchemaKind::String { min_bytes, max_bytes } => {
+        SchemaKind::String { minimum, maximum } => {
             fields.insert("type".to_owned(), JsonValue::String("string".to_owned()));
-            if let Some(maximum) = max_bytes {
-                fields.insert("maxLength".to_owned(), JsonValue::Integer(i64::from(*maximum)));
+            if let Some(maximum) = maximum {
+                fields.insert("maxLength".to_owned(), natural(*maximum));
             }
-            fields.insert("minLength".to_owned(), JsonValue::Integer(i64::from(*min_bytes)));
+            fields.insert("minLength".to_owned(), natural(*minimum));
         }
         SchemaKind::Array { items, min_items, max_items } => {
             fields.insert("type".to_owned(), JsonValue::String("array".to_owned()));
-            fields.insert("items".to_owned(), schema_value(items));
+            fields.insert("items".to_owned(), schema_value(items, false));
             if let Some(maximum) = max_items {
-                fields.insert("maxItems".to_owned(), JsonValue::Integer(i64::from(*maximum)));
+                fields.insert("maxItems".to_owned(), natural(*maximum));
             }
-            fields.insert("minItems".to_owned(), JsonValue::Integer(i64::from(*min_items)));
+            fields.insert("minItems".to_owned(), natural(*min_items));
         }
         SchemaKind::Object { properties, additional_properties } => {
             fields.insert("type".to_owned(), JsonValue::String("object".to_owned()));
@@ -174,7 +184,7 @@ fn schema_value(schema: &Schema) -> JsonValue {
                 .insert("additionalProperties".to_owned(), JsonValue::Bool(*additional_properties));
             let props = properties
                 .iter()
-                .map(|property| (property.name.clone(), schema_value(&property.schema)))
+                .map(|property| (property.name.clone(), schema_value(&property.schema, false)))
                 .collect();
             fields.insert("properties".to_owned(), JsonValue::Object(props));
             let required = properties
@@ -190,6 +200,10 @@ fn schema_value(schema: &Schema) -> JsonValue {
         fields.insert("enum".to_owned(), JsonValue::Array(values));
     }
     JsonValue::Object(fields)
+}
+
+fn natural(value: u64) -> JsonValue {
+    i64::try_from(value).map_or(JsonValue::Unsigned(value), JsonValue::Integer)
 }
 
 fn write_value(value: &JsonValue, output: &mut Vec<u8>) {

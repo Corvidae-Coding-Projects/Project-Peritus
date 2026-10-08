@@ -4,7 +4,7 @@ use peritus_tool_protocol::{BoundedJson, JsonLimits, Schema, SchemaProperty};
 
 use crate::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
 
-const CONTENT_MAX: u32 = 65_536;
+const CONTENT_MAX: u64 = 65_536;
 
 pub fn discover_schema() -> Result<Schema, FsToolError> {
     object(vec![

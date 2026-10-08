@@ -3,15 +3,15 @@
 use peritus_policy::{OperationClass, OperationDescriptor, RiskClass, RiskSet};
 use peritus_tool_protocol::{
     BoundedText, ControlSet, IdempotencySemantics, ImplementationIdentity, JsonLimits,
-    LeaseRequirement, ProtocolCompatibility, Schema, SchemaProperty, SemanticVersion,
-    SideEffectClass, ToolDescriptor, ToolLimits,
+    LeaseRequirement, ProtocolCompatibility, Schema, SchemaContract, SchemaProperty,
+    SemanticVersion, SideEffectClass, ToolDescriptor, ToolLimits,
 };
 use peritus_types::CapabilityName;
 
 use crate::{ShellError, ShellErrorKind};
 
-const MAX_TOKEN_BYTES: u32 = 64 * 1_024;
-const MAX_ARGUMENTS: u32 = 4_096;
+const MAX_TOKEN_LENGTH: u64 = 64 * 1_024;
+const MAX_ARGUMENTS: u64 = 4_096;
 const JSON_FRAME_BYTES: usize = 16 * 1_024 * 1_024;
 
 /// Builds the canonical `shell.exec` structured-argv descriptor.
@@ -19,6 +19,38 @@ const JSON_FRAME_BYTES: usize = 16 * 1_024 * 1_024;
 /// # Errors
 /// Returns a typed error only if an internal descriptor constant violates the protocol contract.
 pub fn exec_descriptor() -> Result<ToolDescriptor, ShellError> {
+    descriptor(
+        "shell.exec",
+        exec_schema()?.with_contract(SchemaContract::JsonSchema202012),
+        vec![RiskClass::Execution],
+        4,
+        "peritus-tools-shell/shell.exec/v4",
+        current_limits()?,
+        "Execute literal structured argv through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+    )
+}
+
+/// Builds the canonical higher-risk `shell.script` descriptor.
+///
+/// # Errors
+/// Returns a typed error only if an internal descriptor constant violates the protocol contract.
+pub fn script_descriptor() -> Result<ToolDescriptor, ShellError> {
+    descriptor(
+        "shell.script",
+        script_schema()?.with_contract(SchemaContract::JsonSchema202012),
+        vec![RiskClass::Execution, RiskClass::ExternalSideEffect],
+        4,
+        "peritus-tools-shell/shell.script/v4",
+        current_limits()?,
+        "Execute explicit interpreter and script text through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+    )
+}
+
+/// Reconstructs the frozen version-three `shell.exec` descriptor for retained executions.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_exec_descriptor_v3() -> Result<ToolDescriptor, ShellError> {
     descriptor(
         "shell.exec",
         exec_schema()?,
@@ -30,11 +62,11 @@ pub fn exec_descriptor() -> Result<ToolDescriptor, ShellError> {
     )
 }
 
-/// Builds the canonical higher-risk `shell.script` descriptor.
+/// Reconstructs the frozen version-three `shell.script` descriptor for retained executions.
 ///
 /// # Errors
-/// Returns a typed error only if an internal descriptor constant violates the protocol contract.
-pub fn script_descriptor() -> Result<ToolDescriptor, ShellError> {
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_script_descriptor_v3() -> Result<ToolDescriptor, ShellError> {
     descriptor(
         "shell.script",
         script_schema()?,
@@ -79,7 +111,7 @@ pub fn legacy_script_descriptor() -> Result<ToolDescriptor, ShellError> {
 }
 
 fn exec_schema() -> Result<Schema, ShellError> {
-    let arguments = Schema::array(Schema::string(0, MAX_TOKEN_BYTES)?, 0, MAX_ARGUMENTS)?;
+    let arguments = Schema::array(Schema::string(0, MAX_TOKEN_LENGTH)?, 0, MAX_ARGUMENTS)?;
     Ok(Schema::object(
         vec![
             SchemaProperty::new("arguments".into(), arguments, true)?,
@@ -90,7 +122,7 @@ fn exec_schema() -> Result<Schema, ShellError> {
 }
 
 fn script_schema() -> Result<Schema, ShellError> {
-    let arguments = Schema::array(Schema::string(0, MAX_TOKEN_BYTES)?, 0, MAX_ARGUMENTS)?;
+    let arguments = Schema::array(Schema::string(0, MAX_TOKEN_LENGTH)?, 0, MAX_ARGUMENTS)?;
     Ok(Schema::object(
         vec![
             SchemaProperty::new("arguments".into(), arguments.clone(), true)?,

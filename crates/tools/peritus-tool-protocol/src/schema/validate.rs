@@ -2,29 +2,21 @@
 
 use core::cmp::Ordering;
 
-use super::{BoundedJson, JsonValue, Schema, SchemaKind, SchemaProperty};
-use crate::{ProtocolError, ProtocolErrorKind};
-
-const MAX_PROPERTIES: usize = 256;
-const MAX_PROPERTY_BYTES: usize = 256;
-const MAX_SCHEMA_DEPTH: usize = crate::JsonLimits::MAXIMUM.max_depth();
+use super::{BoundedJson, JsonValue, Schema, SchemaContract, SchemaKind, SchemaProperty};
+use crate::{JsonLimits, ProtocolError, ProtocolErrorKind};
 
 pub(super) fn property_name(value: &str) -> Result<(), ProtocolError> {
-    if value.is_empty()
-        || value.len() > MAX_PROPERTY_BYTES
-        || value.contains('\0')
-        || value.chars().any(char::is_control)
-    {
+    if value.is_empty() || value.contains('\0') || value.chars().any(char::is_control) {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidSchema,
             "$",
-            "schema property name is invalid or over limit",
+            "schema property name is empty or contains a control character",
         ));
     }
     Ok(())
 }
 
-pub(super) fn cardinality(minimum: u32, maximum: u32, path: &str) -> Result<(), ProtocolError> {
+pub(super) fn cardinality(minimum: u64, maximum: u64, path: &str) -> Result<(), ProtocolError> {
     if minimum > maximum {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidSchema,
@@ -36,13 +28,6 @@ pub(super) fn cardinality(minimum: u32, maximum: u32, path: &str) -> Result<(), 
 }
 
 pub(super) fn property_order(properties: &[SchemaProperty]) -> Result<(), ProtocolError> {
-    if properties.len() > MAX_PROPERTIES {
-        return Err(ProtocolError::at(
-            ProtocolErrorKind::InvalidSchema,
-            "$",
-            "schema property count exceeds its bound",
-        ));
-    }
     for property in properties {
         property_name(&property.name)?;
     }
@@ -57,16 +42,22 @@ pub(super) fn property_order(properties: &[SchemaProperty]) -> Result<(), Protoc
 }
 
 pub(super) fn enum_values(schema: &Schema, values: &[BoundedJson]) -> Result<(), ProtocolError> {
-    if values.is_empty() || values.len() > MAX_PROPERTIES {
+    if values.is_empty() {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidSchema,
             "$",
-            "schema enum is empty or exceeds its bound",
+            "schema enum is empty",
         ));
     }
     let mut previous: Option<&[u8]> = None;
     for value in values {
-        value_without_enum(schema, &value.value, "$", 1)?;
+        value_without_enum(
+            schema,
+            &value.value,
+            "$",
+            1,
+            JsonLimits::MAXIMUM.max_depth(),
+        )?;
         if previous.is_some_and(|bytes| bytes.cmp(value.canonical_bytes()) != Ordering::Less) {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidSchema,
@@ -84,8 +75,9 @@ pub(super) fn value(
     value: &JsonValue,
     path: &str,
     depth: usize,
+    max_depth: usize,
 ) -> Result<(), ProtocolError> {
-    value_without_enum(schema, value, path, depth)?;
+    value_without_enum(schema, value, path, depth, max_depth)?;
     if !schema.enum_values.is_empty()
         && !schema.enum_values.iter().any(|allowed| allowed.value == *value)
     {
@@ -99,8 +91,9 @@ fn value_without_enum(
     value: &JsonValue,
     path: &str,
     depth: usize,
+    max_depth: usize,
 ) -> Result<(), ProtocolError> {
-    if depth > MAX_SCHEMA_DEPTH {
+    if depth > max_depth {
         return Err(violation(path, "schema validation depth exceeds its bound"));
     }
     match (&schema.kind, value) {
@@ -127,25 +120,41 @@ fn value_without_enum(
                 Ok(())
             }
         }
-        (SchemaKind::String { min_bytes, max_bytes }, JsonValue::String(value)) => {
-            let length = value.len();
-            if length < *min_bytes as usize
-                || max_bytes.is_some_and(|maximum| length > maximum as usize)
-            {
-                Err(violation(path, "string is outside the allowed byte cardinality"))
+        (SchemaKind::String { minimum, maximum }, JsonValue::String(value)) => {
+            let observed = match schema.contract {
+                SchemaContract::LegacyV1 => value.len(),
+                SchemaContract::JsonSchema202012 => value.chars().count(),
+            };
+            let length = u64::try_from(observed)
+                .map_err(|_| violation(path, "string cardinality is not representable"))?;
+            if length < *minimum || maximum.is_some_and(|maximum| length > maximum) {
+                let detail = match schema.contract {
+                    SchemaContract::LegacyV1 => {
+                        "string is outside the allowed UTF-8 byte cardinality"
+                    }
+                    SchemaContract::JsonSchema202012 => {
+                        "string is outside the allowed Unicode character cardinality"
+                    }
+                };
+                Err(violation(path, detail))
             } else {
                 Ok(())
             }
         }
         (SchemaKind::Array { items, min_items, max_items }, JsonValue::Array(values)) => {
-            let length = values.len();
-            if length < *min_items as usize
-                || max_items.is_some_and(|maximum| length > maximum as usize)
-            {
+            let length = u64::try_from(values.len())
+                .map_err(|_| violation(path, "array cardinality is not representable"))?;
+            if length < *min_items || max_items.is_some_and(|maximum| length > maximum) {
                 return Err(violation(path, "array is outside the allowed cardinality"));
             }
             for (index, value) in values.iter().enumerate() {
-                self::value(items, value, &format!("{path}/{index}"), depth + 1)?;
+                self::value(
+                    items,
+                    value,
+                    &format!("{path}/{index}"),
+                    depth + 1,
+                    max_depth,
+                )?;
             }
             Ok(())
         }
@@ -162,6 +171,7 @@ fn value_without_enum(
                         value,
                         &format!("{path}/{}", escape_pointer(name)),
                         depth + 1,
+                        max_depth,
                     )?,
                     Err(_) if !additional_properties => {
                         let child_path = format!("{path}/{}", escape_pointer(name));
@@ -174,6 +184,77 @@ fn value_without_enum(
         }
         _ => Err(violation(path, "JSON value has the wrong schema type")),
     }
+}
+
+pub(super) fn definition(
+    schema: &Schema,
+    contract: SchemaContract,
+    limits: JsonLimits,
+) -> Result<(), ProtocolError> {
+    definition_at(schema, contract, limits, 1)
+}
+
+fn definition_at(
+    schema: &Schema,
+    contract: SchemaContract,
+    limits: JsonLimits,
+    depth: usize,
+) -> Result<(), ProtocolError> {
+    if depth > limits.max_depth() {
+        return Err(invalid(
+            "schema depth cannot fit the selected JSON frame",
+        ));
+    }
+    if schema.contract != contract {
+        return Err(ProtocolError::at(
+            ProtocolErrorKind::InvalidSchema,
+            "$",
+            "nested schema uses a different versioned contract",
+        ));
+    }
+    for value in &schema.enum_values {
+        value.validate_limits(limits)?;
+        value_without_enum(schema, &value.value, "$", 1, limits.max_depth())?;
+    }
+    let maximum_strings = representable(limits.max_string_bytes());
+    let maximum_members = representable(limits.max_members());
+    match &schema.kind {
+        SchemaKind::String { minimum, .. } if *minimum > maximum_strings => Err(
+            invalid("minimum string cardinality cannot fit the selected JSON frame"),
+        ),
+        SchemaKind::Array { items, min_items, .. } => {
+            if *min_items > maximum_members {
+                return Err(invalid(
+                    "minimum array cardinality cannot fit the selected JSON frame",
+                ));
+            }
+            definition_at(items, contract, limits, depth + 1)
+        }
+        SchemaKind::Object { properties, .. } => {
+            let required = properties.iter().filter(|property| property.required).count();
+            if required > limits.max_members() {
+                return Err(invalid(
+                    "required property count cannot fit the selected JSON frame",
+                ));
+            }
+            for property in properties {
+                definition_at(&property.schema, contract, limits, depth + 1)?;
+            }
+            Ok(())
+        }
+        SchemaKind::Null
+        | SchemaKind::Boolean
+        | SchemaKind::Integer { .. }
+        | SchemaKind::String { .. } => Ok(()),
+    }
+}
+
+fn representable(value: usize) -> u64 {
+    u64::try_from(value).unwrap_or(u64::MAX)
+}
+
+fn invalid(detail: &'static str) -> ProtocolError {
+    ProtocolError::at(ProtocolErrorKind::InvalidSchema, "$", detail)
 }
 
 fn escape_pointer(value: &str) -> String {

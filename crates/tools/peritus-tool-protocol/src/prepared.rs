@@ -111,7 +111,9 @@ pub fn prepare_call(
         ));
     }
     call.arguments().validate_limits(call.limits().json_limits())?;
-    descriptor.schema().validate(call.arguments())?;
+    descriptor
+        .schema()
+        .validate_with_limits(call.arguments(), call.limits().json_limits())?;
     let arguments_digest = call.arguments().digest();
     let prepared_digest = prepared_digest(&descriptor, &call, arguments_digest);
     let replay_identity =

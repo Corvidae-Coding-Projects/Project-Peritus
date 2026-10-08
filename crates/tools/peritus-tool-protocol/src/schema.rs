@@ -191,7 +191,8 @@ impl SchemaProperty {
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or control-containing names.
+    /// Rejects empty or control-containing names. The enclosing descriptor later applies its
+    /// selected JSON string and frame capacities.
     pub fn new(name: String, schema: Schema, required: bool) -> Result<Self, ProtocolError> {
         validate::property_name(&name)?;
         Ok(Self { name, schema, required })
@@ -217,8 +218,18 @@ impl SchemaProperty {
 /// Validated immutable schema in C4's deliberately bounded subset.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Schema {
+    contract: SchemaContract,
     kind: SchemaKind,
     enum_values: Vec<BoundedJson>,
+}
+
+/// Versioned meaning of canonical schema keywords and host-side validation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SchemaContract {
+    /// Historical descriptors interpret string cardinalities as UTF-8 byte counts.
+    LegacyV1,
+    /// JSON Schema draft 2020-12 semantics, including Unicode-scalar string lengths.
+    JsonSchema202012,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -226,8 +237,8 @@ enum SchemaKind {
     Null,
     Boolean,
     Integer { minimum: Option<i64>, maximum: Option<i64> },
-    String { min_bytes: u32, max_bytes: Option<u32> },
-    Array { items: Box<Schema>, min_items: u32, max_items: Option<u32> },
+    String { minimum: u64, maximum: Option<u64> },
+    Array { items: Box<Schema>, min_items: u64, max_items: Option<u64> },
     Object { properties: Vec<SchemaProperty>, additional_properties: bool },
 }
 
@@ -235,12 +246,20 @@ impl Schema {
     /// Creates a null schema.
     #[must_use]
     pub const fn null() -> Self {
-        Self { kind: SchemaKind::Null, enum_values: Vec::new() }
+        Self {
+            contract: SchemaContract::LegacyV1,
+            kind: SchemaKind::Null,
+            enum_values: Vec::new(),
+        }
     }
     /// Creates a boolean schema.
     #[must_use]
     pub const fn boolean() -> Self {
-        Self { kind: SchemaKind::Boolean, enum_values: Vec::new() }
+        Self {
+            contract: SchemaContract::LegacyV1,
+            kind: SchemaKind::Boolean,
+            enum_values: Vec::new(),
+        }
     }
 
     /// Creates an integer range schema.
@@ -256,32 +275,43 @@ impl Schema {
                 "integer minimum exceeds maximum",
             ));
         }
-        Ok(Self { kind: SchemaKind::Integer { minimum, maximum }, enum_values: Vec::new() })
+        Ok(Self {
+            contract: SchemaContract::LegacyV1,
+            kind: SchemaKind::Integer { minimum, maximum },
+            enum_values: Vec::new(),
+        })
     }
 
-    /// Creates a UTF-8 byte-cardinality string schema.
+    /// Creates a string-cardinality schema in the historical byte-count contract.
+    ///
+    /// Use [`Self::with_contract`] on the completed schema tree to select JSON Schema
+    /// character-count semantics for newly versioned descriptors.
     ///
     /// # Errors
     ///
-    /// Rejects an inverted byte-cardinality range.
-    pub fn string(min_bytes: u32, max_bytes: u32) -> Result<Self, ProtocolError> {
-        Self::string_with_optional_maximum(min_bytes, Some(max_bytes))
+    /// Rejects an inverted cardinality range.
+    pub fn string(minimum: u64, maximum: u64) -> Result<Self, ProtocolError> {
+        Self::string_with_optional_maximum(minimum, Some(maximum))
     }
 
-    /// Creates a UTF-8 byte-cardinality schema without requiring a semantic upper bound.
+    /// Creates a historical byte-cardinality schema without a required semantic upper bound.
     /// An absent maximum emits no `maxLength`; transport capacity remains separately owned.
     /// Existing bounded string schemas retain their canonical bytes.
     ///
     /// # Errors
     /// Rejects an inverted range when a maximum is supplied.
     pub fn string_with_optional_maximum(
-        min_bytes: u32,
-        max_bytes: Option<u32>,
+        minimum: u64,
+        maximum: Option<u64>,
     ) -> Result<Self, ProtocolError> {
-        if let Some(maximum) = max_bytes {
-            validate::cardinality(min_bytes, maximum, "string")?;
+        if let Some(maximum) = maximum {
+            validate::cardinality(minimum, maximum, "string")?;
         }
-        Ok(Self { kind: SchemaKind::String { min_bytes, max_bytes }, enum_values: Vec::new() })
+        Ok(Self {
+            contract: SchemaContract::LegacyV1,
+            kind: SchemaKind::String { minimum, maximum },
+            enum_values: Vec::new(),
+        })
     }
 
     /// Creates an array schema.
@@ -289,7 +319,7 @@ impl Schema {
     /// # Errors
     ///
     /// Rejects an inverted item-cardinality range.
-    pub fn array(items: Self, min_items: u32, max_items: u32) -> Result<Self, ProtocolError> {
+    pub fn array(items: Self, min_items: u64, max_items: u64) -> Result<Self, ProtocolError> {
         Self::array_with_optional_maximum(items, min_items, Some(max_items))
     }
 
@@ -301,13 +331,14 @@ impl Schema {
     /// Rejects an inverted item-cardinality range when a maximum is present.
     pub fn array_with_optional_maximum(
         items: Self,
-        min_items: u32,
-        max_items: Option<u32>,
+        min_items: u64,
+        max_items: Option<u64>,
     ) -> Result<Self, ProtocolError> {
         if let Some(maximum) = max_items {
             validate::cardinality(min_items, maximum, "array")?;
         }
         Ok(Self {
+            contract: SchemaContract::LegacyV1,
             kind: SchemaKind::Array { items: Box::new(items), min_items, max_items },
             enum_values: Vec::new(),
         })
@@ -317,23 +348,43 @@ impl Schema {
     ///
     /// # Errors
     ///
-    /// Rejects invalid, duplicate, unsorted, or excessive properties.
+    /// Rejects invalid, duplicate, or unsorted properties. The enclosing descriptor later
+    /// applies its selected JSON member and frame capacities.
     pub fn object(
         properties: Vec<SchemaProperty>,
         additional_properties: bool,
     ) -> Result<Self, ProtocolError> {
         validate::property_order(&properties)?;
         Ok(Self {
+            contract: SchemaContract::LegacyV1,
             kind: SchemaKind::Object { properties, additional_properties },
             enum_values: Vec::new(),
         })
+    }
+
+    /// Selects one versioned contract for this complete schema tree.
+    ///
+    /// The operation is recursive so nested schemas cannot retain a different interpretation of
+    /// the same canonical keywords. Selecting draft 2020-12 makes `minLength` and `maxLength`
+    /// count Unicode scalar values in both host validation and exported JSON Schema.
+    #[must_use]
+    pub fn with_contract(mut self, contract: SchemaContract) -> Self {
+        self.set_contract(contract);
+        self
+    }
+
+    /// Returns the schema's validation and canonical-export contract.
+    #[must_use]
+    pub const fn contract(&self) -> SchemaContract {
+        self.contract
     }
 
     /// Restricts a schema to a nonempty, canonical, duplicate-free enumeration.
     ///
     /// # Errors
     ///
-    /// Rejects empty, excessive, duplicate, unsorted, or type-invalid values.
+    /// Rejects empty, duplicate, unsorted, or type-invalid values. The enclosing descriptor later
+    /// applies its selected JSON member and frame capacities.
     pub fn with_enum(mut self, values: Vec<BoundedJson>) -> Result<Self, ProtocolError> {
         validate::enum_values(&self, &values)?;
         self.enum_values = values;
@@ -346,7 +397,20 @@ impl Schema {
     ///
     /// Rejects any type, cardinality, required-property, or enumeration violation.
     pub fn validate(&self, value: &BoundedJson) -> Result<(), ProtocolError> {
-        validate::value(self, &value.value, "$", 1)
+        self.validate_with_limits(value, JsonLimits::PRODUCTION)
+    }
+
+    /// Validates a complete bounded JSON value under one negotiated frame contract.
+    ///
+    /// # Errors
+    ///
+    /// Rejects any type, cardinality, required-property, enumeration, or depth violation.
+    pub fn validate_with_limits(
+        &self,
+        value: &BoundedJson,
+        limits: JsonLimits,
+    ) -> Result<(), ProtocolError> {
+        validate::value(self, &value.value, "$", 1, limits.max_depth())
     }
 
     /// Returns canonical compact JSON Schema bytes.
@@ -365,6 +429,27 @@ impl Schema {
     #[must_use]
     pub fn compatibility_with(&self, successor: &Self) -> SchemaCompatibility {
         compatibility::classify(self, successor)
+    }
+
+    pub(crate) fn validate_definition(&self, limits: JsonLimits) -> Result<(), ProtocolError> {
+        validate::definition(self, self.contract, limits)?;
+        canonical::validate_schema(self, limits)
+    }
+
+    fn set_contract(&mut self, contract: SchemaContract) {
+        self.contract = contract;
+        match &mut self.kind {
+            SchemaKind::Array { items, .. } => items.set_contract(contract),
+            SchemaKind::Object { properties, .. } => {
+                for property in properties {
+                    property.schema.set_contract(contract);
+                }
+            }
+            SchemaKind::Null
+            | SchemaKind::Boolean
+            | SchemaKind::Integer { .. }
+            | SchemaKind::String { .. } => {}
+        }
     }
 }
 

@@ -10,7 +10,8 @@ mod plan;
 mod render;
 
 pub use catalog::{
-    exec_descriptor, legacy_exec_descriptor, legacy_script_descriptor, script_descriptor,
+    exec_descriptor, legacy_exec_descriptor, legacy_exec_descriptor_v3, legacy_script_descriptor,
+    legacy_script_descriptor_v3, script_descriptor,
 };
 pub use dispatcher::{RawShellDispatcher, ShellDispatcher};
 pub use error::{ShellError, ShellErrorKind};

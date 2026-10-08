@@ -4,7 +4,7 @@ mod encoding;
 
 use crate::{
     BoundedText, ControlSet, ImplementationIdentity, JsonLimits, ProgressContract, ProtocolError,
-    ProtocolErrorKind, Schema, SchemaDigest, SemanticVersion,
+    ProtocolErrorKind, Schema, SchemaContract, SchemaDigest, SemanticVersion,
 };
 use peritus_policy::{OperationClass, OperationDescriptor};
 use peritus_types::CapabilityName;
@@ -306,7 +306,8 @@ impl ToolDescriptor {
     ///
     /// # Errors
     ///
-    /// Rejects a name mismatch or a side-effect/operation/lease contradiction.
+    /// Rejects a name mismatch, a side-effect/operation/lease contradiction, or a schema that
+    /// cannot be represented and validated within the descriptor's selected JSON frame.
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: CapabilityName,
@@ -333,6 +334,16 @@ impl ToolDescriptor {
                 "tool name, side effect, lease, and B1 operation do not refine exactly",
             ));
         }
+        if schema.contract() == SchemaContract::JsonSchema202012
+            && limits.protocol_version() < ProtocolCompatibility::V3.minimum()
+        {
+            return Err(ProtocolError::at(
+                ProtocolErrorKind::DescriptorMismatch,
+                "descriptor.schema",
+                "the current schema contract requires negotiated version-three JSON limits",
+            ));
+        }
+        schema.validate_definition(limits.json_limits())?;
         let schema_digest = schema.digest();
         let mut result = Self {
             name,
