@@ -28,6 +28,7 @@ pub struct CompatibleStream {
     deferred: Option<DeferredFrame>,
     sequence: u64,
     terminal: bool,
+    staged_terminal: Option<EventEnvelope>,
     body_finished: bool,
     provider: ProviderName,
     decoder: Decoder,
@@ -118,6 +119,7 @@ impl CompatibleStream {
             deferred: None,
             sequence: 0,
             terminal: false,
+            staged_terminal: None,
             body_finished: false,
             provider,
             decoder,
@@ -174,6 +176,7 @@ impl CompatibleStream {
             deferred: None,
             sequence: 1,
             terminal: true,
+            staged_terminal: None,
             body_finished: true,
             provider,
             decoder: Decoder::Responses(responses::ResponsesDecoder::new(
@@ -243,6 +246,7 @@ impl CompatibleStream {
                 }
                 Ok(())
             }
+            SseItem::Comment(_) if self.terminal => Ok(()),
             SseItem::Comment(_) => self.enqueue(
                 None,
                 None,
@@ -272,21 +276,55 @@ impl CompatibleStream {
         digest: peritus_types::Sha256Digest,
         event: ModelEvent,
     ) -> Result<(), ProviderCoreError> {
-        self.sequence = self
-            .sequence
-            .checked_add(1)
-            .ok_or_else(|| error::limit("compatible local event sequence overflowed"))?;
         let terminal = matches!(
             event,
             ModelEvent::ResponseCompleted
                 | ModelEvent::ResponseFailed(_)
                 | ModelEvent::ResponseCancelled
         );
-        let envelope =
-            EventEnvelope::new(self.sequence, provider_sequence, provider_event_id, digest, event)
-                .map_err(|_| error::malformed("compatible normalized event was invalid"))?;
-        self.pending.push_back(envelope);
-        self.terminal |= terminal;
+        if self.terminal && !terminal {
+            return Err(error::malformed("compatible event followed a terminal event"));
+        }
+        let sequence = if terminal {
+            if let Some(staged) = &self.staged_terminal {
+                staged.sequence()
+            } else {
+                if self.terminal {
+                    return Err(error::malformed("compatible terminal event was duplicated"));
+                }
+                self.sequence = self
+                    .sequence
+                    .checked_add(1)
+                    .ok_or_else(|| error::limit("compatible local event sequence overflowed"))?;
+                self.sequence
+            }
+        } else {
+            self.sequence = self
+                .sequence
+                .checked_add(1)
+                .ok_or_else(|| error::limit("compatible local event sequence overflowed"))?;
+            self.sequence
+        };
+        let envelope = EventEnvelope::new(
+            sequence,
+            provider_sequence,
+            provider_event_id,
+            digest,
+            event,
+        )
+        .map_err(|_| error::malformed("compatible normalized event was invalid"))?;
+        if terminal {
+            let replace_completion = self.staged_terminal.as_ref().is_some_and(|staged| {
+                matches!(staged.event(), ModelEvent::ResponseCompleted)
+                    && !matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            });
+            if self.staged_terminal.is_none() || replace_completion {
+                self.staged_terminal = Some(envelope);
+            }
+            self.terminal = true;
+        } else {
+            self.pending.push_back(envelope);
+        }
         Ok(())
     }
 
@@ -430,6 +468,9 @@ impl ModelStream for CompatibleStream {
                 if !self.pending.is_empty() || self.deferred.is_some() {
                     continue;
                 }
+                if let Some(event) = self.staged_terminal.take() {
+                    return Ok(Some(event));
+                }
                 if self.terminal {
                     return Ok(None);
                 }
@@ -474,6 +515,7 @@ impl fmt::Debug for CompatibleStream {
             .field("pending_frames", &self.framed.len())
             .field("deferred", &self.deferred.is_some())
             .field("terminal", &self.terminal)
+            .field("staged_terminal", &self.staged_terminal.is_some())
             .field("body_finished", &self.body_finished)
             .field("body", &"[private byte stream]")
             .finish_non_exhaustive()

@@ -1,6 +1,10 @@
 //! Owned normalized model-event streams.
 
-use core::fmt;
+use core::{
+    fmt,
+    future::Future as _,
+    task::{Context, Poll, Waker},
+};
 
 use peritus_model_protocol::{EventEnvelope, ModelEvent};
 
@@ -64,7 +68,28 @@ impl OwnedModelStream {
                 return Ok(None);
             }
             match self.inner.next(&self.cancellation).await {
-                Ok(Some(envelope)) => {
+                Ok(Some(mut envelope)) => {
+                    if matches!(envelope.event(), ModelEvent::ResponseCompleted) {
+                        loop {
+                            match self.poll_ready_after_completion() {
+                                Poll::Pending | Poll::Ready(Ok(None)) => break,
+                                Poll::Ready(Ok(Some(candidate))) => {
+                                    if is_unsuccessful_terminal(candidate.event()) {
+                                        envelope = terminal_at_sequence(
+                                            envelope.sequence(),
+                                            candidate,
+                                        )?;
+                                        break;
+                                    }
+                                }
+                                Poll::Ready(Err(error)) => {
+                                    self.terminal_observed = true;
+                                    let _ = self.cancellation.cancel();
+                                    return Err(error);
+                                }
+                            }
+                        }
+                    }
                     if is_terminal(envelope.event()) {
                         self.terminal_observed = true;
                     }
@@ -86,6 +111,14 @@ impl OwnedModelStream {
                 }
             }
         })
+    }
+
+    fn poll_ready_after_completion(
+        &mut self,
+    ) -> Poll<Result<Option<EventEnvelope>, ProviderCoreError>> {
+        let mut future = self.inner.next(&self.cancellation);
+        let mut context = Context::from_waker(Waker::noop());
+        future.as_mut().poll(&mut context)
     }
 }
 
@@ -115,4 +148,28 @@ const fn is_terminal(event: &ModelEvent) -> bool {
             | ModelEvent::ResponseFailed(_)
             | ModelEvent::ResponseCancelled
     )
+}
+
+const fn is_unsuccessful_terminal(event: &ModelEvent) -> bool {
+    matches!(event, ModelEvent::ResponseFailed(_) | ModelEvent::ResponseCancelled)
+}
+
+fn terminal_at_sequence(
+    sequence: u64,
+    envelope: EventEnvelope,
+) -> Result<EventEnvelope, ProviderCoreError> {
+    EventEnvelope::new(
+        sequence,
+        envelope.provider_sequence(),
+        envelope.provider_event_id().cloned(),
+        envelope.provider_digest(),
+        envelope.event().clone(),
+    )
+    .map_err(|_| {
+        ProviderCoreError::new(
+            ProviderCoreErrorKind::MalformedStream,
+            "model_stream",
+            "provider stream produced an invalid terminal replacement",
+        )
+    })
 }
