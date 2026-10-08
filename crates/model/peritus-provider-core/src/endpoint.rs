@@ -4,8 +4,6 @@ use core::fmt;
 
 use crate::{ProviderCoreError, ProviderCoreErrorKind};
 
-const MAX_ENDPOINT_BYTES: usize = 4_096;
-
 /// An absolute, credential-free HTTP(S) endpoint.
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct Endpoint {
@@ -18,20 +16,20 @@ impl Endpoint {
     ///
     /// # Errors
     ///
-    /// Rejects oversized or non-absolute URLs, schemes other than HTTP(S), user information,
-    /// fragments, secret-bearing query fields, backslashes, and path traversal segments.
+    /// Rejects non-absolute URLs, schemes other than HTTP(S), user information, fragments,
+    /// controls, secret-bearing query fields, backslashes, and path traversal segments.
     #[allow(
         clippy::needless_pass_by_value,
         reason = "taking ownership makes the validated-value boundary explicit"
     )]
     pub fn new(value: String) -> Result<Self, ProviderCoreError> {
         if value.is_empty()
-            || value.len() > MAX_ENDPOINT_BYTES
             || value.trim() != value
+            || value.chars().any(char::is_control)
             || value.contains('#')
             || value.contains('\\')
         {
-            return Err(invalid_endpoint("endpoint syntax is unsafe or outside its byte bound"));
+            return Err(invalid_endpoint("endpoint syntax is unsafe"));
         }
         validate_raw_path(&value)?;
         let parsed = url::Url::parse(&value)
@@ -77,7 +75,7 @@ impl Endpoint {
     ///
     /// # Errors
     ///
-    /// Rejects a non-absolute path, query, fragment, backslash, traversal, or oversized result.
+    /// Rejects a non-absolute path, query, fragment, backslash, or traversal.
     pub fn with_path(&self, path: &str) -> Result<Self, ProviderCoreError> {
         if !path.starts_with('/') || path.contains(['?', '#', '\\']) {
             return Err(invalid_endpoint("endpoint path must be absolute and contain no query"));

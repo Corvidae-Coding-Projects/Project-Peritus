@@ -1,11 +1,9 @@
-//! Allowlisted, bounded, redaction-aware diagnostics.
+//! Allowlisted, redaction-aware diagnostics.
 
 use core::fmt;
 use std::time::Duration;
 
 use crate::{ProviderCoreError, ProviderCoreErrorKind, RedactedValue, StatusCode};
-
-const MAX_DIAGNOSTIC_VALUE_BYTES: usize = 512;
 
 /// Transport phase in which an observation or failure occurred.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -24,7 +22,7 @@ pub enum TransportPhase {
     Backoff,
 }
 
-/// A bounded nonsensitive diagnostic value.
+/// A nonsensitive diagnostic value retained exactly after structural validation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DiagnosticValue(String);
 
@@ -33,16 +31,14 @@ impl DiagnosticValue {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Presentation protocols apply their own explicit
+    /// preview capacities without changing the retained value.
     pub fn new(value: String) -> Result<Self, ProviderCoreError> {
-        if value.is_empty()
-            || value.len() > MAX_DIAGNOSTIC_VALUE_BYTES
-            || value.chars().any(char::is_control)
-        {
+        if value.is_empty() || value.chars().any(char::is_control) {
             return Err(ProviderCoreError::new(
                 ProviderCoreErrorKind::InvalidHttp,
                 "diagnostic",
-                "diagnostic value is empty, contains controls, or exceeds its byte bound",
+                "diagnostic value is empty or contains controls",
             ));
         }
         Ok(Self(value))

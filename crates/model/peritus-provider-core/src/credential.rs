@@ -6,9 +6,6 @@ use zeroize::Zeroizing;
 
 use crate::{Header, HeaderName, HeaderValue, ProviderCoreError, ProviderCoreErrorKind};
 
-const MAX_CREDENTIAL_REFERENCE_BYTES: usize = 512;
-const MAX_CREDENTIAL_BYTES: usize = 16 * 1024;
-
 /// An opaque identifier understood only by a configured [`CredentialSource`].
 #[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct CredentialReference(String);
@@ -18,14 +15,12 @@ impl CredentialReference {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. The configured credential source owns the
+    /// reference grammar and any storage capacity policy.
     pub fn new(value: String) -> Result<Self, ProviderCoreError> {
-        if value.is_empty()
-            || value.len() > MAX_CREDENTIAL_REFERENCE_BYTES
-            || value.chars().any(char::is_control)
-        {
+        if value.is_empty() || value.chars().any(char::is_control) {
             return Err(credential_error(
-                "credential reference is empty, contains controls, or exceeds its byte bound",
+                "credential reference is empty or contains controls",
             ));
         }
         Ok(Self(value))
@@ -52,10 +47,11 @@ impl Credential {
     ///
     /// # Errors
     ///
-    /// Rejects empty or oversized credentials.
+    /// Rejects empty credentials. Transport admission is applied to the exact projected header,
+    /// independently of this zeroizing storage boundary.
     pub fn new(bytes: Vec<u8>) -> Result<Self, ProviderCoreError> {
-        if bytes.is_empty() || bytes.len() > MAX_CREDENTIAL_BYTES {
-            return Err(credential_error("credential is empty or exceeds its byte bound"));
+        if bytes.is_empty() {
+            return Err(credential_error("credential is empty"));
         }
         Ok(Self(Zeroizing::new(bytes)))
     }
@@ -74,9 +70,6 @@ impl Credential {
         let capacity = prefix.len().checked_add(self.0.len()).ok_or_else(|| {
             credential_error("credential header length overflowed its byte representation")
         })?;
-        if capacity > MAX_CREDENTIAL_BYTES + 128 {
-            return Err(credential_error("credential header exceeds its byte bound"));
-        }
         let mut bytes = Vec::with_capacity(capacity);
         bytes.extend_from_slice(prefix);
         bytes.extend_from_slice(&self.0);
