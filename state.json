@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4142,
-        "tip_oid": "1bb98c5741ddb58a542d723d6da34ba913bc9549",
-        "prefix_sha256": "e8f01b73e563416e3dc5e9d2feb0dd102c17afe2126f22416830db39e9c18744"
+        "sequence": 4143,
+        "tip_oid": "bd5874bf0c1727dfb0586622bb1922c80424e398",
+        "prefix_sha256": "24f57528ac3aa93216e98ab01bb15225d0384de7d68f5e2b150b4b5d65320630"
       },
       "NWAR": {
         "sequence": 39,
@@ -26210,12 +26210,13 @@
       "display_id": 587,
       "title": "[L514] Telemetry queues impose finite item counts and bounded shutdown flushing",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L514.\n\n- Evidence: `crates/observe/peritus-telemetry/src/buffer/mod.rs:17-55`, `src/buffer/state.rs:105-186`, `src/export/pump.rs:83-139`, `src/export/types.rs`.\n- Behavior: Capacity and batch size are mandatory positive counts, capacity cannot exceed 1,000,000 items, and overflow can reject newest or drop oldest. There is no spill path or wait for capacity. Enqueue constructs the encoded prefix before rejecting a new record. Capacity counts records, not their encoded bytes. Shutdown attempts at most the caller-selected batch count and returns Pending with queued records retained when that count is exhausted. Export and exporter shutdown are synchronous calls without a cancellation channel.\n- Consequence: These controls can discard or reject observational records and can stall an exporter caller indefinitely. A large record still has large memory cost inside a small item-count queue. This crate's documented observational role does not establish that these controls themselves cancel agent work; that requires caller evidence. No telemetry session TTL is introduced here.\n- Repair direction: Separate loss policy, memory accounting, durable spill and explicit drain progress from agent execution authority. A finite flush count must preserve an actionable continuation. Synchronous exporters need an ownership and cancellation contract rather than an assumed timer guarantee. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.888618474Z",
-      "updated_at": "2026-10-08T10:30:28.531460096Z",
+      "updated_at": "2026-10-08T10:31:51.817712086Z",
+      "closed_at": "2026-10-08T10:31:51.814894772Z",
       "labels": [
         "daily-driving-limiter"
       ],
