@@ -4,22 +4,21 @@ use std::{
     fs::{self, File, OpenOptions},
     io::Write,
     path::PathBuf,
-    sync::atomic::{AtomicU64, Ordering},
 };
 
+use fs4::FileExt;
 use peritus_types::EventId;
 use sha2::{Digest, Sha256};
 
 use crate::{
     ArtifactDigest, ArtifactMetadata, ArtifactStoreError, EncryptionMetadata, ErrorCode,
-    FinalizationState, MediaType, QuarantineState, RecoveryClass, StoreOperation,
+    FinalizationState, MediaType, QuarantineState, RecoveryClass, StoragePressurePhase,
+    StoreOperation,
     catalog::Catalog,
     finalize::{publish, synchronize_temporary, verify_finalized},
     path::{StorePaths, io, sync_directory},
     verified::write_bounds_valid,
 };
-
-static TEMPORARY_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Validated-at-writer-creation artifact declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -142,7 +141,7 @@ pub struct ArtifactWriter<'store> {
     hasher: Sha256,
     written: u64,
     failed: bool,
-    quota_limit: u64,
+    quota_limit: Option<u64>,
 }
 
 impl<'store> ArtifactWriter<'store> {
@@ -150,15 +149,23 @@ impl<'store> ArtifactWriter<'store> {
         paths: &'store StorePaths,
         catalog: &'store Catalog,
         request: WriteRequest,
-        configured_limit: u64,
-        quota_limit: u64,
+        configured_limit: Option<u64>,
+        quota_limit: Option<u64>,
+        minimum_free_bytes: u64,
     ) -> Result<Self, ArtifactStoreError> {
         if !write_bounds_valid(request.expected_size, request.declared_limit, configured_limit) {
             return Err(invalid_request(
                 "expected size, declared limit, and configured limit are inconsistent",
             ));
         }
-        let (file, temporary_path) = create_temporary(paths, request.expected_digest)?;
+        let writer_identity = catalog.allocate_operation_identity()?;
+        let (file, temporary_path) = create_temporary(
+            paths,
+            request.expected_digest,
+            writer_identity,
+            request.expected_size,
+            minimum_free_bytes,
+        )?;
         Ok(Self {
             paths,
             catalog,
@@ -237,12 +244,23 @@ impl<'store> ArtifactWriter<'store> {
         let file = self.file.as_mut().ok_or_else(|| invalid_request("writer is closed"))?;
         synchronize_temporary(file)?;
         self.file.take();
+        let partial = ArtifactMetadata::new(
+            self.request.expected_digest,
+            self.request.expected_size,
+            self.request.media_type.clone(),
+            self.request.encryption.clone(),
+            FinalizationState::Partial,
+            self.request.creating_event,
+            QuarantineState::Active,
+        );
+        self.catalog.reserve_publication(&partial, self.quota_limit)?;
         let temporary = self
             .temporary_path
             .as_ref()
             .ok_or_else(|| invalid_request("temporary path is unavailable"))?;
         let destination = self.paths.object(self.request.expected_digest);
         let destination_parent = self.paths.ensure_object_parent(self.request.expected_digest)?;
+        let mut publication = None;
         let publication = publish(
             temporary,
             &destination,
@@ -250,6 +268,7 @@ impl<'store> ArtifactWriter<'store> {
             self.paths.temporary(),
             self.request.expected_digest,
             self.request.expected_size,
+            &mut publication,
         )?;
         self.temporary_path.take();
         let metadata = ArtifactMetadata::new(
@@ -261,22 +280,7 @@ impl<'store> ArtifactWriter<'store> {
             self.request.creating_event,
             QuarantineState::Active,
         );
-        let restored = match self.catalog.record_finalized(&metadata, self.quota_limit) {
-            Ok(restored) => restored,
-            Err(error)
-                if publication == Publication::New
-                    && matches!(
-                        error.code(),
-                        ErrorCode::QuotaExceeded | ErrorCode::ArithmeticOverflow
-                    ) =>
-            {
-                fs::remove_file(&destination)
-                    .map_err(|remove_error| io(StoreOperation::Remove, remove_error))?;
-                sync_directory(&destination_parent)?;
-                return Err(error);
-            }
-            Err(error) => return Err(error),
-        };
+        let restored = self.catalog.record_finalized(&metadata, self.quota_limit)?;
         if restored {
             let quarantine = self.paths.quarantine(self.request.expected_digest);
             match fs::symlink_metadata(&quarantine) {
@@ -320,26 +324,82 @@ impl Drop for ArtifactWriter<'_> {
     }
 }
 
-pub fn create_temporary(
+pub(super) fn create_temporary(
     paths: &StorePaths,
     digest: ArtifactDigest,
+    writer_identity: u64,
+    expected_size: u64,
+    minimum_free_bytes: u64,
 ) -> Result<(File, PathBuf), ArtifactStoreError> {
-    for _ in 0..1_024 {
-        let counter = TEMPORARY_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let name =
-            format!(".artifact-{:08x}-{counter:016x}-{}.tmp", std::process::id(), digest.to_hex());
-        let path = paths.temporary().join(name);
-        match OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(file) => return Ok((file, path)),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(error) => return Err(io(StoreOperation::CreateTemporary, error)),
+    let name = format!(".artifact-{writer_identity:016x}-{}.tmp", digest.to_hex());
+    let path = paths.temporary().join(name);
+    let file = match OpenOptions::new().write(true).create_new(true).open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+            return Err(ArtifactStoreError::message(
+                ErrorCode::CorruptObject,
+                RecoveryClass::TerminalIntegrity,
+                "durable artifact writer identity already exists in temporary storage",
+            ));
+        }
+        Err(error) => return Err(io(StoreOperation::CreateTemporary, error)),
+    };
+    if let Err(error) = reserve_temporary(paths, &file, expected_size, minimum_free_bytes) {
+        drop(file);
+        let _ = fs::remove_file(&path);
+        return Err(error);
+    }
+    Ok((file, path))
+}
+
+fn reserve_temporary(
+    paths: &StorePaths,
+    file: &File,
+    expected_size: u64,
+    minimum_free_bytes: u64,
+) -> Result<(), ArtifactStoreError> {
+    if minimum_free_bytes == 0 {
+        // Preallocation is only an optimization under the default policy. Compressed,
+        // deduplicating, sparse, or otherwise virtualized filesystems may successfully stream
+        // content even when statvfs or fallocate cannot promise the declared logical size.
+        let _ = file.allocate(expected_size);
+        return Ok(());
+    }
+    let required = expected_size.checked_add(minimum_free_bytes).ok_or_else(overflow)?;
+    let before = fs4::statvfs(paths.root())
+        .map_err(|error| io(StoreOperation::ObserveSpace, error))?
+        .available_space();
+    if before < required {
+        return Err(ArtifactStoreError::capacity(
+            expected_size,
+            minimum_free_bytes,
+            before,
+            StoragePressurePhase::BeforeReservation,
+        ));
+    }
+    if let Err(error) = file.allocate(expected_size) {
+        match error.kind() {
+            std::io::ErrorKind::StorageFull => {
+                return Err(ArtifactStoreError::storage_pressure_io(
+                    StoreOperation::ReserveSpace,
+                    error,
+                ));
+            }
+            _ => return Err(io(StoreOperation::ReserveSpace, error)),
         }
     }
-    Err(ArtifactStoreError::message(
-        ErrorCode::Io,
-        RecoveryClass::Retry,
-        "could not allocate a unique temporary artifact name",
-    ))
+    let after = fs4::statvfs(paths.root())
+        .map_err(|error| io(StoreOperation::ObserveSpace, error))?
+        .available_space();
+    if after < minimum_free_bytes {
+        return Err(ArtifactStoreError::capacity(
+            expected_size,
+            minimum_free_bytes,
+            after,
+            StoragePressurePhase::AfterReservation,
+        ));
+    }
+    Ok(())
 }
 
 const fn invalid_request(message: &'static str) -> ArtifactStoreError {

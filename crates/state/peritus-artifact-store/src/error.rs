@@ -26,8 +26,18 @@ pub enum ErrorCode {
     MissingArtifact,
     /// A quota reservation would exceed its limit.
     QuotaExceeded,
+    /// Physical storage cannot retain the configured free-space reserve for this allocation.
+    StoragePressure,
+    /// Another mutable artifact-store owner holds the canonical root.
+    StoreOwned,
     /// A collection input or plan violates its state-machine contract.
     InvalidCollectionPlan,
+    /// The artifact catalog is temporarily busy with another database owner.
+    CatalogBusy,
+    /// The artifact catalog is temporarily locked by shared-cache or schema ownership.
+    CatalogLocked,
+    /// The owner explicitly cancelled its catalog contention wait.
+    CatalogWaitCancelled,
     /// A filesystem operation failed.
     Io,
 }
@@ -47,7 +57,12 @@ impl ErrorCode {
             Self::CorruptObject => "artifact.corrupt_object",
             Self::MissingArtifact => "artifact.missing",
             Self::QuotaExceeded => "artifact.quota_exceeded",
+            Self::StoragePressure => "artifact.storage_pressure",
+            Self::StoreOwned => "artifact.store_owned",
             Self::InvalidCollectionPlan => "artifact.invalid_collection_plan",
+            Self::CatalogBusy => "artifact.catalog_busy",
+            Self::CatalogLocked => "artifact.catalog_locked",
+            Self::CatalogWaitCancelled => "artifact.catalog_wait_cancelled",
             Self::Io => "artifact.io",
         }
     }
@@ -87,6 +102,12 @@ pub enum StoreOperation {
     Publish,
     /// Inspect or hash an existing object.
     InspectObject,
+    /// Create a kernel-owned temporary verification index.
+    CreateVerificationIndex,
+    /// Write authenticated nodes to a temporary verification index.
+    WriteVerificationIndex,
+    /// Read authenticated nodes from a temporary verification index.
+    ReadVerificationIndex,
     /// Move an object into or out of quarantine.
     MoveQuarantine,
     /// Remove a temporary or quarantined file.
@@ -95,6 +116,96 @@ pub enum StoreOperation {
     Recover,
     /// Observe filesystem capacity.
     ObserveSpace,
+    /// Reserve physical filesystem space for a temporary artifact.
+    ReserveSpace,
+    /// Acquire exclusive mutable ownership of the canonical store root.
+    AcquireOwnership,
+    /// Access durable artifact catalog state.
+    Catalog,
+}
+
+/// Phase at which a retained-free-space guarantee could not be satisfied.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StoragePressurePhase {
+    /// Capacity was insufficient before the temporary allocation was attempted.
+    BeforeReservation,
+    /// The completed reservation left less space than the configured reserve.
+    AfterReservation,
+}
+
+/// Exact observable cause of physical storage pressure.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StoragePressure {
+    /// The filesystem observation could not satisfy the retained-space policy.
+    InsufficientAvailableSpace {
+        /// Exact temporary allocation requested by the writer.
+        allocation_bytes: u64,
+        /// Configured bytes that must remain available.
+        minimum_free_bytes: u64,
+        /// Bytes available to the process at the failed observation.
+        available_bytes: u64,
+        /// Whether the failure was observed before or after reservation.
+        phase: StoragePressurePhase,
+    },
+    /// The operating system reported a physical or filesystem quota exhaustion.
+    Filesystem {
+        /// Filesystem operation that observed the exhaustion.
+        operation: StoreOperation,
+        /// Preserved operating-system error category.
+        kind: io::ErrorKind,
+    },
+    /// `SQLite` reported that the filesystem containing durable catalog state is full.
+    Catalog,
+}
+
+impl StoragePressure {
+    /// Returns the exact available-byte threshold for a retained-space observation.
+    ///
+    /// Before reservation this includes the requested allocation. After reservation the
+    /// allocation is already reflected by the filesystem, so only the retained reserve remains.
+    #[must_use]
+    pub const fn required_available_bytes(self) -> Option<u64> {
+        match self {
+            Self::InsufficientAvailableSpace {
+                allocation_bytes,
+                minimum_free_bytes,
+                phase: StoragePressurePhase::BeforeReservation,
+                ..
+            } => allocation_bytes.checked_add(minimum_free_bytes),
+            Self::InsufficientAvailableSpace {
+                minimum_free_bytes,
+                phase: StoragePressurePhase::AfterReservation,
+                ..
+            } => Some(minimum_free_bytes),
+            Self::Filesystem { .. } | Self::Catalog => None,
+        }
+    }
+
+    /// Returns the measured byte shortfall when the filesystem supplied exact capacity values.
+    #[must_use]
+    pub const fn additional_available_bytes_needed(self) -> Option<u64> {
+        let Self::InsufficientAvailableSpace { available_bytes, .. } = self else {
+            return None;
+        };
+        match self.required_available_bytes() {
+            Some(required) => Some(required.saturating_sub(available_bytes)),
+            None => None,
+        }
+    }
+}
+
+/// Preserved `SQLite` contention category for a catalog failure.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum CatalogFailure {
+    /// `SQLite` reported `SQLITE_BUSY`.
+    Busy,
+    /// `SQLite` reported `SQLITE_LOCKED`.
+    Locked,
+    /// `SQLite` reported `SQLITE_FULL`.
+    StorageFull,
+    /// `SQLite` reported another catalog failure.
+    Other,
 }
 
 /// Typed error returned by artifact-store operations.
@@ -110,7 +221,14 @@ enum ErrorDetail {
     Message(&'static str),
     Limit { attempted: u64, limit: u64 },
     Mismatch { expected: u64, actual: u64 },
+    Capacity {
+        allocation: u64,
+        minimum_free: u64,
+        available: u64,
+        phase: StoragePressurePhase,
+    },
     Io { operation: StoreOperation, source: io::Error },
+    Catalog { failure: CatalogFailure, source: rusqlite::Error },
 }
 
 impl ArtifactStoreError {
@@ -138,14 +256,65 @@ impl ArtifactStoreError {
         }
     }
 
+    pub(crate) const fn capacity(
+        allocation: u64,
+        minimum_free: u64,
+        available: u64,
+        phase: StoragePressurePhase,
+    ) -> Self {
+        Self {
+            code: ErrorCode::StoragePressure,
+            recovery: RecoveryClass::Retry,
+            detail: ErrorDetail::Capacity {
+                allocation,
+                minimum_free,
+                available,
+                phase,
+            },
+        }
+    }
+
     pub(crate) fn io(operation: StoreOperation, source: io::Error) -> Self {
+        let code = match source.kind() {
+            io::ErrorKind::StorageFull | io::ErrorKind::QuotaExceeded => {
+                ErrorCode::StoragePressure
+            }
+            _ => ErrorCode::Io,
+        };
         let recovery = match source.kind() {
-            io::ErrorKind::PermissionDenied | io::ErrorKind::ReadOnlyFilesystem => {
+            io::ErrorKind::PermissionDenied
+            | io::ErrorKind::ReadOnlyFilesystem
+            | io::ErrorKind::Unsupported => {
                 RecoveryClass::RecoverStore
             }
             _ => RecoveryClass::Retry,
         };
-        Self { code: ErrorCode::Io, recovery, detail: ErrorDetail::Io { operation, source } }
+        Self { code, recovery, detail: ErrorDetail::Io { operation, source } }
+    }
+
+    pub(crate) const fn storage_pressure_io(operation: StoreOperation, source: io::Error) -> Self {
+        Self {
+            code: ErrorCode::StoragePressure,
+            recovery: RecoveryClass::Retry,
+            detail: ErrorDetail::Io { operation, source },
+        }
+    }
+
+    pub(crate) const fn store_owned(source: io::Error) -> Self {
+        Self {
+            code: ErrorCode::StoreOwned,
+            recovery: RecoveryClass::Retry,
+            detail: ErrorDetail::Io { operation: StoreOperation::AcquireOwnership, source },
+        }
+    }
+
+    pub(crate) const fn catalog(
+        code: ErrorCode,
+        recovery: RecoveryClass,
+        failure: CatalogFailure,
+        source: rusqlite::Error,
+    ) -> Self {
+        Self { code, recovery, detail: ErrorDetail::Catalog { failure, source } }
     }
 
     /// Returns the stable error code.
@@ -165,7 +334,54 @@ impl ArtifactStoreError {
     pub const fn operation(&self) -> Option<StoreOperation> {
         match &self.detail {
             ErrorDetail::Io { operation, .. } => Some(*operation),
+            ErrorDetail::Catalog { .. } => Some(StoreOperation::Catalog),
             _ => None,
+        }
+    }
+
+    /// Returns the preserved `SQLite` catalog failure category, when applicable.
+    #[must_use]
+    pub const fn catalog_failure(&self) -> Option<CatalogFailure> {
+        match &self.detail {
+            ErrorDetail::Catalog { failure, .. } => Some(*failure),
+            _ => None,
+        }
+    }
+
+    /// Returns the exact physical-pressure observation, when this is a storage-pressure error.
+    #[must_use]
+    pub fn storage_pressure(&self) -> Option<StoragePressure> {
+        match &self.detail {
+            ErrorDetail::Capacity {
+                allocation,
+                minimum_free,
+                available,
+                phase,
+            } => Some(StoragePressure::InsufficientAvailableSpace {
+                allocation_bytes: *allocation,
+                minimum_free_bytes: *minimum_free,
+                available_bytes: *available,
+                phase: *phase,
+            }),
+            ErrorDetail::Io { operation, source }
+                if matches!(
+                    source.kind(),
+                    io::ErrorKind::StorageFull | io::ErrorKind::QuotaExceeded
+                ) =>
+            {
+                Some(StoragePressure::Filesystem {
+                    operation: *operation,
+                    kind: source.kind(),
+                })
+            }
+            ErrorDetail::Catalog { failure: CatalogFailure::StorageFull, .. } => {
+                Some(StoragePressure::Catalog)
+            }
+            ErrorDetail::Message(_)
+            | ErrorDetail::Limit { .. }
+            | ErrorDetail::Mismatch { .. }
+            | ErrorDetail::Io { .. }
+            | ErrorDetail::Catalog { .. } => None,
         }
     }
 }
@@ -181,7 +397,21 @@ impl fmt::Display for ArtifactStoreError {
             ErrorDetail::Mismatch { expected, actual } => {
                 write!(formatter, "expected {expected}, observed {actual}")
             }
+            ErrorDetail::Capacity {
+                allocation,
+                minimum_free,
+                available,
+                phase,
+            } => {
+                write!(
+                    formatter,
+                    "allocation {allocation} bytes with retained reserve {minimum_free} observed {available} available bytes at {phase:?}"
+                )
+            }
             ErrorDetail::Io { operation, source } => write!(formatter, "{operation:?}: {source}"),
+            ErrorDetail::Catalog { failure, source } => {
+                write!(formatter, "Catalog {failure:?}: {source}")
+            }
         }
     }
 }
@@ -190,6 +420,7 @@ impl Error for ArtifactStoreError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match &self.detail {
             ErrorDetail::Io { source, .. } => Some(source),
+            ErrorDetail::Catalog { source, .. } => Some(source),
             _ => None,
         }
     }

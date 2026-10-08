@@ -2,15 +2,19 @@
 
 use std::{fs, path::Path};
 
+use fs4::FileExt;
+use peritus_types::EventId;
+
 mod capacity;
 
 pub use capacity::SpaceObservation;
 
 use crate::{
-    ArtifactDigest, ArtifactMetadata, ArtifactReadHandle, ArtifactStoreError, ArtifactWriteHandle,
-    ArtifactWriter, CollectionGeneration, ErrorCode, FinalizedArtifact, GcAction, GcApplication,
-    GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot, RecoveryClass, ReferenceOwner,
-    ReferenceRoots, StoreConfig, StoreOperation, WriteRequest,
+    ArtifactCatalogCancellation, ArtifactDigest, ArtifactMetadata, ArtifactReadHandle,
+    ArtifactStoreError, ArtifactWriteHandle, ArtifactWriter, CollectionGeneration, ErrorCode,
+    FinalizedArtifact, GcAction, GcApplication, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot,
+    RecoveryClass, RecoveryObservation, RecoveryReport, RecoverySummary, ReferenceOwner,
+    ReferenceRoots, StoragePolicy, StoreConfig, StoreOperation, WriteRequest,
     catalog::Catalog,
     finalize::{read_finalized, verify_finalized},
     path::{StorePaths, io, sync_directory},
@@ -21,6 +25,7 @@ pub struct ArtifactStore {
     pub(crate) config: StoreConfig,
     pub(crate) paths: StorePaths,
     pub(crate) catalog: Catalog,
+    _ownership: fs::File,
 }
 
 impl ArtifactStore {
@@ -44,8 +49,26 @@ impl ArtifactStore {
             &paths.object(digest),
             digest,
             metadata.size(),
-            maximum_bytes.min(config.max_artifact_bytes()),
+            configured_read_limit(maximum_bytes, config.max_artifact_limit()),
         )
+    }
+
+    /// Opens an existing active object through read-only catalog state without recovery writes.
+    /// The returned handle verifies the full immutable digest once, then supports bounded reads.
+    ///
+    /// # Errors
+    /// Rejects absent layouts, missing/quarantined objects, and corrupt content.
+    pub fn open_existing(
+        config: &StoreConfig,
+        digest: ArtifactDigest,
+    ) -> Result<ArtifactReadHandle, ArtifactStoreError> {
+        let paths = StorePaths::existing(config.root(), config.database_path())?;
+        let catalog = Catalog::read_only(paths.database())?;
+        let metadata = catalog.metadata(digest)?.ok_or_else(missing_artifact)?;
+        if !metadata.is_referenceable() {
+            return Err(missing_artifact());
+        }
+        ArtifactReadHandle::open(&paths, metadata, config.max_artifact_limit())
     }
 
     /// Opens or initializes a store and runs idempotent restart recovery.
@@ -54,17 +77,58 @@ impl ArtifactStore {
     ///
     /// Returns typed layout, catalog, recovery, or I/O errors.
     pub fn open(config: StoreConfig) -> Result<Self, ArtifactStoreError> {
+        Self::open_with_recovery_streaming(config, |_| {}).map(|(store, _)| store)
+    }
+
+    /// Opens or initializes a store and returns exact observations from this recovery pass.
+    ///
+    /// Callers that own startup diagnostics should use this form so contained layout entries and
+    /// accepted publication recovery are not silently discarded.
+    ///
+    /// # Errors
+    ///
+    /// Returns typed layout, catalog, recovery, or I/O errors.
+    pub fn open_with_recovery(
+        config: StoreConfig,
+    ) -> Result<(Self, RecoveryReport), ArtifactStoreError> {
         let paths = StorePaths::initialize(config.root(), config.database_path())?;
+        let ownership = acquire_ownership(&paths)?;
         let catalog = Catalog::open(paths.database())?;
-        let mut store = Self { config, paths, catalog };
-        store.recover()?;
-        Ok(store)
+        let mut store = Self { config, paths, catalog, _ownership: ownership };
+        let recovery = store.recover()?;
+        Ok((store, recovery))
+    }
+
+    /// Opens or initializes a store and streams exact detailed recovery observations.
+    ///
+    /// Only bounded counters are retained. Callers that may encounter an unbounded number of
+    /// recovery anomalies should use this form instead of [`Self::open_with_recovery`].
+    ///
+    /// # Errors
+    ///
+    /// Returns typed layout, catalog, recovery, or I/O errors.
+    pub fn open_with_recovery_streaming(
+        config: StoreConfig,
+        observer: impl FnMut(RecoveryObservation),
+    ) -> Result<(Self, RecoverySummary), ArtifactStoreError> {
+        let paths = StorePaths::initialize(config.root(), config.database_path())?;
+        let ownership = acquire_ownership(&paths)?;
+        let catalog = Catalog::open(paths.database())?;
+        let store = Self { config, paths, catalog, _ownership: ownership };
+        let recovery = store.recover_streaming(observer)?;
+        Ok((store, recovery))
     }
 
     /// Returns the canonicalized store root.
     #[must_use]
     pub fn root(&self) -> &Path {
         self.paths.root()
+    }
+
+    /// Returns the capacity authority selected when this store was opened.
+    #[must_use]
+    pub const fn storage_policy(&self) -> StoragePolicy {
+        self.config.storage_policy()
     }
 
     /// Creates an exclusive bounded streaming writer.
@@ -81,13 +145,16 @@ impl ArtifactStore {
         } else {
             request.expected_size()
         };
-        QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        if self.config.quota_bytes().is_some() {
+            QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        }
         ArtifactWriter::create(
             &self.paths,
             &self.catalog,
             request,
-            self.config.max_artifact_bytes(),
+            self.config.max_artifact_limit(),
             self.config.quota_bytes(),
+            self.config.minimum_free_bytes(),
         )
     }
 
@@ -105,12 +172,16 @@ impl ArtifactStore {
         } else {
             request.expected_size()
         };
-        QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        if self.config.quota_bytes().is_some() {
+            QuotaPlan::reserve(self.quota_snapshot(0)?, reservation)?;
+        }
         ArtifactWriteHandle::create(
             &self.paths,
+            &self.catalog,
             request,
-            self.config.max_artifact_bytes(),
+            self.config.max_artifact_limit(),
             self.config.quota_bytes(),
+            self.config.minimum_free_bytes(),
         )
     }
 
@@ -121,9 +192,26 @@ impl ArtifactStore {
     /// Returns exact writer, integrity, publication, catalog, or quota failures.
     pub fn complete_write(
         &self,
-        writer: ArtifactWriteHandle,
+        mut writer: ArtifactWriteHandle,
     ) -> Result<FinalizedArtifact, ArtifactStoreError> {
         writer.complete(&self.paths, &self.catalog)
+    }
+
+    /// Attempts exact owned-writer completion under explicit catalog-wait cancellation.
+    ///
+    /// The writer retains its verified bytes, durable reservation, and publication receipt after
+    /// any retryable error, including explicit cancellation. Retrying this method does not create
+    /// a replacement operation.
+    ///
+    /// # Errors
+    ///
+    /// Returns exact writer, integrity, publication, catalog, quota, or cancellation failures.
+    pub fn try_complete_write(
+        &self,
+        writer: &mut ArtifactWriteHandle,
+        cancellation: &ArtifactCatalogCancellation,
+    ) -> Result<FinalizedArtifact, ArtifactStoreError> {
+        cancellation.run(|| writer.complete(&self.paths, &self.catalog))
     }
 
     /// Opens one owned preverified streaming reader for finalized active content.
@@ -139,7 +227,7 @@ impl ArtifactStore {
         if !metadata.is_referenceable() {
             return Err(missing_artifact());
         }
-        ArtifactReadHandle::open(&self.paths, metadata, self.config.max_artifact_bytes())
+        ArtifactReadHandle::open(&self.paths, metadata, self.config.max_artifact_limit())
     }
 
     /// Loads validated durable artifact metadata.
@@ -152,6 +240,27 @@ impl ArtifactStore {
         digest: ArtifactDigest,
     ) -> Result<Option<ArtifactMetadata>, ArtifactStoreError> {
         self.catalog.metadata(digest)
+    }
+
+    /// Immutably binds one finalized active artifact to an ordered, bounded direct-child list.
+    ///
+    /// Every child must be finalized and active at the exact supplied digest and length. Repeating
+    /// the exact binding is idempotent. Changing it, introducing a self-edge, or binding a parent
+    /// that already has a durable owner or appears as another bundle's child is rejected. This
+    /// bottom-up rule makes dependency cycles impossible and freezes every published subgraph.
+    ///
+    /// # Errors
+    ///
+    /// Returns missing-artifact, size, invalid-binding, or catalog errors.
+    pub fn bind_dependencies<I>(
+        &self,
+        parent: ArtifactDigest,
+        children: I,
+    ) -> Result<(), ArtifactStoreError>
+    where
+        I: Clone + ExactSizeIterator<Item = (ArtifactDigest, u64)>,
+    {
+        self.catalog.bind_dependencies(parent, children)
     }
 
     /// Re-hashes a finalized active object and checks its durable size.
@@ -201,6 +310,9 @@ impl ArtifactStore {
 
     /// Removes one exact durable reference.
     ///
+    /// When this was the last reference to the artifact, the same transaction explicitly releases
+    /// it for the existing two-generation collection process.
+    ///
     /// # Errors
     ///
     /// Returns a catalog I/O or integrity error.
@@ -210,6 +322,44 @@ impl ArtifactStore {
         digest: ArtifactDigest,
     ) -> Result<bool, ArtifactStoreError> {
         self.catalog.remove_reference(owner, digest)
+    }
+
+    /// Atomically retires every artifact root owned by one obsolete durable segment.
+    ///
+    /// The caller must first prove that the owner is absent from the authoritative live and
+    /// historical-retrieval frontier. Artifacts whose last reference belongs to this owner become
+    /// collection candidates in the same transaction. Collection still uses the existing later
+    /// quarantine and sweep generations.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog or reference-count representation error.
+    pub fn retire_reference_owner(
+        &self,
+        owner: ReferenceOwner,
+    ) -> Result<u64, ArtifactStoreError> {
+        self.catalog.retire_reference_owner(owner)
+    }
+
+    /// Explicitly releases a finalized publication that never acquired a durable reference.
+    ///
+    /// The exact creating event prevents one context from releasing a coincidentally known digest
+    /// owned by another publication lineage. Referenced artifacts must instead be released through
+    /// [`Self::remove_reference`] or [`Self::retire_reference_owner`]. The artifact remains readable
+    /// until a later explicit quarantine generation and remains recoverable until a still later
+    /// sweep generation.
+    ///
+    /// Returns whether this call newly released the publication.
+    ///
+    /// # Errors
+    ///
+    /// Returns missing-artifact, ownership, reference-state, or catalog errors.
+    pub fn release_publication(
+        &self,
+        digest: ArtifactDigest,
+        creating_event: EventId,
+    ) -> Result<bool, ArtifactStoreError> {
+        self.catalog.release_publication(digest, creating_event)
     }
 
     /// Loads canonical durable journal/evidence root sets.
@@ -227,7 +377,11 @@ impl ArtifactStore {
     ///
     /// Returns overflow or quota exhaustion for an invalid observation.
     pub fn quota_snapshot(&self, reserved_bytes: u64) -> Result<QuotaSnapshot, ArtifactStoreError> {
-        QuotaSnapshot::new(self.catalog.used_bytes()?, reserved_bytes, self.config.quota_bytes())
+        QuotaSnapshot::for_policy(
+            self.catalog.used_bytes()?,
+            reserved_bytes,
+            self.config.quota_bytes(),
+        )
     }
 
     /// Plans a quota reservation against durable artifact accounting.
@@ -240,6 +394,10 @@ impl ArtifactStore {
     }
 
     /// Loads durable inventory and roots, then computes a pure deterministic collection plan.
+    ///
+    /// Only publications explicitly released through the ownership APIs are eligible. A finalized
+    /// artifact with no reference is retained by default because its journal or evidence owner may
+    /// not have committed yet.
     ///
     /// # Errors
     ///
@@ -343,6 +501,39 @@ impl ArtifactStore {
             digest,
             size,
         )
+    }
+}
+
+fn acquire_ownership(paths: &StorePaths) -> Result<fs::File, ArtifactStoreError> {
+    let path = paths.root().join("owner.lock");
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) if !metadata.file_type().is_file() => {
+            return Err(ArtifactStoreError::message(
+                ErrorCode::InvalidConfiguration,
+                RecoveryClass::TerminalIntegrity,
+                "artifact ownership lock is not a regular file",
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(io(StoreOperation::AcquireOwnership, error)),
+    }
+    let ownership = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)
+        .map_err(|error| io(StoreOperation::AcquireOwnership, error))?;
+    FileExt::try_lock(&ownership)
+        .map_err(|error| ArtifactStoreError::store_owned(error.into()))?;
+    Ok(ownership)
+}
+
+const fn configured_read_limit(requested: u64, configured: Option<u64>) -> u64 {
+    match configured {
+        Some(configured) if configured < requested => configured,
+        _ => requested,
     }
 }
 

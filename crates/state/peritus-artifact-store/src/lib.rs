@@ -6,6 +6,7 @@
 
 mod catalog;
 mod config;
+mod contention;
 mod digest;
 mod error;
 mod finalize;
@@ -22,9 +23,13 @@ mod store;
 mod verified;
 mod writer;
 
-pub use config::StoreConfig;
+pub use config::{StoragePolicy, StoreConfig};
+pub use contention::ArtifactCatalogCancellation;
 pub use digest::ArtifactDigest;
-pub use error::{ArtifactStoreError, ErrorCode, RecoveryClass, StoreOperation};
+pub use error::{
+    ArtifactStoreError, CatalogFailure, ErrorCode, RecoveryClass, StoragePressure,
+    StoragePressurePhase, StoreOperation,
+};
 pub use gc_plan::{CollectionGeneration, GcAction, GcApplication, GcInventoryEntry, GcPlan};
 pub use metadata::{
     ArtifactMetadata, EncryptionMetadata, FinalizationState, IntegrityState, MediaType,
@@ -32,7 +37,11 @@ pub use metadata::{
 };
 pub use owned::{ArtifactReadChunk, ArtifactReadHandle, ArtifactWriteHandle};
 pub use quota::{QuotaPlan, QuotaSnapshot};
-pub use recovery::{ContainedCorruption, QuarantinedArtifact, RecoveryReport};
+pub use recovery::{
+    ArtifactRepairObligation, ArtifactRepairReason, ContainedCorruption, ContainedLayoutEntry,
+    ContainedLayoutNamespace, QuarantinedArtifact, RecoveryObservation, RecoveryReport,
+    RecoverySummary,
+};
 pub use references::{ArtifactReferenceSet, ReferenceRoots};
 pub use references::{ReferenceOwner, ReferenceOwnerKind};
 pub use store::{ArtifactStore, SpaceObservation};

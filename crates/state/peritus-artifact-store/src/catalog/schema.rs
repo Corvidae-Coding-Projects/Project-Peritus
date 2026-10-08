@@ -25,4 +25,60 @@ CREATE TABLE IF NOT EXISTS artifact_references (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS artifact_references_digest
     ON artifact_references(artifact_digest);
+CREATE TABLE IF NOT EXISTS artifact_collection_candidates (
+    artifact_digest BLOB PRIMARY KEY NOT NULL CHECK(length(artifact_digest) = 32),
+    FOREIGN KEY(artifact_digest) REFERENCES artifact_records(digest) ON DELETE CASCADE
+) STRICT;
+-- A quarantined row crossed the explicit first collection generation under an older schema.
+-- Preserve that owned transition while leaving every legacy active publication protected.
+INSERT OR IGNORE INTO artifact_collection_candidates(artifact_digest)
+SELECT digest FROM artifact_records WHERE quarantine_state = 2;
+CREATE TABLE IF NOT EXISTS artifact_bundles (
+    parent_digest BLOB PRIMARY KEY NOT NULL CHECK(length(parent_digest) = 32),
+    child_count INTEGER NOT NULL CHECK(child_count >= 0 AND child_count <= 256),
+    FOREIGN KEY(parent_digest) REFERENCES artifact_records(digest) ON DELETE CASCADE
+) STRICT;
+CREATE TABLE IF NOT EXISTS artifact_dependencies (
+    parent_digest BLOB NOT NULL CHECK(length(parent_digest) = 32),
+    child_index INTEGER NOT NULL CHECK(child_index >= 0 AND child_index < 256),
+    child_digest BLOB NOT NULL CHECK(length(child_digest) = 32),
+    child_size INTEGER NOT NULL CHECK(child_size >= 0),
+    CHECK(parent_digest <> child_digest),
+    PRIMARY KEY(parent_digest, child_index),
+    UNIQUE(parent_digest, child_digest),
+    FOREIGN KEY(parent_digest) REFERENCES artifact_bundles(parent_digest) ON DELETE CASCADE
+) STRICT;
+CREATE INDEX IF NOT EXISTS artifact_dependencies_child
+    ON artifact_dependencies(child_digest, parent_digest);
+CREATE TRIGGER IF NOT EXISTS artifact_bundle_parent_is_unbound
+BEFORE INSERT ON artifact_bundles
+WHEN EXISTS (
+        SELECT 1 FROM artifact_references
+         WHERE artifact_digest = NEW.parent_digest
+    ) OR EXISTS (
+        SELECT 1 FROM artifact_dependencies
+         WHERE child_digest = NEW.parent_digest
+    )
+BEGIN
+    SELECT RAISE(ABORT, 'artifact bundle parent is already bound');
+END;
+CREATE TABLE IF NOT EXISTS artifact_operation_sequence (
+    singleton INTEGER PRIMARY KEY NOT NULL CHECK(singleton = 1),
+    last_identity INTEGER NOT NULL CHECK(last_identity >= 0)
+) STRICT;
+INSERT OR IGNORE INTO artifact_operation_sequence(singleton, last_identity) VALUES (1, 0);
+CREATE TABLE IF NOT EXISTS artifact_repair_obligations (
+    artifact_digest BLOB PRIMARY KEY NOT NULL CHECK(length(artifact_digest) = 32),
+    reason INTEGER NOT NULL CHECK(reason IN (1, 2)),
+    FOREIGN KEY(artifact_digest) REFERENCES artifact_records(digest) ON DELETE CASCADE
+) STRICT;
+CREATE TABLE IF NOT EXISTS artifact_repair_containments (
+    operation_identity INTEGER PRIMARY KEY NOT NULL CHECK(operation_identity > 0),
+    artifact_digest BLOB NOT NULL CHECK(length(artifact_digest) = 32),
+    namespace INTEGER NOT NULL CHECK(namespace IN (1, 2)),
+    FOREIGN KEY(artifact_digest) REFERENCES artifact_repair_obligations(artifact_digest)
+        ON DELETE CASCADE
+) STRICT;
+CREATE INDEX IF NOT EXISTS artifact_repair_containments_digest
+    ON artifact_repair_containments(artifact_digest, operation_identity);
 ";

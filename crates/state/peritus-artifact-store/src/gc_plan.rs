@@ -38,13 +38,29 @@ pub struct GcInventoryEntry {
     digest: ArtifactDigest,
     size: u64,
     quarantine: QuarantineState,
+    collection_eligible: bool,
 }
 
 impl GcInventoryEntry {
     /// Creates an inventory observation.
+    ///
+    /// Pure planner callers use this constructor to identify an explicitly released artifact.
+    /// Durable catalog inventory uses [`Self::with_collection_eligibility`] so publications that
+    /// have not acquired or released an owner remain protected.
     #[must_use]
     pub const fn new(digest: ArtifactDigest, size: u64, quarantine: QuarantineState) -> Self {
-        Self { digest, size, quarantine }
+        Self { digest, size, quarantine, collection_eligible: true }
+    }
+
+    /// Creates an inventory observation with its durable collection eligibility.
+    #[must_use]
+    pub const fn with_collection_eligibility(
+        digest: ArtifactDigest,
+        size: u64,
+        quarantine: QuarantineState,
+        collection_eligible: bool,
+    ) -> Self {
+        Self { digest, size, quarantine, collection_eligible }
     }
 
     /// Returns the digest.
@@ -63,6 +79,12 @@ impl GcInventoryEntry {
     #[must_use]
     pub const fn quarantine(self) -> QuarantineState {
         self.quarantine
+    }
+
+    /// Returns whether an owner explicitly released this artifact for collection.
+    #[must_use]
+    pub const fn collection_eligible(self) -> bool {
+        self.collection_eligible
     }
 }
 
@@ -121,9 +143,12 @@ pub struct GcPlan {
 impl GcPlan {
     /// Computes a deterministic mark-and-sweep plan without performing I/O.
     ///
-    /// An active unmarked artifact is quarantined. An unmarked artifact already quarantined by a
-    /// strictly earlier generation is deleted. A marked quarantined artifact is restored. The
-    /// planner rejects duplicate inventory rows and references to missing artifacts.
+    /// An explicitly released, active, unmarked artifact is quarantined. An eligible unmarked
+    /// artifact already quarantined by a strictly earlier generation is deleted. A marked
+    /// quarantined artifact is restored. Active publications that have not explicitly released
+    /// their ownership are retained even when they do not yet have a journal or evidence root.
+    /// The planner rejects duplicate inventory rows, references to missing artifacts, and
+    /// quarantined rows without durable collection eligibility.
     ///
     /// # Errors
     ///
@@ -148,11 +173,13 @@ impl GcPlan {
         for entry in entries.into_values() {
             let is_marked = marked.contains(&entry.digest);
             match (entry.quarantine, is_marked) {
-                (QuarantineState::Active, false) => actions.push(GcAction::Quarantine {
-                    digest: entry.digest,
-                    size: entry.size,
-                    generation,
-                }),
+                (QuarantineState::Active, false) if entry.collection_eligible => {
+                    actions.push(GcAction::Quarantine {
+                        digest: entry.digest,
+                        size: entry.size,
+                        generation,
+                    });
+                }
                 (QuarantineState::Quarantined { since }, true) => {
                     actions.push(GcAction::Restore {
                         digest: entry.digest,
@@ -161,6 +188,11 @@ impl GcPlan {
                     });
                 }
                 (QuarantineState::Quarantined { since }, false) => {
+                    if !entry.collection_eligible {
+                        return Err(invalid_plan(
+                            "a quarantined artifact lacks durable collection eligibility",
+                        ));
+                    }
                     if since > generation {
                         return Err(invalid_plan("quarantine generation is newer than the plan"));
                     }
@@ -172,7 +204,7 @@ impl GcPlan {
                         });
                     }
                 }
-                (QuarantineState::Active, true) => {}
+                (QuarantineState::Active, _) => {}
             }
         }
         Ok(Self { generation, actions, marked })
