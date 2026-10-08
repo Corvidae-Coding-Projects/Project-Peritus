@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4165,
-        "tip_oid": "ed1035c54a118568bb3046980817195e9e96d48b",
-        "prefix_sha256": "20fd252c03d5febcfc103a9b85b5c4e197b838f33ebd9a93722f0eccba5e64d0"
+        "sequence": 4166,
+        "tip_oid": "5a710a8fc74383309118eaad1c1fe8b0ecc7683b",
+        "prefix_sha256": "fd3077daf9a1e701070afea86e9f8e83931666fb96c7a7e05f3fb0bf3f6cd845"
       },
       "NWAR": {
         "sequence": 39,
@@ -34665,12 +34665,13 @@
       "display_id": 120,
       "title": "[L020] Journal atomic-batch ceilings restrict checkpoint admission",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L020.\n\n- `crates/state/peritus-journal/src/append_plan.rs:17-28` declares **4,096 events**, **1,024 aggregate heads**, **4,096 state installs**, **4,096 outbox rows**, **4,096 outbox acknowledgements**, and **4,096 artifact dependencies** per atomic batch. `plan` calls bound validation at lines 131-138; `append_plan/validation.rs:17-39` enforces every listed count bound.\n- `product_control/storage/checkpoints.rs:214-240` creates one StateInstall per present checkpoint body. `product_control/storage.rs:207-235` adds a conversation-root state and receipt state to that same batch. This creates another admission layer beneath L010's 65,535-path manifest bound.\n- Checkpoint keys additionally cast their path index to `u16` at `storage/checkpoints.rs:243-247`.\n- Daily-driving effect: a many-file checkpoint can fit its manifest and byte limits while exceeding the atomic state-install count. The fully read validation helper confirms rejection. More than **4,094 present bodies** exceeds the 4,096-install cap after the root and receipt installs are added. Executable reproduction is pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.914303038Z",
-      "updated_at": "2026-10-08T15:41:43.640629354Z",
+      "updated_at": "2026-10-08T15:43:14.469218834Z",
+      "closed_at": "2026-10-08T15:43:14.466308137Z",
       "labels": [
         "daily-driving-limiter"
       ],
