@@ -1,6 +1,9 @@
 //! Concurrent bounded MCP JSON-RPC server lifecycle and dispatch.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex as StdMutex, MutexGuard as StdMutexGuard},
+};
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -12,7 +15,8 @@ use tokio::{
 };
 
 use crate::{
-    AuthorityBridge, BridgeContext, BridgeError, BridgeErrorClass, JsonRpcRequest, JsonRpcResponse,
+    AuthorityBridge, BridgeConnectionClose, BridgeConnectionCloseReason, BridgeContext,
+    BridgeError, BridgeErrorClass, BridgeRequestOwnership, JsonRpcRequest, JsonRpcResponse,
     McpCancellation, McpError, McpErrorClass, McpServerInfo, RpcId,
     framing::{read_message, write_response},
     protocol::{
@@ -77,6 +81,50 @@ enum Lifecycle {
     Ready,
 }
 
+#[derive(Default)]
+struct RequestLedger {
+    connection_open: bool,
+    closing: bool,
+    order: Vec<RpcId>,
+    entries: HashMap<RpcId, RequestOwnership>,
+}
+
+struct RequestOwnership {
+    cancellation: McpCancellation,
+    task_active: bool,
+    daemon_dispatched: bool,
+    response: Option<Arc<JsonRpcResponse>>,
+}
+
+#[derive(Clone)]
+struct ResponseOwner {
+    request_id: RpcId,
+    cancellation: McpCancellation,
+}
+
+struct QueuedResponse {
+    response: Arc<JsonRpcResponse>,
+    owner: Option<ResponseOwner>,
+}
+
+struct ActiveRequestGuard {
+    server: Arc<McpServer>,
+    request_id: RpcId,
+    cancellation: McpCancellation,
+}
+
+impl Drop for ActiveRequestGuard {
+    fn drop(&mut self) {
+        self.server.release_unanswered_request(&self.request_id, &self.cancellation);
+    }
+}
+
+struct ConnectionEnd {
+    reason: BridgeConnectionCloseReason,
+    error: Option<McpError>,
+    writer_finished: bool,
+}
+
 /// Bounded MCP JSON-RPC server bound to one authenticated daemon session.
 pub struct McpServer {
     info: McpServerInfo,
@@ -84,8 +132,7 @@ pub struct McpServer {
     context: BridgeContext,
     bridge: Arc<dyn AuthorityBridge>,
     limits: ServerLimits,
-    lifecycle: Mutex<Lifecycle>,
-    active: Mutex<HashMap<RpcId, McpCancellation>>,
+    ownership: StdMutex<RequestLedger>,
     admission: Arc<Semaphore>,
 }
 
@@ -121,8 +168,7 @@ impl McpServer {
             context,
             bridge,
             limits,
-            lifecycle: Mutex::new(Lifecycle::Uninitialized),
-            active: Mutex::new(HashMap::new()),
+            ownership: StdMutex::new(RequestLedger::default()),
             admission: Arc::new(Semaphore::new(limits.in_flight_requests)),
         })
     }
@@ -140,155 +186,259 @@ impl McpServer {
         R: AsyncBufRead + Send + Unpin + 'static,
         W: AsyncWrite + Send + Unpin + 'static,
     {
-        let (responses, mut response_receiver) = mpsc::unbounded_channel::<JsonRpcResponse>();
+        self.begin_connection()?;
+        if let Err(error) = self.bridge.reconcile_connection(&self.context).await {
+            self.finish_connection();
+            return Err(bridge_lifecycle_error("reconcile MCP connection", error));
+        }
+        let lifecycle = Arc::new(Mutex::new(Lifecycle::Uninitialized));
+        let (responses, mut response_receiver) = mpsc::unbounded_channel::<QueuedResponse>();
         let response_limit = self.limits.message_bytes;
+        let writer_server = Arc::clone(&self);
         let writer_task = tokio::spawn(async move {
-            while let Some(response) = response_receiver.recv().await {
-                write_response(&mut writer, &response, response_limit).await?;
+            while let Some(queued) = response_receiver.recv().await {
+                write_response(&mut writer, queued.response.as_ref(), response_limit).await?;
+                if let Some(owner) = queued.owner {
+                    writer_server.response_delivered(&owner.request_id, &owner.cancellation);
+                }
             }
             Ok::<(), McpError>(())
         });
+        let mut writer_task = writer_task;
         let mut requests = JoinSet::new();
-        let read_result = self.read_requests(&mut reader, &responses, &mut requests).await;
-        if read_result.is_err() {
-            requests.abort_all();
+        let end = self
+            .drive_connection(
+                &mut reader,
+                &responses,
+                &mut requests,
+                &lifecycle,
+                &mut writer_task,
+            )
+            .await;
+        let close = self.close_snapshot(end.reason);
+        let close_result = self
+            .bridge
+            .close_connection(&self.context, close)
+            .await
+            .map_err(|error| bridge_lifecycle_error("close MCP connection", error));
+
+        if !end.writer_finished {
+            writer_task.abort();
         }
+        requests.abort_all();
         drop(responses);
         let mut cleanup_error = None;
-        while let Some(joined) = requests.join_next().await {
-            match joined {
+        if !end.writer_finished {
+            match writer_task.await {
                 Ok(Ok(())) => {}
-                Ok(Err(error)) => {
-                    if cleanup_error.is_none() {
-                        cleanup_error = Some(error);
-                    }
-                }
+                Ok(Err(error)) => cleanup_error = Some(error),
+                Err(error) if error.is_cancelled() => {}
                 Err(error) => {
-                    if !error.is_cancelled() && cleanup_error.is_none() {
-                        cleanup_error = Some(McpError::new(
-                            McpErrorClass::Lifecycle,
-                            "join MCP request",
-                            error.to_string(),
-                        ));
-                    }
+                    cleanup_error = Some(McpError::new(
+                        McpErrorClass::Transport,
+                        "join MCP writer",
+                        error.to_string(),
+                    ));
                 }
             }
         }
-        let writer_result = writer_task.await.map_err(|error| {
-            McpError::new(McpErrorClass::Transport, "join MCP writer", error.to_string())
-        })?;
-        read_result?;
-        if let Some(error) = cleanup_error {
+        while let Some(joined) = requests.join_next().await {
+            if cleanup_error.is_none() {
+                cleanup_error = request_failure(joined);
+            }
+        }
+        self.finish_connection();
+        if let Some(error) = end.error {
             return Err(error);
         }
-        writer_result
-    }
-
-    async fn read_requests<R>(
-        self: &Arc<Self>,
-        reader: &mut R,
-        responses: &mpsc::UnboundedSender<JsonRpcResponse>,
-        requests: &mut JoinSet<Result<(), McpError>>,
-    ) -> Result<(), McpError>
-    where
-        R: AsyncBufRead + Send + Unpin + 'static,
-    {
-        while let Some(message) = read_message(reader, self.limits.message_bytes).await? {
-            let request = match serde_json::from_slice::<JsonRpcRequest>(&message) {
-                Ok(request) if request.jsonrpc == "2.0" => request,
-                Ok(request) => {
-                    send_response(
-                        responses,
-                        JsonRpcResponse::failure(
-                            request.id,
-                            INVALID_REQUEST,
-                            "jsonrpc must be 2.0",
-                        ),
-                    )?;
-                    continue;
-                }
-                Err(error) => {
-                    send_response(
-                        responses,
-                        JsonRpcResponse::failure(None, PARSE_ERROR, error.to_string()),
-                    )?;
-                    continue;
-                }
-            };
-            if request.id.is_none() {
-                self.handle_notification(request).await;
-                continue;
-            }
-            if request.method == "initialize" {
-                let Some(id) = request.id else {
-                    continue;
-                };
-                let response = self.initialize(id, request.params).await;
-                send_response(responses, response)?;
-                continue;
-            }
-            let Some(id) = request.id.clone() else {
-                continue;
-            };
-            let cancellation = McpCancellation::new();
-            {
-                let mut active = self.active.lock().await;
-                if active.contains_key(&id) {
-                    drop(active);
-                    send_response(
-                        responses,
-                        JsonRpcResponse::failure(
-                            Some(id),
-                            INVALID_REQUEST,
-                            "request id is already active",
-                        ),
-                    )?;
-                    continue;
-                }
-                active.insert(id.clone(), cancellation.clone());
-            }
-            let server = Arc::clone(self);
-            let responses = responses.clone();
-            requests.spawn(async move {
-                let permit = tokio::select! {
-                    biased;
-                    () = cancellation.cancelled() => None,
-                    acquired = Arc::clone(&server.admission).acquire_owned() => {
-                        match acquired {
-                            Ok(permit) => Some(permit),
-                            Err(_) => {
-                                server.active.lock().await.remove(&id);
-                                return send_response(
-                                    &responses,
-                                    JsonRpcResponse::failure(
-                                        Some(id),
-                                        INTERNAL_ERROR,
-                                        "MCP request admission closed unexpectedly",
-                                    ),
-                                );
-                            }
-                        }
-                    }
-                };
-                let response = if let Some(permit) = permit {
-                    let response =
-                        server.handle_admitted_request(id.clone(), request, &cancellation).await;
-                    drop(permit);
-                    response
-                } else {
-                    bridge_response(id.clone(), &cancelled())
-                };
-                server.active.lock().await.remove(&id);
-                send_response(&responses, response)
-            });
+        close_result?;
+        if let Some(error) = cleanup_error {
+            return Err(error);
         }
         Ok(())
     }
 
-    async fn handle_notification(&self, request: JsonRpcRequest) {
+    async fn drive_connection<R>(
+        self: &Arc<Self>,
+        reader: &mut R,
+        responses: &mpsc::UnboundedSender<QueuedResponse>,
+        requests: &mut JoinSet<Result<(), McpError>>,
+        lifecycle: &Arc<Mutex<Lifecycle>>,
+        writer_task: &mut tokio::task::JoinHandle<Result<(), McpError>>,
+    ) -> ConnectionEnd
+    where
+        R: AsyncBufRead + Send + Unpin + 'static,
+    {
+        loop {
+            tokio::select! {
+                biased;
+                writer = &mut *writer_task => {
+                    let error = match writer {
+                        Ok(Ok(())) => McpError::new(
+                            McpErrorClass::Transport,
+                            "write MCP response",
+                            "MCP response writer stopped while the connection remained open",
+                        ),
+                        Ok(Err(error)) => error,
+                        Err(error) => McpError::new(
+                            McpErrorClass::Transport,
+                            "join MCP writer",
+                            error.to_string(),
+                        ),
+                    };
+                    return ConnectionEnd {
+                        reason: BridgeConnectionCloseReason::OutputFailed,
+                        error: Some(error),
+                        writer_finished: true,
+                    };
+                }
+                joined = requests.join_next(), if !requests.is_empty() => {
+                    if let Some(joined) = joined
+                        && let Some(error) = request_failure(joined)
+                    {
+                        return ConnectionEnd {
+                            reason: BridgeConnectionCloseReason::RequestFailed,
+                            error: Some(error),
+                            writer_finished: false,
+                        };
+                    }
+                }
+                message = read_message(reader, self.limits.message_bytes) => {
+                    match message {
+                        Ok(Some(message)) => {
+                            if let Err(error) = self
+                                .handle_message(&message, responses, requests, lifecycle)
+                                .await
+                            {
+                                return ConnectionEnd {
+                                    reason: BridgeConnectionCloseReason::RequestFailed,
+                                    error: Some(error),
+                                    writer_finished: false,
+                                };
+                            }
+                        }
+                        Ok(None) => {
+                            return ConnectionEnd {
+                                reason: BridgeConnectionCloseReason::InputClosed,
+                                error: None,
+                                writer_finished: false,
+                            };
+                        }
+                        Err(error) => {
+                            return ConnectionEnd {
+                                reason: BridgeConnectionCloseReason::InputFailed,
+                                error: Some(error),
+                                writer_finished: false,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    async fn handle_message(
+        self: &Arc<Self>,
+        message: &[u8],
+        responses: &mpsc::UnboundedSender<QueuedResponse>,
+        requests: &mut JoinSet<Result<(), McpError>>,
+        lifecycle: &Arc<Mutex<Lifecycle>>,
+    ) -> Result<(), McpError> {
+        let request = match serde_json::from_slice::<JsonRpcRequest>(message) {
+            Ok(request) if request.jsonrpc == "2.0" => request,
+            Ok(request) => {
+                send_response(
+                    responses,
+                    JsonRpcResponse::failure(
+                        request.id,
+                        INVALID_REQUEST,
+                        "jsonrpc must be 2.0",
+                    ),
+                )?;
+                return Ok(());
+            }
+            Err(error) => {
+                send_response(
+                    responses,
+                    JsonRpcResponse::failure(None, PARSE_ERROR, error.to_string()),
+                )?;
+                return Ok(());
+            }
+        };
+        if request.id.is_none() {
+            self.handle_notification(request, lifecycle).await;
+            return Ok(());
+        }
+        if request.method == "initialize" {
+            let Some(id) = request.id else { return Ok(()) };
+            let response = self.initialize(id, request.params, lifecycle).await;
+            send_response(responses, response)?;
+            return Ok(());
+        }
+        let Some(id) = request.id.clone() else { return Ok(()) };
+        let cancellation = McpCancellation::new();
+        if !self.register_request(id.clone(), cancellation.clone())? {
+            send_response(
+                responses,
+                JsonRpcResponse::failure(
+                    Some(id),
+                    INVALID_REQUEST,
+                    "request id is already active or awaiting response delivery",
+                ),
+            )?;
+            return Ok(());
+        }
+        let server = Arc::clone(self);
+        let responses = responses.clone();
+        let lifecycle = Arc::clone(lifecycle);
+        let guard = ActiveRequestGuard {
+            server: Arc::clone(self),
+            request_id: id.clone(),
+            cancellation: cancellation.clone(),
+        };
+        requests.spawn(async move {
+            let _guard = guard;
+            let permit = tokio::select! {
+                biased;
+                () = cancellation.cancelled() => None,
+                acquired = Arc::clone(&server.admission).acquire_owned() => acquired.ok(),
+            };
+            let response = if let Some(permit) = permit {
+                let response = server
+                    .handle_admitted_request(
+                        id.clone(),
+                        request,
+                        &cancellation,
+                        &lifecycle,
+                    )
+                    .await;
+                drop(permit);
+                response
+            } else if cancellation.is_cancelled() {
+                Some(bridge_response(id.clone(), &cancelled()))
+            } else {
+                Some(JsonRpcResponse::failure(
+                    Some(id.clone()),
+                    INTERNAL_ERROR,
+                    "MCP request admission closed unexpectedly",
+                ))
+            };
+            if let Some(response) = response {
+                server.queue_owned_response(&responses, &id, &cancellation, response)?;
+            }
+            Ok(())
+        });
+        Ok(())
+    }
+
+    async fn handle_notification(
+        &self,
+        request: JsonRpcRequest,
+        lifecycle: &Mutex<Lifecycle>,
+    ) {
         match request.method.as_str() {
             "notifications/initialized" => {
-                let mut lifecycle = self.lifecycle.lock().await;
+                let mut lifecycle = lifecycle.lock().await;
                 if matches!(*lifecycle, Lifecycle::AwaitingInitialized) {
                     *lifecycle = Lifecycle::Ready;
                 }
@@ -296,7 +446,7 @@ impl McpServer {
             "notifications/cancelled" => {
                 if let Ok(params) = parse_params::<CancelParams>(request.params) {
                     let _ = params.reason;
-                    if let Some(cancellation) = self.active.lock().await.get(&params.request_id) {
+                    if let Some(cancellation) = self.request_cancellation(&params.request_id) {
                         let _ = cancellation.cancel();
                     }
                 }
@@ -310,26 +460,32 @@ impl McpServer {
         id: RpcId,
         request: JsonRpcRequest,
         cancellation: &McpCancellation,
-    ) -> JsonRpcResponse {
+        lifecycle: &Mutex<Lifecycle>,
+    ) -> Option<JsonRpcResponse> {
         if request.method == "ping" {
-            return JsonRpcResponse::success(id, Value::Object(serde_json::Map::new()));
+            return Some(JsonRpcResponse::success(id, Value::Object(serde_json::Map::new())));
         }
-        if !matches!(*self.lifecycle.lock().await, Lifecycle::Ready) {
-            return JsonRpcResponse::failure(
+        if !matches!(*lifecycle.lock().await, Lifecycle::Ready) {
+            return Some(JsonRpcResponse::failure(
                 Some(id),
                 INVALID_REQUEST,
                 "server has not completed MCP initialization",
-            );
+            ));
         }
         self.dispatch(id, request, cancellation).await
     }
 
-    async fn initialize(&self, id: RpcId, params: Option<Value>) -> JsonRpcResponse {
+    async fn initialize(
+        &self,
+        id: RpcId,
+        params: Option<Value>,
+        lifecycle: &Mutex<Lifecycle>,
+    ) -> JsonRpcResponse {
         let parsed = match parse_params::<InitializeParams>(params) {
             Ok(parsed) => parsed,
             Err(message) => return JsonRpcResponse::failure(Some(id), INVALID_PARAMS, message),
         };
-        let mut lifecycle = self.lifecycle.lock().await;
+        let mut lifecycle = lifecycle.lock().await;
         if !matches!(*lifecycle, Lifecycle::Uninitialized) {
             return JsonRpcResponse::failure(
                 Some(id),
@@ -369,7 +525,7 @@ impl McpServer {
         id: RpcId,
         request: JsonRpcRequest,
         cancellation: &McpCancellation,
-    ) -> JsonRpcResponse {
+    ) -> Option<JsonRpcResponse> {
         let method = request.method;
         let params = request.params;
         if !matches!(
@@ -381,7 +537,14 @@ impl McpServer {
                 | "prompts/list"
                 | "prompts/get"
         ) {
-            return JsonRpcResponse::failure(Some(id), METHOD_NOT_FOUND, "method not found");
+            return Some(JsonRpcResponse::failure(
+                Some(id),
+                METHOD_NOT_FOUND,
+                "method not found",
+            ));
+        }
+        if !self.mark_daemon_dispatched(&id, cancellation) {
+            return None;
         }
         let operation = async {
             match method.as_str() {
@@ -403,10 +566,10 @@ impl McpServer {
             () = cancellation.cancelled() => Err(cancelled()),
             result = operation => result,
         };
-        match result {
+        Some(match result {
             Ok(value) => JsonRpcResponse::success(id, value),
             Err(error) => bridge_response(id, &error),
-        }
+        })
     }
 
     async fn list_tools(
@@ -480,6 +643,166 @@ impl McpServer {
             .await?;
         let messages = serde_json::to_value(messages).map_err(serialization_error)?;
         Ok(object("messages", messages))
+    }
+
+    fn request_ledger(&self) -> StdMutexGuard<'_, RequestLedger> {
+        self.ownership.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn begin_connection(&self) -> Result<(), McpError> {
+        let mut ledger = self.request_ledger();
+        if ledger.connection_open || !ledger.entries.is_empty() || !ledger.order.is_empty() {
+            return Err(McpError::new(
+                McpErrorClass::Lifecycle,
+                "open MCP connection",
+                "MCP server already owns a connection or unresolved local requests",
+            ));
+        }
+        ledger.connection_open = true;
+        ledger.closing = false;
+        Ok(())
+    }
+
+    fn finish_connection(&self) {
+        let mut ledger = self.request_ledger();
+        ledger.entries.clear();
+        ledger.order.clear();
+        ledger.closing = false;
+        ledger.connection_open = false;
+    }
+
+    fn register_request(
+        &self,
+        request_id: RpcId,
+        cancellation: McpCancellation,
+    ) -> Result<bool, McpError> {
+        let mut ledger = self.request_ledger();
+        if !ledger.connection_open || ledger.closing {
+            return Err(McpError::new(
+                McpErrorClass::Lifecycle,
+                "admit MCP request",
+                "MCP connection is not accepting requests",
+            ));
+        }
+        if ledger.entries.contains_key(&request_id) {
+            return Ok(false);
+        }
+        ledger.order.push(request_id.clone());
+        ledger.entries.insert(
+            request_id,
+            RequestOwnership {
+                cancellation,
+                task_active: true,
+                daemon_dispatched: false,
+                response: None,
+            },
+        );
+        Ok(true)
+    }
+
+    fn request_cancellation(&self, request_id: &RpcId) -> Option<McpCancellation> {
+        self.request_ledger()
+            .entries
+            .get(request_id)
+            .filter(|ownership| ownership.task_active && ownership.response.is_none())
+            .map(|ownership| ownership.cancellation.clone())
+    }
+
+    fn mark_daemon_dispatched(
+        &self,
+        request_id: &RpcId,
+        cancellation: &McpCancellation,
+    ) -> bool {
+        let mut ledger = self.request_ledger();
+        if ledger.closing {
+            return false;
+        }
+        let Some(ownership) = ledger.entries.get_mut(request_id) else { return false };
+        if !ownership.task_active
+            || !ownership.cancellation.same_request(cancellation)
+            || ownership.response.is_some()
+        {
+            return false;
+        }
+        ownership.daemon_dispatched = true;
+        true
+    }
+
+    fn queue_owned_response(
+        &self,
+        sender: &mpsc::UnboundedSender<QueuedResponse>,
+        request_id: &RpcId,
+        cancellation: &McpCancellation,
+        response: JsonRpcResponse,
+    ) -> Result<(), McpError> {
+        let response = Arc::new(response);
+        {
+            let mut ledger = self.request_ledger();
+            let Some(ownership) = ledger.entries.get_mut(request_id) else { return Ok(()) };
+            if !ownership.task_active
+                || !ownership.cancellation.same_request(cancellation)
+                || ownership.response.is_some()
+            {
+                return Ok(());
+            }
+            ownership.response = Some(Arc::clone(&response));
+        }
+        send_queued_response(
+            sender,
+            QueuedResponse {
+                response,
+                owner: Some(ResponseOwner {
+                    request_id: request_id.clone(),
+                    cancellation: cancellation.clone(),
+                }),
+            },
+        )
+    }
+
+    fn response_delivered(&self, request_id: &RpcId, cancellation: &McpCancellation) {
+        let mut ledger = self.request_ledger();
+        let delivered = ledger.entries.get(request_id).is_some_and(|ownership| {
+            ownership.cancellation.same_request(cancellation) && ownership.response.is_some()
+        });
+        if delivered {
+            ledger.entries.remove(request_id);
+            ledger.order.retain(|candidate| candidate != request_id);
+        }
+    }
+
+    fn release_unanswered_request(&self, request_id: &RpcId, cancellation: &McpCancellation) {
+        let mut ledger = self.request_ledger();
+        let Some(ownership) = ledger.entries.get_mut(request_id) else { return };
+        if !ownership.cancellation.same_request(cancellation) || ownership.response.is_some() {
+            return;
+        }
+        if ownership.daemon_dispatched {
+            ownership.task_active = false;
+        } else {
+            ledger.entries.remove(request_id);
+            ledger.order.retain(|candidate| candidate != request_id);
+        }
+    }
+
+    fn close_snapshot(&self, reason: BridgeConnectionCloseReason) -> BridgeConnectionClose {
+        let mut ledger = self.request_ledger();
+        ledger.closing = true;
+        let requests = ledger
+            .order
+            .iter()
+            .filter_map(|request_id| {
+                ledger.entries.get(request_id).map(|ownership| {
+                    BridgeRequestOwnership::new(
+                        request_id.clone(),
+                        ownership.task_active,
+                        ownership.daemon_dispatched,
+                        ownership.cancellation.is_cancelled(),
+                        ownership.response.as_deref().cloned(),
+                    )
+                })
+            })
+            .collect();
+        BridgeConnectionClose::new(reason, requests)
     }
 
     fn initialize_result(&self) -> Value {
@@ -596,9 +919,35 @@ fn serialization_error(error: serde_json::Error) -> BridgeError {
     )
 }
 
+fn request_failure(
+    joined: Result<Result<(), McpError>, tokio::task::JoinError>,
+) -> Option<McpError> {
+    match joined {
+        Ok(Ok(())) => None,
+        Ok(Err(error)) => Some(error),
+        Err(error) if error.is_cancelled() => None,
+        Err(error) => Some(McpError::new(
+            McpErrorClass::Lifecycle,
+            "join MCP request",
+            error.to_string(),
+        )),
+    }
+}
+
+fn bridge_lifecycle_error(operation: &'static str, error: BridgeError) -> McpError {
+    McpError::with_source(McpErrorClass::Bridge, operation, error.to_string(), error)
+}
+
 fn send_response(
-    sender: &mpsc::UnboundedSender<JsonRpcResponse>,
+    sender: &mpsc::UnboundedSender<QueuedResponse>,
     response: JsonRpcResponse,
+) -> Result<(), McpError> {
+    send_queued_response(sender, QueuedResponse { response: Arc::new(response), owner: None })
+}
+
+fn send_queued_response(
+    sender: &mpsc::UnboundedSender<QueuedResponse>,
+    response: QueuedResponse,
 ) -> Result<(), McpError> {
     sender.send(response).map_err(|_| {
         McpError::new(

@@ -7,7 +7,7 @@ use peritus_tool_protocol::{ResultStatus, ToolDescriptor, ToolResult};
 use peritus_types::{ActorId, SessionId};
 use serde_json::Value;
 
-use crate::{BridgeError, BridgeErrorClass, McpCancellation};
+use crate::{BridgeError, BridgeErrorClass, JsonRpcResponse, McpCancellation, RpcId};
 
 mod wire;
 
@@ -217,6 +217,105 @@ impl BridgeToolCallResult {
     }
 }
 
+/// Transport observation that caused one MCP connection to relinquish local ownership.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BridgeConnectionCloseReason {
+    /// The client input reached a clean end of stream.
+    InputClosed,
+    /// Reading or decoding the client input failed.
+    InputFailed,
+    /// The response writer failed or stopped unexpectedly.
+    OutputFailed,
+    /// An owned request task failed or panicked.
+    RequestFailed,
+}
+
+/// Exact per-request ownership visible when an MCP connection closes.
+#[derive(Clone, Debug)]
+pub struct BridgeRequestOwnership {
+    request_id: RpcId,
+    local_task_active: bool,
+    daemon_dispatched: bool,
+    cancellation_requested: bool,
+    response: Option<JsonRpcResponse>,
+}
+
+impl BridgeRequestOwnership {
+    pub(crate) const fn new(
+        request_id: RpcId,
+        local_task_active: bool,
+        daemon_dispatched: bool,
+        cancellation_requested: bool,
+        response: Option<JsonRpcResponse>,
+    ) -> Self {
+        Self {
+            request_id,
+            local_task_active,
+            daemon_dispatched,
+            cancellation_requested,
+            response,
+        }
+    }
+
+    /// Borrows the exact JSON-RPC request identity.
+    #[must_use]
+    pub const fn request_id(&self) -> &RpcId {
+        &self.request_id
+    }
+
+    /// Reports whether the connection still owned a live local request task at handoff.
+    #[must_use]
+    pub const fn local_task_active(&self) -> bool {
+        self.local_task_active
+    }
+
+    /// Reports whether dispatch crossed into the daemon-owned bridge operation.
+    #[must_use]
+    pub const fn daemon_dispatched(&self) -> bool {
+        self.daemon_dispatched
+    }
+
+    /// Reports explicit client cancellation independently of connection closure.
+    #[must_use]
+    pub const fn cancellation_requested(&self) -> bool {
+        self.cancellation_requested
+    }
+
+    /// Borrows the completed response when local delivery remained unresolved.
+    #[must_use]
+    pub const fn response(&self) -> Option<&JsonRpcResponse> {
+        self.response.as_ref()
+    }
+}
+
+/// Ordered ownership handoff from a closing MCP connection to durable daemon authority.
+#[derive(Clone, Debug)]
+pub struct BridgeConnectionClose {
+    reason: BridgeConnectionCloseReason,
+    requests: Vec<BridgeRequestOwnership>,
+}
+
+impl BridgeConnectionClose {
+    pub(crate) const fn new(
+        reason: BridgeConnectionCloseReason,
+        requests: Vec<BridgeRequestOwnership>,
+    ) -> Self {
+        Self { reason, requests }
+    }
+
+    /// Returns the observed connection-close reason.
+    #[must_use]
+    pub const fn reason(&self) -> BridgeConnectionCloseReason {
+        self.reason
+    }
+
+    /// Borrows unresolved requests in their original admission order.
+    #[must_use]
+    pub fn requests(&self) -> &[BridgeRequestOwnership] {
+        &self.requests
+    }
+}
+
 /// Adapter implemented at the daemon boundary over existing A3/G0/C4 authority owners.
 ///
 /// Implementations must compute tool exposure through the C4 registry and current B1 scope, route
@@ -225,6 +324,27 @@ impl BridgeToolCallResult {
 /// propagate the supplied cancellation and must not detach accepted effects when the future is
 /// dropped. Returning a value is an observation; this trait has no grant API.
 pub trait AuthorityBridge: Send + Sync {
+    /// Reconciles a new connection with durable authority for the exact session and generation.
+    ///
+    /// Implementations must recover prior close handoffs before new requests can be admitted. A
+    /// recovered operation is deduplicated or observed through daemon-owned state; it is never
+    /// silently redispatched by the MCP transport.
+    fn reconcile_connection<'a>(
+        &'a self,
+        context: &'a BridgeContext,
+    ) -> BridgeFuture<'a, Result<(), BridgeError>>;
+
+    /// Durably assumes ownership of unresolved work from a closing connection.
+    ///
+    /// This is an observation and reconciliation handoff, not cancellation intent. Implementations
+    /// retain dispatched-operation and response facts by request identity until a later exact
+    /// session reconciliation resolves them.
+    fn close_connection<'a>(
+        &'a self,
+        context: &'a BridgeContext,
+        close: BridgeConnectionClose,
+    ) -> BridgeFuture<'a, Result<(), BridgeError>>;
+
     /// Lists tools already exposed to the exact authenticated context.
     fn list_tools<'a>(
         &'a self,

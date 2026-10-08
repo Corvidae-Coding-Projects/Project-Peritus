@@ -15,8 +15,9 @@ mod protocol;
 mod server;
 
 pub use bridge::{
-    AuthorityBridge, BridgeContext, BridgeFuture, BridgePrompt, BridgePromptArgument,
-    BridgePromptMessage, BridgeResource, BridgeResourceContents, BridgeTool, BridgeToolCallResult,
+    AuthorityBridge, BridgeConnectionClose, BridgeConnectionCloseReason, BridgeContext,
+    BridgeFuture, BridgePrompt, BridgePromptArgument, BridgePromptMessage, BridgeRequestOwnership,
+    BridgeResource, BridgeResourceContents, BridgeTool, BridgeToolCallResult,
 };
 pub use cancellation::McpCancellation;
 pub use error::{BridgeError, BridgeErrorClass, McpError, McpErrorClass};

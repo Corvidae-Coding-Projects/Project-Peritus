@@ -3,9 +3,9 @@
 use std::{future::Future, sync::Arc, time::Duration};
 
 use peritus_mcp::{
-    AuthorityBridge, BridgeContext, BridgeError, BridgeErrorClass, BridgeFuture, BridgePrompt,
-    BridgePromptMessage, BridgeResource, BridgeResourceContents, BridgeTool, BridgeToolCallResult,
-    McpCancellation, McpServer, McpServerInfo, ServerLimits,
+    AuthorityBridge, BridgeConnectionClose, BridgeContext, BridgeError, BridgeErrorClass,
+    BridgeFuture, BridgePrompt, BridgePromptMessage, BridgeResource, BridgeResourceContents,
+    BridgeTool, BridgeToolCallResult, McpCancellation, McpServer, McpServerInfo, ServerLimits,
 };
 use peritus_types::{ActorId, SessionId};
 use serde_json::Value;
@@ -31,6 +31,21 @@ where
 }
 
 impl AuthorityBridge for FakeBridge {
+    fn reconcile_connection<'a>(
+        &'a self,
+        _context: &'a BridgeContext,
+    ) -> BridgeFuture<'a, Result<(), BridgeError>> {
+        Box::pin(async { Ok(()) })
+    }
+
+    fn close_connection<'a>(
+        &'a self,
+        _context: &'a BridgeContext,
+        _close: BridgeConnectionClose,
+    ) -> BridgeFuture<'a, Result<(), BridgeError>> {
+        Box::pin(async { Ok(()) })
+    }
+
     fn list_tools<'a>(
         &'a self,
         _context: &'a BridgeContext,
