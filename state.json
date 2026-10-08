@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4139,
-        "tip_oid": "67fc6420b13a87ce6c707b32f93e5ff7ca0814ae",
-        "prefix_sha256": "a8ba1b15dd48e9acae6b1abfdf40f10d54eac346331f20dead3a03ea56ee2903"
+        "sequence": 4140,
+        "tip_oid": "c6463bb315aebbd3d5fd0c789803563b3d74034c",
+        "prefix_sha256": "5d9a8b408ba1c78f2ad09e40ecb32d73cb3a06518e2075cc05a6247cc2b15321"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3273,
+  "next_comment_id": 3274,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23138,11 +23138,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.275090435Z",
-      "updated_at": "2026-10-06T13:19:08.277277271Z",
+      "updated_at": "2026-10-08T10:26:29.274556246Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "59b78378-73fa-4092-9a90-64bed67d6050": {
+          "display_id": 3273,
+          "author": "6ME5",
+          "content": "Code complete in commit 6abeffd4e. Added negotiated V3 JSON frames across descriptor, calls, preparation, progress, result construction and durable progress decoding, with historical V1/V2 encoding and frozen shell V2 descriptor recovery preserved. Current shell descriptors select 16 MiB physical frames; shell, quality, filesystem, Git, product-runner and agent producers use the selected contract, with argument admission before effects and exact output construction. Existing paging and artifact-backed inputs retained; Git u64/usize output no longer saturates at i64::MAX. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T10:26:29.265860940Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAUtkfjmy2BGah7GUnDOwA55hHaxThp+9q6hx0SabHfYGdgulnd+kyFZ7Oq/rpwU19Wqv49iQmkYCDube+tlxcCw=="
+        },
         "c639456f-ab21-4ebc-a877-41eec5e58ab7": {
           "display_id": 2274,
           "author": "6ME5",
