@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3978,
-        "tip_oid": "4acc0cf3400fc41e19396066bbfdb9a475825780",
-        "prefix_sha256": "ced20e342534aa71423d13091a034a8ab6104a51c8e1890b9722b1a510cd1680"
+        "sequence": 3979,
+        "tip_oid": "e6964ebae4fc897a01238591c090f79ee53bf47b",
+        "prefix_sha256": "330d2c01c736d1a5372952238b5fc6a2f68a06c44bf144d4ffd85f5aa1c57ded"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3192,
+  "next_comment_id": 3193,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32552,11 +32552,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.994569796Z",
-      "updated_at": "2026-10-06T13:19:07.996686211Z",
+      "updated_at": "2026-10-08T02:24:45.829807680Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "a5210bc0-8e82-4b4e-9094-415bbf5b24f8": {
+          "display_id": 3192,
+          "author": "6ME5",
+          "content": "Code complete in commit 5590290a7: process permission/mode gates separate observational launch, mutation and exact owned-process control. Read-only roles use selected native backend enforcement and omit writable leases; catalogs, planning, admission, dispatcher controls and durable execution-mode projections are migrated with legacy compatibility. Raw process authority does not grant blanket workspace writes, and owned controls/reconciliation remain available under retained capability. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:24:45.820368578Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr9C5fGQin9cOh+aHikebi9NWE1bT1aAhY60pmSjkuJFX58SRDmwF6GE+UR0ENwQuaqrxMGJOWVrJgTDiznPyAw=="
+        },
         "acb5d456-0ef5-487b-b616-d2784cfe06f7": {
           "display_id": 2210,
           "author": "6ME5",
