@@ -248,6 +248,31 @@ impl ProductState {
         Ok(true)
     }
 
+    /// Advances this exact state to a later storage generation without changing its identities or
+    /// configured product facts.
+    ///
+    /// This is reserved for durable-store recovery when intervening generation names are already
+    /// occupied or reserved. The usable predecessor remains immutable.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a generation rollback.
+    pub fn advance_generation_to(
+        &mut self,
+        generation: u64,
+    ) -> Result<bool, ProductStateError> {
+        if generation < self.generation {
+            return Err(ProductStateError::InvalidPayload(
+                "product-state generation recovery cannot move backward".to_owned(),
+            ));
+        }
+        if generation == self.generation {
+            return Ok(false);
+        }
+        self.generation = generation;
+        Ok(true)
+    }
+
     fn next_generation(&self) -> Result<u64, ProductStateError> {
         self.generation.checked_add(1).ok_or(ProductStateError::GenerationExhausted {
             generation: self.generation,
