@@ -41,12 +41,14 @@ impl AdmissionPlan {
     ) -> Result<Self, EvidenceError> {
         let exported = exported_record(export, draft.journal_position())?;
         validate_observation(exported, durable)?;
-        let actual_artifacts = export
-            .artifact_references()
-            .iter()
-            .filter(|reference| reference.batch_hash() == durable.batch_hash)
-            .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
-            .collect::<Vec<_>>();
+        let mut artifact_index: BTreeMap<Sha256Digest, Vec<ArtifactDigest>> = BTreeMap::new();
+        for reference in export.artifact_references() {
+            artifact_index
+                .entry(reference.batch_hash())
+                .or_default()
+                .push(ArtifactDigest::from_sha256(reference.artifact_digest()));
+        }
+        let actual_artifacts = artifact_index.remove(&durable.batch_hash).unwrap_or_default();
         if actual_artifacts != draft.artifacts() || durable.artifacts != actual_artifacts {
             return Err(mismatch("draft, export, and durable journal artifact sets disagree"));
         }

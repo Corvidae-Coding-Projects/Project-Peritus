@@ -181,6 +181,17 @@ impl EvidenceRecord {
         record
     }
 
+    pub(crate) fn matches_draft(&self, draft: &EvidenceDraft) -> bool {
+        self.id == draft.id
+            && self.kind == draft.kind
+            && self.source == draft.source
+            && self.revision == draft.revision
+            && self.provenance.global_position() == draft.journal_position
+            && self.payload_digest == draft.payload_digest
+            && self.artifacts == draft.artifacts
+            && self.causes == draft.causes
+    }
+
     /// Returns the stable evidence identity.
     #[must_use]
     pub const fn id(&self) -> EvidenceId {

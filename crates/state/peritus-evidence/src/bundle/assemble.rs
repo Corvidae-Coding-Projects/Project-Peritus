@@ -2,7 +2,7 @@
 
 use super::format::{MAGIC, invalid};
 use super::{BundleLimits, BundlePlan};
-use crate::{EvidenceError, EvidenceErrorKind, RecoveryAction};
+use crate::{EvidenceCancellation, EvidenceError, EvidenceErrorKind, RecoveryAction};
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
@@ -43,6 +43,125 @@ impl BundleExportCursor {
     #[must_use]
     pub const fn byte_offset(self) -> u64 {
         self.byte_offset
+    }
+}
+
+/// Durable meaning of an owned bundle export operation's retained cursor.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum BundleExportPhase {
+    /// Exact bytes are privately staged and no caller output has been accepted yet.
+    Prepared,
+    /// Caller output has accepted a prefix and can resume at the retained cursor.
+    Writing,
+    /// Every planned byte was accepted by caller output.
+    Complete,
+}
+
+/// Owned authenticated stage and output cursor for one exact bundle export.
+pub struct BundleExportOperation {
+    staged: StagedBundle,
+    cursor: BundleExportCursor,
+    phase: BundleExportPhase,
+}
+
+impl BundleExportOperation {
+    /// Authenticates and stages a new exact export under explicit cancellation ownership.
+    ///
+    /// # Errors
+    ///
+    /// Returns planning, artifact, staging, capacity, or cancellation failures.
+    pub fn prepare(
+        plan: &BundlePlan,
+        artifacts: &ArtifactStore,
+        limits: BundleLimits,
+        cancellation: &EvidenceCancellation,
+    ) -> Result<Self, EvidenceError> {
+        Self::restore(
+            plan,
+            artifacts,
+            limits,
+            BundleExportCursor::start(plan),
+            cancellation,
+        )
+    }
+
+    /// Restages exact bytes for a retained restart cursor, then owns subsequent output progress.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a cursor for different bytes or an invalid offset, plus preparation failures.
+    pub fn restore(
+        plan: &BundlePlan,
+        artifacts: &ArtifactStore,
+        limits: BundleLimits,
+        cursor: BundleExportCursor,
+        cancellation: &EvidenceCancellation,
+    ) -> Result<Self, EvidenceError> {
+        if cursor.export_id != plan.export_id() || cursor.byte_offset > plan.byte_count() {
+            return Err(invalid("bundle export cursor does not belong to this exact plan"));
+        }
+        ensure_live(Some(cancellation), "prepare evidence bundle export")?;
+        let staged = StagedBundle::create_in(
+            artifacts.root(),
+            plan,
+            artifacts,
+            limits,
+            Some(cancellation),
+        )?;
+        let phase = if cursor.byte_offset == staged.receipt.byte_count {
+            BundleExportPhase::Complete
+        } else if cursor.byte_offset == 0 {
+            BundleExportPhase::Prepared
+        } else {
+            BundleExportPhase::Writing
+        };
+        Ok(Self { staged, cursor, phase })
+    }
+
+    /// Returns the retained exact export cursor.
+    #[must_use]
+    pub const fn cursor(&self) -> BundleExportCursor {
+        self.cursor
+    }
+
+    /// Returns the truthful current export phase.
+    #[must_use]
+    pub const fn phase(&self) -> BundleExportPhase {
+        self.phase
+    }
+
+    /// Returns the complete receipt only after every output byte was accepted.
+    #[must_use]
+    pub const fn receipt(&self) -> Option<BundleReceipt> {
+        if matches!(self.phase, BundleExportPhase::Complete) {
+            Some(self.staged.receipt)
+        } else {
+            None
+        }
+    }
+
+    /// Resumes output from the retained cursor without rebuilding or rehashing the stage.
+    ///
+    /// # Errors
+    ///
+    /// Returns output, staged-content, or cancellation failures while retaining exact progress.
+    pub fn resume<W: Write>(
+        &mut self,
+        output: &mut W,
+        cancellation: &EvidenceCancellation,
+    ) -> Result<BundleReceipt, EvidenceError> {
+        if matches!(self.phase, BundleExportPhase::Complete) {
+            return Ok(self.staged.receipt);
+        }
+        self.phase = BundleExportPhase::Writing;
+        copy_staged(
+            &mut self.staged,
+            output,
+            &mut self.cursor,
+            Some(cancellation),
+        )?;
+        self.phase = BundleExportPhase::Complete;
+        Ok(self.staged.receipt)
     }
 }
 
@@ -115,33 +234,47 @@ pub fn resume_bundle<W: Write>(
     if cursor.export_id != plan.export_id() || cursor.byte_offset > plan.byte_count() {
         return Err(invalid("bundle export cursor does not belong to this exact plan"));
     }
-    let mut staged = StagedBundle::create_in(artifacts.root(), plan, artifacts, limits)?;
+    let mut staged = StagedBundle::create_in(artifacts.root(), plan, artifacts, limits, None)?;
     if staged.receipt.export_id != cursor.export_id
         || staged.receipt.byte_count != plan.byte_count()
     {
         return Err(invalid("staged bundle disagrees with its serialized plan"));
     }
+    copy_staged(&mut staged, output, cursor, None)?;
+    Ok(staged.receipt)
+}
+
+fn copy_staged<W: Write>(
+    staged: &mut StagedBundle,
+    output: &mut W,
+    cursor: &mut BundleExportCursor,
+    cancellation: Option<&EvidenceCancellation>,
+) -> Result<(), EvidenceError> {
+    ensure_live(cancellation, "copy staged evidence bundle")?;
     staged
         .file
         .as_file_mut()
         .seek(SeekFrom::Start(cursor.byte_offset))
         .map_err(|error| EvidenceError::io("seek staged evidence bundle", error))?;
+    ensure_live(cancellation, "copy staged evidence bundle")?;
     let mut buffer = vec![0_u8; STREAM_CHUNK_BYTES].into_boxed_slice();
     while cursor.byte_offset < staged.receipt.byte_count {
         let remaining = staged.receipt.byte_count - cursor.byte_offset;
         let wanted = usize::try_from(remaining.min(STREAM_CHUNK_BYTES as u64))
             .map_err(|_| invalid("bundle continuation size exceeds usize"))?;
+        ensure_live(cancellation, "read staged evidence bundle")?;
         let read = staged
             .file
             .as_file_mut()
             .read(&mut buffer[..wanted])
             .map_err(|error| EvidenceError::io("read staged evidence bundle", error))?;
+        ensure_live(cancellation, "read staged evidence bundle")?;
         if read == 0 {
             return Err(invalid("staged evidence bundle is truncated"));
         }
-        write_progress(output, &buffer[..read], cursor)?;
+        write_progress(output, &buffer[..read], cursor, cancellation)?;
     }
-    Ok(staged.receipt)
+    Ok(())
 }
 
 /// Publishes one complete bundle through a synchronized same-directory temporary file.
@@ -163,7 +296,7 @@ pub fn publish_bundle(
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    let staged = StagedBundle::create_in(parent, plan, artifacts, limits)?;
+    let staged = StagedBundle::create_in(parent, plan, artifacts, limits, None)?;
     let receipt = staged.receipt;
     match staged.file.persist_noclobber(destination) {
         Ok(file) => {
@@ -191,12 +324,18 @@ impl StagedBundle {
         plan: &BundlePlan,
         artifacts: &ArtifactStore,
         limits: BundleLimits,
+        cancellation: Option<&EvidenceCancellation>,
     ) -> Result<Self, EvidenceError> {
+        ensure_live(cancellation, "stage evidence bundle")?;
         plan.validate_limits(limits)?;
         ensure_capacity(directory, plan.byte_count())?;
         let mut file = NamedTempFile::new_in(directory)
             .map_err(|error| EvidenceError::io("create staged evidence bundle", error))?;
-        let mut writer = HashingWriter::new(file.as_file_mut(), limits.max_bundle_bytes());
+        let mut writer = HashingWriter::new(
+            file.as_file_mut(),
+            limits.max_bundle_bytes(),
+            cancellation.cloned(),
+        );
         write_bundle(plan, artifacts, &mut writer, limits)?;
         let (bundle_digest, byte_count) = writer.finish();
         if byte_count != plan.byte_count() {
@@ -206,6 +345,7 @@ impl StagedBundle {
             .flush()
             .and_then(|()| file.as_file().sync_all())
             .map_err(|error| EvidenceError::io("synchronize staged evidence bundle", error))?;
+        ensure_live(cancellation, "stage evidence bundle")?;
         Ok(Self {
             file,
             receipt: BundleReceipt {
@@ -256,19 +396,24 @@ fn stream_artifact<W: Write>(
     limits: BundleLimits,
 ) -> Result<(), EvidenceError> {
     limits.check_entry_bytes(expected_size)?;
+    writer.ensure_live("open authenticated bundle artifact")?;
     let mut reader = store
         .open_read(digest)
         .map_err(|error| EvidenceError::artifact("open authenticated bundle artifact", error))?;
+    writer.ensure_live("open authenticated bundle artifact")?;
     if reader.metadata().size() != expected_size {
         return Err(invalid("artifact size changed after planning"));
     }
     let chunk_bytes = usize::try_from(expected_size.clamp(1, STREAM_CHUNK_BYTES as u64))
         .map_err(|_| invalid("artifact chunk size exceeds usize"))?;
     let mut count = 0_u64;
-    while let Some(chunk) = reader
-        .read_chunk(chunk_bytes)
-        .map_err(|error| EvidenceError::artifact("read authenticated bundle artifact", error))?
-    {
+    loop {
+        writer.ensure_live("read authenticated bundle artifact")?;
+        let chunk = reader
+            .read_chunk(chunk_bytes)
+            .map_err(|error| EvidenceError::artifact("read authenticated bundle artifact", error))?;
+        writer.ensure_live("read authenticated bundle artifact")?;
+        let Some(chunk) = chunk else { break };
         let length = u64::try_from(chunk.bytes().len())
             .map_err(|_| invalid("artifact chunk length exceeds u64"))?;
         count = count.checked_add(length).ok_or_else(|| {
@@ -306,8 +451,10 @@ fn write_progress<W: Write>(
     output: &mut W,
     mut bytes: &[u8],
     cursor: &mut BundleExportCursor,
+    cancellation: Option<&EvidenceCancellation>,
 ) -> Result<(), EvidenceError> {
     while !bytes.is_empty() {
+        ensure_live(cancellation, "write evidence bundle")?;
         match output.write(bytes) {
             Ok(0) => {
                 return Err(EvidenceError::io(
@@ -324,6 +471,7 @@ fn write_progress<W: Write>(
                     )
                     .ok_or_else(|| invalid("bundle cursor offset overflowed"))?;
                 bytes = &bytes[written..];
+                ensure_live(cancellation, "write evidence bundle")?;
             }
             Err(error) => return Err(EvidenceError::io("write evidence bundle", error)),
         }
@@ -377,13 +525,19 @@ struct HashingWriter<W> {
     hasher: Sha256,
     count: u64,
     limit: Option<u64>,
+    cancellation: Option<EvidenceCancellation>,
 }
 
 impl<W: Write> HashingWriter<W> {
-    fn new(inner: W, limit: Option<u64>) -> Self {
-        Self { inner, hasher: Sha256::new(), count: 0, limit }
+    fn new(
+        inner: W,
+        limit: Option<u64>,
+        cancellation: Option<EvidenceCancellation>,
+    ) -> Self {
+        Self { inner, hasher: Sha256::new(), count: 0, limit, cancellation }
     }
     fn write(&mut self, bytes: &[u8]) -> Result<(), EvidenceError> {
+        self.ensure_live("write staged evidence bundle")?;
         let length =
             u64::try_from(bytes.len()).map_err(|_| invalid("bundle byte count exceeds u64"))?;
         let next = self
@@ -398,10 +552,24 @@ impl<W: Write> HashingWriter<W> {
             .map_err(|error| EvidenceError::io("write staged evidence bundle", error))?;
         self.hasher.update(bytes);
         self.count = next;
-        Ok(())
+        self.ensure_live("write staged evidence bundle")
+    }
+    fn ensure_live(&self, operation: &'static str) -> Result<(), EvidenceError> {
+        ensure_live(self.cancellation.as_ref(), operation)
     }
     fn finish(self) -> (Sha256Digest, u64) {
         (Sha256Digest::new(self.hasher.finalize().into()), self.count)
+    }
+}
+
+fn ensure_live(
+    cancellation: Option<&EvidenceCancellation>,
+    operation: &'static str,
+) -> Result<(), EvidenceError> {
+    if cancellation.is_some_and(EvidenceCancellation::is_cancelled) {
+        Err(EvidenceError::cancelled(operation))
+    } else {
+        Ok(())
     }
 }
 

@@ -183,7 +183,9 @@ pub fn publish_claimed_report(
     if state.phase() != DebuggerPhase::ReportReady {
         return Err(binding("publication state is not report-ready"));
     }
-    let export = journal.integrity_export().map_err(journal_error)?;
+    let export = journal
+        .integrity_export_for_head(report_commit_position)
+        .map_err(journal_error)?;
     let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
     if evidence.id() != publication.evidence_id() {
         return Err(recovery("admitted evidence identity differs from publication"));
@@ -284,7 +286,7 @@ pub fn reconcile_interrupted_publication(
 /// Rejects nonterminal or divergent state, operation identity drift, malformed retained receipts,
 /// noncanonical report bytes, corrupt evidence, or dependency repair failure.
 pub fn repair_completed_publication(
-    journal: &SqliteJournal,
+    journal: &mut SqliteJournal,
     evidence_store: &mut EvidenceStore,
     artifact_store: &ArtifactStore,
     state: &DebuggerState,
@@ -346,7 +348,9 @@ pub fn repair_completed_publication(
     let evidence = if let Some(existing) = existing_evidence {
         existing
     } else {
-        let export = journal.integrity_export().map_err(journal_error)?;
+        let export = journal
+            .integrity_export_for_retained_event(draft.journal_position())
+            .map_err(journal_error)?;
         evidence_store
             .admit(draft.clone(), &export, artifact_store)
             .map_err(evidence_repair_error)?

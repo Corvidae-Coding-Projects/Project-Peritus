@@ -9,7 +9,7 @@ use crate::{
     FreshnessRequirement, RecoveryAction,
 };
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
-use peritus_journal::IntegrityExport;
+use peritus_journal::{CommittedRecord, IntegrityExport};
 use peritus_types::{RevisionTuple, Sha256Digest};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -193,30 +193,31 @@ impl BundlePlan {
             }
         }
         super::format::validate_ancestry(&records, &authority_records)?;
-        let mut positions = BTreeSet::new();
+        let mut provenance_by_position = BTreeMap::new();
         let mut expected_artifacts = BTreeSet::new();
         for record in &records {
-            positions.insert(record.provenance().global_position());
+            let provenance = record.provenance();
+            if provenance_by_position
+                .insert(provenance.global_position(), provenance)
+                .is_some_and(|existing| existing != provenance)
+            {
+                return Err(invalid("records disagree on shared journal provenance"));
+            }
             expected_artifacts.extend(record.artifacts().iter().copied());
         }
         if expected_artifacts != artifact_sizes.keys().copied().collect() {
             return Err(invalid("artifact metadata does not exactly cover record references"));
         }
-        let mut frames = Vec::with_capacity(positions.len());
-        for position in positions {
-            let index = usize::try_from(
-                position.checked_sub(1).ok_or_else(|| invalid("zero frame position"))?,
-            )
-            .map_err(|_| overflow("frame position exceeds usize"))?;
+        let mut frames = Vec::with_capacity(provenance_by_position.len());
+        for (position, provenance) in provenance_by_position {
+            let index = export
+                .records()
+                .binary_search_by_key(&position, CommittedRecord::global_position)
+                .map_err(|_| invalid("record frame is absent from scoped export"))?;
             let record = export
                 .records()
                 .get(index)
                 .ok_or_else(|| invalid("record frame is absent from export"))?;
-            let provenance = records
-                .iter()
-                .find(|value| value.provenance().global_position() == position)
-                .map(EvidenceRecord::provenance)
-                .ok_or_else(|| invalid("frame has no record provenance"))?;
             if record.event_id() != provenance.event_id()
                 || record.event_hash() != provenance.event_hash()
                 || record.frame_digest() != provenance.frame_digest()
@@ -365,21 +366,17 @@ impl EvidenceStore {
         }
         let authority_records = ids.to_vec();
         let authority: BTreeSet<_> = ids.iter().copied().collect();
-        let mut pending = authority.clone();
-        let mut indexed_records = BTreeMap::new();
+        let snapshot = self.causal_snapshot(ids, current_revision)?;
+        let mut records = Vec::with_capacity(snapshot.len());
+        let mut artifact_digests = BTreeSet::new();
         let mut artifact_sizes = BTreeMap::new();
-        while let Some(id) = pending.pop_first() {
-            if indexed_records.contains_key(&id) {
-                continue;
-            }
-            let record =
-                self.load(id)?.ok_or_else(|| invalid("bundle evidence record is missing"))?;
+        for (record, freshness) in snapshot {
+            let id = record.id();
             let requirement = if authority.contains(&id) {
                 FreshnessRequirement::PresentAuthority
             } else {
                 FreshnessRequirement::HistoricalProvenance
             };
-            let freshness = self.freshness(id, current_revision)?;
             if !freshness.satisfies(requirement) {
                 let detail = match freshness {
                     Freshness::RevisionStale(_) => {
@@ -397,20 +394,17 @@ impl EvidenceStore {
                     detail,
                 ));
             }
-            for digest in record.artifacts() {
-                let metadata = artifacts
-                    .verify(*digest)
-                    .map_err(|error| EvidenceError::artifact("verify bundle artifact", error))?;
-                artifact_sizes.insert(*digest, metadata.size());
-            }
-            for cause in record.causes() {
-                if !indexed_records.contains_key(cause) {
-                    pending.insert(*cause);
-                }
-            }
-            indexed_records.insert(id, record);
+            artifact_digests.extend(record.artifacts().iter().copied());
+            records.push(record);
         }
-        let records = indexed_records.into_values().collect();
+        for digest in artifact_digests {
+            self.ensure_live("verify bundle artifact")?;
+            let metadata = artifacts
+                .verify(digest)
+                .map_err(|error| EvidenceError::artifact("verify bundle artifact", error))?;
+            self.ensure_live("verify bundle artifact")?;
+            artifact_sizes.insert(digest, metadata.size());
+        }
         BundlePlan::build(
             records,
             *current_revision,

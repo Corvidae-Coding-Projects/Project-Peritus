@@ -2,13 +2,14 @@
 
 use super::BundleLimits;
 use super::format::{MAGIC, invalid};
-use crate::{EvidenceManifest, EvidenceRecord};
+use crate::{EvidenceCancellation, EvidenceManifest, EvidenceRecord};
 use peritus_artifact_store::ArtifactDigest;
 use peritus_codec::{CodecLimits, decode_frame};
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
-use std::io::Read;
+use std::io::{Read, Seek, SeekFrom, Write};
+use tempfile::NamedTempFile;
 
 const STREAM_CHUNK_BYTES: usize = 64 * 1024;
 const STREAM_CHUNK_BYTES_U64: u64 = 64 * 1024;
@@ -41,6 +42,201 @@ impl VerifiedBundle {
     }
 }
 
+/// Truthful phase of an owned cancellable bundle verification operation.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum BundleVerificationPhase {
+    /// External input is being copied into the operation-owned immutable stage.
+    Receiving,
+    /// Input reached EOF and the retained stage is being canonically verified.
+    Verifying,
+    /// Canonical verification completed successfully.
+    Complete,
+}
+
+/// Retained byte progress for an owned verification operation.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct BundleVerificationCursor {
+    input_bytes: u64,
+    staged_bytes: u64,
+}
+
+impl BundleVerificationCursor {
+    /// Returns bytes accepted from the owned input, including bytes pending a staging write.
+    #[must_use]
+    pub const fn input_bytes(self) -> u64 {
+        self.input_bytes
+    }
+    /// Returns bytes retained in the private verification stage.
+    #[must_use]
+    pub const fn staged_bytes(self) -> u64 {
+        self.staged_bytes
+    }
+}
+
+/// Owned input, private stage, phase, and cursor for cancellable bundle verification.
+pub struct BundleVerificationOperation<R> {
+    input: R,
+    staged: NamedTempFile,
+    pending: Vec<u8>,
+    pending_offset: usize,
+    cursor: BundleVerificationCursor,
+    phase: BundleVerificationPhase,
+    limits: BundleLimits,
+    verified: Option<VerifiedBundle>,
+}
+
+impl<R: Read> BundleVerificationOperation<R> {
+    /// Creates an operation that owns its input until verification completes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an I/O failure when private staging cannot be created.
+    pub fn new(input: R, limits: BundleLimits) -> Result<Self, crate::EvidenceError> {
+        let staged = NamedTempFile::new()
+            .map_err(|error| crate::EvidenceError::io("create staged bundle input", error))?;
+        Ok(Self {
+            input,
+            staged,
+            pending: Vec::new(),
+            pending_offset: 0,
+            cursor: BundleVerificationCursor { input_bytes: 0, staged_bytes: 0 },
+            phase: BundleVerificationPhase::Receiving,
+            limits,
+            verified: None,
+        })
+    }
+
+    /// Returns exact retained input and staging progress.
+    #[must_use]
+    pub const fn cursor(&self) -> BundleVerificationCursor {
+        self.cursor
+    }
+
+    /// Returns the truthful current verification phase.
+    #[must_use]
+    pub const fn phase(&self) -> BundleVerificationPhase {
+        self.phase
+    }
+
+    /// Resumes external input, EOF observation, and canonical verification.
+    ///
+    /// Cancellation retains the owned input, pending bytes, private stage, phase, and cursor.
+    ///
+    /// # Errors
+    ///
+    /// Returns cancellation, I/O, resource-limit, or canonical verification failures.
+    pub fn resume(
+        &mut self,
+        cancellation: &EvidenceCancellation,
+    ) -> Result<VerifiedBundle, crate::EvidenceError> {
+        if let Some(verified) = &self.verified {
+            return Ok(verified.clone());
+        }
+        if matches!(self.phase, BundleVerificationPhase::Receiving) {
+            self.receive(cancellation)?;
+        }
+        ensure_live(Some(cancellation), "verify staged evidence bundle")?;
+        self.staged
+            .as_file_mut()
+            .seek(SeekFrom::Start(0))
+            .map_err(|error| crate::EvidenceError::io("seek staged bundle input", error))?;
+        let verified = verify_bundle_inner(
+            self.staged.as_file_mut(),
+            self.limits,
+            Some(cancellation.clone()),
+        )?;
+        if verified.byte_count() != self.cursor.staged_bytes
+            || self.cursor.input_bytes != self.cursor.staged_bytes
+        {
+            return Err(invalid("verified byte count disagrees with retained input cursor"));
+        }
+        self.phase = BundleVerificationPhase::Complete;
+        self.verified = Some(verified.clone());
+        Ok(verified)
+    }
+
+    fn receive(
+        &mut self,
+        cancellation: &EvidenceCancellation,
+    ) -> Result<(), crate::EvidenceError> {
+        let mut buffer = vec![0_u8; STREAM_CHUNK_BYTES].into_boxed_slice();
+        loop {
+            while self.pending_offset < self.pending.len() {
+                ensure_live(Some(cancellation), "stage bundle input")?;
+                let written = self
+                    .staged
+                    .as_file_mut()
+                    .write(&self.pending[self.pending_offset..])
+                    .map_err(|error| crate::EvidenceError::io("stage bundle input", error))?;
+                if written == 0 {
+                    return Err(crate::EvidenceError::io(
+                        "stage bundle input",
+                        std::io::Error::from(std::io::ErrorKind::WriteZero),
+                    ));
+                }
+                self.pending_offset += written;
+                self.cursor.staged_bytes = self
+                    .cursor
+                    .staged_bytes
+                    .checked_add(
+                        u64::try_from(written)
+                            .map_err(|_| invalid("staged input write exceeds u64"))?,
+                    )
+                    .ok_or_else(|| invalid("staged input cursor overflowed"))?;
+                ensure_live(Some(cancellation), "stage bundle input")?;
+            }
+            self.pending.clear();
+            self.pending_offset = 0;
+
+            let wanted_u64 = self.limits.max_bundle_bytes().map_or(
+                STREAM_CHUNK_BYTES_U64,
+                |limit| {
+                    limit
+                        .saturating_sub(self.cursor.input_bytes)
+                        .min(STREAM_CHUNK_BYTES_U64)
+                        .max(1)
+                },
+            );
+            let wanted = usize::try_from(wanted_u64)
+                .map_err(|_| invalid("bundle input chunk exceeds usize"))?;
+            ensure_live(Some(cancellation), "read bundle input")?;
+            let read = self
+                .input
+                .read(&mut buffer[..wanted])
+                .map_err(|error| crate::EvidenceError::io("read bundle input", error))?;
+            if read == 0 {
+                ensure_live(Some(cancellation), "finish bundle input")?;
+                if self.cursor.input_bytes != self.cursor.staged_bytes {
+                    return Err(invalid("bundle input reached EOF with unstaged bytes"));
+                }
+                self.staged
+                    .as_file_mut()
+                    .flush()
+                    .map_err(|error| crate::EvidenceError::io("flush staged bundle input", error))?;
+                ensure_live(Some(cancellation), "finish bundle input")?;
+                self.phase = BundleVerificationPhase::Verifying;
+                return Ok(());
+            }
+            self.pending.extend_from_slice(&buffer[..read]);
+            self.cursor.input_bytes = self
+                .cursor
+                .input_bytes
+                .checked_add(
+                    u64::try_from(read).map_err(|_| invalid("bundle input read exceeds u64"))?,
+                )
+                .ok_or_else(|| invalid("bundle input cursor overflowed"))?;
+            if self
+                .limits
+                .max_bundle_bytes()
+                .is_some_and(|limit| self.cursor.input_bytes > limit)
+            {
+                return Err(invalid("bundle exceeds selected complete byte limit"));
+            }
+            ensure_live(Some(cancellation), "read bundle input")?;
+        }
+    }
+}
+
 /// Streams and re-verifies an inert portable bundle without consulting live state.
 ///
 /// This API accepts only `Read`; replay cannot acquire journal, artifact-store, network, or
@@ -55,7 +251,15 @@ pub fn verify_bundle<R: Read>(
     input: R,
     limits: BundleLimits,
 ) -> Result<VerifiedBundle, crate::EvidenceError> {
-    let mut reader = HashingReader::new(input, limits.max_bundle_bytes());
+    verify_bundle_inner(input, limits, None)
+}
+
+fn verify_bundle_inner<R: Read>(
+    input: R,
+    limits: BundleLimits,
+    cancellation: Option<EvidenceCancellation>,
+) -> Result<VerifiedBundle, crate::EvidenceError> {
+    let mut reader = HashingReader::new(input, limits.max_bundle_bytes(), cancellation);
     if reader.fixed::<8>()? != *MAGIC {
         return Err(invalid("bundle magic mismatch"));
     }
@@ -230,11 +434,16 @@ struct HashingReader<R> {
     hasher: Sha256,
     count: u64,
     limit: Option<u64>,
+    cancellation: Option<EvidenceCancellation>,
 }
 
 impl<R: Read> HashingReader<R> {
-    fn new(inner: R, limit: Option<u64>) -> Self {
-        Self { inner, hasher: Sha256::new(), count: 0, limit }
+    fn new(
+        inner: R,
+        limit: Option<u64>,
+        cancellation: Option<EvidenceCancellation>,
+    ) -> Self {
+        Self { inner, hasher: Sha256::new(), count: 0, limit, cancellation }
     }
 
     fn ensure_remaining(&self, length: u64) -> Result<(), crate::EvidenceError> {
@@ -250,6 +459,7 @@ impl<R: Read> HashingReader<R> {
     }
 
     fn read_exact(&mut self, bytes: &mut [u8]) -> Result<(), crate::EvidenceError> {
+        ensure_live(self.cancellation.as_ref(), "read evidence bundle")?;
         let length = u64::try_from(bytes.len()).map_err(|_| invalid("read size overflows u64"))?;
         self.ensure_remaining(length)?;
         self.inner.read_exact(bytes).map_err(|error| {
@@ -261,7 +471,7 @@ impl<R: Read> HashingReader<R> {
         })?;
         self.hasher.update(bytes);
         self.count += length;
-        Ok(())
+        ensure_live(self.cancellation.as_ref(), "read evidence bundle")
     }
 
     fn fixed<const N: usize>(&mut self) -> Result<[u8; N], crate::EvidenceError> {
@@ -306,15 +516,29 @@ impl<R: Read> HashingReader<R> {
     }
 
     fn require_eof(&mut self) -> Result<(), crate::EvidenceError> {
+        ensure_live(self.cancellation.as_ref(), "finish evidence bundle")?;
         let mut trailing = [0_u8; 1];
-        match self.inner.read(&mut trailing) {
+        let result = match self.inner.read(&mut trailing) {
             Ok(0) => Ok(()),
             Ok(_) => Err(invalid("bundle contains trailing bytes")),
             Err(error) => Err(crate::EvidenceError::io("finish evidence bundle", error)),
-        }
+        };
+        ensure_live(self.cancellation.as_ref(), "finish evidence bundle")?;
+        result
     }
 
     fn finish(self) -> (Sha256Digest, u64) {
         (Sha256Digest::new(self.hasher.finalize().into()), self.count)
+    }
+}
+
+fn ensure_live(
+    cancellation: Option<&EvidenceCancellation>,
+    operation: &'static str,
+) -> Result<(), crate::EvidenceError> {
+    if cancellation.is_some_and(EvidenceCancellation::is_cancelled) {
+        Err(crate::EvidenceError::cancelled(operation))
+    } else {
+        Ok(())
     }
 }

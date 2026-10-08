@@ -6,7 +6,11 @@ mod plan;
 mod verify;
 
 pub use assemble::{
-    BundleExportCursor, BundleReceipt, assemble_bundle, publish_bundle, resume_bundle,
+    BundleExportCursor, BundleExportOperation, BundleExportPhase, BundleReceipt, assemble_bundle,
+    publish_bundle, resume_bundle,
 };
 pub use plan::{BundleLimits, BundlePlan};
-pub use verify::{VerifiedBundle, verify_bundle};
+pub use verify::{
+    BundleVerificationCursor, BundleVerificationOperation, BundleVerificationPhase,
+    VerifiedBundle, verify_bundle,
+};

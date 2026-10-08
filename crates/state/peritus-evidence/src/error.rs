@@ -36,6 +36,8 @@ pub enum EvidenceErrorKind {
     Storage,
     /// Filesystem streaming failed.
     Io,
+    /// The retained owner cancelled incomplete evidence work.
+    Cancelled,
     /// Checked arithmetic exhausted its range.
     ArithmeticOverflow,
 }
@@ -133,6 +135,15 @@ impl EvidenceError {
             detail: error.to_string(),
             source: Some(Source::Artifact(error)),
         }
+    }
+
+    pub(crate) fn cancelled(operation: &'static str) -> Self {
+        Self::new(
+            EvidenceErrorKind::Cancelled,
+            RecoveryAction::Retry,
+            operation,
+            "the retained evidence operation was cancelled",
+        )
     }
 
     /// Returns the stable failure class.

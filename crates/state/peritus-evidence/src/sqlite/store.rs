@@ -10,7 +10,7 @@ use peritus_artifact_store::{ArtifactStore, ReferenceOwner};
 use peritus_journal::{IntegrityExport, JournalCancellation};
 use peritus_types::{EventId, RevisionTuple};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
-use std::{collections::BTreeMap, path::Path, time::Duration};
+use std::{collections::{BTreeMap, BTreeSet}, path::Path, time::Duration};
 
 use super::contention::{self, ContentionPolicy};
 
@@ -132,32 +132,33 @@ impl EvidenceStore {
     ) -> Result<EvidenceRecord, EvidenceError> {
         let cancellation = self.cancellation.clone();
         contention::run(cancellation.as_ref(), || {
-        for digest in draft.artifacts() {
-            artifacts
-                .verify(*digest)
-                .map_err(|error| EvidenceError::artifact("verify evidence artifact", error))?;
-        }
+        ensure_live(cancellation.as_ref(), "admit evidence")?;
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|error| EvidenceError::sqlite("begin evidence admission", error))?;
         let existing = load_record(&transaction, draft.id())?;
+        if let Some(existing) = existing {
+            ensure_live(cancellation.as_ref(), "admit evidence")?;
+            if !existing.matches_draft(&draft) {
+                return Err(conflict("evidence identity already names different content"));
+            }
+            transaction
+                .commit()
+                .map_err(|error| EvidenceError::sqlite("finish evidence retry", error))?;
+            return Ok(existing);
+        }
+        for digest in draft.artifacts() {
+            ensure_live(cancellation.as_ref(), "verify evidence artifact")?;
+            artifacts
+                .verify(*digest)
+                .map_err(|error| EvidenceError::artifact("verify evidence artifact", error))?;
+            ensure_live(cancellation.as_ref(), "verify evidence artifact")?;
+        }
         let durable = journal_observation(&transaction, draft.journal_position())?;
         let parents = load_parents(&transaction, draft.causes())?;
-        let provenance_head_digest = existing.as_ref().map_or_else(
-            || export.report().journal_head_digest(),
-            |record| record.provenance().journal_head_digest(),
-        );
+        let provenance_head_digest = export.report().journal_head_digest();
         let plan = AdmissionPlan::build(draft, &durable, export, provenance_head_digest, &parents)?;
-        if let Some(existing) = existing {
-            if existing == *plan.record() {
-                transaction
-                    .commit()
-                    .map_err(|error| EvidenceError::sqlite("finish evidence retry", error))?;
-                return Ok(existing);
-            }
-            return Err(conflict("evidence identity already names different content"));
-        }
         let digest_owner: Option<Vec<u8>> = transaction
             .query_row(
                 "SELECT evidence_id FROM peritus_evidence_records WHERE record_digest = ?1",
@@ -276,6 +277,61 @@ impl EvidenceStore {
             .map_err(|error| EvidenceError::sqlite("finish evidence freshness read", error))?;
         Ok(evaluate_freshness(&record, current, invalidation))
         })
+    }
+
+    pub(crate) fn causal_snapshot(
+        &self,
+        authority: &[EvidenceId],
+        current: &RevisionTuple,
+    ) -> Result<Vec<(EvidenceRecord, Freshness)>, EvidenceError> {
+        let cancellation = self.cancellation.clone();
+        contention::run(cancellation.as_ref(), || {
+            ensure_live(cancellation.as_ref(), "load evidence causal snapshot")?;
+            let transaction =
+                Transaction::new_unchecked(&self.connection, TransactionBehavior::Deferred)
+                    .map_err(|error| {
+                        EvidenceError::sqlite("begin evidence causal snapshot", error)
+                    })?;
+            let mut pending: BTreeSet<_> = authority.iter().copied().collect();
+            let mut snapshot = BTreeMap::new();
+            while let Some(id) = pending.pop_first() {
+                if snapshot.contains_key(&id) {
+                    continue;
+                }
+                ensure_live(cancellation.as_ref(), "load evidence causal snapshot")?;
+                let record = load_record(&transaction, id)?.ok_or_else(|| {
+                    EvidenceError::new(
+                        EvidenceErrorKind::InvalidCause,
+                        RecoveryAction::RepairDependency,
+                        "load evidence causal snapshot",
+                        "causal closure record does not exist",
+                    )
+                })?;
+                let freshness =
+                    evaluate_freshness(&record, current, load_invalidation(&transaction, id)?);
+                pending.extend(record.causes().iter().copied());
+                snapshot.insert(id, (record, freshness));
+            }
+            transaction
+                .commit()
+                .map_err(|error| EvidenceError::sqlite("finish evidence causal snapshot", error))?;
+            Ok(snapshot.into_values().collect())
+        })
+    }
+
+    pub(crate) fn ensure_live(&self, operation: &'static str) -> Result<(), EvidenceError> {
+        ensure_live(self.cancellation.as_ref(), operation)
+    }
+}
+
+fn ensure_live(
+    cancellation: Option<&JournalCancellation>,
+    operation: &'static str,
+) -> Result<(), EvidenceError> {
+    if cancellation.is_some_and(JournalCancellation::is_cancelled) {
+        Err(EvidenceError::cancelled(operation))
+    } else {
+        Ok(())
     }
 }
 

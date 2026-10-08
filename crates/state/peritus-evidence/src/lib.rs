@@ -19,8 +19,10 @@ pub mod sqlite;
 pub mod verified;
 
 pub use bundle::{
-    BundleExportCursor, BundleLimits, BundlePlan, BundleReceipt, VerifiedBundle, assemble_bundle,
-    publish_bundle, resume_bundle, verify_bundle,
+    BundleExportCursor, BundleExportOperation, BundleExportPhase, BundleLimits, BundlePlan,
+    BundleReceipt, BundleVerificationCursor, BundleVerificationOperation,
+    BundleVerificationPhase, VerifiedBundle, assemble_bundle, publish_bundle, resume_bundle,
+    verify_bundle,
 };
 pub use causality::CausalLink;
 pub use error::{EvidenceError, EvidenceErrorKind, RecoveryAction};
@@ -32,6 +34,8 @@ pub use manifest::{
     ArtifactManifestEntry, EvidenceManifest, JournalManifestEntry, RecordManifestEntry,
 };
 pub use peritus_types::EvidenceId;
+/// Explicit retained-owner cancellation used by long-running evidence operations.
+pub use peritus_journal::JournalCancellation as EvidenceCancellation;
 pub use provenance::JournalProvenance;
 pub use record::{EvidenceDraft, EvidenceKind, EvidenceRecord, EvidenceSource};
 pub use sqlite::{EvidenceQuarantine, EvidenceStore, EvidenceStoreOptions};
