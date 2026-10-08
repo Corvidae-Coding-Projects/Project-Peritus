@@ -149,7 +149,10 @@ pub enum AuthorityDecision {
     Denied {
         /// Stable denial code.
         code: String,
-        /// Bounded user-safe explanation.
+        /// User-safe explanation retained completely in caller-owned error evidence.
+        ///
+        /// Routine host rendering is bounded. Mediators must not place credentials or raw request
+        /// content here because callers alone decide whether complete evidence may be disclosed.
         detail: String,
     },
 }

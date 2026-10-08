@@ -26,7 +26,9 @@ pub use discovery::{
     DiscoveryLimits, DiscoveryPage, DiscoveryPageSize, DiscoveryStatus, PluginCatalog,
     PluginDiscovery, SdkTomlManifestAdmission,
 };
-pub use error::{HostError, HostFailureClass, RecoveryDisposition};
+pub use error::{
+    HostDiagnosticEvidence, HostError, HostFailureClass, RecoveryDisposition,
+};
 pub use host::{HostConfig, PluginHost, PluginInvocationResult, PluginLifecycle, PluginSnapshot};
 pub use state::{
     HostStateStore, InvocationEvidence, InvocationFrontier, PluginInstanceEvidence,

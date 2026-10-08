@@ -13,7 +13,9 @@ use std::{
 use peritus_plugin_sdk::{ManifestDigest, PluginId, PluginManifest, PluginVersion};
 use sha2::{Digest as _, Sha256};
 
-use crate::{HostCancellation, HostError, HostFailureClass, RecoveryDisposition};
+use crate::{
+    HostCancellation, HostDiagnosticEvidence, HostError, HostFailureClass, RecoveryDisposition,
+};
 
 const MANIFEST_NAME: &str = "peritus-plugin.toml";
 const HASH_BUFFER_BYTES: usize = 64 * 1024;
@@ -169,15 +171,12 @@ pub enum DiscoveryDiagnosticScope {
 }
 
 /// Bounded failure information retained alongside successful discoveries.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct DiscoveryDiagnostic {
     scope: DiscoveryDiagnosticScope,
     root: PathBuf,
     candidate: Option<PathBuf>,
-    class: HostFailureClass,
-    recovery: RecoveryDisposition,
-    operation: &'static str,
-    detail: String,
+    evidence: Arc<HostDiagnosticEvidence>,
 }
 
 impl DiscoveryDiagnostic {
@@ -201,43 +200,41 @@ impl DiscoveryDiagnostic {
 
     /// Returns the stable failure class.
     #[must_use]
-    pub const fn class(&self) -> HostFailureClass {
-        self.class
+    pub fn class(&self) -> HostFailureClass {
+        self.evidence.class()
     }
 
     /// Returns the safe recovery disposition.
     #[must_use]
-    pub const fn recovery(&self) -> RecoveryDisposition {
-        self.recovery
+    pub fn recovery(&self) -> RecoveryDisposition {
+        self.evidence.recovery()
     }
 
     /// Returns the failed operation.
     #[must_use]
-    pub const fn operation(&self) -> &'static str {
-        self.operation
+    pub fn operation(&self) -> &'static str {
+        self.evidence.operation()
     }
 
     /// Borrows bounded diagnostic detail.
     #[must_use]
     pub fn detail(&self) -> &str {
-        &self.detail
+        self.evidence.rendered_detail()
+    }
+
+    /// Borrows complete caller-owned evidence, including its original cause.
+    #[must_use]
+    pub fn evidence(&self) -> &HostDiagnosticEvidence {
+        &self.evidence
     }
 
     fn from_error(
         scope: DiscoveryDiagnosticScope,
         root: PathBuf,
         candidate: Option<PathBuf>,
-        error: &HostError,
+        error: HostError,
     ) -> Self {
-        Self {
-            scope,
-            root,
-            candidate,
-            class: error.class(),
-            recovery: error.recovery(),
-            operation: error.operation(),
-            detail: error.detail().to_owned(),
-        }
+        Self { scope, root, candidate, evidence: Arc::new(error.into_evidence()) }
     }
 }
 
@@ -253,7 +250,7 @@ pub enum DiscoveryStatus {
 }
 
 /// Progress and new diagnostics produced by one bounded discovery step.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct DiscoveryPage {
     status: DiscoveryStatus,
     examined: usize,
@@ -568,7 +565,7 @@ impl PluginDiscovery {
                             DiscoveryDiagnosticScope::Root,
                             configured,
                             None,
-                            &error,
+                            error,
                         );
                     }
                 }
@@ -602,7 +599,7 @@ impl PluginDiscovery {
                         DiscoveryDiagnosticScope::Root,
                         active.configured,
                         None,
-                        &error,
+                        error,
                     );
                     continue;
                 }
@@ -638,7 +635,7 @@ impl PluginDiscovery {
                                 DiscoveryDiagnosticScope::Plugin,
                                 configured.clone(),
                                 Some(candidate.clone()),
-                                &error,
+                                error,
                             );
                         } else {
                             self.catalog.entries.insert(key, plugin);
@@ -660,7 +657,7 @@ impl PluginDiscovery {
                             DiscoveryDiagnosticScope::Plugin,
                             configured.clone(),
                             Some(candidate.clone()),
-                            &error,
+                            error,
                         );
                     }
                 }
@@ -696,7 +693,7 @@ impl PluginDiscovery {
         scope: DiscoveryDiagnosticScope,
         root: PathBuf,
         candidate: Option<PathBuf>,
-        error: &HostError,
+        error: HostError,
     ) {
         let diagnostic = DiscoveryDiagnostic::from_error(scope, root, candidate, error);
         self.catalog.diagnostics.push(diagnostic.clone());

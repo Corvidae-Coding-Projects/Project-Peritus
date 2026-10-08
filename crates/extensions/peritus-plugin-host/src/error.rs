@@ -1,6 +1,8 @@
-//! Stable host failure classification.
+//! Stable host failure classification and caller-owned diagnostic evidence.
 
 use std::{error::Error, fmt};
+
+const MAX_RENDERED_DETAIL_BYTES: usize = 1024;
 
 /// Host-observed failure class.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -46,18 +48,79 @@ pub enum RecoveryDisposition {
     None,
 }
 
-/// Typed host error with bounded diagnostic detail.
-#[derive(Debug)]
-pub struct HostError {
+/// Complete in-memory failure evidence whose disclosure and persistence remain caller-owned.
+///
+/// This value is never written to [`crate::HostStateStore`]. Its detail and optional cause may
+/// contain information supplied by an authority mediator or operating system, so callers must
+/// apply their own disclosure and credential-redaction policy before exporting it.
+pub struct HostDiagnosticEvidence {
     class: HostFailureClass,
     recovery: RecoveryDisposition,
     operation: &'static str,
     detail: String,
-    source: Option<Box<dyn Error + Send + Sync>>,
+    cause: Option<Box<dyn Error + Send + Sync>>,
+}
+
+impl HostDiagnosticEvidence {
+    /// Returns the original stable failure class.
+    #[must_use]
+    pub const fn class(&self) -> HostFailureClass {
+        self.class
+    }
+
+    /// Returns the original safe recovery disposition.
+    #[must_use]
+    pub const fn recovery(&self) -> RecoveryDisposition {
+        self.recovery
+    }
+
+    /// Returns the original failing operation.
+    #[must_use]
+    pub const fn operation(&self) -> &'static str {
+        self.operation
+    }
+
+    /// Borrows the complete original diagnostic detail without rendering truncation.
+    ///
+    /// Callers choose whether and where this value may be disclosed or persisted.
+    #[must_use]
+    pub fn detail(&self) -> &str {
+        &self.detail
+    }
+
+    /// Borrows the complete original cause, when one was supplied.
+    #[must_use]
+    pub fn cause(&self) -> Option<&(dyn Error + Send + Sync + 'static)> {
+        self.cause.as_deref()
+    }
+
+    /// Borrows the character-safe bounded detail used by routine rendering.
+    #[must_use]
+    pub fn rendered_detail(&self) -> &str {
+        utf8_prefix(&self.detail, MAX_RENDERED_DETAIL_BYTES)
+    }
+}
+
+impl fmt::Debug for HostDiagnosticEvidence {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("HostDiagnosticEvidence")
+            .field("class", &self.class)
+            .field("recovery", &self.recovery)
+            .field("operation", &self.operation)
+            .field("detail", &self.rendered_detail())
+            .field("cause", &self.cause.as_ref().map(|_| "[retained]"))
+            .finish()
+    }
+}
+
+/// Typed host error with bounded rendering and complete caller-accessible evidence.
+pub struct HostError {
+    evidence: HostDiagnosticEvidence,
 }
 
 impl HostError {
-    /// Creates an error without an underlying source.
+    /// Creates an error without an underlying cause.
     #[must_use]
     pub fn new(
         class: HostFailureClass,
@@ -68,7 +131,7 @@ impl HostError {
         Self::build(class, recovery, operation, detail.into(), None)
     }
 
-    /// Creates an error preserving an underlying source.
+    /// Creates an error preserving the complete underlying cause.
     pub fn with_source(
         class: HostFailureClass,
         recovery: RecoveryDisposition,
@@ -83,46 +146,78 @@ impl HostError {
         class: HostFailureClass,
         recovery: RecoveryDisposition,
         operation: &'static str,
-        mut detail: String,
-        source: Option<Box<dyn Error + Send + Sync>>,
+        detail: String,
+        cause: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        detail.truncate(1024);
-        Self { class, recovery, operation, detail, source }
+        Self {
+            evidence: HostDiagnosticEvidence { class, recovery, operation, detail, cause },
+        }
     }
 
     /// Returns the stable failure class.
     #[must_use]
     pub const fn class(&self) -> HostFailureClass {
-        self.class
+        self.evidence.class()
     }
 
     /// Returns the safe recovery disposition.
     #[must_use]
     pub const fn recovery(&self) -> RecoveryDisposition {
-        self.recovery
+        self.evidence.recovery()
     }
 
     /// Returns the failing operation.
     #[must_use]
     pub const fn operation(&self) -> &'static str {
-        self.operation
+        self.evidence.operation()
     }
 
-    /// Borrows bounded causal detail.
+    /// Borrows character-safe diagnostic detail bounded for routine rendering.
     #[must_use]
     pub fn detail(&self) -> &str {
-        &self.detail
+        self.evidence.rendered_detail()
+    }
+
+    /// Borrows the complete diagnostic evidence for an explicit caller policy decision.
+    #[must_use]
+    pub const fn evidence(&self) -> &HostDiagnosticEvidence {
+        &self.evidence
+    }
+
+    /// Transfers the complete diagnostic evidence to the caller.
+    #[must_use]
+    pub fn into_evidence(self) -> HostDiagnosticEvidence {
+        self.evidence
+    }
+}
+
+impl fmt::Debug for HostError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.debug_tuple("HostError").field(&self.evidence).finish()
     }
 }
 
 impl fmt::Display for HostError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}: {}", self.operation, self.detail)
+        write!(formatter, "{}: {}", self.operation(), self.detail())
     }
 }
 
 impl Error for HostError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.source.as_deref().map(|source| source as &(dyn Error + 'static))
+        self.evidence
+            .cause()
+            .map(|cause| cause as &(dyn Error + 'static))
     }
+}
+
+fn utf8_prefix(value: &str, maximum: usize) -> &str {
+    if value.len() <= maximum {
+        return value;
+    }
+    let mut end = maximum;
+    while !value.is_char_boundary(end) {
+        end = end.saturating_sub(1);
+    }
+    &value[..end]
 }
