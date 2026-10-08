@@ -21,8 +21,6 @@ use super::{
     evaluation_state_key,
 };
 
-const OUTBOX_MAX_DELIVERY_ATTEMPTS: u16 = 16;
-
 /// Atomically appends an ordinary transition and its complete checkpoint.
 ///
 /// # Errors
@@ -532,8 +530,7 @@ fn outbox(
     destination: &str,
     payload: Vec<u8>,
 ) -> Result<OutboxDraft, EvaluationError> {
-    OutboxDraft::new(id, destination.to_owned(), payload, OUTBOX_MAX_DELIVERY_ATTEMPTS)
-        .map_err(journal_error)
+    OutboxDraft::persistent(id, destination.to_owned(), payload).map_err(journal_error)
 }
 fn bound_digest(
     domain: &[u8],

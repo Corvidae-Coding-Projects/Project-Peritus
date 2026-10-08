@@ -534,6 +534,27 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             })?;
         version = 5;
     }
+    if version == 5 {
+        // Version six extends persistent transport delivery to every E3 effect lane. Existing
+        // schedule, execution, and publication rows retain their exact semantic identity and
+        // claim history; unacknowledged legacy exhaustion becomes pending in place.
+        connection
+            .execute_batch(
+                "UPDATE outbox
+                    SET persistent = 1,
+                        state = CASE WHEN state = 4 THEN 1 ELSE state END
+                  WHERE destination IN (
+                    'peritus.eval.schedule-rollout.v1',
+                    'peritus.eval.execute-rollout.v1',
+                    'peritus.eval.publish-report.v1'
+                  );
+                 UPDATE store_meta SET schema_version = 6 WHERE singleton = 1;",
+            )
+            .map_err(|error| {
+                JournalError::sqlite("publish evaluation persistent-outbox migration", error)
+            })?;
+        version = 6;
+    }
     if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,

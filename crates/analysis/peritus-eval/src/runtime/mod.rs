@@ -14,7 +14,10 @@ pub use artifact::{
 pub use publication::{
     PublicationExecution, cancel_claimed_publication, publish_claimed_report,
 };
-pub use recovery::{EvaluationRecoveryDecision, RecoveryObservation, decide_recovery};
+pub use recovery::{
+    DeliveryRecoveryObservation, EvaluationDeliveryTarget, EvaluationRecoveryDecision,
+    RecoveryObservation, decide_recovery, decide_recovery_with_delivery,
+};
 
 use crate::{
     AnalysisSafePoint, EvaluationCommand, EvaluationCommandKind, EvaluationError,

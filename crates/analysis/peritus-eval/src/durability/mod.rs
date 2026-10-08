@@ -12,9 +12,10 @@ pub use commit::{
     commit_evaluation_transition,
 };
 pub use directive::{
-    EXECUTION_DESTINATION, EvaluationDirectiveClaim, ExecutionDirective, ExecutionDirectiveClaim,
+    EXECUTION_DESTINATION, EvaluationDirectiveClaim, EvaluationDirectiveDelivery,
+    ExecutionDirective, ExecutionDirectiveClaim, ExecutionDirectiveDelivery,
     ExecutionDirectiveKind, PUBLICATION_DESTINATION, PublicationDirective,
-    PublicationDirectiveClaim, SCHEDULE_DESTINATION, ScheduleDirective, ScheduleDirectiveClaim,
-    ScheduleDirectiveKind,
+    PublicationDirectiveClaim, PublicationDirectiveDelivery, SCHEDULE_DESTINATION,
+    ScheduleDirective, ScheduleDirectiveClaim, ScheduleDirectiveDelivery, ScheduleDirectiveKind,
 };
 pub use replay::{EvaluationReplay, load_evaluation_replay};

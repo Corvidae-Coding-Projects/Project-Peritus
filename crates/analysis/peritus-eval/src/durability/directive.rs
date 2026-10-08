@@ -1,7 +1,9 @@
 //! Stable C0 schedule, execution, cancellation, and publication directives.
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
-use peritus_journal::{OutboxId, OutboxMessage, OutboxState};
+use peritus_journal::{
+    OutboxDeliveryPolicy, OutboxDeliveryStatus, OutboxId, OutboxMessage, OutboxState,
+};
 use peritus_scheduler::{WorkId, WorkSpec};
 
 use crate::{
@@ -383,6 +385,46 @@ pub struct ScheduleDirectiveClaim {
     fence: u64,
 }
 
+/// One exact retained schedule directive paired with its durable delivery state.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ScheduleDirectiveDelivery {
+    directive: ScheduleDirective,
+    status: OutboxDeliveryStatus,
+}
+
+impl ScheduleDirectiveDelivery {
+    /// Observes a retained schedule row without claiming or replacing it.
+    ///
+    /// # Errors
+    /// Rejects the wrong destination, payload, identity, delivery policy, or observation tick.
+    pub fn from_message(
+        message: &OutboxMessage,
+        observed_at: u64,
+    ) -> Result<Self, EvaluationError> {
+        ensure_persistent(message, SCHEDULE_DESTINATION)?;
+        let directive = ScheduleDirective::decode(message.payload())?;
+        if message.id() != directive.outbox_id()? {
+            return Err(binding("schedule outbox identity differs from canonical payload"));
+        }
+        Ok(Self {
+            directive,
+            status: message.delivery_status(observed_at).map_err(journal)?,
+        })
+    }
+
+    /// Exact retained directive.
+    #[must_use]
+    pub const fn directive(&self) -> &ScheduleDirective {
+        &self.directive
+    }
+
+    /// Current durable delivery state at the supplied observation tick.
+    #[must_use]
+    pub const fn status(&self) -> OutboxDeliveryStatus {
+        self.status
+    }
+}
+
 impl ScheduleDirectiveClaim {
     /// Validates destination, payload, identity, claimed state, and fence.
     ///
@@ -420,6 +462,46 @@ pub struct ExecutionDirectiveClaim {
     fence: u64,
 }
 
+/// One exact retained execution directive paired with its durable delivery state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ExecutionDirectiveDelivery {
+    directive: ExecutionDirective,
+    status: OutboxDeliveryStatus,
+}
+
+impl ExecutionDirectiveDelivery {
+    /// Observes a retained execution row without claiming or replacing it.
+    ///
+    /// # Errors
+    /// Rejects the wrong destination, payload, identity, delivery policy, or observation tick.
+    pub fn from_message(
+        message: &OutboxMessage,
+        observed_at: u64,
+    ) -> Result<Self, EvaluationError> {
+        ensure_persistent(message, EXECUTION_DESTINATION)?;
+        let directive = ExecutionDirective::decode(message.payload())?;
+        if message.id() != directive.outbox_id()? {
+            return Err(binding("execution outbox identity differs from canonical payload"));
+        }
+        Ok(Self {
+            directive,
+            status: message.delivery_status(observed_at).map_err(journal)?,
+        })
+    }
+
+    /// Exact retained directive.
+    #[must_use]
+    pub const fn directive(self) -> ExecutionDirective {
+        self.directive
+    }
+
+    /// Current durable delivery state at the supplied observation tick.
+    #[must_use]
+    pub const fn status(self) -> OutboxDeliveryStatus {
+        self.status
+    }
+}
+
 impl ExecutionDirectiveClaim {
     /// Validates destination, payload, identity, claimed state, and fence.
     ///
@@ -455,6 +537,87 @@ impl ExecutionDirectiveClaim {
 pub struct PublicationDirectiveClaim {
     directive: PublicationDirective,
     fence: u64,
+}
+
+/// One exact retained publication directive paired with its durable delivery state.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PublicationDirectiveDelivery {
+    directive: PublicationDirective,
+    status: OutboxDeliveryStatus,
+}
+
+impl PublicationDirectiveDelivery {
+    /// Observes a retained publication row without claiming or replacing it.
+    ///
+    /// # Errors
+    /// Rejects the wrong destination, payload, identity, delivery policy, or observation tick.
+    pub fn from_message(
+        message: &OutboxMessage,
+        observed_at: u64,
+    ) -> Result<Self, EvaluationError> {
+        ensure_persistent(message, PUBLICATION_DESTINATION)?;
+        let directive = PublicationDirective::decode(message.payload())?;
+        if message.id() != directive.outbox_id()? {
+            return Err(binding("publication outbox identity differs from canonical payload"));
+        }
+        Ok(Self {
+            directive,
+            status: message.delivery_status(observed_at).map_err(journal)?,
+        })
+    }
+
+    /// Exact retained directive.
+    #[must_use]
+    pub const fn directive(self) -> PublicationDirective {
+        self.directive
+    }
+
+    /// Current durable delivery state at the supplied observation tick.
+    #[must_use]
+    pub const fn status(self) -> OutboxDeliveryStatus {
+        self.status
+    }
+}
+
+/// One exact retained E3 directive paired with its durable delivery state.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum EvaluationDirectiveDelivery {
+    /// D3 schedule or cancellation directive.
+    Schedule(ScheduleDirectiveDelivery),
+    /// Candidate/evaluator execution or cancellation directive.
+    Execution(ExecutionDirectiveDelivery),
+    /// Report publication directive.
+    Publication(PublicationDirectiveDelivery),
+}
+
+impl EvaluationDirectiveDelivery {
+    /// Current durable delivery state at the observation tick used to build this value.
+    #[must_use]
+    pub const fn status(&self) -> OutboxDeliveryStatus {
+        match self {
+            Self::Schedule(value) => value.status(),
+            Self::Execution(value) => value.status(),
+            Self::Publication(value) => value.status(),
+        }
+    }
+}
+
+impl From<ScheduleDirectiveDelivery> for EvaluationDirectiveDelivery {
+    fn from(value: ScheduleDirectiveDelivery) -> Self {
+        Self::Schedule(value)
+    }
+}
+
+impl From<ExecutionDirectiveDelivery> for EvaluationDirectiveDelivery {
+    fn from(value: ExecutionDirectiveDelivery) -> Self {
+        Self::Execution(value)
+    }
+}
+
+impl From<PublicationDirectiveDelivery> for EvaluationDirectiveDelivery {
+    fn from(value: PublicationDirectiveDelivery) -> Self {
+        Self::Publication(value)
+    }
 }
 
 impl PublicationDirectiveClaim {
@@ -532,11 +695,20 @@ impl From<PublicationDirectiveClaim> for EvaluationDirectiveClaim {
 }
 
 fn ensure_claimed(message: &OutboxMessage, destination: &str) -> Result<(), EvaluationError> {
-    if message.state() != OutboxState::Claimed
-        || message.destination() != destination
-        || message.fence().is_none_or(|value| value == 0)
-    {
+    ensure_persistent(message, destination)?;
+    if message.state() != OutboxState::Claimed || message.fence().is_none_or(|value| value == 0) {
         return Err(binding("outbox message is not an exact claimed evaluation directive"));
+    }
+    Ok(())
+}
+
+fn ensure_persistent(message: &OutboxMessage, destination: &str) -> Result<(), EvaluationError> {
+    if message.destination() != destination
+        || message.delivery_policy() != OutboxDeliveryPolicy::Persistent
+    {
+        return Err(binding(
+            "outbox message is not the expected persistent evaluation directive",
+        ));
     }
     Ok(())
 }
@@ -581,5 +753,13 @@ const fn binding(detail: &'static str) -> EvaluationError {
         EvaluationOperation::Commit,
         EvaluationRecovery::Quarantine,
         detail,
+    )
+}
+fn journal(_: peritus_journal::JournalError) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Journal,
+        EvaluationOperation::Recover,
+        EvaluationRecovery::Replay,
+        "evaluation outbox delivery observation failed",
     )
 }
