@@ -12,7 +12,7 @@ use super::{
 };
 use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_codec::sha256;
-use peritus_context::working::WorkingState;
+use peritus_context::working::{WorkingSelectionReconciliation, WorkingState};
 use peritus_model_protocol::{
     BoundedText, ContentBlock, Message, ProtocolLimits, ProviderProfile, Role, ToolDefinition,
     decode_messages,
@@ -35,14 +35,15 @@ impl LocalMemory {
         }
         messages.push(text_message(Role::Developer, format!("Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.", super::tools::hex(self.store.scope_digest().as_bytes()), self.model_revision))?);
         let pinned = estimate_developer_request_tokens(&messages, &self.tools);
-        if pinned >= capacity {
-            return Err(error(
-                "complete governing inputs and unresolved operation receipts leave no provider headroom; reconcile recorded operations in this task or use a profile with sufficient context",
-            ));
-        }
-        working::append_state(self, state, &mut messages, &mut selected, &self.tools, capacity)?;
-        if estimate_developer_request_tokens(&messages, &self.tools) > capacity {
-            return Err(error("successor working state exceeds complete request capacity"));
+        if pinned <= capacity {
+            working::append_state(
+                self,
+                state,
+                &mut messages,
+                &mut selected,
+                &self.tools,
+                capacity,
+            )?;
         }
         Ok(())
     }
@@ -94,21 +95,48 @@ impl LocalMemory {
         }
         messages.push(text_message(Role::Developer, format!("Local context scope={}; context_update base_revision={}. This revision changes for working entries and workspace bindings, not observation/protocol bookkeeping. Handles may be obs:NNNNNN within this scope or the fully scoped handle from tool metadata.", super::tools::hex(self.store.scope_digest().as_bytes()), self.model_revision))?);
         let pinned_tokens = estimate_developer_request_tokens(&messages, tools);
-        if pinned_tokens >= capacity {
-            return Err(error(
-                "complete governing inputs and unresolved operation receipts exceed provider capacity; reconcile recorded operations in this task or use a profile with sufficient context",
+        if pinned_tokens > capacity {
+            return Err(self.assembly_capacity_frontier(
+                "protected governing inputs and pending operation pairs exceed the selected provider envelope",
+                capacity,
+                pinned_tokens,
+                governing_input.is_some(),
+                None,
             ));
         }
+        let before_working = messages.len();
         let working = working::append(self, &mut messages, &mut selected, tools, capacity)?;
-        if estimate_developer_request_tokens(&messages, tools) > capacity {
-            return Err(error("required working context exceeds complete request capacity"));
+        if let Some(reconciliation) = working.reconciliation()
+            && messages.len() == before_working
+        {
+            let required = pinned_tokens.saturating_add(
+                reconciliation.minimum_required_tokens().unwrap_or(1),
+            );
+            return Err(self.assembly_capacity_frontier(
+                "the required working closure has no room for its retrieval frontier",
+                capacity,
+                required,
+                governing_input.is_some(),
+                Some(reconciliation),
+            ));
         }
-        let (uncompacted, target) =
-            self.append_exchanges(&mut messages, &mut selected, tools, capacity)?;
+        let (uncompacted, target) = self.append_exchanges(
+            &mut messages,
+            &mut selected,
+            tools,
+            capacity,
+            governing_input.is_some(),
+        )?;
         evidence::append(self, &mut messages, &mut selected, tools, target)?;
         let estimated = estimate_developer_request_tokens(&messages, tools);
         if estimated > capacity {
-            return Err(error("local view exceeds complete input request capacity"));
+            return Err(self.assembly_capacity_frontier(
+                "the exact reconstructed request exceeds the selected provider envelope",
+                capacity,
+                estimated,
+                governing_input.is_some(),
+                working.reconciliation(),
+            ));
         }
         selected.sort_unstable();
         selected.dedup();
@@ -136,6 +164,7 @@ impl LocalMemory {
         selected: &mut Vec<u64>,
         tools: &[ToolDefinition],
         capacity: u64,
+        requested_next_intent: bool,
     ) -> Result<(u64, u64), DeveloperLoopError> {
         let groups = exchanges::groups(self)?;
         let mut full = messages.clone();
@@ -174,36 +203,101 @@ impl LocalMemory {
             recent = recent.saturating_add(group.messages.len());
             chosen.push(group.clone());
         }
-        let mut notice = exchanges::omission_notice(self, &omitted)
-            .map(|body| text_message(Role::User, body))
-            .transpose()?;
-        while let Some(message) = notice.as_ref() {
+        let mut notices = omission_messages(self, &omitted)?;
+        while !notices.is_empty() {
             let mut candidate = messages.clone();
             for group in chosen.iter().rev() {
                 candidate.extend(exchanges::messages(group));
             }
-            candidate.push(message.clone());
+            candidate.extend(notices.iter().cloned());
             if estimate_developer_request_tokens(&candidate, tools) <= capacity {
                 break;
             }
             let Some(displaced) = chosen.pop() else {
-                return Err(error(
-                    "required context leaves no room to identify omitted completed tool evidence",
+                let required = estimate_developer_request_tokens(&candidate, tools);
+                return Err(self.assembly_capacity_frontier(
+                    "the complete archived-exchange recovery catalog does not fit beside protected inputs",
+                    capacity,
+                    required,
+                    requested_next_intent,
+                    None,
                 ));
             };
             omitted.push(displaced);
-            notice = exchanges::omission_notice(self, &omitted)
-                .map(|body| text_message(Role::User, body))
-                .transpose()?;
+            notices = omission_messages(self, &omitted)?;
         }
         for group in chosen.iter().rev() {
             messages.extend(group.messages.iter().cloned());
             selected.extend_from_slice(&group.sources);
         }
-        if let Some(message) = notice {
-            messages.push(message);
-        }
+        messages.extend(notices);
         Ok((uncompacted, target))
+    }
+
+    fn assembly_capacity_frontier(
+        &self,
+        reason: &str,
+        capacity: u64,
+        required_tokens: u64,
+        requested_next_intent: bool,
+        reconciliation: Option<&WorkingSelectionReconciliation>,
+    ) -> DeveloperLoopError {
+        let requirements = self
+            .state
+            .protocol(self.state.binding())
+            .map(|protocol| {
+                protocol
+                    .requirements()
+                    .iter()
+                    .map(|id| super::tools::source_handle(self, id.get()))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let pending = self
+            .transcript
+            .pending
+            .iter()
+            .map(|pending| {
+                format!(
+                    "tool={} call={} state={:?} source={}",
+                    pending.call.name,
+                    pending.call.id,
+                    pending.state,
+                    super::tools::source_handle(self, pending.source),
+                )
+            })
+            .collect::<Vec<_>>();
+        let working = reconciliation.map_or_else(
+            || "none".to_owned(),
+            |frontier| {
+                let focus = frontier.focus().map_or_else(
+                    || "none".to_owned(),
+                    |id| format!("entry:{}", super::tools::hex(id.as_bytes())),
+                );
+                format!(
+                    "required_digest={} required_entries={} referenced_entries={} focus={} minimum_working_tokens={}",
+                    super::tools::hex(&frontier.required_digest()),
+                    frontier.required().len(),
+                    frontier.referenced().len(),
+                    focus,
+                    frontier.minimum_required_tokens().map_or_else(
+                        || "unknown".to_owned(),
+                        |value| value.to_string(),
+                    ),
+                )
+            },
+        );
+        let next_intent = if requested_next_intent {
+            "The exact requested next intent remains protected in this logical task."
+        } else {
+            "The current logical task and its protected governing inputs remain retained."
+        };
+        DeveloperLoopError::RecoveryRequired(format!(
+            "local context assembly frontier scope={} cannot be admitted: {reason}; exact estimate={required_tokens} input tokens, selected provider capacity={capacity}. {next_intent} Protected requirement handles=[{}]. Unresolved pending operation pairs=[{}]. Working frontier: {working}. Resume this same task with a provider profile that admits the exact frontier, or settle the listed pending operations through their existing host recovery handles; do not start a fresh session, reset grounding, or redispatch unresolved effects.",
+            super::tools::hex(self.store.scope_digest().as_bytes()),
+            requirements.join(","),
+            pending.join("; "),
+        ))
     }
 
     fn pinned_messages(&self) -> Result<(Vec<Message>, Vec<u64>), DeveloperLoopError> {
@@ -251,6 +345,16 @@ impl LocalMemory {
         }
         Ok((messages, selected))
     }
+}
+
+fn omission_messages(
+    memory: &LocalMemory,
+    exchanges: &[exchanges::Exchange],
+) -> Result<Vec<Message>, DeveloperLoopError> {
+    exchanges::omission_notices(memory, exchanges)?
+        .into_iter()
+        .map(|body| text_message(Role::User, body))
+        .collect()
 }
 
 pub(super) fn text_message(role: Role, text: String) -> Result<Message, DeveloperLoopError> {

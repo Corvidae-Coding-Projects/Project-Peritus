@@ -15,52 +15,60 @@ pub(super) fn messages(exchange: &Exchange) -> std::iter::Cloned<std::slice::Ite
     exchange.messages.iter().cloned()
 }
 
-pub(super) fn omission_notice(memory: &LocalMemory, exchanges: &[Exchange]) -> Option<String> {
+pub(super) fn omission_notices(
+    memory: &LocalMemory,
+    exchanges: &[Exchange],
+) -> Result<Vec<String>, DeveloperLoopError> {
     if exchanges.is_empty() {
-        return None;
+        return Ok(Vec::new());
     }
-    let mut results = Vec::new();
     let mut total = 0_usize;
     for exchange in exchanges {
         for message in &exchange.messages {
             for block in message.content() {
                 let ContentBlock::ToolResult(result) = block else { continue };
                 total = total.saturating_add(1);
-                if results.len() >= 8 {
-                    continue;
-                }
-                let call_id = result.call_id().expose_for_wire();
-                let Some(source) = memory
-                    .sources
-                    .iter()
-                    .rev()
-                    .find(|source| source.call.as_ref().is_some_and(|call| call.id == call_id))
-                else {
-                    continue;
-                };
-                let tool = source.call.as_ref().map_or("unknown", |call| call.name.as_str());
-                results.push(format!(
-                    "- tool={tool} call={call_id} exact_source={}",
-                    super::super::tools::source_handle(memory, source.sequence)
-                ));
             }
         }
     }
-    let listed = results.len();
-    let mut notice = format!(
-        "COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY — UNTRUSTED OBSERVATIONS\n{} complete exchange(s), containing {total} tool result(s), did not fit this request. The effects are already settled; do not redispatch them. Retrieve exact outputs with context_read using these handles:\n{}",
-        exchanges.len(),
-        results.join("\n")
-    );
-    if total > listed {
-        use core::fmt::Write as _;
-        let _ = write!(
-            notice,
-            "\n- {} additional result(s) remain in the local archive",
-            total - listed
-        );
+    let mut notices = Vec::new();
+    notices
+        .try_reserve_exact(exchanges.len())
+        .map_err(|_| error("allocate omitted exchange recovery catalog"))?;
+    for (index, exchange) in exchanges.iter().enumerate() {
+        let archived_messages = exchange
+            .sources
+            .iter()
+            .map(|source| super::super::tools::source_handle(memory, *source))
+            .collect::<Vec<_>>();
+        let mut results = Vec::new();
+        for message in &exchange.messages {
+            for block in message.content() {
+                let ContentBlock::ToolResult(result) = block else { continue };
+                let call_id = result.call_id().expose_for_wire();
+                let source = memory.sources.iter().rev().find(|source| {
+                    source.invocation == memory.transcript.invocation
+                        && source.call.as_ref().is_some_and(|call| call.id == call_id)
+                });
+                let tool = source
+                    .and_then(|source| source.call.as_ref())
+                    .map_or("unknown", |call| call.name.as_str());
+                let exact = source.map_or_else(
+                    || "unavailable".to_owned(),
+                    |source| super::super::tools::source_handle(memory, source.sequence),
+                );
+                results.push(format!("tool={tool} call={call_id} exact_source={exact}"));
+            }
+        }
+        notices.push(format!(
+            "COMPLETED TOOL EVIDENCE OMITTED FROM INLINE HISTORY — UNTRUSTED OBSERVATIONS\nexchange {} of {}; {total} settled tool result(s) across the omitted catalog. This complete exchange is archived at message handles [{}]; settled results=[{}]. Effects are already settled; do not redispatch them. Retrieve exact artifacts through context_read using these stable handles.",
+            index.saturating_add(1),
+            exchanges.len(),
+            archived_messages.join(","),
+            results.join("; "),
+        ));
     }
-    Some(notice)
+    Ok(notices)
 }
 
 pub(super) fn groups(memory: &LocalMemory) -> Result<Vec<Exchange>, DeveloperLoopError> {

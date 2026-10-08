@@ -144,7 +144,7 @@ fn reconciliation_header(reconciliation: &WorkingSelectionReconciliation) -> Str
     let deferred = reconciliation.required().len().saturating_sub(reconciliation.referenced().len());
     let focus = reconciliation.focus().map_or_else(|| "none".to_owned(), entry_id);
     format!(
-        "selection_reconciliation=required_reference; state_revision={}; required_digest={digest}; required={}; referenced={}; deferred={}; focus_entry={focus}; available_tokens={}; minimum_required_tokens={}\nRetrieve focus_entry first through context_read.entry_ids, then each shown entry before resolution; use observation_ids for exact source handles. Deferred obligations remain in this task's durable working state.\n",
+        "selection_reconciliation=required_reference; state_revision={}; required_digest={digest}; required={}; referenced={}; deferred={}; focus_entry={focus}; available_tokens={}; minimum_required_tokens={}\nContinue the current requested task from this saved frontier. Retrieve focus_entry first through context_read.entry_ids, then each shown entry before resolution; use observation_ids for exact source handles. Deferred obligations remain in this task's durable working state; do not start a fresh grounding session.\n",
         reconciliation.state_revision(),
         reconciliation.required().len(),
         reconciliation.referenced().len(),
