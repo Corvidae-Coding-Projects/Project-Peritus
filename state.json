@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4171,
-        "tip_oid": "d25e4bed9c1092c44df3e8f51f129f85cc6e9652",
-        "prefix_sha256": "7d6a11eb78d65cb065ea271dab3a67b84762286afe876a018d9d8381b2d7cb06"
+        "sequence": 4172,
+        "tip_oid": "9567a49cf8fb42b4dfaf44ce67be95545ad0efc3",
+        "prefix_sha256": "1b7ac6de742548a331fa4aa919912df9bdc3b462075653237363a1a6f89c061e"
       },
       "NWAR": {
         "sequence": 39,
@@ -35237,12 +35237,13 @@
       "display_id": 175,
       "title": "[L076] Remembered-file hashing has a 64-MiB synthetic stop",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L076.\n\n- `local_context/memory/environment.rs:73-87` hashes file dependencies with an **8 KiB buffer** but aborts after **64 MiB total bytes**. Streaming itself does not require this total-size ceiling.\n- `capture:50-70` omits paths rejected by protected-file validation and propagates other file-read/hash failures into context refresh; a remembered large file can therefore prevent assembling the next request. The exact upstream refresh/error recovery path is recorded separately; this source gate is additional to workspace/checkpoint/tool size limits.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.154879608Z",
-      "updated_at": "2026-10-08T15:51:02.876436028Z",
+      "updated_at": "2026-10-08T15:52:34.402390512Z",
+      "closed_at": "2026-10-08T15:52:34.399315988Z",
       "labels": [
         "daily-driving-limiter"
       ],
