@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3909,
-        "tip_oid": "2754638ef0f173b9d7efbf69d86dbca835225a34",
-        "prefix_sha256": "725de23c46157dc07d15f016d64f442ceb12f16bb9880236d4a650cc168edd17"
+        "sequence": 3910,
+        "tip_oid": "155e4aaea6d15a14c53f733ee90b49cedaa41349",
+        "prefix_sha256": "368d155f06aa761ad56ac2a7ab3ac72a0642eeb8774ccaa8d8ce9c71f8ca7a67"
       },
       "NWAR": {
         "sequence": 39,
@@ -38905,12 +38905,13 @@
       "display_id": 657,
       "title": "[L600] macOS proxy cleanup failure becomes permanently nonretryable",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L600.\n\n- Evidence: `crates/runtime/peritus-sandbox-macos/src/session/cleanup.rs:20-71,75-95`; `src/session.rs:105-108`; `src/session/adapter.rs:73-109` in the same crate.\n- Behavior: Release refuses active/cancelling sessions, removes exact materialized secret destinations idempotently, and retries secret-owner release while retaining that owner. Proxy shutdown instead takes the owner before shutdown, then sets `proxy_cleanup_failed` on failure. Every subsequent release stops at that flag. The generic process adapter replaces `RetryCleanup` and the underlying detail with supervisor/cancel-and-reap. Recovery cleanup updates remain only on the in-memory record until an external caller persists it.\n- Consequence: A transient proxy shutdown failure cannot be retried by this session even though the native error advertises retryable cleanup. The resource owner and underlying failure evidence are lost, preventing complete release and a trustworthy clean recovery state.\n- Repair direction: Retain proxy cleanup ownership until confirmed completion, preserve typed retry and reconciliation state through the process adapter, and persist each cleanup transition atomically with its outstanding obligation.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.218221593Z",
-      "updated_at": "2026-10-08T00:35:55.155065309Z",
+      "updated_at": "2026-10-08T00:37:17.703545310Z",
+      "closed_at": "2026-10-08T00:37:17.700420553Z",
       "labels": [
         "daily-driving-limiter"
       ],
