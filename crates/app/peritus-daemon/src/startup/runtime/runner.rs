@@ -8,7 +8,7 @@ use peritus_artifact_store::{
     ContainedLayoutNamespace, ErrorCode as ArtifactErrorCode, RecoveryObservation,
     RecoverySummary, ReferenceOwnerKind,
 };
-use peritus_evidence::{EvidenceStore, EvidenceStoreOptions};
+use peritus_evidence::EvidenceStore;
 use peritus_journal::{
     AllocatedAuthorityEpoch, ExpectedAuthorityEpoch, JournalCancellation, NewApplicationPrincipal,
     SqliteJournal, StoreId,
@@ -298,7 +298,7 @@ fn prepare_startup_scoped(
     .map_err(|error| component_error("open artifact store", error))?;
     report_artifact_recovery(&artifacts, artifact_recovery);
     progress.complete(StartupPhase::Artifacts)?;
-    let evidence = EvidenceStore::open(&database, EvidenceStoreOptions::default())
+    let evidence = EvidenceStore::open_waiting(&database, cancellation)
         .map_err(|error| component_error("open evidence store", error))?;
     progress.complete(StartupPhase::Evidence)?;
     let processes = open_process_store(&config, process_owner)?;

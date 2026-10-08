@@ -28,6 +28,10 @@ pub enum EvidenceErrorKind {
     CorruptCatalog,
     /// Bundle bytes are malformed, truncated, reordered, or digest-invalid.
     InvalidBundle,
+    /// `SQLite` reported database-level writer contention.
+    DatabaseBusy,
+    /// `SQLite` reported a locked table or schema object.
+    DatabaseLocked,
     /// `SQLite` could not complete an operation.
     Storage,
     /// Filesystem streaming failed.
@@ -79,14 +83,17 @@ impl EvidenceError {
     }
 
     pub(crate) fn sqlite(operation: &'static str, error: rusqlite::Error) -> Self {
-        let recovery = match error.sqlite_error_code() {
-            Some(rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked) => {
-                RecoveryAction::Retry
+        let (kind, recovery) = match error.sqlite_error_code() {
+            Some(rusqlite::ErrorCode::DatabaseBusy) => {
+                (EvidenceErrorKind::DatabaseBusy, RecoveryAction::Retry)
             }
-            _ => RecoveryAction::RepairDependency,
+            Some(rusqlite::ErrorCode::DatabaseLocked) => {
+                (EvidenceErrorKind::DatabaseLocked, RecoveryAction::Retry)
+            }
+            _ => (EvidenceErrorKind::Storage, RecoveryAction::RepairDependency),
         };
         Self {
-            kind: EvidenceErrorKind::Storage,
+            kind,
             recovery,
             operation,
             detail: error.to_string(),

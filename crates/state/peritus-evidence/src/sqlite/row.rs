@@ -255,7 +255,14 @@ pub(super) fn digest(bytes: &[u8], field: &'static str) -> Result<Sha256Digest, 
 }
 
 pub(super) fn integer(value: u64, field: &'static str) -> Result<i64, EvidenceError> {
-    i64::try_from(value).map_err(|_| corrupt(&format!("{field} exceeds SQLite INTEGER")))
+    i64::try_from(value).map_err(|_| {
+        EvidenceError::new(
+            EvidenceErrorKind::ArithmeticOverflow,
+            RecoveryAction::CorrectInput,
+            "encode evidence SQLite row",
+            format!("{field} exceeds the signed SQLite INTEGER representation"),
+        )
+    })
 }
 
 fn positive(value: i64, field: &'static str) -> Result<u64, EvidenceError> {

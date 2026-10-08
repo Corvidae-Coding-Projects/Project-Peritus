@@ -7,39 +7,59 @@ use crate::{
     EvidenceRecord, Freshness, RecoveryAction, evaluate_freshness,
 };
 use peritus_artifact_store::{ArtifactStore, ReferenceOwner};
-use peritus_journal::IntegrityExport;
+use peritus_journal::{IntegrityExport, JournalCancellation};
 use peritus_types::{EventId, RevisionTuple};
 use rusqlite::{Connection, OptionalExtension, Transaction, TransactionBehavior, params};
 use std::{collections::BTreeMap, path::Path, time::Duration};
 
-/// Shared `SQLite` connection policy for the evidence adapter.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+use super::contention::{self, ContentionPolicy};
+
+/// Operational contention policy for a shared evidence connection.
+///
+/// The default performs no synthetic wait. A finite timeout must be selected explicitly, while
+/// production owners that need durable continuation use [`EvidenceStore::open_waiting`].
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct EvidenceStoreOptions {
-    busy_timeout: Duration,
+    busy_timeout: Option<Duration>,
 }
 
 impl EvidenceStoreOptions {
-    /// Creates options with a caller-selected busy timeout.
+    /// Creates fail-fast options with no elapsed contention deadline.
     #[must_use]
-    pub const fn new(busy_timeout: Duration) -> Self {
-        Self { busy_timeout }
+    pub const fn new() -> Self {
+        Self { busy_timeout: None }
     }
-    /// Returns the configured timeout.
+
+    /// Selects an explicit finite contention deadline for an isolated attempt.
     #[must_use]
-    pub const fn busy_timeout(self) -> Duration {
+    pub const fn with_timeout(busy_timeout: Duration) -> Self {
+        Self { busy_timeout: Some(busy_timeout) }
+    }
+
+    /// Returns the explicit timeout, or `None` when contention fails immediately.
+    #[must_use]
+    pub const fn busy_timeout(self) -> Option<Duration> {
         self.busy_timeout
+    }
+
+    const fn contention(self) -> ContentionPolicy {
+        match self.busy_timeout {
+            Some(timeout) => ContentionPolicy::Timeout(timeout),
+            None => ContentionPolicy::FailFast,
+        }
     }
 }
 
 impl Default for EvidenceStoreOptions {
     fn default() -> Self {
-        Self { busy_timeout: Duration::from_secs(5) }
+        Self::new()
     }
 }
 
 /// Single-owner durable evidence catalog in a caller-selected shared database.
 pub struct EvidenceStore {
     pub(crate) connection: Connection,
+    pub(crate) cancellation: Option<JournalCancellation>,
 }
 
 impl EvidenceStore {
@@ -54,12 +74,44 @@ impl EvidenceStore {
         path: impl AsRef<Path>,
         options: EvidenceStoreOptions,
     ) -> Result<Self, EvidenceError> {
-        let connection = super::connection::open(path.as_ref(), options.busy_timeout())?;
+        Self::open_configured(path.as_ref(), options.contention(), None)
+    }
+
+    /// Opens an evidence catalog whose current and later contention waits are owned by the
+    /// supplied cancellation token.
+    ///
+    /// The returned store retains the same token for every catalog operation. Cancellation ends a
+    /// pending wait with its original `SQLite` busy or locked classification; retrying admission
+    /// must reuse the original draft and evidence identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed busy or locked failure when cancellation wins, or the same storage and
+    /// dependency failures as [`Self::open`].
+    pub fn open_waiting(
+        path: impl AsRef<Path>,
+        cancellation: &JournalCancellation,
+    ) -> Result<Self, EvidenceError> {
+        contention::run(Some(cancellation), || {
+            Self::open_configured(
+                path.as_ref(),
+                ContentionPolicy::WaitForCancellation,
+                Some(cancellation.clone()),
+            )
+        })
+    }
+
+    fn open_configured(
+        path: &Path,
+        contention_policy: ContentionPolicy,
+        cancellation: Option<JournalCancellation>,
+    ) -> Result<Self, EvidenceError> {
+        let connection = super::connection::open(path, contention_policy)?;
         validate_dependencies(&connection)?;
         connection
             .execute_batch(super::schema::INSTALL)
             .map_err(|error| EvidenceError::sqlite("install evidence schema", error))?;
-        let mut store = Self { connection };
+        let mut store = Self { connection, cancellation };
         store.contain_corrupt_records()?;
         Ok(store)
     }
@@ -78,6 +130,8 @@ impl EvidenceStore {
         export: &IntegrityExport,
         artifacts: &ArtifactStore,
     ) -> Result<EvidenceRecord, EvidenceError> {
+        let cancellation = self.cancellation.clone();
+        contention::run(cancellation.as_ref(), || {
         for digest in draft.artifacts() {
             artifacts
                 .verify(*digest)
@@ -120,6 +174,7 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("commit evidence admission", error))?;
         Ok(plan.record().clone())
+        })
     }
 
     /// Loads and re-verifies one immutable durable record.
@@ -128,6 +183,7 @@ impl EvidenceStore {
     ///
     /// Returns a storage or corrupt-catalog error.
     pub fn load(&self, id: EvidenceId) -> Result<Option<EvidenceRecord>, EvidenceError> {
+        contention::run(self.cancellation.as_ref(), || {
         let transaction =
             Transaction::new_unchecked(&self.connection, TransactionBehavior::Deferred)
                 .map_err(|error| EvidenceError::sqlite("begin evidence read", error))?;
@@ -136,6 +192,7 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("finish evidence read", error))?;
         Ok(record)
+        })
     }
 
     /// Durably records an explicit later journal invalidation without deleting history.
@@ -148,6 +205,8 @@ impl EvidenceStore {
         invalidation: EvidenceInvalidation,
         export: &IntegrityExport,
     ) -> Result<(), EvidenceError> {
+        let cancellation = self.cancellation.clone();
+        contention::run(cancellation.as_ref(), || {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -186,6 +245,7 @@ impl EvidenceStore {
         transaction
             .commit()
             .map_err(|error| EvidenceError::sqlite("commit evidence invalidation", error))
+        })
     }
 
     /// Evaluates durable explicit invalidation and exact revision freshness.
@@ -198,6 +258,7 @@ impl EvidenceStore {
         id: EvidenceId,
         current: &RevisionTuple,
     ) -> Result<Freshness, EvidenceError> {
+        contention::run(self.cancellation.as_ref(), || {
         let transaction =
             Transaction::new_unchecked(&self.connection, TransactionBehavior::Deferred)
                 .map_err(|error| EvidenceError::sqlite("begin evidence freshness read", error))?;
@@ -214,6 +275,7 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("finish evidence freshness read", error))?;
         Ok(evaluate_freshness(&record, current, invalidation))
+        })
     }
 }
 

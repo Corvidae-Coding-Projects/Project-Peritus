@@ -4,6 +4,7 @@ use peritus_types::{EvidenceId, Sha256Digest};
 use rusqlite::{OptionalExtension, Transaction, TransactionBehavior, params};
 use sha2::{Digest, Sha256};
 
+use super::contention;
 use super::row::load_record;
 use super::store::EvidenceStore;
 use crate::{EvidenceError, EvidenceErrorKind, RecoveryAction};
@@ -48,6 +49,8 @@ impl EvidenceQuarantine {
 
 impl EvidenceStore {
     pub(super) fn contain_corrupt_records(&mut self) -> Result<u64, EvidenceError> {
+        let cancellation = self.cancellation.clone();
+        contention::run(cancellation.as_ref(), || {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -73,6 +76,7 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("commit evidence containment", error))?;
         Ok(contained)
+        })
     }
 
     /// Returns the verified quarantine audit identity for one evidence record.
@@ -82,6 +86,7 @@ impl EvidenceStore {
     /// Returns storage or corrupt-catalog failure when the retained quarantine row cannot be
     /// decoded or its digest differs from the copied bytes.
     pub fn quarantined(&self, id: EvidenceId) -> Result<Option<EvidenceQuarantine>, EvidenceError> {
+        contention::run(self.cancellation.as_ref(), || {
         let transaction =
             Transaction::new_unchecked(&self.connection, TransactionBehavior::Deferred)
                 .map_err(|error| EvidenceError::sqlite("begin evidence quarantine read", error))?;
@@ -90,6 +95,7 @@ impl EvidenceStore {
             .commit()
             .map_err(|error| EvidenceError::sqlite("finish evidence quarantine read", error))?;
         raw.map(|row| row.observation()).transpose()
+        })
     }
 
     /// Counts evidence identities durably removed from active use.
@@ -98,11 +104,13 @@ impl EvidenceStore {
     ///
     /// Returns storage or arithmetic failure when the quarantine catalog cannot be counted.
     pub fn quarantine_count(&self) -> Result<u64, EvidenceError> {
+        contention::run(self.cancellation.as_ref(), || {
         let count: i64 = self
             .connection
             .query_row("SELECT COUNT(*) FROM peritus_evidence_quarantine", [], |row| row.get(0))
             .map_err(|error| EvidenceError::sqlite("count evidence quarantine", error))?;
         u64::try_from(count).map_err(|_| corrupt("evidence quarantine count is negative"))
+        })
     }
 }
 

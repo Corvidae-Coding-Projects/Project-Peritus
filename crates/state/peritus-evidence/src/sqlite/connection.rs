@@ -1,16 +1,18 @@
 //! Hardened shared-database connection policy.
 
+use super::contention::{self, ContentionPolicy};
 use crate::{EvidenceError, EvidenceErrorKind, RecoveryAction};
 use rusqlite::{Connection, OpenFlags, config::DbConfig, limits::Limit};
-use std::{path::Path, time::Duration};
+use std::path::Path;
 
-pub(super) fn open(path: &Path, busy_timeout: Duration) -> Result<Connection, EvidenceError> {
+pub(super) fn open(
+    path: &Path,
+    contention: ContentionPolicy,
+) -> Result<Connection, EvidenceError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let connection = Connection::open_with_flags(path, flags)
         .map_err(|error| EvidenceError::sqlite("open evidence database", error))?;
-    connection
-        .busy_timeout(busy_timeout)
-        .map_err(|error| EvidenceError::sqlite("set evidence busy timeout", error))?;
+    contention::configure(&connection, contention)?;
     let mode: String = connection
         .pragma_update_and_check(None, "journal_mode", "WAL", |row| row.get(0))
         .map_err(|error| EvidenceError::sqlite("enable evidence WAL", error))?;

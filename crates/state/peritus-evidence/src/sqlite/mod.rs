@@ -1,6 +1,7 @@
 //! Narrow shared-file `SQLite` evidence adapter.
 
 mod connection;
+mod contention;
 mod quarantine;
 mod row;
 mod schema;
