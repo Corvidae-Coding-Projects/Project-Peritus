@@ -184,7 +184,12 @@ impl ToolDispatcher for FsDispatcher<'_> {
         }
         let arguments = prepared.arguments();
         let rendered = match &mut self.context {
-            DispatchContext::Read(workspace) => execute_read(self.kind, workspace, arguments),
+            DispatchContext::Read(workspace) => execute_read(
+                self.kind,
+                workspace,
+                arguments,
+                prepared.call().limits().output_bytes(),
+            ),
             DispatchContext::Mutation { gateway, authorization, artifacts } => {
                 let outcome = execute_mutation(
                     self.kind,
@@ -208,23 +213,135 @@ fn execute_read(
     kind: FsDispatchKind,
     workspace: &ReadOnlyWorkspace,
     arguments: &peritus_tool_protocol::BoundedJson,
+    maximum_output_bytes: u64,
 ) -> Result<RenderedOutput, FsToolError> {
     let service = FsReadService::new(workspace);
+    let maximum_output_bytes = usize::try_from(maximum_output_bytes).unwrap_or(usize::MAX);
     match kind {
-        FsDispatchKind::Discover => {
-            RenderedOutput::discover(&service.discover(&decoder::discover(arguments)?)?)
-        }
+        FsDispatchKind::Discover => render_discover(
+            &service,
+            decoder::discover(arguments)?,
+            maximum_output_bytes,
+        ),
         FsDispatchKind::Metadata => {
-            RenderedOutput::metadata(&service.metadata(&decoder::metadata(arguments)?)?)
+            let rendered =
+                RenderedOutput::metadata(&service.metadata(&decoder::metadata(arguments)?)?)?;
+            if rendered.encoded_bytes() <= maximum_output_bytes {
+                Ok(rendered)
+            } else {
+                RenderedOutput::deferred("fs.metadata", None, rendered.encoded_bytes())
+            }
         }
-        FsDispatchKind::Read => RenderedOutput::file(&service.read(&decoder::read(arguments)?)?),
-        FsDispatchKind::Search => {
-            RenderedOutput::search(&service.search(&decoder::search(arguments)?)?)
+        FsDispatchKind::Read => {
+            render_file(&service, decoder::read(arguments)?, maximum_output_bytes)
         }
+        FsDispatchKind::Search => render_search(
+            &service,
+            decoder::search(arguments)?,
+            maximum_output_bytes,
+        ),
         _ => Err(FsToolError::invalid(
             FsToolOperation::Catalog,
             "mutation kind reached immutable dispatcher",
         )),
+    }
+}
+
+fn render_discover(
+    service: &FsReadService<'_>,
+    mut input: crate::DiscoverInput,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, FsToolError> {
+    loop {
+        let observation = service.discover(&input)?;
+        let rendered = RenderedOutput::discover(&observation);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => return Ok(rendered),
+            rendered => {
+                if input.narrow_result_page() {
+                    continue;
+                }
+                return match rendered {
+                    Ok(rendered) => deferred_result(
+                        "fs.discover",
+                        Some(observation.cursor()),
+                        rendered.encoded_bytes(),
+                        maximum_output_bytes,
+                    ),
+                    Err(error) => Err(error),
+                };
+            }
+        }
+    }
+}
+
+fn render_file(
+    service: &FsReadService<'_>,
+    mut input: crate::ReadInput,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, FsToolError> {
+    loop {
+        let observation = service.read(&input)?;
+        let rendered = RenderedOutput::file(&observation);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => return Ok(rendered),
+            rendered => {
+                if input.narrow_result_page() {
+                    continue;
+                }
+                return match rendered {
+                    Ok(rendered) => deferred_result(
+                        "fs.read",
+                        Some(observation.cursor()),
+                        rendered.encoded_bytes(),
+                        maximum_output_bytes,
+                    ),
+                    Err(error) => Err(error),
+                };
+            }
+        }
+    }
+}
+
+fn render_search(
+    service: &FsReadService<'_>,
+    mut input: crate::SearchInput,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, FsToolError> {
+    loop {
+        let observation = service.search(&input)?;
+        let rendered = RenderedOutput::search(&observation);
+        match rendered {
+            Ok(rendered) if rendered.encoded_bytes() <= maximum_output_bytes => return Ok(rendered),
+            rendered => {
+                if input.narrow_result_page() {
+                    continue;
+                }
+                return match rendered {
+                    Ok(rendered) => deferred_result(
+                        "fs.search",
+                        Some(observation.cursor()),
+                        rendered.encoded_bytes(),
+                        maximum_output_bytes,
+                    ),
+                    Err(error) => Err(error),
+                };
+            }
+        }
+    }
+}
+
+fn deferred_result(
+    operation: &'static str,
+    cursor: Option<&str>,
+    minimum_output_bytes: usize,
+    maximum_output_bytes: usize,
+) -> Result<RenderedOutput, FsToolError> {
+    let with_cursor = RenderedOutput::deferred(operation, cursor, minimum_output_bytes)?;
+    if with_cursor.encoded_bytes() <= maximum_output_bytes {
+        Ok(with_cursor)
+    } else {
+        RenderedOutput::deferred(operation, None, minimum_output_bytes)
     }
 }
 

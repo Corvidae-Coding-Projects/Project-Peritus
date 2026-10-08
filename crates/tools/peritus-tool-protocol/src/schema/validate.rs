@@ -114,6 +114,19 @@ fn value_without_enum(
                 Ok(())
             }
         }
+        (SchemaKind::Integer { minimum, maximum }, JsonValue::Unsigned(value)) => {
+            let below_minimum = minimum.is_some_and(|minimum| {
+                u64::try_from(minimum).is_ok_and(|minimum| *value < minimum)
+            });
+            let above_maximum = maximum.is_some_and(|maximum| {
+                u64::try_from(maximum).map_or(true, |maximum| *value > maximum)
+            });
+            if below_minimum || above_maximum {
+                Err(violation(path, "integer is outside the allowed range"))
+            } else {
+                Ok(())
+            }
+        }
         (SchemaKind::String { min_bytes, max_bytes }, JsonValue::String(value)) => {
             let length = value.len();
             if length < *min_bytes as usize

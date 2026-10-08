@@ -21,6 +21,7 @@ enum JsonValue {
     Null,
     Bool(bool),
     Integer(i64),
+    Unsigned(u64),
     String(String),
     Array(Vec<Self>),
     Object(BTreeMap<String, Self>),
@@ -52,6 +53,17 @@ impl BoundedJson {
     #[must_use]
     pub fn integer(value: i64) -> Self {
         canonical::finish(JsonValue::Integer(value))
+    }
+
+    /// Creates an exact nonnegative JSON integer across the complete `u64` domain.
+    ///
+    /// Values representable as `i64` retain the existing signed canonical representation.
+    #[must_use]
+    pub fn unsigned(value: u64) -> Self {
+        i64::try_from(value).map_or_else(
+            |_| canonical::finish(JsonValue::Unsigned(value)),
+            Self::integer,
+        )
     }
 
     /// Creates a bounded JSON string.
@@ -123,6 +135,16 @@ impl BoundedJson {
     pub const fn as_i64(&self) -> Option<i64> {
         match &self.value {
             JsonValue::Integer(value) => Some(*value),
+            _ => None,
+        }
+    }
+
+    /// Returns this value as an unsigned integer when it is nonnegative and representable.
+    #[must_use]
+    pub fn as_u64(&self) -> Option<u64> {
+        match &self.value {
+            JsonValue::Integer(value) => u64::try_from(*value).ok(),
+            JsonValue::Unsigned(value) => Some(*value),
             _ => None,
         }
     }

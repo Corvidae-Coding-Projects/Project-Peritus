@@ -80,6 +80,14 @@ impl DiscoverInput {
         })?);
         Ok(input)
     }
+
+    pub(crate) fn narrow_result_page(&mut self) -> bool {
+        if self.maximum_entries <= 1 {
+            return false;
+        }
+        self.maximum_entries = self.maximum_entries / 2 + self.maximum_entries % 2;
+        true
+    }
 }
 
 /// One exact bounded file read.
@@ -154,6 +162,14 @@ impl ReadInput {
                 digest: cursor.source_digest,
             }),
         })
+    }
+
+    pub(crate) fn narrow_result_page(&mut self) -> bool {
+        if self.maximum_bytes <= 1 {
+            return false;
+        }
+        self.maximum_bytes = self.maximum_bytes / 2 + self.maximum_bytes % 2;
+        true
     }
 }
 
@@ -246,6 +262,19 @@ impl SearchInput {
             FsToolError::invalid(FsToolOperation::Search, "search cursor is invalid")
         })?);
         Ok(input)
+    }
+
+    pub(crate) fn narrow_result_page(&mut self) -> bool {
+        let mut changed = false;
+        if self.maximum_entries > 1 {
+            self.maximum_entries = self.maximum_entries / 2 + self.maximum_entries % 2;
+            changed = true;
+        }
+        if self.maximum_matches > 1 {
+            self.maximum_matches = self.maximum_matches / 2 + self.maximum_matches % 2;
+            changed = true;
+        }
+        changed
     }
 }
 

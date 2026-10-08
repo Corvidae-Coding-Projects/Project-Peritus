@@ -13,6 +13,16 @@ const MIN_TOKENS: u64 = 512;
 const BYTES_PER_TOKEN: usize = 3;
 const RETAINED_ACTIVE_PROGRESS_EVENTS: usize = 8;
 
+/// Capacity of one encoded model-visible tool page under the existing observation policy.
+/// This is a physical page size, never a cumulative evidence or work allowance.
+#[must_use]
+pub fn developer_tool_page_bytes(provider_input_tokens: u64, limits: ProtocolLimits) -> usize {
+    let token_budget = (provider_input_tokens / CONTEXT_FRACTION).clamp(MIN_TOKENS, MAX_TOKENS);
+    usize::try_from(token_budget).unwrap_or(usize::MAX)
+        .saturating_mul(BYTES_PER_TOKEN)
+        .min(JsonBounds::value(limits).max_bytes())
+}
+
 /// Retains exact output in the caller-owned trace while bounding the copy admitted to model history.
 pub(super) fn model_visible_tool_output(
     tool_name: &str,
@@ -21,16 +31,13 @@ pub(super) fn model_visible_tool_output(
     limits: ProtocolLimits,
 ) -> Result<CanonicalJson, DeveloperLoopError> {
     let output = project_command_output(tool_name, output, limits)?;
-    let token_budget = (provider_input_tokens / CONTEXT_FRACTION).clamp(MIN_TOKENS, MAX_TOKENS);
-    let byte_budget = usize::try_from(token_budget)
-        .unwrap_or(usize::MAX)
-        .saturating_mul(BYTES_PER_TOKEN)
-        .min(JsonBounds::value(limits).max_bytes());
+    let byte_budget = developer_tool_page_bytes(provider_input_tokens, limits);
     let exact = output.canonical_bytes();
     if exact.len() <= byte_budget {
         return Ok(output);
     }
 
+    let continuation = retained_continuation_fields(exact);
     let text = output.to_wire_string();
     let original_digest = digest_hex(output.digest());
     let original_token_estimate = exact.len().div_ceil(BYTES_PER_TOKEN);
@@ -51,6 +58,9 @@ pub(super) fn model_visible_tool_output(
                     .to_owned(),
             ),
         );
+        for (name, value) in &continuation {
+            details.insert(name.clone(), value.clone());
+        }
         let mut root = Map::new();
         root.insert("peritus_truncated_tool_output".to_owned(), Value::Object(details));
         let value = Value::Object(root);
@@ -67,6 +77,24 @@ pub(super) fn model_visible_tool_output(
         }
         preview_chars /= 2;
     }
+}
+
+fn retained_continuation_fields(bytes: &[u8]) -> Map<String, Value> {
+    let Ok(Value::Object(value)) = serde_json::from_slice(bytes) else {
+        return Map::new();
+    };
+    [
+        "coverage_complete",
+        "cursor",
+        "minimum_output_bytes",
+        "next_cursor",
+        "operation",
+        "retry_same_request",
+        "truncated",
+    ]
+    .into_iter()
+    .filter_map(|name| value.get(name).cloned().map(|item| (name.to_owned(), item)))
+    .collect()
 }
 
 fn project_command_output(

@@ -39,13 +39,17 @@ fn convert(
     match raw {
         Value::Null => Ok(JsonValue::Null),
         Value::Bool(value) => Ok(JsonValue::Bool(value)),
-        Value::Number(value) => value.as_i64().map(JsonValue::Integer).ok_or_else(|| {
-            ProtocolError::at(
-                ProtocolErrorKind::InvalidJson,
-                path,
-                "only signed 64-bit JSON integers are supported",
-            )
-        }),
+        Value::Number(value) => value
+            .as_i64()
+            .map(JsonValue::Integer)
+            .or_else(|| value.as_u64().map(JsonValue::Unsigned))
+            .ok_or_else(|| {
+                ProtocolError::at(
+                    ProtocolErrorKind::InvalidJson,
+                    path,
+                    "only signed or unsigned 64-bit JSON integers are supported",
+                )
+            }),
         Value::String(value) => {
             check_string(&value, limits, path)?;
             Ok(JsonValue::String(value))
@@ -182,6 +186,7 @@ fn write_value(value: &JsonValue, output: &mut Vec<u8>) {
         JsonValue::Bool(false) => output.extend_from_slice(b"false"),
         JsonValue::Bool(true) => output.extend_from_slice(b"true"),
         JsonValue::Integer(value) => output.extend_from_slice(value.to_string().as_bytes()),
+        JsonValue::Unsigned(value) => output.extend_from_slice(value.to_string().as_bytes()),
         JsonValue::String(value) => {
             write_string(value, output);
         }
@@ -269,7 +274,9 @@ fn validate_constructed(
             }
             Ok(())
         }
-        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Integer(_) => Ok(()),
+        JsonValue::Null | JsonValue::Bool(_) | JsonValue::Integer(_) | JsonValue::Unsigned(_) => {
+            Ok(())
+        }
     }
 }
 

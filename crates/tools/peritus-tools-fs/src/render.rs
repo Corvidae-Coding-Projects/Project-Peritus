@@ -21,6 +21,35 @@ pub struct RenderedOutput {
 }
 
 impl RenderedOutput {
+    /// Returns the exact canonical JSON byte length of the structured result.
+    #[must_use]
+    pub fn encoded_bytes(&self) -> usize {
+        self.structured.canonical_bytes().len()
+    }
+
+    /// Renders a compact continuation when one physical record cannot fit the selected envelope.
+    pub fn deferred(
+        operation: &'static str,
+        cursor: Option<&str>,
+        minimum_output_bytes: usize,
+    ) -> Result<Self, FsToolError> {
+        let structured = object(vec![
+            ("coverage_complete", Ok(BoundedJson::boolean(false))),
+            (
+                "minimum_output_bytes",
+                unsigned_usize(minimum_output_bytes),
+            ),
+            ("next_cursor", optional_string(cursor)),
+            ("operation", string(operation.to_owned())),
+            ("retry_same_request", Ok(BoundedJson::boolean(cursor.is_none()))),
+            ("truncated", Ok(BoundedJson::boolean(true))),
+        ])?;
+        let text = format!(
+            "{operation} requires at least {minimum_output_bytes} output bytes for its next physical record"
+        );
+        finish(structured, text.clone(), text, true)
+    }
+
     /// Renders exact authorized C1 patch outcome evidence.
     ///
     /// # Errors
@@ -28,9 +57,9 @@ impl RenderedOutput {
     pub fn mutation(value: &peritus_workspace::MutationOutcome) -> Result<Self, FsToolError> {
         let structured = object(vec![
             ("action_id", string(identifier_hex(value.action_id().as_bytes()))),
-            ("generation", Ok(integer(u64_integer(value.generation().get())))),
+            ("generation", Ok(BoundedJson::unsigned(value.generation().get()))),
             ("patch_identity", string(value.patch_identity().to_string())),
-            ("revision", Ok(integer(u64_integer(value.revision().get())))),
+            ("revision", Ok(BoundedJson::unsigned(value.revision().get()))),
             ("workspace_id", string(identifier_hex(value.workspace_id().as_bytes()))),
         ])?;
         let text = format!("Applied authorized patch {}.", value.patch_identity());
@@ -72,7 +101,7 @@ impl RenderedOutput {
             .iter()
             .map(|entry| {
                 object(vec![
-                    ("depth", Ok(integer(i64::from(entry.depth())))),
+                    ("depth", Ok(BoundedJson::unsigned(u64::from(entry.depth())))),
                     ("metadata", metadata_json(entry.metadata())),
                 ])
             })
@@ -81,11 +110,11 @@ impl RenderedOutput {
             ("cursor", string(value.cursor().to_owned())),
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
-            ("entry_count", Ok(integer(u64_integer(value.entry_count())))),
+            ("entry_count", Ok(BoundedJson::unsigned(value.entry_count()))),
             ("next_cursor", optional_string(value.next_cursor())),
-            ("observed_count", Ok(integer(u64_integer(value.entry_count())))),
-            ("omitted_count", Ok(integer(u64_integer(value.omission_count())))),
-            ("record_count", Ok(integer(u64_integer(value.record_count())))),
+            ("observed_count", Ok(BoundedJson::unsigned(value.entry_count()))),
+            ("omitted_count", Ok(BoundedJson::unsigned(value.omission_count()))),
+            ("record_count", Ok(BoundedJson::unsigned(value.record_count()))),
             (
                 "root",
                 value
@@ -97,7 +126,7 @@ impl RenderedOutput {
         append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
         fields.push((
             "total_excluded_count",
-            Ok(integer(u64_integer(value.exclusion_count()))),
+            Ok(BoundedJson::unsigned(value.exclusion_count())),
         ));
         append_traversal_omissions(&mut fields, value.omissions(), omitted_retained)?;
         let structured = object(fields)?;
@@ -126,9 +155,9 @@ impl RenderedOutput {
             ("encoding", string(encoding.to_owned())),
             ("metadata", metadata_json(value.metadata())),
             ("next_cursor", optional_string(value.next_cursor())),
-            ("range_end", Ok(integer(u64_integer(value.range().1)))),
-            ("range_start", Ok(integer(u64_integer(value.range().0)))),
-            ("source_bytes", Ok(integer(u64_integer(value.source_bytes())))),
+            ("range_end", Ok(BoundedJson::unsigned(value.range().1))),
+            ("range_start", Ok(BoundedJson::unsigned(value.range().0))),
+            ("source_bytes", Ok(BoundedJson::unsigned(value.source_bytes()))),
             ("source_digest", string(digest_hex(value.source_digest()))),
         ])?;
         let text = format!(
@@ -162,13 +191,16 @@ impl RenderedOutput {
             .iter()
             .map(|value| {
                 object(vec![
-                    ("column_bytes", Ok(integer(i64::from(value.column_bytes())))),
-                    ("line", Ok(integer(u64_integer(value.line())))),
+                    (
+                        "column_bytes",
+                        Ok(BoundedJson::unsigned(u64::from(value.column_bytes()))),
+                    ),
+                    ("line", Ok(BoundedJson::unsigned(value.line()))),
                     ("path", string(value.path().to_string())),
                 ("preview", string(value.preview().to_owned())),
                 (
                     "preview_start_column_bytes",
-                    Ok(integer(u64_integer(value.preview_start_column_bytes()))),
+                    Ok(BoundedJson::unsigned(value.preview_start_column_bytes())),
                 ),
                 ])
             })
@@ -178,23 +210,26 @@ impl RenderedOutput {
             ("coverage_complete", Ok(BoundedJson::boolean(value.next_cursor().is_none()))),
             ("cursor", string(value.cursor().to_owned())),
             ("digest", string(digest_hex(value.digest()))),
-            ("match_count", Ok(integer(u64_integer(value.match_count())))),
+            ("match_count", Ok(BoundedJson::unsigned(value.match_count()))),
             ("matches", array(matches)),
             ("next_cursor", optional_string(value.next_cursor())),
-            ("omitted_count", Ok(integer(u64_integer(value.omission_count())))),
-            ("returned_match_count", Ok(integer(usize_integer(value.matches().len())))),
-            ("scanned_bytes", Ok(integer(u64_integer(value.scanned_bytes())))),
-            ("scanned_files", Ok(integer(i64::from(value.scanned_files())))),
+            ("omitted_count", Ok(BoundedJson::unsigned(value.omission_count()))),
+            (
+                "returned_match_count",
+                unsigned_usize(value.matches().len()),
+            ),
+            ("scanned_bytes", Ok(BoundedJson::unsigned(value.scanned_bytes()))),
+            ("scanned_files", Ok(BoundedJson::unsigned(u64::from(value.scanned_files())))),
             (
                 "traversal_omitted_count",
-                Ok(integer(u64_integer(value.traversal_omission_count()))),
+                Ok(BoundedJson::unsigned(value.traversal_omission_count())),
             ),
             ("truncated", Ok(BoundedJson::boolean(truncated))),
         ];
         append_exclusions(&mut fields, value.exclusions(), excluded_retained)?;
         fields.push((
             "total_excluded_count",
-            Ok(integer(u64_integer(value.exclusion_count()))),
+            Ok(BoundedJson::unsigned(value.exclusion_count())),
         ));
         append_traversal_omissions(
             &mut fields,
@@ -248,7 +283,7 @@ fn append_exclusions(
         .iter()
         .map(|value| {
             object(vec![
-                ("depth", Ok(integer(i64::from(value.depth())))),
+                ("depth", Ok(BoundedJson::unsigned(u64::from(value.depth())))),
                 (
                     "directory",
                     value
@@ -274,7 +309,10 @@ fn append_exclusions(
             ])
         })
         .collect::<Result<Vec<_>, _>>()?;
-    fields.push(("excluded_count", Ok(integer(usize_integer(exclusions.len())))));
+    fields.push((
+        "excluded_count",
+        unsigned_usize(exclusions.len()),
+    ));
     fields.push(("exclusions", array(values)));
     Ok(())
 }
@@ -288,7 +326,7 @@ fn append_traversal_omissions(
         .iter()
         .map(|value| {
             object(vec![
-                ("depth", Ok(integer(i64::from(value.depth())))),
+                ("depth", Ok(BoundedJson::unsigned(u64::from(value.depth())))),
                 ("path", string(value.path().to_string())),
                 ("reason", string("maximum_depth".to_owned())),
             ])
@@ -330,7 +368,7 @@ fn metadata_json(value: &MetadataObservation) -> Result<BoundedJson, FsToolError
         ("executable", Ok(BoundedJson::boolean(value.executable()))),
         ("kind", string(kind_name(value).to_owned())),
         ("path", string(value.path().to_string())),
-        ("size", Ok(integer(u64_integer(value.size())))),
+        ("size", Ok(BoundedJson::unsigned(value.size()))),
     ])
 }
 
@@ -378,12 +416,10 @@ fn integer(value: i64) -> BoundedJson {
     BoundedJson::integer(value)
 }
 
-fn u64_integer(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
-}
-
-fn usize_integer(value: usize) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
+fn unsigned_usize(value: usize) -> Result<BoundedJson, FsToolError> {
+    u64::try_from(value)
+        .map(BoundedJson::unsigned)
+        .map_err(|_| protocol_error())
 }
 
 fn digest_hex(value: peritus_types::Sha256Digest) -> String {
