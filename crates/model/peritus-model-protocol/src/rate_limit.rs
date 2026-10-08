@@ -83,22 +83,22 @@ impl RateLimitWindow {
     }
 }
 
-/// A bounded set of windows from one response observation.
+/// Provider-supplied windows from one inert response observation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RateLimitObservation(Vec<RateLimitWindow>);
 
 impl RateLimitObservation {
-    /// Creates a nonempty observation with at most 64 dimensions.
+    /// Creates a nonempty observation without imposing a compiled dimension ceiling.
     ///
     /// # Errors
     ///
-    /// Rejects empty or oversized window sets.
+    /// Rejects an empty window set.
     pub fn new(windows: Vec<RateLimitWindow>) -> Result<Self, ProtocolError> {
-        if windows.is_empty() || windows.len() > 64 {
+        if windows.is_empty() {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidUsage,
                 "rate_limit",
-                "rate-limit observation is empty or exceeds its window bound",
+                "rate-limit observation is empty",
             ));
         }
         Ok(Self(windows))

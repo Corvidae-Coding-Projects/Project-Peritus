@@ -8,8 +8,9 @@ use peritus_budget::{BudgetReceipt, UsageFinality};
 use peritus_codec::{CodecError, CodecLimits, sha256};
 use peritus_journal::SqliteJournal;
 use peritus_model_protocol::{
-    EventEnvelope, ModelRequest, ProtocolLimits, ReducerTransition, TerminalOutcome,
-    decode_event_envelope,
+    EventEnvelope, HistoryArchiveIdentity, ModelRequest, PhysicalPageCapacity, ProtocolLimits,
+    ReducerTransition, TerminalOutcome, decode_event_archive_page, decode_event_envelope,
+    encode_event_archive_page, is_event_archive_page,
 };
 use peritus_provider_core::{
     CancellationToken, ContinuationRestoreOutcome, ModelProvider, PersistedContinuation,
@@ -237,6 +238,8 @@ pub struct AgentDriver {
     codec_limits: CodecLimits,
     model: Option<ModelSession>,
     model_prefix: Vec<EventEnvelope>,
+    model_page_index: u64,
+    model_page_digest: Option<Sha256Digest>,
     tools: Option<ToolBatchCoordinator>,
 }
 
@@ -261,7 +264,15 @@ impl AgentDriver {
         let records = transition.to_protocol_records(None, codec_limits)?;
         commit_agent_transition(journal, &records.0, &records.1, &records.2)?;
         let (_, state) = transition.into_parts();
-        Ok(Self { state, codec_limits, model: None, model_prefix: Vec::new(), tools: None })
+        Ok(Self {
+            state,
+            codec_limits,
+            model: None,
+            model_prefix: Vec::new(),
+            model_page_index: 0,
+            model_page_digest: None,
+            tools: None,
+        })
     }
 
     /// Reconstructs one turn from its canonical event chain and validates its acceleration row.
@@ -282,8 +293,13 @@ impl AgentDriver {
         if durable.events().is_empty() {
             return Err(AgentDriverError::MissingAggregate);
         }
+        let archive_identity = history_archive_identity(&binding)?;
         let events = AgentEvent::recover_protocol_events(durable.events(), binding, limits)?;
-        let model_prefix = recover_model_prefix(&events)?;
+        let recovered = recover_model_prefix(
+            &events,
+            archive_identity,
+            event_page_capacity(codec_limits)?,
+        )?;
         let state = replay(&events)?;
         let checkpoint = durable.checkpoint().ok_or(AgentDriverError::CheckpointMismatch)?;
         let digest_matches = checkpoint.state_digest() == state.state_digest();
@@ -291,7 +307,15 @@ impl AgentDriver {
         if !digest_matches || !payload_matches {
             return Err(AgentDriverError::CheckpointMismatch);
         }
-        Ok(Self { state, codec_limits, model: None, model_prefix, tools: None })
+        Ok(Self {
+            state,
+            codec_limits,
+            model: None,
+            model_prefix: recovered.envelopes,
+            model_page_index: recovered.next_page_index,
+            model_page_digest: recovered.page_digest,
+            tools: None,
+        })
     }
 
     /// Borrows the last durably committed pure state.
@@ -373,6 +397,8 @@ impl AgentDriver {
         self.state = state;
         if clear_model_prefix {
             self.model_prefix.clear();
+            self.model_page_index = 0;
+            self.model_page_digest = None;
         }
         Ok(receipt)
     }
@@ -408,6 +434,8 @@ impl AgentDriver {
             return Err(AgentBudgetError::InvalidPhase.into());
         }
         self.model_prefix.clear();
+        self.model_page_index = 0;
+        self.model_page_digest = None;
         let request_digest = request.fingerprint().map_err(ModelDriveError::from)?.digest();
         let receipt = self.drive_once(
             journal,
@@ -431,7 +459,7 @@ impl AgentDriver {
         journal: &mut SqliteJournal,
         identity: TransitionIdentity,
     ) -> Result<ProviderAdvance, AgentDriverError> {
-        let (sequence, bytes, envelope, preview) = {
+        let (sequence, bytes, envelope, preview, protocol_limits) = {
             let model = self.model.as_mut().ok_or(AgentDriverError::RuntimeResourceUnavailable)?;
             match model.pull_one().await? {
                 ModelAdvance::Closed => return Ok(ProviderAdvance::Closed),
@@ -440,7 +468,7 @@ impl AgentDriver {
                     let envelope =
                         model.pending().cloned().ok_or(AgentDriverError::RuntimeInvariant)?;
                     let preview = model.preview_pending()?;
-                    (sequence, bytes, envelope, preview)
+                    (sequence, bytes, envelope, preview, model.limits())
                 }
             }
         };
@@ -451,15 +479,29 @@ impl AgentDriver {
         } else {
             u64::try_from(bytes.len()).map_err(|_| AgentDriverError::RuntimeInvariant)?
         };
+        let archive_page = encode_event_archive_page(
+            history_archive_identity(self.state.binding())?,
+            self.model_page_index,
+            self.model_page_digest,
+            std::slice::from_ref(&envelope),
+            protocol_limits,
+            event_page_capacity(self.codec_limits)?,
+        )
+        .map_err(ModelDriveError::from)?;
+        let page_digest = archive_page.digest();
+        let next_page_index = self
+            .model_page_index
+            .checked_add(1)
+            .ok_or(AgentDriverError::RuntimeInvariant)?;
         self.drive_once(
             journal,
             identity,
-            AgentCommandKind::ProviderEventObserved(ProviderEventRecord::with_envelope(
+            AgentCommandKind::ProviderEventObserved(ProviderEventRecord::with_archive_page(
                 cursor,
                 sha256(&bytes),
                 output_bytes,
                 duplicate,
-                bytes,
+                archive_page,
             )?),
         )?;
         let observed = self
@@ -471,6 +513,8 @@ impl AgentDriver {
             return Err(AgentDriverError::RuntimeInvariant);
         }
         self.model_prefix.push(envelope);
+        self.model_page_index = next_page_index;
+        self.model_page_digest = Some(page_digest);
         Ok(ProviderAdvance::Envelope { sequence, transition: observed })
     }
 
@@ -634,44 +678,118 @@ impl fmt::Debug for AgentDriver {
             .field("sequence", &self.state.sequence())
             .field("model_owned", &self.model.is_some())
             .field("model_prefix_events", &self.model_prefix.len())
+            .field("model_page_index", &self.model_page_index)
             .field("tool_batch_owned", &self.tools.is_some())
             .finish_non_exhaustive()
     }
 }
 
-fn recover_model_prefix(events: &[AgentEvent]) -> Result<Vec<EventEnvelope>, AgentDriverError> {
-    let mut prefix = Vec::new();
+struct RecoveredModelPrefix {
+    envelopes: Vec<EventEnvelope>,
+    next_page_index: u64,
+    page_digest: Option<Sha256Digest>,
+}
+
+fn recover_model_prefix(
+    events: &[AgentEvent],
+    identity: HistoryArchiveIdentity,
+    capacity: PhysicalPageCapacity,
+) -> Result<RecoveredModelPrefix, AgentDriverError> {
+    let mut recovered = RecoveredModelPrefix {
+        envelopes: Vec::new(),
+        next_page_index: 0,
+        page_digest: None,
+    };
     let mut preserve_for_exact_resume = false;
     for event in events {
         let AgentEventKind::CommandAccepted(kind) = event.kind() else { continue };
         match kind {
             AgentCommandKind::ModelRequestStarted { .. } => {
                 if !preserve_for_exact_resume {
-                    prefix.clear();
+                    recovered.envelopes.clear();
+                    recovered.next_page_index = 0;
+                    recovered.page_digest = None;
                 }
                 preserve_for_exact_resume = false;
             }
             AgentCommandKind::ProviderEventObserved(record) => {
-                if !record.encoded_envelope().is_empty() {
-                    prefix.push(
-                        decode_event_envelope(
-                            record.encoded_envelope(),
-                            ProtocolLimits::PRODUCTION,
-                        )
-                        .map_err(ModelDriveError::from)?,
+                let capsule = record.encoded_envelope();
+                if capsule.is_empty() {
+                    continue;
+                }
+                if is_event_archive_page(capsule) {
+                    let page = decode_event_archive_page(
+                        capsule,
+                        ProtocolLimits::PRODUCTION,
+                        capacity,
+                    )
+                    .map_err(ModelDriveError::from)?;
+                    if page.identity() != identity
+                        || page.page_index() != recovered.next_page_index
+                        || page.previous_page_digest() != recovered.page_digest
+                        || page.envelopes().len() != 1
+                        || peritus_codec::sha256(&page.encoded_envelopes()[0])
+                            != record.event_digest()
+                    {
+                        return Err(AgentDriverError::RuntimeInvariant);
+                    }
+                    recovered.envelopes.push(page.envelopes()[0].clone());
+                    recovered.next_page_index = recovered
+                        .next_page_index
+                        .checked_add(1)
+                        .ok_or(AgentDriverError::RuntimeInvariant)?;
+                    recovered.page_digest = Some(page.digest());
+                } else {
+                    recovered.envelopes.push(
+                        decode_event_envelope(capsule, ProtocolLimits::PRODUCTION)
+                            .map_err(ModelDriveError::from)?,
                     );
+                    // A new writer may begin a page chain after any exact legacy prefix.
+                    recovered.next_page_index = 0;
+                    recovered.page_digest = None;
                 }
             }
             AgentCommandKind::ProviderRetryScheduled(record) => {
                 preserve_for_exact_resume =
                     matches!(record.class(), ProviderRetryClass::ExactResume { .. });
                 if !preserve_for_exact_resume {
-                    prefix.clear();
+                    recovered.envelopes.clear();
+                    recovered.next_page_index = 0;
+                    recovered.page_digest = None;
                 }
             }
-            AgentCommandKind::ResultsRecorded { .. } => prefix.clear(),
+            AgentCommandKind::ResultsRecorded { .. } => {
+                recovered.envelopes.clear();
+                recovered.next_page_index = 0;
+                recovered.page_digest = None;
+            }
             _ => {}
         }
     }
-    Ok(prefix)
+    Ok(recovered)
+}
+
+fn history_archive_identity(
+    binding: &AgentBinding,
+) -> Result<HistoryArchiveIdentity, AgentDriverError> {
+    HistoryArchiveIdentity::new(
+        *binding.turn_id().as_bytes(),
+        *binding.provider_profile_id().as_bytes(),
+        *binding.session_id().as_bytes(),
+    )
+    .map_err(ModelDriveError::from)
+    .map_err(Into::into)
+}
+
+fn event_page_capacity(limits: CodecLimits) -> Result<PhysicalPageCapacity, AgentDriverError> {
+    const COMMAND_FRAMING_BYTES: usize = 64;
+    let representation = (u32::MAX as usize).saturating_sub(COMMAND_FRAMING_BYTES);
+    let capacity = limits
+        .max_payload_bytes
+        .saturating_sub(COMMAND_FRAMING_BYTES)
+        .min(limits.max_opaque_bytes)
+        .min(representation);
+    PhysicalPageCapacity::new(capacity)
+        .map_err(ModelDriveError::from)
+        .map_err(Into::into)
 }

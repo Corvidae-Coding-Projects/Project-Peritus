@@ -196,9 +196,17 @@ fn read_provider(r: &mut Reader<'_>) -> Result<ProviderEventRecord, AgentRejecti
     let digest = r.digest()?;
     let output_bytes = r.u64()?;
     let duplicate = r.bool()?;
-    let envelope = r.bytes(ProviderEventRecord::MAX_ENVELOPE_BYTES)?;
+    let envelope = r.bytes(usize::MAX)?;
     if envelope.is_empty() {
         Ok(ProviderEventRecord::new(cursor, digest, output_bytes, duplicate))
+    } else if peritus_model_protocol::is_event_archive_page(&envelope) {
+        ProviderEventRecord::from_archive_capsule(
+            cursor,
+            digest,
+            output_bytes,
+            duplicate,
+            envelope,
+        )
     } else {
         ProviderEventRecord::with_envelope(cursor, digest, output_bytes, duplicate, envelope)
     }

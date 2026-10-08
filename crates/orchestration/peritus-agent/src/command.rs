@@ -4,6 +4,7 @@ use crate::{
     ActivePhase, AgentFailure, CompletionProposal, ModelCallId, ToolOrdinal, ToolProposal,
     ToolResultRecord,
 };
+use peritus_model_protocol::EventArchivePage;
 use peritus_types::{CommandId, EventId, RevisionNumber, Sha256Digest};
 use vstd::prelude::*;
 
@@ -72,9 +73,6 @@ pub struct ProviderEventRecord {
 } // verus!
 
 impl ProviderEventRecord {
-    /// Maximum canonical C5 envelope retained in one durable D0 event.
-    pub const MAX_ENVELOPE_BYTES: usize = 8 * 1024 * 1024;
-
     /// Creates a synthetic provider observation without an envelope replay capsule.
     ///
     /// Production provider driving uses [`Self::with_envelope`]. This constructor remains useful
@@ -89,11 +87,11 @@ impl ProviderEventRecord {
         Self { cursor, event_digest, output_bytes, duplicate, encoded_envelope: Vec::new() }
     }
 
-    /// Creates a provider observation with its exact bounded canonical C5 envelope.
+    /// Creates a provider observation with its exact canonical C5 envelope.
     ///
     /// # Errors
     ///
-    /// Rejects empty/excessive bytes or a digest that does not match the canonical envelope.
+    /// Rejects empty or unrepresentable bytes and a digest that does not match the envelope.
     pub fn with_envelope(
         cursor: u64,
         event_digest: Sha256Digest,
@@ -102,17 +100,78 @@ impl ProviderEventRecord {
         encoded_envelope: Vec<u8>,
     ) -> Result<Self, crate::AgentRejection> {
         if encoded_envelope.is_empty()
-            || encoded_envelope.len() > Self::MAX_ENVELOPE_BYTES
+            || u32::try_from(encoded_envelope.len()).is_err()
             || peritus_codec::sha256(&encoded_envelope) != event_digest
         {
             return Err(crate::AgentRejection::new(
                 crate::AgentErrorCode::InvalidCommand,
                 crate::AgentOperation::Reduce,
                 crate::AgentRecovery::CorrectRequest,
-                "provider envelope capsule is empty, excessive, or digest-mismatched",
+                "provider envelope capsule is empty, unrepresentable, or digest-mismatched",
             ));
         }
         Ok(Self { cursor, event_digest, output_bytes, duplicate, encoded_envelope })
+    }
+
+    /// Creates a provider observation carrying one authenticated physical C5 event page.
+    ///
+    /// The record digest continues to identify the exact legacy `P5EV` envelope, while the
+    /// retained capsule additionally authenticates its thread/profile/run lineage and predecessor.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a page containing other than one envelope, an unrepresentable page, or a legacy
+    /// envelope digest that disagrees with the observation.
+    pub fn with_archive_page(
+        cursor: u64,
+        event_digest: Sha256Digest,
+        output_bytes: u64,
+        duplicate: bool,
+        page: EventArchivePage,
+    ) -> Result<Self, crate::AgentRejection> {
+        let valid_payload = page.encoded_envelopes().len() == 1
+            && peritus_codec::sha256(&page.encoded_envelopes()[0]) == event_digest;
+        if !valid_payload || u32::try_from(page.encoded_page().len()).is_err() {
+            return Err(crate::AgentRejection::new(
+                crate::AgentErrorCode::InvalidCommand,
+                crate::AgentOperation::Reduce,
+                crate::AgentRecovery::CorrectRequest,
+                "provider event page is unrepresentable or disagrees with its envelope digest",
+            ));
+        }
+        Ok(Self {
+            cursor,
+            event_digest,
+            output_bytes,
+            duplicate,
+            encoded_envelope: page.encoded_page().to_vec(),
+        })
+    }
+
+    pub(crate) fn from_archive_capsule(
+        cursor: u64,
+        event_digest: Sha256Digest,
+        output_bytes: u64,
+        duplicate: bool,
+        encoded_page: Vec<u8>,
+    ) -> Result<Self, crate::AgentRejection> {
+        if !peritus_model_protocol::is_event_archive_page(&encoded_page)
+            || u32::try_from(encoded_page.len()).is_err()
+        {
+            return Err(crate::AgentRejection::new(
+                crate::AgentErrorCode::ReplayMismatch,
+                crate::AgentOperation::Replay,
+                crate::AgentRecovery::RestartTurn,
+                "provider event replay capsule is not a representable history page",
+            ));
+        }
+        Ok(Self {
+            cursor,
+            event_digest,
+            output_bytes,
+            duplicate,
+            encoded_envelope: encoded_page,
+        })
     }
     #[must_use]
     pub const fn cursor(&self) -> u64 {
@@ -130,7 +189,7 @@ impl ProviderEventRecord {
     pub const fn duplicate(&self) -> bool {
         self.duplicate
     }
-    /// Borrows the exact canonical C5 envelope, empty only for synthetic pure-domain cases.
+    /// Borrows the replay capsule: a legacy envelope or authenticated page, empty only in tests.
     #[must_use]
     pub fn encoded_envelope(&self) -> &[u8] {
         &self.encoded_envelope

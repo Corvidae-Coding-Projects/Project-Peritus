@@ -123,6 +123,21 @@ pub fn decode_messages(
     Ok(messages)
 }
 
+pub(crate) fn decode_archived_messages(
+    reader: &mut CanonicalReader<'_>,
+    limits: ProtocolLimits,
+) -> Result<Vec<Message>, ProtocolError> {
+    // Role tag plus the content-block collection prefix are present in every message. The
+    // encoded extent and fallible allocation are the physical bounds; `ProtocolLimits` applies
+    // to each retained value, not to the lifetime history length.
+    let count = reader.read_collection_len(1 + 4).map_err(codec)?;
+    let mut messages = reader.reserve_collection(count).map_err(codec)?;
+    for _ in 0..count {
+        messages.push(content::message(reader, limits)?);
+    }
+    Ok(messages)
+}
+
 fn decode_tools(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,

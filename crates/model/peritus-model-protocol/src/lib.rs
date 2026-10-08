@@ -4,6 +4,7 @@
 //! credentials, transport handles, and tool authorization are deliberately outside this crate.
 
 pub mod bounds;
+mod archive;
 mod canonical;
 mod canonical_decode;
 pub mod capability;
@@ -29,6 +30,7 @@ pub mod verified;
 pub mod version;
 
 pub use bounds::ProtocolLimits;
+pub use archive::{HistoryArchiveIdentity, PhysicalPageCapacity};
 pub use canonical_decode::decode_request;
 pub use capability::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, CapabilityState,
@@ -42,7 +44,9 @@ pub use content::{
 pub use error::{ProtocolError, ProtocolErrorKind};
 pub use event::{EventEnvelope, ItemKind, ModelEvent, StreamFragment};
 pub use event_codec::{
-    EVENT_ENVELOPE_SCHEMA_VERSION, decode_event_envelope, encode_event_envelope,
+    EVENT_ENVELOPE_SCHEMA_VERSION, EventArchivePage, decode_event_archive_page,
+    decode_event_envelope, encode_event_archive_page, encode_event_envelope,
+    is_event_archive_page,
 };
 pub use failure::{FailureCategory, ModelFailure, OutcomeCertainty, Retryability, TransportPhase};
 pub use finish::{FinishReason, TerminalOutcome};
@@ -51,7 +55,10 @@ pub use identity::{
     RequestFingerprint, RequestId, ResponseId, ToolCallId, ToolName,
 };
 pub use message::{Message, Role};
-pub use message_codec::{decode_messages, encode_messages};
+pub use message_codec::{
+    MessageArchivePage, decode_message_archive_page, decode_messages,
+    encode_message_archive_page, encode_messages,
+};
 pub use rate_limit::{
     CacheObservation, CacheStatus, RateLimitDimension, RateLimitObservation, RateLimitWindow,
     ResetTime,
@@ -62,7 +69,8 @@ pub use request::{
     CachePolicy, Continuation, GenerationConfig, ModelRequest, PersistencePolicy, RequestOptions,
 };
 pub use retry::{
-    IdempotencyGuarantee, NoRetryReason, RetryCause, RetryDecision, RetryInput, plan_retry,
+    IdempotencyGuarantee, NoRetryReason, RetryCause, RetryDecision, RetryInput,
+    UnboundedRetryInput, plan_retry, plan_unbounded_retry,
 };
 pub use schema::{CanonicalJson, JsonBounds, JsonSchema, SchemaDialect};
 pub use tool::{

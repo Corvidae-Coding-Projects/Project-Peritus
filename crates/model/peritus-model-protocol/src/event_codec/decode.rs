@@ -217,10 +217,10 @@ fn extension_json(
 fn rate_limits(reader: &mut CanonicalReader<'_>) -> Result<RateLimitObservation, ProtocolError> {
     // Dimension tag and three option tags are present in every window.
     let count = reader.read_collection_len(4).map_err(read_codec)?;
-    if count == 0 || count > 64 {
+    if count == 0 {
         return Err(invalid(
             "canonical_event.rate_limits",
-            "rate-limit window count is outside its bound",
+            "rate-limit window collection is empty",
         ));
     }
     let mut windows = reader.reserve_collection(count).map_err(read_codec)?;

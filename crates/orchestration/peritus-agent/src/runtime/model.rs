@@ -152,6 +152,12 @@ impl ModelSession {
         self.fingerprint
     }
 
+    /// Returns the immutable C5 value limits used to validate this provider response.
+    #[must_use]
+    pub const fn limits(&self) -> ProtocolLimits {
+        self.limits
+    }
+
     /// Pulls at most one normalized event and retains it for durable recording.
     ///
     /// # Errors

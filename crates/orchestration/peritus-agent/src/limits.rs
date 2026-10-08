@@ -19,7 +19,10 @@ pub enum AgentLimitDimension {
 
 } // verus!
 
-/// Fully checked local D0 limits. These supplement, never replace, B1 budgets.
+/// Fully checked local D0 operation and physical-observation limits.
+///
+/// Legacy provider-event, output-byte, and transition fields remain canonically retained, but are
+/// not cumulative work allowances. Exact history and resumable progress continue across them.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(
     clippy::struct_field_names,
@@ -37,11 +40,13 @@ pub struct AgentLimits {
 
 impl AgentLimits {
     pub const HARD_MAX_TOOL_CALLS: u16 = 256;
-    pub const HARD_MAX_PROVIDER_EVENTS: u32 = 1_000_000;
+    /// Legacy counter representation maximum; provider progress is not admitted against it.
+    pub const HARD_MAX_PROVIDER_EVENTS: u32 = u32::MAX;
     pub const HARD_MAX_CONTEXT_CYCLES: u16 = 4_096;
     pub const HARD_MAX_BYTES: u64 = 64 * 1024 * 1024;
     pub const HARD_MAX_CONCURRENT_TOOL_CALLS: u16 = 32;
-    pub const HARD_MAX_TRANSITIONS: u32 = 1_000_000;
+    /// Legacy counter representation maximum; durable progress is not admitted against it.
+    pub const HARD_MAX_TRANSITIONS: u32 = u32::MAX;
 
     /// Creates limits without clamping invalid input.
     ///
@@ -61,17 +66,14 @@ impl AgentLimits {
         if max_tool_calls == 0
             || max_tool_calls > Self::HARD_MAX_TOOL_CALLS
             || max_provider_events == 0
-            || max_provider_events > Self::HARD_MAX_PROVIDER_EVENTS
             || max_context_cycles == 0
             || max_context_cycles > Self::HARD_MAX_CONTEXT_CYCLES
             || max_output_bytes == 0
-            || max_output_bytes > Self::HARD_MAX_BYTES
             || max_tool_result_bytes == 0
             || max_tool_result_bytes > Self::HARD_MAX_BYTES
             || max_concurrent_tool_calls == 0
             || max_concurrent_tool_calls > Self::HARD_MAX_CONCURRENT_TOOL_CALLS
             || max_transitions == 0
-            || max_transitions > Self::HARD_MAX_TRANSITIONS
         {
             Err(AgentRejection::new(
                 AgentErrorCode::InvalidLimit,
@@ -169,9 +171,11 @@ impl AgentCounters {
         self.transitions
     }
 
-    pub(crate) fn transition(&mut self, limits: AgentLimits) -> Result<(), AgentRejection> {
-        self.transitions = checked_u32(self.transitions, 1, AgentLimitDimension::Transitions)?;
-        check(self.transitions <= limits.max_transitions, AgentLimitDimension::Transitions)
+    pub(crate) fn transition(&mut self, _limits: AgentLimits) -> Result<(), AgentRejection> {
+        // This is an inert telemetry projection. The durable sequence and page chain remain exact
+        // after the legacy-width counter reaches its representational maximum.
+        self.transitions = self.transitions.saturating_add(1);
+        Ok(())
     }
 
     pub(crate) fn context_cycle(&mut self, limits: AgentLimits) -> Result<(), AgentRejection> {
@@ -185,15 +189,12 @@ impl AgentCounters {
         bytes: u64,
         limits: AgentLimits,
     ) -> Result<(), AgentRejection> {
-        self.provider_events =
-            checked_u32(self.provider_events, 1, AgentLimitDimension::ProviderEvents)?;
-        self.output_bytes =
-            checked_u64(self.output_bytes, bytes, AgentLimitDimension::OutputBytes)?;
-        check(
-            self.provider_events <= limits.max_provider_events,
-            AgentLimitDimension::ProviderEvents,
-        )?;
-        check(self.output_bytes <= limits.max_output_bytes, AgentLimitDimension::OutputBytes)
+        // `max_output_bytes` is the explicit capacity for one physical observation. The counters
+        // are inert legacy-width projections, never cumulative admission controls.
+        check(bytes <= limits.max_output_bytes, AgentLimitDimension::OutputBytes)?;
+        self.provider_events = self.provider_events.saturating_add(1);
+        self.output_bytes = self.output_bytes.saturating_add(bytes);
+        Ok(())
     }
 
     pub(crate) fn add_tools(
