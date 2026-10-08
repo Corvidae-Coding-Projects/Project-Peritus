@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3939,
-        "tip_oid": "3e5595b33e6c522ff7d63b994d7bd3506678df4b",
-        "prefix_sha256": "ce65b0f7e7b33154e5a752e1140deebff390a17194862579d3247242e7cd6116"
+        "sequence": 3940,
+        "tip_oid": "db0fb92b3607f7d206dc260cd167dd9972d1e6e5",
+        "prefix_sha256": "c9e2244f045d8d9b6b51fd84d51c189a18dbd44b87376b50b98aac1f9cdf59e3"
       },
       "NWAR": {
         "sequence": 39,
@@ -28684,12 +28684,13 @@
       "display_id": 662,
       "title": "[L606] Windows preparation consumes channel owners before later fallible compilation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L606.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/channels.rs:33-53,63-85,117-170,173-184`; `src/preparation.rs:125-204,330-353`; `src/config.rs:44-56` in the same crate.\n- Behavior: Managed proxy and secret preparations are taken from configuration before their preparation and staging succeed. Network preparation precedes secrets; terminal/resource/manifest/launch validation and native ACL installation follow channel allocation. A configured proxy forbids deny-all plans; configured secrets forbid secret-free plans. File-delivered material is reread in full. Errors replace the underlying proxy, lease, handle, and file failures with generic cancel-and-reap diagnostics.\n- Consequence: Exact preparation cannot simply retry after a transient downstream failure, and a general configured backend cannot handle plans omitting its optional channel requirements. Late failure relies on best-effort owner destruction rather than a durable preparation rollback transaction.\n- Repair direction: Preflight selected paths and all representation gates before consuming channel preparations, then retain a durable staged transaction with retryable ownership and underlying error evidence.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.241105900Z",
-      "updated_at": "2026-10-08T01:20:51.293867002Z",
+      "updated_at": "2026-10-08T01:22:17.697512402Z",
+      "closed_at": "2026-10-08T01:22:17.694685519Z",
       "labels": [
         "daily-driving-limiter"
       ],
