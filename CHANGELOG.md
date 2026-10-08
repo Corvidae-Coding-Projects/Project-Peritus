@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L466] Provider-core metadata and credential bounds are compiled independently (#544)
 - [L049] Developer-loop admission and generation ceilings (#148)
 - [L465] C5 exponential retry backoff can wrap to zero despite a positive minimum (#543)
 - [L629] Malformed projection metadata bypasses the advertised reasoned rebuild plan (#683)
