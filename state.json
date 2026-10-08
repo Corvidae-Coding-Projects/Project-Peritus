@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4035,
-        "tip_oid": "c4bf87a673136377cdd9cb33e0464352dfb711d3",
-        "prefix_sha256": "60295978fb6ddb9591b3dd49c02a330871e06b1b52c8fbcd6500829c8d8e0fab"
+        "sequence": 4036,
+        "tip_oid": "9c811d5bf636be4d44e5066f928b944cc0e87493",
+        "prefix_sha256": "4f9fd0311df3a387690e2dc7b60fe359fd1b2817455e9aee9bba8b39c0dab3d4"
       },
       "NWAR": {
         "sequence": 39,
@@ -16736,12 +16736,13 @@
       "display_id": 676,
       "title": "[L621] Evidence and bundle limits reject legitimate scale, sometimes after output has already been written",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L621.\n\n- Evidence: `crates/state/peritus-evidence/src/record.rs:10-13,58-69,103-110`; `src/manifest.rs:12,198-275`; `src/bundle/plan.rs:20-65,94-191,206-238`; `src/bundle/assemble.rs:43-70,80-119,137-159`; `src/bundle/verify.rs:15,54-75,227-275` in the same crate.\n- Behavior: Evidence caps artifact and cause lists at 4,096 and canonical tags at 64 bytes. Bundle defaults require positive finite limits: 4,096 entries per section, 1 GiB per entry, and 4 GiB total. The manifest independently hard-caps sections at 4,096, so increasing the public entry limit cannot raise the portable bound. Planning loads/verifies requested records and artifacts before its count rejection; it does not establish entry/total byte feasibility. Assembly writes earlier sections and artifact headers before late size/hash/total failures. Portable metadata has a separate fixed 32 MiB reader cap; sized reads allocate their vector before the total-byte check.\n- Consequence: Large valid work can fail late despite successful planning and leave partial caller-owned output. These are per-record/export bounds rather than session expiry; their fixed format ceiling and configurable operational budgets are presently conflated.\n- Repair direction: Version or stream large collections; preflight the exact serialized byte plan, publish completed output atomically, and expose resumable export cursors instead of forcing whole-export failure. Check remaining budgets before allocation. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.307165130Z",
-      "updated_at": "2026-10-08T03:59:43.486973834Z",
+      "updated_at": "2026-10-08T04:01:24.265131204Z",
+      "closed_at": "2026-10-08T04:01:24.262367600Z",
       "labels": [
         "daily-driving-limiter"
       ],
