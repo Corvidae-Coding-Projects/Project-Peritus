@@ -32,6 +32,7 @@ pub struct OpenAiStream {
     body: Box<dyn ByteStream>,
     parser: SseParser,
     pending: VecDeque<EventEnvelope>,
+    staged_terminal: Option<EventEnvelope>,
     local_sequence: u64,
     terminal: bool,
     body_finished: bool,
@@ -350,6 +351,7 @@ impl OpenAiStream {
             body,
             parser: SseParser::new(framing_limits),
             pending: VecDeque::new(),
+            staged_terminal: None,
             local_sequence: 0,
             terminal: false,
             body_finished: false,
@@ -380,6 +382,7 @@ impl OpenAiStream {
             body,
             parser: SseParser::new(framing_limits),
             pending: VecDeque::new(),
+            staged_terminal: None,
             local_sequence: restored.local_sequence,
             terminal: false,
             body_finished: false,
@@ -407,7 +410,8 @@ impl OpenAiStream {
         Ok(Self {
             body: Box::new(body),
             parser: SseParser::new(FramingLimits::PRODUCTION),
-            pending: VecDeque::from([envelope]),
+            pending: VecDeque::new(),
+            staged_terminal: Some(envelope),
             local_sequence: 1,
             terminal: true,
             body_finished: true,
@@ -452,27 +456,84 @@ impl OpenAiStream {
         digest: peritus_types::Sha256Digest,
         event: ModelEvent,
     ) -> Result<(), ProviderCoreError> {
-        self.local_sequence = self
-            .local_sequence
-            .checked_add(1)
-            .ok_or_else(|| error::limit("local event sequence overflowed"))?;
         let terminal = matches!(
             event,
             ModelEvent::ResponseCompleted
                 | ModelEvent::ResponseFailed(_)
                 | ModelEvent::ResponseCancelled
         );
+        if self.terminal && !terminal {
+            return Err(error::malformed("OpenAI event followed a terminal event"));
+        }
+        let sequence = if terminal {
+            if let Some(staged) = &self.staged_terminal {
+                staged.sequence()
+            } else {
+                if self.terminal {
+                    return Err(error::malformed("OpenAI terminal event was duplicated"));
+                }
+                self.local_sequence = self
+                    .local_sequence
+                    .checked_add(1)
+                    .ok_or_else(|| error::limit("local event sequence overflowed"))?;
+                self.local_sequence
+            }
+        } else {
+            self.local_sequence = self
+                .local_sequence
+                .checked_add(1)
+                .ok_or_else(|| error::limit("local event sequence overflowed"))?;
+            self.local_sequence
+        };
         let envelope = EventEnvelope::new(
-            self.local_sequence,
+            sequence,
             provider_sequence,
             provider_event_id,
             digest,
             event,
         )
         .map_err(|_| error::malformed("normalized OpenAI event was invalid"))?;
-        self.pending.push_back(envelope);
-        self.terminal |= terminal;
+        if terminal {
+            let replace_completion = self.staged_terminal.as_ref().is_some_and(|staged| {
+                matches!(staged.event(), ModelEvent::ResponseCompleted)
+                    && !matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            });
+            let duplicate_completion = self.staged_terminal.as_ref().is_some_and(|staged| {
+                matches!(staged.event(), ModelEvent::ResponseCompleted)
+                    && matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            });
+            if duplicate_completion {
+                return Err(error::malformed("OpenAI completed more than once"));
+            }
+            if self.staged_terminal.is_none() || replace_completion {
+                self.staged_terminal = Some(envelope);
+            }
+            self.terminal = true;
+        } else {
+            self.pending.push_back(envelope);
+        }
         Ok(())
+    }
+
+    fn can_accept_cancellation(&self) -> bool {
+        !self.terminal
+            || self.staged_terminal.as_ref().is_some_and(|envelope| {
+                matches!(envelope.event(), ModelEvent::ResponseCompleted)
+            })
+    }
+
+    fn cancel_unpublished(&mut self) -> Result<bool, ProviderCoreError> {
+        if !self.can_accept_cancellation() {
+            return Ok(false);
+        }
+        self.body_finished = true;
+        self.enqueue(
+            None,
+            None,
+            peritus_codec::sha256(b"openai-local-cancellation"),
+            ModelEvent::ResponseCancelled,
+        )?;
+        Ok(true)
     }
 
     fn fail_incomplete(&mut self, code: &'static str) -> Result<(), ProviderCoreError> {
@@ -557,7 +618,14 @@ impl ModelStream for OpenAiStream {
     ) -> BoxFuture<'a, Result<Option<EventEnvelope>, ProviderCoreError>> {
         Box::pin(async move {
             loop {
+                if cancellation.is_cancelled() {
+                    let _ = self.cancel_unpublished()?;
+                }
                 if let Some(event) = self.pending.pop_front() {
+                    return Ok(Some(event));
+                }
+                if let Some(event) = self.staged_terminal.take() {
+                    self.body_finished = true;
                     return Ok(Some(event));
                 }
                 if self.terminal || self.body_finished {
@@ -606,6 +674,7 @@ impl fmt::Debug for OpenAiStream {
             .debug_struct("OpenAiStream")
             .field("local_sequence", &self.local_sequence)
             .field("pending_events", &self.pending.len())
+            .field("staged_terminal", &self.staged_terminal.is_some())
             .field("terminal", &self.terminal)
             .field("body_finished", &self.body_finished)
             .field("body", &"[private byte stream]")
