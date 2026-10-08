@@ -555,6 +555,24 @@ fn bind_store(connection: &Connection, store_id: StoreId) -> Result<(), JournalE
             })?;
         version = 6;
     }
+    if version == 6 {
+        // Version seven extends persistent transport delivery to F0 publication directives.
+        // Existing campaign-decision and harness-activation rows retain their exact identity,
+        // payload, producing position, attempt count, and fence; unacknowledged legacy
+        // exhaustion becomes pending in place.
+        connection
+            .execute_batch(
+                "UPDATE outbox
+                    SET persistent = 1,
+                        state = CASE WHEN state = 4 THEN 1 ELSE state END
+                  WHERE destination = 'peritus.evolution.publish.v1';
+                 UPDATE store_meta SET schema_version = 7 WHERE singleton = 1;",
+            )
+            .map_err(|error| {
+                JournalError::sqlite("publish evolution persistent-outbox migration", error)
+            })?;
+        version = 7;
+    }
     if version != super::schema::SCHEMA_VERSION {
         return Err(JournalError::new(
             JournalErrorKind::UnsupportedSchema,

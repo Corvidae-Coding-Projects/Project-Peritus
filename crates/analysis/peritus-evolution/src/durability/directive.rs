@@ -14,7 +14,6 @@ use crate::{
 
 /// Transactional outbox destination for F0 evidence publication.
 pub const EVOLUTION_PUBLICATION_DESTINATION: &str = "peritus.evolution.publish.v1";
-const MAX_ATTEMPTS: u16 = 16;
 const DOMAIN: &[u8] = b"PERITUS-F0-PUBLICATION-DIRECTIVE\0";
 
 /// Closed publication class.
@@ -248,11 +247,10 @@ pub(super) fn pointer_outbox(
 }
 
 fn draft(value: EvolutionPublicationDirective) -> Result<OutboxDraft, EvolutionError> {
-    OutboxDraft::new(
+    OutboxDraft::persistent(
         value.outbox_id()?,
         EVOLUTION_PUBLICATION_DESTINATION.to_owned(),
         value.canonical_bytes(),
-        MAX_ATTEMPTS,
     )
     .map_err(|_| protocol("publication outbox draft is invalid"))
 }

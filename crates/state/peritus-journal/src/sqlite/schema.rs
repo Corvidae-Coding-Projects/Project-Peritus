@@ -1,6 +1,6 @@
 //! Complete initial release schema. Unshipped development revisions are not migration targets.
 
-pub(super) const SCHEMA_VERSION: i64 = 6;
+pub(super) const SCHEMA_VERSION: i64 = 7;
 
 pub(super) const INSTALL_SCHEMA: &str = r"
 CREATE TABLE IF NOT EXISTS store_meta (
