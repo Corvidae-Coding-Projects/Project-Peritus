@@ -1,10 +1,13 @@
 //! Heterogeneous output-item, content-part, reasoning, and tool-fragment normalization.
 
-use peritus_model_protocol::{ItemId, ItemKind, ModelEvent, StreamFragment, ToolCallId, ToolName};
-use peritus_provider_core::ProviderCoreError;
+use peritus_model_protocol::{
+    CanonicalJson, ExtensionName, ItemId, ItemKind, JsonBounds, ModelEvent, ProtocolLimits,
+    ProviderExtension, StreamFragment, ToolCallId, ToolName,
+};
+use peritus_provider_core::{ProviderCoreError, healing::StructuredOutputBuffer};
 use serde_json::Value;
 
-use super::{OpenAiStream, state};
+use super::{OpenAiStream, identity, state};
 use crate::error;
 
 impl OpenAiStream {
@@ -15,8 +18,6 @@ impl OpenAiStream {
         let output_index = u32_field(value, "output_index")?;
         let item = object_field(value, "item")?;
         let wire_id = string_field(item, "id")?;
-        let normalized_id = ItemId::new(wire_id.to_owned())
-            .map_err(|_| error::malformed("OpenAI output item identity is invalid"))?;
         let item_type = string_field(item, "type")?;
         let kind = match item_type {
             "message" => ItemKind::Message,
@@ -25,11 +26,27 @@ impl OpenAiStream {
             known if provider_native_item(known) => ItemKind::ProviderNative,
             _ => return Err(error::malformed("unknown correctness-critical OpenAI item type")),
         };
+        let preferred = identity::item_id(wire_id, "")?;
+        let normalized_id = if kind == ItemKind::Message {
+            preferred
+        } else {
+            self.claim_item_id(wire_id, "", preferred)?
+        };
         let mut events = Vec::new();
-        if kind != ItemKind::Message {
+        if kind == ItemKind::Message {
+            events = Self::ancillary(value)?;
+        } else {
+            let index = self
+                .state
+                .normalized_index(state::NormalizedCoordinate::Output(output_index))
+                .ok_or_else(|| error::limit("OpenAI normalized item indexes were exhausted"))?;
+            let legacy_index = output_index.checked_mul(65_536);
+            if normalized_id.expose_for_wire() != wire_id || legacy_index != Some(index) {
+                events = Self::ancillary(value)?;
+            }
             events.push(ModelEvent::ItemStarted {
                 item_id: normalized_id.clone(),
-                index: normalized_index(output_index, 0)?,
+                index,
                 kind,
             });
         }
@@ -55,10 +72,13 @@ impl OpenAiStream {
                 kind,
                 call_id,
                 call_name,
-                arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                arguments: peritus_provider_core::healing::ToolArgumentBuffer::new(),
+                final_arguments: None,
                 argument_progress_revision: 0,
                 arguments_done: false,
                 completed: false,
+                parts_started: 0,
+                parts_completed: 0,
             },
         );
         if !inserted {
@@ -91,7 +111,20 @@ impl OpenAiStream {
             "refusal" => ItemKind::Refusal,
             _ => return Err(error::malformed("unknown OpenAI message content-part type")),
         };
-        let normalized_id = normalized_part_id(wire_id, content_index)?;
+        let suffix = if content_index == 0 {
+            String::new()
+        } else {
+            format!("-part-{content_index}")
+        };
+        let preferred = identity::item_id(wire_id, &suffix)?;
+        let normalized_id = self.claim_item_id(wire_id, &suffix, preferred)?;
+        let index = self
+            .state
+            .normalized_index(state::NormalizedCoordinate::Content {
+                output: output_index,
+                content: content_index,
+            })
+            .ok_or_else(|| error::limit("OpenAI normalized content indexes were exhausted"))?;
         let inserted = self.state.insert_part(
             wire_id.to_owned(),
             content_index,
@@ -100,7 +133,10 @@ impl OpenAiStream {
                 output_index,
                 content_index,
                 kind,
-                bytes: Vec::new(),
+                observed: state::ObservedValue::new(),
+                validated: state::ObservedValue::new(),
+                structured: (kind == ItemKind::StructuredOutput)
+                    .then(StructuredOutputBuffer::new),
                 progress_revision: 0,
                 value_done: false,
                 completed: false,
@@ -109,11 +145,21 @@ impl OpenAiStream {
         if !inserted {
             return Err(error::malformed("OpenAI content part was added more than once"));
         }
-        Ok(vec![ModelEvent::ItemStarted {
-            item_id: normalized_id,
-            index: normalized_index(output_index, content_index)?,
-            kind,
-        }])
+        let legacy_index = output_index
+            .checked_mul(65_536)
+            .and_then(|base| base.checked_add(content_index));
+        let retained_legacy_id = normalized_id
+            .expose_for_wire()
+            .strip_prefix(wire_id)
+            .is_some_and(|tail| tail == suffix.as_str());
+        let mut events = if !retained_legacy_id || legacy_index != Some(index)
+        {
+            Self::ancillary(value)?
+        } else {
+            Vec::new()
+        };
+        events.push(ModelEvent::ItemStarted { item_id: normalized_id, index, kind });
+        Ok(events)
     }
 
     pub(super) fn content_delta(
@@ -122,7 +168,7 @@ impl OpenAiStream {
         refusal: bool,
     ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let (wire_id, output_index, content_index) = content_coordinates(value)?;
-        let delta = string_field(value, "delta")?.as_bytes();
+        let delta = string_field_allow_empty(value, "delta")?.as_bytes();
         let limits = self.limits;
         let part = self
             .state
@@ -136,8 +182,15 @@ impl OpenAiStream {
         {
             return Err(error::malformed("OpenAI content delta targeted an incompatible part"));
         }
-        append_bounded(&mut part.bytes, delta, limits.max_output_bytes())?;
+        part.observed.observe(delta, limits.max_output_bytes())?;
         if part.kind == ItemKind::StructuredOutput {
+            part.structured
+                .as_mut()
+                .ok_or_else(|| error::malformed("OpenAI structured buffer was unavailable"))?
+                .append(delta, limits)?;
+            if delta.is_empty() {
+                return Self::ancillary(value);
+            }
             part.progress_revision = part.progress_revision.checked_add(1).ok_or_else(|| {
                 error::limit("OpenAI structured progress revision overflowed")
             })?;
@@ -148,6 +201,9 @@ impl OpenAiStream {
                 revision: part.progress_revision,
                 fragment,
             }]);
+        }
+        if delta.is_empty() {
+            return Self::ancillary(value);
         }
         let fragment = StreamFragment::new(delta.to_vec(), limits)
             .map_err(|_| error::limit("OpenAI content fragment exceeds protocol limits"))?;
@@ -166,27 +222,46 @@ impl OpenAiStream {
     ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let (wire_id, output_index, content_index) = content_coordinates(value)?;
         let field = if refusal { "refusal" } else { "text" };
-        let complete = string_field(value, field)?.as_bytes();
-        let part = self
-            .state
-            .part_mut(wire_id, content_index)
-            .ok_or_else(|| error::malformed("OpenAI content done preceded content-part start"))?;
-        if part.output_index != output_index
-            || refusal != (part.kind == ItemKind::Refusal)
-            || part.value_done
-            || part.bytes != complete
-        {
-            return Err(error::malformed("OpenAI finalized content contradicted its deltas"));
+        let complete = string_field_allow_empty(value, field)?.as_bytes();
+        let limits = self.limits;
+        let (completion, marker) = {
+            let part = self
+                .state
+                .part_mut(wire_id, content_index)
+                .ok_or_else(|| error::malformed("OpenAI content done preceded content-part start"))?;
+            if part.output_index != output_index
+                || refusal != (part.kind == ItemKind::Refusal)
+                || part.value_done
+                || !part.observed.matches_bytes(complete)
+            {
+                return Err(error::malformed("OpenAI finalized content contradicted its deltas"));
+            }
+            part.value_done = true;
+            if part.kind == ItemKind::StructuredOutput {
+                let buffer = part.structured.take().ok_or_else(|| {
+                    error::malformed("OpenAI structured completion lost its buffer")
+                })?;
+                (
+                    Some(buffer.into_completion(part.normalized_id.clone(), limits)?),
+                    None,
+                )
+            } else {
+                (
+                    None,
+                    Some(content_done_marker(
+                        &part.normalized_id,
+                        output_index,
+                        part.observed.byte_len(),
+                        part.observed.sha256(),
+                        limits,
+                    )?),
+                )
+            }
+        };
+        if let Some(cursor) = completion {
+            self.stage_completion(cursor)?;
         }
-        part.value_done = true;
-        if part.kind == ItemKind::StructuredOutput {
-            return peritus_provider_core::healing::structured_output(
-                &part.bytes,
-                &part.normalized_id,
-                self.limits,
-            );
-        }
-        Ok(Vec::new())
+        Ok(marker.into_iter().collect())
     }
 
     pub(super) fn content_part_done(
@@ -194,15 +269,21 @@ impl OpenAiStream {
         value: &Value,
     ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let (wire_id, output_index, content_index) = content_coordinates(value)?;
-        let part = self
-            .state
-            .part_mut(wire_id, content_index)
-            .ok_or_else(|| error::malformed("OpenAI content-part done preceded start"))?;
-        if part.output_index != output_index || !part.value_done || part.completed {
-            return Err(error::malformed("OpenAI content-part terminal was inconsistent"));
+        let normalized = {
+            let part = self
+                .state
+                .part_mut(wire_id, content_index)
+                .ok_or_else(|| error::malformed("OpenAI content-part done preceded start"))?;
+            if part.output_index != output_index || !part.value_done || part.completed {
+                return Err(error::malformed("OpenAI content-part terminal was inconsistent"));
+            }
+            part.completed = true;
+            part.normalized_id.clone()
+        };
+        if !self.state.record_part_completion(wire_id) {
+            return Err(error::malformed("OpenAI content completion accounting changed"));
         }
-        part.completed = true;
-        Ok(vec![ModelEvent::ItemCompleted(part.normalized_id.clone())])
+        Ok(vec![ModelEvent::ItemCompleted(normalized)])
     }
 
     pub(super) fn tool_delta(
@@ -211,7 +292,7 @@ impl OpenAiStream {
     ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let wire_id = string_field(value, "item_id")?;
         let output_index = u32_field(value, "output_index")?;
-        let delta = string_field(value, "delta")?.as_bytes();
+        let delta = string_field_allow_empty(value, "delta")?.as_bytes();
         let limits = self.limits;
         let item = self
             .state
@@ -225,6 +306,9 @@ impl OpenAiStream {
             return Err(error::malformed("OpenAI tool delta targeted an incompatible item"));
         }
         item.arguments.append(delta, limits)?;
+        if delta.is_empty() {
+            return Self::ancillary(value);
+        }
         item.argument_progress_revision = item
             .argument_progress_revision
             .checked_add(1)
@@ -249,28 +333,33 @@ impl OpenAiStream {
         let wire_id = string_field(value, "item_id")?;
         let output_index = u32_field(value, "output_index")?;
         let arguments = string_field_any(value, &["arguments", "input"])?;
-        let item = self
-            .state
-            .item_mut(wire_id)
-            .ok_or_else(|| error::malformed("OpenAI tool done preceded its item"))?;
-        if item.kind != ItemKind::ToolCall
-            || item.output_index != output_index
-            || item.arguments_done
-            || item.arguments.as_bytes() != arguments.as_bytes()
-        {
-            return Err(error::malformed("OpenAI finalized tool input contradicted its deltas"));
-        }
-        if let Some(name) = value.get("name").and_then(Value::as_str)
-            && item.call_name.as_ref().is_none_or(|known| known.as_str() != name)
-        {
-            return Err(error::malformed("OpenAI finalized tool name changed"));
-        }
-        item.arguments_done = true;
-        let call_id = item
-            .call_id
-            .as_ref()
-            .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
-        item.arguments.complete(call_id, self.limits)
+        let limits = self.limits;
+        let cursor = {
+            let item = self
+                .state
+                .item_mut(wire_id)
+                .ok_or_else(|| error::malformed("OpenAI tool done preceded its item"))?;
+            if item.kind != ItemKind::ToolCall
+                || item.output_index != output_index
+                || item.arguments_done
+                || item.arguments.as_bytes() != arguments.as_bytes()
+            {
+                return Err(error::malformed("OpenAI finalized tool input contradicted its deltas"));
+            }
+            if let Some(name) = value.get("name").and_then(Value::as_str)
+                && item.call_name.as_ref().is_none_or(|known| known.as_str() != name)
+            {
+                return Err(error::malformed("OpenAI finalized tool name changed"));
+            }
+            item.arguments_done = true;
+            let call_id = item
+                .call_id
+                .clone()
+                .ok_or_else(|| error::malformed("OpenAI tool item omitted its call identity"))?;
+            core::mem::take(&mut item.arguments).into_completion(call_id, limits)?
+        };
+        self.stage_completion(cursor)?;
+        Ok(Vec::new())
     }
 
     pub(super) fn reasoning_delta(
@@ -279,13 +368,16 @@ impl OpenAiStream {
     ) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let wire_id = string_field(value, "item_id")?;
         let output_index = u32_field(value, "output_index")?;
-        let delta = string_field(value, "delta")?.as_bytes();
+        let delta = string_field_allow_empty(value, "delta")?.as_bytes();
         let item = self
             .state
             .item(wire_id)
             .ok_or_else(|| error::malformed("OpenAI reasoning delta preceded its item"))?;
         if item.kind != ItemKind::Reasoning || item.output_index != output_index || item.completed {
             return Err(error::malformed("OpenAI reasoning delta targeted an incompatible item"));
+        }
+        if delta.is_empty() {
+            return Self::ancillary(value);
         }
         let fragment = StreamFragment::new(delta.to_vec(), self.limits)
             .map_err(|_| error::limit("OpenAI reasoning fragment exceeds protocol limits"))?;
@@ -321,25 +413,54 @@ impl OpenAiStream {
             }
             ItemKind::Reasoning => {
                 if let Some(encrypted) = wire.get("encrypted_content").and_then(Value::as_str) {
-                    let fragment = StreamFragment::new(encrypted.as_bytes().to_vec(), limits)
-                        .map_err(|_| error::limit("OpenAI reasoning replay exceeds limits"))?;
-                    events.push(ModelEvent::ReasoningReplayDelta {
-                        item_id: item.normalized_id.clone(),
-                        fragment,
-                    });
+                    if encrypted.len() > limits.max_extension_bytes() {
+                        return Err(error::limit(
+                            "OpenAI reasoning replay exceeds its extension bound",
+                        ));
+                    }
+                    if !encrypted.is_empty() {
+                        let fragment = StreamFragment::new(encrypted.as_bytes().to_vec(), limits)
+                            .map_err(|_| error::limit("OpenAI reasoning replay exceeds limits"))?;
+                        events.push(ModelEvent::ReasoningReplayDelta {
+                            item_id: item.normalized_id.clone(),
+                            fragment,
+                        });
+                    }
                 }
                 events.push(ModelEvent::ItemCompleted(item.normalized_id.clone()));
             }
             ItemKind::ProviderNative | ItemKind::ToolCall => {
                 events.push(ModelEvent::ItemCompleted(item.normalized_id.clone()));
             }
-            ItemKind::Message => {}
+            ItemKind::Message => {
+                events.push(message_done_marker(
+                    &item.normalized_id,
+                    output_index,
+                    limits,
+                )?);
+            }
             ItemKind::StructuredOutput | ItemKind::Refusal => {
                 return Err(error::malformed("invalid OpenAI output item state"));
             }
         }
         item.completed = true;
         Ok(events)
+    }
+
+    fn claim_item_id(
+        &mut self,
+        wire_id: &str,
+        suffix: &str,
+        preferred: ItemId,
+    ) -> Result<ItemId, ProviderCoreError> {
+        if self.state.claim_normalized_id(preferred.clone()) {
+            return Ok(preferred);
+        }
+        let derived = identity::derived_item_id(wire_id, suffix)?;
+        if derived == preferred || !self.state.claim_normalized_id(derived.clone()) {
+            return Err(error::malformed("OpenAI normalized item identity collided"));
+        }
+        Ok(derived)
     }
 }
 
@@ -351,33 +472,50 @@ fn content_coordinates(value: &Value) -> Result<(&str, u32, u32), ProviderCoreEr
     ))
 }
 
-fn normalized_part_id(wire_id: &str, content_index: u32) -> Result<ItemId, ProviderCoreError> {
-    let value = if content_index == 0 {
-        wire_id.to_owned()
-    } else {
-        format!("{wire_id}-part-{content_index}")
-    };
-    ItemId::new(value)
-        .map_err(|_| error::malformed("OpenAI normalized content identity is invalid"))
+fn content_done_marker(
+    item_id: &ItemId,
+    output_index: u32,
+    observed_bytes: usize,
+    observed_digest: peritus_types::Sha256Digest,
+    limits: ProtocolLimits,
+) -> Result<ModelEvent, ProviderCoreError> {
+    let observed_bytes = u64::try_from(observed_bytes)
+        .map_err(|_| error::limit("OpenAI observed content length exceeded u64"))?;
+    state_marker(
+        serde_json::json!({
+            "type": "content_done_v1",
+            "item_id": item_id.expose_for_wire(),
+            "output_index": output_index,
+            "observed_bytes": observed_bytes,
+            "observed_sha256": observed_digest.as_bytes(),
+        }),
+        limits,
+    )
 }
 
-fn normalized_index(output_index: u32, content_index: u32) -> Result<u32, ProviderCoreError> {
-    output_index
-        .checked_mul(65_536)
-        .and_then(|value| value.checked_add(content_index))
-        .ok_or_else(|| error::limit("OpenAI item/content index exceeds normalized bounds"))
+fn message_done_marker(
+    item_id: &ItemId,
+    output_index: u32,
+    limits: ProtocolLimits,
+) -> Result<ModelEvent, ProviderCoreError> {
+    state_marker(
+        serde_json::json!({
+            "type": "message_done_v1",
+            "item_id": item_id.expose_for_wire(),
+            "output_index": output_index,
+        }),
+        limits,
+    )
 }
 
-fn append_bounded(
-    target: &mut Vec<u8>,
-    bytes: &[u8],
-    maximum: usize,
-) -> Result<(), ProviderCoreError> {
-    if target.len().checked_add(bytes.len()).is_none_or(|total| total > maximum) {
-        return Err(error::limit("OpenAI fragmented output exceeds its aggregate bound"));
-    }
-    target.extend_from_slice(bytes);
-    Ok(())
+fn state_marker(value: Value, limits: ProtocolLimits) -> Result<ModelEvent, ProviderCoreError> {
+    let serialized = serde_json::to_string(&value)
+        .map_err(|_| error::malformed("OpenAI state marker serialization failed"))?;
+    let value = CanonicalJson::parse(&serialized, JsonBounds::extension(limits))
+        .map_err(|_| error::limit("OpenAI state marker exceeded protocol bounds"))?;
+    let name = ExtensionName::new("openai.state".to_owned())
+        .map_err(|_| error::malformed("static OpenAI state extension identity was invalid"))?;
+    Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)))
 }
 
 fn provider_native_item(value: &str) -> bool {
@@ -405,6 +543,16 @@ fn string_field<'a>(value: &'a Value, name: &str) -> Result<&'a str, ProviderCor
         .get(name)
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
+        .ok_or_else(|| error::malformed("OpenAI event omitted a required string"))
+}
+
+fn string_field_allow_empty<'a>(
+    value: &'a Value,
+    name: &str,
+) -> Result<&'a str, ProviderCoreError> {
+    value
+        .get(name)
+        .and_then(Value::as_str)
         .ok_or_else(|| error::malformed("OpenAI event omitted a required string"))
 }
 

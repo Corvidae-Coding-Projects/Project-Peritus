@@ -34,7 +34,7 @@ impl OpenAiStream {
             .ok_or_else(|| error::malformed("OpenAI SSE event omitted its sequence number"))?;
         let digest = peritus_codec::sha256(frame.data().as_bytes());
         let event_id = event_identity(frame, provider_sequence)?;
-        match self.state.observe_sequence(provider_sequence, digest) {
+        match self.state.sequence(provider_sequence, digest) {
             SequenceDisposition::Conflict => {
                 return Err(error::malformed("OpenAI provider sequence was reordered or reused"));
             }
@@ -49,14 +49,41 @@ impl OpenAiStream {
             }
             SequenceDisposition::New => {}
         }
+        if self.mapped_completion.is_some() {
+            return Err(error::malformed(
+                "OpenAI buffered completion leaked across provider frames",
+            ));
+        }
         let mut events = self.map_event(event_type, &value)?;
-        if events.is_empty() {
+        let completion = self.take_mapped_completion();
+        if completion.is_some() && !events.is_empty() {
+            return Err(error::malformed(
+                "OpenAI frame mixed buffered completion with immediate events",
+            ));
+        }
+        if events.is_empty() && completion.is_none() {
             events = Self::ancillary(&value)?;
+        }
+        if let Some(mut cursor) = completion {
+            self.reconcile_restored_completion(digest, &mut cursor)?;
+            if cursor.remaining_events() == 0 {
+                self.enqueue(
+                    Some(provider_sequence),
+                    Some(event_id),
+                    digest,
+                    ModelEvent::Heartbeat,
+                )?;
+            } else {
+                self.defer_completion(cursor, provider_sequence, event_id, digest)?;
+            }
+            self.state.commit_sequence(provider_sequence, digest);
+            return Ok(());
         }
         let events = self.reconcile_restored_frame(digest, events)?;
         let cursor_index = events.len().checked_sub(1).ok_or_else(|| {
             error::malformed("OpenAI frame produced no normalized continuation boundary")
         })?;
+        self.admit_events(events.len())?;
         for (index, event) in events.into_iter().enumerate() {
             self.enqueue(
                 (index == cursor_index).then_some(provider_sequence),
@@ -64,6 +91,27 @@ impl OpenAiStream {
                 digest,
                 event,
             )?;
+        }
+        self.state.commit_sequence(provider_sequence, digest);
+        Ok(())
+    }
+
+    fn reconcile_restored_completion(
+        &mut self,
+        digest: peritus_types::Sha256Digest,
+        cursor: &mut peritus_provider_core::healing::JsonCompletionCursor,
+    ) -> Result<(), ProviderCoreError> {
+        for persisted in core::mem::take(&mut self.restored_partial) {
+            let decoded = cursor.next_event()?.ok_or_else(|| {
+                error::malformed(
+                    "resumed OpenAI completion ended before its persisted partial prefix",
+                )
+            })?;
+            if persisted.provider_digest() != digest || persisted.event() != &decoded {
+                return Err(error::malformed(
+                    "resumed OpenAI completion contradicted its persisted partial prefix",
+                ));
+            }
         }
         Ok(())
     }

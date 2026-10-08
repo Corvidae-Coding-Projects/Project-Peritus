@@ -1,6 +1,7 @@
 //! Bounded `OpenAI` Responses SSE ownership and normalized event emission.
 
 mod decode;
+mod identity;
 pub mod metadata;
 mod output;
 mod state;
@@ -13,14 +14,14 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
 use peritus_model_protocol::{
-    EventEnvelope, FailureCategory, ModelEvent, ModelName, OutcomeCertainty, ProtocolLimits,
-    ProviderName, ResponseId, Retryability, TransportPhase,
+    EventEnvelope, EventId, FailureCategory, ModelEvent, ModelName, OutcomeCertainty,
+    ProtocolLimits, ProviderName, ResponseId, Retryability, TransportPhase,
 };
 use peritus_provider_core::{
     BoxFuture, ByteStream, CancellationToken, FramingLimits, ModelStream, ProviderCoreError,
-    ProviderCoreErrorKind, SseItem, SseParser,
+    ProviderCoreErrorKind, SseItem, SseParser, healing::JsonCompletionCursor,
 };
-use peritus_types::ProviderProfileId;
+use peritus_types::{ProviderProfileId, Sha256Digest};
 
 use crate::error;
 
@@ -31,7 +32,10 @@ use crate::error;
 pub struct OpenAiStream {
     body: Box<dyn ByteStream>,
     parser: SseParser,
+    framed: VecDeque<SseItem>,
     pending: VecDeque<EventEnvelope>,
+    mapped_completion: Option<JsonCompletionCursor>,
+    deferred_completion: Option<DeferredCompletion>,
     staged_terminal: Option<EventEnvelope>,
     local_sequence: u64,
     terminal: bool,
@@ -45,6 +49,13 @@ pub struct OpenAiStream {
     track_background: bool,
     background_responses: BackgroundResponseRegistry,
     restored_partial: Vec<EventEnvelope>,
+}
+
+struct DeferredCompletion {
+    cursor: JsonCompletionCursor,
+    provider_sequence: u64,
+    provider_event_id: EventId,
+    digest: Sha256Digest,
 }
 
 /// Decoder checkpoint rebuilt from the exact durable normalized prefix.
@@ -350,7 +361,10 @@ impl OpenAiStream {
         Self {
             body,
             parser: SseParser::new(framing_limits),
+            framed: VecDeque::new(),
             pending: VecDeque::new(),
+            mapped_completion: None,
+            deferred_completion: None,
             staged_terminal: None,
             local_sequence: 0,
             terminal: false,
@@ -381,7 +395,10 @@ impl OpenAiStream {
         Self {
             body,
             parser: SseParser::new(framing_limits),
+            framed: VecDeque::new(),
             pending: VecDeque::new(),
+            mapped_completion: None,
+            deferred_completion: None,
             staged_terminal: None,
             local_sequence: restored.local_sequence,
             terminal: false,
@@ -410,7 +427,10 @@ impl OpenAiStream {
         Ok(Self {
             body: Box::new(body),
             parser: SseParser::new(FramingLimits::PRODUCTION),
+            framed: VecDeque::new(),
             pending: VecDeque::new(),
+            mapped_completion: None,
+            deferred_completion: None,
             staged_terminal: Some(envelope),
             local_sequence: 1,
             terminal: true,
@@ -428,23 +448,92 @@ impl OpenAiStream {
         })
     }
 
-    fn process_items(&mut self, items: Vec<SseItem>) -> Result<(), ProviderCoreError> {
-        for item in items {
-            match item {
-                SseItem::Event(frame) => self.decode_frame(&frame)?,
-                SseItem::Comment(_) => {
-                    self.enqueue(
-                        None,
-                        None,
-                        peritus_codec::sha256(b"openai-sse-comment"),
-                        ModelEvent::Heartbeat,
-                    )?;
-                }
-                SseItem::Done if !self.terminal => {
-                    self.fail_incomplete("OpenAI sent DONE before a response terminal")?;
-                }
-                SseItem::Done => {}
+    fn queue_items(&mut self, items: Vec<SseItem>) {
+        self.framed.extend(items);
+    }
+
+    fn process_next_item(&mut self) -> Result<bool, ProviderCoreError> {
+        let Some(item) = self.framed.pop_front() else { return Ok(false) };
+        match item {
+            SseItem::Event(frame) => self.decode_frame(&frame)?,
+            SseItem::Comment(_) => {
+                self.enqueue(
+                    None,
+                    None,
+                    peritus_codec::sha256(b"openai-sse-comment"),
+                    ModelEvent::Heartbeat,
+                )?;
             }
+            SseItem::Done if !self.terminal => {
+                self.fail_incomplete("OpenAI sent DONE before a response terminal")?;
+            }
+            SseItem::Done => {}
+        }
+        Ok(true)
+    }
+
+    pub(super) fn stage_completion(
+        &mut self,
+        cursor: JsonCompletionCursor,
+    ) -> Result<(), ProviderCoreError> {
+        if self.mapped_completion.is_some() {
+            return Err(error::malformed(
+                "OpenAI frame produced more than one buffered completion",
+            ));
+        }
+        self.mapped_completion = Some(cursor);
+        Ok(())
+    }
+
+    pub(super) fn take_mapped_completion(&mut self) -> Option<JsonCompletionCursor> {
+        self.mapped_completion.take()
+    }
+
+    pub(super) fn defer_completion(
+        &mut self,
+        cursor: JsonCompletionCursor,
+        provider_sequence: u64,
+        provider_event_id: EventId,
+        digest: Sha256Digest,
+    ) -> Result<(), ProviderCoreError> {
+        if self.deferred_completion.is_some() || cursor.remaining_events() == 0 {
+            return Err(error::malformed("OpenAI buffered completion state was invalid"));
+        }
+        self.admit_events(cursor.remaining_events())?;
+        self.deferred_completion = Some(DeferredCompletion {
+            cursor,
+            provider_sequence,
+            provider_event_id,
+            digest,
+        });
+        Ok(())
+    }
+
+    fn resume_deferred_completion(&mut self) -> Result<bool, ProviderCoreError> {
+        let Some(mut deferred) = self.deferred_completion.take() else { return Ok(false) };
+        let event = deferred.cursor.next_event()?.ok_or_else(|| {
+            error::malformed("OpenAI buffered completion ended before its declared boundary")
+        })?;
+        let last = deferred.cursor.remaining_events() == 0;
+        let digest = deferred.digest;
+        let provider_sequence = last.then_some(deferred.provider_sequence);
+        let provider_event_id = last.then(|| deferred.provider_event_id.clone());
+        if !last {
+            self.deferred_completion = Some(deferred);
+        }
+        self.enqueue(provider_sequence, provider_event_id, digest, event)?;
+        Ok(true)
+    }
+
+    pub(super) fn admit_events(&self, additional: usize) -> Result<(), ProviderCoreError> {
+        let emitted = usize::try_from(self.local_sequence).unwrap_or(usize::MAX);
+        if emitted
+            .checked_add(additional)
+            .is_none_or(|projected| projected > self.limits.max_events())
+        {
+            return Err(error::limit(
+                "OpenAI normalized output exceeds the selected event bound",
+            ));
         }
         Ok(())
     }
@@ -464,6 +553,9 @@ impl OpenAiStream {
         );
         if self.terminal && !terminal {
             return Err(error::malformed("OpenAI event followed a terminal event"));
+        }
+        if !terminal || self.staged_terminal.is_none() {
+            self.admit_events(1)?;
         }
         let sequence = if terminal {
             if let Some(staged) = &self.staged_terminal {
@@ -527,6 +619,10 @@ impl OpenAiStream {
             return Ok(false);
         }
         self.body_finished = true;
+        self.framed.clear();
+        self.pending.clear();
+        self.mapped_completion = None;
+        self.deferred_completion = None;
         self.enqueue(
             None,
             None,
@@ -624,38 +720,47 @@ impl ModelStream for OpenAiStream {
                 if let Some(event) = self.pending.pop_front() {
                     return Ok(Some(event));
                 }
+                if self.deferred_completion.is_some() {
+                    if let Err(_failure) = self.resume_deferred_completion() {
+                        self.deferred_completion = None;
+                        self.fail_malformed(peritus_codec::sha256(
+                            b"openai-buffered-completion",
+                        ))?;
+                    }
+                    continue;
+                }
+                if !self.framed.is_empty() {
+                    if let Err(_failure) = self.process_next_item() {
+                        self.framed.clear();
+                        self.mapped_completion = None;
+                        self.deferred_completion = None;
+                        self.fail_malformed(peritus_codec::sha256(b"openai-framed-event"))?;
+                    }
+                    continue;
+                }
                 if let Some(event) = self.staged_terminal.take() {
                     self.body_finished = true;
                     return Ok(Some(event));
                 }
-                if self.terminal || self.body_finished {
+                if self.terminal {
                     return Ok(None);
+                }
+                if self.body_finished {
+                    self.fail_incomplete("openai.stream.incomplete")?;
+                    continue;
                 }
                 match self.body.next(cancellation).await {
                     Ok(Some(chunk)) => match self.parser.push(&chunk) {
-                        Ok(items) => {
-                            if let Err(_failure) = self.process_items(items) {
-                                self.fail_malformed(peritus_codec::sha256(&chunk))?;
-                            }
-                        }
+                        Ok(items) => self.queue_items(items),
                         Err(_failure) => self.fail_malformed(peritus_codec::sha256(&chunk))?,
                     },
                     Ok(None) => {
                         self.body_finished = true;
                         match self.parser.finish() {
-                            Ok(items) => {
-                                if self.process_items(items).is_err() {
-                                    self.fail_malformed(peritus_codec::sha256(
-                                        b"openai-final-frame",
-                                    ))?;
-                                }
-                            }
+                            Ok(items) => self.queue_items(items),
                             Err(_failure) => {
                                 self.fail_malformed(peritus_codec::sha256(b"openai-final-frame"))?;
                             }
-                        }
-                        if !self.terminal {
-                            self.fail_incomplete("openai.stream.incomplete")?;
                         }
                     }
                     Err(failure) => {

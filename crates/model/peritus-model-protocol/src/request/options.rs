@@ -72,13 +72,13 @@ impl Continuation {
     ///
     /// # Errors
     ///
-    /// Rejects sequence zero and an event identity without a sequence.
+    /// Rejects an event identity without a sequence.
     pub fn new(
         response_id: ResponseId,
         event_id: Option<EventId>,
         sequence: Option<u64>,
     ) -> Result<Self, ProtocolError> {
-        if sequence == Some(0) || (event_id.is_some() && sequence.is_none()) {
+        if event_id.is_some() && sequence.is_none() {
             return Err(invalid("continuation", "continuation cursor is structurally invalid"));
         }
         Ok(Self { response_id, event_id, sequence })
