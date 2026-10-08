@@ -1,10 +1,13 @@
 mod terminal;
 mod tools;
+use std::borrow::Cow;
+
 use peritus_model_protocol::{
     EventId, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName, ResponseId,
     StreamFragment, ToolCallId, ToolName,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
+use serde::Deserialize;
 use serde_json::Value;
 
 use super::ancillary;
@@ -26,6 +29,12 @@ pub(super) struct FrameEvents {
     pub provider_event_id: Option<EventId>,
     pub digest: peritus_types::Sha256Digest,
     pub events: Vec<ModelEvent>,
+}
+
+#[derive(Deserialize)]
+struct EventDiscriminator<'a> {
+    #[serde(borrow, rename = "type")]
+    kind: Cow<'a, str>,
 }
 
 impl ResponsesDecoder {
@@ -53,7 +62,11 @@ impl ResponsesDecoder {
     }
 
     pub fn decode(&mut self, frame: &SseFrame) -> Result<FrameEvents, ProviderCoreError> {
-        if frame.data().len() > self.limits.max_event_bytes() {
+        let discriminator: EventDiscriminator<'_> = serde_json::from_str(frame.data())
+            .map_err(|_| error::malformed("Responses-compatible event was not JSON"))?;
+        if frame.data().len() > self.limits.max_event_bytes()
+            && !repeated_terminal(discriminator.kind.as_ref())
+        {
             return Err(error::limit("Responses-compatible event exceeded its byte bound"));
         }
         let value: Value = serde_json::from_str(frame.data())
@@ -62,6 +75,9 @@ impl ResponsesDecoder {
             return Err(error::malformed("Responses-compatible event was not an object"));
         }
         let kind = string(&value, "type")?;
+        if kind != discriminator.kind.as_ref() {
+            return Err(error::malformed("Responses-compatible event type was ambiguous"));
+        }
         if frame.event().is_some_and(|value| value != kind) {
             return Err(error::malformed("Responses-compatible SSE and JSON event types differ"));
         }
@@ -315,6 +331,20 @@ impl ResponsesDecoder {
             Vec::new()
         })
     }
+}
+
+fn repeated_terminal(kind: &str) -> bool {
+    matches!(
+        kind,
+        "response.output_text.done"
+            | "response.refusal.done"
+            | "response.content_part.done"
+            | "response.function_call_arguments.done"
+            | "response.output_item.done"
+            | "response.completed"
+            | "response.failed"
+            | "response.incomplete"
+    )
 }
 
 pub(super) fn object<'a>(value: &'a Value, name: &str) -> Result<&'a Value, ProviderCoreError> {

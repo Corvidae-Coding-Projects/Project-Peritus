@@ -128,7 +128,8 @@ impl ModelProvider for CompatibleClient {
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
             validate_request_profile(self.profile.provider_profile(), &request)?;
-            request::validate_for_service(&self.profile, &request, self.config.hosted_service())?;
+            let prepared = request::prepare(&self.config, &self.profile, &request)?;
+            let request_bytes = prepared.len();
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
@@ -138,9 +139,7 @@ impl ModelProvider for CompatibleClient {
                     return Err(ProviderCoreError::cancelled("compatible_start"));
                 }
                 let credential = self.credentials.resolve(self.config.auth().credential())?;
-                let http_request =
-                    request::http_request(&self.config, &self.profile, &request, credential)?;
-                let request_bytes = http_request.body().len();
+                let http_request = request::http_request(&self.config, &prepared, credential)?;
                 if let Some(policy) = retry_policy {
                     cumulative_bytes = response::admit_request_bytes(
                         cumulative_bytes,
@@ -268,6 +267,7 @@ impl ModelProvider for CompatibleClient {
                     self.config.protocol_limits(),
                     response_metadata,
                 )?
+                .with_raw_frame_capacity(self.config.http_limits().max_response_body_bytes())?
                 .with_hosted_service(self.config.hosted_service())
                 .with_tool_choice(request.tool_choice().clone());
                 return Ok(OwnedModelStream::new(stream, cancellation));

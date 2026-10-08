@@ -120,6 +120,16 @@ impl CompatibleStream {
         self
     }
 
+    pub(crate) fn with_raw_frame_capacity(
+        mut self,
+        maximum: usize,
+    ) -> Result<Self, ProviderCoreError> {
+        if matches!(&self.decoder, Decoder::Responses(_)) {
+            self.parser.set_data_frame_capacity(maximum)?;
+        }
+        Ok(self)
+    }
+
     pub(crate) fn with_tool_choice(mut self, choice: peritus_model_protocol::ToolChoice) -> Self {
         if let Decoder::Chat(decoder) = &mut self.decoder
             && decoder.service.is_some()

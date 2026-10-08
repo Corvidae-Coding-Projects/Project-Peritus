@@ -1,4 +1,3 @@
-use base64::Engine as _;
 use peritus_model_protocol::{
     ContentBlock, MediaInput, Message, ModelRequest, ParallelToolPolicy, Role, StructuredOutput,
     ToolChoice,
@@ -8,16 +7,18 @@ use serde_json::{Map, Value};
 
 use super::validation::canonical;
 use super::value::{object, optional_string, string};
+use super::{InlineMedia, InlineMediaSource, WirePathStep, WireRequest};
 use crate::error;
 
-pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreError> {
+pub(super) fn project(request: &ModelRequest) -> Result<WireRequest<'_>, ProviderCoreError> {
     let generation = request.options().generation();
     if generation.seed().is_some() || !generation.stop_sequences().is_empty() {
         return Err(error::invalid("Responses compatibility does not map seed or stop sequences"));
     }
     let mut wire = Map::new();
+    let mut inline_media = Vec::new();
     wire.insert("model".to_owned(), string(request.model().as_str()));
-    wire.insert("input".to_owned(), Value::Array(messages(request)?));
+    wire.insert("input".to_owned(), Value::Array(messages(request, &mut inline_media)?));
     wire.insert("stream".to_owned(), Value::Bool(true));
     wire.insert("store".to_owned(), Value::Bool(request.options().persistence().store()));
     wire.insert("background".to_owned(), Value::Bool(false));
@@ -37,20 +38,27 @@ pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreErro
     if let Some(value) = generation.top_p_millionths() {
         wire.insert("top_p".to_owned(), Value::from(f64::from(value) / 1_000_000.0));
     }
-    serde_json::to_vec(&Value::Object(wire))
-        .map_err(|_| error::invalid("Responses-compatible request serialization failed"))
+    Ok(WireRequest::new(Value::Object(wire), inline_media))
 }
 
-fn messages(request: &ModelRequest) -> Result<Vec<Value>, ProviderCoreError> {
+fn messages<'a>(
+    request: &'a ModelRequest,
+    inline_media: &mut Vec<InlineMedia<'a>>,
+) -> Result<Vec<Value>, ProviderCoreError> {
     let mut items = Vec::new();
     for message in request.messages() {
-        project_message(message, &mut items)?;
+        project_message(message, &mut items, inline_media)?;
     }
     Ok(items)
 }
 
-fn project_message(message: &Message, items: &mut Vec<Value>) -> Result<(), ProviderCoreError> {
+fn project_message<'a>(
+    message: &'a Message,
+    items: &mut Vec<Value>,
+    inline_media: &mut Vec<InlineMedia<'a>>,
+) -> Result<(), ProviderCoreError> {
     let mut parts = Vec::new();
+    let mut pending_media = Vec::new();
     for block in message.content() {
         match block {
             ContentBlock::Text(text) => parts.push(object([
@@ -64,13 +72,20 @@ fn project_message(message: &Message, items: &mut Vec<Value>) -> Result<(), Prov
                     }),
                 ),
             ])),
-            ContentBlock::Image(media) => parts.push(image(media)?),
+            ContentBlock::Image(media) => {
+                let part_index = parts.len();
+                let (part, source) = image(media)?;
+                parts.push(part);
+                if let Some(source) = source {
+                    pending_media.push((part_index, source));
+                }
+            }
             ContentBlock::Refusal(text) => parts.push(object([
                 ("refusal", string(text.expose_for_wire())),
                 ("type", string("refusal")),
             ])),
             ContentBlock::ToolCall(call) => {
-                flush(message.role(), &mut parts, items);
+                flush(message.role(), &mut parts, &mut pending_media, items, inline_media);
                 items.push(object([
                     ("arguments", string(&call.arguments().to_wire_string())),
                     ("call_id", string(call.id().expose_for_wire())),
@@ -79,7 +94,7 @@ fn project_message(message: &Message, items: &mut Vec<Value>) -> Result<(), Prov
                 ]));
             }
             ContentBlock::ToolResult(result) => {
-                flush(message.role(), &mut parts, items);
+                flush(message.role(), &mut parts, &mut pending_media, items, inline_media);
                 let output = object([
                     ("is_error", Value::Bool(result.is_error())),
                     ("output", canonical(result.output().canonical_bytes())?),
@@ -100,12 +115,31 @@ fn project_message(message: &Message, items: &mut Vec<Value>) -> Result<(), Prov
             }
         }
     }
-    flush(message.role(), &mut parts, items);
+    flush(message.role(), &mut parts, &mut pending_media, items, inline_media);
     Ok(())
 }
 
-fn flush(role: Role, parts: &mut Vec<Value>, items: &mut Vec<Value>) {
+fn flush<'a>(
+    role: Role,
+    parts: &mut Vec<Value>,
+    pending_media: &mut Vec<(usize, InlineMediaSource<'a>)>,
+    items: &mut Vec<Value>,
+    inline_media: &mut Vec<InlineMedia<'a>>,
+) {
     if !parts.is_empty() {
+        let item_index = items.len();
+        for (part_index, source) in pending_media.drain(..) {
+            inline_media.push(InlineMedia {
+                source,
+                path: vec![
+                    WirePathStep::Key("input".to_owned()),
+                    WirePathStep::Index(item_index),
+                    WirePathStep::Key("content".to_owned()),
+                    WirePathStep::Index(part_index),
+                    WirePathStep::Key("image_url".to_owned()),
+                ],
+            });
+        }
         items.push(object([
             ("content", Value::Array(core::mem::take(parts))),
             ("role", string(role_name(role))),
@@ -123,19 +157,11 @@ const fn role_name(role: Role) -> &'static str {
     }
 }
 
-fn image(media: &MediaInput) -> Result<Value, ProviderCoreError> {
-    let url = if let Some(bytes) = media.inline_bytes_for_wire() {
-        format!(
-            "data:{};base64,{}",
-            media.media_type().as_str(),
-            base64::engine::general_purpose::STANDARD.encode(bytes)
-        )
-    } else if let Some((_, reference)) = media.reference_for_wire() {
-        reference.to_owned()
-    } else {
-        return Err(error::invalid("compatible image input was unresolved"));
-    };
-    Ok(object([("image_url", string(&url)), ("type", string("input_image"))]))
+fn image(
+    media: &MediaInput,
+) -> Result<(Value, Option<InlineMediaSource<'_>>), ProviderCoreError> {
+    let (url, source) = super::media_url(media)?;
+    Ok((object([("image_url", url), ("type", string("input_image"))]), source))
 }
 
 fn add_tools(

@@ -196,6 +196,7 @@ impl CompatibleLimits {
             || http.max_chunk_bytes() > framing.max_buffer_bytes()
             || protocol.max_event_bytes() > framing.max_frame_bytes()
             || protocol.max_output_bytes() > http.max_response_body_bytes()
+            || protocol.max_tool_argument_bytes() > http.max_response_body_bytes()
         {
             return Err(error::configuration(
                 "compatible capacities are inconsistent across HTTP, framing, protocol, or fixed headers",

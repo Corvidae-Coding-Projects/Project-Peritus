@@ -2,7 +2,7 @@
 
 use core::fmt;
 
-use crate::ProviderCoreError;
+use crate::{HttpLimits, ProviderCoreError};
 
 use super::{FramingLimits, limit, malformed, strip_carriage_return};
 
@@ -78,6 +78,8 @@ pub enum SseItem {
 #[derive(Debug)]
 pub struct SseParser {
     limits: FramingLimits,
+    max_data_frame_bytes: usize,
+    max_pending_bytes: usize,
     pending: Vec<u8>,
     event: Option<String>,
     data_lines: Vec<String>,
@@ -92,6 +94,8 @@ impl SseParser {
     pub const fn new(limits: FramingLimits) -> Self {
         Self {
             limits,
+            max_data_frame_bytes: limits.max_frame_bytes(),
+            max_pending_bytes: limits.max_buffer_bytes(),
             pending: Vec::new(),
             event: None,
             data_lines: Vec::new(),
@@ -99,6 +103,27 @@ impl SseParser {
             frame_bytes: 0,
             finished: false,
         }
+    }
+
+    /// Allows a data-bearing frame to use an independently bounded outer transport capacity.
+    ///
+    /// The framing limit remains active for comments and higher layers remain responsible for
+    /// admitting only the wire event kinds whose protocol representation needs the larger frame.
+    /// The widened capacity cannot exceed the production HTTP response-body ceiling.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a zero capacity or one wider than the production HTTP response-body ceiling.
+    pub fn set_data_frame_capacity(
+        &mut self,
+        maximum: usize,
+    ) -> Result<(), ProviderCoreError> {
+        if maximum == 0 || maximum > HttpLimits::PRODUCTION.max_response_body_bytes() {
+            return Err(limit("SSE data-frame capacity exceeds the outer transport ceiling"));
+        }
+        self.max_data_frame_bytes = self.max_data_frame_bytes.max(maximum);
+        self.max_pending_bytes = self.max_pending_bytes.max(self.max_data_frame_bytes);
+        Ok(())
     }
 
     /// Adds one arbitrary byte chunk and returns every complete item.
@@ -117,7 +142,7 @@ impl SseParser {
             .len()
             .checked_add(chunk.len())
             .ok_or_else(|| limit("framing buffer length overflowed"))?;
-        if combined > self.limits.max_buffer_bytes {
+        if combined > self.max_pending_bytes {
             return Err(limit("framing buffer exceeds its byte bound"));
         }
         self.pending.extend_from_slice(chunk);
@@ -153,7 +178,7 @@ impl SseParser {
         }
         // Do not count a possible split CRLF delimiter as payload. A subsequent non-LF byte
         // makes the CR interior content again and the complete-line bound still rejects it.
-        if strip_carriage_return(&self.pending).len() > self.limits.max_frame_bytes {
+        if strip_carriage_return(&self.pending).len() > self.max_data_frame_bytes {
             return Err(limit("unterminated SSE line exceeds the frame byte bound"));
         }
         Ok(items)
@@ -195,7 +220,7 @@ impl SseParser {
             .frame_bytes
             .checked_add(bytes)
             .ok_or_else(|| limit("SSE frame byte count overflowed"))?;
-        if self.frame_bytes > self.limits.max_frame_bytes {
+        if self.frame_bytes > self.max_data_frame_bytes {
             return Err(limit("SSE frame exceeds its byte bound"));
         }
         Ok(())
@@ -212,7 +237,7 @@ impl SseParser {
                 .and_then(|value| value.checked_add(1))
                 .ok_or_else(|| limit("SSE data length overflowed"))
         })?;
-        if data_bytes.saturating_sub(1) > self.limits.max_frame_bytes {
+        if data_bytes.saturating_sub(1) > self.max_data_frame_bytes {
             return Err(limit("SSE data exceeds its frame byte bound"));
         }
         let data = self.data_lines.join("\n");

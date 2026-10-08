@@ -1,4 +1,3 @@
-use base64::Engine as _;
 use peritus_model_protocol::{
     Capability, ContentBlock, MediaInput, Message, ModelRequest, ParallelToolPolicy, Role,
     StructuredOutput, ToolChoice,
@@ -8,20 +7,21 @@ use serde_json::{Map, Value};
 
 use super::validation::canonical;
 use super::value::{object, optional_string, string};
+use super::{InlineMedia, InlineMediaSource, WirePathStep, WireRequest};
 use crate::error;
 
-pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreError> {
-    encode_hosted(request, None)
-}
-
-pub(super) fn encode_hosted(
+pub(super) fn project(
     request: &ModelRequest,
     service: Option<peritus_provider_core::hosted::HostedService>,
-) -> Result<Vec<u8>, ProviderCoreError> {
+) -> Result<WireRequest<'_>, ProviderCoreError> {
     let generation = request.options().generation();
+    let mut inline_media = Vec::new();
     let mut wire = Map::new();
     wire.insert("model".to_owned(), string(request.model().as_str()));
-    wire.insert("messages".to_owned(), Value::Array(messages(request, service)?));
+    wire.insert(
+        "messages".to_owned(),
+        Value::Array(messages(request, service, &mut inline_media)?),
+    );
     wire.insert("stream".to_owned(), Value::Bool(true));
     wire.insert(
         "stream_options".to_owned(),
@@ -54,34 +54,43 @@ pub(super) fn encode_hosted(
     if let Some(service) = service {
         super::hosted::request_fields(service, &mut wire, request.tool_choice())?;
     }
-    serde_json::to_vec(&Value::Object(wire))
-        .map_err(|_| error::invalid("Chat-compatible request serialization failed"))
+    Ok(WireRequest::new(Value::Object(wire), inline_media))
 }
 
-fn messages(
-    request: &ModelRequest,
+fn messages<'a>(
+    request: &'a ModelRequest,
     service: Option<peritus_provider_core::hosted::HostedService>,
+    inline_media: &mut Vec<InlineMedia<'a>>,
 ) -> Result<Vec<Value>, ProviderCoreError> {
     let mut values = Vec::new();
     for message in request.messages() {
-        project_message(message, &mut values, service)?;
+        project_message(message, &mut values, inline_media, service)?;
     }
     Ok(values)
 }
 
-fn project_message(
-    message: &Message,
+fn project_message<'a>(
+    message: &'a Message,
     values: &mut Vec<Value>,
+    inline_media: &mut Vec<InlineMedia<'a>>,
     service: Option<peritus_provider_core::hosted::HostedService>,
 ) -> Result<(), ProviderCoreError> {
     let mut reasoning = Map::new();
     let mut parts = Vec::new();
+    let mut pending_media = Vec::new();
     let mut tool_calls = Vec::new();
     for block in message.content() {
         match block {
             ContentBlock::Text(text) | ContentBlock::Refusal(text) => parts
                 .push(object([("text", string(text.expose_for_wire())), ("type", string("text"))])),
-            ContentBlock::Image(media) => parts.push(image(media)?),
+            ContentBlock::Image(media) => {
+                let part_index = parts.len();
+                let (part, source) = image(media)?;
+                parts.push(part);
+                if let Some(source) = source {
+                    pending_media.push((part_index, source));
+                }
+            }
             ContentBlock::ToolCall(call) => tool_calls.push(object([
                 (
                     "function",
@@ -118,6 +127,20 @@ fn project_message(
         }
     }
     if !parts.is_empty() || !tool_calls.is_empty() || !reasoning.is_empty() {
+        let message_index = values.len();
+        for (part_index, source) in pending_media {
+            inline_media.push(InlineMedia {
+                source,
+                path: vec![
+                    WirePathStep::Key("messages".to_owned()),
+                    WirePathStep::Index(message_index),
+                    WirePathStep::Key("content".to_owned()),
+                    WirePathStep::Index(part_index),
+                    WirePathStep::Key("image_url".to_owned()),
+                    WirePathStep::Key("url".to_owned()),
+                ],
+            });
+        }
         let mut value = reasoning;
         value.insert("role".to_owned(), string(role_name(message.role())));
         if !parts.is_empty() {
@@ -141,19 +164,11 @@ const fn role_name(role: Role) -> &'static str {
     }
 }
 
-fn image(media: &MediaInput) -> Result<Value, ProviderCoreError> {
-    let url = if let Some(bytes) = media.inline_bytes_for_wire() {
-        format!(
-            "data:{};base64,{}",
-            media.media_type().as_str(),
-            base64::engine::general_purpose::STANDARD.encode(bytes)
-        )
-    } else if let Some((_, reference)) = media.reference_for_wire() {
-        reference.to_owned()
-    } else {
-        return Err(error::invalid("compatible image input was unresolved"));
-    };
-    Ok(object([("image_url", object([("url", string(&url))])), ("type", string("image_url"))]))
+fn image(
+    media: &MediaInput,
+) -> Result<(Value, Option<InlineMediaSource<'_>>), ProviderCoreError> {
+    let (url, source) = super::media_url(media)?;
+    Ok((object([("image_url", object([("url", url)])), ("type", string("image_url"))]), source))
 }
 
 fn add_tools(
