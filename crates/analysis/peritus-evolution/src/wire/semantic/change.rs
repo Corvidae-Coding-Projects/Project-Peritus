@@ -5,9 +5,11 @@ use peritus_eval::TaskId;
 
 use crate::{
     BoundedText, ChangeManifest, ChangeManifestId, CompatibilityEffect, ComponentDelta,
-    EvolutionError, EvolutionLimits, InteractionGroupId, MetricValue, Prediction,
-    PredictionDirection, PredictionMetric, PredictionSubject, VariantDefinition,
+    ComponentDeltaOperation, ComponentDeltaSide, EvolutionError, EvolutionLimits,
+    InteractionGroupId, MetricValue, Prediction, PredictionDirection, PredictionMetric,
+    PredictionSubject, VariantDefinition,
 };
+use peritus_harness::domain::ComponentId;
 
 use super::{super::scalar, binding};
 
@@ -23,29 +25,101 @@ fn text(
 }
 
 fn write_delta(writer: &mut CanonicalWriter, value: &ComponentDelta) -> Result<(), EvolutionError> {
-    writer.write_str(value.component_id().as_str()).map_err(scalar::codec)?;
-    writer.write_u8(value.kind().tag()).map_err(scalar::codec)?;
-    writer.write_fixed(value.before_content().as_bytes()).map_err(scalar::codec)?;
-    writer.write_fixed(value.after_content().as_bytes()).map_err(scalar::codec)?;
-    write_digest_option(writer, value.before_executable())?;
-    write_digest_option(writer, value.after_executable())?;
+    if value.legacy_encoding() {
+        let before = value.before().ok_or_else(scalar::protocol)?;
+        let after = value.after().ok_or_else(scalar::protocol)?;
+        writer.write_str(value.component_id().as_str()).map_err(scalar::codec)?;
+        writer.write_u8(value.kind().tag()).map_err(scalar::codec)?;
+        writer.write_fixed(before.content().as_bytes()).map_err(scalar::codec)?;
+        writer.write_fixed(after.content().as_bytes()).map_err(scalar::codec)?;
+        write_digest_option(writer, before.executable())?;
+        write_digest_option(writer, after.executable())?;
+    } else {
+        writer.write_str("").map_err(scalar::codec)?;
+        writer.write_u8(2).map_err(scalar::codec)?;
+        writer.write_u8(value.operation().tag()).map_err(scalar::codec)?;
+        writer.write_str(value.component_id().as_str()).map_err(scalar::codec)?;
+        writer.write_u8(value.kind().tag()).map_err(scalar::codec)?;
+        match value.operation() {
+            ComponentDeltaOperation::Add => {
+                write_delta_side(writer, value.after().ok_or_else(scalar::protocol)?)?;
+            }
+            ComponentDeltaOperation::Remove => {
+                write_delta_side(writer, value.before().ok_or_else(scalar::protocol)?)?;
+            }
+            ComponentDeltaOperation::Update => {
+                write_delta_side(writer, value.before().ok_or_else(scalar::protocol)?)?;
+                write_delta_side(writer, value.after().ok_or_else(scalar::protocol)?)?;
+            }
+        }
+    }
     writer.write_fixed(value.semantic_diff_artifact().as_bytes()).map_err(scalar::codec)?;
     writer.write_u8(compatibility_tag(value.compatibility())).map_err(scalar::codec)?;
     write_digest_option(writer, value.migration_artifact())
 }
 
 fn delta(reader: &mut CanonicalReader<'_>) -> Result<ComponentDelta, EvolutionError> {
-    ComponentDelta::from_exact_parts(
-        scalar::component_id(reader)?,
-        scalar::component_kind(reader)?,
-        scalar::digest(reader)?,
-        scalar::digest(reader)?,
-        digest_option(reader)?,
-        digest_option(reader)?,
+    let component = reader.read_str().map_err(scalar::codec)?;
+    if !component.is_empty() {
+        return ComponentDelta::from_exact_parts(
+            ComponentId::new(component.to_owned()).map_err(scalar::domain)?,
+            scalar::component_kind(reader)?,
+            scalar::digest(reader)?,
+            scalar::digest(reader)?,
+            digest_option(reader)?,
+            digest_option(reader)?,
+            scalar::digest(reader)?,
+            compatibility(reader.read_u8().map_err(scalar::codec)?)?,
+            digest_option(reader)?,
+        );
+    }
+    if reader.read_u8().map_err(scalar::codec)? != 2 {
+        return Err(scalar::protocol());
+    }
+    let operation =
+        ComponentDeltaOperation::from_tag(reader.read_u8().map_err(scalar::codec)?)?;
+    let component_id = scalar::component_id(reader)?;
+    let kind = scalar::component_kind(reader)?;
+    let (before, after) = match operation {
+        ComponentDeltaOperation::Add => (None, Some(delta_side(reader)?)),
+        ComponentDeltaOperation::Remove => (Some(delta_side(reader)?), None),
+        ComponentDeltaOperation::Update => {
+            (Some(delta_side(reader)?), Some(delta_side(reader)?))
+        }
+    };
+    ComponentDelta::from_operation_parts(
+        component_id,
+        kind,
+        operation,
+        before,
+        after,
         scalar::digest(reader)?,
         compatibility(reader.read_u8().map_err(scalar::codec)?)?,
         digest_option(reader)?,
     )
+}
+
+fn write_delta_side(
+    writer: &mut CanonicalWriter,
+    value: ComponentDeltaSide,
+) -> Result<(), EvolutionError> {
+    writer.write_fixed(value.content().as_bytes()).map_err(scalar::codec)?;
+    write_digest_option(writer, value.executable())?;
+    writer
+        .write_fixed(value.dependencies_digest().ok_or_else(scalar::protocol)?.as_bytes())
+        .map_err(scalar::codec)?;
+    writer
+        .write_fixed(value.declaration_digest().ok_or_else(scalar::protocol)?.as_bytes())
+        .map_err(scalar::codec)
+}
+
+fn delta_side(reader: &mut CanonicalReader<'_>) -> Result<ComponentDeltaSide, EvolutionError> {
+    Ok(ComponentDeltaSide::from_exact_parts(
+        scalar::digest(reader)?,
+        digest_option(reader)?,
+        Some(scalar::digest(reader)?),
+        Some(scalar::digest(reader)?),
+    ))
 }
 
 fn write_prediction(

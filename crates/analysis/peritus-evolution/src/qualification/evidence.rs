@@ -141,7 +141,7 @@ fn manifest(
         .graph()
         .declaration(&component)
         .ok_or_else(|| invalid("qualification candidate role component is absent"))?;
-    let delta = ComponentDelta::capture(
+    let delta = ComponentDelta::capture_update(
         before,
         after,
         semantic_diff,

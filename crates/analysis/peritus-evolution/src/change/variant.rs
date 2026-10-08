@@ -92,7 +92,10 @@ impl VariantDefinition {
         let changes_executable = manifests
             .iter()
             .flat_map(ChangeManifest::deltas)
-            .any(|delta| delta.before_executable() != delta.after_executable());
+            .any(|delta| {
+                delta.before_executable() != delta.after_executable()
+                    || delta.before_dependencies() != delta.after_dependencies()
+            });
         let compatibility = manifests
             .iter()
             .flat_map(ChangeManifest::deltas)
@@ -223,9 +226,14 @@ impl VariantDefinition {
     pub fn changed_kinds(&self) -> &[ComponentKind] {
         &self.changed_kinds
     }
-    /// Returns whether any exact before/after executable artifact digest changed.
+    /// Returns whether executable artifacts or their declared dependency semantics changed.
     #[must_use]
     pub const fn changes_executable(&self) -> bool {
+        self.changes_executable
+    }
+    /// Returns whether runtime materialization or dependency semantics changed.
+    #[must_use]
+    pub const fn changes_runtime_surface(&self) -> bool {
         self.changes_executable
     }
     /// Returns the worst declared compatibility effect across all component deltas.

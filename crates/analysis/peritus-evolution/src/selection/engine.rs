@@ -45,7 +45,7 @@ pub fn assess_variant(
     let input = analysis.input_tokens_mean().value();
     let output = analysis.output_tokens_mean().value();
     let review_required = requires_review(
-        variant.changes_executable(),
+        variant.changes_runtime_surface(),
         variant.changed_kinds(),
         policy.review_required_kinds(),
     );

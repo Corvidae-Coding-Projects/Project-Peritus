@@ -128,9 +128,15 @@ pub(super) fn apply_kind(
             require_work_open(&state)?;
             if state.manifests.is_empty()
                 || variant.baseline() != state.baseline
-                || variant.manifest_ids().iter().any(|id| {
-                    state.manifests.binary_search_by_key(id, crate::ChangeManifest::id).is_err()
-                })
+                || variant.manifest_ids().iter().zip(variant.manifest_digests()).any(
+                    |(id, digest)| {
+                        state
+                            .manifests
+                            .binary_search_by_key(id, crate::ChangeManifest::id)
+                            .ok()
+                            .is_none_or(|index| state.manifests[index].digest() != *digest)
+                    },
+                )
                 || state.variants.iter().any(|value| value.candidate() == variant.candidate())
             {
                 return Err(binding(

@@ -22,6 +22,8 @@ pub fn attribute(
     if manifests.is_empty()
         || manifests.windows(2).any(|pair| pair[0].id() >= pair[1].id())
         || manifests.iter().map(ChangeManifest::id).collect::<Vec<_>>() != variant.manifest_ids()
+        || manifests.iter().map(ChangeManifest::digest).collect::<Vec<_>>()
+            != variant.manifest_digests()
         || evaluation.baseline().revision() != variant.baseline().revision()
         || evaluation.candidate().revision() != variant.candidate().revision()
         || evaluation.baseline().harness_revision() != variant.baseline().harness_revision()

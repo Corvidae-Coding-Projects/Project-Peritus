@@ -6,7 +6,9 @@ mod prediction;
 mod text;
 mod variant;
 
-pub use delta::{CompatibilityEffect, ComponentDelta};
+pub use delta::{
+    CompatibilityEffect, ComponentDelta, ComponentDeltaOperation, ComponentDeltaSide,
+};
 pub use manifest::ChangeManifest;
 pub use prediction::{
     MetricValue, Prediction, PredictionDirection, PredictionMetric, PredictionSubject,

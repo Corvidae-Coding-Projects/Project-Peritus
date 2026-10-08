@@ -88,16 +88,12 @@ impl ChangeManifest {
             ));
         }
         for delta in &deltas {
-            let before = baseline
-                .graph()
-                .declaration(delta.component_id())
-                .ok_or_else(|| binding("delta baseline declaration is absent"))?;
-            let after = candidate
-                .graph()
-                .declaration(delta.component_id())
-                .ok_or_else(|| binding("delta candidate declaration is absent"))?;
+            let before = baseline.graph().declaration(delta.component_id());
+            let after = candidate.graph().declaration(delta.component_id());
             if !delta.matches(before, after) {
-                return Err(binding("component delta differs from exact E1 declarations"));
+                return Err(binding(
+                    "component operation or declared absence differs from exact E1 declarations",
+                ));
             }
         }
         let digest = manifest_digest(
