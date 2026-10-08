@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4154,
-        "tip_oid": "85b07b4e246d894c66e059e12e82577afedbfcf7",
-        "prefix_sha256": "adfd61b64cd34b4d9a2dd3e4f4e95d3f57e2ca00d1656ae3b9aad355393bea72"
+        "sequence": 4155,
+        "tip_oid": "98b3e04645b59ef8edb8f16bc76c42142b4874d5",
+        "prefix_sha256": "421fa6a1d7cf65416722ccb278fd1361b5efca0b625284edb04d97acb2020600"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3280,
+  "next_comment_id": 3281,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -4462,7 +4462,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:08:34.108185360Z",
-      "updated_at": "2026-10-06T15:46:47.577318345Z",
+      "updated_at": "2026-10-08T15:26:38.313203950Z",
       "closed_at": "2026-10-06T15:46:47.575773549Z",
       "labels": [
         "daily-driving-limiter"
@@ -4494,6 +4494,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAym8JjOxRG0hr0Cht4aB6gh3BiWgT2wCGZuQGw9AAxN3gkOWjEy1zrlOtSEVFy7k5HFzN5K+hOEODe2SfCrhpCA=="
+        },
+        "c24e5b0f-02d1-4f1e-9ac7-f854cbffab55": {
+          "display_id": 3280,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L003 on fix/minimum-repair. Removed checkpoint capture file and aggregate byte quotas while retaining path confinement and actual I/O failures.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T15:26:38.291864376Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqSLiHu1KHZ4u3LO1IFEJU8AifPzu7K3Na8rGFDQjSKVLACzJxQEi7CeKDUFqpyQKYoUYsKtL2oBsNKJKgivbDA=="
         }
       }
     },
