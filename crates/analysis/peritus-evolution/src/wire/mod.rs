@@ -7,3 +7,5 @@ mod semantic;
 
 pub use campaign::{CampaignCommandFrame, CampaignEventFrame, CampaignStateFrame};
 pub use pointer::{PointerCommandFrame, PointerEventFrame, PointerStateFrame};
+pub(crate) use campaign::CampaignCheckpointFrame;
+pub(crate) use pointer::PointerCheckpointFrame;

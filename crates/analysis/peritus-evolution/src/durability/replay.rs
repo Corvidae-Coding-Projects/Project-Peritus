@@ -15,7 +15,7 @@ use crate::pointer::apply_pointer_event_legacy_eviction;
 use super::{
     CAMPAIGN_STATE_NAMESPACE, POINTER_STATE_NAMESPACE, campaign::codec, campaign::journal_error,
     campaign::recovery, campaign_aggregate_key, campaign_state_key, checkpoint,
-    pointer::pointer_event_revision_digest, pointer_aggregate_key, pointer_state_key,
+    pointer_aggregate_key, pointer_state_key,
 };
 
 /// Fully replayed campaign observation.
@@ -105,7 +105,6 @@ pub fn recover_campaign(
     }
     if let Some(record) = checkpoint {
         let frame = checkpoint::decode_campaign(journal, &record, campaign_id)?;
-        let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("campaign checkpoint has no semantic events"))?;
         if record.revision() != reconstructed.sequence() {
@@ -116,7 +115,7 @@ pub fn recover_campaign(
         if !checkpoint_producer_matches(journal, &record, last)? {
             return Err(recovery("campaign checkpoint position differs from replay"));
         }
-        if observed != *reconstructed {
+        if !frame.matches_state(reconstructed) {
             return Err(recovery("campaign checkpoint state differs from replay"));
         }
     }
@@ -153,23 +152,40 @@ pub fn recover_pointer(
             .state_record_revision(POINTER_STATE_NAMESPACE, &state_key, event.sequence())
             .map_err(journal_error)?
             .ok_or_else(|| recovery("pointer event has no immutable checkpoint revision"))?;
-        let observed = checkpoint::decode_pointer(journal, &historical, project_id)?.into_state();
-        validate_pointer_checkpoint(journal, record, &event, &historical, &observed)?;
+        let observed_checkpoint = checkpoint::decode_pointer(journal, &historical, project_id)?;
+        validate_pointer_checkpoint(
+            journal,
+            record,
+            &event,
+            &historical,
+            &observed_checkpoint,
+        )?;
         validate_durable_rollback_event(&activation_history, state.as_ref(), &event)?;
 
-        let reconstructed = match apply_pointer_event(state.as_ref(), &event) {
-            Ok(candidate) if candidate == observed => candidate,
-            _ if legacy_eviction_shape(state.as_ref(), &event, &observed) => {
-                apply_pointer_event_legacy_eviction(state.as_ref(), &event)?
+        let reconstructed = if let Some(observed) = observed_checkpoint.legacy_state() {
+            let candidate = match apply_pointer_event(state.as_ref(), &event) {
+                Ok(candidate) if candidate == *observed => candidate,
+                _ if legacy_eviction_shape(state.as_ref(), &event, observed) => {
+                    apply_pointer_event_legacy_eviction(state.as_ref(), &event)?
+                }
+                _ => return Err(recovery("pointer checkpoint differs from pure event replay")),
+            };
+            if candidate != *observed {
+                return Err(recovery(
+                    "legacy pointer checkpoint differs from exact eviction replay",
+                ));
             }
-            _ => return Err(recovery("pointer checkpoint differs from pure event replay")),
+            candidate
+        } else {
+            let candidate = apply_pointer_event(state.as_ref(), &event)?;
+            if !observed_checkpoint.matches_state(&candidate) {
+                return Err(recovery("pointer checkpoint reference differs from event replay"));
+            }
+            candidate
         };
-        if reconstructed != observed {
-            return Err(recovery("legacy pointer checkpoint differs from exact eviction replay"));
-        }
 
         if event.successor_generation() != event.prior_generation() {
-            let activation = observed
+            let activation = reconstructed
                 .history()
                 .last()
                 .cloned()
@@ -192,17 +208,16 @@ pub fn recover_pointer(
             )?;
             activation_history.push(origin)?;
         }
-        if !activation_history.matches_state(&observed) {
+        if !activation_history.matches_state(&reconstructed) {
             return Err(recovery(
                 "pointer checkpoint cache is not a suffix of durable activation history",
             ));
         }
-        state = Some(observed);
+        state = Some(reconstructed);
         events.push(event);
     }
     if let Some(record) = checkpoint {
         let frame = checkpoint::decode_pointer(journal, &record, project_id)?;
-        let observed = frame.into_state();
         let reconstructed =
             state.as_ref().ok_or_else(|| recovery("pointer checkpoint has no semantic events"))?;
         let last =
@@ -215,7 +230,7 @@ pub fn recover_pointer(
             || !checkpoint_producer_matches(journal, &record, last)?
             || record.digest() != historical.digest()
             || record.producing_position() != historical.producing_position()
-            || observed != *reconstructed
+            || !frame.matches_state(reconstructed)
         {
             return Err(recovery("pointer checkpoint differs from replay"));
         }
@@ -233,17 +248,17 @@ fn validate_pointer_checkpoint(
     record: &peritus_journal::CommittedRecord,
     event: &PointerEvent,
     checkpoint: &peritus_journal::DurableStateRecord,
-    observed: &ProductionHarnessState,
+    observed: &checkpoint::PointerCheckpoint,
 ) -> Result<(), EvolutionError> {
     if checkpoint.revision() != event.sequence()
         || !checkpoint_producer_matches(journal, checkpoint, record)?
         || observed.project_id() != event.project_id()
         || observed.sequence() != event.sequence()
-        || observed.last_event() != event.id()
+        || observed.last_event_id() != event.id()
         || observed.generation() != event.successor_generation()
-        || observed.policy().digest() != event.policy_digest()
+        || observed.policy_digest() != event.policy_digest()
         || observed.state_digest() != event.successor_state_digest()
-        || record.revision_digest() != pointer_event_revision_digest(observed)
+        || record.revision_digest() != observed.revision_digest()
     {
         return Err(recovery(
             "pointer event, committed origin, and historical checkpoint differ",

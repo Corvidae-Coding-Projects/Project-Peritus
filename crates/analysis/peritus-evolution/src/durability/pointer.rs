@@ -12,7 +12,7 @@ use crate::{
     EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
     EvolutionStorageLimits, PendingActivation, PointerCommand, PointerCommandKind,
     PointerTransition, ProductionHarnessState, RollbackProposal,
-    wire::{PointerCommandFrame, PointerEventFrame, PointerStateFrame},
+    wire::{PointerCommandFrame, PointerEventFrame},
 };
 
 use super::{
@@ -373,7 +373,7 @@ fn validate_resolved_receipt(
     aggregate: peritus_journal::AggregateKey,
     state_key: &[u8],
     batch: &CommittedBatch,
-) -> Result<PointerStateFrame, EvolutionError> {
+) -> Result<checkpoint::PointerCheckpoint, EvolutionError> {
     let successor_sequence = command
         .expected_sequence()
         .checked_add(1)

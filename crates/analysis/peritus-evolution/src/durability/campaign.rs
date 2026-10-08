@@ -10,7 +10,7 @@ use peritus_types::EventSequence;
 use crate::{
     CampaignCommand, CampaignCommandKind, CampaignState, CampaignTransition, EvolutionError,
     EvolutionErrorKind, EvolutionOperation, EvolutionRecovery, EvolutionStorageLimits,
-    wire::{CampaignCommandFrame, CampaignEventFrame, CampaignStateFrame},
+    wire::{CampaignCommandFrame, CampaignEventFrame},
 };
 
 use super::{
@@ -279,7 +279,7 @@ fn validate_resolved_receipt(
     aggregate: peritus_journal::AggregateKey,
     state_key: &[u8],
     batch: &CommittedBatch,
-) -> Result<CampaignStateFrame, EvolutionError> {
+) -> Result<checkpoint::CampaignCheckpoint, EvolutionError> {
     let successor_sequence = command
         .expected_sequence()
         .checked_add(1)

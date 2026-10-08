@@ -7,7 +7,9 @@ use peritus_types::Sha256Digest;
 use crate::{
     CampaignState, EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
     EvolutionStorageLimits, ProductionHarnessState,
-    wire::{CampaignStateFrame, PointerStateFrame},
+    wire::{
+        CampaignCheckpointFrame, CampaignStateFrame, PointerCheckpointFrame, PointerStateFrame,
+    },
 };
 
 use super::{CAMPAIGN_STATE_NAMESPACE, POINTER_STATE_NAMESPACE};
@@ -54,6 +56,118 @@ struct Root {
     page_bytes: usize,
     page_count: usize,
     complete_digest: Sha256Digest,
+}
+
+pub(super) enum CampaignCheckpoint {
+    Reference(CampaignCheckpointFrame),
+    Legacy(CampaignState),
+}
+
+impl CampaignCheckpoint {
+    pub(super) const fn campaign_id(&self) -> crate::EvolutionCampaignId {
+        match self {
+            Self::Reference(frame) => frame.campaign_id(),
+            Self::Legacy(state) => state.campaign_id(),
+        }
+    }
+
+    pub(super) const fn sequence(&self) -> u64 {
+        match self {
+            Self::Reference(frame) => frame.sequence(),
+            Self::Legacy(state) => state.sequence(),
+        }
+    }
+
+    pub(super) const fn last_event_id(&self) -> peritus_types::EventId {
+        match self {
+            Self::Reference(frame) => frame.last_event_id(),
+            Self::Legacy(state) => state.last_event(),
+        }
+    }
+
+    pub(super) const fn state_digest(&self) -> Sha256Digest {
+        match self {
+            Self::Reference(frame) => frame.state_digest(),
+            Self::Legacy(state) => state.state_digest(),
+        }
+    }
+
+    pub(super) fn matches_state(&self, state: &CampaignState) -> bool {
+        match self {
+            Self::Reference(frame) => frame.matches_state(state),
+            Self::Legacy(observed) => observed == state,
+        }
+    }
+}
+
+pub(super) enum PointerCheckpoint {
+    Reference(PointerCheckpointFrame),
+    Legacy(ProductionHarnessState),
+}
+
+impl PointerCheckpoint {
+    pub(super) const fn project_id(&self) -> peritus_types::ProjectId {
+        match self {
+            Self::Reference(frame) => frame.project_id(),
+            Self::Legacy(state) => state.project_id(),
+        }
+    }
+
+    pub(super) const fn generation(&self) -> u64 {
+        match self {
+            Self::Reference(frame) => frame.generation(),
+            Self::Legacy(state) => state.generation(),
+        }
+    }
+
+    pub(super) const fn sequence(&self) -> u64 {
+        match self {
+            Self::Reference(frame) => frame.sequence(),
+            Self::Legacy(state) => state.sequence(),
+        }
+    }
+
+    pub(super) const fn last_event_id(&self) -> peritus_types::EventId {
+        match self {
+            Self::Reference(frame) => frame.last_event_id(),
+            Self::Legacy(state) => state.last_event(),
+        }
+    }
+
+    pub(super) const fn state_digest(&self) -> Sha256Digest {
+        match self {
+            Self::Reference(frame) => frame.state_digest(),
+            Self::Legacy(state) => state.state_digest(),
+        }
+    }
+
+    pub(super) const fn policy_digest(&self) -> Sha256Digest {
+        match self {
+            Self::Reference(frame) => frame.policy_digest(),
+            Self::Legacy(state) => state.policy().digest(),
+        }
+    }
+
+    pub(super) fn revision_digest(&self) -> Sha256Digest {
+        match self {
+            Self::Reference(frame) => frame.revision_digest(),
+            Self::Legacy(state) => super::pointer::pointer_event_revision_digest(state),
+        }
+    }
+
+    pub(super) fn legacy_state(&self) -> Option<&ProductionHarnessState> {
+        match self {
+            Self::Reference(_) => None,
+            Self::Legacy(state) => Some(state),
+        }
+    }
+
+    pub(super) fn matches_state(&self, state: &ProductionHarnessState) -> bool {
+        match self {
+            Self::Reference(frame) => frame.matches_state(state),
+            Self::Legacy(observed) => observed == state,
+        }
+    }
 }
 
 pub(super) fn campaign_installs(
@@ -112,6 +226,9 @@ pub(super) fn campaign_compatible_installs(
         state.state_digest(),
         &bytes,
         storage,
+        |historical| {
+            decode_campaign_bytes(historical).map(|checkpoint| checkpoint.matches_state(state))
+        },
     )
 }
 
@@ -133,6 +250,9 @@ pub(super) fn pointer_compatible_installs(
         state.state_digest(),
         &bytes,
         storage,
+        |historical| {
+            decode_pointer_bytes(historical).map(|checkpoint| checkpoint.matches_state(state))
+        },
     )
 }
 
@@ -140,15 +260,14 @@ pub(super) fn decode_campaign(
     journal: &SqliteJournal,
     record: &DurableStateRecord,
     campaign_id: crate::EvolutionCampaignId,
-) -> Result<CampaignStateFrame, EvolutionError> {
+) -> Result<CampaignCheckpoint, EvolutionError> {
     let (bytes, root) = load_bytes(
         journal,
         CheckpointKind::Campaign,
         record,
         campaign_id.as_bytes(),
     )?;
-    let frame = decode_message::<CampaignStateFrame>(&bytes, CodecLimits::PRODUCTION)
-        .map_err(codec)?;
+    let frame = decode_campaign_bytes(&bytes)?;
     if frame.campaign_id() != campaign_id
         || frame.sequence() != record.revision()
         || root.is_some_and(|root| root.state_digest != frame.state_digest())
@@ -162,15 +281,14 @@ pub(super) fn decode_pointer(
     journal: &SqliteJournal,
     record: &DurableStateRecord,
     project_id: peritus_types::ProjectId,
-) -> Result<PointerStateFrame, EvolutionError> {
+) -> Result<PointerCheckpoint, EvolutionError> {
     let (bytes, root) = load_bytes(
         journal,
         CheckpointKind::Pointer,
         record,
         project_id.as_bytes(),
     )?;
-    let frame =
-        decode_message::<PointerStateFrame>(&bytes, CodecLimits::PRODUCTION).map_err(codec)?;
+    let frame = decode_pointer_bytes(&bytes)?;
     if frame.project_id() != project_id
         || frame.sequence() != record.revision()
         || root.is_some_and(|root| root.state_digest != frame.state_digest())
@@ -182,7 +300,7 @@ pub(super) fn decode_pointer(
 
 fn campaign_state_bytes(state: &CampaignState) -> Result<Vec<u8>, EvolutionError> {
     encode_message(
-        &CampaignStateFrame::from_state(state).map_err(codec)?,
+        &CampaignCheckpointFrame::from_state(state),
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)
@@ -190,7 +308,7 @@ fn campaign_state_bytes(state: &CampaignState) -> Result<Vec<u8>, EvolutionError
 
 fn pointer_state_bytes(state: &ProductionHarnessState) -> Result<Vec<u8>, EvolutionError> {
     encode_message(
-        &PointerStateFrame::from_state(state).map_err(codec)?,
+        &PointerCheckpointFrame::from_state(state),
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)
@@ -207,17 +325,19 @@ fn compatible_installs(
     state_digest: Sha256Digest,
     bytes: &[u8],
     requested: EvolutionStorageLimits,
+    matches_state: impl FnOnce(&[u8]) -> Result<bool, EvolutionError>,
 ) -> Result<Vec<StateInstall>, EvolutionError> {
     let historical = journal
         .state_record_revision(kind.namespace(), root_key, revision)
         .map_err(journal_error)?;
     if let Some(record) = historical {
-        if record.bytes().starts_with(kind.root_domain()) {
-            let root = parse_root(kind, &record, owner)?;
-            if root.state_digest != state_digest || root.complete_digest != peritus_codec::sha256(bytes)
-            {
-                return Err(recovery("historical paged checkpoint differs from the successor"));
-            }
+        let (historical_bytes, root) = load_bytes(journal, kind, &record, owner)?;
+        if root.is_some_and(|root| root.state_digest != state_digest)
+            || !matches_state(&historical_bytes)?
+        {
+            return Err(recovery("historical checkpoint differs from the successor"));
+        }
+        if let Some(root) = root {
             let storage = EvolutionStorageLimits::new(root.page_bytes)?;
             return installs(
                 kind,
@@ -226,19 +346,16 @@ fn compatible_installs(
                 revision,
                 owner,
                 state_digest,
-                bytes,
+                &historical_bytes,
                 storage,
             );
-        }
-        if record.bytes() != bytes {
-            return Err(recovery("historical inline checkpoint differs from the successor"));
         }
         return Ok(vec![StateInstall::new(
             kind.namespace(),
             root_key.to_vec(),
             expected_root_revision,
             revision,
-            bytes.to_vec(),
+            historical_bytes,
         )
         .map_err(journal_error)?]);
     }
@@ -252,6 +369,28 @@ fn compatible_installs(
         bytes,
         requested,
     )
+}
+
+fn decode_campaign_bytes(bytes: &[u8]) -> Result<CampaignCheckpoint, EvolutionError> {
+    if let Ok(frame) =
+        decode_message::<CampaignCheckpointFrame>(bytes, CodecLimits::PRODUCTION)
+    {
+        return Ok(CampaignCheckpoint::Reference(frame));
+    }
+    decode_message::<CampaignStateFrame>(bytes, CodecLimits::PRODUCTION)
+        .map(CampaignStateFrame::into_state)
+        .map(CampaignCheckpoint::Legacy)
+        .map_err(codec)
+}
+
+fn decode_pointer_bytes(bytes: &[u8]) -> Result<PointerCheckpoint, EvolutionError> {
+    if let Ok(frame) = decode_message::<PointerCheckpointFrame>(bytes, CodecLimits::PRODUCTION) {
+        return Ok(PointerCheckpoint::Reference(frame));
+    }
+    decode_message::<PointerStateFrame>(bytes, CodecLimits::PRODUCTION)
+        .map(PointerStateFrame::into_state)
+        .map(PointerCheckpoint::Legacy)
+        .map_err(codec)
 }
 
 #[allow(clippy::too_many_arguments)]

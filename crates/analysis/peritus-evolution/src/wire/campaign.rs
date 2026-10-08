@@ -2,8 +2,9 @@
 
 use peritus_codec::{
     CanonicalDecode, CanonicalEncode, CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind,
+    CodecLimits,
 };
-use peritus_types::{CommandId, EventId, Sha256Digest};
+use peritus_types::{CommandId, EventId, ProjectId, Sha256Digest};
 
 use crate::{
     CampaignCommand, CampaignEvent, CampaignEventKind, CampaignState, EvolutionCampaignId,
@@ -329,6 +330,107 @@ impl CanonicalDecode for CampaignStateFrame {
             .map(Self)
             .map_err(super::scalar::semantic)
     }
+}
+
+const CAMPAIGN_CHECKPOINT_REFERENCE_DOMAIN: &[u8] =
+    b"peritus.f0.campaign-checkpoint-reference.v2\0";
+
+/// Schema-v2 checkpoint projection referencing immutable campaign events by exact state identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct CampaignCheckpointFrame {
+    campaign_id: EvolutionCampaignId,
+    project_id: ProjectId,
+    binding_digest: Sha256Digest,
+    sequence: u64,
+    last_event: EventId,
+    state_digest: Sha256Digest,
+}
+
+impl CampaignCheckpointFrame {
+    pub(crate) const fn from_state(state: &CampaignState) -> Self {
+        Self {
+            campaign_id: state.campaign_id(),
+            project_id: state.project_id(),
+            binding_digest: state.binding_digest(),
+            sequence: state.sequence(),
+            last_event: state.last_event(),
+            state_digest: state.state_digest(),
+        }
+    }
+
+    pub(crate) const fn campaign_id(self) -> EvolutionCampaignId {
+        self.campaign_id
+    }
+
+    pub(crate) const fn sequence(self) -> u64 {
+        self.sequence
+    }
+
+    pub(crate) const fn last_event_id(self) -> EventId {
+        self.last_event
+    }
+
+    pub(crate) const fn state_digest(self) -> Sha256Digest {
+        self.state_digest
+    }
+
+    pub(crate) fn matches_state(self, state: &CampaignState) -> bool {
+        self.campaign_id == state.campaign_id()
+            && self.project_id == state.project_id()
+            && self.binding_digest == state.binding_digest()
+            && self.sequence == state.sequence()
+            && self.last_event == state.last_event()
+            && self.state_digest == state.state_digest()
+    }
+}
+
+impl CanonicalEncode for CampaignCheckpointFrame {
+    const FAMILY: u16 = 90;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        let reference = campaign_checkpoint_reference(*self)?;
+        writer.write_fixed(&reference)?;
+        writer.write_fixed(peritus_codec::sha256(&reference).as_bytes())
+    }
+}
+
+impl CanonicalDecode for CampaignCheckpointFrame {
+    const FAMILY: u16 = 90;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        if reader.read_bytes()? != CAMPAIGN_CHECKPOINT_REFERENCE_DOMAIN {
+            return Err(super::scalar::invalid(reader));
+        }
+        let value = Self {
+            campaign_id: super::scalar::campaign_id(reader)?,
+            project_id: super::scalar::project_id(reader)?,
+            binding_digest: semantic_digest(reader)?,
+            sequence: reader.read_u64()?,
+            last_event: super::scalar::event_id(reader)?,
+            state_digest: semantic_digest(reader)?,
+        };
+        let encoded_digest = semantic_digest(reader)?;
+        if value.sequence == 0
+            || encoded_digest != peritus_codec::sha256(&campaign_checkpoint_reference(value)?)
+        {
+            return Err(super::scalar::invalid(reader));
+        }
+        Ok(value)
+    }
+}
+
+fn campaign_checkpoint_reference(value: CampaignCheckpointFrame) -> Result<Vec<u8>, CodecError> {
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    writer.write_bytes(CAMPAIGN_CHECKPOINT_REFERENCE_DOMAIN)?;
+    writer.write_fixed(value.campaign_id.as_bytes())?;
+    writer.write_fixed(value.project_id.as_bytes())?;
+    writer.write_fixed(value.binding_digest.as_bytes())?;
+    writer.write_u64(value.sequence)?;
+    writer.write_fixed(value.last_event.as_bytes())?;
+    writer.write_fixed(value.state_digest.as_bytes())?;
+    Ok(writer.into_bytes())
 }
 
 fn write_event_option(

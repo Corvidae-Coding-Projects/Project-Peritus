@@ -2,6 +2,7 @@
 
 use peritus_codec::{
     CanonicalDecode, CanonicalEncode, CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind,
+    CodecLimits,
 };
 use peritus_types::{CommandId, EventId, ProjectId, Sha256Digest};
 
@@ -358,6 +359,137 @@ impl CanonicalDecode for PointerStateFrame {
             .map(Self)
             .map_err(super::scalar::semantic)
     }
+}
+
+const POINTER_CHECKPOINT_REFERENCE_DOMAIN: &[u8] =
+    b"peritus.f0.pointer-checkpoint-reference.v2\0";
+
+/// Schema-v2 checkpoint projection referencing immutable pointer events by exact state identity.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct PointerCheckpointFrame {
+    project_id: ProjectId,
+    current_digest: Sha256Digest,
+    policy_digest: Sha256Digest,
+    generation: u64,
+    sequence: u64,
+    last_event: EventId,
+    state_digest: Sha256Digest,
+    revision_digest: Sha256Digest,
+}
+
+impl PointerCheckpointFrame {
+    pub(crate) fn from_state(state: &ProductionHarnessState) -> Self {
+        Self {
+            project_id: state.project_id(),
+            current_digest: state.current().digest(),
+            policy_digest: state.policy().digest(),
+            generation: state.generation(),
+            sequence: state.sequence(),
+            last_event: state.last_event(),
+            state_digest: state.state_digest(),
+            revision_digest: pointer_checkpoint_revision_digest(state),
+        }
+    }
+
+    pub(crate) const fn project_id(self) -> ProjectId {
+        self.project_id
+    }
+
+    pub(crate) const fn generation(self) -> u64 {
+        self.generation
+    }
+
+    pub(crate) const fn sequence(self) -> u64 {
+        self.sequence
+    }
+
+    pub(crate) const fn last_event_id(self) -> EventId {
+        self.last_event
+    }
+
+    pub(crate) const fn state_digest(self) -> Sha256Digest {
+        self.state_digest
+    }
+
+    pub(crate) const fn policy_digest(self) -> Sha256Digest {
+        self.policy_digest
+    }
+
+    pub(crate) const fn revision_digest(self) -> Sha256Digest {
+        self.revision_digest
+    }
+
+    pub(crate) fn matches_state(self, state: &ProductionHarnessState) -> bool {
+        self.project_id == state.project_id()
+            && self.current_digest == state.current().digest()
+            && self.policy_digest == state.policy().digest()
+            && self.generation == state.generation()
+            && self.sequence == state.sequence()
+            && self.last_event == state.last_event()
+            && self.state_digest == state.state_digest()
+            && self.revision_digest == pointer_checkpoint_revision_digest(state)
+    }
+}
+
+impl CanonicalEncode for PointerCheckpointFrame {
+    const FAMILY: u16 = 93;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        let reference = pointer_checkpoint_reference(*self)?;
+        writer.write_fixed(&reference)?;
+        writer.write_fixed(peritus_codec::sha256(&reference).as_bytes())
+    }
+}
+
+impl CanonicalDecode for PointerCheckpointFrame {
+    const FAMILY: u16 = 93;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        if reader.read_bytes()? != POINTER_CHECKPOINT_REFERENCE_DOMAIN {
+            return Err(super::scalar::invalid(reader));
+        }
+        let value = Self {
+            project_id: super::scalar::project_id(reader)?,
+            current_digest: semantic_digest(reader)?,
+            policy_digest: semantic_digest(reader)?,
+            generation: reader.read_u64()?,
+            sequence: reader.read_u64()?,
+            last_event: super::scalar::event_id(reader)?,
+            state_digest: semantic_digest(reader)?,
+            revision_digest: semantic_digest(reader)?,
+        };
+        let encoded_digest = semantic_digest(reader)?;
+        if value.generation == 0
+            || value.sequence == 0
+            || encoded_digest != peritus_codec::sha256(&pointer_checkpoint_reference(value)?)
+        {
+            return Err(super::scalar::invalid(reader));
+        }
+        Ok(value)
+    }
+}
+
+fn pointer_checkpoint_reference(value: PointerCheckpointFrame) -> Result<Vec<u8>, CodecError> {
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    writer.write_bytes(POINTER_CHECKPOINT_REFERENCE_DOMAIN)?;
+    writer.write_fixed(value.project_id.as_bytes())?;
+    writer.write_fixed(value.current_digest.as_bytes())?;
+    writer.write_fixed(value.policy_digest.as_bytes())?;
+    writer.write_u64(value.generation)?;
+    writer.write_u64(value.sequence)?;
+    writer.write_fixed(value.last_event.as_bytes())?;
+    writer.write_fixed(value.state_digest.as_bytes())?;
+    writer.write_fixed(value.revision_digest.as_bytes())?;
+    Ok(writer.into_bytes())
+}
+
+fn pointer_checkpoint_revision_digest(state: &ProductionHarnessState) -> Sha256Digest {
+    state.history().last().map_or_else(
+        || state.state_digest(),
+        |record| peritus_evidence::revision_digest(&record.successor().revision()),
+    )
 }
 
 fn write_event_option(
