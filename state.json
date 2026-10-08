@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4047,
-        "tip_oid": "a388a6cbbfc5c12ba9e09487e96aa05a357eb548",
-        "prefix_sha256": "aea98b4c8cde78a45ab5fc8cebad76f74d53eddccb5597e17557dc6707d1a76b"
+        "sequence": 4048,
+        "tip_oid": "42f6ea12fe4a3b859e8aba886e574621e8ec65c5",
+        "prefix_sha256": "c6e05b119a29de472e716ea93ff924f32788c5c3f6486a4eab51397b97d05c7d"
       },
       "NWAR": {
         "sequence": 39,
@@ -19268,12 +19268,13 @@
       "display_id": 537,
       "title": "[L459] C5's complete request constructor admits unsatisfiable tool selection and unsupported semantic continuation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L459.\n\n- Evidence: `crates/model/peritus-model-protocol/src/tool.rs:51-62`, `src/request/model.rs:38-73`, `src/request/validation.rs:11-32,70-146`, `src/request/options.rs:70-104`, `src/capability/profile.rs:160-169` in the same crate.\n- Behavior: ModelRequest stores ToolChoice but never passes it into request validation. Required with no tool definitions, or Specific naming an absent tool, is therefore accepted. Continuation without a sequence is semantic; validation requires ResumableResponse only for exact cursors and never checks the profile's ResumeKind for semantic continuation. Required capability negotiation does not fill these cross-field gaps.\n- Consequence: A caller can freeze a request whose stated tool requirement has no possible declared fulfillment, or one whose continuation contradicts an explicitly Unsupported profile. Actual transport may reject or omit such options; adapter behavior remains individually audited. This is a source-derived admission trap, not permission to fabricate continuation support or bypass tool authority.\n- Repair direction: Validate selection against the admitted declaration set and validate continuation strength against the exact profile contract before submitting. Return actionable unsupported-capability information while preserving the logical conversation and prior work. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.644103560Z",
-      "updated_at": "2026-10-08T04:19:59.567437193Z",
+      "updated_at": "2026-10-08T04:21:38.991274897Z",
+      "closed_at": "2026-10-08T04:21:38.988488303Z",
       "labels": [
         "daily-driving-limiter"
       ],
