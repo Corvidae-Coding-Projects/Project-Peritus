@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4117,
-        "tip_oid": "a9a779f7d8fbe637b2cd149a190e3f1f380dbbfa",
-        "prefix_sha256": "9171cd6bf12407f35281611b5154adbbbe3b39b3cf102331831189758a4d3ede"
+        "sequence": 4118,
+        "tip_oid": "98f9c386d0481f84329fdda49691c3c7987ac3e5",
+        "prefix_sha256": "125208715933453cafd95a1150dffe00dc892a6d02a1aa3c96e41cea3f4616aa"
       },
       "NWAR": {
         "sequence": 39,
@@ -25245,12 +25245,13 @@
       "display_id": 157,
       "title": "[L058] Local working-memory defaults and configuration admission",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L058.\n\n- `context_config.rs:99-114` defaults to **85% input trigger**, **eight recent messages**, **4,096 preferred working-state tokens**, **4,096 retrieved-evidence tokens**, **32 update operations**, **2,048 bytes per entry**, and **16,384 bytes per evidence-read response**. Completed batches publish checkpoints by default.\n- Validation at lines 123-142 allows trigger **1..100%**, recent preference **1..128**, working token preference **1..16,384**, retrieved tokens **0..16,384**, and read bytes **256..65,536**. `working/limits.rs` now identifies the actual dimensions: **65,535 observation locators**, **512 working entries**, caller entry bytes, **32 items per source/dependency/file-validity list**, and caller update count. Its constructor can only narrow the hard envelope (L061); actual reducer/assembly enforcement remains pending.\n- Preferences can omit optional evidence, while required closure may borrow headroom per the field contract. Do not treat preferred retention as deletion or assume all these dimensions are terminal quotas before reading the reducer/assembly callers.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.076642835Z",
-      "updated_at": "2026-10-08T06:23:39.849053529Z",
+      "updated_at": "2026-10-08T06:25:01.722812202Z",
+      "closed_at": "2026-10-08T06:25:01.720005778Z",
       "labels": [
         "daily-driving-limiter"
       ],
