@@ -194,6 +194,40 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("finish head-record export", error))?;
         Ok(export)
     }
+
+    /// Produces a bounded exact export for one retained event and its original command batch.
+    ///
+    /// The retained event, every event and artifact reference in its immutable producing
+    /// transaction, the global position bounds, and the current canonical head catalog are checked
+    /// in one read transaction. The event may have later successors, so delayed evidence admission
+    /// does not depend on it still being an aggregate head.
+    ///
+    /// # Errors
+    /// Returns invalid input for position zero, or a storage/integrity error when the event is
+    /// absent, detached from its original command, or references unavailable artifact content.
+    pub fn integrity_export_for_retained_event(
+        &mut self,
+        position: u64,
+    ) -> Result<IntegrityExport, JournalError> {
+        if position == 0 {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "export retained journal event",
+                "journal provenance position is zero",
+            ));
+        }
+        let store_id = self.store_id;
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .map_err(|error| JournalError::sqlite("begin retained-event export", error))?;
+        let export =
+            scan::scan_retained_event_transaction(&transaction, store_id, position)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("finish retained-event export", error))?;
+        Ok(export)
+    }
 }
 
 const fn corrupt(detail: &'static str) -> JournalError {

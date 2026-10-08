@@ -6,7 +6,9 @@ use peritus_types::EventSequence;
 
 use crate::{
     CampaignTransition, EvolutionError, EvolutionStorageLimits, PointerTransition,
-    wire::{CampaignEventFrame, PointerEventFrame},
+    wire::{
+        CampaignCommandFrame, CampaignEventFrame, PointerCommandFrame, PointerEventFrame,
+    },
 };
 
 use super::super::{
@@ -17,10 +19,11 @@ use super::super::{
 pub(super) fn campaign_event(
     aggregate: peritus_journal::AggregateKey,
     transition: &CampaignTransition,
+    command: &CampaignCommandFrame,
 ) -> Result<EventDraft, EvolutionError> {
     let event = transition.event();
     let bytes = encode_message(
-        &CampaignEventFrame::from_event(event).map_err(codec)?,
+        &CampaignEventFrame::from_event_and_command(event, command).map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
@@ -40,10 +43,11 @@ pub(super) fn campaign_event(
 pub(super) fn pointer_event(
     aggregate: peritus_journal::AggregateKey,
     transition: &PointerTransition,
+    command: &PointerCommandFrame,
 ) -> Result<EventDraft, EvolutionError> {
     let event = transition.event();
     let bytes = encode_message(
-        &PointerEventFrame::from_event(event).map_err(codec)?,
+        &PointerEventFrame::from_event_and_command(event, command).map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;

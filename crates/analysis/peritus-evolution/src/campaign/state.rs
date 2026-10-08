@@ -1,5 +1,7 @@
 //! Complete pure evolution-campaign checkpoint.
 
+use std::sync::Arc;
+
 use crate::{
     AttributionRecord, CampaignPublication, ChangeManifest, EvaluationGeneration,
     EvolutionCampaignId, EvolutionLimits, ProductionHarnessBinding, PromotionPolicyBinding,
@@ -141,14 +143,14 @@ pub struct CampaignState {
     pub(crate) last_event: EventId,
     pub(crate) state_digest: Sha256Digest,
     pub(crate) phase: CampaignPhase,
-    pub(crate) baseline_evidence: Vec<BaselineEvidence>,
-    pub(crate) diagnoses: Vec<PublishedDebuggerEvidence>,
-    pub(crate) manifests: Vec<ChangeManifest>,
-    pub(crate) variants: Vec<VariantDefinition>,
-    pub(crate) evaluations: Vec<VariantEvaluation>,
-    pub(crate) evaluation_history: Option<Vec<EvaluationGeneration>>,
-    pub(crate) attributions: Vec<AttributionRecord>,
-    pub(crate) assessments: Vec<VariantAssessment>,
+    pub(crate) baseline_evidence: Arc<Vec<BaselineEvidence>>,
+    pub(crate) diagnoses: Arc<Vec<PublishedDebuggerEvidence>>,
+    pub(crate) manifests: Arc<Vec<ChangeManifest>>,
+    pub(crate) variants: Arc<Vec<VariantDefinition>>,
+    pub(crate) evaluations: Arc<Vec<VariantEvaluation>>,
+    pub(crate) evaluation_history: Option<Arc<Vec<EvaluationGeneration>>>,
+    pub(crate) attributions: Arc<Vec<AttributionRecord>>,
+    pub(crate) assessments: Arc<Vec<VariantAssessment>>,
     pub(crate) selection: Option<SelectionRecord>,
     pub(crate) proposal: Option<PromotionProposal>,
     pub(crate) publication: Option<CampaignPublication>,
@@ -209,27 +211,27 @@ impl CampaignState {
     /// Baseline artifact/evidence references.
     #[must_use]
     pub fn baseline_evidence(&self) -> &[BaselineEvidence] {
-        &self.baseline_evidence
+        self.baseline_evidence.as_slice()
     }
     /// Published E2 bridges.
     #[must_use]
     pub fn diagnoses(&self) -> &[PublishedDebuggerEvidence] {
-        &self.diagnoses
+        self.diagnoses.as_slice()
     }
     /// Canonical admitted manifests.
     #[must_use]
     pub fn manifests(&self) -> &[ChangeManifest] {
-        &self.manifests
+        self.manifests.as_slice()
     }
     /// Canonical isolated variants.
     #[must_use]
     pub fn variants(&self) -> &[VariantDefinition] {
-        &self.variants
+        self.variants.as_slice()
     }
     /// Canonical exact E3 bridges.
     #[must_use]
     pub fn evaluations(&self) -> &[VariantEvaluation] {
-        &self.evaluations
+        self.evaluations.as_slice()
     }
     /// Versioned immutable evaluation snapshots after the first explicit supersession.
     ///
@@ -237,7 +239,7 @@ impl CampaignState {
     /// the generation ledger without changing any earlier checkpoint bytes.
     #[must_use]
     pub fn evaluation_history(&self) -> Option<&[EvaluationGeneration]> {
-        self.evaluation_history.as_deref()
+        self.evaluation_history.as_ref().map(|history| history.as_slice())
     }
     /// Projects the active evidence and dependent work for one admitted variant.
     #[must_use]
@@ -291,12 +293,12 @@ impl CampaignState {
     /// Deterministic attribution records.
     #[must_use]
     pub fn attributions(&self) -> &[AttributionRecord] {
-        &self.attributions
+        self.attributions.as_slice()
     }
     /// Independent deny-wins assessments.
     #[must_use]
     pub fn assessments(&self) -> &[VariantAssessment] {
-        &self.assessments
+        self.assessments.as_slice()
     }
     /// Frozen deterministic selection.
     #[must_use]
@@ -325,7 +327,7 @@ impl CampaignState {
         semantic.extend_from_slice(&self.sequence.to_be_bytes());
         semantic.extend_from_slice(self.last_event.as_bytes());
         semantic.push(self.phase.tag());
-        for value in &self.baseline_evidence {
+        for value in self.baseline_evidence.iter() {
             semantic.extend_from_slice(value.artifact_digest().as_bytes());
             semantic.extend_from_slice(value.evidence_digest().as_bytes());
         }
@@ -349,7 +351,7 @@ impl CampaignState {
         append_terminal(&mut semantic, self.terminal);
         self.state_digest = if let Some(history) = &self.evaluation_history {
             let mut lifecycle = Vec::with_capacity(history.len().saturating_mul(32));
-            for generation in history {
+            for generation in history.iter() {
                 lifecycle.extend_from_slice(generation.digest().as_bytes());
             }
             digest_parts(b"peritus.f0.campaign-state.v2\0", &[&semantic, &lifecycle])

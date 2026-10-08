@@ -7,6 +7,12 @@ mod checkpoint;
 mod directive;
 mod pointer;
 mod replay;
+pub use replay::{
+    CampaignRecoveryCursor, CampaignRecoveryStatus, EVOLUTION_REPLAY_WINDOW_EVENTS,
+    EvolutionReplayControl, EvolutionReplayProgress, PointerRecoveryCursor,
+    PointerRecoveryStatus, resume_campaign_recovery, resume_pointer_recovery,
+    start_campaign_recovery, start_pointer_recovery,
+};
 
 pub use activation::{
     AtomicActivation, commit_atomic_activation, commit_atomic_activation_with_storage,

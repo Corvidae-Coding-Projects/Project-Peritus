@@ -1,5 +1,7 @@
 //! Complete canonical campaign checkpoint semantics.
 
+use std::sync::Arc;
+
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 
 use crate::{
@@ -170,14 +172,14 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
         last_event,
         state_digest: encoded_state,
         phase,
-        baseline_evidence,
-        diagnoses,
-        manifests,
-        variants,
-        evaluations,
-        evaluation_history,
-        attributions,
-        assessments,
+        baseline_evidence: Arc::new(baseline_evidence),
+        diagnoses: Arc::new(diagnoses),
+        manifests: Arc::new(manifests),
+        variants: Arc::new(variants),
+        evaluations: Arc::new(evaluations),
+        evaluation_history: evaluation_history.map(Arc::new),
+        attributions: Arc::new(attributions),
+        assessments: Arc::new(assessments),
         selection: selected,
         proposal: promotion,
         publication,

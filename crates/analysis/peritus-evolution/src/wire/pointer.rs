@@ -1,5 +1,7 @@
 //! Canonical production-pointer command, event, and complete-state families 91-93.
 
+use std::sync::Arc;
+
 use peritus_codec::{
     CanonicalDecode, CanonicalEncode, CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind,
     CodecLimits,
@@ -23,7 +25,7 @@ pub struct PointerCommandFrame {
     prior_state_digest: Sha256Digest,
     policy_digest: Sha256Digest,
     command_digest: Sha256Digest,
-    kind_bytes: Vec<u8>,
+    kind_bytes: Arc<[u8]>,
 }
 
 impl PointerCommandFrame {
@@ -43,7 +45,8 @@ impl PointerCommandFrame {
             policy_digest: command.policy_digest(),
             command_digest: command.digest(),
             kind_bytes: super::semantic::encode_pointer_kind(command.kind())
-                .map_err(super::scalar::semantic)?,
+                .map_err(super::scalar::semantic)?
+                .into(),
         })
     }
     /// Reconstructs and verifies the complete semantic command.
@@ -94,7 +97,7 @@ impl CanonicalEncode for PointerCommandFrame {
         for digest in [self.prior_state_digest, self.policy_digest, self.command_digest] {
             writer.write_fixed(digest.as_bytes())?;
         }
-        writer.write_bytes(&self.kind_bytes)
+        writer.write_bytes(self.kind_bytes.as_ref())
     }
 }
 
@@ -146,7 +149,7 @@ pub struct PointerEventFrame {
     policy_digest: Sha256Digest,
     command_digest: Sha256Digest,
     successor_state_digest: Sha256Digest,
-    kind_bytes: Vec<u8>,
+    kind_bytes: Arc<[u8]>,
 }
 
 impl PointerEventFrame {
@@ -169,7 +172,39 @@ impl PointerEventFrame {
             command_digest: event.command_digest(),
             successor_state_digest: event.successor_state_digest(),
             kind_bytes: super::semantic::encode_pointer_kind(kind)
-                .map_err(super::scalar::semantic)?,
+                .map_err(super::scalar::semantic)?
+                .into(),
+        })
+    }
+    pub(crate) fn from_event_and_command(
+        event: &PointerEvent,
+        command: &PointerCommandFrame,
+    ) -> Result<Self, CodecError> {
+        if command.command_id != event.command_id()
+            || command.event_id != event.id()
+            || command.project_id != event.project_id()
+            || command.expected_sequence.checked_add(1) != Some(event.sequence())
+            || command.expected_head != event.previous_event()
+            || command.expected_generation != event.prior_generation()
+            || command.prior_state_digest != event.prior_state_digest()
+            || command.policy_digest != event.policy_digest()
+            || command.command_digest != event.command_digest()
+        {
+            return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, 0));
+        }
+        Ok(Self {
+            event_id: event.id(),
+            command_id: event.command_id(),
+            project_id: event.project_id(),
+            sequence: event.sequence(),
+            previous_event: event.previous_event(),
+            prior_generation: event.prior_generation(),
+            successor_generation: event.successor_generation(),
+            prior_state_digest: event.prior_state_digest(),
+            policy_digest: event.policy_digest(),
+            command_digest: event.command_digest(),
+            successor_state_digest: event.successor_state_digest(),
+            kind_bytes: Arc::clone(&command.kind_bytes),
         })
     }
     /// Reconstructs an event and verifies its producing command and exact predecessor replay.
@@ -253,7 +288,7 @@ impl CanonicalEncode for PointerEventFrame {
         ] {
             writer.write_fixed(digest.as_bytes())?;
         }
-        writer.write_bytes(&self.kind_bytes)
+        writer.write_bytes(self.kind_bytes.as_ref())
     }
 }
 
@@ -508,7 +543,7 @@ fn read_event_option(reader: &mut CanonicalReader<'_>) -> Result<Option<EventId>
 fn semantic_digest(reader: &mut CanonicalReader<'_>) -> Result<Sha256Digest, CodecError> {
     super::scalar::digest(reader).map_err(super::scalar::semantic)
 }
-fn read_semantic(reader: &mut CanonicalReader<'_>) -> Result<Vec<u8>, CodecError> {
+fn read_semantic(reader: &mut CanonicalReader<'_>) -> Result<Arc<[u8]>, CodecError> {
     let offset = reader.offset();
     let bytes = reader.read_bytes_owned()?;
     if bytes.is_empty() {
@@ -518,7 +553,7 @@ fn read_semantic(reader: &mut CanonicalReader<'_>) -> Result<Vec<u8>, CodecError
     if super::semantic::encode_pointer_kind(&value).map_err(super::scalar::semantic)? != bytes {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
     }
-    Ok(bytes)
+    Ok(bytes.into())
 }
 const fn corrupt() -> EvolutionError {
     EvolutionError::new(

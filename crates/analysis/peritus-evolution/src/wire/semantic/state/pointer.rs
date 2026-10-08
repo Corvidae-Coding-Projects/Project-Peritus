@@ -1,5 +1,7 @@
 //! Complete canonical production-pointer checkpoint semantics.
 
+use std::sync::Arc;
+
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_harness::domain::HarnessRevisionIdentity;
 
@@ -93,7 +95,7 @@ pub(crate) fn decode_pointer_state(bytes: &[u8]) -> Result<ProductionHarnessStat
         last_event,
         state_digest: encoded_state,
         phase,
-        history,
+        history: Arc::new(history),
         pending,
     };
     state.refresh_digest();

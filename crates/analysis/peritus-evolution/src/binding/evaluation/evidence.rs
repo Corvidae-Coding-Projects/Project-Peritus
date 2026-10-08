@@ -1,5 +1,7 @@
 //! Published E3 evidence identity and binding checks.
 
+use std::sync::Arc;
+
 use peritus_eval::{
     DatasetDigest, EvaluationArm, EvaluationCampaignId, EvaluationOperationReceipt,
     EvaluationPhase, EvaluationPlanId, EvaluationReportId, EvaluationState,
@@ -30,7 +32,7 @@ pub struct PublishedEvaluationEvidence {
     report_artifact: Sha256Digest,
     evidence_id: EvidenceId,
     journal_position: u64,
-    analysis: EvaluationAnalysisSnapshot,
+    analysis: Arc<EvaluationAnalysisSnapshot>,
     digest: Sha256Digest,
 }
 
@@ -136,7 +138,7 @@ impl PublishedEvaluationEvidence {
             report_artifact,
             evidence_id: publication.evidence_id(),
             journal_position: publication.report_commit_position(),
-            analysis,
+            analysis: Arc::new(analysis),
             digest,
         })
     }
@@ -197,7 +199,7 @@ impl PublishedEvaluationEvidence {
             report_artifact,
             evidence_id,
             journal_position,
-            analysis,
+            analysis: Arc::new(analysis),
             digest,
         })
     }
@@ -264,8 +266,8 @@ impl PublishedEvaluationEvidence {
     }
     /// Borrows the complete E3 analysis used by F0.
     #[must_use]
-    pub const fn analysis(&self) -> &EvaluationAnalysisSnapshot {
-        &self.analysis
+    pub fn analysis(&self) -> &EvaluationAnalysisSnapshot {
+        self.analysis.as_ref()
     }
     /// Returns the digest of every retained evaluation fact.
     #[must_use]

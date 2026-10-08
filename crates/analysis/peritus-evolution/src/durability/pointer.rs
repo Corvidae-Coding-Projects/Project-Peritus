@@ -52,13 +52,12 @@ pub fn commit_pointer_transition_with_storage(
     binding::validate_pointer(command, transition)?;
     let aggregate = pointer_aggregate_key(command.project_id())?;
     let state_key = pointer_state_key(command.project_id());
-    let command_bytes = encode_message(
-        &PointerCommandFrame::from_command(command).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
+    let command_frame = PointerCommandFrame::from_command(command).map_err(codec)?;
+    let command_bytes =
+        encode_message(&command_frame, CodecLimits::PRODUCTION).map_err(codec)?;
     let event_bytes = encode_message(
-        &PointerEventFrame::from_event(transition.event()).map_err(codec)?,
+        &PointerEventFrame::from_event_and_command(transition.event(), &command_frame)
+            .map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;

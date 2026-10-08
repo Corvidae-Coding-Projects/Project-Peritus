@@ -1,5 +1,7 @@
 //! Complete long-lived project production-pointer checkpoint.
 
+use std::sync::Arc;
+
 use crate::{
     ActivationAuthorization, ActivationId, EvolutionCampaignId, EvolutionLimits,
     ProductionHarnessBinding, PromotionPolicyBinding, PromotionProposal, RollbackProposal,
@@ -153,7 +155,7 @@ pub struct ProductionHarnessState {
     pub(crate) last_event: EventId,
     pub(crate) state_digest: Sha256Digest,
     pub(crate) phase: PointerPhase,
-    pub(crate) history: Vec<ActivationRecord>,
+    pub(crate) history: Arc<Vec<ActivationRecord>>,
     pub(crate) pending: Option<PendingActivation>,
 }
 
@@ -209,7 +211,7 @@ impl ProductionHarnessState {
     /// durable rollback eligibility is resolved through [`crate::DurableActivationHistory`].
     #[must_use]
     pub fn history(&self) -> &[ActivationRecord] {
-        &self.history
+        self.history.as_slice()
     }
     /// Exact prepared action.
     #[must_use]
@@ -227,7 +229,7 @@ impl ProductionHarnessState {
         bytes.extend_from_slice(&self.sequence.to_be_bytes());
         bytes.extend_from_slice(self.last_event.as_bytes());
         bytes.push(self.phase.tag());
-        for record in &self.history {
+        for record in self.history.iter() {
             bytes.extend_from_slice(record.digest().as_bytes());
         }
         if let Some(pending) = &self.pending {

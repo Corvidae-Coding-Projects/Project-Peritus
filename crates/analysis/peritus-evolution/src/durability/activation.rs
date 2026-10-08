@@ -141,7 +141,13 @@ pub fn commit_atomic_activation_with_storage(
     } = activation;
     let pointer_aggregate = pointer_aggregate_key(pointer_command.project_id())?;
     let pointer_key = pointer_state_key(pointer_command.project_id());
-    let mut events = vec![pointer_event(pointer_aggregate, pointer_transition)?];
+    let pointer_command_frame =
+        PointerCommandFrame::from_command(pointer_command).map_err(codec)?;
+    let mut events = vec![pointer_event(
+        pointer_aggregate,
+        pointer_transition,
+        &pointer_command_frame,
+    )?];
     let mut installs = pointer_installs(
         journal,
         pointer_key.clone(),
@@ -155,7 +161,7 @@ pub fn commit_atomic_activation_with_storage(
     }
 
     let pointer_command_bytes = encode_message(
-        &PointerCommandFrame::from_command(pointer_command).map_err(codec)?,
+        &pointer_command_frame,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
@@ -166,7 +172,13 @@ pub fn commit_atomic_activation_with_storage(
     if let Some((campaign_command, campaign_transition)) = campaign {
         let campaign_aggregate = campaign_aggregate_key(campaign_command.campaign_id())?;
         let campaign_key = campaign_state_key(campaign_command.campaign_id());
-        events.push(campaign_event(campaign_aggregate, campaign_transition)?);
+        let campaign_command_frame =
+            CampaignCommandFrame::from_command(campaign_command).map_err(codec)?;
+        events.push(campaign_event(
+            campaign_aggregate,
+            campaign_transition,
+            &campaign_command_frame,
+        )?);
         installs.extend(campaign_installs(
             journal,
             campaign_key,
@@ -176,7 +188,7 @@ pub fn commit_atomic_activation_with_storage(
         )?);
         artifacts.extend(campaign_artifacts(campaign_command.kind()));
         let bytes = encode_message(
-            &CampaignCommandFrame::from_command(campaign_command).map_err(codec)?,
+            &campaign_command_frame,
             CodecLimits::PRODUCTION,
         )
         .map_err(codec)?;

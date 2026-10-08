@@ -51,9 +51,10 @@ pub fn attribute(
     if entries.try_reserve_exact(predicted).is_err() {
         return Err(attribution_population());
     }
+    let pass_at_k = TaskPassAtKIndex::new(evaluation.analysis().candidate_pass_at_k());
     for manifest in manifests {
         for prediction in manifest.predictions() {
-            let observation = observe(prediction, evaluation);
+            let observation = observe(prediction, evaluation, &pass_at_k);
             let verdict = verdict(prediction, observation);
             entries.push(AttributionEntry::new(
                 manifest.id(),
@@ -83,7 +84,11 @@ const fn attribution_population() -> EvolutionError {
     )
 }
 
-fn observe(prediction: &Prediction, evaluation: &PublishedEvaluationEvidence) -> MetricObservation {
+fn observe(
+    prediction: &Prediction,
+    evaluation: &PublishedEvaluationEvidence,
+    pass_at_k: &TaskPassAtKIndex<'_>,
+) -> MetricObservation {
     if matches!(prediction.subject(), PredictionSubject::FailureClass(_)) {
         return MetricObservation::Unavailable(AttributionUnavailable::UnsupportedFailureClass);
     }
@@ -100,7 +105,7 @@ fn observe(prediction: &Prediction, evaluation: &PublishedEvaluationEvidence) ->
             let PredictionSubject::Task(task) = prediction.subject() else {
                 return MetricObservation::Unavailable(AttributionUnavailable::TaskAbsent);
             };
-            task_pass_at_k(analysis.candidate_pass_at_k(), task, k)
+            pass_at_k.observe(task, k)
         }
         PredictionMetric::SafetyFailures => {
             MetricObservation::Available(MetricValue::Count(analysis.candidate_safety_failures()))
@@ -139,25 +144,38 @@ fn metric_observation<T: Copy>(
     }
 }
 
-fn task_pass_at_k(
-    value: &crate::EvaluationMetric<Vec<crate::TaskPassAtKSnapshot>>,
-    task: TaskId,
-    k: u16,
-) -> MetricObservation {
-    match value {
-        crate::EvaluationMetric::Unavailable(reason) => unavailable(*reason),
-        crate::EvaluationMetric::Available(tasks) => {
-            if !tasks.iter().any(|value| value.task_id() == task) {
-                return MetricObservation::Unavailable(AttributionUnavailable::TaskAbsent);
+enum TaskPassAtKIndex<'a> {
+    Available(&'a [crate::TaskPassAtKSnapshot]),
+    Unavailable(peritus_eval::MetricUnavailableReason),
+}
+
+impl<'a> TaskPassAtKIndex<'a> {
+    fn new(value: &'a crate::EvaluationMetric<Vec<crate::TaskPassAtKSnapshot>>) -> Self {
+        match value {
+            crate::EvaluationMetric::Available(values) => Self::Available(values),
+            crate::EvaluationMetric::Unavailable(reason) => Self::Unavailable(*reason),
+        }
+    }
+
+    fn observe(&self, task: TaskId, k: u16) -> MetricObservation {
+        let values = match self {
+            Self::Available(values) => *values,
+            Self::Unavailable(reason) => return unavailable(*reason),
+        };
+        match values.binary_search_by_key(&(task, k), |value| (value.task_id(), value.k())) {
+            Ok(index) => MetricObservation::Available(MetricValue::ProbabilityMillionths(
+                values[index].estimate_millionths(),
+            )),
+            Err(index)
+                if values.get(index).is_some_and(|value| value.task_id() == task)
+                    || index
+                        .checked_sub(1)
+                        .and_then(|prior| values.get(prior))
+                        .is_some_and(|value| value.task_id() == task) =>
+            {
+                MetricObservation::Unavailable(AttributionUnavailable::MetricAbsent)
             }
-            tasks.iter().find(|value| value.task_id() == task && value.k() == k).map_or(
-                MetricObservation::Unavailable(AttributionUnavailable::MetricAbsent),
-                |value| {
-                    MetricObservation::Available(MetricValue::ProbabilityMillionths(
-                        value.estimate_millionths(),
-                    ))
-                },
-            )
+            Err(_) => MetricObservation::Unavailable(AttributionUnavailable::TaskAbsent),
         }
     }
 }

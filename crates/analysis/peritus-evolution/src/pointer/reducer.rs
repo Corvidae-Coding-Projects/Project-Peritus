@@ -1,5 +1,7 @@
 //! Pure production-pointer decision, event application, and replay.
 
+use std::sync::Arc;
+
 use crate::{
     ActivationKind, EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
     PendingActivation, PointerCommand, PointerCommandKind, PointerEvent, PointerEventKind,
@@ -203,7 +205,7 @@ fn apply_kind(
             last_event: event_id,
             state_digest: Sha256Digest::new([0; 32]),
             phase: PointerPhase::Active,
-            history: vec![record],
+            history: Arc::new(vec![record]),
             pending: None,
         });
     }
@@ -349,11 +351,12 @@ fn append_history(
     record: crate::ActivationRecord,
     retention: HistoryRetention,
 ) -> Result<(), EvolutionError> {
+    let history = Arc::make_mut(&mut state.history);
     if let Some(limit) = state.limits.activation_history_limit().map(usize::from) {
-        if state.history.len() > limit {
+        if history.len() > limit {
             return Err(corrupt("pointer activation cache already exceeds its policy"));
         }
-        if state.history.len() == limit {
+        if history.len() == limit {
             match retention {
                 HistoryRetention::Preserve => {
                     return Err(EvolutionError::new(
@@ -364,12 +367,12 @@ fn append_history(
                     ));
                 }
                 HistoryRetention::LegacyEvictOldest => {
-                    state.history.remove(0);
+                    history.remove(0);
                 }
             }
         }
     }
-    state.history.push(record);
+    history.push(record);
     Ok(())
 }
 

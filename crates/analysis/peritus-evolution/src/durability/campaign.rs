@@ -51,13 +51,12 @@ pub fn commit_campaign_transition_with_storage(
     binding::validate_campaign(command, transition)?;
     let aggregate = campaign_aggregate_key(command.campaign_id())?;
     let state_key = campaign_state_key(command.campaign_id());
-    let command_bytes = encode_message(
-        &CampaignCommandFrame::from_command(command).map_err(codec)?,
-        CodecLimits::PRODUCTION,
-    )
-    .map_err(codec)?;
+    let command_frame = CampaignCommandFrame::from_command(command).map_err(codec)?;
+    let command_bytes =
+        encode_message(&command_frame, CodecLimits::PRODUCTION).map_err(codec)?;
     let event_bytes = encode_message(
-        &CampaignEventFrame::from_event(transition.event()).map_err(codec)?,
+        &CampaignEventFrame::from_event_and_command(transition.event(), &command_frame)
+            .map_err(codec)?,
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;

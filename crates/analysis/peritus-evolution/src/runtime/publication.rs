@@ -194,7 +194,9 @@ pub fn publish_claimed_evolution(
         return Err(binding("publication claim, artifact, or semantic digest differs"));
     }
     artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
-    let export = journal.integrity_export().map_err(journal_error)?;
+    let export = journal
+        .integrity_export_for_retained_event(claim.producing_position())
+        .map_err(journal_error)?;
     let artifacts = export
         .artifact_references()
         .iter()
@@ -345,15 +347,19 @@ fn publication_draft(
     obligation: EvolutionPublicationObligation,
 ) -> Result<EvidenceDraft, EvolutionError> {
     let directive = obligation.directive();
-    let export = journal.integrity_export().map_err(journal_error)?;
-    let artifacts = export
-        .artifact_references()
+    let batch = journal
+        .command_batch(obligation.command_id())
+        .map_err(journal_error)?
+        .ok_or_else(|| binding("publication obligation command receipt is absent"))?;
+    if batch.last_position() != obligation.producing_position() {
+        return Err(binding(
+            "publication obligation differs from its original producing transaction",
+        ));
+    }
+    let artifacts = batch
+        .artifact_dependencies()
         .iter()
-        .filter(|reference| {
-            reference.first_position() <= obligation.producing_position()
-                && obligation.producing_position() <= reference.last_position()
-        })
-        .map(|reference| ArtifactDigest::from_sha256(reference.artifact_digest()))
+        .map(|dependency| ArtifactDigest::from_sha256(dependency.digest()))
         .collect::<Vec<_>>();
     if !artifacts.contains(&ArtifactDigest::from_sha256(directive.artifact_digest())) {
         return Err(binding("publication artifact is absent from the producing journal batch"));

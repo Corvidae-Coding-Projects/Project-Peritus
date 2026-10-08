@@ -1,5 +1,7 @@
 //! Canonical campaign command, event, and complete-state families 88-90.
 
+use std::sync::Arc;
+
 use peritus_codec::{
     CanonicalDecode, CanonicalEncode, CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind,
     CodecLimits,
@@ -22,7 +24,7 @@ pub struct CampaignCommandFrame {
     prior_state_digest: Sha256Digest,
     policy_digest: Sha256Digest,
     command_digest: Sha256Digest,
-    kind_bytes: Vec<u8>,
+    kind_bytes: Arc<[u8]>,
 }
 
 impl CampaignCommandFrame {
@@ -41,7 +43,8 @@ impl CampaignCommandFrame {
             policy_digest: command.policy_digest(),
             command_digest: command.digest(),
             kind_bytes: super::semantic::encode_campaign_kind(command.kind())
-                .map_err(super::scalar::semantic)?,
+                .map_err(super::scalar::semantic)?
+                .into(),
         })
     }
     /// Reconstructs and verifies the complete semantic command.
@@ -90,7 +93,7 @@ impl CanonicalEncode for CampaignCommandFrame {
         writer.write_fixed(self.prior_state_digest.as_bytes())?;
         writer.write_fixed(self.policy_digest.as_bytes())?;
         writer.write_fixed(self.command_digest.as_bytes())?;
-        writer.write_bytes(&self.kind_bytes)
+        writer.write_bytes(self.kind_bytes.as_ref())
     }
 }
 
@@ -140,7 +143,7 @@ pub struct CampaignEventFrame {
     policy_digest: Sha256Digest,
     command_digest: Sha256Digest,
     successor_state_digest: Sha256Digest,
-    kind_bytes: Vec<u8>,
+    kind_bytes: Arc<[u8]>,
 }
 
 impl CampaignEventFrame {
@@ -161,7 +164,36 @@ impl CampaignEventFrame {
             command_digest: event.command_digest(),
             successor_state_digest: event.successor_state_digest(),
             kind_bytes: super::semantic::encode_campaign_kind(kind)
-                .map_err(super::scalar::semantic)?,
+                .map_err(super::scalar::semantic)?
+                .into(),
+        })
+    }
+    pub(crate) fn from_event_and_command(
+        event: &CampaignEvent,
+        command: &CampaignCommandFrame,
+    ) -> Result<Self, CodecError> {
+        if command.command_id != event.command_id()
+            || command.event_id != event.id()
+            || command.campaign_id != event.campaign_id()
+            || command.expected_sequence.checked_add(1) != Some(event.sequence())
+            || command.expected_head != event.previous_event()
+            || command.prior_state_digest != event.prior_state_digest()
+            || command.policy_digest != event.policy_digest()
+            || command.command_digest != event.command_digest()
+        {
+            return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, 0));
+        }
+        Ok(Self {
+            event_id: event.id(),
+            command_id: event.command_id(),
+            campaign_id: event.campaign_id(),
+            sequence: event.sequence(),
+            previous_event: event.previous_event(),
+            prior_state_digest: event.prior_state_digest(),
+            policy_digest: event.policy_digest(),
+            command_digest: event.command_digest(),
+            successor_state_digest: event.successor_state_digest(),
+            kind_bytes: Arc::clone(&command.kind_bytes),
         })
     }
     /// Reconstructs an event and verifies its producing command and exact predecessor replay.
@@ -169,6 +201,13 @@ impl CampaignEventFrame {
     /// # Errors
     /// Returns an evolution error for malformed semantics, digest drift, or invalid replay.
     pub fn check(self, prior: Option<&CampaignState>) -> Result<CampaignEvent, EvolutionError> {
+        self.check_transition(prior).map(|(event, _)| event)
+    }
+
+    pub(crate) fn check_transition(
+        self,
+        prior: Option<&CampaignState>,
+    ) -> Result<(CampaignEvent, CampaignState), EvolutionError> {
         let kind = super::semantic::decode_campaign_kind(&self.kind_bytes)?;
         let expected_sequence = self.sequence.checked_sub(1).ok_or_else(corrupt)?;
         let command = CampaignCommand::new(
@@ -196,8 +235,8 @@ impl CampaignEventFrame {
             self.successor_state_digest,
             CampaignEventKind::Accepted(kind),
         );
-        let _ = apply_campaign_event(prior, &event)?;
-        Ok(event)
+        let state = apply_campaign_event(prior, &event)?;
+        Ok((event, state))
     }
     /// Event identity.
     #[must_use]
@@ -228,7 +267,7 @@ impl CanonicalEncode for CampaignEventFrame {
         ] {
             writer.write_fixed(digest.as_bytes())?;
         }
-        writer.write_bytes(&self.kind_bytes)
+        writer.write_bytes(self.kind_bytes.as_ref())
     }
 }
 
@@ -453,7 +492,7 @@ fn read_semantic<T>(
     reader: &mut CanonicalReader<'_>,
     decode: impl FnOnce(&[u8]) -> Result<T, EvolutionError>,
     encode: impl FnOnce(&T) -> Result<Vec<u8>, EvolutionError>,
-) -> Result<Vec<u8>, CodecError> {
+) -> Result<Arc<[u8]>, CodecError> {
     let offset = reader.offset();
     let bytes = reader.read_bytes_owned()?;
     if bytes.is_empty() {
@@ -463,7 +502,7 @@ fn read_semantic<T>(
     if encode(&value).map_err(super::scalar::semantic)? != bytes {
         return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
     }
-    Ok(bytes)
+    Ok(bytes.into())
 }
 const fn corrupt() -> EvolutionError {
     EvolutionError::new(

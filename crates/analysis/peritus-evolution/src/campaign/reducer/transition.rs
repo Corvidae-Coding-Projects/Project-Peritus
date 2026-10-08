@@ -1,5 +1,7 @@
 //! Closed campaign transition table and bounded collection mutations.
 
+use std::sync::Arc;
+
 use crate::{
     BaselineEvidence, CampaignCommandKind, CampaignPhase, CampaignState, CampaignTerminal,
     EvaluationGeneration, EvolutionError, EvolutionErrorKind, EvolutionOperation,
@@ -38,14 +40,14 @@ pub(super) fn apply_kind(
             last_event: event_id,
             state_digest: Sha256Digest::new([0; 32]),
             phase: CampaignPhase::Draft,
-            baseline_evidence: Vec::new(),
-            diagnoses: Vec::new(),
-            manifests: Vec::new(),
-            variants: Vec::new(),
-            evaluations: Vec::new(),
+            baseline_evidence: Arc::new(Vec::new()),
+            diagnoses: Arc::new(Vec::new()),
+            manifests: Arc::new(Vec::new()),
+            variants: Arc::new(Vec::new()),
+            evaluations: Arc::new(Vec::new()),
             evaluation_history: None,
-            attributions: Vec::new(),
-            assessments: Vec::new(),
+            attributions: Arc::new(Vec::new()),
+            assessments: Arc::new(Vec::new()),
             selection: None,
             proposal: None,
             publication: None,
@@ -89,7 +91,7 @@ pub(super) fn apply_kind(
         CampaignCommandKind::RecordBaselineEvidence { artifact_digest, evidence_digest } => {
             require_work_open(&state)?;
             insert_unique(
-                &mut state.baseline_evidence,
+                Arc::make_mut(&mut state.baseline_evidence),
                 BaselineEvidence::new(*artifact_digest, *evidence_digest),
                 state.limits.manifests_limit().map(usize::from),
             )?;
@@ -103,7 +105,7 @@ pub(super) fn apply_kind(
                 return Err(binding("diagnosis differs from the frozen baseline"));
             }
             insert_by(
-                &mut state.diagnoses,
+                Arc::make_mut(&mut state.diagnoses),
                 evidence.clone(),
                 crate::PublishedDebuggerEvidence::digest,
                 state.limits.manifests_limit().map(usize::from),
@@ -129,7 +131,7 @@ pub(super) fn apply_kind(
                 ));
             }
             insert_by(
-                &mut state.manifests,
+                Arc::make_mut(&mut state.manifests),
                 manifest.clone(),
                 crate::ChangeManifest::id,
                 state.limits.manifests_limit().map(usize::from),
@@ -160,7 +162,7 @@ pub(super) fn apply_kind(
                 |limit| limit.min(state.policy.policy().maximum_variants()),
             );
             insert_by(
-                &mut state.variants,
+                Arc::make_mut(&mut state.variants),
                 variant.clone(),
                 crate::VariantDefinition::id,
                 Some(usize::from(maximum)),
@@ -180,14 +182,14 @@ pub(super) fn apply_kind(
                 return Err(binding("evaluation arms differ from the admitted variant"));
             }
             insert_by(
-                &mut state.evaluations,
+                Arc::make_mut(&mut state.evaluations),
                 VariantEvaluation::new(*variant_id, evidence.clone()),
                 VariantEvaluation::variant_id,
                 state.limits.variants_limit().map(usize::from),
             )?;
             if let Some(history) = &mut state.evaluation_history {
                 insert_generation(
-                    history,
+                    Arc::make_mut(history),
                     EvaluationGeneration::initial(*variant_id, evidence.clone(), None, None)?,
                 )?;
             }
@@ -220,6 +222,7 @@ pub(super) fn apply_kind(
                 .evaluation_history
                 .as_mut()
                 .ok_or_else(|| binding("evaluation generation ledger is absent"))?;
+            let history = Arc::make_mut(history);
             let generation = history
                 .iter()
                 .rev()
@@ -232,19 +235,19 @@ pub(super) fn apply_kind(
                 history,
                 EvaluationGeneration::successor(generation, supersession.clone())?,
             )?;
-            state.evaluations[evaluation_index] =
+            Arc::make_mut(&mut state.evaluations)[evaluation_index] =
                 VariantEvaluation::new(variant_id, supersession.successor().clone());
             if let Ok(index) = state
                 .attributions
                 .binary_search_by_key(&variant_id, crate::AttributionRecord::variant_id)
             {
-                state.attributions.remove(index);
+                Arc::make_mut(&mut state.attributions).remove(index);
             }
             if let Ok(index) = state
                 .assessments
                 .binary_search_by_key(&variant_id, crate::VariantAssessment::variant_id)
             {
-                state.assessments.remove(index);
+                Arc::make_mut(&mut state.assessments).remove(index);
             }
             advance(&mut state, CampaignPhase::VariantsRunning);
         }
@@ -275,19 +278,19 @@ pub(super) fn apply_kind(
                 ));
             }
             insert_by(
-                &mut state.attributions,
+                Arc::make_mut(&mut state.attributions),
                 attribution.clone(),
                 crate::AttributionRecord::variant_id,
                 state.limits.variants_limit().map(usize::from),
             )?;
             insert_by(
-                &mut state.assessments,
+                Arc::make_mut(&mut state.assessments),
                 assessment.clone(),
                 crate::VariantAssessment::variant_id,
                 state.limits.variants_limit().map(usize::from),
             )?;
             if let Some(history) = &mut state.evaluation_history {
-                let generation = history
+                let generation = Arc::make_mut(history)
                     .iter_mut()
                     .rev()
                     .find(|value| value.variant_id() == attribution.variant_id())
@@ -467,7 +470,7 @@ fn migrate_evaluation_history(state: &mut CampaignState) -> Result<(), Evolution
     history
         .try_reserve_exact(state.evaluations.len())
         .map_err(|_| transition())?;
-    for evaluation in &state.evaluations {
+    for evaluation in state.evaluations.iter() {
         let variant_id = evaluation.variant_id();
         let attribution = state
             .attributions
@@ -486,7 +489,7 @@ fn migrate_evaluation_history(state: &mut CampaignState) -> Result<(), Evolution
             assessment,
         )?);
     }
-    state.evaluation_history = Some(history);
+    state.evaluation_history = Some(Arc::new(history));
     Ok(())
 }
 
