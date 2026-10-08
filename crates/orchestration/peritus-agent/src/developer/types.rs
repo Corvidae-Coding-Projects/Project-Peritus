@@ -488,13 +488,25 @@ impl DeveloperRetryRecord {
 pub struct DeveloperRetryRecovery {
     next_attempt: u64,
     next_eligible_unix_millis: u64,
+    elapsed_millis: u64,
+    scheduled_unix_millis: u64,
 }
 
 impl DeveloperRetryRecovery {
     /// Creates checked restart state from a committed retry schedule.
     #[must_use]
-    pub const fn new(next_attempt: u64, next_eligible_unix_millis: u64) -> Self {
-        Self { next_attempt, next_eligible_unix_millis }
+    pub const fn new(
+        next_attempt: u64,
+        next_eligible_unix_millis: u64,
+        elapsed_millis: u64,
+        scheduled_unix_millis: u64,
+    ) -> Self {
+        Self {
+            next_attempt,
+            next_eligible_unix_millis,
+            elapsed_millis,
+            scheduled_unix_millis,
+        }
     }
 
     /// Exact next provider attempt identity.
@@ -507,6 +519,18 @@ impl DeveloperRetryRecovery {
     #[must_use]
     pub const fn next_eligible_unix_millis(self) -> u64 {
         self.next_eligible_unix_millis
+    }
+
+    /// Elapsed logical-turn time retained when the safe retry was scheduled.
+    #[must_use]
+    pub const fn elapsed_millis(self) -> u64 {
+        self.elapsed_millis
+    }
+
+    /// Wall-clock instant at which the retained safe schedule was committed.
+    #[must_use]
+    pub const fn scheduled_unix_millis(self) -> u64 {
+        self.scheduled_unix_millis
     }
 }
 

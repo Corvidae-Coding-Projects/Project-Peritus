@@ -274,7 +274,7 @@ fn request(
     }
     if continuing_segment {
         policy.push_str(
-            "\n\nThe preceding bounded invocation segment ended before a final reply. Re-ground from the exact current workspace, preserve completed inspection and any retained evidence, and continue to the requested answer without repeating finished work.",
+            "\n\nThe preceding bounded invocation segment ended before a final reply. Continue from host-restored grounding and completed inspection for this same task role, conversation revision, workspace binding, and native context. Perform additional inspection only when the host reports missing or stale evidence, and do not repeat finished work.",
         );
     }
     Ok(DeveloperLoopRequest {

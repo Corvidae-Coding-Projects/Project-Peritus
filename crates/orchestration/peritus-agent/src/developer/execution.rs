@@ -146,7 +146,6 @@ impl DeveloperLoop {
             } else {
                 None
             };
-            let required_tool = tools.required_tool_name().map(str::to_owned);
             if !pending_exchange.is_empty() {
                 messages.append(&mut pending_exchange);
                 execute_tool_batch(
@@ -203,6 +202,7 @@ impl DeveloperLoop {
                     };
                 }
             }
+            let required_tool = tools.required_tool_name().map(str::to_owned);
             let invocation_policy = invocation::policy(&request, turn, required_tool.as_deref())?;
             if compaction_owner == DeveloperCompactionOwner::LocalContext {
                 if resumed_turn {

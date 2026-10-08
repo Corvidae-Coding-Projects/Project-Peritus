@@ -5,7 +5,7 @@ use super::super::{
     DeveloperRetryDisposition, DeveloperRetryRecovery, DeveloperToolExecutor, DeveloperTrace,
     DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
-    retry::{DeveloperRetryPlanner, native_session_digest},
+    retry::{DeveloperRetryPlanner, native_session_digest, wait_until_eligible},
 };
 use super::{ContextSession, successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
@@ -101,8 +101,12 @@ pub(super) async fn complete_turn(
             recovery_probe.fingerprint()?.digest(),
         )?
     };
-    let planner =
-        DeveloperRetryPlanner::new(turn, &request.cancellation, provider_selection);
+    let planner = DeveloperRetryPlanner::new(
+        turn,
+        &request.cancellation,
+        provider_selection,
+        recovered,
+    )?;
     let mut attempt = recovered.map_or(1, DeveloperRetryRecovery::next_attempt);
     let mut scheduled_attempt = recovered
         .map(DeveloperRetryRecovery::next_attempt)
@@ -284,22 +288,7 @@ async fn wait_for_recovered_retry(
     cancellation: &CancellationToken,
     recovery: DeveloperRetryRecovery,
 ) -> Result<(), DeveloperLoopError> {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|_| {
-            DeveloperLoopError::Trace("system clock predates the retry journal epoch".to_owned())
-        })?;
-    let now_millis = u64::try_from(now.as_millis()).unwrap_or(u64::MAX);
-    let delay = recovery.next_eligible_unix_millis().saturating_sub(now_millis);
-    if delay == 0 {
-        return Ok(());
-    }
-    match cancel_first(cancellation, tokio::time::sleep(std::time::Duration::from_millis(delay)))
-        .await
-    {
-        Some(()) => Ok(()),
-        None => Err(DeveloperLoopError::Cancelled),
-    }
+    wait_until_eligible(cancellation, recovery.next_eligible_unix_millis()).await
 }
 
 const fn request_disposition(

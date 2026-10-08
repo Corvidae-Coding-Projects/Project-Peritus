@@ -147,9 +147,16 @@ impl LocalMemory {
                 "current invocation inputs changed before exact request reentry".to_owned(),
             ));
         }
-        let (turn, retries) = pending.as_ref().map_or((1, 0), |pending| {
-            (pending.turn(), pending.attempt().saturating_sub(1))
-        });
+        let (turn, retries) = match pending.as_ref() {
+            Some(pending) => (
+                pending.turn(),
+                pending
+                    .attempt()
+                    .checked_sub(1)
+                    .ok_or_else(|| error("pending retry attempt identity is zero"))?,
+            ),
+            None => (1, 0),
+        };
         let inputs = if segment.is_some() {
             durable_inputs.as_slice()
         } else {
