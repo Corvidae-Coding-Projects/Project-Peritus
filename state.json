@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3972,
-        "tip_oid": "09db7dbd05ab4e95ff9c17ebfc5a07e05781be5c",
-        "prefix_sha256": "678d897fbe6c2758613184ab3161f9de38f1f009657261fa1b5b8008a2996ff6"
+        "sequence": 3973,
+        "tip_oid": "2900afe72f67346a53d9a9a173ca4453a5af4067",
+        "prefix_sha256": "0c9eb5424fa576e250592f0a057c15e7a2a0a16d8a1cb1412366dae2180ab10a"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3189,
+  "next_comment_id": 3190,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -19248,7 +19248,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.990305774Z",
-      "updated_at": "2026-10-06T13:19:07.992478939Z",
+      "updated_at": "2026-10-08T02:15:17.836461908Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -19259,6 +19259,15 @@
           "content": "Systemic repair plan for L038: Inspection-loop feedback has a finite observation window and does not enforce convergence.\n\nOwning contract and implementation boundary: executor.rs:28-30; executor/effects.rs:120-159; executor/inspection_progress.rs:9-10,50-59,79-108. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPersist a revision-bound inspection/progress ledger across executor segments. Define progress in terms of new evidence, discharged obligations and candidate advancement, not merely filesystem mutation or a short fingerprint ring. Detect repeated unchanged obligations and choose a concrete next action or visible recoverable blocker; do not add another arbitrary attempt limit.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "77356a44-cde4-4532-aafb-8f6f3f26d2cb": {
+          "display_id": 3189,
+          "author": "6ME5",
+          "content": "Code complete in commit 8cac5c652: revision/request-bound progress ledger replaces the production12-call/two-nudge counters and16-observation ring, reconstructing through durable grounding evidence. Exact tool/arguments/raw-result identity distinguishes new evidence, discharged obligations and candidate advancement. Visible repeated obligations receive concrete next-action/recoverable-blocker guidance without an attempt limit; model eviction still permits legitimate rereads and read-only work participates. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:15:17.827256620Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAYKO5/J/T961RJtCV3DmwPCOtv8dk40JMVpm+G++w9/V+x0FxhXkbJivpRdZJHHPWQAHdrTCAqSyg9YLfaYPBg=="
         }
       }
     },
