@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L465] C5 exponential retry backoff can wrap to zero despite a positive minimum (#543)
 - [L629] Malformed projection metadata bypasses the advertised reasoned rebuild plan (#683)
 - [L464] C5 retry algebra still requires a finite attempt and delay policy (#542)
 - [L463] C5 reconstruction materializes full bounded content before aggregate request checks (#541)
