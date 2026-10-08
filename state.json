@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3915,
-        "tip_oid": "ec871c1028ee0455d9dad38790faf360d0afdb87",
-        "prefix_sha256": "8c841dac0114cf4af5bea378cb711bcdde1a9b773dc59357a9f93106079830e4"
+        "sequence": 3916,
+        "tip_oid": "85f08c69d9f60dbf8a93dfe49d328862e6af2fc7",
+        "prefix_sha256": "34f3cfa8e4bb1bfbc4abaa0b6f3f2fc497eba6c1a7dcd23a87fe9ae7ce97b3c7"
       },
       "NWAR": {
         "sequence": 39,
@@ -16686,12 +16686,13 @@
       "display_id": 509,
       "title": "[L429] E3 campaigns require six positive finite resource ceilings and a finite retry policy",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L429.\n\n- Evidence: `crates/analysis/peritus-eval/src/limits.rs:5-81`, `src/profile/policy.rs:23-69,127-171`, `src/profile/binding.rs:250-330`, `src/dataset/manifest.rs:30-65`, `src/accounting/ledger.rs:60-100` in the same crate.\n- Behavior: EvaluationLimits requires positive values no higher than compiled tasks 2,048, rollouts 16,384, attempts per rollout 16, bootstrap replicates 100,000, pass@k values 32, and complete state bytes 16 MiB. Production defaults reduce attempts to 8, bootstrap to 10,000, and pass@k count to 16. Retry policy requires a positive finite attempt maximum within the limit; ledger overage reports Terminal. A profile's selected tasks × two arms × rollouts per task must fit its frozen rollout ceiling. Dataset tasks must fit their construction limit. Metric policy requires at least one positive canonical k and bootstrap replicate, and only confidence 950,000 millionths is supported.\n- Consequence: Callers cannot request an unlimited campaign/retry history or larger workload through these APIs, and receive ReduceScope or terminal accounting errors instead of lossless batching. The confidence constant is a supported statistical-method contract, not a running deadline. These are evaluation-specific source limits; ordinary installed agent runs are not shown to execute through E3 by this inspection.\n- Repair direction: Make workload/retry stopping explicit user policy and page durable task/rollout/attempt storage. Keep statistical methods versioned and their supported confidence parameters explicit rather than confusing them with task longevity. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.509461590Z",
-      "updated_at": "2026-10-08T00:44:21.556531511Z",
+      "updated_at": "2026-10-08T00:45:46.849933329Z",
+      "closed_at": "2026-10-08T00:45:46.846939294Z",
       "labels": [
         "daily-driving-limiter"
       ],
