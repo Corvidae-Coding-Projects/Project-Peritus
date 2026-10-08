@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4103,
-        "tip_oid": "6d113f7c7da36124e425680efbe21ebc93dde506",
-        "prefix_sha256": "b3741e9baa0623d7350970716791b69bcbf489402864321c9ef88d7e3ed3d092"
+        "sequence": 4104,
+        "tip_oid": "c72aad56f5c442da65ded9dd181f6a5ccf76f5d5",
+        "prefix_sha256": "288c10ee35da6077e16b19e896402b0caea8c31c32ce8d167598908e12a74528"
       },
       "NWAR": {
         "sequence": 39,
@@ -23342,12 +23342,13 @@
       "display_id": 686,
       "title": "[L635] Filesystem traversal/search loses progress at bounds and silently excludes some search scope",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L635.\n\n- Evidence: `crates/tools/peritus-tools-fs/src/read.rs:239-324,327-365,377-395`; `tests/filesystem_tools.rs:50-60`.\n- Behavior: Traversal materializes the entire selected subtree and returns an error at the next entry beyond the bound, discarding observed entries. It stops recursing at maximum_depth without a scope-truncated marker. Search first performs that whole walk, reads each eligible file, ignores binary and over-per-file-bound files, and only accounts UTF-8 bytes after the read. Total-byte or match overflow returns an error and discards all matches, with no continuation cursor. Preview text always contains the first UTF-8-safe 512 bytes of the line, even when the match occurs later. Case-insensitivity is ASCII-only. One no-follow symlink inspection failure rejects the entire traversal, as the test explicitly expects.\n- Consequence: Broad code exploration may repeatedly redo the same reads instead of obtaining the next page; a no-match success does not establish absence in skipped/deeper files. The 64 MiB scanned-text allowance does not bound bytes read from binary files. Rejecting traversal/special nodes is an integrity boundary, but whole-job failure is a separate recovery choice.\n- Repair direction: Return a truthful scope/skip summary and digest-bound continuation with retained partial results; budget actual I/O before reading and center match previews on the hit. Preserve no-follow guarantees while making unrelated unsafe entries separately reportable. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.358118139Z",
-      "updated_at": "2026-10-08T06:03:57.170577828Z",
+      "updated_at": "2026-10-08T06:05:47.439468859Z",
+      "closed_at": "2026-10-08T06:05:47.436705001Z",
       "labels": [
         "daily-driving-limiter"
       ],
