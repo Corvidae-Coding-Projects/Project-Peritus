@@ -12,7 +12,7 @@ mod render;
 mod schemas;
 mod verified;
 
-pub use catalog::{descriptor_catalog, descriptor_digest};
+pub use catalog::{descriptor_catalog, descriptor_digest, legacy_merge_descriptor};
 pub use dispatcher::{GitDispatchKind, GitDispatcher, GitMutationOutcome};
 pub use error::{GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass};
 pub use input::{

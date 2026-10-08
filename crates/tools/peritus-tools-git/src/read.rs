@@ -642,20 +642,6 @@ const fn cursor_error(operation: GitToolOperation) -> GitToolError {
     )
 }
 
-const fn git_error(operation: GitToolOperation, error: &peritus_git::GitError) -> GitToolError {
-    let recovery = match error.recovery() {
-        peritus_git::RecoveryClass::CorrectRequest => RecoveryClass::CorrectInput,
-        peritus_git::RecoveryClass::Reobserve | peritus_git::RecoveryClass::Retry => {
-            RecoveryClass::Reobserve
-        }
-        peritus_git::RecoveryClass::Reconcile | peritus_git::RecoveryClass::Quarantine => {
-            RecoveryClass::Reconcile
-        }
-    };
-    GitToolError::new(
-        GitToolErrorKind::Git,
-        operation,
-        recovery,
-        "structured C1 Git observation failed",
-    )
+fn git_error(operation: GitToolOperation, error: &peritus_git::GitError) -> GitToolError {
+    GitToolError::from_git(operation, error)
 }

@@ -1,6 +1,7 @@
 //! Stable Git-tool failures and recovery guidance.
 
 use core::fmt;
+use std::borrow::Cow;
 
 /// Stable Git-tool failure class.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -71,9 +72,10 @@ pub enum RecoveryClass {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GitToolError {
     kind: GitToolErrorKind,
+    code: &'static str,
     operation: GitToolOperation,
     recovery: RecoveryClass,
-    detail: &'static str,
+    detail: Cow<'static, str>,
 }
 
 impl GitToolError {
@@ -83,17 +85,44 @@ impl GitToolError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, recovery, detail }
+        Self { kind, code: kind.code(), operation, recovery, detail: Cow::Borrowed(detail) }
     }
 
     pub(crate) const fn invalid(operation: GitToolOperation, detail: &'static str) -> Self {
         Self::new(GitToolErrorKind::InvalidInput, operation, RecoveryClass::CorrectInput, detail)
     }
 
+    pub(crate) fn from_git(
+        operation: GitToolOperation,
+        error: &peritus_git::GitError,
+    ) -> Self {
+        let recovery = match error.recovery() {
+            peritus_git::RecoveryClass::CorrectRequest => RecoveryClass::CorrectInput,
+            peritus_git::RecoveryClass::Reobserve | peritus_git::RecoveryClass::Retry => {
+                RecoveryClass::Reobserve
+            }
+            peritus_git::RecoveryClass::Reconcile | peritus_git::RecoveryClass::Quarantine => {
+                RecoveryClass::Reconcile
+            }
+        };
+        Self {
+            kind: GitToolErrorKind::Git,
+            code: error.kind().code(),
+            operation,
+            recovery,
+            detail: Cow::Owned(error.detail().to_owned()),
+        }
+    }
+
     /// Returns the stable failure class.
     #[must_use]
     pub const fn kind(&self) -> GitToolErrorKind {
         self.kind
+    }
+    /// Returns the most specific stable lower-boundary error code.
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        self.code
     }
     /// Returns the operation that failed.
     #[must_use]
@@ -107,14 +136,14 @@ impl GitToolError {
     }
     /// Returns bounded content-free detail.
     #[must_use]
-    pub const fn detail(&self) -> &'static str {
-        self.detail
+    pub fn detail(&self) -> &str {
+        &self.detail
     }
 }
 
 impl fmt::Display for GitToolError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{} during {:?}: {}", self.kind.code(), self.operation, self.detail)
+        write!(formatter, "{} during {:?}: {}", self.code, self.operation, self.detail)
     }
 }
 

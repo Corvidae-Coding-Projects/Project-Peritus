@@ -42,16 +42,6 @@ const SPECS: &[DescriptorSpec] = &[
         "Page complete immutable commit and parent observations",
         history_schema,
     ),
-    DescriptorSpec {
-        name: "git.merge",
-        description: "Request separately authorized branch delivery when C1 supports it",
-        class: OperationClass::RepositoryHistoryMutation,
-        risk: RiskClass::RepositoryHistoryMutation,
-        effect: SideEffectClass::Workspace,
-        lease: LeaseRequirement::Required,
-        replay: IdempotencySemantics::ReportPriorOutcome,
-        schema: merge_schema,
-    },
     mutation_spec(
         "git.rollback",
         "Restore a retained snapshot with a durable adoptable result receipt",
@@ -64,6 +54,17 @@ const SPECS: &[DescriptorSpec] = &[
         status_schema,
     ),
 ];
+
+const LEGACY_MERGE_SPEC: DescriptorSpec = DescriptorSpec {
+    name: "git.merge",
+    description: "Historic unsupported branch-delivery request",
+    class: OperationClass::RepositoryHistoryMutation,
+    risk: RiskClass::RepositoryHistoryMutation,
+    effect: SideEffectClass::Workspace,
+    lease: LeaseRequirement::Required,
+    replay: IdempotencySemantics::ReportPriorOutcome,
+    schema: merge_schema,
+};
 
 const fn read_spec(
     name: &'static str,
@@ -107,13 +108,24 @@ pub fn descriptor_catalog() -> Result<Vec<ToolDescriptor>, GitToolError> {
     SPECS.iter().map(build_descriptor).collect()
 }
 
+/// Builds the frozen v1 merge descriptor solely for decoding and settling historical receipts.
+///
+/// The descriptor is deliberately absent from [`descriptor_catalog`], so new exposure and
+/// preparation cannot advertise an operation without a C1 implementation.
+///
+/// # Errors
+/// Returns a typed construction failure if the historic descriptor invariant is broken.
+pub fn legacy_merge_descriptor() -> Result<ToolDescriptor, GitToolError> {
+    build_descriptor(&LEGACY_MERGE_SPEC)
+}
+
 /// Computes a stable aggregate digest over the canonical Git descriptor catalog.
 ///
 /// # Errors
 /// Returns a typed construction failure if the frozen catalog is invalid.
 pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
     let catalog = descriptor_catalog()?;
-    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V3\0".to_vec();
+    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V4\0".to_vec();
     let catalog_length = u64::try_from(catalog.len()).expect("bounded Git catalog length fits u64");
     bytes.extend_from_slice(&catalog_length.to_be_bytes());
     for descriptor in catalog {
@@ -123,14 +135,12 @@ pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
 }
 
 fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolError> {
-    let version = if matches!(
-        spec.name,
-        "git.candidate" | "git.diff" | "git.history" | "git.rollback" | "git.status"
-    ) {
-        2
-    } else {
-        1
+    let version = match spec.name {
+        "git.diff" | "git.history" | "git.status" => 3,
+        "git.candidate" | "git.rollback" | "git.snapshot" => 2,
+        _ => 1,
     };
+    let owned_observation = spec.effect == SideEffectClass::None;
     let operation = OperationDescriptor::new(
         capability(spec.name)?,
         spec.class,
@@ -147,9 +157,21 @@ fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolErro
         spec.replay,
         ImplementationIdentity::new(format!("peritus.tools.git.{}/v{version}", spec.name))
             .map_err(|_| catalog_error())?,
-        ToolLimits::with_optional_timeout(None, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
-            .map_err(|_| catalog_error())?,
-        ControlSet::NONE,
+        ToolLimits::with_optional_timeout(
+            None,
+            8 * 1_024 * 1_024,
+            16_384,
+            16_384,
+            if owned_observation { 2 } else { 1 },
+            1,
+            1,
+        )
+        .map_err(|_| catalog_error())?,
+        if owned_observation {
+            ControlSet::new(false, false, false, true, true)
+        } else {
+            ControlSet::NONE
+        },
         ProtocolCompatibility::V1,
         BoundedText::new(spec.description.to_owned()).map_err(|_| catalog_error())?,
     )

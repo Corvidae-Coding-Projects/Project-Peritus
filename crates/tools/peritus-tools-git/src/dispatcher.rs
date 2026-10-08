@@ -1,9 +1,18 @@
 //! Router-authorized Git dispatcher adapters.
 
+use std::sync::Arc;
+
 use peritus_artifact_store::ArtifactStore;
 use peritus_git::CandidateSnapshot;
-use peritus_tool_protocol::{ImplementationIdentity, SchemaDigest};
-use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher, ToolStart};
+use peritus_policy::AuthorityInstant;
+use peritus_tool_protocol::{
+    BoundedText, CancellationReason, ImplementationIdentity, ProgressKind, SchemaDigest,
+    ToolControl, ToolProgress,
+};
+use peritus_tool_router::{
+    AuthorizedInvocation, ControlRetryability, DispatchFailure, ExecutionUpdate,
+    RecoveryObservation, ToolDispatcher, ToolExecution, ToolStart,
+};
 use peritus_types::Sha256Digest;
 use peritus_workspace::{
     CandidateOutcome, MutationOutcome, MutationOutcomeReference, ReadOnlyWorkspace,
@@ -15,10 +24,10 @@ use peritus_workspace::{
 use crate::{
     GitReadService, GitToolError, GitToolErrorKind, GitToolOperation, RecoveryClass,
     RenderedOutput, SnapshotInput,
-    decoder, descriptor_catalog,
+    decoder, descriptor_catalog, legacy_merge_descriptor,
     dispatch_support::{
-        caller_binding, finish, minimum_result_capacity, protocol_failure, tool_failure,
-        unsupported_failure, workspace_failure,
+        caller_binding, cancellation_failure, finish, minimum_result_capacity, protocol_failure,
+        terminal_failure, tool_failure, unsupported_failure, workspace_failure,
     },
 };
 
@@ -59,6 +68,10 @@ enum DispatchContext<'a> {
     Read {
         workspace: &'a ReadOnlyWorkspace,
         retained: Option<&'a CandidateSnapshot>,
+    },
+    ReadOwned {
+        workspace: Arc<ReadOnlyWorkspace>,
+        retained: Option<CandidateSnapshot>,
     },
     Candidate {
         gateway: &'a mut WorkspaceGateway,
@@ -123,6 +136,28 @@ impl<'a> GitDispatcher<'a> {
             ));
         }
         Self::build(kind, DispatchContext::Read { workspace, retained })
+    }
+
+    /// Creates an owned status, diff, history, or snapshot dispatcher with observable progress,
+    /// cancellation before observation, and completion time supplied by the router clock.
+    ///
+    /// # Errors
+    /// Rejects an effectful kind or invalid frozen descriptor catalog.
+    pub fn read_owned(
+        kind: GitDispatchKind,
+        workspace: Arc<ReadOnlyWorkspace>,
+        retained: Option<CandidateSnapshot>,
+    ) -> Result<Self, GitToolError> {
+        if matches!(
+            kind,
+            GitDispatchKind::Candidate | GitDispatchKind::Rollback | GitDispatchKind::Merge
+        ) {
+            return Err(GitToolError::invalid(
+                GitToolOperation::Catalog,
+                "effectful Git kind cannot use an owned observation dispatcher",
+            ));
+        }
+        Self::build(kind, DispatchContext::ReadOwned { workspace, retained })
     }
 
     /// Creates the authorized candidate-plus-snapshot dispatcher.
@@ -214,12 +249,19 @@ impl<'a> GitDispatcher<'a> {
     }
 
     fn build(kind: GitDispatchKind, context: DispatchContext<'a>) -> Result<Self, GitToolError> {
-        let descriptor = descriptor_catalog()?
-            .into_iter()
-            .find(|descriptor| descriptor.name().as_str() == kind.name())
-            .ok_or_else(|| {
-                GitToolError::invalid(GitToolOperation::Catalog, "dispatcher descriptor is absent")
-            })?;
+        let descriptor = if kind == GitDispatchKind::Merge {
+            legacy_merge_descriptor()?
+        } else {
+            descriptor_catalog()?
+                .into_iter()
+                .find(|descriptor| descriptor.name().as_str() == kind.name())
+                .ok_or_else(|| {
+                    GitToolError::invalid(
+                        GitToolOperation::Catalog,
+                        "dispatcher descriptor is absent",
+                    )
+                })?
+        };
         Ok(Self {
             kind,
             identity: descriptor.implementation_identity().clone(),
@@ -264,15 +306,16 @@ impl ToolDispatcher for GitDispatcher<'_> {
     }
 
     fn start(&mut self, invocation: AuthorizedInvocation) -> Result<ToolStart, DispatchFailure> {
-        let completed_at = invocation.observed_at();
+        let started_at = invocation.observed_at();
         let caller = caller_binding(&invocation);
         if !context_matches(&self.context, &caller) {
             return Err(protocol_failure("authorized caller differs from the opened C1 target"));
         }
         let prepared = invocation.into_prepared();
+        let owned_observation = matches!(&self.context, DispatchContext::ReadOwned { .. });
         if prepared.descriptor().name().as_str() != self.kind.name()
             || prepared.descriptor_digest() != self.descriptor_digest
-            || !minimum_result_capacity(&prepared)
+            || !minimum_result_capacity(&prepared, owned_observation)
         {
             return Err(protocol_failure("dispatcher identity or result capacity differs"));
         }
@@ -286,22 +329,32 @@ impl ToolDispatcher for GitDispatcher<'_> {
                     prepared.call().limits().output_bytes(),
                 )
             }
+            DispatchContext::ReadOwned { workspace, retained } => {
+                let execution = GitObservationExecution::new(
+                    prepared,
+                    started_at,
+                    self.kind,
+                    Arc::clone(workspace),
+                    retained.clone(),
+                );
+                return Ok(ToolStart::Active(Box::new(execution)));
+            }
             DispatchContext::Candidate { gateway, authorization, mutation, artifacts } => {
                 let input = decoder::candidate(prepared.arguments())
                     .map_err(|error| tool_failure(&error))?;
-                admit_mutation_result(&prepared, completed_at)?;
+                admit_mutation_result(&prepared, started_at)?;
                 let mutation = gateway
                     .prepare_candidate(authorization, mutation, input.snapshot_id())
-                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_operation = Some(mutation.operation_reference().clone());
                 let terminal = mutation_terminal(
                     &prepared,
                     mutation.operation_reference(),
-                    completed_at,
+                    started_at,
                 )?;
                 let outcome = gateway
                     .create_prepared_candidate(mutation, artifacts)
-                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
                 return Ok(ToolStart::Completed(terminal));
@@ -314,23 +367,23 @@ impl ToolDispatcher for GitDispatcher<'_> {
             } => {
                 let input = decoder::candidate(prepared.arguments())
                     .map_err(|error| tool_failure(&error))?;
-                admit_mutation_result(&prepared, completed_at)?;
+                admit_mutation_result(&prepared, started_at)?;
                 let mutation = gateway
                     .prepare_candidate_from_reference(
                         authorization,
                         *mutation,
                         input.snapshot_id(),
                     )
-                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_operation = Some(mutation.operation_reference().clone());
                 let terminal = mutation_terminal(
                     &prepared,
                     mutation.operation_reference(),
-                    completed_at,
+                    started_at,
                 )?;
                 let outcome = gateway
                     .create_prepared_candidate(mutation, artifacts)
-                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
                 return Ok(ToolStart::Completed(terminal));
@@ -341,28 +394,28 @@ impl ToolDispatcher for GitDispatcher<'_> {
                 if input.target_snapshot_id() != target.snapshot_id() {
                     return Err(protocol_failure("rollback target differs from prepared input"));
                 }
-                admit_mutation_result(&prepared, completed_at)?;
+                admit_mutation_result(&prepared, started_at)?;
                 let mutation = gateway
                     .prepare_rollback(
                         authorization,
                         RollbackRequest::new(target, input.successor_snapshot_id()),
                     )
-                    .map_err(|_| workspace_failure("target-owned rollback failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_operation = Some(mutation.operation_reference().clone());
                 let terminal = mutation_terminal(
                     &prepared,
                     mutation.operation_reference(),
-                    completed_at,
+                    started_at,
                 )?;
                 let outcome = gateway
                     .apply_prepared_rollback(mutation, artifacts)
-                    .map_err(|_| workspace_failure("target-owned rollback failed"))?;
+                    .map_err(|error| workspace_failure(&error))?;
                 self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Rollback(outcome));
                 return Ok(ToolStart::Completed(terminal));
             }
             DispatchContext::Adopted { outcome } => {
-                let terminal = mutation_terminal(&prepared, outcome.operation(), completed_at)?;
+                let terminal = mutation_terminal(&prepared, outcome.operation(), started_at)?;
                 self.repository_operation = Some(outcome.operation().clone());
                 self.repository_outcome = Some((**outcome).clone());
                 return Ok(ToolStart::Completed(terminal));
@@ -370,7 +423,7 @@ impl ToolDispatcher for GitDispatcher<'_> {
             DispatchContext::MergeUnsupported => return Err(unsupported_failure()),
         }
         .map_err(|error| tool_failure(&error))?;
-        finish(&prepared, &rendered, completed_at).map(ToolStart::Completed)
+        finish(&prepared, &rendered, started_at, started_at, 0).map(ToolStart::Completed)
     }
 }
 
@@ -380,7 +433,7 @@ fn admit_mutation_result(
 ) -> Result<(), DispatchFailure> {
     let rendered = RenderedOutput::mutation_receipt(Sha256Digest::new([0_u8; 32]))
         .map_err(|error| tool_failure(&error))?;
-    finish(prepared, &rendered, completed_at).map(drop)
+    finish(prepared, &rendered, completed_at, completed_at, 0).map(drop)
 }
 
 fn mutation_terminal(
@@ -398,7 +451,207 @@ fn mutation_terminal(
     }
     let rendered = RenderedOutput::mutation_receipt(operation.digest())
         .map_err(|error| tool_failure(&error))?;
-    finish(prepared, &rendered, completed_at)
+    finish(prepared, &rendered, completed_at, completed_at, 0)
+}
+
+struct GitObservationWork {
+    kind: GitDispatchKind,
+    workspace: Arc<ReadOnlyWorkspace>,
+    retained: Option<CandidateSnapshot>,
+    arguments: peritus_tool_protocol::BoundedJson,
+    maximum_output_bytes: u64,
+}
+
+struct GitObservationExecution {
+    prepared: peritus_tool_protocol::PreparedToolCall,
+    started_at: AuthorityInstant,
+    work: Option<GitObservationWork>,
+    accepted: bool,
+    next_sequence: u64,
+    terminal: Option<peritus_tool_protocol::ToolResult>,
+}
+
+impl GitObservationExecution {
+    fn new(
+        prepared: peritus_tool_protocol::PreparedToolCall,
+        started_at: AuthorityInstant,
+        kind: GitDispatchKind,
+        workspace: Arc<ReadOnlyWorkspace>,
+        retained: Option<CandidateSnapshot>,
+    ) -> Self {
+        let arguments = prepared.arguments().clone();
+        let maximum_output_bytes = prepared.call().limits().output_bytes();
+        Self {
+            prepared,
+            started_at,
+            work: Some(GitObservationWork {
+                kind,
+                workspace,
+                retained,
+                arguments,
+                maximum_output_bytes,
+            }),
+            accepted: false,
+            next_sequence: 0,
+            terminal: None,
+        }
+    }
+
+    fn observe_time(&self, observed_at: AuthorityInstant) -> Result<(), DispatchFailure> {
+        if observed_at.epoch() != self.started_at.epoch()
+            || observed_at.tick_millis() < self.started_at.tick_millis()
+        {
+            return Err(protocol_failure(
+                "Git observation time regresses or crosses authority epochs",
+            ));
+        }
+        Ok(())
+    }
+
+    fn progress(
+        &self,
+        kind: ProgressKind,
+        observed_at: AuthorityInstant,
+        detail: &'static str,
+    ) -> Result<ToolProgress, DispatchFailure> {
+        ToolProgress::new(
+            &self.prepared,
+            self.next_sequence,
+            kind,
+            observed_at,
+            None,
+            BoundedText::new(detail.to_owned()).expect("static Git progress text is bounded"),
+        )
+        .map_err(|_| protocol_failure("Git observation progress envelope is invalid"))
+    }
+
+    fn poll_owned(
+        &mut self,
+        observed_at: AuthorityInstant,
+    ) -> Result<ExecutionUpdate, DispatchFailure> {
+        self.observe_time(observed_at)?;
+        if let Some(terminal) = &self.terminal {
+            return ExecutionUpdate::new(&self.prepared, Vec::new(), Some(terminal.clone()))
+                .map_err(|_| protocol_failure("Git observation terminal replay is invalid"));
+        }
+        if !self.accepted {
+            let progress = self.progress(
+                ProgressKind::Started,
+                observed_at,
+                "immutable Git observation accepted by its target owner",
+            )?;
+            self.accepted = true;
+            self.next_sequence += 1;
+            return ExecutionUpdate::new(&self.prepared, vec![progress], None)
+                .map_err(|_| protocol_failure("Git observation start progress is invalid"));
+        }
+
+        let work = self.work.take().ok_or_else(|| {
+            protocol_failure("Git observation lost its retained phase ownership")
+        })?;
+        let rendered = execute_read(
+            work.kind,
+            &work.workspace,
+            work.retained.as_ref(),
+            &work.arguments,
+            work.maximum_output_bytes,
+        );
+        let progress = self.progress(
+            ProgressKind::Update,
+            observed_at,
+            if rendered.is_ok() {
+                "immutable Git observation completed"
+            } else {
+                "immutable Git observation reached a typed terminal failure"
+            },
+        )?;
+        self.next_sequence += 1;
+        let terminal = match rendered {
+            Ok(rendered) => finish(
+                &self.prepared,
+                &rendered,
+                self.started_at,
+                observed_at,
+                self.next_sequence,
+            )?,
+            Err(error) => terminal_failure(
+                &self.prepared,
+                self.started_at,
+                observed_at,
+                &tool_failure(&error),
+                self.next_sequence,
+            )?,
+        };
+        self.terminal = Some(terminal.clone());
+        ExecutionUpdate::new(&self.prepared, vec![progress], Some(terminal))
+            .map_err(|_| protocol_failure("Git observation terminal update is invalid"))
+    }
+}
+
+impl ToolExecution for GitObservationExecution {
+    fn poll(&mut self, observed_at: AuthorityInstant) -> Result<ExecutionUpdate, DispatchFailure> {
+        self.poll_owned(observed_at)
+    }
+
+    fn control(
+        &mut self,
+        control: ToolControl,
+        observed_at: AuthorityInstant,
+    ) -> Result<ExecutionUpdate, DispatchFailure> {
+        self.observe_time(observed_at)
+            .map_err(|error| error.rejecting_control(ControlRetryability::CorrectRequest))?;
+        match control {
+            ToolControl::Poll => self.poll_owned(observed_at),
+            ToolControl::Cancel(reason) => self.cancel(reason, observed_at),
+            ToolControl::Stdin(_) | ToolControl::Resize { .. } | ToolControl::Signal(_) => {
+                Err(protocol_failure("Git observation supports only poll and cancel")
+                    .rejecting_control(ControlRetryability::CorrectRequest))
+            }
+        }
+    }
+
+    fn cancel(
+        &mut self,
+        reason: CancellationReason,
+        observed_at: AuthorityInstant,
+    ) -> Result<ExecutionUpdate, DispatchFailure> {
+        self.observe_time(observed_at)
+            .map_err(|error| error.rejecting_control(ControlRetryability::CorrectRequest))?;
+        if let Some(terminal) = &self.terminal {
+            return ExecutionUpdate::new(&self.prepared, Vec::new(), Some(terminal.clone()))
+                .map_err(|_| protocol_failure("Git observation terminal replay is invalid"));
+        }
+        self.work = None;
+        let progress = self.progress(
+            ProgressKind::Stopping,
+            observed_at,
+            "immutable Git observation cancelled before execution",
+        )?;
+        self.next_sequence += 1;
+        let failure = cancellation_failure(reason);
+        let terminal = terminal_failure(
+            &self.prepared,
+            self.started_at,
+            observed_at,
+            &failure,
+            self.next_sequence,
+        )?;
+        self.terminal = Some(terminal.clone());
+        ExecutionUpdate::new(&self.prepared, vec![progress], Some(terminal))
+            .map_err(|_| protocol_failure("Git observation cancellation update is invalid"))
+    }
+
+    fn recover(
+        &mut self,
+        observed_at: AuthorityInstant,
+    ) -> Result<RecoveryObservation, DispatchFailure> {
+        let update = self.poll_owned(observed_at)?;
+        if update.terminal().is_some() {
+            Ok(RecoveryObservation::Completed(update))
+        } else {
+            Ok(RecoveryObservation::Active(update))
+        }
+    }
 }
 
 fn execute_read(
@@ -541,6 +794,13 @@ fn final_or_deferred(
 fn context_matches(context: &DispatchContext<'_>, caller: &WorkspaceCallerBinding) -> bool {
     match context {
         DispatchContext::Read { workspace, .. } => {
+            workspace.target_binding().is_some_and(|target| {
+                target.workspace_id() == caller.workspace_id()
+                    && target.environment_id() == caller.environment_id()
+                    && target.resource_id() == caller.resource_id()
+            })
+        }
+        DispatchContext::ReadOwned { workspace, .. } => {
             workspace.target_binding().is_some_and(|target| {
                 target.workspace_id() == caller.workspace_id()
                     && target.environment_id() == caller.environment_id()
