@@ -110,6 +110,19 @@ impl EvaluationRetryPolicy {
             None => 0,
         }
     }
+
+    pub(crate) const fn validate(self) -> Result<(), EvaluationError> {
+        if matches!(self.stop_after_attempt, Some(0))
+            || self.initial_backoff_micros > self.maximum_backoff_micros
+        {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Profile,
+                EvaluationOperation::FreezeProfile,
+                "evaluation retry policy is invalid",
+            ));
+        }
+        Ok(())
+    }
 }
 
 /// Frozen treatment of infrastructure failures for one metric.
@@ -191,28 +204,15 @@ impl MetricPolicy {
         require_complete_usage: bool,
         limits: EvaluationLimits,
     ) -> Result<Self, EvaluationError> {
-        if pass_k.is_empty()
-            || pass_k.len() > usize::from(limits.pass_k_values())
-            || pass_k.windows(2).any(|pair| pair[0] >= pair[1])
-            || pass_k[0] == 0
-            || bootstrap_replicates == 0
-            || bootstrap_replicates > limits.bootstrap_replicates()
-            || confidence_millionths != 950_000
-            || instability_threshold_millionths > 1_000_000
-        {
-            return Err(crate::invalid(
-                EvaluationErrorKind::Profile,
-                EvaluationOperation::FreezeProfile,
-                "metric policy is noncanonical or exceeds supported bounds",
-            ));
-        }
-        Ok(Self {
+        let policy = Self {
             pass_k,
             bootstrap_replicates,
             confidence_millionths,
             instability_threshold_millionths,
             require_complete_usage,
-        })
+        };
+        policy.validate_against(limits)?;
+        Ok(policy)
     }
     /// Borrows ascending distinct pass@k values.
     #[must_use]
@@ -238,5 +238,27 @@ impl MetricPolicy {
     #[must_use]
     pub const fn require_complete_usage(&self) -> bool {
         self.require_complete_usage
+    }
+
+    pub(crate) fn validate_against(
+        &self,
+        limits: EvaluationLimits,
+    ) -> Result<(), EvaluationError> {
+        if self.pass_k.is_empty()
+            || self.pass_k.len() > usize::from(limits.pass_k_values())
+            || self.pass_k.windows(2).any(|pair| pair[0] >= pair[1])
+            || self.pass_k[0] == 0
+            || self.bootstrap_replicates == 0
+            || self.bootstrap_replicates > limits.bootstrap_replicates()
+            || self.confidence_millionths != 950_000
+            || self.instability_threshold_millionths > 1_000_000
+        {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Profile,
+                EvaluationOperation::FreezeProfile,
+                "metric policy is noncanonical or exceeds supported bounds",
+            ));
+        }
+        Ok(())
     }
 }

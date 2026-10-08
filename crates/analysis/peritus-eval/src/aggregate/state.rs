@@ -13,12 +13,13 @@ use peritus_types::{
 use crate::{
     CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCampaignId, EvaluationError,
     EvaluationErrorKind, EvaluationOperation, EvaluationPhase, EvaluationPlanId,
-    EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanDigest, PlanRecord,
+    EvaluationLimits, EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanDigest, PlanRecord,
     PlannedRolloutBinding, ProfileDigest, PublicationRecord, ReportRecord, ResultDigest, RolloutId,
     RolloutProgress, RolloutStatus, RolloutTerminalClass, TerminalRecordRef,
 };
 
 const STATE_DOMAIN: &[u8] = b"peritus.evaluation.state.v1\0";
+const STATE_PAGE_EXTENSION_TAG: u8 = 1;
 
 /// Complete authoritative E3 campaign state.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +30,7 @@ pub struct EvaluationState {
     pub(crate) dataset_artifact: ArtifactDigest,
     pub(crate) profile_artifact: ArtifactDigest,
     pub(crate) profile_digest: ProfileDigest,
+    pub(crate) state_page_bytes: u64,
     pub(crate) sequence: u64,
     pub(crate) last_event_id: EventId,
     pub(crate) state_digest: Sha256Digest,
@@ -79,6 +81,11 @@ impl EvaluationState {
     #[must_use]
     pub const fn profile_digest(&self) -> ProfileDigest {
         self.profile_digest
+    }
+    /// Frozen maximum bytes in one independently committed physical state page.
+    #[must_use]
+    pub const fn state_page_bytes(&self) -> u64 {
+        self.state_page_bytes
     }
     /// Applied event sequence.
     #[must_use]
@@ -181,7 +188,8 @@ impl EvaluationState {
     /// Canonically encodes the complete state and advertised digest.
     ///
     /// # Errors
-    /// Returns a codec error when the bounded checkpoint exceeds production limits.
+    /// Returns a codec error if complete logical state is not canonically representable.
+    /// Physical checkpoint pages are applied after this complete identity is encoded.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, EvaluationError> {
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
         encode_identity(&mut writer, self)?;
@@ -306,6 +314,20 @@ impl EvaluationState {
                 ))
             })
             .transpose()?;
+        let state_page_bytes = match reader.remaining() {
+            32 => EvaluationLimits::MAX_STATE_BYTES,
+            41 => {
+                if reader.read_u8().map_err(codec)? != STATE_PAGE_EXTENSION_TAG {
+                    return Err(corrupt("unknown evaluation state extension"));
+                }
+                let value = reader.read_u64().map_err(codec)?;
+                if value == 0 || value > EvaluationLimits::MAX_STATE_BYTES {
+                    return Err(corrupt("evaluation state-page size exceeds the C0 ceiling"));
+                }
+                value
+            }
+            _ => return Err(corrupt("evaluation state extension length is invalid")),
+        };
         let state_digest = digest(&mut reader)?;
         reader.finish().map_err(codec)?;
         let mut state = Self {
@@ -315,6 +337,7 @@ impl EvaluationState {
             dataset_artifact,
             profile_artifact,
             profile_digest,
+            state_page_bytes,
             sequence,
             last_event_id,
             state_digest,
@@ -414,6 +437,10 @@ fn encode_identity(
     if let Some(value) = state.failure {
         writer.write_u8(value.code().tag()).map_err(codec)?;
         writer.write_fixed(value.digest().as_bytes()).map_err(codec)?;
+    }
+    if state.state_page_bytes != EvaluationLimits::MAX_STATE_BYTES {
+        writer.write_u8(STATE_PAGE_EXTENSION_TAG).map_err(codec)?;
+        writer.write_u64(state.state_page_bytes).map_err(codec)?;
     }
     Ok(())
 }

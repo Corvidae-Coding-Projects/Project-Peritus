@@ -47,6 +47,11 @@ impl EvaluationStateFrame {
     pub const fn state_digest(&self) -> Sha256Digest {
         self.0.state_digest()
     }
+    /// Frozen maximum bytes in one physical checkpoint page.
+    #[must_use]
+    pub const fn state_page_bytes(&self) -> u64 {
+        self.0.state_page_bytes()
+    }
 }
 
 impl CanonicalEncode for EvaluationStateFrame {

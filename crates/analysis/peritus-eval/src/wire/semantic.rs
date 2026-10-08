@@ -106,6 +106,13 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
             rollout_id: rollout(&mut reader)?,
             observation_digest: digest(&mut reader)?,
         },
+        17 => EvaluationCommandKind::CreateCampaignWithStatePage {
+            revision: revision(&mut reader)?,
+            dataset_digest: DatasetDigest::new(digest(&mut reader)?),
+            dataset_artifact: ArtifactDigest::from_sha256(digest(&mut reader)?),
+            profile_artifact: ArtifactDigest::from_sha256(digest(&mut reader)?),
+            state_page_bytes: reader.read_u64().map_err(codec)?,
+        },
         _ => return Err(protocol("unknown evaluation semantic tag")),
     };
     reader.finish().map_err(codec)?;

@@ -210,10 +210,15 @@ fn transition_outbox(
 fn artifact_dependencies(kind: &EvaluationEventKind) -> Vec<ArtifactDependency> {
     let EvaluationEventKind::Accepted(kind) = kind;
     let mut dependencies = match kind {
-        EvaluationCommandKind::CreateCampaign { dataset_artifact, profile_artifact, .. } => vec![
-            ArtifactDependency::new(dataset_artifact.sha256()),
-            ArtifactDependency::new(profile_artifact.sha256()),
-        ],
+        EvaluationCommandKind::CreateCampaign { dataset_artifact, profile_artifact, .. }
+        | EvaluationCommandKind::CreateCampaignWithStatePage {
+            dataset_artifact,
+            profile_artifact,
+            ..
+        } => vec![
+                ArtifactDependency::new(dataset_artifact.sha256()),
+                ArtifactDependency::new(profile_artifact.sha256()),
+            ],
         EvaluationCommandKind::RecordPlanBatch { batch, .. } => {
             vec![ArtifactDependency::new(batch.artifact().sha256())]
         }

@@ -45,6 +45,7 @@ pub struct FrozenProviderSnapshot {
     revision: u64,
     digest: Sha256Digest,
     sampling_controls: bool,
+    maximum_output_tokens: u64,
 }
 
 impl FrozenProviderSnapshot {
@@ -89,6 +90,7 @@ impl FrozenProviderSnapshot {
             revision: profile.revision(),
             digest: peritus_codec::sha256(&writer.into_bytes()),
             sampling_controls: profile.capabilities().supports(Capability::SamplingControls),
+            maximum_output_tokens: limits.max_output_tokens(),
         })
     }
     /// Profile identity.
@@ -110,6 +112,11 @@ impl FrozenProviderSnapshot {
     #[must_use]
     pub const fn supports_sampling_controls(self) -> bool {
         self.sampling_controls
+    }
+    /// Maximum output tokens advertised by the exact captured provider profile.
+    #[must_use]
+    pub const fn maximum_output_tokens(self) -> u64 {
+        self.maximum_output_tokens
     }
 }
 
@@ -154,6 +161,9 @@ pub struct FrozenModelControls {
     top_p_millionths: Option<u32>,
     request_template_digest: Sha256Digest,
     seed_delivery: SeedDeliveryPolicy,
+    provider_profile_id: ProviderProfileId,
+    provider_revision: u64,
+    provider_digest: Sha256Digest,
     digest: Sha256Digest,
 }
 
@@ -171,6 +181,7 @@ impl FrozenModelControls {
         provider: FrozenProviderSnapshot,
     ) -> Result<Self, EvaluationError> {
         if maximum_output_tokens == 0
+            || maximum_output_tokens > provider.maximum_output_tokens()
             || temperature_millionths.is_some_and(|value| value > 2_000_000)
             || top_p_millionths.is_some_and(|value| value > 1_000_000)
             || matches!(seed_delivery, SeedDeliveryPolicy::Required)
@@ -197,6 +208,9 @@ impl FrozenModelControls {
             top_p_millionths,
             request_template_digest,
             seed_delivery,
+            provider_profile_id: provider.profile_id(),
+            provider_revision: provider.revision(),
+            provider_digest: provider.digest(),
             digest,
         })
     }
@@ -225,10 +239,45 @@ impl FrozenModelControls {
     pub const fn seed_delivery(self) -> SeedDeliveryPolicy {
         self.seed_delivery
     }
+    /// Exact provider-profile identity against which these controls were checked.
+    #[must_use]
+    pub const fn provider_profile_id(self) -> ProviderProfileId {
+        self.provider_profile_id
+    }
+    /// Exact provider-profile revision against which these controls were checked.
+    #[must_use]
+    pub const fn provider_revision(self) -> u64 {
+        self.provider_revision
+    }
+    /// Complete provider snapshot digest against which these controls were checked.
+    #[must_use]
+    pub const fn provider_digest(self) -> Sha256Digest {
+        self.provider_digest
+    }
     /// Complete controls digest.
     #[must_use]
     pub const fn digest(self) -> Sha256Digest {
         self.digest
+    }
+
+    pub(crate) fn validate_against(
+        self,
+        provider: FrozenProviderSnapshot,
+    ) -> Result<(), EvaluationError> {
+        if self.provider_profile_id != provider.profile_id()
+            || self.provider_revision != provider.revision()
+            || self.provider_digest != provider.digest()
+            || self.maximum_output_tokens > provider.maximum_output_tokens()
+            || matches!(self.seed_delivery, SeedDeliveryPolicy::Required)
+                && !provider.supports_sampling_controls()
+        {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Profile,
+                EvaluationOperation::FreezeProfile,
+                "model controls were checked against a different or insufficient provider profile",
+            ));
+        }
+        Ok(())
     }
 }
 

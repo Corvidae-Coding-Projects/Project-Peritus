@@ -5,8 +5,9 @@ use peritus_types::{CommandId, EventId, RevisionTuple, Sha256Digest};
 
 use crate::{
     CampaignFailure, DatasetDigest, EvaluationCampaignId, EvaluationError, EvaluationErrorKind,
-    EvaluationOperation, EvaluationRecovery, LedgerCounts, PlanBatch, PlanRecord, ProfileDigest,
-    PublicationRecord, ReportRecord, ResultDigest, RolloutId, TerminalRecordRef,
+    EvaluationOperation, EvaluationRecovery, FrozenEvaluationProfile, LedgerCounts, PlanBatch,
+    PlanRecord, ProfileDigest, PublicationRecord, ReportRecord, ResultDigest, RolloutId,
+    TerminalRecordRef,
 };
 
 const COMMAND_DOMAIN: &[u8] = b"peritus.evaluation.command.v1\0";
@@ -24,6 +25,19 @@ pub enum EvaluationCommandKind {
         dataset_artifact: peritus_artifact_store::ArtifactDigest,
         /// Finalized canonical frozen-profile artifact.
         profile_artifact: peritus_artifact_store::ArtifactDigest,
+    },
+    /// Registers immutable campaign inputs with the profile-selected physical state-page size.
+    CreateCampaignWithStatePage {
+        /// Cross-slice provenance revision.
+        revision: RevisionTuple,
+        /// Complete dataset manifest digest.
+        dataset_digest: DatasetDigest,
+        /// Finalized canonical dataset manifest artifact.
+        dataset_artifact: peritus_artifact_store::ArtifactDigest,
+        /// Finalized canonical frozen-profile artifact.
+        profile_artifact: peritus_artifact_store::ArtifactDigest,
+        /// Maximum bytes in each independently committed physical state page.
+        state_page_bytes: u64,
     },
     /// Appends one canonical artifact-backed plan batch.
     RecordPlanBatch {
@@ -138,6 +152,43 @@ pub struct EvaluationCommand {
 }
 
 impl EvaluationCommand {
+    /// Constructs profile-bound campaign creation with its selected physical state-page size.
+    ///
+    /// # Errors
+    /// Rejects invalid identities or a profile whose selected creation semantics are invalid.
+    #[allow(clippy::too_many_arguments, reason = "campaign creation binds every immutable input")]
+    pub fn create_campaign(
+        command_id: CommandId,
+        event_id: EventId,
+        campaign_id: EvaluationCampaignId,
+        revision: RevisionTuple,
+        dataset_artifact: peritus_artifact_store::ArtifactDigest,
+        profile_artifact: peritus_artifact_store::ArtifactDigest,
+        profile: &FrozenEvaluationProfile,
+    ) -> Result<Self, EvaluationError> {
+        if revision.provider_profile_id() != profile.provider().profile_id() {
+            return Err(invalid(
+                "campaign revision and frozen provider-profile identity differ",
+            ));
+        }
+        Self::new(
+            command_id,
+            event_id,
+            campaign_id,
+            0,
+            None,
+            Sha256Digest::new([0; 32]),
+            profile.digest(),
+            EvaluationCommandKind::CreateCampaignWithStatePage {
+                revision,
+                dataset_digest: profile.dataset().digest(),
+                dataset_artifact,
+                profile_artifact,
+                state_page_bytes: profile.limits().state_page_bytes(),
+            },
+        )
+    }
+
     /// Constructs a command binding every CAS and semantic field.
     ///
     /// # Errors
@@ -237,6 +288,12 @@ impl EvaluationCommand {
 
 fn validate_kind(kind: &EvaluationCommandKind) -> Result<(), EvaluationError> {
     match kind {
+        EvaluationCommandKind::CreateCampaignWithStatePage { state_page_bytes, .. }
+            if *state_page_bytes == 0
+                || *state_page_bytes > crate::EvaluationLimits::MAX_STATE_BYTES =>
+        {
+            Err(invalid("evaluation state-page size is zero or exceeds the C0 ceiling"))
+        }
         EvaluationCommandKind::StartRollout { attempt, started_at_tick, .. }
             if *attempt == 0 || *started_at_tick == 0 =>
         {

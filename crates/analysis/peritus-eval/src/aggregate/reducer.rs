@@ -102,7 +102,7 @@ fn validate_command_fence(
             if command.expected_sequence() != 0
                 || command.expected_previous_event().is_some()
                 || command.prior_state_digest() != peritus_types::Sha256Digest::new([0; 32])
-                || !matches!(command.kind(), EvaluationCommandKind::CreateCampaign { .. })
+                || !is_creation(command.kind())
             {
                 return Err(binding("campaign creation command has a non-genesis fence"));
             }
@@ -114,13 +114,21 @@ fn validate_command_fence(
                 || command.prior_state_digest() != state.state_digest()
                 || command.campaign_id() != state.campaign_id()
                 || command.profile_digest() != state.profile_digest()
-                || matches!(command.kind(), EvaluationCommandKind::CreateCampaign { .. })
+                || is_creation(command.kind())
             {
                 return Err(binding("evaluation command fence or immutable binding differs"));
             }
         }
     }
     Ok(())
+}
+
+const fn is_creation(kind: &EvaluationCommandKind) -> bool {
+    matches!(
+        kind,
+        EvaluationCommandKind::CreateCampaign { .. }
+            | EvaluationCommandKind::CreateCampaignWithStatePage { .. }
+    )
 }
 
 #[allow(clippy::too_many_lines, reason = "closed campaign transition table stays explicit")]
@@ -132,23 +140,48 @@ fn apply_kind(
     event_id: peritus_types::EventId,
     kind: &EvaluationCommandKind,
 ) -> Result<EvaluationState, EvaluationError> {
-    if let EvaluationCommandKind::CreateCampaign {
-        revision,
-        dataset_digest,
-        dataset_artifact,
-        profile_artifact,
-    } = kind
+    let creation = match kind {
+        EvaluationCommandKind::CreateCampaign {
+            revision,
+            dataset_digest,
+            dataset_artifact,
+            profile_artifact,
+        } => Some((
+            *revision,
+            *dataset_digest,
+            *dataset_artifact,
+            *profile_artifact,
+            crate::EvaluationLimits::MAX_STATE_BYTES,
+        )),
+        EvaluationCommandKind::CreateCampaignWithStatePage {
+            revision,
+            dataset_digest,
+            dataset_artifact,
+            profile_artifact,
+            state_page_bytes,
+        } => Some((
+            *revision,
+            *dataset_digest,
+            *dataset_artifact,
+            *profile_artifact,
+            *state_page_bytes,
+        )),
+        _ => None,
+    };
+    if let Some((revision, dataset_digest, dataset_artifact, profile_artifact, state_page_bytes)) =
+        creation
     {
         if prior.is_some() || sequence != 1 {
             return Err(transition());
         }
         return Ok(EvaluationState {
             campaign_id,
-            revision: *revision,
-            dataset_digest: *dataset_digest,
-            dataset_artifact: *dataset_artifact,
-            profile_artifact: *profile_artifact,
+            revision,
+            dataset_digest,
+            dataset_artifact,
+            profile_artifact,
             profile_digest,
+            state_page_bytes,
             sequence,
             last_event_id: event_id,
             state_digest: peritus_types::Sha256Digest::new([0; 32]),
@@ -173,7 +206,8 @@ fn apply_kind(
     state.sequence = sequence;
     state.last_event_id = event_id;
     match kind {
-        EvaluationCommandKind::CreateCampaign { .. } => return Err(transition()),
+        EvaluationCommandKind::CreateCampaign { .. }
+        | EvaluationCommandKind::CreateCampaignWithStatePage { .. } => return Err(transition()),
         EvaluationCommandKind::RecordPlanBatch { plan_id, plan_digest, batch } => {
             require_phase(&state, &[EvaluationPhase::Created])?;
             if state.plan.is_some()
@@ -425,6 +459,20 @@ pub(crate) fn encode_kind(
             writer.write_fixed(dataset_digest.as_bytes()).map_err(codec)?;
             writer.write_fixed(dataset_artifact.as_bytes()).map_err(codec)?;
             writer.write_fixed(profile_artifact.as_bytes()).map_err(codec)?;
+        }
+        EvaluationCommandKind::CreateCampaignWithStatePage {
+            revision,
+            dataset_digest,
+            dataset_artifact,
+            profile_artifact,
+            state_page_bytes,
+        } => {
+            writer.write_u8(17).map_err(codec)?;
+            encode_revision(writer, *revision)?;
+            writer.write_fixed(dataset_digest.as_bytes()).map_err(codec)?;
+            writer.write_fixed(dataset_artifact.as_bytes()).map_err(codec)?;
+            writer.write_fixed(profile_artifact.as_bytes()).map_err(codec)?;
+            writer.write_u64(*state_page_bytes).map_err(codec)?;
         }
         EvaluationCommandKind::RecordPlanBatch { plan_id, plan_digest, batch } => {
             writer.write_u8(2).map_err(codec)?;

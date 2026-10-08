@@ -51,7 +51,10 @@ fn revision(
     kind: &peritus_eval::EvaluationCommandKind,
 ) -> Option<peritus_types::RevisionTuple> {
     prior.map(|state| *state.revision()).or(match kind {
-        peritus_eval::EvaluationCommandKind::CreateCampaign { revision, .. } => Some(*revision),
+        peritus_eval::EvaluationCommandKind::CreateCampaign { revision, .. }
+        | peritus_eval::EvaluationCommandKind::CreateCampaignWithStatePage { revision, .. } => {
+            Some(*revision)
+        }
         _ => None,
     })
 }

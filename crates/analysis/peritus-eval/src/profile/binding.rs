@@ -300,10 +300,16 @@ impl FrozenEvaluationProfile {
         cross_lineage: bool,
         limits: EvaluationLimits,
     ) -> Result<Self, EvaluationError> {
+        dataset.validate()?;
+        model.validate_against(provider)?;
+        retry.validate()?;
+        metrics.validate_against(limits)?;
         if partitions.is_empty()
             || partitions.windows(2).any(|pair| pair[0] >= pair[1])
             || rollouts_per_task == 0
             || baseline.digest() == candidate.digest()
+            || baseline.revision().provider_profile_id() != provider.profile_id()
+            || candidate.revision().provider_profile_id() != provider.profile_id()
             || !cross_lineage
                 && baseline.harness_revision().harness_id()
                     != candidate.harness_revision().harness_id()

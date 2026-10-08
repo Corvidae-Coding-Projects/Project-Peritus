@@ -25,7 +25,10 @@ pub(super) fn installs(
         CodecLimits::PRODUCTION,
     )
     .map_err(codec)?;
-    let page_bytes = peritus_journal::MAX_STATE_BYTES;
+    let page_bytes = usize::try_from(state.state_page_bytes()).map_err(|_| paging())?;
+    if page_bytes == 0 || page_bytes > peritus_journal::MAX_STATE_BYTES {
+        return Err(paging());
+    }
     let page_count = bytes.len().div_ceil(page_bytes);
     let page_count_u64 = u64::try_from(page_count).map_err(|_| paging())?;
     let total_bytes = u64::try_from(bytes.len()).map_err(|_| paging())?;
@@ -95,6 +98,8 @@ pub(super) fn decode(
     let count = usize::try_from(page_count).map_err(|_| paging())?;
     let mut bytes = Vec::new();
     bytes.try_reserve_exact(capacity).map_err(|_| paging())?;
+    let mut page_lengths = Vec::new();
+    page_lengths.try_reserve_exact(count).map_err(|_| paging())?;
     for ordinal in 0..count {
         let key = page_key(campaign_id, u64::try_from(ordinal).map_err(|_| paging())?);
         let page = journal_owner
@@ -111,6 +116,7 @@ pub(super) fn decode(
         if length > capacity {
             return Err(recovery("paged evaluation checkpoint exceeds its declared byte length"));
         }
+        page_lengths.push(page.bytes().len());
         bytes.extend_from_slice(page.bytes());
     }
     if bytes.len() != capacity || peritus_codec::sha256(&bytes) != complete_digest {
@@ -118,6 +124,20 @@ pub(super) fn decode(
     }
     let frame = decode_message::<EvaluationStateFrame>(&bytes, CodecLimits::PRODUCTION)
         .map_err(codec)?;
+    let page_bytes = usize::try_from(frame.state_page_bytes()).map_err(|_| paging())?;
+    if page_bytes == 0
+        || page_bytes > peritus_journal::MAX_STATE_BYTES
+        || count != capacity.div_ceil(page_bytes)
+    {
+        return Err(recovery("paged evaluation checkpoint violates its frozen page size"));
+    }
+    for (ordinal, length) in page_lengths.into_iter().enumerate() {
+        let offset = ordinal.checked_mul(page_bytes).ok_or_else(paging)?;
+        let expected = capacity.checked_sub(offset).ok_or_else(paging)?.min(page_bytes);
+        if length != expected {
+            return Err(recovery("paged evaluation checkpoint has a noncanonical page boundary"));
+        }
+    }
     if frame.campaign_id() != campaign_id
         || frame.sequence() != sequence
         || frame.state_digest() != state_digest

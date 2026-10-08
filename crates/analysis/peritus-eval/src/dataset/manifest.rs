@@ -32,30 +32,9 @@ impl DatasetManifest {
         revision: u64,
         tasks: Vec<DatasetTask>,
         provenance_digest: peritus_types::Sha256Digest,
-        limits: EvaluationLimits,
+        _limits: EvaluationLimits,
     ) -> Result<Self, EvaluationError> {
-        if revision == 0
-            || tasks.is_empty()
-            || tasks.windows(2).any(|pair| pair[0].id() >= pair[1].id())
-        {
-            return Err(crate::invalid(
-                EvaluationErrorKind::Manifest,
-                EvaluationOperation::ValidateDataset,
-                "dataset revision/tasks are empty, duplicated, or noncanonical",
-            ));
-        }
-        let _ = limits;
-        let candidate: BTreeSet<_> =
-            tasks.iter().map(|task| task.candidate_input().artifact()).collect();
-        let evaluator: BTreeSet<_> =
-            tasks.iter().map(|task| task.evaluator_input().artifact()).collect();
-        if !candidate.is_disjoint(&evaluator) {
-            return Err(crate::invalid(
-                EvaluationErrorKind::Isolation,
-                EvaluationOperation::ValidateDataset,
-                "candidate and evaluator artifact sets overlap",
-            ));
-        }
+        validate_manifest(revision, &tasks)?;
         let digest = DatasetDigest::new(peritus_codec::sha256(&canonical_bytes(
             id,
             revision,
@@ -63,6 +42,10 @@ impl DatasetManifest {
             provenance_digest,
         )?));
         Ok(Self { id, revision, tasks, provenance_digest, digest })
+    }
+
+    pub(crate) fn validate(&self) -> Result<(), EvaluationError> {
+        validate_manifest(self.revision, &self.tasks)
     }
 
     /// Returns stable dataset lineage identity.
@@ -108,6 +91,31 @@ impl DatasetManifest {
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, EvaluationError> {
         canonical_bytes(self.id, self.revision, &self.tasks, self.provenance_digest)
     }
+}
+
+fn validate_manifest(revision: u64, tasks: &[DatasetTask]) -> Result<(), EvaluationError> {
+    if revision == 0
+        || tasks.is_empty()
+        || tasks.windows(2).any(|pair| pair[0].id() >= pair[1].id())
+    {
+        return Err(crate::invalid(
+            EvaluationErrorKind::Manifest,
+            EvaluationOperation::ValidateDataset,
+            "dataset revision/tasks are empty, duplicated, or noncanonical",
+        ));
+    }
+        let candidate: BTreeSet<_> =
+            tasks.iter().map(|task| task.candidate_input().artifact()).collect();
+        let evaluator: BTreeSet<_> =
+            tasks.iter().map(|task| task.evaluator_input().artifact()).collect();
+        if !candidate.is_disjoint(&evaluator) {
+            return Err(crate::invalid(
+                EvaluationErrorKind::Isolation,
+                EvaluationOperation::ValidateDataset,
+                "candidate and evaluator artifact sets overlap",
+            ));
+        }
+    Ok(())
 }
 
 fn canonical_bytes(
