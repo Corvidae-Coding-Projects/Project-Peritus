@@ -61,6 +61,30 @@ pub enum ToolChoice {
     Specific(ToolName),
 }
 
+pub(crate) fn validate_choice(
+    choice: &ToolChoice,
+    tools: &[ToolDefinition],
+) -> Result<(), ProtocolError> {
+    match choice {
+        ToolChoice::Required if tools.is_empty() => Err(ProtocolError::at(
+            ProtocolErrorKind::InvalidRequest,
+            "tool_choice",
+            "required tool choice needs at least one admitted tool declaration",
+        )),
+        ToolChoice::Specific(name) if tools.iter().all(|tool| tool.name() != name) => {
+            Err(ProtocolError::at(
+                ProtocolErrorKind::InvalidRequest,
+                "tool_choice",
+                "specific tool choice must name an admitted tool declaration",
+            ))
+        }
+        ToolChoice::Auto
+        | ToolChoice::None
+        | ToolChoice::Required
+        | ToolChoice::Specific(_) => Ok(()),
+    }
+}
+
 /// Parallel function-call behavior.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ParallelToolPolicy {

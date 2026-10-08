@@ -5,22 +5,25 @@ use std::collections::BTreeSet;
 use super::RequestOptions;
 use crate::{
     Capability, ContentBlock, Message, NegotiatedCapabilities, ParallelToolPolicy, ProtocolError,
-    ProtocolErrorKind, ProtocolLimits, StructuredOutput, ToolDefinition,
+    ProtocolErrorKind, ProtocolLimits, ResumeKind, StructuredOutput, ToolChoice, ToolDefinition,
 };
 
 pub(super) fn request(
     negotiated: NegotiatedCapabilities,
     messages: &[Message],
     tools: &[ToolDefinition],
+    tool_choice: &ToolChoice,
     parallel: ParallelToolPolicy,
     options: &RequestOptions,
+    resume: ResumeKind,
     limits: ProtocolLimits,
 ) -> Result<(), ProtocolError> {
     validate_counts(messages, tools, options, limits)?;
+    crate::tool::validate_choice(tool_choice, tools)?;
     if tools.len() > usize::try_from(negotiated.limits().max_tools()).unwrap_or(usize::MAX) {
         return Err(invalid("tools", "tool count exceeds the negotiated model limit"));
     }
-    validate_capabilities(negotiated, messages, tools, parallel, options)?;
+    validate_capabilities(negotiated, messages, tools, parallel, options, resume)?;
     crate::tool::validate_parallel(
         parallel,
         negotiated.limits().max_parallel_tool_calls(),
@@ -70,6 +73,7 @@ fn validate_capabilities(
     tools: &[ToolDefinition],
     parallel: ParallelToolPolicy,
     options: &RequestOptions,
+    resume: ResumeKind,
 ) -> Result<(), ProtocolError> {
     for block in messages.iter().flat_map(Message::content) {
         let bytes = u64::try_from(block.inline_media_bytes())
@@ -123,12 +127,7 @@ fn validate_capabilities(
         "cache",
     )?;
     require(options.persistence().store(), Capability::StoredState, negotiated, "persistence")?;
-    require(
-        options.continuation().is_some_and(super::Continuation::is_exact),
-        Capability::ResumableResponse,
-        negotiated,
-        "continuation",
-    )?;
+    validate_continuation(negotiated, options, resume)?;
     require(
         !options.extensions().is_empty(),
         Capability::ProviderExtensions,
@@ -141,6 +140,38 @@ fn validate_capabilities(
         negotiated,
         "sampling",
     )
+}
+
+fn validate_continuation(
+    negotiated: NegotiatedCapabilities,
+    options: &RequestOptions,
+    resume: ResumeKind,
+) -> Result<(), ProtocolError> {
+    let Some(continuation) = options.continuation() else { return Ok(()) };
+    match (resume, continuation.is_exact()) {
+        (ResumeKind::Unsupported, _) => Err(unsupported(
+            "continuation",
+            "selected provider profile does not support response continuation",
+        )),
+        (ResumeKind::SemanticContinuation, false) => Ok(()),
+        (ResumeKind::SemanticContinuation, true) => Err(unsupported(
+            "continuation",
+            "selected provider profile supports semantic continuation, not exact cursor resumption",
+        )),
+        (ResumeKind::ExactCursor, false) => Err(unsupported(
+            "continuation",
+            "selected provider profile requires an exact cursor for response resumption",
+        )),
+        (ResumeKind::ExactCursor, true)
+            if !negotiated.includes(Capability::ResumableResponse) =>
+        {
+            Err(unsupported(
+                "continuation",
+                "exact cursor continuation requires the negotiated resumable_response capability",
+            ))
+        }
+        (ResumeKind::ExactCursor, true) => Ok(()),
+    }
 }
 
 fn require(
@@ -157,4 +188,8 @@ fn require(
 
 pub(super) fn invalid(path: &'static str, detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidRequest, path, detail)
+}
+
+fn unsupported(path: &'static str, detail: &'static str) -> ProtocolError {
+    ProtocolError::at(ProtocolErrorKind::UnsupportedCapability, path, detail)
 }

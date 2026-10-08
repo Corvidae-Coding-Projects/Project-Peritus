@@ -5,8 +5,8 @@ use peritus_types::{ArtifactId, ProviderProfileId, Sha256Digest};
 use super::{Continuation, RequestOptions, validation};
 use crate::{
     Message, NegotiatedCapabilities, ParallelToolPolicy, ProtocolError, ProtocolLimits,
-    ProtocolVersion, ProviderName, ProviderProfile, RequestId, ToolChoice, ToolDefinition,
-    WireDialect,
+    ProtocolVersion, ProviderName, ProviderProfile, RequestId, ResumeKind, ToolChoice,
+    ToolDefinition, WireDialect,
 };
 
 /// Complete provider-neutral model request bound to one immutable profile revision.
@@ -17,6 +17,7 @@ pub struct ModelRequest {
     profile_revision: u64,
     provider: ProviderName,
     dialect: WireDialect,
+    resume_kind: ResumeKind,
     request_id: RequestId,
     model: crate::ModelName,
     negotiated: NegotiatedCapabilities,
@@ -54,13 +55,23 @@ impl ModelRequest {
                 "negotiated capabilities belong to another profile",
             ));
         }
-        validation::request(negotiated, &messages, &tools, parallel_tools, &options, limits)?;
+        validation::request(
+            negotiated,
+            &messages,
+            &tools,
+            &tool_choice,
+            parallel_tools,
+            &options,
+            profile.resume_kind(),
+            limits,
+        )?;
         Ok(Self {
             protocol: ProtocolVersion::V1,
             profile_id: profile.profile_id(),
             profile_revision: profile.revision(),
             provider: profile.provider().clone(),
             dialect: profile.dialect(),
+            resume_kind: profile.resume_kind(),
             request_id,
             model: profile.model().clone(),
             negotiated,
@@ -102,8 +113,10 @@ impl ModelRequest {
             self.negotiated,
             &self.messages,
             &self.tools,
+            &self.tool_choice,
             self.parallel_tools,
             &self.options,
+            self.resume_kind,
             limits,
         )?;
         Ok(self)
