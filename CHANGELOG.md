@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L438] E3 repeatedly copies and replays the complete campaign instead of resuming bounded work (#518)
 - [L035] Tool writes and completed-command receipts impose a tighter file ceiling (#134)
 - [L608] Windows ACL rollback ownership is not durable across owner loss (#664)
 - [L034] Goal continuation requires lifecycle/evidence admission (#133)
