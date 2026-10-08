@@ -252,8 +252,22 @@ impl AclPlan {
     /// # Errors
     /// Any save or mutation failure restores already-mutated entries before returning.
     #[cfg(target_os = "windows")]
-    pub fn install(&self, backup_root: &std::path::Path) -> Result<AclTransaction, WindowsError> {
-        AclTransaction::install(self, backup_root)
+    pub fn install(
+        &self,
+        backup_root: &std::path::Path,
+        process_id: peritus_types::ProcessId,
+        preparation_digest: Sha256Digest,
+        retained_owner: Option<peritus_process::RetainedOwnerBinding>,
+        should_continue: &dyn Fn() -> bool,
+    ) -> Result<AclTransaction, WindowsError> {
+        AclTransaction::install(
+            self,
+            backup_root,
+            process_id,
+            preparation_digest,
+            retained_owner,
+            should_continue,
+        )
     }
 }
 

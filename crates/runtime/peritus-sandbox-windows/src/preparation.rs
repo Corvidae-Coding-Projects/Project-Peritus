@@ -2,6 +2,7 @@
 
 use peritus_process::{
     AuthorizedPreparationContext, ExecutionPlan, NativePlatform, NativeSandboxBackend, ProcessError,
+    RetainedOwnerBinding,
 };
 use peritus_sandbox::{
     AdmissionProfile, BackendAdmission, BackendDescriptor, CheckedSandboxPlan, admit_backend,
@@ -183,7 +184,7 @@ impl WindowsBackend {
         sandbox: &CheckedSandboxPlan,
         admission: &BackendAdmission,
     ) -> Result<WindowsSession, WindowsError> {
-        self.prepare_internal(execution, sandbox, admission, false)
+        self.prepare_internal(execution, sandbox, admission, false, None)
     }
 
     #[allow(clippy::too_many_lines, reason = "complete preparation transaction remains auditable")]
@@ -193,6 +194,7 @@ impl WindowsBackend {
         sandbox: &CheckedSandboxPlan,
         admission: &BackendAdmission,
         install_native: bool,
+        retained_owner: Option<RetainedOwnerBinding>,
     ) -> Result<WindowsSession, WindowsError> {
         self.ensure_preparation_continues()?;
         self.validate_bindings(execution, sandbox, admission)?;
@@ -294,7 +296,13 @@ impl WindowsBackend {
         let acl_transaction = if install_native {
             #[cfg(target_os = "windows")]
             {
-                acl.install(&self.config.acl_backup_root)?
+                acl.install(
+                    &self.config.acl_backup_root,
+                    execution.identity().process_id(),
+                    admission.preparation_digest(),
+                    retained_owner,
+                    self.preparation_continues.as_ref(),
+                )?
             }
             #[cfg(not(target_os = "windows"))]
             {
@@ -664,6 +672,7 @@ impl NativeSandboxBackend for WindowsBackend {
             context.sandbox_plan(),
             context.admission(),
             true,
+            context.retained_owner(),
         )
         .map_err(|error| {
             let cleanup_complete = error.preparation_cleanup().is_complete();

@@ -115,9 +115,15 @@ impl NativeSessionRecovery {
         let retained_binding_complete =
             owner_operation_digest.is_some() == service_owner_digest.is_some();
         let tree_exact = tree.is_none_or(|tree| {
+            let platform_tree = match platform {
+                NativePlatform::Windows => tree.process_group().is_none(),
+                NativePlatform::Linux | NativePlatform::Macos => {
+                    tree.process_group() == Some(tree.root_pid())
+                }
+            };
             tree.root_pid() != 0
                 && tree.start_token().is_some()
-                && tree.process_group() == Some(tree.root_pid())
+                && platform_tree
                 && tree.complete_containment()
         });
         if record.is_empty()

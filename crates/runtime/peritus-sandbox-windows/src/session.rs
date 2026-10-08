@@ -6,7 +6,8 @@ use peritus_network::ManagedProxy;
 use peritus_process::{
     CancellationReason, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
     NativeObservationPage, NativeObservationReceipt, NativeObservationTransport,
-    NativeSandboxSession, OsExitObservation, ProcessError, ProcessTreeIdentity,
+    NativePlatform, NativeRecoveryPhase, NativeSandboxSession, NativeSessionRecovery,
+    OsExitObservation, ProcessError, ProcessTreeIdentity,
     native_observation_prefix_digest, native_observation_producer_binding,
 };
 use peritus_sandbox::{EnforcementObservation, ObservationDisposition, ObservationTail};
@@ -116,6 +117,13 @@ impl WindowsSession {
             if filter.is_managed() { CleanupState::Pending } else { CleanupState::Complete };
         let secret_cleanup =
             if secrets.is_some() { CleanupState::Pending } else { CleanupState::Complete };
+        let recovery = WindowsRecoveryRecord::prepared_owned(
+            runtime_identity,
+            acl.transaction_digest(),
+            acl.receipt(),
+            acl.owner_operation_digest(),
+            acl.service_owner_digest(),
+        );
         Self {
             native_launch,
             windows_launch,
@@ -129,7 +137,7 @@ impl WindowsSession {
             windows_observations,
             next_windows_observation_sequence,
             resources,
-            recovery: WindowsRecoveryRecord::prepared(runtime_identity),
+            recovery,
             proxy,
             proxy_cleanup,
             filter,
@@ -237,6 +245,46 @@ impl NativeSandboxSession for WindowsSession {
         &self.native_launch
     }
 
+    fn recovery_snapshot(&self) -> Result<Option<NativeSessionRecovery>, ProcessError> {
+        let phase = if self.recovery.cleanup_complete() {
+            NativeRecoveryPhase::Released
+        } else {
+            match self.recovery.phase() {
+                WindowsPhase::Prepared => NativeRecoveryPhase::Prepared,
+                WindowsPhase::Activated => NativeRecoveryPhase::Active,
+                WindowsPhase::CancelRequested => NativeRecoveryPhase::Cancelling,
+                WindowsPhase::Terminated => NativeRecoveryPhase::Terminated,
+                WindowsPhase::Released => NativeRecoveryPhase::Released,
+            }
+        };
+        let bytes = self.recovery.canonical_bytes();
+        let mut record = Vec::new();
+        record.try_reserve_exact(bytes.len()).map_err(|_| {
+            process_error(&WindowsError::new(
+                WindowsErrorKind::RecoveryIndeterminate,
+                WindowsOperation::Recover,
+                WindowsRecovery::Quarantine,
+                "Windows recovery record cannot be transferred",
+            ))
+        })?;
+        record.extend_from_slice(bytes);
+        NativeSessionRecovery::new(
+            NativePlatform::Windows,
+            self.recovery.identity().process_id(),
+            phase,
+            self.recovery.tree_identity(),
+            self.recovery.owner_operation_digest(),
+            self.recovery.service_owner_digest(),
+            self.recovery.custody_complete(),
+            record,
+        )
+        .map(Some)
+    }
+
+    fn spawned(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
+        self.recovery.spawned(tree).map_err(|error| process_error(&error))
+    }
+
     fn observations(&self) -> &[EnforcementObservation] {
         self.observations.as_slice()
     }
@@ -325,12 +373,12 @@ impl NativeSandboxSession for WindowsSession {
     }
 
     fn activated(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
-        if !tree.complete_containment() {
+        if !tree.complete_containment() || self.recovery.tree_identity() != Some(tree) {
             return Err(process_error(&WindowsError::new(
                 WindowsErrorKind::Job,
                 WindowsOperation::Activate,
                 WindowsRecovery::CancelAndReap,
-                "C2 did not establish complete helper/target tree containment",
+                "C2 helper/target tree differs from the retained Windows birth identity",
             )));
         }
         self.transition(WindowsPhase::Activated, ObservationDisposition::Completed)
