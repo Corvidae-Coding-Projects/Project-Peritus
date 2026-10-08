@@ -223,28 +223,36 @@ pub(super) fn lifecycle_error(detail: &'static str) -> MacosError {
 }
 
 pub(crate) fn process_error(error: &MacosError) -> ProcessError {
-    let (code, operation, recovery) = match error.kind() {
+    let (code, operation) = match error.kind() {
         MacosErrorKind::InvalidInput | MacosErrorKind::LimitExceeded => {
-            (ErrorCode::InvalidInput, ProcessOperation::Validate, ProcessRecovery::CorrectRequest)
+            (ErrorCode::InvalidInput, ProcessOperation::Validate)
         }
         MacosErrorKind::UnsupportedHost => {
-            (ErrorCode::Unsupported, ProcessOperation::Validate, ProcessRecovery::SelectBackend)
+            (ErrorCode::Unsupported, ProcessOperation::Validate)
         }
         MacosErrorKind::DescriptorMismatch | MacosErrorKind::PreparationMismatch => {
-            (ErrorCode::PlanMismatch, ProcessOperation::Validate, ProcessRecovery::Reauthorize)
+            (ErrorCode::PlanMismatch, ProcessOperation::Validate)
         }
         MacosErrorKind::ResourceLimit => {
-            (ErrorCode::ResourceLimit, ProcessOperation::Control, ProcessRecovery::CancelAndReap)
+            (ErrorCode::ResourceLimit, ProcessOperation::Control)
         }
         MacosErrorKind::RecoveryIndeterminate => {
-            (ErrorCode::Indeterminate, ProcessOperation::Reconcile, ProcessRecovery::Quarantine)
+            (ErrorCode::Indeterminate, ProcessOperation::Reconcile)
         }
-        MacosErrorKind::CleanupIncomplete => (
-            ErrorCode::Supervisor,
-            ProcessOperation::Reconcile,
-            ProcessRecovery::ReopenAndReconcile,
-        ),
-        _ => (ErrorCode::Supervisor, ProcessOperation::Wait, ProcessRecovery::CancelAndReap),
+        MacosErrorKind::CleanupIncomplete => {
+            (ErrorCode::Indeterminate, ProcessOperation::Reconcile)
+        }
+        _ => (ErrorCode::Supervisor, ProcessOperation::Wait),
+    };
+    let recovery = match error.recovery() {
+        RecoveryAction::CorrectRequest => ProcessRecovery::CorrectRequest,
+        RecoveryAction::SelectSupportedBackend => ProcessRecovery::SelectBackend,
+        RecoveryAction::Reauthorize | RecoveryAction::RepairHelper => ProcessRecovery::Reauthorize,
+        RecoveryAction::CancelAndReap => ProcessRecovery::CancelAndReap,
+        RecoveryAction::RetryCleanup | RecoveryAction::Reconcile => {
+            ProcessRecovery::ReopenAndReconcile
+        }
+        RecoveryAction::Quarantine => ProcessRecovery::Quarantine,
     };
     let detail = match error.kind() {
         MacosErrorKind::InvalidInput => "macOS backend input is invalid",

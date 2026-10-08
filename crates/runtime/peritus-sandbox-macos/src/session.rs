@@ -158,7 +158,6 @@ pub struct MacosSession {
     exec_status: crate::exec_status::ExecStatusOwner,
     exec_status_cleanup_failed: bool,
     proxy: Option<ManagedProxy>,
-    proxy_cleanup_failed: bool,
     secrets: SecretDeliverySession,
 }
 
@@ -341,7 +340,6 @@ impl MacosSession {
             exec_status,
             exec_status_cleanup_failed: false,
             proxy,
-            proxy_cleanup_failed: false,
             secrets,
         })
     }

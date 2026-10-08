@@ -14,7 +14,8 @@ const MAGIC: [u8; 8] = *b"PRTSMRC1";
 const LEGACY_VERSION: u16 = 1;
 const PROCESS_BIRTH_VERSION: u16 = 2;
 const FILE_CLEANUP_VERSION: u16 = 3;
-const VERSION: u16 = 4;
+const CUSTODY_VERSION: u16 = 4;
+const VERSION: u16 = 5;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 
 /// Exact nonsensitive native identity retained for safe recovery.
@@ -139,6 +140,8 @@ pub enum RecoveryResourceState {
     NotRequired,
     /// The original session owner still holds the live resource.
     Live,
+    /// The original owner retains exact terminal evidence for cleanup reconciliation.
+    CleanupRequired,
     /// Release was completed and durably recorded.
     Released,
     /// A legacy or detached record cannot prove current custody or release.
@@ -321,9 +324,9 @@ impl SessionCustody {
         }
     }
 
-    const fn lose_proxy(&mut self) {
-        if !matches!(self.proxy, RecoveryResourceState::NotRequired) {
-            self.proxy = RecoveryResourceState::Unavailable;
+    const fn require_proxy_cleanup(&mut self) {
+        if matches!(self.proxy, RecoveryResourceState::Live) {
+            self.proxy = RecoveryResourceState::CleanupRequired;
         }
     }
 
@@ -723,14 +726,24 @@ impl MacosRecoveryRecord {
         self.refresh()
     }
 
-    pub(crate) fn record_proxy_released(&mut self) -> Result<(), MacosError> {
-        self.custody.release_proxy();
-        self.refresh()
+    pub(crate) fn record_proxy_cleanup_required(&mut self) -> Result<(), MacosError> {
+        let mut next = self.clone();
+        next.custody.require_proxy_cleanup();
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
-    pub(crate) fn record_proxy_unavailable(&mut self) -> Result<(), MacosError> {
-        self.custody.lose_proxy();
-        self.refresh()
+    pub(crate) fn record_proxy_released(
+        &mut self,
+        cleanup: CleanupProgress,
+    ) -> Result<(), MacosError> {
+        let mut next = self.clone();
+        next.custody.release_proxy();
+        next.cleanup = cleanup;
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_native_released(&mut self) -> Result<(), MacosError> {

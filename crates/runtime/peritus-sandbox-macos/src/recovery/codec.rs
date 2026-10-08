@@ -9,8 +9,8 @@ use crate::{
 };
 
 use super::{
-    CHECKSUM_BYTES, CleanupProgress, FILE_CLEANUP_VERSION, LEGACY_VERSION, MAGIC,
-    MacosRecoveryRecord, PROCESS_BIRTH_VERSION, RecoveryResourceState, RuntimeIdentity,
+    CHECKSUM_BYTES, CUSTODY_VERSION, CleanupProgress, FILE_CLEANUP_VERSION, LEGACY_VERSION,
+    MAGIC, MacosRecoveryRecord, PROCESS_BIRTH_VERSION, RecoveryResourceState, RuntimeIdentity,
     SessionCustody, VERSION,
 };
 use crate::{SessionPhase, TerminationReason};
@@ -36,7 +36,11 @@ impl MacosRecoveryRecord {
         let version = reader.u16()?;
         if !matches!(
             version,
-            LEGACY_VERSION | PROCESS_BIRTH_VERSION | FILE_CLEANUP_VERSION | VERSION
+            LEGACY_VERSION
+                | PROCESS_BIRTH_VERSION
+                | FILE_CLEANUP_VERSION
+                | CUSTODY_VERSION
+                | VERSION
         ) {
             return Err(recovery_error("unknown runtime record magic or version"));
         }
@@ -75,18 +79,18 @@ impl MacosRecoveryRecord {
         } else {
             Vec::new()
         };
-        let (phase, cancellation, termination, custody) = if version == VERSION {
+        let (phase, cancellation, termination, custody) = if version >= CUSTODY_VERSION {
             let phase = decode_phase(reader.u8()?)?;
             let cancellation = decode_cancellation(&mut reader)?;
             let termination = decode_termination(&mut reader)?;
             let custody = SessionCustody {
                 owner_operation_digest: optional_digest(&mut reader)?,
                 service_owner_digest: optional_digest(&mut reader)?,
-                launch: decode_resource_state(reader.u8()?)?,
-                execution_status: decode_resource_state(reader.u8()?)?,
-                proxy: decode_resource_state(reader.u8()?)?,
-                secrets: decode_resource_state(reader.u8()?)?,
-                resource_monitor: decode_resource_state(reader.u8()?)?,
+                launch: decode_resource_state(reader.u8()?, version)?,
+                execution_status: decode_resource_state(reader.u8()?, version)?,
+                proxy: decode_resource_state(reader.u8()?, version)?,
+                secrets: decode_resource_state(reader.u8()?, version)?,
+                resource_monitor: decode_resource_state(reader.u8()?, version)?,
             };
             let unavailable_legacy_custody = custody.owner_operation_digest.is_none()
                 && custody.service_owner_digest.is_none()
@@ -110,6 +114,30 @@ impl MacosRecoveryRecord {
             };
             let release_custody_valid =
                 phase != SessionPhase::Released || custody.released();
+            let proxy_cleanup_valid = if matches!(
+                custody.proxy,
+                RecoveryResourceState::CleanupRequired
+            ) {
+                version >= VERSION
+                    && proxy_routing_digest.is_some()
+                    && !cleanup.proxy_released()
+                    && matches!(phase, SessionPhase::Prepared | SessionPhase::Terminated)
+            } else {
+                true
+            };
+            let cleanup_state_is_proxy_only = !matches!(
+                custody.launch,
+                RecoveryResourceState::CleanupRequired
+            ) && !matches!(
+                custody.execution_status,
+                RecoveryResourceState::CleanupRequired
+            ) && !matches!(
+                custody.secrets,
+                RecoveryResourceState::CleanupRequired
+            ) && !matches!(
+                custody.resource_monitor,
+                RecoveryResourceState::CleanupRequired
+            );
             if custody.owner_operation_digest.is_some()
                 != custody.service_owner_digest.is_some()
                 || phase == SessionPhase::Released
@@ -120,6 +148,8 @@ impl MacosRecoveryRecord {
                 || matches!(phase, SessionPhase::Active | SessionPhase::Terminated) && !activated
                 || !birth_identity_valid
                 || !release_custody_valid
+                || !proxy_cleanup_valid
+                || !cleanup_state_is_proxy_only
             {
                 return Err(recovery_error("runtime recovery custody is inconsistent"));
             }
@@ -318,15 +348,20 @@ const fn resource_state_tag(state: RecoveryResourceState) -> u8 {
         RecoveryResourceState::Live => 2,
         RecoveryResourceState::Released => 3,
         RecoveryResourceState::Unavailable => 4,
+        RecoveryResourceState::CleanupRequired => 5,
     }
 }
 
-const fn decode_resource_state(tag: u8) -> Result<RecoveryResourceState, MacosError> {
+const fn decode_resource_state(
+    tag: u8,
+    version: u16,
+) -> Result<RecoveryResourceState, MacosError> {
     match tag {
         1 => Ok(RecoveryResourceState::NotRequired),
         2 => Ok(RecoveryResourceState::Live),
         3 => Ok(RecoveryResourceState::Released),
         4 => Ok(RecoveryResourceState::Unavailable),
+        5 if version >= VERSION => Ok(RecoveryResourceState::CleanupRequired),
         _ => Err(recovery_error("runtime recovery resource custody is invalid")),
     }
 }

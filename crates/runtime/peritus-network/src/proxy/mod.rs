@@ -1,4 +1,4 @@
-//! Bounded loopback HTTP/CONNECT proxy owner.
+//! Owned loopback HTTP/CONNECT proxy.
 
 mod accept;
 mod connect;
@@ -7,6 +7,7 @@ mod http;
 mod inherited;
 mod owner;
 mod redirect_worker;
+mod storage;
 mod worker;
 
 use std::{
@@ -41,7 +42,7 @@ impl ProxyEndpoint {
 pub struct ProxyShutdown {
     accepted_connections: u64,
     workers_joined: bool,
-    retained_observations: u32,
+    retained_observations: u64,
     dropped_observations: u64,
 }
 
@@ -58,17 +59,20 @@ impl ProxyShutdown {
     }
     /// Returns retained observations.
     #[must_use]
-    pub const fn retained_observations(self) -> u32 {
+    pub const fn retained_observations(self) -> u64 {
         self.retained_observations
     }
-    /// Returns observations dropped at the configured ceiling.
+    /// Returns observations dropped without retention.
+    ///
+    /// The current owner never drops an observation; a selected ceiling terminates with a typed
+    /// limit failure instead.
     #[must_use]
     pub const fn dropped_observations(self) -> u64 {
         self.dropped_observations
     }
 }
 
-/// Owner of one loopback listener and all bounded worker tasks.
+/// Owner of one loopback listener and every accepted worker task.
 #[must_use = "the managed proxy must be shut down or dropped to cancel and join workers"]
 pub struct ManagedProxy {
     endpoint: ProxyEndpoint,
@@ -76,13 +80,14 @@ pub struct ManagedProxy {
     cancellation: CancellationToken,
     observations: Arc<Mutex<owner::ObservationLog>>,
     join: Option<JoinHandle<Result<ProxyShutdown, NetworkError>>>,
+    owner_exit_observed: bool,
 }
 
 impl ManagedProxy {
     /// Starts a proxy using the system resolver and no upstream credential injection.
     ///
     /// # Errors
-    /// Returns a typed error when the loopback listener or owner thread cannot be created.
+    /// Returns a typed error when the listener, observation storage, or owner cannot be created.
     pub fn start(plan: NetworkPlan, token: RoutingToken) -> Result<Self, NetworkError> {
         Self::start_with(plan, token, Arc::new(SystemResolver), None)
     }
@@ -90,7 +95,7 @@ impl ManagedProxy {
     /// Starts a proxy with explicit resolver and optional exact credential lease.
     ///
     /// # Errors
-    /// Returns a typed error when the loopback listener or owner thread cannot be created.
+    /// Returns a typed error when the listener, observation storage, or owner cannot be created.
     pub fn start_with(
         plan: NetworkPlan,
         token: RoutingToken,
@@ -112,7 +117,7 @@ impl ManagedProxy {
         let observations = Arc::new(Mutex::new(owner::ObservationLog::new(
             plan.options().bounds().observations(),
             plan.digest(),
-        )));
+        )?));
         let config = owner::OwnerConfig {
             plan: Arc::new(plan),
             token: Arc::clone(&token),
@@ -125,7 +130,14 @@ impl ManagedProxy {
             .name("peritus-network-proxy".to_owned())
             .spawn(move || owner::run(&listener, config))
             .map_err(|_| owner::proxy_error("managed proxy owner thread cannot be started"))?;
-        Ok(Self { endpoint, token, cancellation, observations, join: Some(join) })
+        Ok(Self {
+            endpoint,
+            token,
+            cancellation,
+            observations,
+            join: Some(join),
+            owner_exit_observed: false,
+        })
     }
 
     /// Returns the loopback endpoint.
@@ -140,18 +152,80 @@ impl ManagedProxy {
         &self.token
     }
 
-    /// Returns a snapshot of retained normalized observations.
+    /// Returns a compatibility snapshot of retained normalized observations.
+    ///
+    /// Production consumers should use [`Self::observation_page`] so each transfer remains
+    /// physically bounded. A storage fault makes this compatibility snapshot empty and remains
+    /// latched for [`Self::shutdown`].
     #[must_use]
     pub fn observations(&self) -> Vec<NetworkObservation> {
-        self.observations.lock().unwrap_or_else(std::sync::PoisonError::into_inner).values.clone()
+        self.try_observations().unwrap_or_default()
+    }
+
+    /// Returns a fallible compatibility snapshot of the complete retained history.
+    ///
+    /// # Errors
+    /// Returns a latched storage or selected-ceiling failure.
+    pub fn try_observations(&self) -> Result<Vec<NetworkObservation>, NetworkError> {
+        self.observations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .values()
+    }
+
+    /// Returns one bounded physical page after `after_sequence`.
+    ///
+    /// Pass zero for the first page and then the returned `next_sequence`. The page size does not
+    /// limit retained history.
+    ///
+    /// # Errors
+    /// Rejects an invalid cursor or an unreadable committed record. A later append failure remains
+    /// latched for shutdown without hiding the already committed prefix.
+    pub fn observation_page(
+        &self,
+        after_sequence: u64,
+    ) -> Result<crate::NetworkObservationPage, NetworkError> {
+        self.observations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .page(after_sequence)
     }
 
     /// Cancels the listener and joins every owned worker.
     ///
     /// # Errors
-    /// Returns a typed failure if the owner panicked or could not establish complete joins.
+    /// Returns a retained owner, storage, policy, panic, or incomplete-join failure.
     pub fn shutdown(mut self) -> Result<ProxyShutdown, NetworkError> {
         self.join_owner()
+    }
+
+    /// Cancels the exact retained owner and reconciles its terminal join evidence.
+    ///
+    /// Unlike [`Self::shutdown`], this keeps the owner object available to the caller when the
+    /// owner reports a terminal policy, storage, or worker failure. A successful thread join
+    /// proves the listener and every owned worker have terminated even when their terminal result
+    /// is an error. The first call returns that typed error; a retry on the same owner confirms the
+    /// already-observed absence without starting or substituting another proxy.
+    ///
+    /// # Errors
+    /// Returns the owner's typed terminal failure on the first observation, or an incomplete
+    /// teardown failure when the owner thread itself panicked and absence cannot be proved.
+    pub fn reconcile_shutdown(&mut self) -> Result<(), NetworkError> {
+        let _ = self.cancellation.cancel();
+        if self.owner_exit_observed {
+            return Ok(());
+        }
+        let join = self
+            .join
+            .take()
+            .ok_or_else(|| owner::teardown_error("proxy owner termination remains indeterminate"))?;
+        match join.join() {
+            Ok(result) => {
+                self.owner_exit_observed = true;
+                result.map(|_| ())
+            }
+            Err(_) => Err(owner::teardown_error("proxy owner thread panicked")),
+        }
     }
 
     fn join_owner(&mut self) -> Result<ProxyShutdown, NetworkError> {

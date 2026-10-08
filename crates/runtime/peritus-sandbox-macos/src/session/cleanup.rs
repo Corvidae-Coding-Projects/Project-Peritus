@@ -49,19 +49,22 @@ impl MacosSession {
         self.recovery.record_secrets_released()?;
         self.cleanup.mark_secrets_released();
         self.recovery.record_cleanup(self.cleanup)?;
-        if self.proxy_cleanup_failed {
-            return Err(cleanup_error("managed proxy cleanup remains indeterminate"));
+        if self.proxy.is_some() {
+            self.recovery.record_proxy_cleanup_required()?;
+            if let Some(proxy) = self.proxy.as_mut()
+                && let Err(error) = proxy.reconcile_shutdown()
+            {
+                return Err(
+                    cleanup_error("managed proxy cleanup requires reconciliation")
+                        .with_source(crate::error::network_source(&error)),
+                );
+            }
         }
-        if let Some(proxy) = self.proxy.take()
-            && proxy.shutdown().is_err()
-        {
-            self.proxy_cleanup_failed = true;
-            self.recovery.record_proxy_unavailable()?;
-            return Err(cleanup_error("managed proxy cleanup failed"));
-        }
-        self.recovery.record_proxy_released()?;
-        self.cleanup.mark_proxy_released();
-        self.recovery.record_cleanup(self.cleanup)?;
+        let mut proxy_released = self.cleanup;
+        proxy_released.mark_proxy_released();
+        self.recovery.record_proxy_released(proxy_released)?;
+        self.cleanup = proxy_released;
+        self.proxy = None;
         self.launch = NativeLaunchDescription::new(
             self.launch.command().clone(),
             self.launch.helper_identity(),
