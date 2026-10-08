@@ -75,6 +75,7 @@ async fn launch_interactive_target(
     if update::offer_on_startup(&layout).await? {
         return Ok(ExitReason::UserQuit);
     }
+    let _update_discovery = update::start_discovery(&layout);
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
     let mut prepared = provider_setup::ensure_configured(prepared).await?;

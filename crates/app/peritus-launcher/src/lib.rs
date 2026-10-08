@@ -25,3 +25,5 @@ pub use bootstrap::{PreparedProduct, ProductBootstrap};
 pub use daemon::{DaemonLaunch, DaemonShutdown, DaemonSupervisor, SiblingBinaries};
 pub use error::LauncherError;
 pub use layout::AppLayout;
+#[cfg(windows)]
+pub use update::{run_update_owner, update_owner_argument};

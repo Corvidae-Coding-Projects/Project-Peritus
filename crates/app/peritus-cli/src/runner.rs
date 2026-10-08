@@ -17,6 +17,16 @@ use crate::{
 #[must_use]
 pub fn run_env() -> ExitCode {
     #[cfg(windows)]
+    if let Some(record) = peritus_launcher::update_owner_argument() {
+        return match peritus_launcher::run_update_owner(&record) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => report_error(
+                &CliError::runtime("run product update owner", error.to_string()),
+                false,
+            ),
+        };
+    }
+    #[cfg(windows)]
     if let Some(record) = peritus_provider_onboarding::account_installer_owner_argument() {
         return match peritus_provider_onboarding::run_account_installer_owner(&record) {
             Ok(()) => ExitCode::SUCCESS,

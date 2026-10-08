@@ -1,4 +1,4 @@
-//! Cached public release discovery and native self-update composition.
+//! Cached release discovery and durable native self-update composition.
 
 mod download;
 mod install;
@@ -7,25 +7,39 @@ mod release;
 
 use std::{fs, time::Duration};
 
+use peritus_provider_core::{CancellationToken, cancel_first};
+
 use crate::{AppLayout, LauncherError, terminal::Terminal};
 use release::Release;
 
 const CHECK_INTERVAL: Duration = Duration::from_hours(6);
+const MAX_DISCOVERY_RECEIPT_BYTES: u64 = 256 * 1024;
 
-pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError> {
-    if cfg!(feature = "system-package")
-        || !automatic_checks_enabled(layout)
-        || check_is_fresh(layout)
-    {
+pub(super) struct StartupDiscovery {
+    cancellation: CancellationToken,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl Drop for StartupDiscovery {
+    fn drop(&mut self) {
+        let _ = self.cancellation.cancel();
+        self.task.abort();
+    }
+}
+
+/// Offers only an already completed durable discovery result.
+///
+/// Network discovery is owned separately by [`start_discovery`] and never delays launch.
+pub(super) async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError> {
+    if cfg!(feature = "system-package") || !automatic_checks_enabled(layout) {
         return Ok(false);
     }
-    let Ok(release) = release::latest().await else {
+    let Ok(Some(release)) = cached_discovery(layout) else {
         return Ok(false);
     };
-    let _ = record_check(layout);
-    let Some(release) = release.filter(Release::is_newer) else {
+    if !release.is_newer() {
         return Ok(false);
-    };
+    }
     let accepted = {
         let mut terminal = Terminal::stdio();
         terminal.line(&format!(
@@ -44,7 +58,35 @@ pub async fn offer_on_startup(layout: &AppLayout) -> Result<bool, LauncherError>
     Ok(true)
 }
 
-pub fn configure_checks(layout: &AppLayout, enabled: bool) -> Result<(), LauncherError> {
+/// Starts a caller-owned, cancellation-aware release poll when the six-hour policy permits it.
+pub(super) fn start_discovery(layout: &AppLayout) -> Option<StartupDiscovery> {
+    if cfg!(feature = "system-package")
+        || !automatic_checks_enabled(layout)
+        || check_is_fresh(layout)
+    {
+        return None;
+    }
+    let cancellation = CancellationToken::new();
+    let worker_cancellation = cancellation.clone();
+    let layout = layout.clone();
+    let task = tokio::spawn(async move {
+        let Some(result) = cancel_first(&worker_cancellation, release::latest()).await else {
+            return;
+        };
+        let Ok(discovery) = result else {
+            return;
+        };
+        if persist_discovery(&layout, discovery.as_ref()).is_ok() {
+            let _ = record_check(&layout);
+        }
+    });
+    Some(StartupDiscovery { cancellation, task })
+}
+
+pub(super) fn configure_checks(
+    layout: &AppLayout,
+    enabled: bool,
+) -> Result<(), LauncherError> {
     require_self_managed_install()?;
     let value = if enabled { b"enabled\n".as_slice() } else { b"disabled\n".as_slice() };
     persist_check_setting(layout, value)?;
@@ -55,15 +97,22 @@ pub fn configure_checks(layout: &AppLayout, enabled: bool) -> Result<(), Launche
     })
 }
 
-pub async fn run_explicit(layout: &AppLayout) -> Result<(), LauncherError> {
+pub(super) async fn run_explicit(layout: &AppLayout) -> Result<(), LauncherError> {
     require_self_managed_install()?;
+    if let Some(release) = download::pending_release(layout)? {
+        announce(&format!("Resuming the acknowledged Peritus {} update...", release.version()))?;
+        apply(layout, &release).await?;
+        return announce_completion(&release);
+    }
     announce("Checking for Peritus updates...")?;
-    let Some(release) = release::latest().await? else {
+    let release = release::latest().await?;
+    persist_discovery(layout, release.as_ref())?;
+    record_check(layout)?;
+    let Some(release) = release else {
         return Err(LauncherError::Update(
             "the public release service has no current release".to_owned(),
         ));
     };
-    record_check(layout)?;
     if !release.is_newer() {
         announce(&format!("Peritus {} is already current.", env!("CARGO_PKG_VERSION")))?;
         return Ok(());
@@ -84,14 +133,14 @@ fn require_self_managed_install() -> Result<(), LauncherError> {
 
 async fn apply(layout: &AppLayout, release: &Release) -> Result<(), LauncherError> {
     require_self_managed_install()?;
-    let package = download::package(layout, release).await?;
-    install::apply(&package, release)
+    let mut package = download::package(layout, release).await?;
+    install::apply(&mut package, release)
 }
 
 fn announce_completion(release: &Release) -> Result<(), LauncherError> {
     if cfg!(windows) {
         announce(
-            "The update will finish in the background after this command exits. Start Peritus again in a moment.",
+            "The exact update owner will finish in the background. Start Peritus again after it completes.",
         )?;
     } else {
         announce(&format!(
@@ -102,9 +151,7 @@ fn announce_completion(release: &Release) -> Result<(), LauncherError> {
     Ok(())
 }
 
-fn announce(message: &str) -> Result<(), LauncherError> {
-    Terminal::stdio().line(message)
-}
+fn announce(message: &str) -> Result<(), LauncherError> { Terminal::stdio().line(message) }
 
 fn check_is_fresh(layout: &AppLayout) -> bool {
     fs::metadata(layout.cache_root().join("update-check"))
@@ -131,6 +178,79 @@ fn record_check(layout: &AppLayout) -> Result<(), LauncherError> {
     let path = layout.cache_root().join("update-check");
     fs::write(&path, format!("{}\n", env!("CARGO_PKG_VERSION")))
         .map_err(|error| LauncherError::filesystem("record update check", path, error))
+}
+
+fn discovery_path(layout: &AppLayout) -> std::path::PathBuf {
+    layout.update_effects_root().join("available-release.json")
+}
+
+fn persist_discovery(
+    layout: &AppLayout,
+    release: Option<&Release>,
+) -> Result<(), LauncherError> {
+    let path = discovery_path(layout);
+    let bytes = serde_json::to_vec(&release)
+        .map_err(|error| LauncherError::Update(format!("encode release discovery: {error}")))?;
+    match fs::metadata(&path) {
+        Ok(_) => crate::persistence::replace_recovery_file(&path, &bytes),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            let actual = crate::persistence::read_exact_or_publish(&path, &bytes)?;
+            if actual == bytes {
+                Ok(())
+            } else {
+                crate::persistence::replace_recovery_file(&path, &bytes)
+            }
+        }
+        Err(error) => Err(LauncherError::filesystem(
+            "inspect release discovery receipt",
+            path,
+            error,
+        )),
+    }
+}
+
+fn cached_discovery(layout: &AppLayout) -> Result<Option<Release>, LauncherError> {
+    let path = discovery_path(layout);
+    let metadata = match fs::metadata(&path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(LauncherError::filesystem(
+                "inspect release discovery receipt",
+                path,
+                error,
+            ));
+        }
+    };
+    if !metadata.is_file() || metadata.len() > MAX_DISCOVERY_RECEIPT_BYTES {
+        return Err(LauncherError::Update(
+            "release discovery receipt is not a bounded regular file".to_owned(),
+        ));
+    }
+    let bytes = fs::read(&path)
+        .map_err(|error| LauncherError::filesystem("read release discovery receipt", path, error))?;
+    let release: Option<Release> = serde_json::from_slice(&bytes)
+        .map_err(|error| LauncherError::Update(format!("decode release discovery: {error}")))?;
+    if let Some(release) = &release {
+        release.validate()?;
+    }
+    Ok(release)
+}
+
+#[cfg(windows)]
+/// Returns the hidden exact update-owner receipt requested by this invocation.
+#[must_use]
+pub fn update_owner_argument() -> Option<std::path::PathBuf> {
+    install::update_owner_argument()
+}
+
+#[cfg(windows)]
+/// Runs one independently retained exact-birth Windows update owner.
+///
+/// # Errors
+/// Returns a receipt, package, native ownership, installation, or pair-verification failure.
+pub fn run_update_owner(path: &std::path::Path) -> Result<(), LauncherError> {
+    install::run_update_owner(path)
 }
 
 #[cfg(test)]

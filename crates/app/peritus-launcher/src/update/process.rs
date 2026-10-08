@@ -1,110 +1,120 @@
-//! Bounded native child-process execution for update helpers.
+//! Exact-birth native child custody for update helpers.
 
 use std::{
-    process::{Child, Command, ExitStatus},
-    thread,
-    time::{Duration, Instant},
+    fs::{File, OpenOptions},
+    io::Read as _,
+    process::{Child, Command, ExitStatus, Stdio},
 };
 
-#[cfg(not(windows))]
-use std::process::Stdio;
+use peritus_process::{
+    NativeProcessProbe, ProcessProbe as _, ProcessTreeIdentity, ProcessTreeQuiescence,
+};
 
 use crate::LauncherError;
 
-const POLL_INTERVAL: Duration = Duration::from_millis(25);
-#[cfg(not(windows))]
-const MAX_CAPTURED_STDOUT_BYTES: usize = 64 * 1024;
+const MAX_CAPTURED_STDOUT_BYTES: u64 = 64 * 1024;
 
 pub(super) fn status(
     command: &mut Command,
     operation: &'static str,
-    timeout: Option<Duration>,
+    spawned: impl FnOnce(ProcessTreeIdentity) -> Result<(), LauncherError>,
 ) -> Result<ExitStatus, LauncherError> {
     configure_group(command);
-    let mut child =
-        command.spawn().map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
-    wait(&mut child, operation, timeout)
+    let mut child = command
+        .spawn()
+        .map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
+    let root_pid = child.id();
+    let mut probe = NativeProcessProbe::new();
+    let identity = match probe.capture_isolated_child(root_pid) {
+        Ok(identity) => identity,
+        Err(error) => {
+            stop_unidentified(&mut child);
+            return Err(LauncherError::Update(format!(
+                "{operation}: capture native child ownership: {error}"
+            )));
+        }
+    };
+    if let Err(error) = spawned(identity) {
+        stop_owned(&mut child, identity, &mut probe);
+        return Err(error);
+    }
+    let result = child
+        .wait()
+        .map_err(|error| LauncherError::Update(format!("{operation}: wait failed: {error}")))?;
+    #[cfg(unix)]
+    if probe
+        .observe_quiescence(identity)
+        .map_err(|error| LauncherError::Update(format!(
+            "{operation}: observe native helper quiescence: {error}"
+        )))?
+        != ProcessTreeQuiescence::Quiescent
+    {
+        return Err(LauncherError::Update(format!(
+            "{operation}: the exact helper process group retained descendants"
+        )));
+    }
+    Ok(result)
 }
 
-#[cfg(not(windows))]
 pub(super) fn stdout(
     command: &mut Command,
     operation: &'static str,
-    timeout: Option<Duration>,
+    capture: &std::path::Path,
 ) -> Result<(ExitStatus, Vec<u8>), LauncherError> {
-    command.stdout(Stdio::piped());
-    configure_group(command);
-    let mut child =
-        command.spawn().map_err(|error| LauncherError::Update(format!("{operation}: {error}")))?;
-    let output = child
-        .stdout
-        .take()
-        .ok_or_else(|| LauncherError::Update(format!("{operation}: stdout pipe is unavailable")))?;
-    let reader = thread::spawn(move || drain_bounded(output));
-    let result = wait(&mut child, operation, timeout);
-    let captured = reader
-        .join()
-        .map_err(|_| LauncherError::Update(format!("{operation}: stdout reader panicked")))?
-        .map_err(|error| LauncherError::Update(format!("{operation}: read stdout: {error}")))?;
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(true)
+        .read(true)
+        .write(true)
+        .open(capture)
+        .map_err(|error| LauncherError::filesystem("create update helper output", capture, error))?;
+    crate::persistence::protect_file(&file, capture)?;
+    let child_output = file.try_clone().map_err(|error| {
+        LauncherError::filesystem("duplicate update helper output", capture, error)
+    })?;
+    command.stdout(Stdio::from(child_output));
+    let result = status(command, operation, |_| Ok(()));
+    file.sync_all().map_err(|error| {
+        LauncherError::filesystem("synchronize update helper output", capture, error)
+    })?;
     let status = result?;
-    if captured.1 {
+    let metadata = file.metadata().map_err(|error| {
+        LauncherError::filesystem("inspect update helper output", capture, error)
+    })?;
+    if metadata.len() > MAX_CAPTURED_STDOUT_BYTES {
         return Err(LauncherError::Update(format!(
             "{operation}: stdout exceeded {MAX_CAPTURED_STDOUT_BYTES} bytes"
         )));
     }
-    Ok((status, captured.0))
+    let capacity = usize::try_from(metadata.len()).map_err(|_| {
+        LauncherError::Update(format!("{operation}: stdout length is not representable"))
+    })?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve(capacity).map_err(|_| {
+        LauncherError::Update(format!("{operation}: stdout allocation is unavailable"))
+    })?;
+    File::open(capture)
+        .and_then(|mut input| input.read_to_end(&mut bytes))
+        .map_err(|error| LauncherError::filesystem("read update helper output", capture, error))?;
+    Ok((status, bytes))
 }
 
-fn wait(
+fn stop_owned(
     child: &mut Child,
-    operation: &'static str,
-    timeout: Option<Duration>,
-) -> Result<ExitStatus, LauncherError> {
-    let deadline = timeout
-        .map(|duration| {
-            Instant::now()
-                .checked_add(duration)
-                .ok_or_else(|| LauncherError::Update(format!("{operation}: timeout overflowed")))
-        })
-        .transpose()?;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) => return Ok(status),
-            Ok(None) => {
-                if deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-                    terminate(child);
-                    let _ = child.wait();
-                    return Err(LauncherError::Update(format!(
-                        "{operation}: exceeded its caller-supplied deadline"
-                    )));
-                }
-                thread::sleep(POLL_INTERVAL);
-            }
-            Err(error) => {
-                terminate(child);
-                let _ = child.wait();
-                return Err(LauncherError::Update(format!("{operation}: wait failed: {error}")));
-            }
-        }
+    identity: ProcessTreeIdentity,
+    probe: &mut NativeProcessProbe,
+) {
+    if identity.complete_containment() {
+        let _ = probe.terminate(identity);
+    } else {
+        let _ = child.kill();
     }
+    let _ = child.wait();
 }
 
-#[cfg(not(windows))]
-fn drain_bounded(mut output: impl std::io::Read) -> std::io::Result<(Vec<u8>, bool)> {
-    let mut retained = Vec::new();
-    let mut buffer = [0_u8; 8 * 1024];
-    let mut truncated = false;
-    loop {
-        let read = output.read(&mut buffer)?;
-        if read == 0 {
-            break;
-        }
-        let remaining = MAX_CAPTURED_STDOUT_BYTES.saturating_sub(retained.len());
-        let keep = remaining.min(read);
-        retained.extend_from_slice(&buffer[..keep]);
-        truncated |= keep < read;
-    }
-    Ok((retained, truncated))
+fn stop_unidentified(child: &mut Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(unix)]
@@ -113,53 +123,14 @@ fn configure_group(command: &mut Command) {
     command.process_group(0);
 }
 
-#[cfg(not(unix))]
-const fn configure_group(_command: &mut Command) {}
-
-#[cfg(unix)]
-fn terminate(child: &mut Child) {
-    let Ok(pid) = i32::try_from(child.id()) else {
-        let _ = child.kill();
-        return;
-    };
-    if nix::sys::signal::killpg(nix::unistd::Pid::from_raw(pid), nix::sys::signal::Signal::SIGKILL)
-        .is_err()
-    {
-        let _ = child.kill();
-    }
+#[cfg(windows)]
+fn configure_group(command: &mut Command) {
+    use std::os::windows::process::CommandExt as _;
+    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+    command.creation_flags(CREATE_NEW_PROCESS_GROUP);
 }
 
-#[cfg(not(unix))]
-fn terminate(child: &mut Child) {
-    let _ = child.kill();
-}
-
-#[cfg(all(test, unix))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn status_terminates_a_hung_process_group_at_the_deadline() {
-        let started = Instant::now();
-        let error = status(
-            Command::new("sh").args(["-c", "sleep 30"]),
-            "test hung child",
-            Some(Duration::from_millis(50)),
-        )
-        .expect_err("deadline");
-        assert!(error.to_string().contains("deadline"));
-        assert!(started.elapsed() < Duration::from_secs(2));
-    }
-
-    #[test]
-    fn stdout_captures_a_bounded_successful_result() {
-        let (status, output) = stdout(
-            Command::new("sh").args(["-c", "printf 'peritus 1.2.3\\n'"]),
-            "test output",
-            Some(Duration::from_secs(1)),
-        )
-        .expect("output");
-        assert!(status.success());
-        assert_eq!(output, b"peritus 1.2.3\n");
-    }
+#[cfg(not(any(unix, windows)))]
+fn configure_group(command: &mut Command) {
+    let _ = command.get_program();
 }

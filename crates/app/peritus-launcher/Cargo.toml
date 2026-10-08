@@ -42,6 +42,7 @@ peritus-tui = { version = "=0.0.5", path = "../peritus-tui" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspace" }
 reqwest.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
