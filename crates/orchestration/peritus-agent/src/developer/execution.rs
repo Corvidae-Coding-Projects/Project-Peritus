@@ -48,6 +48,8 @@ impl DeveloperLoop {
         let mut tool_calls = 0;
         let mut retries = 0;
         let mut resumed_turn = resume.is_some();
+        let mut resumed_segment =
+            resume.as_ref().is_some_and(|resume| resume.is_segment_continuation());
         if let Some(resume) = resume {
             first_turn = resume.turn();
             tool_calls = resume.tool_calls();
@@ -61,12 +63,14 @@ impl DeveloperLoop {
                 &mut attachments,
                 &mut resumed_messages,
                 protocol_limits,
+                !resumed_segment,
             )?;
             request.system = system;
             request.prompt = prompt;
             request.attachments = attachments;
             messages = resumed_messages;
         }
+        let execution_prefix = request.limits.segment_request_prefix(&request.request_prefix);
         let mut compactions = 0_u16;
         let mut usage = DeveloperUsage::default();
         let mut input_revision = 0;
@@ -128,17 +132,34 @@ impl DeveloperLoop {
             if compaction_owner == DeveloperCompactionOwner::LocalContext {
                 if resumed_turn {
                     resumed_turn = false;
-                    let governing_matches = if let Some(input) = governing_input.as_ref() {
-                        restore_exact_message_media(input, &mut messages, protocol_limits)?
+                    if resumed_segment {
+                        resumed_segment = false;
+                        if context.prepare(
+                            &mut messages,
+                            &request.tools,
+                            profile,
+                            &invocation_policy,
+                            governing_input.as_ref(),
+                        )? {
+                            trace.account(DeveloperAccountingEvent::Compaction)?;
+                            compactions = compactions
+                                .checked_add(1)
+                                .ok_or(DeveloperLoopError::LimitExceeded)?;
+                        }
                     } else {
-                        true
-                    };
-                    if messages.first() != Some(&invocation_policy)
-                        || !governing_matches
-                    {
-                        return Err(DeveloperLoopError::RecoveryRequired(
-                            "durable retry context changed before exact request reentry".to_owned(),
-                        ));
+                        let governing_matches = if let Some(input) = governing_input.as_ref() {
+                            restore_exact_message_media(input, &mut messages, protocol_limits)?
+                        } else {
+                            true
+                        };
+                        if messages.first() != Some(&invocation_policy)
+                            || !governing_matches
+                        {
+                            return Err(DeveloperLoopError::RecoveryRequired(
+                                "durable retry context changed before exact request reentry"
+                                    .to_owned(),
+                            ));
+                        }
                     }
                 } else if context.prepare(
                     &mut messages,
@@ -289,6 +310,7 @@ impl DeveloperLoop {
                         protocol_limits,
                     )?))?;
                 }
+                context.complete_invocation()?;
                 return Ok(DeveloperLoopOutcome {
                     text: final_text,
                     model_turns: turn,
@@ -308,7 +330,9 @@ impl DeveloperLoop {
                     u32::try_from(calls.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?,
                 )
                 .ok_or(DeveloperLoopError::LimitExceeded)?;
-            if tool_calls > request.limits.max_tool_calls() {
+            if !request.limits.permits_segment_continuation()
+                && tool_calls > request.limits.max_tool_calls()
+            {
                 return Err(DeveloperLoopError::SegmentExhausted);
             }
             let calls_in_batch =
@@ -332,7 +356,7 @@ impl DeveloperLoop {
                 if !yielded && let Some((port, role)) = live {
                     match port.admit_tool(
                         role,
-                        &request.request_prefix,
+                        &execution_prefix,
                         sequence,
                         input_revision,
                         tools.effect(&call),
@@ -376,7 +400,7 @@ impl DeveloperLoop {
                         })?;
                     }
                     if let Some((port, role)) = live
-                        && port.complete_tool(role, &request.request_prefix, sequence)?
+                        && port.complete_tool(role, &execution_prefix, sequence)?
                             == crate::DeveloperControlFlow::Stop
                     {
                         trace.record(DeveloperTraceEvent::ToolObservation {
@@ -440,6 +464,22 @@ impl DeveloperLoop {
                     messages,
                 });
             }
+            if request.limits.permits_segment_continuation()
+                && tool_calls >= request.limits.max_tool_calls()
+            {
+                let next_segment = request.limits.segment_sequence().saturating_add(1);
+                return if context.schedule_segment(next_segment)? {
+                    Err(DeveloperLoopError::SegmentContinuation)
+                } else {
+                    Err(DeveloperLoopError::SegmentExhausted)
+                };
+            }
+        }
+        if request.limits.permits_segment_continuation() {
+            let next_segment = request.limits.segment_sequence().saturating_add(1);
+            if context.schedule_segment(next_segment)? {
+                return Err(DeveloperLoopError::SegmentContinuation);
+            }
         }
         Err(DeveloperLoopError::SegmentExhausted)
     }
@@ -455,6 +495,7 @@ fn restore_resolved_resume_media(
     resumed_attachments: &mut Vec<MediaInput>,
     resumed_messages: &mut [Message],
     limits: ProtocolLimits,
+    require_exact_inputs: bool,
 ) -> Result<(), DeveloperLoopError> {
     let resumed_inputs = [
         message(Role::System, resumed_system.to_owned(), limits)?,
@@ -464,10 +505,15 @@ fn restore_resolved_resume_media(
             limits,
         )?,
     ];
-    if encode_messages(current_inputs, limits)? != encode_messages(&resumed_inputs, limits)? {
+    if require_exact_inputs
+        && encode_messages(current_inputs, limits)? != encode_messages(&resumed_inputs, limits)?
+    {
         return Err(DeveloperLoopError::RecoveryRequired(
             "durable retry inputs no longer match the current artifact identities".to_owned(),
         ));
+    }
+    if !require_exact_inputs {
+        return Ok(());
     }
     let [_, current_user] = current_inputs else {
         return Err(DeveloperLoopError::RecoveryRequired(

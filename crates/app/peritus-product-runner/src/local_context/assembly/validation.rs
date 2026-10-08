@@ -44,6 +44,7 @@ impl LocalMemory {
             local_compactor_failures: self.local_compactor_failures,
             retrieval_calls: self.retrieval_calls,
             tool_policy: Some(view_binding::tool_policy(&self.tools)?),
+            segment_continuation: self.segment_continuation.clone(),
         })
     }
 }

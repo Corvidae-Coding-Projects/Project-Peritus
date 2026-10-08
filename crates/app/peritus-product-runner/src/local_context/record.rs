@@ -8,7 +8,17 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 pub(super) const LEGACY_CHECKPOINT_SCHEMA_VERSION: u16 = 1;
-pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 2;
+pub(super) const SNAPSHOT_CHECKPOINT_SCHEMA_VERSION: u16 = 2;
+pub(super) const INDEXED_CHECKPOINT_SCHEMA_VERSION: u16 = 3;
+pub(super) const CHECKPOINT_SCHEMA_VERSION: u16 = 4;
+pub(super) const INDEX_PAGE_SCHEMA_VERSION: u16 = 1;
+pub(super) const LEGACY_CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 1;
+pub(super) const CONTEXT_UPDATE_SCHEMA_VERSION: u16 = 2;
+pub(super) const CONTEXT_UPDATE_PAGE_SCHEMA_VERSION: u16 = 1;
+pub(super) const CONTEXT_UPDATE_REDUCER_SCHEMA_VERSION: u16 = 1;
+pub(super) const CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION: u16 = 1;
+pub(super) const PAGED_GENESIS_SCHEMA_VERSION: u16 = 2;
+pub(super) const SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -70,9 +80,7 @@ impl ArchivedObservation {
             (Some(call), Some(sequence), ArchiveKind::ToolOutput)
                 if sequence > 0
                     && !call.id.is_empty()
-                    && call.id.len() <= 256
-                    && !call.name.is_empty()
-                    && call.name.len() <= 128 =>
+                    && !call.name.is_empty() =>
             {
                 Ok(())
             }
@@ -87,12 +95,158 @@ impl ArchivedObservation {
 #[serde(deny_unknown_fields)]
 pub(super) enum MemoryRecord {
     Genesis { state: StoredArtifact },
+    GenesisRoot {
+        schema_version: u16,
+        state: StoredArtifact,
+        source_index: StoredArtifact,
+    },
     Invocation { sequence: u64, request_prefix: String },
+    InvocationCompleted {
+        schema_version: u16,
+        invocation: u64,
+        request_prefix: String,
+        segment_sequence: u32,
+    },
     Observation { observation: ArchivedObservation, reducer: StoredArtifact },
     StateEvent { reducer: StoredArtifact },
+    ContextUpdate(ContextUpdateRecord),
     Transcript { manifest: TranscriptManifest },
+    TranscriptIndex { transcript: StoredArtifact },
+    CheckpointIndex { source: StoredArtifact, transcript: StoredArtifact },
     Checkpoint { manifest: StoredArtifact },
     Compactor { input: Option<StoredArtifact>, output: Option<StoredArtifact>, failed: bool },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub(super) enum ContextUpdateRecord {
+    Inline(InlineContextUpdate),
+    Root(RootContextUpdate),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct InlineContextUpdate {
+    pub(super) schema_version: u16,
+    pub(super) base_model_revision: u64,
+    pub(super) reducers: Vec<StoredArtifact>,
+    pub(super) transcript: TranscriptManifest,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct RootContextUpdate {
+    pub(super) schema_version: u16,
+    pub(super) root: StoredArtifact,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ContextUpdateRoot {
+    pub(super) schema_version: u16,
+    pub(super) base_model_revision: u64,
+    pub(super) source_index: StoredArtifact,
+    pub(super) reducer_head: StoredArtifact,
+    pub(super) reducer_count: u64,
+    pub(super) transcript_before: [u8; 32],
+    pub(super) transcript_after: [u8; 32],
+    pub(super) transcript_head: Option<StoredArtifact>,
+    pub(super) transcript_change_count: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ContextUpdateReducerPage {
+    pub(super) schema_version: u16,
+    pub(super) next: Option<StoredArtifact>,
+    pub(super) first_reducer: u64,
+    pub(super) reducers: Vec<StoredArtifact>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
+pub(super) enum ContextUpdateReducer {
+    Event {
+        schema_version: u16,
+        event: StoredArtifact,
+    },
+    Refresh {
+        schema_version: u16,
+        base_revision: u64,
+        state: StoredArtifact,
+    },
+    DeltaSnapshot {
+        schema_version: u16,
+        base_revision: u64,
+        state: StoredArtifact,
+        entry_head: StoredArtifact,
+        entry_count: u64,
+    },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ContextUpdateEntryPage {
+    pub(super) schema_version: u16,
+    pub(super) next: Option<StoredArtifact>,
+    pub(super) first_entry: u64,
+    pub(super) entries: Vec<ContextUpdateEntryIdentity>,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ContextUpdateEntryIdentity {
+    pub(super) id: [u8; 16],
+    pub(super) status: ContextUpdateEntryStatus,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub(super) enum ContextUpdateEntryStatus {
+    Open,
+    Contradicted,
+    Resolved,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ContextUpdateTranscriptPage {
+    pub(super) schema_version: u16,
+    pub(super) next: Option<StoredArtifact>,
+    pub(super) first_change: u64,
+    pub(super) before: [u8; 32],
+    pub(super) after: [u8; 32],
+    pub(super) files_removed: Vec<String>,
+    pub(super) files_added: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct SourceIndexPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) first_sequence: u64,
+    pub(super) observations: Vec<ArchivedObservation>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct TranscriptDeltaPage {
+    pub(super) schema_version: u16,
+    pub(super) previous: Option<StoredArtifact>,
+    pub(super) before: [u8; 32],
+    pub(super) after: [u8; 32],
+    pub(super) invocation: u64,
+    pub(super) request_prefix: String,
+    pub(super) reset_messages: bool,
+    pub(super) messages: Vec<u64>,
+    pub(super) current_inputs: Vec<u64>,
+    pub(super) pending_upserts: Vec<PendingDescriptor>,
+    pub(super) pending_removed: Vec<[u8; 16]>,
+    pub(super) files_added: Vec<String>,
+    pub(super) files_removed: Vec<String>,
+    pub(super) facts_through: u64,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize, Eq, PartialEq)]
@@ -105,6 +259,16 @@ pub(super) struct TranscriptManifest {
     pub(super) pending: Vec<PendingDescriptor>,
     pub(super) files: Vec<String>,
     pub(super) facts_through: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct SegmentContinuation {
+    pub(super) schema_version: u16,
+    pub(super) invocation: u64,
+    pub(super) request_prefix: String,
+    pub(super) segment_sequence: u32,
+    pub(super) protocol_limits_sha256: [u8; 32],
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -164,22 +328,20 @@ pub(super) struct ViewValidation {
     pub(super) retrieval_calls: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) tool_policy: Option<[u8; 32]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) segment_continuation: Option<SegmentContinuation>,
 }
 
 pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, DeveloperLoopError> {
     let bytes = serde_json::to_vec(value).map_err(|_| error("encode host memory record"))?;
-    if bytes.len() > 32 * 1024 * 1024 {
-        return Err(error("host record capacity exceeded"));
-    }
+    u32::try_from(bytes.len()).map_err(|_| error("host record representation exceeded"))?;
     Ok(bytes)
 }
 
 pub(super) fn decode<T: DeserializeOwned + Serialize>(
     bytes: &[u8],
 ) -> Result<T, DeveloperLoopError> {
-    if bytes.len() > 32 * 1024 * 1024 {
-        return Err(error("host record capacity exceeded"));
-    }
+    u32::try_from(bytes.len()).map_err(|_| error("host record representation exceeded"))?;
     let value: T = serde_json::from_slice(bytes).map_err(|_| error("decode host memory record"))?;
     if encode(&value)? != bytes {
         return Err(error("noncanonical host memory record"));

@@ -23,9 +23,7 @@ impl LocalMemory {
         request: &DeveloperLoopRequest,
         initial: &[Message],
     ) -> Result<(), DeveloperLoopError> {
-        if request.request_prefix.len() > 256 {
-            return Err(error("invocation identity exceeds bound"));
-        }
+        self.cancellation.clone_from(&request.cancellation);
         self.task_contract.clone_from(&request.prompt);
         self.refresh()?;
         let sequence = self
@@ -33,14 +31,17 @@ impl LocalMemory {
             .invocation
             .checked_add(1)
             .ok_or_else(|| error("invocation sequence overflow"))?;
+        self.validate_next_invocation(sequence)?;
         self.commit(
             &MemoryRecord::Invocation { sequence, request_prefix: request.request_prefix.clone() },
             &[],
         )?;
+        self.adopt_invocation(sequence, request.request_prefix.clone())?;
         self.transcript.invocation = sequence;
         self.transcript.request_prefix.clone_from(&request.request_prefix);
         self.transcript.current_inputs.clear();
         self.transcript.message_ids.clear();
+        self.segment_continuation = None;
         for pending in &mut self.transcript.pending {
             if pending.state == PendingState::Proposed {
                 pending.state = PendingState::Unknown;
@@ -58,13 +59,15 @@ impl LocalMemory {
     }
 
     pub(in crate::local_context) fn refresh(&mut self) -> Result<(), DeveloperLoopError> {
+        let projected = environment::projected_paths(&self.state, &self.transcript.files, &[])?;
         let environment = environment::capture(
             &self.workspace,
             self.binding,
-            &self.transcript.files,
+            &projected,
             &self.task_contract,
             self.limits,
             &self.workspace_scope,
+            &self.cancellation,
         )?;
         if &environment != self.state.environment() {
             self.state_event(&WorkingEvent::Refresh {
@@ -221,13 +224,7 @@ impl LocalMemory {
     pub(in crate::local_context) fn persist_transcript(
         &mut self,
     ) -> Result<(), DeveloperLoopError> {
-        if self.transcript.message_ids.len() > ProtocolLimits::PRODUCTION.max_messages()
-            || self.transcript.pending.len() > self.limits.entries()
-            || self.transcript.files.len() > self.limits.entries()
-        {
-            return Err(error("transcript projection capacity exceeded"));
-        }
-        self.commit(&MemoryRecord::Transcript { manifest: self.transcript.clone() }, &[])
+        self.publish_transcript_index()
     }
 }
 

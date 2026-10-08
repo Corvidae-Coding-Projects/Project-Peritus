@@ -13,6 +13,7 @@ use super::{DeveloperInvocation, developer_error};
 pub(super) enum ProviderResolution {
     Outcome(DeveloperLoopOutcome),
     Retry(Option<&'static str>),
+    ContinueSegment,
 }
 
 pub(super) fn resolve(
@@ -31,6 +32,10 @@ pub(super) fn resolve(
         }
         Err(error) => error,
     };
+    if matches!(error, DeveloperLoopError::SegmentContinuation) {
+        recovery.reset();
+        return Ok(ProviderResolution::ContinueSegment);
+    }
     if matches!(error, DeveloperLoopError::SegmentExhausted) {
         recovery.reset();
         accounting.record_role_retry()?;
@@ -73,5 +78,6 @@ pub(super) fn apply(
             (*correction, *pending_question) = (None, None);
             None
         }
+        ProviderResolution::ContinueSegment => None,
     }
 }

@@ -1,10 +1,11 @@
 //! Checked inputs, outputs, and effect ports for the production developer loop.
 
 use peritus_model_protocol::{
-    CanonicalJson, CompletedToolCall, MediaInput, Message, ToolDefinition,
+    CanonicalJson, CompletedToolCall, MediaInput, Message, ModelRequest, OutcomeCertainty,
+    ToolDefinition,
 };
 use peritus_provider_core::CancellationToken;
-use peritus_types::Sha256Digest;
+use peritus_types::{ProviderProfileId, Sha256Digest};
 
 use super::{DeveloperLoopError, DeveloperUsage};
 
@@ -13,8 +14,9 @@ use super::{DeveloperLoopError, DeveloperUsage};
 pub struct DeveloperLoopLimits {
     model_turns: u16,
     tool_calls: u32,
-    attempts_per_turn: u8,
     max_output_tokens: u64,
+    segment_continuation: bool,
+    segment_sequence: u32,
 }
 
 impl DeveloperLoopLimits {
@@ -36,23 +38,46 @@ impl DeveloperLoopLimits {
         Ok(Self {
             model_turns: max_model_turns,
             tool_calls: max_tool_calls,
-            attempts_per_turn: 3,
             max_output_tokens: 32_768,
+            segment_continuation: false,
+            segment_sequence: 0,
         })
     }
 
-    /// Overrides the attempts available to recover one logical model turn.
+    /// Treats these bounds as one physical scheduling segment of a durable logical invocation.
+    ///
+    /// A context port must durably checkpoint the exact continuation before the loop reports a
+    /// segment boundary. Without that owner the same bounds remain an explicit exhaustion.
+    #[must_use]
+    pub const fn with_segment_continuation(mut self) -> Self {
+        self.segment_continuation = true;
+        self
+    }
+
+    /// Selects the physical segment identity within one durable logical invocation.
+    ///
+    /// Segment zero preserves canonical legacy request and receipt identities. Later segments use
+    /// a suffix so their model requests and effects cannot collide with an earlier segment.
+    #[must_use]
+    pub const fn with_segment_sequence(mut self, segment_sequence: u32) -> Self {
+        self.segment_sequence = segment_sequence;
+        self
+    }
+
+    /// Compatibility constructor retained for callers compiled against the former attempt cap.
+    ///
+    /// Safe, definitely-unaccepted requests now reconnect until cancellation or a real elapsed
+    /// horizon; this value is validated for its former nonzero precondition and otherwise ignored.
     ///
     /// # Errors
-    /// Rejects zero or an attempt count wide enough to hide a persistent provider failure.
+    /// Rejects zero, preserving the former constructor's minimum-value contract.
     pub const fn with_max_attempts_per_turn(
-        mut self,
+        self,
         max_attempts_per_turn: u8,
     ) -> Result<Self, DeveloperLoopError> {
-        if max_attempts_per_turn == 0 || max_attempts_per_turn > 8 {
+        if max_attempts_per_turn == 0 {
             return Err(DeveloperLoopError::LimitExceeded);
         }
-        self.attempts_per_turn = max_attempts_per_turn;
         Ok(self)
     }
 
@@ -92,16 +117,38 @@ impl DeveloperLoopLimits {
         self.tool_calls
     }
 
-    /// Maximum fresh attempts for one logical provider turn.
-    #[must_use]
-    pub const fn max_attempts_per_turn(self) -> u8 {
-        self.attempts_per_turn
-    }
-
     /// Maximum requested output tokens for each provider turn.
     #[must_use]
     pub const fn max_output_tokens(self) -> u64 {
         self.max_output_tokens
+    }
+
+    /// Whether a reached physical bound requests a durable scheduling continuation.
+    #[must_use]
+    pub const fn permits_segment_continuation(self) -> bool {
+        self.segment_continuation
+    }
+
+    /// Physical segment identity; zero is the unchanged legacy request namespace.
+    #[must_use]
+    pub const fn segment_sequence(self) -> u32 {
+        self.segment_sequence
+    }
+
+    /// Returns the exact provider/effect request namespace for this physical segment.
+    #[must_use]
+    pub fn segment_request_prefix(self, logical_prefix: &str) -> String {
+        Self::request_prefix_for_segment(logical_prefix, self.segment_sequence)
+    }
+
+    /// Derives a physical segment namespace while preserving segment-zero compatibility.
+    #[must_use]
+    pub fn request_prefix_for_segment(logical_prefix: &str, segment_sequence: u32) -> String {
+        if segment_sequence == 0 {
+            logical_prefix.to_owned()
+        } else {
+            format!("{logical_prefix}-segment-{segment_sequence}")
+        }
     }
 }
 
@@ -229,31 +276,61 @@ impl DeveloperRetryReason {
     }
 }
 
-/// Durable checked decision to wait before another provider attempt.
+/// Durable checked decision to wait before another definitely-unaccepted provider attempt.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DeveloperRetryRecord {
     turn: u16,
-    attempt: u8,
-    max_attempts: u8,
+    attempt: u64,
+    request_id_digest: Sha256Digest,
+    request_fingerprint: Sha256Digest,
+    provider_profile_id: ProviderProfileId,
+    native_session_digest: Option<Sha256Digest>,
+    provider_selection_digest: Option<Sha256Digest>,
+    certainty: OutcomeCertainty,
     elapsed_millis: u64,
     delay_millis: u64,
+    next_eligible_unix_millis: u64,
     retry_after_millis: Option<u64>,
     reason: DeveloperRetryReason,
 }
 
 impl DeveloperRetryRecord {
     pub(crate) const fn new(
-        position: (u16, u8, u8, u64, u64),
+        identity: (
+            u16,
+            u64,
+            Sha256Digest,
+            Sha256Digest,
+            ProviderProfileId,
+            Option<Sha256Digest>,
+            Option<Sha256Digest>,
+        ),
+        timing: (u64, u64, u64),
         retry_after_millis: Option<u64>,
         reason: DeveloperRetryReason,
     ) -> Self {
-        let (turn, attempt, max_attempts, elapsed_millis, delay_millis) = position;
+        let (
+            turn,
+            attempt,
+            request_id_digest,
+            request_fingerprint,
+            provider_profile_id,
+            native_session_digest,
+            provider_selection_digest,
+        ) = identity;
+        let (elapsed_millis, delay_millis, next_eligible_unix_millis) = timing;
         Self {
             turn,
             attempt,
-            max_attempts,
+            request_id_digest,
+            request_fingerprint,
+            provider_profile_id,
+            native_session_digest,
+            provider_selection_digest,
+            certainty: OutcomeCertainty::DefinitelyNotAccepted,
             elapsed_millis,
             delay_millis,
+            next_eligible_unix_millis,
             retry_after_millis,
             reason,
         }
@@ -267,14 +344,44 @@ impl DeveloperRetryRecord {
 
     /// Completed attempt after which the wait was selected.
     #[must_use]
-    pub const fn attempt(self) -> u8 {
+    pub const fn attempt(self) -> u64 {
         self.attempt
     }
 
-    /// Maximum attempts available to the logical turn.
+    /// Digest of the exact caller request identity retained across reconnects.
     #[must_use]
-    pub const fn max_attempts(self) -> u8 {
-        self.max_attempts
+    pub const fn request_id_digest(self) -> Sha256Digest {
+        self.request_id_digest
+    }
+
+    /// Digest of the immutable semantic request retained across reconnects.
+    #[must_use]
+    pub const fn request_fingerprint(self) -> Sha256Digest {
+        self.request_fingerprint
+    }
+
+    /// Immutable provider profile selected for the retrying logical turn.
+    #[must_use]
+    pub const fn provider_profile_id(self) -> ProviderProfileId {
+        self.provider_profile_id
+    }
+
+    /// Digest of the exact host-owned native session namespace, when present.
+    #[must_use]
+    pub const fn native_session_digest(self) -> Option<Sha256Digest> {
+        self.native_session_digest
+    }
+
+    /// Digest of the exact persisted host model selection, when the host can prove it.
+    #[must_use]
+    pub const fn provider_selection_digest(self) -> Option<Sha256Digest> {
+        self.provider_selection_digest
+    }
+
+    /// Acceptance certainty that made a fresh dispatch legal.
+    #[must_use]
+    pub const fn certainty(self) -> OutcomeCertainty {
+        self.certainty
     }
 
     /// Elapsed time when retry planning ran.
@@ -289,6 +396,12 @@ impl DeveloperRetryRecord {
         self.delay_millis
     }
 
+    /// Durable wall-clock time before which the retained request must not be dispatched.
+    #[must_use]
+    pub const fn next_eligible_unix_millis(self) -> u64 {
+        self.next_eligible_unix_millis
+    }
+
     /// Provider-supplied minimum wait, when available.
     #[must_use]
     pub const fn retry_after_millis(self) -> Option<u64> {
@@ -300,6 +413,42 @@ impl DeveloperRetryRecord {
     pub const fn reason(self) -> DeveloperRetryReason {
         self.reason
     }
+}
+
+/// Restart state recovered from a durably scheduled safe retry.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DeveloperRetryRecovery {
+    next_attempt: u64,
+    next_eligible_unix_millis: u64,
+}
+
+impl DeveloperRetryRecovery {
+    /// Creates checked restart state from a committed retry schedule.
+    #[must_use]
+    pub const fn new(next_attempt: u64, next_eligible_unix_millis: u64) -> Self {
+        Self { next_attempt, next_eligible_unix_millis }
+    }
+
+    /// Exact next provider attempt identity.
+    #[must_use]
+    pub const fn next_attempt(self) -> u64 {
+        self.next_attempt
+    }
+
+    /// Durable wall-clock eligibility for that attempt.
+    #[must_use]
+    pub const fn next_eligible_unix_millis(self) -> u64 {
+        self.next_eligible_unix_millis
+    }
+}
+
+/// Durable disposition of the last admitted provider request in one logical turn.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperRetryDisposition {
+    /// An explicit provider terminal settled the request.
+    Settled,
+    /// Submission may have been accepted and must be reconciled instead of resent.
+    ReconciliationRequired,
 }
 
 /// Exact trace event committed before D0 advances past an external observation.
@@ -333,6 +482,84 @@ pub trait DeveloperTrace: Send {
         Ok(())
     }
 
+    /// Recovers the latest retry boundary for this exact logical request and provider profile.
+    ///
+    /// A durable trace implementation rejects an admitted or ambiguous request that lacks a safe
+    /// retry schedule. Trace-only hosts may use the default empty recovery state.
+    ///
+    /// # Errors
+    /// Returns a persistence or reconciliation failure before another request is admitted.
+    fn recover_retry(
+        &mut self,
+        _request_prefix: &str,
+        _turn: u16,
+        _provider_profile_id: ProviderProfileId,
+        _native_session_digest: Option<Sha256Digest>,
+        _request_fingerprint: Sha256Digest,
+    ) -> Result<Option<DeveloperRetryRecovery>, DeveloperLoopError> {
+        Ok(None)
+    }
+
+    /// Commits admission of one exact provider request before provider execution can begin.
+    ///
+    /// # Errors
+    /// Returns a persistence failure; the provider request must not be sent.
+    fn begin_retry_attempt(
+        &mut self,
+        _turn: u16,
+        _attempt: u64,
+        _request: &ModelRequest,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
+    /// Commits the terminal or ambiguous disposition of an admitted provider request.
+    ///
+    /// # Errors
+    /// Returns a persistence failure before control leaves the request boundary.
+    fn finish_retry_attempt(
+        &mut self,
+        _turn: u16,
+        _attempt: u64,
+        _request: &ModelRequest,
+        _disposition: DeveloperRetryDisposition,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
+    /// Retires one exact definitely-unaccepted schedule after newer governing input supersedes it.
+    ///
+    /// This transition is valid only while the trace's latest retry state is the matching safe
+    /// schedule. An admitted or ambiguous request must remain available for reconciliation.
+    ///
+    /// # Errors
+    /// Returns a persistence or state-transition failure before stale control is released.
+    fn supersede_retry(
+        &mut self,
+        _request_prefix: &str,
+        _turn: u16,
+        _scheduled_attempt: u64,
+    ) -> Result<(), DeveloperLoopError> {
+        Err(DeveloperLoopError::Trace(
+            "retry trace does not support durable schedule supersession".to_owned(),
+        ))
+    }
+
+    /// Retires a matching safe schedule only when its recorded explicit provider selection differs.
+    /// Missing provenance or an unchanged selection cannot authorize retirement. Admitted and
+    /// ambiguous requests remain reconciliation barriers.
+    ///
+    /// # Errors
+    /// Returns a persistence or reconciliation failure before a new profile may be dispatched.
+    fn supersede_retry_for_provider_selection(
+        &mut self,
+        _request_prefix: &str,
+        _turn: u16,
+        _current_selection: Sha256Digest,
+    ) -> Result<bool, DeveloperLoopError> {
+        Ok(false)
+    }
+
     /// Commits one exact event before the loop advances.
     ///
     /// # Errors
@@ -350,8 +577,8 @@ pub struct DeveloperLoopOutcome {
     pub tool_calls: u32,
     /// Number of transcript compactions applied during the role.
     pub compactions: u16,
-    /// Number of bounded provider retries completed during the role.
-    pub retries: u16,
+    /// Number of safe provider retries completed during the role.
+    pub retries: u64,
     /// Aggregate normalized usage across every completed provider response.
     pub usage: DeveloperUsage,
     /// Complete replay messages, useful to a same-role continuation.

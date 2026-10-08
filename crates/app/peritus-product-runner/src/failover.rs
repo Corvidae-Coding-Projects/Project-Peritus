@@ -197,6 +197,7 @@ pub fn requires_reconciliation_before_new_request(error: &DeveloperLoopError) ->
         DeveloperLoopError::Refused
         | DeveloperLoopError::LimitExceeded
         | DeveloperLoopError::SegmentExhausted
+        | DeveloperLoopError::SegmentContinuation
         | DeveloperLoopError::EmptyResponse => false,
         _ => true,
     }

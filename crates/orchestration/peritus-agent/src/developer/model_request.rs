@@ -25,11 +25,12 @@ pub(super) fn build_model_request(
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
     turn: u16,
-    attempt: u8,
+    attempt: u64,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
     selected_effort: Option<ReasoningEffort>,
 ) -> Result<ModelRequest, DeveloperLoopError> {
+    let segment_prefix = request.limits.segment_request_prefix(&request.request_prefix);
     let parallel_tools = if kind == ModelTurnKind::Developer
         && required_tool.is_none()
         && negotiated.includes(Capability::ParallelToolCalls)
@@ -70,13 +71,13 @@ pub(super) fn build_model_request(
     };
     let (request_id, tools, tool_choice, output_tokens) = match kind {
         ModelTurnKind::Developer => (
-            format!("{}-{turn}-attempt-{attempt}", request.request_prefix),
+            format!("{segment_prefix}-{turn}-attempt-{attempt}"),
             request.tools.clone(),
             developer_tool_choice,
             request.limits.max_output_tokens(),
         ),
         ModelTurnKind::SemanticCompaction => (
-            format!("{}-semantic-compaction-{turn}-attempt-{attempt}", request.request_prefix),
+            format!("{segment_prefix}-semantic-compaction-{turn}-attempt-{attempt}"),
             Vec::new(),
             ToolChoice::None,
             request.limits.max_output_tokens().min(8_192),

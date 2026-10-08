@@ -1,7 +1,10 @@
 //! Shared production invocation switch; legacy mode is explicit and never an error fallback.
 
 use super::{LocalContextHandle, MemoryTools};
-use crate::{budget::RunAccounting, trace::accounting::AccountingTrace};
+use crate::{
+    budget::RunAccounting,
+    trace::{ScopedToolReceiptPolicy, accounting::AccountingTrace},
+};
 use peritus_agent::{
     DeveloperLoop, DeveloperLoopError, DeveloperLoopOutcome, DeveloperLoopRequest,
     DeveloperToolExecutor,
@@ -14,11 +17,76 @@ pub struct InvocationAccounting<'a> {
     pub accounting: &'a mut RunAccounting,
 }
 
+pub(crate) struct ScopedInvocationAccounting<'a> {
+    accounting: InvocationAccounting<'a>,
+    receipts: ScopedToolReceiptPolicy,
+}
+
+impl<'a> InvocationAccounting<'a> {
+    #[must_use]
+    pub(crate) fn with_scoped_tool_receipts(
+        self,
+        receipts: ScopedToolReceiptPolicy,
+    ) -> ScopedInvocationAccounting<'a> {
+        ScopedInvocationAccounting { accounting: self, receipts }
+    }
+}
+
+struct InvocationTrace<'a> {
+    accounting: InvocationAccounting<'a>,
+    receipts: Option<ScopedToolReceiptPolicy>,
+}
+
 pub async fn run_live_invocation(
+    model: &dyn ModelProvider,
+    request: DeveloperLoopRequest,
+    tools: &mut dyn DeveloperToolExecutor,
+    accounting: InvocationAccounting<'_>,
+    memory: Option<&LocalContextHandle>,
+    interaction: Option<&dyn peritus_agent::DeveloperInteraction>,
+    role: peritus_agent::DeveloperModelRole,
+) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
+    run_live_invocation_inner(
+        model,
+        request,
+        tools,
+        InvocationTrace { accounting, receipts: None },
+        memory,
+        interaction,
+        role,
+    )
+    .await
+}
+
+pub(crate) async fn run_live_invocation_with_receipts(
+    model: &dyn ModelProvider,
+    request: DeveloperLoopRequest,
+    tools: &mut dyn DeveloperToolExecutor,
+    accounting: ScopedInvocationAccounting<'_>,
+    memory: Option<&LocalContextHandle>,
+    interaction: Option<&dyn peritus_agent::DeveloperInteraction>,
+    role: peritus_agent::DeveloperModelRole,
+) -> Result<DeveloperLoopOutcome, DeveloperLoopError> {
+    run_live_invocation_inner(
+        model,
+        request,
+        tools,
+        InvocationTrace {
+            accounting: accounting.accounting,
+            receipts: Some(accounting.receipts),
+        },
+        memory,
+        interaction,
+        role,
+    )
+    .await
+}
+
+async fn run_live_invocation_inner(
     model: &dyn ModelProvider,
     mut request: DeveloperLoopRequest,
     tools: &mut dyn DeveloperToolExecutor,
-    accounting: InvocationAccounting<'_>,
+    trace_state: InvocationTrace<'_>,
     memory: Option<&LocalContextHandle>,
     interaction: Option<&dyn peritus_agent::DeveloperInteraction>,
     role: peritus_agent::DeveloperModelRole,
@@ -26,12 +94,21 @@ pub async fn run_live_invocation(
     if interaction.is_some() {
         request.system.push_str(LIVE_COMMUNICATION);
     }
+    let InvocationTrace { accounting, receipts } = trace_state;
     let mut trace = AccountingTrace::new(accounting.trace_path, accounting.accounting);
+    if let Some(receipts) = receipts {
+        let segment_prefix = request.limits.segment_request_prefix(&request.request_prefix);
+        trace.trace = trace
+            .trace
+            .with_scoped_tool_receipts(receipts, &segment_prefix)?;
+    }
     match memory {
         Some(memory) => {
             request.tools.extend(memory.tool_definitions()?);
-            trace.trace =
-                trace.trace.with_memory_scope(memory.scope_digest()?, memory.next_invocation()?);
+            trace.trace = trace.trace.with_memory_scope(
+                memory.scope_digest()?,
+                memory.invocation_scope(&request.request_prefix)?,
+            );
             let mut port = memory.clone();
             let mut tools = MemoryTools::new(tools, memory.clone());
             match interaction {

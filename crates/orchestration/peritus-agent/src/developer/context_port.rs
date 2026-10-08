@@ -46,6 +46,7 @@ pub struct DeveloperContextResume {
     messages: Vec<Message>,
     tool_calls: u32,
     retries: u64,
+    segment_continuation: bool,
 }
 
 impl DeveloperContextResume {
@@ -59,6 +60,31 @@ impl DeveloperContextResume {
         messages: Vec<Message>,
         tool_calls: u32,
         retries: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        Self::new_with_kind(turn, initial_messages, messages, tool_calls, retries, false)
+    }
+
+    /// Creates checked state for a new physical segment of the same durable invocation.
+    ///
+    /// # Errors
+    /// Rejects a zero turn or an empty provider request view.
+    pub fn new_segment(
+        turn: u16,
+        initial_messages: &[Message],
+        messages: Vec<Message>,
+        tool_calls: u32,
+        retries: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        Self::new_with_kind(turn, initial_messages, messages, tool_calls, retries, true)
+    }
+
+    fn new_with_kind(
+        turn: u16,
+        initial_messages: &[Message],
+        messages: Vec<Message>,
+        tool_calls: u32,
+        retries: u64,
+        segment_continuation: bool,
     ) -> Result<Self, DeveloperLoopError> {
         let [system, user] = initial_messages else {
             return Err(DeveloperLoopError::Context(
@@ -103,6 +129,7 @@ impl DeveloperContextResume {
             messages,
             tool_calls,
             retries,
+            segment_continuation,
         })
     }
 
@@ -116,6 +143,10 @@ impl DeveloperContextResume {
 
     pub(super) const fn retries(&self) -> u64 {
         self.retries
+    }
+
+    pub(super) const fn is_segment_continuation(&self) -> bool {
+        self.segment_continuation
     }
 
     pub(super) fn into_request_state(
@@ -235,6 +266,28 @@ pub trait DeveloperContextPort: Send {
     /// # Errors
     /// Rejects stale candidates, invalid manifests, and persistence failures.
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError>;
+
+    /// Commits the exact next physical segment of this durable logical invocation.
+    ///
+    /// Returning `false` means this port cannot own durable segmented continuation, so the loop
+    /// reports an explicit segment exhaustion instead.
+    ///
+    /// # Errors
+    /// Rejects an incomplete tool exchange, conflicting segment identity, or failed publication.
+    fn schedule_segment(
+        &mut self,
+        _next_segment: u32,
+    ) -> Result<bool, DeveloperLoopError> {
+        Ok(false)
+    }
+
+    /// Settles a previously scheduled segment after the logical invocation reaches a terminal.
+    ///
+    /// # Errors
+    /// Returns a durable settlement failure before the terminal may leave the loop.
+    fn complete_invocation(&mut self) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
 }
 
 pub(super) struct ContextSession<'a>(pub(super) Option<&'a mut dyn DeveloperContextPort>);
@@ -392,6 +445,22 @@ impl ContextSession<'_> {
             return Ok(estimated < prior);
         }
         Ok(false)
+    }
+
+    pub(super) fn schedule_segment(
+        &mut self,
+        next_segment: u32,
+    ) -> Result<bool, DeveloperLoopError> {
+        self.0
+            .as_mut()
+            .map_or(Ok(false), |port| port.schedule_segment(next_segment))
+    }
+
+    pub(super) fn complete_invocation(&mut self) -> Result<(), DeveloperLoopError> {
+        if let Some(port) = &mut self.0 {
+            port.complete_invocation()?;
+        }
+        Ok(())
     }
 }
 

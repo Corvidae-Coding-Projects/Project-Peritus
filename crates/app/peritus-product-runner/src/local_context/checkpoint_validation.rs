@@ -5,12 +5,13 @@ use super::{
     memory::environment,
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
-        LEGACY_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest, ViewValidation, decode,
+        INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
+        SEGMENT_CONTINUATION_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
+        TranscriptManifest, ViewValidation, decode,
     },
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_context::working::{ObservationId, WorkingEntryStatus, WorkingLimits, WorkingState};
-use peritus_model_protocol::ProtocolLimits;
 
 pub(super) fn validate_schema_lineage(
     manifest: &CheckpointManifest,
@@ -66,6 +67,14 @@ pub(super) fn validate_checkpoint(
         .selected_observations
         .iter()
         .all(|sequence| *sequence > 0 && *sequence <= sources.len() as u64);
+    let segment_valid = validation.segment_continuation.as_ref().is_none_or(|segment| {
+        schema_version == CHECKPOINT_SCHEMA_VERSION
+            && segment.schema_version == SEGMENT_CONTINUATION_SCHEMA_VERSION
+            && segment.invocation == transcript.invocation
+            && segment.request_prefix == transcript.request_prefix
+            && segment.segment_sequence > 0
+            && segment.protocol_limits_sha256 != [0; 32]
+    });
     if validation.state_revision != state.revision()
         || validation.through_observation != state.through_observation()
         || validation.estimated_input_tokens > validation.max_input_tokens
@@ -78,9 +87,14 @@ pub(super) fn validate_checkpoint(
         || validation.pending_operations != transcript.pending.len()
         || !selected_are_canonical
         || !selected_exist
+        || !segment_valid
         || match schema_version {
             LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),
-            CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_none(),
+            SNAPSHOT_CHECKPOINT_SCHEMA_VERSION
+            | INDEXED_CHECKPOINT_SCHEMA_VERSION
+            | CHECKPOINT_SCHEMA_VERSION => {
+                validation.tool_policy.is_none()
+            }
             _ => true,
         }
     {
@@ -95,8 +109,7 @@ pub(super) fn validate_index(
     transcript: &TranscriptManifest,
     limits: WorkingLimits,
 ) -> Result<(), DeveloperLoopError> {
-    if sources.len() as u64 != state.through_observation() || sources.len() > limits.observations()
-    {
+    if sources.len() as u64 != state.through_observation() {
         return Err(error("source index size mismatch"));
     }
     for (index, source) in sources.iter().enumerate() {
@@ -143,11 +156,6 @@ pub(super) fn validate_transcript(
     limits: WorkingLimits,
 ) -> Result<(), DeveloperLoopError> {
     if transcript.invocation != expected_invocation
-        || transcript.request_prefix.len() > 256
-        || transcript.message_ids.len() > ProtocolLimits::PRODUCTION.max_messages()
-        || transcript.current_inputs.len() > limits.entries()
-        || transcript.pending.len() > limits.entries()
-        || transcript.files.len() > limits.entries()
         || transcript.facts_through > state.through_observation()
     {
         return Err(error("transcript manifest bounds or identity mismatch"));
@@ -172,7 +180,7 @@ pub(super) fn validate_transcript(
         }
     }
     if transcript.files.windows(2).any(|pair| pair[0] >= pair[1])
-        || transcript.files.iter().any(|path| path.is_empty() || path.len() > 4096)
+        || transcript.files.iter().any(String::is_empty)
         || transcript.pending.windows(2).any(|pair| pair[0].key >= pair[1].key)
     {
         return Err(error("noncanonical pending or file projection"));

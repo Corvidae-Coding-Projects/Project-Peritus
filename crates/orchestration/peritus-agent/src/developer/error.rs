@@ -12,7 +12,12 @@ pub enum DeveloperLoopError {
     Protocol(peritus_model_protocol::ProtocolError),
     /// The provider session failed or produced an invalid event stream.
     Model(ModelDriveError),
+    /// Complete normalized provider terminal, including acceptance certainty and response identity.
+    ProviderFailure(Box<peritus_model_protocol::ModelFailure>),
     /// The provider produced a normalized non-retryable terminal failure.
+    ///
+    /// This compatibility form predates acceptance-certainty retention. New provider terminals
+    /// use [`Self::ProviderFailure`], and callers must never infer resend safety from this variant.
     ProviderTerminal {
         /// Stable provider family name.
         provider: String,
@@ -35,6 +40,8 @@ pub enum DeveloperLoopError {
     LimitExceeded,
     /// One bounded invocation segment ended before the role produced its terminal result.
     SegmentExhausted,
+    /// A durable scheduling segment was committed and the same logical invocation may continue.
+    SegmentContinuation,
     /// The request was cancelled.
     Cancelled,
     /// A host deadline or effect boundary requires explicit exact-run recovery.
@@ -48,16 +55,21 @@ impl fmt::Display for DeveloperLoopError {
         match self {
             Self::Protocol(error) => fmt::Display::fmt(error, formatter),
             Self::Model(error) => fmt::Display::fmt(error, formatter),
+            Self::ProviderFailure(failure) => provider_failure(
+                formatter,
+                failure.provider().as_str(),
+                failure.category(),
+                failure.diagnostic().code(),
+                failure.http_status(),
+            ),
             Self::ProviderTerminal { provider, category, diagnostic_code, http_status } => {
-                write!(
+                provider_failure(
                     formatter,
-                    "provider {provider} ended the request ({category}; {diagnostic_code}",
-                    category = failure_category(*category)
-                )?;
-                if let Some(status) = http_status {
-                    write!(formatter, "; HTTP {status}")?;
-                }
-                write!(formatter, "). {}", failure_hint(*category))
+                    provider,
+                    *category,
+                    diagnostic_code,
+                    *http_status,
+                )
             }
             Self::Trace(detail) => write!(formatter, "persist developer trace: {detail}"),
             Self::Context(detail) => write!(formatter, "prepare developer context: {detail}"),
@@ -66,6 +78,9 @@ impl fmt::Display for DeveloperLoopError {
             Self::LimitExceeded => formatter.write_str("developer loop limit was exhausted"),
             Self::SegmentExhausted => {
                 formatter.write_str("developer invocation segment reached its local boundary")
+            }
+            Self::SegmentContinuation => {
+                formatter.write_str("developer invocation has a durable segment continuation")
             }
             Self::Cancelled => formatter.write_str("developer loop was cancelled"),
             Self::RecoveryRequired(detail) => formatter.write_str(detail),
@@ -81,18 +96,38 @@ impl std::error::Error for DeveloperLoopError {
         match self {
             Self::Protocol(error) => Some(error),
             Self::Model(error) => Some(error),
-            Self::ProviderTerminal { .. }
+            Self::ProviderFailure(_)
+            | Self::ProviderTerminal { .. }
             | Self::Trace(_)
             | Self::Context(_)
             | Self::Tool(_)
             | Self::Refused
             | Self::LimitExceeded
             | Self::SegmentExhausted
+            | Self::SegmentContinuation
             | Self::Cancelled
             | Self::RecoveryRequired(_)
             | Self::EmptyResponse => None,
         }
     }
+}
+
+fn provider_failure(
+    formatter: &mut fmt::Formatter<'_>,
+    provider: &str,
+    category: peritus_model_protocol::FailureCategory,
+    diagnostic_code: &str,
+    http_status: Option<u16>,
+) -> fmt::Result {
+    write!(
+        formatter,
+        "provider {provider} ended the request ({category}; {diagnostic_code}",
+        category = failure_category(category)
+    )?;
+    if let Some(status) = http_status {
+        write!(formatter, "; HTTP {status}")?;
+    }
+    write!(formatter, "). {}", failure_hint(category))
 }
 
 const fn failure_hint(category: peritus_model_protocol::FailureCategory) -> &'static str {

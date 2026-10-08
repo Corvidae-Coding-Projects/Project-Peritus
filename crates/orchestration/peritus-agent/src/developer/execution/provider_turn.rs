@@ -1,23 +1,26 @@
-//! Bounded provider retries and durable public-text delivery.
+//! Acceptance-safe provider reconnects and durable public-text delivery.
 use super::super::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperControlFlow, DeveloperInteraction,
     DeveloperLoopError, DeveloperLoopRequest, DeveloperModelRole, DeveloperRequestAdmission,
-    DeveloperToolExecutor, DeveloperTrace, DeveloperTraceEvent, DeveloperUsage,
+    DeveloperRetryDisposition, DeveloperRetryRecovery, DeveloperToolExecutor, DeveloperTrace,
+    DeveloperTraceEvent, DeveloperUsage,
     model_request::{ModelTurnKind, build_model_request},
-    retry::DeveloperRetryPlanner,
+    retry::{DeveloperRetryPlanner, native_session_digest},
 };
-use super::{ContextSession, prepare_messages, successful, terminal_error, usable};
+use super::{ContextSession, successful, terminal_error, usable};
 use crate::{ModelAdvance, ModelSession};
-use peritus_model_protocol::{Message, ModelEvent, ModelRequest, ProtocolLimits};
-use peritus_provider_core::{CancellationToken, ModelProvider, cancel_first};
+use peritus_model_protocol::{
+    Message, ModelEvent, ModelRequest, OutcomeCertainty, ProtocolLimits, TerminalOutcome,
+};
+use peritus_provider_core::{
+    CancellationToken, ModelProvider, ProviderCoreErrorKind as CoreErrorKind, cancel_first,
+};
 
 mod progress;
 
 pub(super) struct RetryContext<'a, 'port> {
     pub(super) context: &'a mut ContextSession<'port>,
     pub(super) tools: &'a mut dyn DeveloperToolExecutor,
-    pub(super) governing_input: Option<&'a Message>,
-    pub(super) compactions: &'a mut u16,
 }
 
 impl RetryContext<'_, '_> {
@@ -33,113 +36,100 @@ impl RetryContext<'_, '_> {
         }
         request
     }
-    fn prepare(
-        owner: Option<&mut Self>,
-        request: &DeveloperLoopRequest,
-        messages: &[Message],
-        profile: &peritus_model_protocol::ProviderProfile,
-        position: (u16, ModelTurnKind, u8, Option<&str>),
-        trace: &mut dyn DeveloperTrace,
-    ) -> Result<Option<Vec<Message>>, DeveloperLoopError> {
-        let (step, kind, attempt, required_tool) = position;
-        if kind != ModelTurnKind::Developer || attempt == 1 {
-            return Ok(None);
-        }
-        let Some(required_tool) = required_tool else { return Ok(None) };
-        let owner = owner.ok_or_else(|| {
-            DeveloperLoopError::Context("required-tool retry has no context owner".to_owned())
-        })?;
-        owner.assemble(request, messages, profile, (step, attempt, required_tool), trace).map(Some)
-    }
-
-    fn assemble(
-        &mut self,
-        request: &DeveloperLoopRequest,
-        messages: &[Message],
-        profile: &peritus_model_protocol::ProviderProfile,
-        position: (u16, u8, &str),
-        trace: &mut dyn DeveloperTrace,
-    ) -> Result<Vec<Message>, DeveloperLoopError> {
-        let (step, attempt, required_tool) = position;
-        let policy = super::invocation::retry_policy(request, step, attempt, required_tool)?;
-        let mut messages = messages.to_vec();
-        messages[0] = policy.clone();
-        let count = if self.context.is_local() {
-            u16::from(self.context.prepare(
-                &mut messages,
-                &request.tools,
-                profile,
-                &policy,
-                self.governing_input,
-            )?)
-        } else {
-            let records = prepare_messages(
-                &mut messages,
-                &request.tools,
-                profile,
-                request.limits.max_output_tokens(),
-                ProtocolLimits::PRODUCTION,
-                if self.governing_input.is_some() { 3 } else { 2 },
-            )?;
-            for record in &records {
-                trace.record(DeveloperTraceEvent::ContextCompaction(record))?;
-            }
-            u16::try_from(records.len()).map_err(|_| DeveloperLoopError::LimitExceeded)?
-        };
-        for _ in 0..count {
-            trace.account(DeveloperAccountingEvent::Compaction)?;
-        }
-        *self.compactions =
-            self.compactions.checked_add(count).ok_or(DeveloperLoopError::LimitExceeded)?;
-        Ok(messages)
-    }
 }
 
-#[allow(clippy::too_many_arguments, reason = "one logical turn keeps its checked request inputs")]
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "one logical turn keeps its checked request inputs and acceptance boundaries"
+)]
 pub(super) async fn complete_turn(
     provider: &dyn ModelProvider,
     request: &DeveloperLoopRequest,
-    messages: &mut Vec<Message>,
+    messages: &[Message],
     profile: &peritus_model_protocol::ProviderProfile,
     negotiated: peritus_model_protocol::NegotiatedCapabilities,
     protocol_limits: ProtocolLimits,
     turn: u16,
     kind: ModelTurnKind,
     required_tool: Option<&str>,
-    retries: &mut u16,
+    retries: &mut u64,
     usage: &mut DeveloperUsage,
     trace: &mut dyn DeveloperTrace,
+    provider_selection: Option<peritus_types::Sha256Digest>,
     interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
     mut retry_context: Option<RetryContext<'_, '_>>,
 ) -> Result<Option<ModelSession>, DeveloperLoopError> {
-    let maximum = request.limits.max_attempts_per_turn();
+    let segment_prefix = request.limits.segment_request_prefix(&request.request_prefix);
     let retry_prefix = match kind {
-        ModelTurnKind::Developer => request.request_prefix.clone(),
+        ModelTurnKind::Developer => segment_prefix.clone(),
         ModelTurnKind::SemanticCompaction => {
-            format!("{}-semantic-compaction", request.request_prefix)
+            format!("{segment_prefix}-semantic-compaction")
         }
     };
-    let planner = DeveloperRetryPlanner::new(&retry_prefix, turn, maximum, &request.cancellation);
-    for attempt in 1..=maximum {
+    let selection_superseded = match provider_selection {
+        Some(provider_selection) => trace.supersede_retry_for_provider_selection(
+            &retry_prefix,
+            turn,
+            provider_selection,
+        )?,
+        None => false,
+    };
+    let recovery_probe = build_model_request(
+        request,
+        messages,
+        profile,
+        negotiated,
+        protocol_limits,
+        turn,
+        1,
+        kind,
+        required_tool,
+        provider.reasoning_effort(),
+    )?;
+    let recovery_probe = RetryContext::bind_session(retry_context.as_ref(), kind, recovery_probe);
+    let recovered = if selection_superseded {
+        None
+    } else {
+        trace.recover_retry(
+            &retry_prefix,
+            turn,
+            profile.profile_id(),
+            native_session_digest(&recovery_probe),
+            recovery_probe.fingerprint()?.digest(),
+        )?
+    };
+    let planner =
+        DeveloperRetryPlanner::new(turn, &request.cancellation, provider_selection);
+    let mut attempt = recovered.map_or(1, DeveloperRetryRecovery::next_attempt);
+    let mut scheduled_attempt = recovered
+        .map(DeveloperRetryRecovery::next_attempt)
+        .map(|next| next.checked_sub(1).ok_or(DeveloperLoopError::LimitExceeded))
+        .transpose()?;
+    if let Some(recovered) = recovered {
+        wait_for_recovered_retry(&request.cancellation, recovered).await?;
+    }
+    loop {
         if request.cancellation.is_cancelled() {
             return Err(DeveloperLoopError::Cancelled);
+        }
+        if let Some(current_selection) =
+            provider_selection_change(interaction, profile, provider_selection)?
+        {
+            let _ = trace.supersede_retry_for_provider_selection(
+                &retry_prefix,
+                turn,
+                current_selection,
+            )?;
+            return Ok(None);
         }
         if let Some((port, _, revision)) = interaction
             && port.input()?.revision != revision
         {
             // Context preparation or retry backoff may have admitted newer input. Return to the
             // outer context owner before building another request from the stale transcript.
+            supersede_scheduled(trace, &retry_prefix, turn, &mut scheduled_attempt)?;
             return Ok(None);
-        }
-        if let Some(prepared) = RetryContext::prepare(
-            retry_context.as_mut(),
-            request,
-            messages,
-            profile,
-            (turn, kind, attempt, required_tool),
-            trace,
-        )? {
-            *messages = prepared;
         }
         let model_request = build_model_request(
             request,
@@ -157,16 +147,52 @@ pub(super) async fn complete_turn(
         if let Some(owner) = retry_context.as_mut() {
             owner.tools.observe_model_context(model_request.messages())?;
         }
-        if !admit_role_request(interaction, profile, &model_request)? {
+        if !admit_role_request(
+            interaction,
+            provider_selection,
+            profile,
+            &model_request,
+        )? {
+            if let Some(current_selection) =
+                provider_selection_change(interaction, profile, provider_selection)?
+            {
+                let _ = trace.supersede_retry_for_provider_selection(
+                    &retry_prefix,
+                    turn,
+                    current_selection,
+                )?;
+            } else {
+                supersede_scheduled(trace, &retry_prefix, turn, &mut scheduled_attempt)?;
+            }
             return Ok(None);
         }
         let admitted_request_id = model_request.request_id().expose_for_wire().to_owned();
-        trace.account(DeveloperAccountingEvent::ModelRequest { retry: attempt > 1 })?;
+        let provider_request = if let Some((port, _, _)) = interaction {
+            match port.materialize_request(model_request.clone()) {
+                Ok(request) => request,
+                Err(error) => {
+                    settle_unsent_role_request(interaction, &admitted_request_id)?;
+                    return Err(error);
+                }
+            }
+        } else {
+            model_request.clone()
+        };
+        if let Err(error) = trace.account(DeveloperAccountingEvent::ModelRequest {
+            retry: attempt > 1,
+        }) {
+            settle_unsent_role_request(interaction, &admitted_request_id)?;
+            return Err(error);
+        }
+        if let Err(error) = trace.begin_retry_attempt(turn, attempt, &model_request) {
+            settle_unsent_role_request(interaction, &admitted_request_id)?;
+            return Err(error);
+        }
         let driven = cancel_first(
             &request.cancellation,
             drive(
                 provider,
-                model_request,
+                provider_request,
                 protocol_limits,
                 trace,
                 interaction.map(|value| value.0),
@@ -174,7 +200,9 @@ pub(super) async fn complete_turn(
         )
         .await
         .unwrap_or(Err(DeveloperLoopError::Cancelled));
-        if let Some((port, role, _)) = interaction {
+        if let Some((port, role, _)) = interaction
+            && request_disposition(&driven) == DeveloperRetryDisposition::Settled
+        {
             let request_usage = driven.as_ref().map_or_else(
                 |_| peritus_model_protocol::UsageCounters::default(),
                 ModelSession::usage_high_water,
@@ -188,37 +216,177 @@ pub(super) async fn complete_turn(
         match driven {
             Ok(session) if successful(session.terminal()) && usable(&session) => {
                 usage.observe(session.usage_high_water())?;
+                trace.finish_retry_attempt(
+                    turn,
+                    attempt,
+                    &model_request,
+                    DeveloperRetryDisposition::Settled,
+                )?;
                 return Ok(Some(session));
             }
             Ok(session) => {
                 usage.observe(session.usage_high_water())?;
-                let Some(record) =
-                    planner.terminal(attempt, session.terminal(), usable(&session))?
-                else {
+                let record = planner.terminal(
+                    &model_request,
+                    attempt,
+                    session.terminal(),
+                    usable(&session),
+                )?;
+                let Some(record) = record else {
+                    trace.finish_retry_attempt(
+                        turn,
+                        attempt,
+                        &model_request,
+                        terminal_disposition(session.terminal()),
+                    )?;
                     return Err(terminal_error(session.terminal()));
                 };
                 planner.record_and_wait(&record, trace).await?;
+                scheduled_attempt = Some(attempt);
                 *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
             Err(error) => {
-                let Some(record) = planner.error(attempt, &error)? else {
+                let record = planner.error(&model_request, attempt, &error)?;
+                let Some(record) = record else {
+                    trace.finish_retry_attempt(
+                        turn,
+                        attempt,
+                        &model_request,
+                        error_disposition(&error),
+                    )?;
                     return Err(error);
                 };
                 planner.record_and_wait(&record, trace).await?;
+                scheduled_attempt = Some(attempt);
                 *retries = retries.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
             }
         }
+        attempt = attempt.checked_add(1).ok_or(DeveloperLoopError::LimitExceeded)?;
     }
-    Err(DeveloperLoopError::EmptyResponse)
+}
+
+fn supersede_scheduled(
+    trace: &mut dyn DeveloperTrace,
+    request_prefix: &str,
+    turn: u16,
+    scheduled_attempt: &mut Option<u64>,
+) -> Result<(), DeveloperLoopError> {
+    if let Some(attempt) = scheduled_attempt.take() {
+        trace.supersede_retry(request_prefix, turn, attempt)?;
+    }
+    Ok(())
+}
+
+async fn wait_for_recovered_retry(
+    cancellation: &CancellationToken,
+    recovery: DeveloperRetryRecovery,
+) -> Result<(), DeveloperLoopError> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| {
+            DeveloperLoopError::Trace("system clock predates the retry journal epoch".to_owned())
+        })?;
+    let now_millis = u64::try_from(now.as_millis()).unwrap_or(u64::MAX);
+    let delay = recovery.next_eligible_unix_millis().saturating_sub(now_millis);
+    if delay == 0 {
+        return Ok(());
+    }
+    match cancel_first(cancellation, tokio::time::sleep(std::time::Duration::from_millis(delay)))
+        .await
+    {
+        Some(()) => Ok(()),
+        None => Err(DeveloperLoopError::Cancelled),
+    }
+}
+
+const fn request_disposition(
+    result: &Result<ModelSession, DeveloperLoopError>,
+) -> DeveloperRetryDisposition {
+    match result {
+        Ok(session) => terminal_disposition(session.terminal()),
+        Err(error) => error_disposition(error),
+    }
+}
+
+const fn terminal_disposition(
+    terminal: Option<&TerminalOutcome>,
+) -> DeveloperRetryDisposition {
+    match terminal {
+        Some(TerminalOutcome::Failed(failure))
+            if matches!(
+                failure.certainty(),
+                OutcomeCertainty::MaybeAccepted | OutcomeCertainty::AcceptedPartial
+            ) =>
+        {
+            DeveloperRetryDisposition::ReconciliationRequired
+        }
+        Some(_) => DeveloperRetryDisposition::Settled,
+        None => DeveloperRetryDisposition::ReconciliationRequired,
+    }
+}
+
+const fn error_disposition(error: &DeveloperLoopError) -> DeveloperRetryDisposition {
+    let DeveloperLoopError::Model(crate::ModelDriveError::Provider(error)) = error else {
+        return DeveloperRetryDisposition::ReconciliationRequired;
+    };
+    match error.kind() {
+        CoreErrorKind::InvalidEndpoint
+        | CoreErrorKind::InvalidCredential
+        | CoreErrorKind::InvalidRequest
+        | CoreErrorKind::InvalidHttp
+        | CoreErrorKind::LimitExceeded
+        | CoreErrorKind::Connect
+        | CoreErrorKind::InvalidRetry
+        | CoreErrorKind::Configuration
+        | CoreErrorKind::UnsupportedCapability
+        | CoreErrorKind::Unavailable => DeveloperRetryDisposition::Settled,
+        CoreErrorKind::Cancelled
+        | CoreErrorKind::Transport
+        | CoreErrorKind::MalformedStream => {
+            DeveloperRetryDisposition::ReconciliationRequired
+        }
+        _ => DeveloperRetryDisposition::ReconciliationRequired,
+    }
+}
+
+fn provider_selection_change(
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    expected_profile: &peritus_model_protocol::ProviderProfile,
+    expected_selection: Option<peritus_types::Sha256Digest>,
+) -> Result<Option<peritus_types::Sha256Digest>, DeveloperLoopError> {
+    let (Some((port, role, _)), Some(expected_selection)) = (interaction, expected_selection) else {
+        return Ok(None);
+    };
+    let current = port.provider_selection(role)?.ok_or_else(|| {
+        DeveloperLoopError::RecoveryRequired(
+            "the host no longer resolves the explicitly selected provider".to_owned(),
+        )
+    })?;
+    let current_selection = current.provenance().ok_or_else(|| {
+        DeveloperLoopError::RecoveryRequired(
+            "the host cannot prove current provider-selection provenance".to_owned(),
+        )
+    })?;
+    if current_selection != expected_selection {
+        return Ok(Some(current_selection));
+    }
+    if current.provider().profile().profile_id() != expected_profile.profile_id() {
+        return Err(DeveloperLoopError::RecoveryRequired(
+            "the resolved provider profile changed without an explicit selection change"
+                .to_owned(),
+        ));
+    }
+    Ok(None)
 }
 
 fn admit_role_request(
     interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    provider_selection: Option<peritus_types::Sha256Digest>,
     profile: &peritus_model_protocol::ProviderProfile,
     request: &ModelRequest,
 ) -> Result<bool, DeveloperLoopError> {
     let Some((port, role, revision)) = interaction else { return Ok(true) };
-    match port.prepare_role_request(role, revision, request)? {
+    match port.prepare_selected_role_request(role, revision, provider_selection, request)? {
         DeveloperRequestAdmission::Accepted => {}
         DeveloperRequestAdmission::Stale => return Ok(false),
         DeveloperRequestAdmission::Stopped => return Err(DeveloperLoopError::Cancelled),
@@ -230,6 +398,20 @@ fn admit_role_request(
     Ok(true)
 }
 
+fn settle_unsent_role_request(
+    interaction: Option<(&dyn DeveloperInteraction, DeveloperModelRole, u64)>,
+    request_id: &str,
+) -> Result<(), DeveloperLoopError> {
+    if let Some((port, role, _)) = interaction {
+        let _ = port.complete_role_request(
+            role,
+            request_id,
+            peritus_model_protocol::UsageCounters::default(),
+        )?;
+    }
+    Ok(())
+}
+
 async fn drive(
     provider: &dyn ModelProvider,
     model_request: ModelRequest,
@@ -238,7 +420,7 @@ async fn drive(
     interaction: Option<&dyn DeveloperInteraction>,
 ) -> Result<ModelSession, DeveloperLoopError> {
     // OwnedModelStream cancels its token when a stream fails or is dropped. That cleanup must
-    // stop only this attempt, leaving the caller's token active for bounded automatic retries.
+    // stop only this attempt, leaving the caller's token active for safe automatic reconnects.
     let attempt = AttemptCancellation(CancellationToken::new());
     let mut progress = progress::ProviderProgress::new(interaction, &attempt.0);
     let mut session = progress

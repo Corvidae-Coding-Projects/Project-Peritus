@@ -77,7 +77,9 @@ pub async fn complete_developer_turn(
         .transpose()
         .map_err(|error| developer_error(&error))?
         .unwrap_or_default();
-    let mut invocation = 0_u64;
+    let mut invocation = 0_u32;
+    let mut segment = 0_u32;
+    let mut reuse_invocation = false;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
         tool_calls: 0,
@@ -90,19 +92,18 @@ pub async fn complete_developer_turn(
         if let Err(error) = check_cancelled(input) {
             return Ok(AppliedTurn::Rejected { error, host });
         }
-        invocation = invocation.checked_add(1).ok_or_else(|| {
-            ProductRunnerError::new(
-                ProductRunnerErrorKind::Repository,
-                "allocate developer invocation identity",
-                "invocation sequence overflow",
-            )
-        })?;
+        if reuse_invocation {
+            reuse_invocation = false;
+        } else {
+            invocation = invocation.saturating_add(1);
+            segment = 0;
+        }
         let revision = input.conversation.revision();
         if revision != grounding_revision {
             grounding.clear_repository_evidence();
             grounding_revision = revision;
         }
-        let identity = DeveloperInvocation { role, cycle, invocation };
+        let identity = DeveloperInvocation { role, cycle, invocation, segment };
         let remaining = accounting.remaining();
         let selected = run_selected_invocation(
             input,
@@ -121,7 +122,7 @@ pub async fn complete_developer_turn(
             accounting,
         )
         .await;
-        let Some((result, tools)) = (match selected {
+        let Some((result, tools, executed_segment)) = (match selected {
             Ok(selected) => selected,
             Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
         }) else {
@@ -169,6 +170,7 @@ pub async fn complete_developer_turn(
             continue;
         }
         grounding = retained_grounding;
+        let segment_continuation = matches!(&result, Err(DeveloperLoopError::SegmentContinuation));
         let resolution = match provider::resolve(
             input,
             &mut providers,
@@ -183,6 +185,10 @@ pub async fn complete_developer_turn(
         };
         let Some(result) = provider::apply(resolution, &mut correction, &mut pending_question)
         else {
+            if segment_continuation {
+                reuse_invocation = true;
+                segment = executed_segment.saturating_add(1);
+            }
             continue;
         };
         let terminal = match parse_grounded_terminal(&tools, &result).and_then(|terminal| {
@@ -252,7 +258,8 @@ fn parse_grounded_terminal(
 struct DeveloperInvocation<'a> {
     role: &'a str,
     cycle: u32,
-    invocation: u64,
+    invocation: u32,
+    segment: u32,
 }
 
 struct InvocationContext<'a> {
@@ -273,7 +280,11 @@ async fn run_selected_invocation(
     context: InvocationContext<'_>,
     accounting: &mut RunAccounting,
 ) -> Result<
-    Option<(Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools)>,
+    Option<(
+        Result<DeveloperLoopOutcome, DeveloperLoopError>,
+        WorkspaceDeveloperTools,
+        u32,
+    )>,
     ProductRunnerError,
 > {
     let result =
@@ -301,7 +312,11 @@ async fn run_developer_invocation(
     context: InvocationContext<'_>,
     accounting: &mut RunAccounting,
 ) -> Result<
-    (Result<DeveloperLoopOutcome, DeveloperLoopError>, WorkspaceDeveloperTools),
+    (
+        Result<DeveloperLoopOutcome, DeveloperLoopError>,
+        WorkspaceDeveloperTools,
+        u32,
+    ),
     ProductRunnerError,
 > {
     let transcript = input.conversation.render();
@@ -320,26 +335,34 @@ async fn run_developer_invocation(
     );
     let reopened = context
         .memory
-        .map(|memory| memory.pending_reentry_prefix(&logical_prefix))
+        .map(|memory| memory.pending_developer_reentry(&logical_prefix))
         .transpose()
         .map_err(|error| developer_error(&error))?
         .flatten();
-    let request_prefix = match reopened {
-        Some(prefix) => prefix,
-        None => invocation_request_name(
-            input.run_id,
-            identity.role,
-            identity.cycle,
-            revision,
-            identity.invocation,
-        )?,
+    let (request_prefix, segment) = match reopened {
+        Some((prefix, segment)) => (prefix, segment),
+        None => (
+            invocation_request_name(
+                input.run_id,
+                identity.role,
+                identity.cycle,
+                revision,
+                u64::from(identity.invocation),
+            )?,
+            identity.segment,
+        ),
     };
+    let limits = DeveloperLoopLimits::new(48, 512)
+        .map_err(|error| developer_error(&error))?
+        .with_segment_continuation()
+        .with_segment_sequence(segment);
+    let execution_prefix = limits.segment_request_prefix(&request_prefix);
     let mut tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
             input.workspace_root.clone(),
             context.ownership.clone(),
             input.trace_path.with_extension("effects.bin"),
-            request_prefix.clone(),
+            execution_prefix,
             context.remaining,
             input.command_runtime.clone(),
         )
@@ -365,7 +388,7 @@ async fn run_developer_invocation(
             prompt,
             attachments,
             tools: input.developer_definitions()?,
-            limits: DeveloperLoopLimits::new(48, 512).map_err(|error| developer_error(&error))?,
+            limits,
             cancellation: input.provider_cancellation.clone(),
         },
         &mut tools,
@@ -379,7 +402,7 @@ async fn run_developer_invocation(
         },
     )
     .await;
-    Ok((result, tools))
+    Ok((result, tools, segment))
 }
 
 fn retry_unverified_question(
@@ -396,6 +419,7 @@ pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
         DeveloperLoopError::LimitExceeded | DeveloperLoopError::SegmentExhausted => {
             ProductRunnerErrorKind::Budget
         }
+        DeveloperLoopError::SegmentContinuation => ProductRunnerErrorKind::InternalInvariant,
         DeveloperLoopError::Trace(_) => ProductRunnerErrorKind::Repository,
         DeveloperLoopError::Tool(_) | DeveloperLoopError::RecoveryRequired(_) => {
             ProductRunnerErrorKind::Apply

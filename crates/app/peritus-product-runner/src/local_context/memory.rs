@@ -1,17 +1,18 @@
 //! Durable state owner shared by the loop port and its bounded memory-tool decorator.
 
 mod checkpoint;
+pub(super) mod checkpoint_index;
 pub(super) mod environment;
 mod ingestion;
 mod recovery;
 
 use super::{
-    LocalContextConfig, error,
+    LocalContextConfig, checkpoint_validation, error,
     record::{
-        ArchivedObservation, CheckpointManifest, MemoryRecord, TranscriptManifest, ViewValidation,
-        encode,
+        ArchivedObservation, CheckpointManifest, MemoryRecord, TranscriptManifest,
+        ViewValidation, encode,
     },
-    storage::LocalStore,
+    storage::{LocalStore, StoredArtifact},
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_context::working::{
@@ -20,22 +21,35 @@ use peritus_context::working::{
 };
 use peritus_model_protocol::{Message, ProviderProfile, ToolDefinition};
 use peritus_types::Sha256Digest;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 pub(super) struct LocalMemory {
     pub(super) store: LocalStore,
     pub(super) state: WorkingState,
     pub(super) sources: Vec<ArchivedObservation>,
     pub(super) transcript: TranscriptManifest,
+    pub(super) segment_continuation: Option<super::record::SegmentContinuation>,
     pub(super) config: LocalContextConfig,
     pub(super) workspace: PathBuf,
     pub(super) trace_path: PathBuf,
     pub(super) binding: WorkingBinding,
     pub(super) limits: WorkingLimits,
     pub(super) last_checkpoint: Option<CheckpointManifest>,
+    pub(super) last_checkpoint_owner: Option<Sha256Digest>,
+    pub(super) source_index_tail: Option<StoredArtifact>,
+    pub(super) transcript_index_tail: Option<StoredArtifact>,
+    pub(super) indexed_source_count: u64,
+    pub(super) indexed_transcript: TranscriptManifest,
+    pub(super) invocations: BTreeMap<u64, String>,
+    pub(super) invocation_ranges: BTreeMap<String, Vec<(u64, u64)>>,
+    pub(super) indexed_invocation_count: u64,
     pub(super) last_view: Vec<Message>,
     pub(super) prepared: Option<PreparedView>,
     pub(super) profile: Option<ProviderProfile>,
+    pub(super) cancellation: peritus_provider_core::CancellationToken,
     pub(super) tools: Vec<ToolDefinition>,
     pub(super) local_compactor_failures: u64,
     pub(super) retrieval_calls: u64,
@@ -53,6 +67,10 @@ pub(super) struct PreparedView {
 }
 
 impl LocalMemory {
+    pub(in crate::local_context) fn invocation_for_prefix(&self, prefix: &str) -> Option<u64> {
+        (self.transcript.request_prefix == prefix).then_some(self.transcript.invocation)
+    }
+
     pub(super) fn load(
         root: &Path,
         workspace: &Path,
@@ -78,15 +96,35 @@ impl LocalMemory {
         config: LocalContextConfig,
         workspace_scope: environment::WorkspaceScope,
     ) -> Result<Self, DeveloperLoopError> {
+        Self::load_scoped_cancellable(
+            root, workspace, trace_path, binding, config, workspace_scope,
+            peritus_provider_core::CancellationToken::new(),
+        )
+    }
+
+    pub(super) fn load_scoped_cancellable(
+        root: &Path,
+        workspace: &Path,
+        trace_path: &Path,
+        binding: WorkingBinding,
+        config: LocalContextConfig,
+        workspace_scope: environment::WorkspaceScope,
+        cancellation: peritus_provider_core::CancellationToken,
+    ) -> Result<Self, DeveloperLoopError> {
         config.validate().map_err(|_| error("invalid local context configuration"))?;
         let limits = config.working_limits().map_err(|_| error("invalid local context limits"))?;
-        let store = if workspace_scope.direct {
-            LocalStore::open_folder(root, workspace, binding, &workspace_scope.protected)?
-        } else {
-            LocalStore::open(root, workspace, binding)?
-        };
-        let environment =
-            environment::capture(workspace, binding, &[], "", limits, &workspace_scope)?;
+        let store = LocalStore::open_folder_cancellable(
+            root, workspace, binding, &workspace_scope.protected, &cancellation,
+        )?;
+        let environment = environment::capture(
+            workspace,
+            binding,
+            &[],
+            "",
+            limits,
+            &workspace_scope,
+            &cancellation,
+        )?;
         let state =
             WorkingState::new(environment, limits).map_err(|_| error("create working state"))?;
         let mut memory = Self {
@@ -94,15 +132,25 @@ impl LocalMemory {
             state,
             sources: Vec::new(),
             transcript: TranscriptManifest::default(),
+            segment_continuation: None,
             config,
             workspace: workspace.to_path_buf(),
             trace_path: trace_path.to_path_buf(),
             binding,
             limits,
             last_checkpoint: None,
+            last_checkpoint_owner: None,
+            source_index_tail: None,
+            transcript_index_tail: None,
+            indexed_source_count: 0,
+            indexed_transcript: TranscriptManifest::default(),
+            invocations: BTreeMap::new(),
+            invocation_ranges: BTreeMap::new(),
+            indexed_invocation_count: 0,
             last_view: Vec::new(),
             prepared: None,
             profile: None,
+            cancellation,
             tools: Vec::new(),
             local_compactor_failures: 0,
             retrieval_calls: 0,
@@ -142,6 +190,58 @@ impl LocalMemory {
         Ok(())
     }
 
+    pub(super) fn context_update(
+        &mut self,
+        base_model_revision: u64,
+        events: &[WorkingEvent],
+        transcript: TranscriptManifest,
+    ) -> Result<(), DeveloperLoopError> {
+        if base_model_revision != self.model_revision || events.is_empty() {
+            return Err(error("context update model revision mismatch"));
+        }
+        let mut expected_transcript = self.transcript.clone();
+        expected_transcript.files.clone_from(&transcript.files);
+        if transcript != expected_transcript {
+            return Err(error("context update changed a host-owned transcript field"));
+        }
+        let mut successor = self.state.clone();
+        let mut saw_refresh = false;
+        let mut saw_delta = false;
+        for event in events {
+            match event {
+                WorkingEvent::Refresh { .. } if !saw_refresh && !saw_delta => saw_refresh = true,
+                WorkingEvent::Delta(_) => saw_delta = true,
+                WorkingEvent::Refresh { .. }
+                | WorkingEvent::Observation { .. }
+                | WorkingEvent::Protocol(_) => {
+                    return Err(error("invalid context update reducer sequence"));
+                }
+            }
+            successor = apply_working_event(&successor, event)
+                .map_err(|_| error("context update successor rejected"))?;
+        }
+        if !saw_delta {
+            return Err(error("context update has no working delta"));
+        }
+        checkpoint_validation::validate_transcript(
+            &successor,
+            &self.sources,
+            &transcript,
+            self.transcript.invocation,
+            self.limits,
+        )?;
+        self.ensure_required_state_fits(&successor)?;
+        let model_revision = base_model_revision
+            .checked_add(1)
+            .ok_or_else(|| error("model revision overflow"))?;
+        self.commit_context_update_root(base_model_revision, events, &transcript)?;
+        self.state = successor;
+        self.transcript = transcript;
+        self.model_revision = model_revision;
+        self.prepared = None;
+        Ok(())
+    }
+
     pub(super) fn next_model_revision(
         &self,
         event: &WorkingEvent,
@@ -158,7 +258,7 @@ impl LocalMemory {
         record: &MemoryRecord,
         roots: &[Sha256Digest],
     ) -> Result<(), DeveloperLoopError> {
-        self.store.append(&encode(record)?, roots, None)
+        self.store.append(&encode(record)?, roots, None).map(|_| ())
     }
 
     pub(super) fn archived(

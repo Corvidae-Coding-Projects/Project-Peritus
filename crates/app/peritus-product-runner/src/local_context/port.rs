@@ -4,6 +4,9 @@ use super::{
     assembly::{MEMORY_POLICY, text_message},
     error,
     memory::LocalMemory,
+    record::{
+        SEGMENT_CONTINUATION_SCHEMA_VERSION, SegmentContinuation,
+    },
 };
 use crate::{
     ConversationView, ProductRunInput, ProductRunnerError,
@@ -142,6 +145,13 @@ impl LocalContextHandle {
         expected_prefix: &str,
     ) -> Result<Option<String>, DeveloperLoopError> {
         self.lock()?.pending_reentry_prefix(expected_prefix)
+    }
+
+    pub(crate) fn pending_developer_reentry(
+        &self,
+        expected_prefix: &str,
+    ) -> Result<Option<(String, u32)>, DeveloperLoopError> {
+        self.lock()?.pending_developer_reentry(expected_prefix)
     }
 
     pub(crate) fn recover_grounding(
@@ -314,7 +324,8 @@ impl DeveloperContextPort for LocalContextHandle {
             }
             DeveloperContextEvent::BatchCompleted => {
                 memory.compact_locally()?;
-                if memory.config.checkpoint_every_completed_batch
+                if (memory.config.checkpoint_every_completed_batch
+                    || memory.segment_continuation.is_some())
                     && let Some(profile) = memory.profile.clone()
                 {
                     let tools = memory.tools.clone();
@@ -339,5 +350,57 @@ impl DeveloperContextPort for LocalContextHandle {
     }
     fn checkpoint(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.lock()?.publish(messages)
+    }
+
+    fn schedule_segment(
+        &mut self,
+        next_segment: u32,
+    ) -> Result<bool, DeveloperLoopError> {
+        let mut memory = self.lock()?;
+        if next_segment == 0
+            || memory
+                .transcript
+                .pending
+                .iter()
+                .any(|pending| pending.handle.is_none())
+        {
+            return Err(error("cannot checkpoint an incomplete segment tool exchange"));
+        }
+        let previous = memory.segment_continuation.clone();
+        let expected = previous
+            .as_ref()
+            .map_or(1, |segment| segment.segment_sequence.saturating_add(1));
+        if next_segment != expected {
+            return Err(error("noncontiguous developer segment continuation"));
+        }
+        let invocation = memory.transcript.invocation;
+        let request_prefix = memory.transcript.request_prefix.clone();
+        let protocol_limits_sha256 = super::reentry::protocol_limits_sha256()?;
+        memory.segment_continuation = Some(SegmentContinuation {
+            schema_version: SEGMENT_CONTINUATION_SCHEMA_VERSION,
+            invocation,
+            request_prefix,
+            segment_sequence: next_segment,
+            protocol_limits_sha256,
+        });
+        let result = (|| {
+            memory.compact_locally()?;
+            let profile = memory
+                .profile
+                .clone()
+                .ok_or_else(|| error("segment continuation has no provider profile"))?;
+            let tools = memory.tools.clone();
+            let messages = memory.prepare_view(&profile, &tools)?;
+            memory.publish(&messages)
+        })();
+        if let Err(failure) = result {
+            memory.segment_continuation = previous;
+            return Err(failure);
+        }
+        Ok(true)
+    }
+
+    fn complete_invocation(&mut self) -> Result<(), DeveloperLoopError> {
+        self.lock()?.complete_segment_continuation()
     }
 }
