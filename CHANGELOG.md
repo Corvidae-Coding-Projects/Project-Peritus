@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L032] Goal text/count representation and checked counter exhaustion (#131)
 - [L607] Windows path and ACL projection imposes workspace-shape and finite-root gates (#663)
 - [L436] E3 committed-command replay fails after the aggregate advances and binds effect retries to a claim fence (#516)
 - [L031] Legacy goal-tool replay is a schema barrier (#130)
