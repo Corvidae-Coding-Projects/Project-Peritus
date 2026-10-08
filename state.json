@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3974,
-        "tip_oid": "59d8fd337805343b19797adb67e66b951b110159",
-        "prefix_sha256": "885d5ccf2b70e46c59936b1990e1e956ea2f39094e1d7a229c4202c6d1969dd4"
+        "sequence": 3975,
+        "tip_oid": "3ebb60a59aeb2cf06277914580bf53baedd74df2",
+        "prefix_sha256": "39c97a57c4e0aafcc8c8ed663ca479a43bdcd44ebfbd0451dd68704374cc299e"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3190,
+  "next_comment_id": 3191,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15082,11 +15082,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.264086646Z",
-      "updated_at": "2026-10-06T13:27:51.266472172Z",
+      "updated_at": "2026-10-08T02:18:26.115343964Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "4955ce96-9a6d-410b-a93a-6cffe9467c53": {
+          "display_id": 3190,
+          "author": "6ME5",
+          "content": "Code complete in commit 12066f265: ConPTY input/control workers are retained and joined, cancellation interrupts blocked reads, nonblocking input avoids shared mutex control starvation, and exact signed-native dimensions validate before consumption. Worker failures reach target supervision and the console stays alive through quiescence. Digest-bound helper success/failure records and C2 Job/tree evidence distinguish truthful target exit from helper failure without lifetime deadlines. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:18:26.106022642Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAB1PFnFeDpQ2qgiEcZGhAxuL8z6/T8eHGh+MIE6FO0CYMH0l4aCi0fbLIwcTr7oYawdIgo6TEK9WiiwB6zI2fBA=="
+        },
         "4cb32713-f906-4852-846d-27204582a453": {
           "display_id": 2739,
           "author": "6ME5",
