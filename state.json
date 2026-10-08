@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4022,
-        "tip_oid": "5d0dbc51a99f89a9314233ce9494aaf38c29c369",
-        "prefix_sha256": "8645a54427bf0b5cfcbff795228e8b84a2db2cb67bfd2117f35b13ebd0ab0107"
+        "sequence": 4023,
+        "tip_oid": "fc7db3a20f4a8c8092a89143d690b859f72d735b",
+        "prefix_sha256": "aa44a06af1021a9afc946e5fbdfebe2f185494a5d19d32ec7df50f30228985bc"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3214,
+  "next_comment_id": 3215,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24772,11 +24772,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.292199025Z",
-      "updated_at": "2026-10-06T13:27:51.294416802Z",
+      "updated_at": "2026-10-08T03:39:50.654419396Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "5b648c9f-005d-460f-a632-e8111ee7c9d4": {
+          "display_id": 3214,
+          "author": "6ME5",
+          "content": "Code complete in commit c9811e0e1. Added retained target/Job quiescence and resource snapshots, resumable disk sampling and exact handle aggregation. Selected capabilities and control observations reflect measured post-activation evidence without a rich observation lifetime cap. Release requires explicit phase/tree quiescence and trustworthy secret absence rather than assumed clean state. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:39:50.645782001Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADFSX9SsLePXP+hATSyzaM6WAwLel4eDuFBXECTvTzPIqLZUPRK/qIZSJ7IGn4i/6iMqOKfKjRhFbCeBrqAEjBA=="
+        },
         "6a75db8e-38d4-4a1b-bb48-330c1effbb55": {
           "display_id": 2745,
           "author": "6ME5",
