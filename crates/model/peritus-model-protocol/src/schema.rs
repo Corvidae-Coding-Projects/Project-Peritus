@@ -40,6 +40,17 @@ impl JsonBounds {
         }
     }
 
+    /// Derives provider-extension bounds from a protocol limit set.
+    #[must_use]
+    pub const fn extension(limits: ProtocolLimits) -> Self {
+        Self {
+            max_bytes: limits.max_extension_bytes(),
+            max_depth: None,
+            max_members: None,
+            max_string_bytes: limits.max_text_bytes(),
+        }
+    }
+
     /// Creates nonzero byte ceilings and explicit structural policy limits.
     ///
     /// # Errors
@@ -135,6 +146,16 @@ impl CanonicalJson {
     pub fn digest(&self) -> peritus_types::Sha256Digest {
         peritus_codec::sha256(&self.canonical)
     }
+
+    pub(crate) fn validate_under(&self, bounds: JsonBounds) -> Result<(), ProtocolError> {
+        let input = core::str::from_utf8(&self.canonical)
+            .map_err(|_| invalid("$", "canonical JSON is not valid UTF-8"))?;
+        let reparsed = Self::parse(input, bounds)?;
+        if reparsed != *self {
+            return Err(invalid("$", "JSON value is not in canonical form"));
+        }
+        Ok(())
+    }
 }
 
 #[allow(
@@ -208,6 +229,10 @@ impl JsonSchema {
     #[must_use]
     pub fn digest(&self) -> peritus_types::Sha256Digest {
         self.document.digest()
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.document.validate_under(JsonBounds::schema(limits))
     }
 }
 

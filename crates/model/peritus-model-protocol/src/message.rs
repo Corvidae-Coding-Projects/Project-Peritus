@@ -35,13 +35,22 @@ impl Message {
         content: Vec<ContentBlock>,
         limits: ProtocolLimits,
     ) -> Result<Self, ProtocolError> {
-        if content.is_empty() || content.len() > limits.max_content_blocks() {
+        let message = Self { role, content };
+        message.validate_under(limits)?;
+        Ok(message)
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if self.content.is_empty() || self.content.len() > limits.max_content_blocks() {
             return Err(invalid("message content is empty or exceeds its block bound"));
         }
-        if content.iter().any(|block| !role_allows(role, block)) {
+        if self.content.iter().any(|block| !role_allows(self.role, block)) {
             return Err(invalid("message role does not permit one of its content blocks"));
         }
-        Ok(Self { role, content })
+        for block in &self.content {
+            block.validate_under(limits)?;
+        }
+        Ok(())
     }
 
     /// Returns the role.
@@ -54,6 +63,10 @@ impl Message {
     #[must_use]
     pub fn content(&self) -> &[ContentBlock] {
         &self.content
+    }
+
+    pub(crate) fn content_mut(&mut self) -> &mut [ContentBlock] {
+        &mut self.content
     }
 }
 

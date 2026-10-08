@@ -5,9 +5,9 @@ use core::fmt;
 use peritus_types::Sha256Digest;
 
 use crate::{
-    CacheObservation, EventId, FinishReason, ItemId, ModelFailure, ModelName, ProtocolError,
-    ProtocolErrorKind, ProtocolLimits, ProtocolVersion, ProviderExtension, RateLimitObservation,
-    ResponseId, ToolCallId, ToolName, UsageObservation,
+    CacheObservation, EventId, FinishReason, ItemId, JsonBounds, ModelFailure, ModelName,
+    ProtocolError, ProtocolErrorKind, ProtocolLimits, ProtocolVersion, ProviderExtension,
+    RateLimitObservation, ResponseId, ToolCallId, ToolName, UsageObservation,
 };
 
 /// Sensitive stream bytes that may split UTF-8 or JSON tokens.
@@ -21,14 +21,20 @@ impl StreamFragment {
     ///
     /// Rejects empty fragments and data wider than the per-event ceiling.
     pub fn new(bytes: Vec<u8>, limits: ProtocolLimits) -> Result<Self, ProtocolError> {
-        if bytes.is_empty() || bytes.len() > limits.max_event_bytes() {
+        let fragment = Self(bytes);
+        fragment.validate_under(limits)?;
+        Ok(fragment)
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if self.0.is_empty() || self.0.len() > limits.max_event_bytes() {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidEvent,
                 "event.fragment",
                 "stream fragment is empty or exceeds its event-byte bound",
             ));
         }
-        Ok(Self(bytes))
+        Ok(())
     }
 
     /// Borrows sensitive bytes for reduction or provider projection.
@@ -165,6 +171,38 @@ pub enum ModelEvent {
     ResponseCancelled,
 }
 
+impl ModelEvent {
+    fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        match self {
+            Self::TextDelta { fragment, .. }
+            | Self::ReasoningSummaryDelta { fragment, .. }
+            | Self::ReasoningReplayDelta { fragment, .. }
+            | Self::RefusalDelta { fragment, .. }
+            | Self::ToolArgumentDelta { fragment, .. } => fragment.validate_under(limits),
+            Self::Usage(observation) => {
+                if let Some(detail) = observation.provider_detail() {
+                    detail.validate_under(JsonBounds::extension(limits))?;
+                }
+                Ok(())
+            }
+            Self::Finish(FinishReason::Provider(value)) => value.validate_under(limits),
+            Self::ProviderEvent(extension) => extension.validate_under(limits),
+            Self::ResponseStarted { .. }
+            | Self::ResponseIdentity(_)
+            | Self::ItemStarted { .. }
+            | Self::ToolCallStarted { .. }
+            | Self::ItemCompleted(_)
+            | Self::RateLimit(_)
+            | Self::Cache(_)
+            | Self::Finish(_)
+            | Self::Heartbeat
+            | Self::ResponseCompleted
+            | Self::ResponseFailed(_)
+            | Self::ResponseCancelled => Ok(()),
+        }
+    }
+}
+
 /// Event plus local/provider ordering and exact raw-event identity evidence.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EventEnvelope {
@@ -232,5 +270,9 @@ impl EventEnvelope {
 
     pub(crate) fn into_event(self) -> ModelEvent {
         self.event
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.event.validate_under(limits)
     }
 }

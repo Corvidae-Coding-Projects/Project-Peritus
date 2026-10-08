@@ -2,7 +2,7 @@
 
 use crate::{
     BoundedText, EventId, ProtocolError, ProtocolErrorKind, ProviderExtension, ReasoningPolicy,
-    ResponseId, StructuredOutput,
+    ProtocolLimits, ResponseId, StructuredOutput,
 };
 
 /// Prompt/provider cache behavior.
@@ -174,6 +174,13 @@ impl GenerationConfig {
             || self.temperature_millionths.is_some()
             || self.top_p_millionths.is_some()
     }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        for stop in &self.stop_sequences {
+            stop.validate_under(limits)?;
+        }
+        Ok(())
+    }
 }
 
 /// Remaining orthogonal request policies.
@@ -243,6 +250,15 @@ impl RequestOptions {
     #[must_use]
     pub fn extensions(&self) -> &[ProviderExtension] {
         &self.extensions
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.output.validate_under(limits)?;
+        self.generation.validate_under(limits)?;
+        for extension in &self.extensions {
+            extension.validate_under(limits)?;
+        }
+        Ok(())
     }
 }
 

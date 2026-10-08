@@ -18,7 +18,9 @@ pub(super) fn request(
     resume: ResumeKind,
     limits: ProtocolLimits,
 ) -> Result<(), ProtocolError> {
-    validate_counts(messages, tools, options, limits)?;
+    validate_messages(messages, limits, true)?;
+    validate_tools(tools, limits)?;
+    options.validate_under(limits)?;
     crate::tool::validate_choice(tool_choice, tools)?;
     if tools.len() > usize::try_from(negotiated.limits().max_tools()).unwrap_or(usize::MAX) {
         return Err(invalid("tools", "tool count exceeds the negotiated model limit"));
@@ -35,14 +37,16 @@ pub(super) fn request(
     Ok(())
 }
 
-fn validate_counts(
+pub(crate) fn validate_messages(
     messages: &[Message],
-    tools: &[ToolDefinition],
-    options: &RequestOptions,
     limits: ProtocolLimits,
+    require_nonempty: bool,
 ) -> Result<(), ProtocolError> {
-    if messages.is_empty() || messages.len() > limits.max_messages() {
+    if (require_nonempty && messages.is_empty()) || messages.len() > limits.max_messages() {
         return Err(invalid("messages", "message count is empty or exceeds its bound"));
+    }
+    for message in messages {
+        message.validate_under(limits)?;
     }
     let blocks = messages
         .iter()
@@ -57,8 +61,18 @@ fn validate_counts(
     if media.is_none_or(|bytes| bytes > limits.max_total_media_bytes()) {
         return Err(invalid("messages", "aggregate inline-media bytes exceed their bound"));
     }
+    Ok(())
+}
+
+fn validate_tools(
+    tools: &[ToolDefinition],
+    limits: ProtocolLimits,
+) -> Result<(), ProtocolError> {
     if tools.len() > limits.max_tools() {
         return Err(invalid("tools", "tool count exceeds its request bound"));
+    }
+    for tool in tools {
+        tool.validate_under(limits)?;
     }
     let mut names = BTreeSet::new();
     if tools.iter().any(|tool| !names.insert(tool.name().as_str())) {

@@ -26,6 +26,7 @@ pub struct ModelRequest {
     tool_choice: ToolChoice,
     parallel_tools: ParallelToolPolicy,
     options: RequestOptions,
+    limits: ProtocolLimits,
     fingerprint: crate::RequestFingerprint,
     local_session_directory: Option<std::path::PathBuf>,
 }
@@ -81,6 +82,7 @@ impl ModelRequest {
             tool_choice,
             parallel_tools,
             options,
+            limits,
             fingerprint: crate::RequestFingerprint::new(Sha256Digest::new([0; 32])),
             local_session_directory: None,
         };
@@ -113,17 +115,14 @@ impl ModelRequest {
         continuation: Continuation,
         limits: ProtocolLimits,
     ) -> Result<Self, ProtocolError> {
+        if limits != self.limits {
+            return Err(validation::invalid(
+                "protocol_limits",
+                "continuation must retain the request's exact admitted protocol limits",
+            ));
+        }
         self.options = self.options.with_continuation(continuation);
-        validation::request(
-            self.negotiated,
-            &self.messages,
-            &self.tools,
-            &self.tool_choice,
-            self.parallel_tools,
-            &self.options,
-            self.resume_kind,
-            limits,
-        )?;
+        self.validate_admission()?;
         self.fingerprint =
             crate::RequestFingerprint::new(crate::canonical::request_digest(&self)?);
         Ok(self)
@@ -243,6 +242,12 @@ impl ModelRequest {
         &self.options
     }
 
+    /// Exact protocol limits that admitted this request.
+    #[must_use]
+    pub const fn protocol_limits(&self) -> ProtocolLimits {
+        self.limits
+    }
+
     /// Encodes exact version-one semantic request bytes for replay and idempotency.
     ///
     /// The caller request ID and credentials are deliberately excluded.
@@ -290,5 +295,18 @@ impl ModelRequest {
             let _ = write!(value, "{byte:02x}");
         }
         crate::IdempotencyKey::new(value)
+    }
+
+    pub(crate) fn validate_admission(&self) -> Result<(), ProtocolError> {
+        validation::request(
+            self.negotiated,
+            &self.messages,
+            &self.tools,
+            &self.tool_choice,
+            self.parallel_tools,
+            &self.options,
+            self.resume_kind,
+            self.limits,
+        )
     }
 }

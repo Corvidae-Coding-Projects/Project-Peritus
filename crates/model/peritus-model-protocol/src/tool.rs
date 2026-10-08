@@ -1,7 +1,7 @@
 //! Provider-facing function tools, completed calls/results, and output/reasoning policy.
 
 use crate::{
-    BoundedText, CanonicalJson, JsonSchema, OutputName, ProtocolError, ProtocolErrorKind,
+    BoundedText, CanonicalJson, JsonBounds, JsonSchema, OutputName, ProtocolError, ProtocolErrorKind,
     ProtocolLimits, ToolCallId, ToolName,
 };
 
@@ -45,6 +45,13 @@ impl ToolDefinition {
     #[must_use]
     pub const fn strict(&self) -> bool {
         self.strict
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if let Some(description) = &self.description {
+            description.validate_under(limits)?;
+        }
+        self.parameters.validate_under(limits)
     }
 }
 
@@ -138,6 +145,10 @@ impl CompletedToolCall {
     pub const fn arguments(&self) -> &CanonicalJson {
         &self.arguments
     }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.arguments.validate_under(JsonBounds::value(limits))
+    }
 }
 
 /// Application result correlated to one provider call.
@@ -170,6 +181,10 @@ impl ToolResult {
     pub const fn is_error(&self) -> bool {
         self.is_error
     }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.output.validate_under(JsonBounds::value(limits))
+    }
 }
 
 /// Requested final output contract.
@@ -188,6 +203,15 @@ pub enum StructuredOutput {
         /// Whether schema compliance is required on normal completion.
         strict: bool,
     },
+}
+
+impl StructuredOutput {
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        match self {
+            Self::JsonSchema { schema, .. } => schema.validate_under(limits),
+            Self::Text | Self::JsonObject => Ok(()),
+        }
+    }
 }
 
 /// Provider-neutral reasoning effort level.

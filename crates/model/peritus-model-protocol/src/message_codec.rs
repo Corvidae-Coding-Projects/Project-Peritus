@@ -3,7 +3,6 @@
 use crate::{Message, ProtocolError, ProtocolErrorKind, ProtocolLimits};
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 
-const MAX_BYTES: usize = 64 * 1024 * 1024;
 const MAGIC: [u8; 4] = *b"P5MS";
 const VERSION: u16 = 1;
 
@@ -18,10 +17,8 @@ pub fn encode_messages(
     messages: &[Message],
     limits: ProtocolLimits,
 ) -> Result<Vec<u8>, ProtocolError> {
-    if messages.len() > limits.max_messages() {
-        return Err(invalid());
-    }
-    let mut writer = CanonicalWriter::new(codec_limits(limits));
+    crate::request::validation::validate_messages(messages, limits, false)?;
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
     writer.write_fixed(&MAGIC).map_err(codec)?;
     writer.write_u16(VERSION).map_err(codec)?;
     writer.write_collection_len(messages.len()).map_err(codec)?;
@@ -40,16 +37,14 @@ pub fn decode_messages(
     bytes: &[u8],
     limits: ProtocolLimits,
 ) -> Result<Vec<Message>, ProtocolError> {
-    if bytes.len() > MAX_BYTES {
-        return Err(invalid());
-    }
-    let mut reader = CanonicalReader::new(bytes, codec_limits(limits));
+    let mut reader = CanonicalReader::new(bytes, decoder_limits(bytes.len()));
     if reader.read_fixed::<4>().map_err(codec)? != MAGIC
         || reader.read_u16().map_err(codec)? != VERSION
     {
         return Err(invalid());
     }
     let messages = crate::canonical_decode::decode_messages(&mut reader, limits)?;
+    crate::request::validation::validate_messages(&messages, limits, false)?;
     reader.finish().map_err(codec)?;
     if encode_messages(&messages, limits)? != bytes {
         return Err(invalid());
@@ -57,18 +52,14 @@ pub fn decode_messages(
     Ok(messages)
 }
 
-fn codec_limits(limits: ProtocolLimits) -> CodecLimits {
+const fn decoder_limits(encoded_bytes: usize) -> CodecLimits {
     CodecLimits::new(
-        MAX_BYTES,
-        MAX_BYTES,
-        limits.max_messages().max(limits.max_content_blocks()),
-        MAX_BYTES,
-        limits
-            .max_inline_media_bytes()
-            .max(limits.max_tool_argument_bytes())
-            .max(limits.max_extension_bytes())
-            .max(limits.max_schema_bytes()),
-        128,
+        encoded_bytes,
+        encoded_bytes,
+        usize::MAX,
+        encoded_bytes,
+        encoded_bytes,
+        CodecLimits::UNLIMITED_NESTING,
     )
 }
 fn codec(_: peritus_codec::CodecError) -> ProtocolError {

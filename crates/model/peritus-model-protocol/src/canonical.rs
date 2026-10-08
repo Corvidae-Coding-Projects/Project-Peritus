@@ -57,6 +57,7 @@ fn request_value<W: CanonicalSink + ?Sized>(
     mut writer: &mut W,
     request: &ModelRequest,
 ) -> Result<(), ProtocolError> {
+    request.validate_admission()?;
     write_fixed(&mut writer, CANONICAL_MAGIC)?;
     u16_value(&mut writer, request.protocol().major())?;
     u16_value(&mut writer, request.protocol().minor())?;

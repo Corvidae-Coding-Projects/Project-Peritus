@@ -2,7 +2,7 @@
 
 mod model;
 mod options;
-mod validation;
+pub(crate) mod validation;
 
 pub use model::ModelRequest;
 pub use options::{CachePolicy, Continuation, GenerationConfig, PersistencePolicy, RequestOptions};

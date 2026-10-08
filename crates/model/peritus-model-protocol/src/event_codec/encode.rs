@@ -20,6 +20,7 @@ pub fn encode_event_envelope(
     envelope: &EventEnvelope,
     limits: crate::ProtocolLimits,
 ) -> Result<Vec<u8>, crate::ProtocolError> {
+    envelope.validate_under(limits)?;
     let mut writer = CanonicalWriter::new(codec_limits(limits));
     writer.write_fixed(&MAGIC).map_err(write_codec)?;
     writer.write_u16(super::EVENT_ENVELOPE_SCHEMA_VERSION).map_err(write_codec)?;

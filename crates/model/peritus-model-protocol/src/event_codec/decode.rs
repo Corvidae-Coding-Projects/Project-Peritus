@@ -2,8 +2,7 @@ use peritus_codec::CanonicalReader;
 use peritus_types::Sha256Digest;
 
 use super::primitive::{
-    MAGIC, MAX_CANONICAL_EVENT_BYTES, codec_limits, invalid, option_u16, option_u64, read_codec,
-    unknown,
+    MAGIC, codec_limits, invalid, option_u16, option_u64, read_codec, unknown,
 };
 use crate::{
     BoundedText, CacheKey, CacheObservation, CacheStatus, CanonicalJson, EventEnvelope, EventId,
@@ -27,9 +26,6 @@ pub fn decode_event_envelope(
     bytes: &[u8],
     limits: ProtocolLimits,
 ) -> Result<EventEnvelope, ProtocolError> {
-    if bytes.len() > MAX_CANONICAL_EVENT_BYTES {
-        return Err(invalid("canonical_event", "canonical event exceeds its maximum byte bound"));
-    }
     let mut reader = CanonicalReader::new(bytes, codec_limits(limits));
     if reader.read_fixed::<4>().map_err(read_codec)? != MAGIC {
         return Err(invalid("canonical_event.magic", "canonical event magic is invalid"));
@@ -65,6 +61,7 @@ pub fn decode_event_envelope(
     reader.finish().map_err(read_codec)?;
     let envelope =
         EventEnvelope::new(sequence, provider_sequence, provider_event_id, provider_digest, event)?;
+    envelope.validate_under(limits)?;
     if super::encode::encode_event_envelope(&envelope, limits)?.as_slice() != bytes {
         return Err(invalid(
             "canonical_event",
@@ -196,21 +193,21 @@ fn usage(
         option_u64(reader)?,
     );
     let detail = if reader.read_option_tag().map_err(read_codec)? {
-        Some(canonical_json(reader, limits)?)
+        Some(extension_json(reader, limits)?)
     } else {
         None
     };
     Ok(UsageObservation::new(scope, counters, detail))
 }
 
-fn canonical_json(
+fn extension_json(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<CanonicalJson, ProtocolError> {
     let bytes = reader.read_bytes().map_err(read_codec)?;
     let text = core::str::from_utf8(bytes)
         .map_err(|_| invalid("canonical_event.json", "canonical JSON is not UTF-8"))?;
-    let value = CanonicalJson::parse(text, JsonBounds::value(limits))?;
+    let value = CanonicalJson::parse(text, JsonBounds::extension(limits))?;
     if value.canonical_bytes() != bytes {
         return Err(invalid("canonical_event.json", "JSON bytes are not canonical"));
     }
@@ -300,7 +297,7 @@ fn provider_extension(
     limits: ProtocolLimits,
 ) -> Result<ProviderExtension, ProtocolError> {
     let name = ExtensionName::new(reader.read_str().map_err(read_codec)?.to_owned())?;
-    Ok(ProviderExtension::new(name, canonical_json(reader, limits)?))
+    Ok(ProviderExtension::new(name, extension_json(reader, limits)?))
 }
 
 fn failure(reader: &mut CanonicalReader<'_>) -> Result<ModelFailure, ProtocolError> {

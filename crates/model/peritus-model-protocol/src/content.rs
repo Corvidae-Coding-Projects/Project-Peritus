@@ -4,7 +4,9 @@ use core::fmt;
 
 use peritus_types::{ArtifactId, Sha256Digest};
 
-use crate::{CanonicalJson, ExtensionName, ProtocolError, ProtocolErrorKind, ProtocolLimits};
+use crate::{
+    CanonicalJson, ExtensionName, JsonBounds, ProtocolError, ProtocolErrorKind, ProtocolLimits,
+};
 
 /// Sensitive UTF-8 model content with an explicit byte bound.
 #[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
@@ -17,14 +19,23 @@ impl BoundedText {
     ///
     /// Rejects empty text, NUL, or text wider than the supplied protocol limit.
     pub fn new(value: String, limits: ProtocolLimits) -> Result<Self, ProtocolError> {
-        if value.is_empty() || value.len() > limits.max_text_bytes() || value.contains('\0') {
+        let text = Self(value);
+        text.validate_under(limits)?;
+        Ok(text)
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if self.0.is_empty()
+            || self.0.len() > limits.max_text_bytes()
+            || self.0.contains('\0')
+        {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidContent,
                 "text",
                 "model text is empty, contains NUL, or exceeds its byte bound",
             ));
         }
-        Ok(Self(value))
+        Ok(())
     }
 
     /// Borrows sensitive text for an authorized wire projection.
@@ -339,6 +350,20 @@ impl MediaInput {
             MediaSource::Inline { .. } | MediaSource::Reference { .. } => None,
         }
     }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if matches!(
+            &self.source,
+            MediaSource::Inline { bytes, .. } if bytes.len() > limits.max_inline_media_bytes()
+        ) {
+            return Err(ProtocolError::at(
+                ProtocolErrorKind::InvalidContent,
+                "inline_media",
+                "inline media exceeds the selected protocol byte bound",
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl fmt::Debug for MediaInput {
@@ -371,14 +396,23 @@ impl ReasoningReplay {
         opaque: Vec<u8>,
         limits: ProtocolLimits,
     ) -> Result<Self, ProtocolError> {
-        if opaque.is_empty() || opaque.len() > limits.max_extension_bytes() {
+        let replay = Self { summary, opaque };
+        replay.validate_under(limits)?;
+        Ok(replay)
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if let Some(summary) = &self.summary {
+            summary.validate_under(limits)?;
+        }
+        if self.opaque.is_empty() || self.opaque.len() > limits.max_extension_bytes() {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidContent,
                 "reasoning_replay",
                 "reasoning replay state is empty or exceeds its byte bound",
             ));
         }
-        Ok(Self { summary, opaque })
+        Ok(())
     }
 
     /// Borrows the optional visible summary.
@@ -430,6 +464,10 @@ impl ProviderExtension {
     pub const fn value(&self) -> &CanonicalJson {
         &self.value
     }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        self.value.validate_under(JsonBounds::extension(limits))
+    }
 }
 
 /// Complete semantic content block.
@@ -465,6 +503,19 @@ impl ContentBlock {
             | Self::Refusal(_)
             | Self::Reasoning(_)
             | Self::ProviderExtension(_) => 0,
+        }
+    }
+
+    pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        match self {
+            Self::Text(value) | Self::Refusal(value) => value.validate_under(limits),
+            Self::Image(media) | Self::Audio(media) | Self::Document(media) => {
+                media.validate_under(limits)
+            }
+            Self::ToolCall(call) => call.validate_under(limits),
+            Self::ToolResult(result) => result.validate_under(limits),
+            Self::Reasoning(replay) => replay.validate_under(limits),
+            Self::ProviderExtension(extension) => extension.validate_under(limits),
         }
     }
 }

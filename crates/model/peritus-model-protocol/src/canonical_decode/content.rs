@@ -4,7 +4,7 @@ use peritus_codec::CanonicalReader;
 use peritus_types::{ArtifactId, Sha256Digest};
 
 use super::primitive::{
-    bounded_text, canonical_json, codec, invalid, optional_digest, optional_text,
+    bounded_text, canonical_json, codec, extension_json, invalid, optional_digest, optional_text,
     read_collection_len, unknown_tag,
 };
 use crate::{
@@ -134,5 +134,5 @@ pub(super) fn extension(
     limits: ProtocolLimits,
 ) -> Result<ProviderExtension, ProtocolError> {
     let name = ExtensionName::new(reader.read_str().map_err(codec)?.to_owned())?;
-    Ok(ProviderExtension::new(name, canonical_json(reader, limits)?))
+    Ok(ProviderExtension::new(name, extension_json(reader, limits)?))
 }

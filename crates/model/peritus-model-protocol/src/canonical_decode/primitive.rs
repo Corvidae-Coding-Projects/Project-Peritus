@@ -58,10 +58,24 @@ pub(super) fn canonical_json(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<CanonicalJson, ProtocolError> {
+    canonical_json_with_bounds(reader, JsonBounds::value(limits))
+}
+
+pub(super) fn extension_json(
+    reader: &mut CanonicalReader<'_>,
+    limits: ProtocolLimits,
+) -> Result<CanonicalJson, ProtocolError> {
+    canonical_json_with_bounds(reader, JsonBounds::extension(limits))
+}
+
+fn canonical_json_with_bounds(
+    reader: &mut CanonicalReader<'_>,
+    bounds: JsonBounds,
+) -> Result<CanonicalJson, ProtocolError> {
     let bytes = reader.read_bytes().map_err(codec)?;
     let text = core::str::from_utf8(bytes)
         .map_err(|_| invalid("canonical_json", "canonical JSON is not valid UTF-8"))?;
-    let value = CanonicalJson::parse(text, JsonBounds::value(limits))?;
+    let value = CanonicalJson::parse(text, bounds)?;
     if value.canonical_bytes() != bytes {
         return Err(invalid("canonical_json", "JSON bytes are not in canonical form"));
     }
