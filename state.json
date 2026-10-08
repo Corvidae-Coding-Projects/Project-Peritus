@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4123,
-        "tip_oid": "49a887c3cd3c5a10a1d2bc68e25ac3bd7e0d5cdb",
-        "prefix_sha256": "314e8c974247ebfc33e3fb852e26d7204dcd009193c89c94f83c0cf3a971b91c"
+        "sequence": 4124,
+        "tip_oid": "877055fe2386307e452c8cbac271d3e44e9aa137",
+        "prefix_sha256": "c55a710be18242a18b590a2d3588db0875f15359da19eee75f676096082bc887"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3265,
+  "next_comment_id": 3266,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1964,7 +1964,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.367928575Z",
-      "updated_at": "2026-10-06T13:27:51.370277393Z",
+      "updated_at": "2026-10-08T09:47:43.769898824Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -1975,6 +1975,15 @@
           "content": "Systemic repair plan for L637: Filesystem dispatch is synchronous, loses error distinctions, and retains candidate handoff only in its live object.\n\nOwning contract and implementation boundary: crates/tools/peritus-tools-fs/src/catalog.rs:115-118; src/dispatcher.rs:71-78,132-174,201-228,273-303,311-357; src/error.rs:77-94,125-131; src/read.rs:377-390. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPreserve typed redaction-safe causes and durable operation/outcome references, distinguish retry/reobserve/reconcile semantics, measure real completion, and introduce cancellable phase ownership without adding a new lifetime cutoff. Source review only; no tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "fac55871-8164-465d-8baa-33563a4b87c4": {
+          "display_id": 3265,
+          "author": "6ME5",
+          "content": "Code complete in commit d7893b152. FS dispatch retains canonical durable operation/outcome references, typed workspace/patch causes, owned progress/cancel/recovery, and actual start/completion times. Mutation results publish restart-safe references; Git candidate handoff resolves and authorizes those references while preserving legacy payload bytes. FS catalog v4 advertises poll/cancel controls. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T09:47:43.760831943Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAPQlxKnbHdUp2ZNb222MUr5f4HU+dzJ8yP6F03aedqoeqiP88cwNHTJ+xErukN/zbTYqhQu+VpbH048Tdb+BLBg=="
         }
       }
     },
