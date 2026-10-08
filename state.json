@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4164,
-        "tip_oid": "72b89a34c8eab205c542661c3b6e7247911f7224",
-        "prefix_sha256": "87971494cd2aaf14394d0b551f024047b118d1c77061a6899a987fe116ccfa48"
+        "sequence": 4165,
+        "tip_oid": "ed1035c54a118568bb3046980817195e9e96d48b",
+        "prefix_sha256": "20fd252c03d5febcfc103a9b85b5c4e197b838f33ebd9a93722f0eccba5e64d0"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3286,
+  "next_comment_id": 3287,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -34670,7 +34670,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.914303038Z",
-      "updated_at": "2026-10-07T04:44:17.902282508Z",
+      "updated_at": "2026-10-08T15:41:43.640629354Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -34681,6 +34681,15 @@
           "content": "Systemic repair plan for L020: Journal atomic-batch ceilings restrict checkpoint admission.\n\nOwning contract and implementation boundary: crates/state/peritus-journal/src/append_plan.rs:17-28; append_plan/validation.rs:17-39; product_control/storage/checkpoints.rs:214-240; product_control/storage.rs:207-235; storage/checkpoints.rs:243-247. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nStage checkpoint bodies as immutable artifacts before one small atomic publication of their manifest, root and receipt. Journal batch ceilings should bound one database operation, not total checkpoint coverage. Page dependency evidence through durable roots with complete reachability, and validate the exact published restore manifest before accepting it.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "c71190e2-71fa-45af-98d8-c5d44ebd1119": {
+          "display_id": 3286,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L020 on fix/minimum-repair. Removed journal batch quotas and fixed state-history capacity at the storage owner. Schema 3 migrates existing rows without changing their digests; checkpoint body keys retain legacy identity and canonical order beyond 65,535.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T15:41:43.630704547Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAaDL712E7eLMD8IL64sZU0uauQliB+Kqf0E5eHFdHT9ers7XVSfCn2EXqw2RL7l5WjKaqePqk+qqJkmKuiqu7BQ=="
         },
         "e0f5ec55-785e-417b-9b9c-504c394455c7": {
           "display_id": 3037,
