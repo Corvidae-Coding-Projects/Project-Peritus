@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Stream checkpoint evidence independently of patch and tool byte limits while preserving exact restore receipts and recovery (#104).
+- Restore selected file ranges and empty directories without replacing unrelated current content (#105).
+- Remove synthetic patch byte and operation-count admission ceilings through streamed bodies and paged transaction manifests (#106).
+- Retain complete source scans and selected content through fixed-size pages and durable cursors (#107).
+- Preserve native paths and exact directory membership through retained, resumable inspection (#108).
+- Remove default logical codec byte, count, and depth quotas while preserving canonical bytes and incremental input ownership (#109).
+- Scope control ownership and durable publication so unrelated work does not block the active run (#122).
+- Store large journal bodies in digest-bound pages and retain exact accepted work during storage pressure (#123).
+- Retain complete activity history and text with negotiated retrieval across the CLI, terminal interface, and WebUI (#124).
+- Keep transient governing-state failures recoverable under the original run and control owner (#125).
+- Negotiate semantic compaction ownership and preserve complete tool exchanges when compaction is unavailable (#126).
+- Retain and retry exact pending goal-accounting updates without cancelling active work (#127).
+- Separate active protocol capacity from immutable receipt history and negotiate physical response capacities (#128).
+- Preserve typed provider failures and failed-attempt usage instead of blindly retrying every failure (#500).
+- Bind persisted retry timing to a clock epoch and reconcile it safely after restart (#501).
+- Keep model and report transport directives durable without a sixteen-delivery exhaustion limit (#502).
+- Resolve historical operation receipts after later progress while preserving current delivery ownership (#503).
+- Reconcile completed report publication and repair its artifact dependencies without publishing again (#504).
+- Preserve complete reports through lossless artifact partitions and paged indexes (#505).
+- Index evidence and stream analysis output while retaining progress, suspension, and cancellation (#506).
+- Replace English substring rejection with typed observation validation and retain complete diagnostic statements (#507).
+- Apply consistent byte admission before model-response allocation and preserve dimension-specific failure evidence (#508).
+- Separate campaign history from physical page capacity and support persistent logical retry policies (#509).
+- Allow evaluation execution without a wall-clock deadline while preserving explicitly selected deadlines (#510).
+- Retain macOS activation and process custody with cancellable reads and exact handoff evidence (#650).
+- Stream macOS preparation integrity work and preserve typed preparation and cleanup failures (#651).
+- Remove synthetic macOS support-probe deadlines and qualify native capabilities with cancellable evidence (#652).
+- Sample macOS resources incrementally without fixed traversal ceilings or fabricated measurements (#653).
+- Preserve effective native resource ceilings and durable protected-secret cleanup obligations (#654).
+- Use the selected native descriptor contract instead of independent helper descriptor-count ceilings (#655).
+- Recover the original macOS session owner and native resources instead of reconstructing classifications (#656).
+- Retain macOS proxy cleanup custody so failed cleanup can retry under the same owner (#657).
+- Retain exact lifecycle and manifest observations without silent truncation or mismatched collection capacities (#658).
+- Separate provider pipe receipt from durability progress to prevent Windows duplex transport stalls (#824).
+
 ## 0.0.5
 
 - Use one durable conversation and operation path across the terminal interface, CLI, WebUI,
