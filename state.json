@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4077,
-        "tip_oid": "9a47eedb424ee691a9fafd55f31bde08f50c7f1d",
-        "prefix_sha256": "783438e51f3be7133183f4f3b837f5c536ab7d337c66e39eb8db81e7eb3751d2"
+        "sequence": 4078,
+        "tip_oid": "61d4b6e0bd1e4ec3461f5f813e255c0c48ab339a",
+        "prefix_sha256": "56366139091d34a13a57060e4eaa70329c29481d46d2bd2c82a334a6ad7b8468"
       },
       "NWAR": {
         "sequence": 39,
@@ -13204,12 +13204,13 @@
       "display_id": 544,
       "title": "[L466] Provider-core metadata and credential bounds are compiled independently",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L466.\n\n- Evidence: `crates/model/peritus-provider-core/src/credential.rs:9-10,22-30,56-60,73-83`, `src/endpoint.rs:7,27-56,81-89`, `src/diagnostic.rs:8,37-48`, `src/redaction.rs:7,19-30` in the same crate.\n- Behavior: opaque credential references are capped at 512 bytes, credentials at 16 KiB, prefixed credential-header intermediates at 16 KiB plus 128, endpoint input at 4,096 bytes, diagnostic values at 512 bytes and redacted identifiers at 1,024 bytes. Downstream HTTP header constructors add separately audited ceilings. Endpoint canonical serialization occurs after the input-length check, so the checked bound is input bytes rather than a guaranteed bound on normalized URL bytes.\n- Consequence: larger embeddings cannot widen these capacities through an exposed configuration. These are transport/metadata admission checks, not elapsed timers or session TTLs. Control-character, secret-bearing URL and unsafe-header checks protect syntax/privacy and should remain distinct from size policy; no oversized live credential/endpoint failure was observed.\n- Repair direction: unify domain and transport size admission, bound the stored normalized representation consistently, and expose justified capacity policy independently of credential isolation. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.677058132Z",
-      "updated_at": "2026-10-08T05:14:59.208642188Z",
+      "updated_at": "2026-10-08T05:16:46.786322519Z",
+      "closed_at": "2026-10-08T05:16:46.783574579Z",
       "labels": [
         "daily-driving-limiter"
       ],
