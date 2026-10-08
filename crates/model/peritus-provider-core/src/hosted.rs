@@ -8,7 +8,7 @@ use crate::ProviderCoreError;
 
 mod catalog;
 
-pub use catalog::discover_hosted_models;
+pub use catalog::{discover_hosted_models, enrich_hosted_models};
 
 /// A named service with an explicitly reviewed HTTP contract.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

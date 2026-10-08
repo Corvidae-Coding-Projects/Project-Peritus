@@ -1,4 +1,4 @@
-//! Authenticated service inventory enriched by `OpenCode`'s live, credential-free metadata.
+//! Authenticated service inventory and separately owned `OpenCode` metadata enrichment.
 
 use serde_json::Value;
 
@@ -9,10 +9,7 @@ use crate::{
     catalog::{CatalogDialect, DiscoveredModel, discover_http_models, unavailable},
 };
 
-/// Discovers currently advertised IDs; metadata failure leaves protocol/capabilities unknown.
-///
-/// `OpenCode`'s SDK metadata enriches only IDs returned by the selected service. It cannot add a
-/// model, provide a credential header, redirect inference, or execute an SDK package.
+/// Discovers currently advertised IDs without waiting for optional metadata enrichment.
 ///
 /// # Errors
 /// Returns a bounded service catalog failure; no bundled catalog replaces a failed request.
@@ -37,11 +34,7 @@ pub async fn discover_hosted_models(
         cancellation,
     )
     .await?;
-    if service.mixed_protocols() {
-        if let Ok(metadata) = metadata(transport, limits, cancellation).await {
-            enrich(service, &mut models, &metadata)?;
-        }
-    } else {
+    if !service.mixed_protocols() {
         for model in &mut models {
             model.dialect = Some(peritus_model_protocol::WireDialect::CompatibleChatCompletions);
         }
@@ -50,6 +43,32 @@ pub async fn discover_hosted_models(
         return Err(ProviderCoreError::cancelled("hosted_model_discovery"));
     }
     Ok(models)
+}
+
+/// Enriches one exact authenticated inventory from credential-free reviewed metadata.
+///
+/// Only IDs already present in `models` can be changed. Metadata cannot add a model, provide a
+/// credential header, redirect inference, or execute an SDK package. Callers own this optional
+/// operation independently of inventory publication and may cancel or replace it by generation.
+///
+/// # Errors
+/// Returns cancellation, transport, malformed metadata, or unsupported reviewed-route failures.
+pub async fn enrich_hosted_models(
+    service: HostedService,
+    transport: &dyn HttpTransport,
+    limits: HttpLimits,
+    cancellation: &CancellationToken,
+    models: &mut [DiscoveredModel],
+) -> Result<(), ProviderCoreError> {
+    if !service.mixed_protocols() {
+        return Ok(());
+    }
+    let metadata = metadata(transport, limits, cancellation).await?;
+    enrich(service, models, &metadata)?;
+    if cancellation.is_cancelled() {
+        return Err(ProviderCoreError::cancelled("hosted_model_enrichment"));
+    }
+    Ok(())
 }
 
 async fn metadata(
@@ -71,9 +90,6 @@ async fn metadata(
     let (_, _, mut body) = response.into_parts();
     let mut bytes = Vec::new();
     while let Some(chunk) = body.next(cancellation).await? {
-        if bytes.len().saturating_add(chunk.len()) > 16 * 1024 * 1024 {
-            return Err(unavailable("OpenCode metadata exceeds its byte bound"));
-        }
         bytes.extend_from_slice(&chunk);
     }
     serde_json::from_slice(&bytes).map_err(|_| unavailable("OpenCode metadata is malformed"))

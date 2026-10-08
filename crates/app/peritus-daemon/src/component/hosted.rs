@@ -6,7 +6,7 @@ use peritus_provider_core::{
     HeaderName, HttpHeaders, HttpLimits, ModelProvider, OwnedModelStream, ProviderAvailability,
     ProviderCoreError, ReqwestTransport, RetryPolicy,
     catalog::{DiscoveredModel, selected_profile, unavailable},
-    hosted::{HostedService, discover_hosted_models},
+    hosted::{HostedService, discover_hosted_models, enrich_hosted_models},
 };
 use std::{
     collections::BTreeMap,
@@ -19,7 +19,183 @@ pub(super) struct HostedProvider {
     credential: CredentialReference,
     credentials: Arc<dyn CredentialSource>,
     adapter: Arc<dyn ModelProvider>,
-    catalog: Arc<Mutex<BTreeMap<String, DiscoveredModel>>>,
+    catalog: Arc<HostedCatalog>,
+}
+
+#[derive(Default)]
+struct HostedCatalog {
+    state: Mutex<HostedCatalogState>,
+    enrichment: Mutex<Option<HostedEnrichment>>,
+}
+
+#[derive(Default)]
+struct HostedCatalogState {
+    generation: u64,
+    models: BTreeMap<String, DiscoveredModel>,
+    progress: EnrichmentProgress,
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+enum EnrichmentProgress {
+    #[default]
+    NotRequired,
+    Pending,
+    Complete,
+    Unavailable,
+}
+
+struct HostedEnrichment {
+    generation: u64,
+    cancellation: CancellationToken,
+    _task: tokio::task::JoinHandle<()>,
+}
+
+impl HostedCatalog {
+    fn publish_inventory(
+        &self,
+        mixed_protocols: bool,
+        models: &[DiscoveredModel],
+    ) -> Result<u64, ProviderCoreError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| unavailable("hosted model catalog lock failed"))?;
+        let generation = state
+            .generation
+            .checked_add(1)
+            .ok_or_else(|| unavailable("hosted model catalog generation overflowed"))?;
+        let previous = core::mem::take(&mut state.models);
+        state.models = models
+            .iter()
+            .map(|model| {
+                let mut retained = model.clone();
+                if let Some(prior) = previous.get(model.id.as_str()) {
+                    retained.dialect = retained.dialect.or(prior.dialect);
+                    retained.tools = retained.tools.or(prior.tools);
+                    retained.input_tokens = retained.input_tokens.or(prior.input_tokens);
+                    retained.output_tokens = retained.output_tokens.or(prior.output_tokens);
+                }
+                (model.id.as_str().to_owned(), retained)
+            })
+            .collect();
+        state.generation = generation;
+        state.progress =
+            if mixed_protocols { EnrichmentProgress::Pending } else { EnrichmentProgress::NotRequired };
+        drop(state);
+
+        if let Some(previous) = self
+            .enrichment
+            .lock()
+            .map_err(|_| unavailable("hosted model enrichment lock failed"))?
+            .take()
+        {
+            let _ = previous.cancellation.cancel();
+        }
+        Ok(generation)
+    }
+
+    fn begin_enrichment(
+        self: &Arc<Self>,
+        service: HostedService,
+        generation: u64,
+        mut models: Vec<DiscoveredModel>,
+    ) -> Result<(), ProviderCoreError> {
+        let cancellation = CancellationToken::new();
+        let worker_cancellation = cancellation.clone();
+        let catalog = Arc::downgrade(self);
+        let task = tokio::spawn(async move {
+            let result = async {
+                let transport = ReqwestTransport::production()?;
+                enrich_hosted_models(
+                    service,
+                    &transport,
+                    HttpLimits::PRODUCTION,
+                    &worker_cancellation,
+                    &mut models,
+                )
+                .await?;
+                Ok::<_, ProviderCoreError>(models)
+            }
+            .await;
+            if let Some(catalog) = catalog.upgrade() {
+                let _ = catalog.finish_enrichment(generation, result.ok());
+            }
+        });
+
+        let pending = {
+            let state = self
+                .state
+                .lock()
+                .map_err(|_| unavailable("hosted model catalog lock failed"))?;
+            state.generation == generation && state.progress == EnrichmentProgress::Pending
+        };
+        if !pending {
+            let _ = cancellation.cancel();
+            return Ok(());
+        }
+        *self
+            .enrichment
+            .lock()
+            .map_err(|_| unavailable("hosted model enrichment lock failed"))? =
+            Some(HostedEnrichment { generation, cancellation, _task: task });
+        Ok(())
+    }
+
+    fn finish_enrichment(
+        &self,
+        generation: u64,
+        models: Option<Vec<DiscoveredModel>>,
+    ) -> Result<(), ProviderCoreError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| unavailable("hosted model catalog lock failed"))?;
+        if state.generation == generation {
+            if let Some(models) = models {
+                for model in models {
+                    if let Some(current) = state.models.get_mut(model.id.as_str()) {
+                        current.dialect = model.dialect;
+                        current.tools = model.tools;
+                        current.input_tokens = model.input_tokens;
+                        current.output_tokens = model.output_tokens;
+                    }
+                }
+                state.progress = EnrichmentProgress::Complete;
+            } else {
+                state.progress = EnrichmentProgress::Unavailable;
+            }
+        }
+        drop(state);
+
+        let mut active = self
+            .enrichment
+            .lock()
+            .map_err(|_| unavailable("hosted model enrichment lock failed"))?;
+        if active.as_ref().is_some_and(|task| task.generation == generation) {
+            *active = None;
+        }
+        Ok(())
+    }
+
+    fn model(&self, id: &str) -> Result<Option<DiscoveredModel>, ProviderCoreError> {
+        Ok(self
+            .state
+            .lock()
+            .map_err(|_| unavailable("hosted model catalog lock failed"))?
+            .models
+            .get(id)
+            .cloned())
+    }
+}
+
+impl Drop for HostedCatalog {
+    fn drop(&mut self) {
+        if let Ok(active) = self.enrichment.get_mut()
+            && let Some(active) = active.take()
+        {
+            let _ = active.cancellation.cancel();
+        }
+    }
 }
 
 impl HostedProvider {
@@ -78,20 +254,20 @@ impl ModelProvider for HostedProvider {
                 cancellation,
             )
             .await?;
-            *self.catalog.lock().map_err(|_| unavailable("hosted model catalog lock failed"))? =
-                models.iter().map(|model| (model.id.as_str().to_owned(), model.clone())).collect();
+            let generation = self
+                .catalog
+                .publish_inventory(self.service.mixed_protocols(), &models)?;
+            if self.service.mixed_protocols() {
+                self.catalog.begin_enrichment(self.service, generation, models.clone())?;
+            }
             Ok(models)
         })
     }
 
     fn select_model(&self, model: ModelName) -> Result<Arc<dyn ModelProvider>, ProviderCoreError> {
-        let metadata = self
-            .catalog
-            .lock()
-            .map_err(|_| unavailable("hosted model catalog lock failed"))?
-            .get(model.as_str())
-            .cloned();
-        let dialect = if model == *self.profile().model() {
+        let metadata = self.catalog.model(model.as_str())?;
+        let configured_model = model == *self.profile().model();
+        let dialect = if configured_model {
             self.profile().dialect()
         } else if self.service.mixed_protocols() {
             metadata.as_ref().and_then(|model| model.dialect).ok_or_else(|| unavailable("selected model has no protocol metadata; use provider setup to choose its documented API"))?
@@ -103,7 +279,41 @@ impl ModelProvider for HostedProvider {
                 "selected model advertises no tool-calling support; choose a tool-capable model",
             ));
         }
+        if !configured_model
+            && self.service.mixed_protocols()
+            && self
+                .profile()
+                .capabilities()
+                .supports(peritus_model_protocol::Capability::ToolCalls)
+            && metadata.as_ref().and_then(|model| model.tools) != Some(true)
+        {
+            return Err(ProviderCoreError::unsupported_capability(
+                "selected model has no reviewed tool-calling evidence; wait for metadata enrichment or choose its documented profile",
+            ));
+        }
         let selected = selected_profile(self.profile(), model)?;
+        let limits = if !configured_model && self.service.mixed_protocols() {
+            let evidence = metadata.as_ref().ok_or_else(|| {
+                unavailable("selected model is absent from the authenticated hosted inventory")
+            })?;
+            let input_tokens = evidence.input_tokens.ok_or_else(|| {
+                unavailable("selected model has no reviewed input-token limit")
+            })?;
+            let output_tokens = evidence.output_tokens.ok_or_else(|| {
+                unavailable("selected model has no reviewed output-token limit")
+            })?;
+            let configured = selected.limits();
+            peritus_model_protocol::ModelLimits::new(
+                configured.max_input_tokens().min(input_tokens),
+                configured.max_output_tokens().min(output_tokens),
+                configured.max_tools(),
+                configured.max_parallel_tool_calls(),
+                configured.max_inline_media_bytes(),
+            )
+            .map_err(|_| unavailable("selected model limits contradict the configured profile"))?
+        } else {
+            selected.limits()
+        };
         let name = match dialect {
             WireDialect::OpenAiResponses => "openai",
             WireDialect::AnthropicMessages => "anthropic",
@@ -133,7 +343,7 @@ impl ModelProvider for HostedProvider {
             dialect,
             capabilities,
             selected.provenance(),
-            selected.limits(),
+            limits,
             selected.output_limit_enforcement(),
             selected.state_mode(),
             selected.resume_kind(),
