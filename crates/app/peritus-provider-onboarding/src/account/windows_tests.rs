@@ -48,20 +48,32 @@ fn status_probes_preserve_host_console() {
     assert!(unisolated.status.success(), "{unisolated:?}");
     assert!(change_title("Peritus regression sentinel"));
     let original = current_title();
-    for kind in [ProviderKind::ClaudeAccount, ProviderKind::CodexAccount] {
-        let mut command = super::status_command(kind, &provider_exe).expect("status command");
-        let output = command.output().expect("provider status");
-        assert!(output.status.success(), "provider retained console access: {output:?}");
-        assert_eq!(super::parse_status(kind, true, &output.stdout), ProviderStatus::Ready);
-        assert_eq!(current_title(), original);
-    }
-    // Also exercise the public observation path, not just the command builder.
-    let provider =
-        AccountProvider { kind: ProviderKind::ClaudeAccount, executable: provider_exe.clone() };
-    assert_eq!(provider.status().status(), ProviderStatus::Ready);
     let runtime =
         tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
     runtime.block_on(async {
+        for kind in [ProviderKind::ClaudeAccount, ProviderKind::CodexAccount] {
+            let command = super::status_command(kind, &provider_exe).expect("status command");
+            let output = command.output().await.expect("provider status");
+            assert!(output.status.success(), "provider retained console access: {output:?}");
+            assert_eq!(
+                super::parse_status(kind, true, &output.stdout, &output.stderr),
+                ProviderStatus::Ready
+            );
+            assert_eq!(current_title(), original);
+        }
+        // Also exercise the public observation path, not just the command builder.
+        let provider = AccountProvider {
+            kind: ProviderKind::ClaudeAccount,
+            executable: provider_exe.clone(),
+        };
+        assert_eq!(
+            provider
+                .status(&CancellationToken::new())
+                .await
+                .expect("provider observation")
+                .status(),
+            ProviderStatus::Ready
+        );
         let models = discover_account_models(
             &provider_exe,
             AccountCatalog::Claude,

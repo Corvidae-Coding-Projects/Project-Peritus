@@ -119,7 +119,16 @@ fn run_provider_settings() -> ExitCode {
             false,
         );
     }
-    match peritus_launcher::configure_providers_interactive() {
+    let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(runtime) => runtime,
+        Err(error) => {
+            return report_error(
+                &CliError::runtime("construct provider runtime", error.to_string()),
+                false,
+            );
+        }
+    };
+    match runtime.block_on(peritus_launcher::configure_providers_interactive()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             report_error(&CliError::runtime("configure providers", error.to_string()), false)

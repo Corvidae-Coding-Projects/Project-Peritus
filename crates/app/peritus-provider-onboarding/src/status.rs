@@ -13,7 +13,11 @@ pub enum ProviderStatus {
     SignedOut,
     /// The official executable is not installed or cannot be pinned.
     Unavailable,
-    /// The status command failed or returned malformed output.
+    /// The installed executable returned a response whose login state is not understood.
+    Unknown,
+    /// Peritus could not obtain status because local process infrastructure failed.
+    Infrastructure,
+    /// A legacy uncertain state retained for source compatibility.
     NeedsAttention,
 }
 
@@ -25,6 +29,8 @@ impl ProviderStatus {
             Self::Ready => "Ready",
             Self::SignedOut => "Sign in",
             Self::Unavailable => "Not installed",
+            Self::Unknown => "Status unknown",
+            Self::Infrastructure => "Status unavailable",
             Self::NeedsAttention => "Needs attention",
         }
     }
@@ -36,6 +42,7 @@ pub struct ProviderObservation {
     kind: ProviderKind,
     status: ProviderStatus,
     executable: Option<PathBuf>,
+    diagnostic: Option<String>,
 }
 
 impl ProviderObservation {
@@ -44,7 +51,16 @@ impl ProviderObservation {
         status: ProviderStatus,
         executable: Option<PathBuf>,
     ) -> Self {
-        Self { kind, status, executable }
+        Self { kind, status, executable, diagnostic: None }
+    }
+
+    pub(crate) fn with_diagnostic(
+        kind: ProviderKind,
+        status: ProviderStatus,
+        executable: Option<PathBuf>,
+        diagnostic: String,
+    ) -> Self {
+        Self { kind, status, executable, diagnostic: Some(diagnostic) }
     }
 
     /// Returns the provider kind.
@@ -63,5 +79,11 @@ impl ProviderObservation {
     #[must_use]
     pub fn executable(&self) -> Option<&Path> {
         self.executable.as_deref()
+    }
+
+    /// Borrows a credential-safe causal diagnostic when status could not be established.
+    #[must_use]
+    pub fn diagnostic(&self) -> Option<&str> {
+        self.diagnostic.as_deref()
     }
 }

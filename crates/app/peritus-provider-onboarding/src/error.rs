@@ -3,6 +3,9 @@
 /// Provider discovery, status, or interactive-login failure.
 #[derive(Debug, thiserror::Error)]
 pub enum OnboardingError {
+    /// The caller cancelled provider discovery or login.
+    #[error("provider setup was cancelled")]
+    Cancelled,
     /// Model metadata discovery failed without substituting a bundled catalog.
     #[error(
         "model discovery unavailable; check authentication or explicitly enter a manual model ID"

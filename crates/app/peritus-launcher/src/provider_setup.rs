@@ -1,6 +1,7 @@
 //! First-run provider selection and focused repeat-launch repair.
 
 use peritus_product_state::{ProviderKind, ProviderRouteIdentity, ProviderSelection};
+use peritus_provider_core::CancellationToken;
 use peritus_provider_onboarding::{
     AccountLogin, AccountProvider, ProviderCatalog, ProviderObservation, ProviderStatus,
     remove_direct_credential,
@@ -22,17 +23,21 @@ const CODEX: ProviderKind = ProviderKind::CodexAccount;
 const CLAUDE: ProviderKind = ProviderKind::ClaudeAccount;
 
 /// Completes first-run provider setup or repairs only unhealthy retained providers.
-pub fn ensure_configured(prepared: PreparedProduct) -> Result<PreparedProduct, LauncherError> {
-    let observations = ProviderCatalog::observe();
+pub async fn ensure_configured(
+    prepared: PreparedProduct,
+) -> Result<PreparedProduct, LauncherError> {
+    let cancellation = CancellationToken::new();
+    let observations = ProviderCatalog::observe(&cancellation).await?;
     if !prepared.state().provider_setup_complete() {
-        return first_run(&prepared, &observations);
+        return first_run(&prepared, &observations, &cancellation).await;
     }
-    repair_if_needed(prepared, &observations)
+    repair_if_needed(prepared, &observations, &cancellation).await
 }
 
-fn first_run(
+async fn first_run(
     prepared: &PreparedProduct,
     observations: &[ProviderObservation],
+    cancellation: &CancellationToken,
 ) -> Result<PreparedProduct, LauncherError> {
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
@@ -48,7 +53,8 @@ fn first_run(
         terminal.line(&format!("Using {default_text}."))?;
     }
 
-    let activated = activate_requested(&mut terminal, observations, requested, None)?;
+    let activated =
+        activate_requested(&mut terminal, observations, requested, None, cancellation).await?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let default_route = choose_default_route(
         &mut terminal,
@@ -67,8 +73,11 @@ fn first_run(
 }
 
 /// Opens provider settings without replaying unrelated first-run setup.
-pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, LauncherError> {
-    let observations = ProviderCatalog::observe();
+pub async fn configure(
+    prepared: &PreparedProduct,
+) -> Result<PreparedProduct, LauncherError> {
+    let cancellation = CancellationToken::new();
+    let observations = ProviderCatalog::observe(&cancellation).await?;
     let current = prepared.state().providers().clone();
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
@@ -78,7 +87,14 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
     show_catalog(&mut terminal, &observations, Some(&current))?;
     let (requested, _) =
         choose_provider_set(&mut terminal, current.enabled().to_vec(), "current selection")?;
-    let activated = activate_requested(&mut terminal, &observations, requested, Some(&current))?;
+    let activated = activate_requested(
+        &mut terminal,
+        &observations,
+        requested,
+        Some(&current),
+        &cancellation,
+    )
+    .await?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let default_route = choose_default_route(
         &mut terminal,
@@ -103,9 +119,10 @@ pub fn configure(prepared: &PreparedProduct) -> Result<PreparedProduct, Launcher
     Ok(configured)
 }
 
-fn repair_if_needed(
+async fn repair_if_needed(
     prepared: PreparedProduct,
     observations: &[ProviderObservation],
+    cancellation: &CancellationToken,
 ) -> Result<PreparedProduct, LauncherError> {
     let selected = prepared.state().providers().enabled();
     let unhealthy = selected
@@ -125,8 +142,17 @@ fn repair_if_needed(
     let mut retained = selected.to_vec();
     for item in unhealthy {
         terminal.line(&format!("  {} — {}", item.kind().label(), item.status().label()))?;
+        show_diagnostic(&mut terminal, item)?;
+        if matches!(
+            item.status(),
+            ProviderStatus::Unknown
+                | ProviderStatus::Infrastructure
+                | ProviderStatus::NeedsAttention
+        ) {
+            continue;
+        }
         let sign_in = match item.status() {
-            ProviderStatus::SignedOut | ProviderStatus::NeedsAttention => terminal.confirm(
+            ProviderStatus::SignedOut => terminal.confirm(
                 "Sign in now? Press Enter for yes, or type n to continue without it: ",
                 true,
             )?,
@@ -139,9 +165,16 @@ fn repair_if_needed(
                 }
             }
             ProviderStatus::Ready => true,
+            ProviderStatus::Unknown
+            | ProviderStatus::Infrastructure
+            | ProviderStatus::NeedsAttention => false,
         };
-        let ready = sign_in && login(&mut terminal, item.kind())?;
-        if !ready {
+        let outcome = if sign_in {
+            login(&mut terminal, item.kind(), cancellation).await?
+        } else {
+            LoginOutcome::Unavailable
+        };
+        if outcome == LoginOutcome::Unavailable {
             retained.retain(|kind| kind != &item.kind());
         }
     }
@@ -190,6 +223,7 @@ fn show_catalog(
             item.kind().label(),
             item.status().label()
         ))?;
+        show_diagnostic(terminal, item)?;
     }
     for (index, kind) in ProviderKind::ALL.into_iter().enumerate().skip(2) {
         let configured = current.and_then(|selection| selection.direct_profile(kind)).is_some();
@@ -204,11 +238,12 @@ fn show_catalog(
     terminal.line("")
 }
 
-fn activate_requested(
+async fn activate_requested(
     terminal: &mut Terminal<'_>,
     observations: &[ProviderObservation],
     requested: Vec<ProviderKind>,
     existing: Option<&ProviderSelection>,
+    cancellation: &CancellationToken,
 ) -> Result<ActivatedProviders, LauncherError> {
     let mut enabled = Vec::new();
     let mut direct_profiles = Vec::new();
@@ -232,26 +267,35 @@ fn activate_requested(
         let Some(item) = observation(observations, kind) else {
             continue;
         };
+        let retained = existing.is_some_and(|selection| selection.enabled().contains(&kind));
         let is_ready = match item.status() {
             ProviderStatus::Ready => true,
             ProviderStatus::SignedOut => {
                 terminal.line(&format!("\n{} requires sign-in.", kind.label()))?;
-                login(terminal, kind)?
+                match login(terminal, kind, cancellation).await? {
+                    LoginOutcome::Ready => true,
+                    LoginOutcome::Unverified => retained,
+                    LoginOutcome::Unavailable => false,
+                }
             }
             ProviderStatus::Unavailable => {
                 if install::offer(terminal, kind)? {
-                    login(terminal, kind)?
+                    match login(terminal, kind, cancellation).await? {
+                        LoginOutcome::Ready => true,
+                        LoginOutcome::Unverified => retained,
+                        LoginOutcome::Unavailable => false,
+                    }
                 } else {
                     installation_guidance(terminal, kind)?;
                     false
                 }
             }
-            ProviderStatus::NeedsAttention => {
-                terminal.line(&format!(
-                    "{} could not report a supported login status. Update its CLI and retry later.",
-                    kind.label()
-                ))?;
-                false
+            ProviderStatus::Unknown
+            | ProviderStatus::Infrastructure
+            | ProviderStatus::NeedsAttention => {
+                terminal.line(&format!("{} could not report a usable login status.", kind.label()))?;
+                show_diagnostic(terminal, item)?;
+                retained
             }
         };
         if is_ready {
@@ -283,10 +327,21 @@ fn remove_replaced_credentials(
     Ok(())
 }
 
-fn login(terminal: &mut Terminal<'_>, kind: ProviderKind) -> Result<bool, LauncherError> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum LoginOutcome {
+    Ready,
+    Unverified,
+    Unavailable,
+}
+
+async fn login(
+    terminal: &mut Terminal<'_>,
+    kind: ProviderKind,
+    cancellation: &CancellationToken,
+) -> Result<LoginOutcome, LauncherError> {
     let Ok(provider) = AccountProvider::discover(kind) else {
         installation_guidance(terminal, kind)?;
-        return Ok(false);
+        return Ok(LoginOutcome::Unavailable);
     };
     let mode = if kind == CODEX {
         let answer =
@@ -298,10 +353,29 @@ fn login(terminal: &mut Terminal<'_>, kind: ProviderKind) -> Result<bool, Launch
     terminal.line("Handing the terminal to the official provider login…")?;
     let observation = {
         let _title = crate::terminal::product_title()?;
-        provider.login(mode)?
+        provider.login(mode, cancellation).await?
     };
-    terminal.line(&format!("{} is ready.", observation.kind().label()))?;
-    Ok(true)
+    if observation.status() == ProviderStatus::Ready {
+        terminal.line(&format!("{} is ready.", observation.kind().label()))?;
+        return Ok(LoginOutcome::Ready);
+    }
+    terminal.line(&format!(
+        "{} login finished, but its status is {}.",
+        observation.kind().label(),
+        observation.status().label()
+    ))?;
+    show_diagnostic(terminal, &observation)?;
+    Ok(LoginOutcome::Unverified)
+}
+
+fn show_diagnostic(
+    terminal: &mut Terminal<'_>,
+    observation: &ProviderObservation,
+) -> Result<(), LauncherError> {
+    if let Some(diagnostic) = observation.diagnostic() {
+        terminal.line(&format!("     {diagnostic}"))?;
+    }
+    Ok(())
 }
 
 fn persist(

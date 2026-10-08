@@ -76,7 +76,7 @@ async fn launch_interactive_target(
     }
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
-    let prepared = provider_setup::ensure_configured(prepared)?;
+    let prepared = provider_setup::ensure_configured(prepared).await?;
     let binaries = SiblingBinaries::discover()?;
     let supervisor = DaemonSupervisor::without_deadline();
     if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
@@ -223,11 +223,11 @@ fn decode_id(value: &str) -> Result<[u8; 16], LauncherError> {
 /// # Errors
 ///
 /// Returns an actionable bootstrap, interaction, provider, or configuration failure.
-pub fn configure_providers_interactive() -> Result<(), LauncherError> {
+pub async fn configure_providers_interactive() -> Result<(), LauncherError> {
     let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
     let prepared = ProductBootstrap::new(layout).prepare()?;
-    let _configured = provider_setup::configure(&prepared)?;
+    let _configured = provider_setup::configure(&prepared).await?;
     Ok(())
 }
 
