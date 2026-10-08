@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3993,
-        "tip_oid": "260a9d4bcd643f877bed09d1c678cdbcd4c5d575",
-        "prefix_sha256": "1697b0e4f2e75d6cf4156741a8dfb352dad2416ad042c86f4aecb8ce65c20f94"
+        "sequence": 3994,
+        "tip_oid": "8bf194cdb34bd50981addcfc1b2098ef99d33653",
+        "prefix_sha256": "979c23519224c6f5ab40bfa5fa6f3f2cdabf27835161610c816fccc62071e2b8"
       },
       "NWAR": {
         "sequence": 39,
@@ -7204,12 +7204,13 @@
       "display_id": 525,
       "title": "[L446] F0 rejects multiline human-authored explanation text",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L446.\n\n- Evidence: `crates/analysis/peritus-evolution/src/change/text.rs:16-27`, `src/change/manifest.rs`, `src/change/prediction.rs`, `src/selection/assessment.rs` in the same crate; text ceiling also recorded in L442.\n- Behavior: BoundedText requires nonempty text, exact trimmed form, the configured byte bound and no character for which is_control is true. Newlines, carriage returns and tabs are therefore rejected alongside unsafe control characters. The same wrapper is used for hypotheses, alternatives, prediction falsification and selection explanations.\n- Consequence: Ordinary multiline rationale cannot be represented even when it is well within the byte limit. This is an input-format blocker for evolution evidence, not a model execution deadline or demonstrated installed-session failure.\n- Repair direction: Define allowed whitespace explicitly and preserve ordinary structured prose. Restrict unsafe control sequences without making every explanation a single line. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.588494534Z",
-      "updated_at": "2026-10-08T02:47:35.338319452Z",
+      "updated_at": "2026-10-08T02:49:14.060175954Z",
+      "closed_at": "2026-10-08T02:49:14.057191767Z",
       "labels": [
         "daily-driving-limiter"
       ],
