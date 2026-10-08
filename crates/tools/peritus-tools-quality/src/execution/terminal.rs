@@ -2,6 +2,7 @@
 
 use core::fmt::Write;
 
+use peritus_artifact_store::ArtifactStore;
 use peritus_policy::AuthorityInstant;
 use peritus_process::{OutputCompleteness, OutputStream, TerminalDisposition, TerminalResult};
 use peritus_quality_policy::{GateFailure, GateOutcome};
@@ -27,10 +28,10 @@ pub(super) fn build(
     terminal: &TerminalResult,
     parser_complete: bool,
     predicate_satisfied: bool,
-    retained: &[u8],
+    store: &ArtifactStore,
     started_at: AuthorityInstant,
     finished_at: AuthorityInstant,
-    progress_count: u32,
+    progress_count: u64,
     progress_truncated: bool,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
     let (observation, candidate) =
@@ -40,21 +41,25 @@ pub(super) fn build(
     let artifacts = artifacts(prepared, terminal)
         .map_err(|error| adapter_failure("quality-result-artifacts", &error.to_string()))?;
     let limits = prepared.call().limits();
-    let (model, model_truncation) = render::output(retained, limits.model_bytes());
-    let (human, human_truncation) = render::output(retained, limits.human_bytes());
+    let rendering = render::output(
+        store,
+        terminal,
+        limits.model_bytes(),
+        limits.human_bytes(),
+    )?;
     let timing = ToolTiming::new(started_at, finished_at)
         .map_err(|error| adapter_failure("quality-result-timing", &error.to_string()))?;
     let truncation = TruncationMetadata {
         output: output_truncation(terminal),
-        model: model_truncation,
-        human: human_truncation,
+        model: rendering.model_truncation,
+        human: rendering.human_truncation,
     };
     if candidate.outcome() == GateOutcome::Passed {
         ToolResult::success(
             prepared,
             structured,
-            human,
-            model,
+            rendering.human,
+            rendering.model,
             artifacts,
             timing,
             truncation,
@@ -68,8 +73,8 @@ pub(super) fn build(
             status,
             failure,
             Some(structured),
-            human,
-            model,
+            rendering.human,
+            rendering.model,
             artifacts,
             timing,
             truncation,

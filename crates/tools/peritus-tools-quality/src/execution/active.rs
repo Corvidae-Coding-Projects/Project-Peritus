@@ -47,7 +47,6 @@ struct PendingProgress {
 
 struct CompletedProcessEvidence {
     terminal: TerminalResult,
-    retained_output: Vec<u8>,
 }
 
 struct ParserInput {
@@ -202,6 +201,8 @@ impl QualityExecution {
         let completed = self.completed.as_ref().ok_or_else(|| {
             adapter_failure("quality-settlement-missing", "completed process evidence disappeared")
         })?;
+        let progress_truncated = progress_truncated
+            || completed.terminal.output().event_records_dropped() > 0;
         let parsed = parser::parse(
             self.definition.parser(),
             &parser_input.bytes,
@@ -216,7 +217,7 @@ impl QualityExecution {
             &completed.terminal,
             parsed.is_ok(),
             predicate_satisfied,
-            &completed.retained_output,
+            &self.artifacts,
             self.started_at,
             observed_at,
             progress_frontier,
@@ -404,10 +405,7 @@ impl QualityExecution {
                 "terminal evidence belongs to another process",
             ));
         }
-        self.completed = Some(CompletedProcessEvidence {
-            terminal,
-            retained_output: self.control.retained_output(),
-        });
+        self.completed = Some(CompletedProcessEvidence { terminal });
         Ok(())
     }
 
