@@ -15,25 +15,67 @@ pub enum CleanupState {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ReleaseProgress {
     acl: CleanupState,
+    job: CleanupState,
+    helper: CleanupState,
+    secret_files: CleanupState,
+    secret_delivery: CleanupState,
+    handles: CleanupState,
     proxy: CleanupState,
     filter: CleanupState,
-    secrets: CleanupState,
 }
 
 impl ReleaseProgress {
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "each independently progressing cleanup dimension remains explicit"
+    )]
     pub(crate) const fn new(
         acl: CleanupState,
+        job: CleanupState,
+        helper: CleanupState,
+        secret_files: CleanupState,
+        secret_delivery: CleanupState,
+        handles: CleanupState,
         proxy: CleanupState,
         filter: CleanupState,
-        secrets: CleanupState,
     ) -> Self {
-        Self { acl, proxy, filter, secrets }
+        Self { acl, job, helper, secret_files, secret_delivery, handles, proxy, filter }
     }
 
     /// Returns exact ACL reversal progress.
     #[must_use]
     pub const fn acl(self) -> CleanupState {
         self.acl
+    }
+
+    /// Returns exact Job Object handle cleanup progress.
+    #[must_use]
+    pub const fn job(self) -> CleanupState {
+        self.job
+    }
+
+    /// Returns helper reap progress.
+    #[must_use]
+    pub const fn helper(self) -> CleanupState {
+        self.helper
+    }
+
+    /// Returns exact private secret-file cleanup progress.
+    #[must_use]
+    pub const fn secret_files(self) -> CleanupState {
+        self.secret_files
+    }
+
+    /// Returns exact secret-delivery cleanup progress.
+    #[must_use]
+    pub const fn secret_delivery(self) -> CleanupState {
+        self.secret_delivery
+    }
+
+    /// Returns protected inherited-handle cleanup progress.
+    #[must_use]
+    pub const fn handles(self) -> CleanupState {
+        self.handles
     }
 
     /// Returns managed-proxy teardown progress.
@@ -51,7 +93,7 @@ impl ReleaseProgress {
     /// Returns exact secret-delivery teardown progress.
     #[must_use]
     pub const fn secrets(self) -> CleanupState {
-        self.secrets
+        self.secret_delivery
     }
 }
 
@@ -62,9 +104,11 @@ impl ReleaseProgress {
     reason = "independent teardown evidence remains explicit and inspectable"
 )]
 pub struct ReleaseReport {
+    pub(crate) job_closed: bool,
+    pub(crate) helper_reaped: bool,
     pub(crate) acl_restored: bool,
     pub(crate) secret_files_removed: bool,
-    pub(crate) helper_reaped: bool,
+    pub(crate) secret_delivery_released: bool,
     pub(crate) handles_closed: bool,
     pub(crate) proxy_joined: bool,
     pub(crate) network_filter_removed: bool,
@@ -75,13 +119,21 @@ impl ReleaseReport {
     #[must_use]
     pub const fn complete(self) -> bool {
         crate::verified::teardown_complete(
-            true,
+            self.job_closed,
             self.helper_reaped,
             self.acl_restored,
             self.secret_files_removed,
+            self.secret_delivery_released,
             self.handles_closed,
-            self.proxy_joined && self.network_filter_removed,
+            self.proxy_joined,
+            self.network_filter_removed,
         )
+    }
+
+    /// Reports exact Job Object handle closure.
+    #[must_use]
+    pub const fn job_closed(self) -> bool {
+        self.job_closed
     }
 
     /// Reports exact ACL reversal completion.
@@ -93,6 +145,11 @@ impl ReleaseReport {
     #[must_use]
     pub const fn secret_files_removed(self) -> bool {
         self.secret_files_removed
+    }
+    /// Reports secret lease, material, and staging release.
+    #[must_use]
+    pub const fn secret_delivery_released(self) -> bool {
+        self.secret_delivery_released
     }
     /// Reports helper reap completion.
     #[must_use]

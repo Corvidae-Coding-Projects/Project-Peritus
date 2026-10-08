@@ -101,15 +101,19 @@ pub open spec fn teardown_complete_spec(
     helper_reaped: bool,
     acl_restored: bool,
     secret_files_removed: bool,
+    secret_delivery_released: bool,
     handles_closed: bool,
-    support_joined: bool,
+    proxy_joined: bool,
+    network_filter_removed: bool,
 ) -> bool {
     job_closed
         && helper_reaped
         && acl_restored
         && secret_files_removed
+        && secret_delivery_released
         && handles_closed
-        && support_joined
+        && proxy_joined
+        && network_filter_removed
 }
 
 /// Checks that no backend-owned Windows resource remains.
@@ -123,24 +127,30 @@ pub const fn teardown_complete(
     helper_reaped: bool,
     acl_restored: bool,
     secret_files_removed: bool,
+    secret_delivery_released: bool,
     handles_closed: bool,
-    support_joined: bool,
+    proxy_joined: bool,
+    network_filter_removed: bool,
 ) -> (result: bool)
     ensures result == teardown_complete_spec(
         job_closed,
         helper_reaped,
         acl_restored,
         secret_files_removed,
+        secret_delivery_released,
         handles_closed,
-        support_joined,
+        proxy_joined,
+        network_filter_removed,
     ),
 {
     job_closed
         && helper_reaped
         && acl_restored
         && secret_files_removed
+        && secret_delivery_released
         && handles_closed
-        && support_joined
+        && proxy_joined
+        && network_filter_removed
 }
 
 /// Mathematical fail-closed no-effect rule.

@@ -15,11 +15,12 @@ use peritus_secrets::SecretDeliverySession;
 
 use crate::{
     AclTransaction, CleanupState, ObservationBinding, ObservationStatus, ReleaseProgress,
-    ReleaseReport, ResourceControlPlan, RuntimeIdentity, WindowsError, WindowsErrorKind,
+    RecoveryCleanup, ReleaseReport, ResourceControlPlan, RuntimeIdentity, WindowsError, WindowsErrorKind,
     WindowsLaunchDescription, WindowsObservation, WindowsOperation, WindowsPhase, WindowsRecovery,
     WindowsRecoveryRecord,
     network_filter::NetworkFilterOwner,
     observation::{WindowsCapability, observation_error, transition_allowed},
+    recovery::RecoveryCleanupDimension,
 };
 
 mod teardown;
@@ -49,6 +50,10 @@ pub struct WindowsSession {
     filter_cleanup: CleanupState,
     secrets: Option<SecretDeliverySession>,
     secret_cleanup: CleanupState,
+    job_cleanup: CleanupState,
+    helper_cleanup: CleanupState,
+    secret_file_cleanup: CleanupState,
+    handle_cleanup: CleanupState,
     release: Option<ReleaseReport>,
 }
 
@@ -122,9 +127,28 @@ impl WindowsSession {
             native_launch.retains_windows_job(runtime_identity.job_identity());
         #[cfg(not(target_os = "windows"))]
         let containment_required = false;
+        let secret_files_required = windows_launch
+            .manifest()
+            .secret_handles()
+            .iter()
+            .any(|secret| matches!(secret.destination(), crate::SecretHandleDestination::File(_)));
+        let cleanup = RecoveryCleanup::prepared(
+            containment_required,
+            !acl.restored(),
+            secret_files_required,
+            secrets.is_some(),
+            !native_launch.protected_handles().is_empty(),
+            proxy.is_some(),
+            filter.is_managed(),
+        );
+        let job_cleanup = cleanup_state(cleanup.job_closed());
+        let helper_cleanup = cleanup_state(cleanup.helper_reaped());
+        let secret_file_cleanup = cleanup_state(cleanup.secret_files_removed());
+        let handle_cleanup = cleanup_state(cleanup.handles_closed());
         let recovery = WindowsRecoveryRecord::prepared_owned(
             runtime_identity,
             containment_required,
+            cleanup,
             acl.transaction_digest(),
             acl.receipt(),
             acl.owner_operation_digest(),
@@ -150,6 +174,10 @@ impl WindowsSession {
             filter_cleanup,
             secrets,
             secret_cleanup,
+            job_cleanup,
+            helper_cleanup,
+            secret_file_cleanup,
+            handle_cleanup,
             release: None,
         }
     }
@@ -194,9 +222,13 @@ impl WindowsSession {
     pub const fn release_progress(&self) -> ReleaseProgress {
         ReleaseProgress::new(
             self.acl.cleanup_state(),
+            self.job_cleanup,
+            self.helper_cleanup,
+            self.secret_file_cleanup,
+            self.secret_cleanup,
+            self.handle_cleanup,
             self.proxy_cleanup,
             self.filter_cleanup,
-            self.secret_cleanup,
         )
     }
 
@@ -433,7 +465,7 @@ impl NativeSandboxSession for WindowsSession {
         self.transition(WindowsPhase::Activated, ObservationDisposition::Completed)
             .map_err(|error| process_error(&error))?;
         self.recovery
-            .advance(WindowsPhase::Activated, false, false, false)
+            .advance_phase(WindowsPhase::Activated)
             .map_err(|error| process_error(&error))
     }
 
@@ -444,16 +476,23 @@ impl NativeSandboxSession for WindowsSession {
         self.transition(WindowsPhase::CancelRequested, ObservationDisposition::Accepted)
             .map_err(|error| process_error(&error))?;
         self.recovery
-            .advance(WindowsPhase::CancelRequested, false, false, false)
+            .advance_phase(WindowsPhase::CancelRequested)
             .map_err(|error| process_error(&error))
     }
 
     fn terminated(&mut self, _exit: &OsExitObservation) -> Result<(), ProcessError> {
         self.transition(WindowsPhase::Terminated, ObservationDisposition::Completed)
             .map_err(|error| process_error(&error))?;
-        self.recovery
-            .advance(WindowsPhase::Terminated, false, false, true)
-            .map_err(|error| process_error(&error))
+        let result = self
+            .recovery
+            .advance_phase_with_cleanup(WindowsPhase::Terminated, RecoveryCleanupDimension::Helper)
+            .map_err(|error| process_error(&error));
+        self.helper_cleanup = if result.is_ok() {
+            CleanupState::Complete
+        } else {
+            CleanupState::RetryRequired
+        };
+        result
     }
 
     fn release(&mut self) -> Result<(), ProcessError> {
@@ -466,7 +505,7 @@ impl NativeSandboxSession for WindowsSession {
             self.transition(WindowsPhase::Released, ObservationDisposition::Completed)
                 .map_err(|error| process_error(&error))?;
             self.recovery
-                .advance(WindowsPhase::Released, true, true, true)
+                .advance_phase(WindowsPhase::Released)
                 .map_err(|error| process_error(&error))?;
         } else {
             if self.phase == WindowsPhase::Prepared {
@@ -488,6 +527,10 @@ impl WindowsSession {
     fn record_abort_cleanup(&mut self) {
         self.push_rich(self.phase, ObservationStatus::Verified);
     }
+}
+
+const fn cleanup_state(complete: bool) -> CleanupState {
+    if complete { CleanupState::Complete } else { CleanupState::Pending }
 }
 
 #[cfg(target_os = "windows")]

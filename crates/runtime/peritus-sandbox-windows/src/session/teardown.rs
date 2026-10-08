@@ -6,30 +6,50 @@ use super::{WindowsSession, process_error};
 use crate::{
     CleanupState, ReleaseReport, WindowsError, WindowsErrorKind, WindowsOperation, WindowsRecovery,
     WindowsRecoveryRecord,
+    recovery::RecoveryCleanupDimension,
 };
 
 impl WindowsSession {
     pub(super) fn release_owned_resources(&mut self) -> Result<ReleaseReport, ProcessError> {
+        let helper_failure = self
+            .record_cleanup(RecoveryCleanupDimension::Helper)
+            .err();
+        self.helper_cleanup = cleanup_attempt_state(helper_failure.is_none());
+        let job_failure = self
+            .release_containment_job()
+            .and_then(|()| self.record_cleanup(RecoveryCleanupDimension::Job))
+            .err();
+        self.job_cleanup = cleanup_attempt_state(job_failure.is_none());
         #[cfg(target_os = "windows")]
-        let secret_file_failure = self
+        let mut secret_file_failure = self
             .retain_secret_file_custody()
             .err()
             .or_else(|| remove_secret_files(&self.recovery).err());
         #[cfg(not(target_os = "windows"))]
-        let secret_file_failure = remove_secret_files(&self.recovery).err();
-        let secret_files_removed = secret_file_failure.is_none();
-        let acl_failure = self.acl.restore().err().map(|error| process_error(&error));
-        let acl_restored = acl_failure.is_none() && self.acl.restored();
-        let filter_failure = self.filter.release().err().map(|error| process_error(&error));
-        let network_filter_removed = filter_failure.is_none();
-        self.filter_cleanup = if network_filter_removed {
-            CleanupState::Complete
-        } else {
-            CleanupState::RetryRequired
-        };
-        let proxy_failure = self.release_proxy().err();
-        let proxy_joined = proxy_failure.is_none();
-        let secret_failure = self.secrets.as_mut().and_then(|secrets| {
+        let mut secret_file_failure = remove_secret_files(&self.recovery).err();
+        if secret_file_failure.is_none() {
+            secret_file_failure = self
+                .record_cleanup(RecoveryCleanupDimension::SecretFiles)
+                .err();
+        }
+        self.secret_file_cleanup = cleanup_attempt_state(secret_file_failure.is_none());
+        let mut acl_failure = self.acl.restore().err().map(|error| process_error(&error));
+        if acl_failure.is_none() && self.acl.restored() {
+            acl_failure = self.record_cleanup(RecoveryCleanupDimension::Acl).err();
+        }
+        let mut filter_failure = self.filter.release().err().map(|error| process_error(&error));
+        if filter_failure.is_none() {
+            filter_failure = self
+                .record_cleanup(RecoveryCleanupDimension::NetworkFilter)
+                .err();
+        }
+        self.filter_cleanup = cleanup_attempt_state(filter_failure.is_none());
+        let mut proxy_failure = self.release_proxy().err();
+        if proxy_failure.is_none() {
+            proxy_failure = self.record_cleanup(RecoveryCleanupDimension::Proxy).err();
+        }
+        self.proxy_cleanup = cleanup_attempt_state(proxy_failure.is_none());
+        let mut secret_failure = self.secrets.as_mut().and_then(|secrets| {
             secrets.release().err().map(|source| {
                 process_error(
                     &WindowsError::new(
@@ -42,23 +62,31 @@ impl WindowsSession {
                 )
             })
         });
-        let secret_delivery_released = secret_failure.is_none();
-        self.secret_cleanup = if secret_delivery_released {
-            CleanupState::Complete
-        } else {
-            CleanupState::RetryRequired
-        };
-        let handle_failure = self.release_protected_handles().err();
-        let handles_closed = handle_failure.is_none();
+        if secret_failure.is_none() {
+            secret_failure = self
+                .record_cleanup(RecoveryCleanupDimension::SecretDelivery)
+                .err();
+        }
+        self.secret_cleanup = cleanup_attempt_state(secret_failure.is_none());
+        let mut handle_failure = self.release_protected_handles().err();
+        if handle_failure.is_none() {
+            handle_failure = self.record_cleanup(RecoveryCleanupDimension::Handles).err();
+        }
+        self.handle_cleanup = cleanup_attempt_state(handle_failure.is_none());
+        let cleanup = self.recovery.cleanup();
         let report = ReleaseReport {
-            acl_restored,
-            secret_files_removed,
-            helper_reaped: true,
-            handles_closed,
-            proxy_joined,
-            network_filter_removed,
+            job_closed: cleanup.job_closed(),
+            helper_reaped: cleanup.helper_reaped(),
+            acl_restored: cleanup.acl_restored(),
+            secret_files_removed: cleanup.secret_files_removed(),
+            secret_delivery_released: cleanup.secret_delivery_released(),
+            handles_closed: cleanup.handles_closed(),
+            proxy_joined: cleanup.proxy_joined(),
+            network_filter_removed: cleanup.network_filter_removed(),
         };
         if let Some(error) = [
+            helper_failure,
+            job_failure,
             acl_failure,
             filter_failure,
             proxy_failure,
@@ -72,7 +100,7 @@ impl WindowsSession {
         {
             return Err(error);
         }
-        if !secret_delivery_released || !report.complete() {
+        if !report.complete() {
             return Err(process_error(&WindowsError::new(
                 WindowsErrorKind::RecoveryIndeterminate,
                 WindowsOperation::Release,
@@ -81,6 +109,45 @@ impl WindowsSession {
             )));
         }
         Ok(report)
+    }
+
+    fn record_cleanup(
+        &mut self,
+        dimension: RecoveryCleanupDimension,
+    ) -> Result<(), ProcessError> {
+        self.recovery
+            .mark_cleanup(dimension)
+            .map_err(|error| process_error(&error))
+    }
+
+    fn release_containment_job(&mut self) -> Result<(), ProcessError> {
+        if self.recovery.cleanup().job_closed() {
+            return Ok(());
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let expected = self.recovery.identity().job_identity();
+            if !self.native_launch.retains_windows_job(expected) {
+                return Err(process_error(&cleanup_error(
+                    "retained Job Object custody disappeared before teardown",
+                )));
+            }
+            if !self
+                .native_launch
+                .release_protected_handle(peritus_process::NATIVE_WINDOWS_JOB_HANDLE_LABEL)
+            {
+                return Err(process_error(&cleanup_error(
+                    "retained Job Object handle cannot be closed exactly",
+                )));
+            }
+            Ok(())
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            Err(process_error(&cleanup_error(
+                "retained Job Object cannot be reconciled on this host",
+            )))
+        }
     }
 
     fn release_proxy(&mut self) -> Result<bool, ProcessError> {
@@ -112,9 +179,6 @@ impl WindowsSession {
     }
 
     fn release_protected_handles(&mut self) -> Result<(), ProcessError> {
-        if self.native_launch.protected_handles().is_empty() {
-            return Ok(());
-        }
         let replacement = NativeLaunchDescription::new_paged(
             self.native_launch.command().clone(),
             self.native_launch.helper_identity().to_owned(),
@@ -140,6 +204,10 @@ impl WindowsSession {
             .retain_secret_files(files)
             .map_err(|error| process_error(&error))
     }
+}
+
+const fn cleanup_attempt_state(complete: bool) -> CleanupState {
+    if complete { CleanupState::Complete } else { CleanupState::RetryRequired }
 }
 
 #[cfg(target_os = "windows")]

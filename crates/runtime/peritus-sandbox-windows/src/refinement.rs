@@ -26,29 +26,39 @@ pub proof fn windows_native_admission_binds_exact_session(facts: NativeBindingFa
 }
 
 /// `OBL-0133`: complete Windows teardown leaves no backend-owned resource.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each independently progressing cleanup dimension remains explicit"
+)]
 pub proof fn windows_complete_teardown_releases_owned_resources(
     job_closed: bool,
     helper_reaped: bool,
     acl_restored: bool,
     secret_files_removed: bool,
+    secret_delivery_released: bool,
     handles_closed: bool,
-    support_joined: bool,
+    proxy_joined: bool,
+    network_filter_removed: bool,
 )
     requires crate::verified::teardown_complete_spec(
         job_closed,
         helper_reaped,
         acl_restored,
         secret_files_removed,
+        secret_delivery_released,
         handles_closed,
-        support_joined,
+        proxy_joined,
+        network_filter_removed,
     ),
     ensures
         job_closed,
         helper_reaped,
         acl_restored,
         secret_files_removed,
+        secret_delivery_released,
         handles_closed,
-        support_joined,
+        proxy_joined,
+        network_filter_removed,
 {
 }
 

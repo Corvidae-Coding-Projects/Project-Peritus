@@ -13,6 +13,7 @@ const SCHEMA_V1: u16 = 1;
 const SCHEMA_V2: u16 = 2;
 const SCHEMA_V3: u16 = 3;
 const SCHEMA_V4: u16 = 4;
+const SCHEMA_V5: u16 = 5;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const LIMITS: CodecLimits = CodecLimits::PRODUCTION;
 
@@ -72,6 +73,197 @@ impl SecretFileRecovery {
     pub(crate) const fn file_id(&self) -> [u8; 16] {
         self.file_id
     }
+}
+
+/// Monotonic cleanup evidence for every independently released Windows resource family.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each independently progressing cleanup dimension remains canonical"
+)]
+pub struct RecoveryCleanup {
+    job_closed: bool,
+    helper_reaped: bool,
+    acl_restored: bool,
+    secret_files_removed: bool,
+    secret_delivery_released: bool,
+    handles_closed: bool,
+    proxy_joined: bool,
+    network_filter_removed: bool,
+}
+
+impl RecoveryCleanup {
+    pub(crate) const fn prepared(
+        job_required: bool,
+        acl_required: bool,
+        secret_files_required: bool,
+        secret_delivery_required: bool,
+        handles_required: bool,
+        proxy_required: bool,
+        network_filter_required: bool,
+    ) -> Self {
+        Self {
+            job_closed: !job_required,
+            helper_reaped: false,
+            acl_restored: !acl_required,
+            secret_files_removed: !secret_files_required,
+            secret_delivery_released: !secret_delivery_required,
+            handles_closed: !handles_required && !job_required,
+            proxy_joined: !proxy_required,
+            network_filter_removed: !network_filter_required,
+        }
+    }
+
+    const fn legacy(acl_restored: bool, secret_files_removed: bool, helper_reaped: bool) -> Self {
+        let complete = acl_restored && secret_files_removed && helper_reaped;
+        Self {
+            job_closed: complete,
+            helper_reaped,
+            acl_restored,
+            secret_files_removed,
+            secret_delivery_released: complete,
+            handles_closed: complete,
+            proxy_joined: complete,
+            network_filter_removed: complete,
+        }
+    }
+
+    #[allow(
+        clippy::fn_params_excessive_bools,
+        reason = "the schema-five decoder preserves every closed cleanup field explicitly"
+    )]
+    const fn from_facts(
+        job_closed: bool,
+        helper_reaped: bool,
+        acl_restored: bool,
+        secret_files_removed: bool,
+        secret_delivery_released: bool,
+        handles_closed: bool,
+        proxy_joined: bool,
+        network_filter_removed: bool,
+    ) -> Self {
+        Self {
+            job_closed,
+            helper_reaped,
+            acl_restored,
+            secret_files_removed,
+            secret_delivery_released,
+            handles_closed,
+            proxy_joined,
+            network_filter_removed,
+        }
+    }
+
+    /// Reports exact Job Object handle closure.
+    #[must_use]
+    pub const fn job_closed(self) -> bool {
+        self.job_closed
+    }
+
+    /// Reports helper reap and post-activation worker quiescence.
+    #[must_use]
+    pub const fn helper_reaped(self) -> bool {
+        self.helper_reaped
+    }
+
+    /// Reports durable ACL reversal completion.
+    #[must_use]
+    pub const fn acl_restored(self) -> bool {
+        self.acl_restored
+    }
+
+    /// Reports exact private secret-file removal.
+    #[must_use]
+    pub const fn secret_files_removed(self) -> bool {
+        self.secret_files_removed
+    }
+
+    /// Reports secret lease, material, and staging release.
+    #[must_use]
+    pub const fn secret_delivery_released(self) -> bool {
+        self.secret_delivery_released
+    }
+
+    /// Reports closure of every remaining protected inherited handle.
+    #[must_use]
+    pub const fn handles_closed(self) -> bool {
+        self.handles_closed
+    }
+
+    /// Reports managed proxy worker reconciliation.
+    #[must_use]
+    pub const fn proxy_joined(self) -> bool {
+        self.proxy_joined
+    }
+
+    /// Reports removal of the session-owned dynamic WFP policy.
+    #[must_use]
+    pub const fn network_filter_removed(self) -> bool {
+        self.network_filter_removed
+    }
+
+    /// Reports complete teardown without discarding the identities that authorized it.
+    #[must_use]
+    pub const fn is_complete(self) -> bool {
+        crate::verified::teardown_complete(
+            self.job_closed,
+            self.helper_reaped,
+            self.acl_restored,
+            self.secret_files_removed,
+            self.secret_delivery_released,
+            self.handles_closed,
+            self.proxy_joined,
+            self.network_filter_removed,
+        )
+    }
+
+    const fn with_legacy_facts(
+        mut self,
+        acl_restored: bool,
+        secret_files_removed: bool,
+        helper_reaped: bool,
+    ) -> Self {
+        self.acl_restored = acl_restored;
+        self.secret_files_removed = secret_files_removed;
+        self.helper_reaped = helper_reaped;
+        self
+    }
+
+    const fn regresses_to(self, next: Self) -> bool {
+        self.job_closed && !next.job_closed
+            || self.helper_reaped && !next.helper_reaped
+            || self.acl_restored && !next.acl_restored
+            || self.secret_files_removed && !next.secret_files_removed
+            || self.secret_delivery_released && !next.secret_delivery_released
+            || self.handles_closed && !next.handles_closed
+            || self.proxy_joined && !next.proxy_joined
+            || self.network_filter_removed && !next.network_filter_removed
+    }
+
+    const fn mark(&mut self, dimension: RecoveryCleanupDimension) {
+        match dimension {
+            RecoveryCleanupDimension::Job => self.job_closed = true,
+            RecoveryCleanupDimension::Helper => self.helper_reaped = true,
+            RecoveryCleanupDimension::Acl => self.acl_restored = true,
+            RecoveryCleanupDimension::SecretFiles => self.secret_files_removed = true,
+            RecoveryCleanupDimension::SecretDelivery => self.secret_delivery_released = true,
+            RecoveryCleanupDimension::Handles => self.handles_closed = true,
+            RecoveryCleanupDimension::Proxy => self.proxy_joined = true,
+            RecoveryCleanupDimension::NetworkFilter => self.network_filter_removed = true,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum RecoveryCleanupDimension {
+    Job,
+    Helper,
+    Acl,
+    SecretFiles,
+    SecretDelivery,
+    Handles,
+    Proxy,
+    NetworkFilter,
 }
 
 /// Nonsensitive identities for resources owned by one native session.
@@ -144,9 +336,8 @@ pub struct WindowsRecoveryRecord {
     schema: u16,
     identity: RuntimeIdentity,
     phase: WindowsPhase,
-    acl_restored: bool,
-    secret_files_removed: bool,
-    helper_reaped: bool,
+    containment_required: bool,
+    cleanup: RecoveryCleanup,
     tree: Option<ProcessTreeIdentity>,
     containment: Option<NativeWindowsContainmentIdentity>,
     secret_files: Vec<SecretFileRecovery>,
@@ -162,12 +353,11 @@ impl WindowsRecoveryRecord {
     #[must_use]
     pub fn prepared(identity: RuntimeIdentity) -> Self {
         let mut value = Self {
-            schema: SCHEMA_V2,
+            schema: SCHEMA_V5,
             identity,
             phase: WindowsPhase::Prepared,
-            acl_restored: false,
-            secret_files_removed: false,
-            helper_reaped: false,
+            containment_required: false,
+            cleanup: RecoveryCleanup::prepared(false, true, true, false, false, false, false),
             tree: None,
             containment: None,
             secret_files: Vec::new(),
@@ -184,6 +374,7 @@ impl WindowsRecoveryRecord {
     pub(crate) fn prepared_owned(
         identity: RuntimeIdentity,
         containment_required: bool,
+        cleanup: RecoveryCleanup,
         transaction_digest: Option<Sha256Digest>,
         receipt: Option<Sha256Digest>,
         owner_operation_digest: Option<Sha256Digest>,
@@ -192,12 +383,11 @@ impl WindowsRecoveryRecord {
         let complete_transaction = transaction_digest.is_some() == receipt.is_some();
         let complete_owner = owner_operation_digest.is_some() == service_owner_digest.is_some();
         let mut value = Self {
-            schema: if containment_required { SCHEMA_V4 } else { SCHEMA_V2 },
+            schema: SCHEMA_V5,
             identity,
             phase: WindowsPhase::Prepared,
-            acl_restored: false,
-            secret_files_removed: false,
-            helper_reaped: false,
+            containment_required,
+            cleanup,
             tree: None,
             containment: None,
             secret_files: Vec::new(),
@@ -234,7 +424,9 @@ impl WindowsRecoveryRecord {
         &mut self,
         containment: NativeWindowsContainmentIdentity,
     ) -> Result<(), WindowsError> {
-        if !matches!(self.schema, SCHEMA_V3 | SCHEMA_V4) {
+        if !matches!(self.schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5)
+            || !self.containment_required
+        {
             return Err(recovery_error(
                 "legacy Windows recovery record cannot claim live Job Object adoption",
             ));
@@ -266,7 +458,9 @@ impl WindowsRecoveryRecord {
         &mut self,
         mut files: Vec<SecretFileRecovery>,
     ) -> Result<(), WindowsError> {
-        if self.schema != SCHEMA_V4 || self.phase != WindowsPhase::Prepared {
+        if !matches!(self.schema, SCHEMA_V4 | SCHEMA_V5)
+            || self.phase != WindowsPhase::Prepared
+        {
             return Err(recovery_error(
                 "private secret custody cannot be attached to this recovery phase",
             ));
@@ -304,18 +498,51 @@ impl WindowsRecoveryRecord {
         secret_files_removed: bool,
         helper_reaped: bool,
     ) -> Result<(), WindowsError> {
-        if !crate::verified::recovery_advance_allowed(self.phase.ordinal(), phase.ordinal())
-            || (phase == WindowsPhase::Released
-                && !(acl_restored && secret_files_removed && helper_reaped))
-        {
-            return Err(recovery_error("native recovery lifecycle or cleanup facts are invalid"));
+        let requested_complete = acl_restored && secret_files_removed && helper_reaped;
+        let mut cleanup = self.cleanup.with_legacy_facts(
+            acl_restored,
+            secret_files_removed,
+            helper_reaped,
+        );
+        if self.schema != SCHEMA_V5 && requested_complete {
+            cleanup = RecoveryCleanup::legacy(
+                acl_restored,
+                secret_files_removed,
+                helper_reaped,
+            );
         }
-        self.phase = phase;
-        self.acl_restored = acl_restored;
-        self.secret_files_removed = secret_files_removed;
-        self.helper_reaped = helper_reaped;
-        self.canonical = self.encode()?;
-        Ok(())
+        let legacy_partial = self.schema != SCHEMA_V5
+            && (acl_restored || secret_files_removed || helper_reaped)
+            && !requested_complete;
+        if legacy_partial {
+            return Err(recovery_error(
+                "legacy native recovery schema cannot represent partial cleanup",
+            ));
+        }
+        self.update_progress(phase, cleanup)
+    }
+
+    pub(crate) fn advance_phase(&mut self, phase: WindowsPhase) -> Result<(), WindowsError> {
+        self.update_progress(phase, self.cleanup)
+    }
+
+    pub(crate) fn advance_phase_with_cleanup(
+        &mut self,
+        phase: WindowsPhase,
+        dimension: RecoveryCleanupDimension,
+    ) -> Result<(), WindowsError> {
+        let mut cleanup = self.cleanup;
+        cleanup.mark(dimension);
+        self.update_progress(phase, cleanup)
+    }
+
+    pub(crate) fn mark_cleanup(
+        &mut self,
+        dimension: RecoveryCleanupDimension,
+    ) -> Result<(), WindowsError> {
+        let mut cleanup = self.cleanup;
+        cleanup.mark(dimension);
+        self.update_progress(self.phase, cleanup)
     }
 
     /// Records complete abort cleanup without inventing activation or termination phases.
@@ -335,11 +562,50 @@ impl WindowsRecoveryRecord {
                 "abort cleanup facts are incomplete or no longer applicable",
             ));
         }
-        self.acl_restored = true;
-        self.secret_files_removed = true;
-        self.helper_reaped = true;
-        self.canonical = self.encode()?;
-        Ok(())
+        let cleanup = if self.schema == SCHEMA_V5 {
+            self.cleanup.with_legacy_facts(
+                acl_restored,
+                secret_files_removed,
+                helper_reaped,
+            )
+        } else {
+            RecoveryCleanup::legacy(acl_restored, secret_files_removed, helper_reaped)
+        };
+        if !cleanup.is_complete() {
+            return Err(recovery_error(
+                "abort cleanup lacks independently completed resource evidence",
+            ));
+        }
+        self.update_progress(self.phase, cleanup)
+    }
+
+    fn update_progress(
+        &mut self,
+        phase: WindowsPhase,
+        cleanup: RecoveryCleanup,
+    ) -> Result<(), WindowsError> {
+        if !crate::verified::recovery_advance_allowed(self.phase.ordinal(), phase.ordinal())
+            || self.cleanup.regresses_to(cleanup)
+            || phase == WindowsPhase::Released && !cleanup.is_complete()
+            || cleanup.handles_closed() && !cleanup.job_closed()
+        {
+            return Err(recovery_error("native recovery lifecycle or cleanup facts are invalid"));
+        }
+        let previous_phase = self.phase;
+        let previous_cleanup = self.cleanup;
+        self.phase = phase;
+        self.cleanup = cleanup;
+        match self.encode() {
+            Ok(canonical) => {
+                self.canonical = canonical;
+                Ok(())
+            }
+            Err(error) => {
+                self.phase = previous_phase;
+                self.cleanup = previous_cleanup;
+                Err(error)
+            }
+        }
     }
 
     /// Decodes a checksummed version-one record.
@@ -358,7 +624,7 @@ impl WindowsRecoveryRecord {
             .map_err(|_| recovery_error("native recovery frame is invalid"))?;
         let schema = frame.header().schema_version();
         if frame.header().family() != FAMILY
-            || !matches!(schema, SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4)
+            || !matches!(schema, SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5)
         {
             return Err(recovery_error("native recovery schema is unsupported"));
         }
@@ -377,13 +643,32 @@ impl WindowsRecoveryRecord {
         let acl_restored = reader.read_bool().map_err(codec_failure)?;
         let secret_files_removed = reader.read_bool().map_err(codec_failure)?;
         let helper_reaped = reader.read_bool().map_err(codec_failure)?;
+        let cleanup = if schema == SCHEMA_V5 {
+            RecoveryCleanup::from_facts(
+                reader.read_bool().map_err(codec_failure)?,
+                helper_reaped,
+                acl_restored,
+                secret_files_removed,
+                reader.read_bool().map_err(codec_failure)?,
+                reader.read_bool().map_err(codec_failure)?,
+                reader.read_bool().map_err(codec_failure)?,
+                reader.read_bool().map_err(codec_failure)?,
+            )
+        } else {
+            RecoveryCleanup::legacy(acl_restored, secret_files_removed, helper_reaped)
+        };
+        let containment_required = if schema == SCHEMA_V5 {
+            reader.read_bool().map_err(codec_failure)?
+        } else {
+            matches!(schema, SCHEMA_V3 | SCHEMA_V4)
+        };
         let (
             tree,
             acl_transaction_digest,
             acl_receipt,
             owner_operation_digest,
             service_owner_digest,
-        ) = if matches!(schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4) {
+        ) = if matches!(schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5) {
             let tree = if reader.read_option_tag().map_err(codec_failure)? {
                 let root = reader.read_u32().map_err(codec_failure)?;
                 let start = if reader.read_option_tag().map_err(codec_failure)? {
@@ -419,7 +704,7 @@ impl WindowsRecoveryRecord {
         } else {
             (None, None, None, None, None)
         };
-        let containment = if matches!(schema, SCHEMA_V3 | SCHEMA_V4)
+        let containment = if matches!(schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5)
             && reader.read_option_tag().map_err(codec_failure)?
         {
             let job_identity = read_digest(&mut reader)?;
@@ -456,7 +741,7 @@ impl WindowsRecoveryRecord {
         } else {
             None
         };
-        let secret_files = if schema == SCHEMA_V4 {
+        let secret_files = if matches!(schema, SCHEMA_V4 | SCHEMA_V5) {
             let count = reader
                 .read_collection_len(4 + 8 + 8 + 16)
                 .map_err(codec_failure)?;
@@ -485,12 +770,20 @@ impl WindowsRecoveryRecord {
             Vec::new()
         };
         reader.finish().map_err(codec_failure)?;
-        let any_cleanup = acl_restored || secret_files_removed || helper_reaped;
-        let complete_cleanup = acl_restored && secret_files_removed && helper_reaped;
-        if (phase == WindowsPhase::Released || any_cleanup) && !complete_cleanup {
+        let legacy_any_cleanup = acl_restored || secret_files_removed || helper_reaped;
+        let legacy_complete_cleanup = acl_restored && secret_files_removed && helper_reaped;
+        if schema != SCHEMA_V5
+            && (phase == WindowsPhase::Released || legacy_any_cleanup)
+            && !legacy_complete_cleanup
+            || schema == SCHEMA_V5
+                && (phase == WindowsPhase::Released && !cleanup.is_complete()
+                    || cleanup.handles_closed() && !cleanup.job_closed()
+                    || !containment_required && !cleanup.job_closed()
+                    || !containment_required && containment.is_some())
+        {
             return Err(recovery_error("native recovery record has inconsistent cleanup facts"));
         }
-        if matches!(schema, SCHEMA_V3 | SCHEMA_V4)
+        if containment_required
             && matches!(
                 phase,
                 WindowsPhase::Activated | WindowsPhase::CancelRequested | WindowsPhase::Terminated
@@ -505,9 +798,8 @@ impl WindowsRecoveryRecord {
             schema,
             identity,
             phase,
-            acl_restored,
-            secret_files_removed,
-            helper_reaped,
+            containment_required,
+            cleanup,
             tree,
             containment,
             secret_files,
@@ -573,10 +865,15 @@ impl WindowsRecoveryRecord {
     pub fn canonical_bytes(&self) -> &[u8] {
         &self.canonical
     }
+    /// Returns monotonic cleanup evidence for every owned resource family.
+    #[must_use]
+    pub const fn cleanup(&self) -> RecoveryCleanup {
+        self.cleanup
+    }
     /// Reports complete teardown evidence.
     #[must_use]
     pub const fn cleanup_complete(&self) -> bool {
-        self.acl_restored && self.secret_files_removed && self.helper_reaped
+        self.cleanup.is_complete()
     }
 
     pub(crate) const fn custody_complete(&self) -> bool {
@@ -586,7 +883,7 @@ impl WindowsRecoveryRecord {
             && self.acl_receipt.is_some()
             && self.phase != WindowsPhase::Released
             && !self.cleanup_complete()
-            && (self.schema < SCHEMA_V3
+            && (!self.containment_required
                 || self.phase == WindowsPhase::Prepared
                 || self.containment.is_some())
     }
@@ -604,10 +901,22 @@ impl WindowsRecoveryRecord {
             writer.write_fixed(digest.as_bytes()).map_err(codec_failure)?;
         }
         writer.write_u8(self.phase.ordinal()).map_err(codec_failure)?;
-        writer.write_bool(self.acl_restored).map_err(codec_failure)?;
-        writer.write_bool(self.secret_files_removed).map_err(codec_failure)?;
-        writer.write_bool(self.helper_reaped).map_err(codec_failure)?;
-        if matches!(self.schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4) {
+        writer.write_bool(self.cleanup.acl_restored()).map_err(codec_failure)?;
+        writer.write_bool(self.cleanup.secret_files_removed()).map_err(codec_failure)?;
+        writer.write_bool(self.cleanup.helper_reaped()).map_err(codec_failure)?;
+        if self.schema == SCHEMA_V5 {
+            writer.write_bool(self.cleanup.job_closed()).map_err(codec_failure)?;
+            writer
+                .write_bool(self.cleanup.secret_delivery_released())
+                .map_err(codec_failure)?;
+            writer.write_bool(self.cleanup.handles_closed()).map_err(codec_failure)?;
+            writer.write_bool(self.cleanup.proxy_joined()).map_err(codec_failure)?;
+            writer
+                .write_bool(self.cleanup.network_filter_removed())
+                .map_err(codec_failure)?;
+            writer.write_bool(self.containment_required).map_err(codec_failure)?;
+        }
+        if matches!(self.schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5) {
             writer.write_option_tag(self.tree.is_some()).map_err(codec_failure)?;
             if let Some(tree) = self.tree {
                 writer.write_u32(tree.root_pid()).map_err(codec_failure)?;
@@ -642,7 +951,7 @@ impl WindowsRecoveryRecord {
                     .write_fixed(self.service_owner_digest.expect("checked").as_bytes())
                     .map_err(codec_failure)?;
             }
-            if matches!(self.schema, SCHEMA_V3 | SCHEMA_V4) {
+            if matches!(self.schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5) {
                 writer.write_option_tag(self.containment.is_some()).map_err(codec_failure)?;
                 if let Some(containment) = &self.containment {
                     writer
@@ -668,7 +977,7 @@ impl WindowsRecoveryRecord {
                         .map_err(codec_failure)?;
                 }
             }
-            if self.schema == SCHEMA_V4 {
+            if matches!(self.schema, SCHEMA_V4 | SCHEMA_V5) {
                 writer
                     .write_collection_len(self.secret_files.len())
                     .map_err(codec_failure)?;

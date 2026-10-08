@@ -65,7 +65,8 @@ pub use process::{
     TerminalMapping, TokenProfile,
 };
 pub use recovery::{
-    RecoveryClassification, RecoveryProbe, RuntimeIdentity, WindowsRecoveryRecord, classify,
+    RecoveryClassification, RecoveryCleanup, RecoveryProbe, RuntimeIdentity, WindowsRecoveryRecord,
+    classify,
 };
 pub use release::{CleanupState, ReleaseProgress, ReleaseReport};
 pub use resource::{EnforcementLevel, ResourceControl, ResourceControlPlan};
