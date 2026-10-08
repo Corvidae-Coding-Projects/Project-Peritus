@@ -154,8 +154,9 @@ impl LocalContextHandle {
     pub(crate) fn recover_grounding_scope(
         &self,
         expected_scope: &str,
+        expected_revision: u64,
     ) -> Result<GroundingEvidence, DeveloperLoopError> {
-        self.lock()?.recover_grounding_scope(expected_scope)
+        self.lock()?.recover_grounding_scope(expected_scope, expected_revision)
     }
 
     pub(crate) fn replay_tool_observations(

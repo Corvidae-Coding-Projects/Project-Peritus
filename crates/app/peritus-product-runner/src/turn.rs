@@ -70,13 +70,10 @@ pub async fn complete_developer_turn(
     let memory = input.working_memory_async(role).await?;
     let mut checkpoint = input.checkpoint()?;
     let mut grounding_revision = input.conversation.revision();
-    let grounding_prefix = format!(
-        "{}-revision-{grounding_revision}-invocation-",
-        request_name(input.run_id, role, cycle),
-    );
+    let grounding_scope = request_scope(input.run_id, role);
     let mut grounding = memory
         .as_ref()
-        .map(|memory| memory.recover_grounding(&grounding_prefix))
+        .map(|memory| memory.recover_grounding_scope(&grounding_scope, grounding_revision))
         .transpose()
         .map_err(|error| developer_error(&error))?
         .unwrap_or_default();

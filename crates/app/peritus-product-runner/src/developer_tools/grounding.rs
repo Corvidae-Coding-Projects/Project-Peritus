@@ -22,9 +22,50 @@ struct TraversalPage {
     complete: bool,
 }
 
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct ReadWitness {
+    workspace_identity: [u8; 32],
+    source_sha256: [u8; 32],
+    source_bytes: u64,
+}
+
+impl ReadWitness {
+    fn from_result(result: &Value) -> Option<Self> {
+        Some(Self {
+            workspace_identity: digest_field(result, "workspace_identity")?,
+            source_sha256: digest_field(result, "source_sha256")?,
+            source_bytes: decimal_field(result, "bytes")?,
+        })
+    }
+
+    fn observe(root: &std::path::Path, relative: &str) -> Result<Self, String> {
+        let identity = peritus_workspace::FolderIdentity::observe(root)
+            .map_err(|error| error.to_string())?;
+        let inspection = peritus_workspace::FolderInspection::open(&identity)
+            .map_err(|error| error.to_string())?;
+        let path = peritus_patch::WorkspacePath::new(relative)
+            .map_err(|error| error.to_string())?;
+        let (source_sha256, source_bytes) = inspection
+            .copy_snapshot(&path, &mut std::io::sink())
+            .map_err(|error| error.to_string())?;
+        Ok(Self {
+            workspace_identity: identity.digest().into_bytes(),
+            source_sha256: source_sha256.into_bytes(),
+            source_bytes,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WorkspaceRevision {
+    Managed,
+    InPlace(u64),
+}
+
 #[derive(Clone, Debug)]
 struct InspectionTraversal {
     subject: String,
+    read_witness: Option<ReadWitness>,
     logical_start: u64,
     logical_end: u64,
     eligible: bool,
@@ -39,7 +80,13 @@ impl InspectionTraversal {
             || self.logical_start != other.logical_start
             || self.logical_end != other.logical_end
         {
+            self.eligible = false;
             return;
+        }
+        match (&self.read_witness, &other.read_witness) {
+            (None, Some(witness)) => self.read_witness = Some(witness.clone()),
+            (Some(left), Some(right)) if left != right => self.eligible = false,
+            _ => {}
         }
         self.eligible &= other.eligible;
         self.root_empty |= other.root_empty;
@@ -96,6 +143,7 @@ impl InspectionTraversals {
         arguments: &Value,
         result: &Value,
         subject: String,
+        read_witness: Option<ReadWitness>,
         logical_start: u64,
         logical_end: u64,
         page_start: u64,
@@ -129,6 +177,7 @@ impl InspectionTraversals {
             .entry(observation.to_owned())
             .or_insert_with(|| InspectionTraversal {
                 subject: subject.clone(),
+                read_witness: read_witness.clone(),
                 logical_start,
                 logical_end,
                 eligible,
@@ -142,6 +191,11 @@ impl InspectionTraversals {
         {
             traversal.eligible = false;
             return;
+        }
+        match (&traversal.read_witness, &read_witness) {
+            (None, Some(witness)) => traversal.read_witness = Some(witness.clone()),
+            (Some(left), Some(right)) if left != right => traversal.eligible = false,
+            _ => {}
         }
         traversal.eligible &= eligible;
         traversal.root_empty |= root_empty;
@@ -187,6 +241,7 @@ pub struct GroundingEvidence {
     mutation_paths: BTreeSet<PathBuf>,
     root_observed_empty: bool,
     workspace_root: Option<PathBuf>,
+    workspace_revision: Option<WorkspaceRevision>,
     pub(in crate::developer_tools) request_sources: RequestSourceProgress,
     progress: InspectionLedger,
     listings: InspectionTraversals,
@@ -195,6 +250,7 @@ pub struct GroundingEvidence {
     credited_listings: BTreeSet<String>,
     credited_searches: BTreeSet<String>,
     credited_reads: BTreeSet<String>,
+    read_witnesses: BTreeMap<PathBuf, BTreeSet<ReadWitness>>,
 }
 
 impl GroundingEvidence {
@@ -205,6 +261,7 @@ impl GroundingEvidence {
     pub(crate) fn clear_repository_evidence(&mut self) {
         *self = Self {
             workspace_root: self.workspace_root.clone(),
+            workspace_revision: self.workspace_revision,
             request_sources: std::mem::take(&mut self.request_sources),
             ..Self::default()
         };
@@ -223,6 +280,24 @@ impl GroundingEvidence {
         }
     }
 
+    pub(in crate::developer_tools) const fn workspace_revision_binding(
+        &self,
+    ) -> Option<Option<u64>> {
+        match self.workspace_revision {
+            Some(WorkspaceRevision::Managed) => Some(None),
+            Some(WorkspaceRevision::InPlace(revision)) => Some(Some(revision)),
+            None => None,
+        }
+    }
+
+    pub(in crate::developer_tools) fn bind_workspace_revision(&mut self, revision: Option<u64>) {
+        let revision = revision.map_or(WorkspaceRevision::Managed, WorkspaceRevision::InPlace);
+        if self.workspace_revision.is_some_and(|current| current != revision) {
+            self.clear_repository_evidence();
+        }
+        self.workspace_revision = Some(revision);
+    }
+
     pub(in crate::developer_tools) fn bind_progress(
         &mut self,
         revision: u64,
@@ -236,6 +311,23 @@ impl GroundingEvidence {
     }
 
     pub(crate) fn merge(&mut self, other: &Self) {
+        if self.workspace_root.is_some()
+            && other.workspace_root.is_some()
+            && self.workspace_root != other.workspace_root
+        {
+            return;
+        }
+        if self.workspace_root.is_none() {
+            self.workspace_root.clone_from(&other.workspace_root);
+        }
+        match (self.workspace_revision, other.workspace_revision) {
+            (Some(left), Some(right)) if left != right => {
+                self.request_sources.merge(&other.request_sources);
+                return;
+            }
+            (None, Some(revision)) => self.workspace_revision = Some(revision),
+            _ => {}
+        }
         self.list_calls = self.list_calls.max(other.list_calls);
         self.search_calls = self.search_calls.max(other.search_calls);
         self.listed_paths.extend(other.listed_paths.iter().cloned());
@@ -249,6 +341,12 @@ impl GroundingEvidence {
         self.credited_listings.extend(other.credited_listings.iter().cloned());
         self.credited_searches.extend(other.credited_searches.iter().cloned());
         self.credited_reads.extend(other.credited_reads.iter().cloned());
+        for (path, witnesses) in &other.read_witnesses {
+            self.read_witnesses
+                .entry(path.clone())
+                .or_default()
+                .extend(witnesses.iter().cloned());
+        }
         self.refresh_inspection_credit();
         if self.workspace_root == other.workspace_root {
             self.request_sources.merge(&other.request_sources);
@@ -259,6 +357,7 @@ impl GroundingEvidence {
         let mut calls = BTreeMap::<ToolCallId, CompletedToolCall>::new();
         let mut recovered = Self {
             workspace_root: self.workspace_root.clone(),
+            workspace_revision: self.workspace_revision,
             ..Self::default()
         };
         for message in messages {
@@ -370,6 +469,7 @@ impl GroundingEvidence {
                             arguments,
                             result,
                             subject,
+                            None,
                             0,
                             total,
                             start,
@@ -408,6 +508,7 @@ impl GroundingEvidence {
                             arguments,
                             result,
                             subject,
+                            None,
                             0,
                             total,
                             start,
@@ -439,6 +540,7 @@ impl GroundingEvidence {
                             arguments,
                             result,
                             path.to_owned(),
+                            ReadWitness::from_result(result),
                             selection_start,
                             selection_end,
                             start,
@@ -495,12 +597,20 @@ impl GroundingEvidence {
             .reads
             .completed()
             .map(|(observation, traversal)| {
-                (observation.clone(), traversal.subject.clone())
+                (
+                    observation.clone(),
+                    traversal.subject.clone(),
+                    traversal.read_witness.clone(),
+                )
             })
             .collect::<Vec<_>>();
-        for (observation, path) in reads {
+        for (observation, path, witness) in reads {
             if self.credited_reads.insert(observation) {
-                self.read_paths.insert(PathBuf::from(path));
+                let path = PathBuf::from(path);
+                self.read_paths.insert(path.clone());
+                if let Some(witness) = witness {
+                    self.read_witnesses.entry(path).or_default().insert(witness);
+                }
             }
         }
     }
@@ -550,8 +660,34 @@ impl GroundingEvidence {
 
     pub fn ensure_mutation_allowed(&self, path: &str, exists: bool) -> Result<(), String> {
         self.validate().map_err(str::to_owned)?;
-        if exists && !self.read_paths.contains(&PathBuf::from(path)) {
-            return Err(format!("read the existing target before mutating it: {path}"));
+        if exists {
+            let path = PathBuf::from(path);
+            if !self.read_paths.contains(&path) {
+                return Err(format!("read the existing target before mutating it: {}", path.display()));
+            }
+            let Some(root) = self.workspace_root.as_deref() else {
+                return Ok(());
+            };
+            let witnesses = self.read_witnesses.get(&path).ok_or_else(|| {
+                format!(
+                    "reread the existing target before mutating it; retained grounding predates exact-byte target bindings: {}",
+                    path.display(),
+                )
+            })?;
+            let current = ReadWitness::observe(root, path.to_string_lossy().as_ref()).map_err(
+                |error| {
+                    format!(
+                        "reobserve the existing target before mutating it; its exact current bytes could not be validated: {}: {error}",
+                        path.display(),
+                    )
+                },
+            )?;
+            if !witnesses.contains(&current) {
+                return Err(format!(
+                    "workspace target changed since its retained exact-byte read; reread it before mutating: {}",
+                    path.display(),
+                ));
+            }
         }
         Ok(())
     }
@@ -599,6 +735,27 @@ fn decimal_field(value: &Value, name: &str) -> Option<u64> {
     value
         .get(name)
         .and_then(|value| value.as_u64().or_else(|| value.as_str()?.parse().ok()))
+}
+
+fn digest_field(value: &Value, name: &str) -> Option<[u8; 32]> {
+    let encoded = value.get(name)?.as_str()?.as_bytes();
+    if encoded.len() != 64 {
+        return None;
+    }
+    let mut digest = [0_u8; 32];
+    for (target, pair) in digest.iter_mut().zip(encoded.chunks_exact(2)) {
+        *target = hex_nibble(pair[0])?.checked_mul(16)?.checked_add(hex_nibble(pair[1])?)?;
+    }
+    Some(digest)
+}
+
+const fn hex_nibble(byte: u8) -> Option<u8> {
+    match byte {
+        b'0'..=b'9' => Some(byte - b'0'),
+        b'a'..=b'f' => Some(byte - b'a' + 10),
+        b'A'..=b'F' => Some(byte - b'A' + 10),
+        _ => None,
+    }
 }
 
 fn legacy_read_complete(arguments: &Value, result: &Value) -> bool {

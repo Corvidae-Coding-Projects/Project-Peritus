@@ -86,6 +86,8 @@ impl WorkspaceDeveloperTools {
         mut self,
         scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
     ) -> Self {
+        self.grounding
+            .bind_workspace_revision(scope.as_ref().map(|scope| scope.revision()));
         self.in_place_scope = scope;
         self
     }
@@ -109,7 +111,11 @@ impl WorkspaceDeveloperTools {
 
     pub(crate) fn with_grounding(mut self, mut grounding: GroundingEvidence) -> Self {
         let progress_binding = self.grounding.progress_binding();
+        let workspace_revision = self.grounding.workspace_revision_binding();
         grounding.bind_workspace(&self.root);
+        if let Some(workspace_revision) = workspace_revision {
+            grounding.bind_workspace_revision(workspace_revision);
+        }
         if let Some((revision, request_sources)) = progress_binding {
             grounding.bind_progress(revision, request_sources);
         }

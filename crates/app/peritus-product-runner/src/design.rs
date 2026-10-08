@@ -162,7 +162,7 @@ pub async fn create(
     );
     let mut grounding = memory
         .as_ref()
-        .map(|memory| memory.recover_grounding_scope(&grounding_scope))
+        .map(|memory| memory.recover_grounding_scope(&grounding_scope, grounding_revision))
         .transpose()
         .map_err(|error| crate::turn::developer_error(&error))?
         .unwrap_or_else(|| GroundingEvidence::for_workspace(&input.workspace_root));
@@ -186,7 +186,9 @@ pub async fn create(
             );
             let recovered = memory
                 .as_ref()
-                .map(|memory| memory.recover_grounding_scope(&grounding_scope))
+                .map(|memory| {
+                    memory.recover_grounding_scope(&grounding_scope, grounding_revision)
+                })
                 .transpose()
                 .map_err(|error| crate::turn::developer_error(&error))?
                 .unwrap_or_else(|| GroundingEvidence::for_workspace(&input.workspace_root));
