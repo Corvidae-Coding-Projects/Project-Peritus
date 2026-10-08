@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L458] C5 JSON has non-widenable depth/member ceilings checked after full parsing (#536)
 - [L623] Evidence work repeats synchronous whole-history and artifact verification without a resumable work owner (#678)
 - [L457] C5 request controls and identifier/media fields have additional fixed acceptance ceilings (#535)
 - [L622] Admitted causal history across revisions cannot be represented by the current portable bundle policy (#677)
