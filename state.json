@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4024,
-        "tip_oid": "3ea1e78a90068033eeaaa2467cdd3864a797888e",
-        "prefix_sha256": "f0e31dcbb5dd5d184a7c2fadc8e006ef25d59180f15a8f8a6f10e042bfb87e46"
+        "sequence": 4025,
+        "tip_oid": "ccf75d42a094293cee9d1dc77f6c23355765b381",
+        "prefix_sha256": "6924a0f0fbaf36c4aa193f88c12f00fec04b1cfb17c13e038c7281ccb3bc022c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3215,
+  "next_comment_id": 3216,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25441,7 +25441,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.626218129Z",
-      "updated_at": "2026-10-06T13:27:50.628536407Z",
+      "updated_at": "2026-10-08T03:43:08.613932868Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -25452,6 +25452,15 @@
           "content": "Systemic repair plan for L454: F0 wraps complete growing checkpoints in a fixed eight-MiB opaque payload.\n\nOwning contract and implementation boundary: crates/analysis/peritus-evolution/src/wire/campaign.rs:279-281,318-330; src/wire/pointer.rs:299-301,338-350; src/wire/semantic/campaign.rs:9-10,75-77; src/wire/semantic/state/campaign.rs:13-62; src/wire/semantic/state/pointer.rs:14-42; src/durability/campaign.rs:34-48; src/durability/pointer.rs:33-47. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPersist immutable evidence once by verified reference and checkpoint a paged projection. Reserve reliable control/settlement operations independently of aggregate evidence volume while preserving exact provenance and replay integrity. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "a1ca9015-b572-4b5d-872b-23f68e248d74": {
+          "display_id": 3215,
+          "author": "6ME5",
+          "content": "Code complete in commit cd6f2d84b. Versioned compact reference checkpoints bind campaign/pointer ownership, head, sequence and complete state digest to immutable event evidence through paged durable roots, avoiding growing opaque full-state payloads for control and settlement. Recovery verifies references by exact immutable replay and retains legacy full checkpoints and historical atomic retry bytes/receipts. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:43:08.605032638Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAjBWBBKni+xEs5qHjfAtAsCliRUUrv7LSRKOvYn5TsrDa/mJ46j8wwfTekqIj+6pCQNGP3fD0QCbE6NKVLQmaDg=="
         }
       }
     },
