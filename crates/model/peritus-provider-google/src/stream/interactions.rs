@@ -9,7 +9,7 @@ use peritus_model_protocol::{
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
 
-use super::interaction_fields::{correctness_critical, summary_text};
+use super::interaction_fields::{correctness_critical, summary_texts};
 use super::state::NormalizeState;
 use super::value::{
     cache, call_id, fragment, invalid, item_id, provider_event, required_str, required_u32,
@@ -29,8 +29,14 @@ enum ActiveStep {
     },
     Thought {
         item: ItemId,
-        has_signature: bool,
+        signature: Option<ThoughtSignature>,
     },
+}
+
+struct ThoughtSignature {
+    value: String,
+    digest: peritus_types::Sha256Digest,
+    event_id: Option<String>,
 }
 
 pub(super) struct InteractionState {
@@ -199,7 +205,7 @@ impl InteractionState {
                     digest,
                     event_id,
                 )?;
-                self.active = Some(ActiveStep::Thought { item, has_signature: false });
+                self.active = Some(ActiveStep::Thought { item, signature: None });
             }
             _ => return Err(invalid("Google emitted an unsupported interaction step type")),
         }
@@ -241,32 +247,45 @@ impl InteractionState {
                 owner.emit(ModelEvent::Heartbeat, digest, event_id)
             }
             (Some(ActiveStep::Thought { item, .. }), "thought_summary") => {
-                let text = summary_text(value)?;
-                owner.emit(
-                    ModelEvent::ReasoningSummaryDelta {
-                        item_id: item.clone(),
-                        fragment: fragment(text.as_bytes().to_vec())?,
-                    },
-                    digest,
-                    event_id,
-                )
+                for text in summary_texts(value)? {
+                    owner.emit(
+                        ModelEvent::ReasoningSummaryDelta {
+                            item_id: item.clone(),
+                            fragment: fragment(text.as_bytes().to_vec())?,
+                        },
+                        digest,
+                        event_id,
+                    )?;
+                }
+                Ok(())
             }
-            (Some(ActiveStep::Thought { item, has_signature, .. }), "thought_signature") => {
-                let signature = required_str(value, "/delta/signature")?;
-                let mut replay = Map::new();
-                replay.insert("type".to_owned(), Value::String("thought".to_owned()));
-                replay.insert("signature".to_owned(), Value::String(signature.to_owned()));
-                let bytes = serde_json::to_vec(&Value::Object(replay))
-                    .map_err(|_| invalid("Google thought replay could not be serialized"))?;
-                *has_signature = true;
-                owner.emit(
-                    ModelEvent::ReasoningReplayDelta {
-                        item_id: item.clone(),
-                        fragment: fragment(bytes)?,
-                    },
-                    digest,
-                    event_id,
-                )
+            (Some(ActiveStep::Thought { signature, .. }), "thought_signature") => {
+                let next = required_str(value, "/delta/signature")?;
+                let next_event_id = event_id.map(str::to_owned);
+                if let Some(signature) = signature {
+                    signature.value.try_reserve(next.len()).map_err(|_| {
+                        ProviderCoreError::limit_exceeded(
+                            "google_stream",
+                            "Google thought signature capacity is unavailable",
+                        )
+                    })?;
+                    signature.value.push_str(next);
+                    let previous_digest = core::mem::replace(&mut signature.digest, digest);
+                    let previous_event_id =
+                        core::mem::replace(&mut signature.event_id, next_event_id);
+                    owner.emit_deferred(
+                        ModelEvent::Heartbeat,
+                        previous_digest,
+                        previous_event_id.as_deref(),
+                    )
+                } else {
+                    *signature = Some(ThoughtSignature {
+                        value: next.to_owned(),
+                        digest,
+                        event_id: next_event_id,
+                    });
+                    Ok(())
+                }
             }
             (Some(_), "text_annotation_delta") => {
                 owner.emit(provider_event("text_annotation_delta", value)?, digest, event_id)
@@ -309,11 +328,23 @@ impl InteractionState {
                 }
                 item
             }
-            ActiveStep::Thought { item, has_signature } => {
-                if !has_signature {
-                    return Err(invalid("Google thought step ended without its signature"));
-                }
+            ActiveStep::Thought { item, signature: Some(signature) } => {
+                let mut replay = Map::new();
+                replay.insert("type".to_owned(), Value::String("thought".to_owned()));
+                replay.insert("signature".to_owned(), Value::String(signature.value));
+                let bytes = serde_json::to_vec(&Value::Object(replay))
+                    .map_err(|_| invalid("Google thought replay could not be serialized"))?;
+                owner.emit_deferred_replay(
+                    &item,
+                    &bytes,
+                    signature.digest,
+                    signature.event_id.as_deref(),
+                    1,
+                )?;
                 item
+            }
+            ActiveStep::Thought { signature: None, .. } => {
+                return Err(invalid("Google thought step ended without its signature"));
             }
         };
         owner.emit(ModelEvent::ItemCompleted(item), digest, event_id)?;

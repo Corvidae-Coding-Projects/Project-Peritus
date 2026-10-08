@@ -57,7 +57,7 @@ impl Projection {
                 self.system.push(text.expose_for_wire().to_owned());
             }
             Role::User => self.current_user.push(interaction_content(block)?),
-            Role::Assistant => self.steps.push(assistant_step(block)?),
+            Role::Assistant => self.steps.extend(assistant_step(block)?),
             Role::Tool => self.steps.push(tool_step(block)?),
         }
         self.block = self
@@ -119,18 +119,18 @@ fn project_fields(
     Ok(Value::Object(value))
 }
 
-fn assistant_step(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+fn assistant_step(block: &ContentBlock) -> Result<Vec<Value>, ProviderCoreError> {
     match block {
-        ContentBlock::Text(_) | ContentBlock::Refusal(_) => Ok(object([
+        ContentBlock::Text(_) | ContentBlock::Refusal(_) => Ok(vec![object([
             ("type", string("model_output")),
             ("content", Value::Array(vec![interaction_content(block)?])),
-        ])),
-        ContentBlock::ToolCall(call) => Ok(object([
+        ])]),
+        ContentBlock::ToolCall(call) => Ok(vec![object([
                 ("type", string("function_call")),
                 ("id", string(call.id().expose_for_wire())),
                 ("name", string(call.name().as_str())),
                 ("arguments", parse(call.arguments().canonical_bytes())?),
-        ])),
+        ])]),
         ContentBlock::Reasoning(replay) => interaction_replay(replay),
         _ => Err(invalid("assistant block is unsupported by Google Interactions")),
     }

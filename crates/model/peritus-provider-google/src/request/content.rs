@@ -29,20 +29,26 @@ pub(super) fn interaction_content(block: &ContentBlock) -> Result<Value, Provide
 pub(super) fn generate_part(
     block: &ContentBlock,
     preceding_calls: &BTreeMap<ToolCallId, ToolName>,
-) -> Result<Value, ProviderCoreError> {
+) -> Result<Vec<Value>, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => {
-            Ok(object([("text", string(text.expose_for_wire()))]))
+            Ok(vec![object([("text", string(text.expose_for_wire()))])])
         }
-        ContentBlock::Image(media) => generate_media(media, MediaKind::Image),
-        ContentBlock::Audio(media) => generate_media(media, MediaKind::Audio),
-        ContentBlock::Document(media) => generate_media(media, MediaKind::Document),
+        ContentBlock::Image(media) => {
+            generate_media(media, MediaKind::Image).map(|part| vec![part])
+        }
+        ContentBlock::Audio(media) => {
+            generate_media(media, MediaKind::Audio).map(|part| vec![part])
+        }
+        ContentBlock::Document(media) => {
+            generate_media(media, MediaKind::Document).map(|part| vec![part])
+        }
         ContentBlock::ToolCall(call) => {
             let mut function = Map::new();
             function.insert("id".to_owned(), string(call.id().expose_for_wire()));
             function.insert("name".to_owned(), string(call.name().as_str()));
             function.insert("args".to_owned(), parse(call.arguments().canonical_bytes())?);
-            Ok(object([("functionCall", Value::Object(function))]))
+            Ok(vec![object([("functionCall", Value::Object(function))])])
         }
         ContentBlock::ToolResult(result) => {
             let mut function = Map::new();
@@ -56,7 +62,7 @@ pub(super) fn generate_part(
             if result.is_error() {
                 function.insert("isError".to_owned(), Value::Bool(true));
             }
-            Ok(object([("functionResponse", Value::Object(function))]))
+            Ok(vec![object([("functionResponse", Value::Object(function))])])
         }
         ContentBlock::Reasoning(replay) => generate_replay(replay),
         ContentBlock::ProviderExtension(_) => {
@@ -88,28 +94,35 @@ pub(super) fn generate_tool(tool: &ToolDefinition) -> Result<Value, ProviderCore
     Ok(Value::Object(value))
 }
 
-pub(super) fn interaction_replay(replay: &ReasoningReplay) -> Result<Value, ProviderCoreError> {
-    let value = parse(replay.opaque_for_wire())?;
-    let replay_object = value
-        .as_object()
-        .ok_or_else(|| invalid("Google interaction thought replay must be an object"))?;
-    if replay_object.get("type").and_then(Value::as_str) != Some("thought")
-        || replay_object.get("signature").and_then(Value::as_str).is_none()
-        || !replay_object.keys().all(|key| matches!(key.as_str(), "type" | "signature"))
-    {
-        return Err(invalid("Google interaction thought replay has an unsupported shape"));
+pub(super) fn interaction_replay(
+    replay: &ReasoningReplay,
+) -> Result<Vec<Value>, ProviderCoreError> {
+    let mut steps = Vec::new();
+    for (index, value) in replay_values(replay)?.into_iter().enumerate() {
+        let replay_object = value
+            .as_object()
+            .ok_or_else(|| invalid("Google interaction thought replay must be an object"))?;
+        if replay_object.get("type").and_then(Value::as_str) != Some("thought")
+            || replay_object.get("signature").and_then(Value::as_str).is_none()
+            || !replay_object.keys().all(|key| matches!(key.as_str(), "type" | "signature"))
+        {
+            return Err(invalid("Google interaction thought replay has an unsupported shape"));
+        }
+        let mut step = replay_object.clone();
+        if index == 0
+            && let Some(summary) = replay.summary()
+        {
+            step.insert(
+                "summary".to_owned(),
+                Value::Array(vec![object([
+                    ("type", string("text")),
+                    ("text", string(summary.expose_for_wire())),
+                ])]),
+            );
+        }
+        steps.push(Value::Object(step));
     }
-    let mut value = replay_object.clone();
-    if let Some(summary) = replay.summary() {
-        value.insert(
-            "summary".to_owned(),
-            Value::Array(vec![object([
-                ("type", string("text")),
-                ("text", string(summary.expose_for_wire())),
-            ])]),
-        );
-    }
-    Ok(Value::Object(value))
+    Ok(steps)
 }
 
 fn checked_schema(tool: &ToolDefinition) -> Result<Value, ProviderCoreError> {
@@ -173,25 +186,43 @@ fn generate_media(media: &MediaInput, expected: MediaKind) -> Result<Value, Prov
     Err(invalid("Google cannot read Peritus artifact references directly"))
 }
 
-fn generate_replay(replay: &ReasoningReplay) -> Result<Value, ProviderCoreError> {
-    let value = parse(replay.opaque_for_wire())?;
-    let object = value
-        .as_object()
-        .ok_or_else(|| invalid("Google Generate Content thought replay must be an object"))?;
-    let signature = object
-        .get("thoughtSignature")
-        .and_then(Value::as_str)
-        .ok_or_else(|| invalid("Google Generate Content thought signature is missing"))?;
-    if !object.keys().all(|key| key == "thoughtSignature") {
-        return Err(invalid("Google Generate Content thought replay has an unsupported shape"));
+fn generate_replay(replay: &ReasoningReplay) -> Result<Vec<Value>, ProviderCoreError> {
+    let mut parts = Vec::new();
+    for (index, value) in replay_values(replay)?.into_iter().enumerate() {
+        let object = value
+            .as_object()
+            .ok_or_else(|| invalid("Google Generate Content thought replay must be an object"))?;
+        let signature = object
+            .get("thoughtSignature")
+            .and_then(Value::as_str)
+            .ok_or_else(|| invalid("Google Generate Content thought signature is missing"))?;
+        if !object.keys().all(|key| key == "thoughtSignature") {
+            return Err(invalid("Google Generate Content thought replay has an unsupported shape"));
+        }
+        let mut part = Map::new();
+        part.insert("thoughtSignature".to_owned(), string(signature));
+        if index == 0
+            && let Some(summary) = replay.summary()
+        {
+            part.insert("thought".to_owned(), Value::Bool(true));
+            part.insert("text".to_owned(), string(summary.expose_for_wire()));
+        }
+        parts.push(Value::Object(part));
     }
-    let mut part = Map::new();
-    part.insert("thoughtSignature".to_owned(), string(signature));
-    if let Some(summary) = replay.summary() {
-        part.insert("thought".to_owned(), Value::Bool(true));
-        part.insert("text".to_owned(), string(summary.expose_for_wire()));
+    Ok(parts)
+}
+
+fn replay_values(replay: &ReasoningReplay) -> Result<Vec<Value>, ProviderCoreError> {
+    let mut values = Vec::new();
+    for value in serde_json::Deserializer::from_slice(replay.opaque_for_wire()).into_iter() {
+        values.push(value.map_err(|_| {
+            invalid("Google thought replay is not an ordered sequence of complete JSON objects")
+        })?);
     }
-    Ok(Value::Object(part))
+    if values.is_empty() {
+        return Err(invalid("Google thought replay contains no complete object"));
+    }
+    Ok(values)
 }
 
 fn validate_kind(media: &MediaInput, expected: MediaKind) -> Result<(), ProviderCoreError> {

@@ -261,11 +261,8 @@ impl GenerateState {
                 replay.insert("thoughtSignature".to_owned(), Value::String(signature.to_owned()));
                 let bytes = serde_json::to_vec(&Value::Object(replay))
                     .map_err(|_| invalid("Google thought signature could not be serialized"))?;
-                owner.emit(
-                    ModelEvent::ReasoningReplayDelta { item_id: item, fragment: fragment(bytes)? },
-                    digest,
-                    event_id,
-                )?;
+                owner.emit_replay(&item, &bytes, digest, event_id, 1)?;
+                self.close_active(owner, digest, event_id)?;
             }
             if let Some(call) = part.get("functionCall") {
                 self.close_active(owner, digest, event_id)?;

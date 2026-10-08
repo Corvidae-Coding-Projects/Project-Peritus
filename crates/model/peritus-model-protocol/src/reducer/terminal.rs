@@ -45,6 +45,9 @@ impl ResponseReducer {
                 if summary.is_none() && item.replay.is_empty() {
                     return Err(invalid("reasoning item ended without summary or replay state"));
                 }
+                if self.provider.as_str() == "google" && !item.replay.is_empty() {
+                    validate_google_replay(&item.replay, self.limits)?;
+                }
                 Ok(ReducedItem::Reasoning {
                     item_id,
                     index: item.index,
@@ -154,6 +157,61 @@ impl ResponseReducer {
 fn complete_text(bytes: Vec<u8>, limits: ProtocolLimits) -> Result<BoundedText, ProtocolError> {
     let text = String::from_utf8(bytes).map_err(|_| invalid("text ended with incomplete UTF-8"))?;
     BoundedText::new(text, limits)
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum GoogleReplayShape {
+    Interaction,
+    Generate,
+}
+
+fn validate_google_replay(bytes: &[u8], limits: ProtocolLimits) -> Result<(), ProtocolError> {
+    let mut stream = serde_json::Deserializer::from_slice(bytes).into_iter::<serde_json::Value>();
+    let mut start = 0;
+    let mut shape = None;
+    let mut objects = 0_usize;
+    while let Some(value) = stream.next() {
+        let value = value.map_err(|_| {
+            invalid("Google reasoning replay ended without complete signature boundaries")
+        })?;
+        let end = stream.byte_offset();
+        let text = core::str::from_utf8(&bytes[start..end])
+            .map_err(|_| invalid("Google reasoning replay is not UTF-8 JSON"))?;
+        let canonical = CanonicalJson::parse(text, JsonBounds::extension(limits))?;
+        if !canonical.is_object() {
+            return Err(invalid("Google reasoning replay signature is not an object"));
+        }
+        let object = value
+            .as_object()
+            .ok_or_else(|| invalid("Google reasoning replay signature is not an object"))?;
+        let current = if object.get("type").and_then(serde_json::Value::as_str) == Some("thought")
+            && object.get("signature").and_then(serde_json::Value::as_str).is_some()
+            && object.keys().all(|key| matches!(key.as_str(), "type" | "signature"))
+        {
+            GoogleReplayShape::Interaction
+        } else if object
+            .get("thoughtSignature")
+            .and_then(serde_json::Value::as_str)
+            .is_some()
+            && object.keys().all(|key| key == "thoughtSignature")
+        {
+            GoogleReplayShape::Generate
+        } else {
+            return Err(invalid("Google reasoning replay has an unsupported signature shape"));
+        };
+        if shape.is_some_and(|known| known != current) {
+            return Err(invalid("Google reasoning replay mixes signature dialects"));
+        }
+        shape = Some(current);
+        objects = objects
+            .checked_add(1)
+            .ok_or_else(|| invalid("Google reasoning replay signature count overflowed"))?;
+        start = end;
+    }
+    if objects == 0 {
+        return Err(invalid("Google reasoning replay contains no complete signature object"));
+    }
+    Ok(())
 }
 
 fn invalid(detail: &'static str) -> ProtocolError {

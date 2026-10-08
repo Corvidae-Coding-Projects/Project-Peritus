@@ -3,8 +3,8 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use peritus_model_protocol::{
-    CacheObservation, EventEnvelope, EventId, ModelEvent, ProtocolLimits, ProviderName,
-    WireDialect,
+    CacheObservation, EventEnvelope, EventId, ItemId, ModelEvent, ProtocolLimits, ProviderName,
+    StreamFragment, WireDialect,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, SseFrame, SseItem};
 use peritus_types::Sha256Digest;
@@ -106,11 +106,125 @@ impl NormalizeState {
         self.observed_semantics
     }
 
+    pub(super) fn emit_replay(
+        &mut self,
+        item_id: &ItemId,
+        bytes: &[u8],
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+        trailing_events: usize,
+    ) -> Result<(), ProviderCoreError> {
+        let fragment_bytes = self.admit_replay(bytes, trailing_events)?;
+        for chunk in bytes.chunks(fragment_bytes) {
+            let fragment = StreamFragment::new(chunk.to_vec(), self.limits)
+                .map_err(|_| invalid("Google reasoning replay fragment exceeds its bound"))?;
+            self.emit(
+                ModelEvent::ReasoningReplayDelta { item_id: item_id.clone(), fragment },
+                digest,
+                event_id,
+            )?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn emit_deferred_replay(
+        &mut self,
+        item_id: &ItemId,
+        bytes: &[u8],
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+        trailing_events: usize,
+    ) -> Result<(), ProviderCoreError> {
+        let fragment_bytes = self.admit_replay(bytes, trailing_events)?;
+        let mut provider_event_id = event_id
+            .map(|value| EventId::new(value.to_owned()))
+            .transpose()
+            .map_err(|_| invalid("Google deferred replay event identity is invalid"))?;
+        for chunk in bytes.chunks(fragment_bytes) {
+            let fragment = StreamFragment::new(chunk.to_vec(), self.limits)
+                .map_err(|_| invalid("Google reasoning replay fragment exceeds its bound"))?;
+            self.emit_with_event_id(
+                ModelEvent::ReasoningReplayDelta { item_id: item_id.clone(), fragment },
+                digest,
+                provider_event_id.take(),
+            )?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn emit_deferred(
+        &mut self,
+        event: ModelEvent,
+        digest: Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        let provider_event_id = event_id
+            .map(|value| EventId::new(value.to_owned()))
+            .transpose()
+            .map_err(|_| invalid("Google deferred event identity is invalid"))?;
+        self.emit_with_event_id(event, digest, provider_event_id)
+    }
+
+    fn admit_replay(
+        &self,
+        bytes: &[u8],
+        trailing_events: usize,
+    ) -> Result<usize, ProviderCoreError> {
+        let maximum = self.limits.max_extension_bytes().min(self.limits.max_output_bytes());
+        if bytes.is_empty() || bytes.len() > maximum {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google reasoning replay exceeds its aggregate bound",
+            ));
+        }
+        let fragment_bytes = self.limits.max_event_bytes();
+        let fragment_adjustment = fragment_bytes.checked_sub(1).ok_or_else(|| {
+            ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google reasoning replay fragment bound was zero",
+            )
+        })?;
+        let fragments = bytes
+            .len()
+            .checked_add(fragment_adjustment)
+            .map(|length| length / fragment_bytes)
+            .ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "google_stream",
+                    "Google reasoning replay fragment count overflowed",
+                )
+            })?;
+        let future_events = fragments.checked_add(trailing_events).ok_or_else(|| {
+            ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google reasoning replay event count overflowed",
+            )
+        })?;
+        let emitted = usize::try_from(self.sequence).unwrap_or(usize::MAX);
+        if future_events > self.limits.max_events().saturating_sub(emitted) {
+            return Err(ProviderCoreError::limit_exceeded(
+                "google_stream",
+                "Google reasoning replay exceeds the selected event bound",
+            ));
+        }
+        Ok(fragment_bytes)
+    }
+
     pub(super) fn emit(
         &mut self,
         event: ModelEvent,
         digest: Sha256Digest,
         event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        let provider_event_id = event_id.and_then(|_| self.active_event_id.take());
+        self.emit_with_event_id(event, digest, provider_event_id)
+    }
+
+    fn emit_with_event_id(
+        &mut self,
+        event: ModelEvent,
+        digest: Sha256Digest,
+        provider_event_id: Option<EventId>,
     ) -> Result<(), ProviderCoreError> {
         if let ModelEvent::Cache(observation) = &event {
             if self.last_cache.as_ref() == Some(observation) {
@@ -136,7 +250,6 @@ impl NormalizeState {
         } else {
             self.next_sequence()?
         };
-        let provider_event_id = event_id.and_then(|_| self.active_event_id.take());
         self.observed_semantics |= !matches!(event, ModelEvent::Heartbeat);
         let envelope = EventEnvelope::new(sequence, None, provider_event_id, digest, event)
             .map_err(|_| invalid("normalized Google event envelope is invalid"))?;

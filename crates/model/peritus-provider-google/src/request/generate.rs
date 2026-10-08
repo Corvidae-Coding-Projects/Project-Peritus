@@ -69,7 +69,7 @@ impl Projection {
                 {
                     return Err(invalid("Google history reused a function-call identity"));
                 }
-                self.current_parts.push(generate_part(block, &self.preceding_calls)?);
+                self.current_parts.extend(generate_part(block, &self.preceding_calls)?);
             }
         }
         self.block = self
