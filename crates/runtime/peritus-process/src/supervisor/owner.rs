@@ -225,7 +225,27 @@ impl SpawnedOwner {
                 &self.plan,
                 self.plan.sandbox_digest(),
             );
-            let exceeded = poll? == crate::NativePoll::ResourceLimitExceeded;
+            let exceeded = match poll {
+                Ok(poll) => poll == crate::NativePoll::ResourceLimitExceeded,
+                Err(error) => {
+                    let Some(changed) = self
+                        .resources
+                        .recover_unknown_native_measurement(&self.plan, &error)
+                    else {
+                        return Err(error);
+                    };
+                    if changed {
+                        emit(
+                            &self.shared,
+                            &self.plan,
+                            None,
+                            ProcessEventKind::ResourceSample,
+                            Vec::new(),
+                        );
+                    }
+                    false
+                }
+            };
             capture?;
             super::publish_native_recovery(&self.shared, session)?;
             if exceeded {
