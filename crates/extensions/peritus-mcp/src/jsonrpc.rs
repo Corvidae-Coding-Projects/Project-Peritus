@@ -1,4 +1,4 @@
-//! Strict JSON-RPC 2.0 request and response envelopes.
+//! JSON-RPC 2.0 request and response envelopes.
 
 use serde_json::Value;
 
@@ -42,7 +42,7 @@ impl<'de> serde::Deserialize<'de> for RpcId {
     }
 }
 
-/// Strict JSON-RPC request or notification.
+/// JSON-RPC request or notification with forward-compatible extension fields.
 #[derive(Clone, Debug)]
 pub struct JsonRpcRequest {
     /// Must equal `2.0`.
@@ -70,11 +70,6 @@ impl<'de> serde::Deserialize<'de> for JsonRpcRequest {
         let id = optional::<RpcId, D::Error>(&mut fields, "id")?;
         let method = required::<String, D::Error>(&mut fields, "method")?;
         let params = optional::<Value, D::Error>(&mut fields, "params")?;
-        if let Some(name) = fields.keys().next() {
-            return Err(<D::Error as serde::de::Error>::custom(format!(
-                "unknown JSON-RPC request field: {name}"
-            )));
-        }
         Ok(Self { jsonrpc, id, method, params })
     }
 }
@@ -149,7 +144,7 @@ impl JsonRpcResponse {
     #[must_use]
     pub fn failure(id: Option<RpcId>, code: i32, message: impl Into<String>) -> Self {
         let mut message = message.into();
-        message.truncate(512);
+        truncate_utf8(&mut message, 512);
         Self {
             jsonrpc: "2.0",
             id,
@@ -172,6 +167,17 @@ impl JsonRpcResponse {
         }
         response
     }
+}
+
+fn truncate_utf8(value: &mut String, maximum: usize) {
+    if value.len() <= maximum {
+        return;
+    }
+    let mut boundary = maximum;
+    while !value.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    value.truncate(boundary);
 }
 
 fn required<T, E>(fields: &mut serde_json::Map<String, Value>, name: &'static str) -> Result<T, E>

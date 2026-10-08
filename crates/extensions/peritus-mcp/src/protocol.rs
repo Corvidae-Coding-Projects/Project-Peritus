@@ -4,8 +4,19 @@ use serde_json::Value;
 
 use crate::RpcId;
 
-/// Supported MCP protocol version.
+/// Latest MCP protocol version implemented by this server.
 pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
+
+/// MCP protocol versions this server can actually serve, newest first.
+pub const MCP_PROTOCOL_VERSIONS: &[&str] = &[MCP_PROTOCOL_VERSION];
+
+pub(crate) fn negotiate_protocol_version(requested: &str) -> &'static str {
+    MCP_PROTOCOL_VERSIONS
+        .iter()
+        .copied()
+        .find(|supported| *supported == requested)
+        .unwrap_or(MCP_PROTOCOL_VERSION)
+}
 
 /// Client implementation identity from `initialize`.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -24,7 +35,6 @@ impl<'de> serde::Deserialize<'de> for McpClientInfo {
         let mut fields = object(deserializer, "clientInfo")?;
         let name = required::<String, D::Error>(&mut fields, "name")?;
         let version = required::<String, D::Error>(&mut fields, "version")?;
-        finish::<D::Error>(&fields, "clientInfo")?;
         Ok(Self { name, version })
     }
 }
@@ -64,9 +74,11 @@ impl<'de> serde::Deserialize<'de> for InitializeParams {
     {
         let mut fields = object(deserializer, "initialize params")?;
         let protocol_version = required::<String, D::Error>(&mut fields, "protocolVersion")?;
-        let capabilities = value_or(&mut fields, "capabilities", Value::Null);
+        let capabilities = Value::Object(required::<serde_json::Map<String, Value>, D::Error>(
+            &mut fields,
+            "capabilities",
+        )?);
         let client_info = required::<McpClientInfo, D::Error>(&mut fields, "clientInfo")?;
-        finish::<D::Error>(&fields, "initialize params")?;
         Ok(Self { protocol_version, capabilities, client_info })
     }
 }
@@ -83,7 +95,6 @@ impl<'de> serde::Deserialize<'de> for CursorParams {
     {
         let mut fields = object(deserializer, "cursor params")?;
         let cursor = optional::<String, D::Error>(&mut fields, "cursor")?;
-        finish::<D::Error>(&fields, "cursor params")?;
         Ok(Self { cursor })
     }
 }
@@ -102,7 +113,6 @@ impl<'de> serde::Deserialize<'de> for ToolCallParams {
         let mut fields = object(deserializer, "tool call params")?;
         let name = required::<String, D::Error>(&mut fields, "name")?;
         let arguments = value_or(&mut fields, "arguments", empty_object());
-        finish::<D::Error>(&fields, "tool call params")?;
         Ok(Self { name, arguments })
     }
 }
@@ -119,7 +129,6 @@ impl<'de> serde::Deserialize<'de> for ResourceReadParams {
     {
         let mut fields = object(deserializer, "resource read params")?;
         let uri = required::<String, D::Error>(&mut fields, "uri")?;
-        finish::<D::Error>(&fields, "resource read params")?;
         Ok(Self { uri })
     }
 }
@@ -138,7 +147,6 @@ impl<'de> serde::Deserialize<'de> for PromptGetParams {
         let mut fields = object(deserializer, "prompt get params")?;
         let name = required::<String, D::Error>(&mut fields, "name")?;
         let arguments = value_or(&mut fields, "arguments", Value::Null);
-        finish::<D::Error>(&fields, "prompt get params")?;
         Ok(Self { name, arguments })
     }
 }
@@ -157,7 +165,6 @@ impl<'de> serde::Deserialize<'de> for CancelParams {
         let mut fields = object(deserializer, "cancel params")?;
         let request_id = required::<RpcId, D::Error>(&mut fields, "requestId")?;
         let reason = optional::<String, D::Error>(&mut fields, "reason")?;
-        finish::<D::Error>(&fields, "cancel params")?;
         Ok(Self { request_id, reason })
     }
 }
@@ -212,14 +219,4 @@ fn value_or(
     default: Value,
 ) -> Value {
     fields.remove(name).map_or(default, |value| value)
-}
-
-fn finish<E>(fields: &serde_json::Map<String, Value>, context: &'static str) -> Result<(), E>
-where
-    E: serde::de::Error,
-{
-    fields
-        .keys()
-        .next()
-        .map_or_else(|| Ok(()), |name| Err(E::custom(format!("unknown {context} field: {name}"))))
 }

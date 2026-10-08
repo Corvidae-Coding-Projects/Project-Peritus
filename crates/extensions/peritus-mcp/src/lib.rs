@@ -16,11 +16,15 @@ mod server;
 
 pub use bridge::{
     AuthorityBridge, BridgeConnectionClose, BridgeConnectionCloseReason, BridgeContext,
-    BridgeFuture, BridgePrompt, BridgePromptArgument, BridgePromptMessage, BridgeRequestOwnership,
-    BridgeResource, BridgeResourceContents, BridgeTool, BridgeToolCallResult,
+    BridgeFuture, BridgePage, BridgePageRequest, BridgePrompt, BridgePromptArgument,
+    BridgePromptGetResult, BridgePromptMessage, BridgeRequestOwnership, BridgeResource,
+    BridgeResourceContents, BridgeResourceReadResult, BridgeResponseBudget, BridgeTool,
+    BridgeToolCallResult,
 };
 pub use cancellation::McpCancellation;
 pub use error::{BridgeError, BridgeErrorClass, McpError, McpErrorClass};
 pub use jsonrpc::{JsonRpcError, JsonRpcRequest, JsonRpcResponse, RpcId};
-pub use protocol::{MCP_PROTOCOL_VERSION, McpClientInfo, McpServerInfo};
+pub use protocol::{
+    MCP_PROTOCOL_VERSION, MCP_PROTOCOL_VERSIONS, McpClientInfo, McpServerInfo,
+};
 pub use server::{McpServer, ServerLimits};

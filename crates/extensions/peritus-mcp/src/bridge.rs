@@ -5,6 +5,7 @@ use std::{future::Future, pin::Pin};
 use peritus_policy::ActorRole;
 use peritus_tool_protocol::{ResultStatus, ToolDescriptor, ToolResult};
 use peritus_types::{ActorId, SessionId};
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::{BridgeError, BridgeErrorClass, JsonRpcResponse, McpCancellation, RpcId};
@@ -13,6 +14,121 @@ mod wire;
 
 /// Sendable borrowed future returned by bridge methods.
 pub type BridgeFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// Exact encoded-result capacity reserved for one accepted JSON-RPC request.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct BridgeResponseBudget {
+    maximum_result_bytes: usize,
+}
+
+impl BridgeResponseBudget {
+    pub(crate) const fn new(maximum_result_bytes: usize) -> Self {
+        Self { maximum_result_bytes }
+    }
+
+    /// Returns the maximum encoded bytes available to the JSON-RPC `result` value.
+    #[must_use]
+    pub const fn maximum_result_bytes(self) -> usize {
+        self.maximum_result_bytes
+    }
+
+    /// Measures an exact projected result without allocating its encoded representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an infrastructure error if the projection cannot be serialized.
+    pub fn admits_result<T: Serialize + ?Sized>(&self, result: &T) -> Result<bool, BridgeError> {
+        let mut length = EncodedLength::default();
+        serde_json::to_writer(&mut length, result).map_err(|error| {
+            BridgeError::with_source(
+                BridgeErrorClass::Infrastructure,
+                "mcp_projection",
+                "bridge result could not be measured",
+                error,
+            )
+        })?;
+        Ok(length.bytes <= self.maximum_result_bytes)
+    }
+}
+
+#[derive(Default)]
+struct EncodedLength {
+    bytes: usize,
+}
+
+impl std::io::Write for EncodedLength {
+    fn write(&mut self, buffer: &[u8]) -> std::io::Result<usize> {
+        self.bytes = self.bytes.saturating_add(buffer.len());
+        Ok(buffer.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Exact request context for one authority-owned list page.
+#[derive(Clone, Debug)]
+pub struct BridgePageRequest {
+    request_id: RpcId,
+    cursor: Option<String>,
+    response_budget: BridgeResponseBudget,
+}
+
+impl BridgePageRequest {
+    pub(crate) const fn new(
+        request_id: RpcId,
+        cursor: Option<String>,
+        response_budget: BridgeResponseBudget,
+    ) -> Self {
+        Self { request_id, cursor, response_budget }
+    }
+
+    /// Borrows the exact JSON-RPC request identity used to admit this page query.
+    #[must_use]
+    pub const fn request_id(&self) -> &RpcId {
+        &self.request_id
+    }
+
+    /// Borrows the opaque authority-issued continuation, if present.
+    #[must_use]
+    pub fn cursor(&self) -> Option<&str> {
+        self.cursor.as_deref()
+    }
+
+    /// Returns the exact encoded-result capacity for this page.
+    #[must_use]
+    pub const fn response_budget(&self) -> BridgeResponseBudget {
+        self.response_budget
+    }
+}
+
+/// One authority-owned, encoded-size-bounded list page.
+#[derive(Clone, Debug)]
+pub struct BridgePage<T> {
+    items: Vec<T>,
+    next_cursor: Option<String>,
+}
+
+impl<T> BridgePage<T> {
+    /// Creates a page from source-selected items and an opaque source continuation.
+    #[must_use]
+    pub const fn new(items: Vec<T>, next_cursor: Option<String>) -> Self {
+        Self { items, next_cursor }
+    }
+
+    /// Borrows the source-selected page items.
+    #[must_use]
+    pub fn items(&self) -> &[T] {
+        &self.items
+    }
+
+    /// Borrows the opaque continuation for the same authority snapshot.
+    #[must_use]
+    pub fn next_cursor(&self) -> Option<&str> {
+        self.next_cursor.as_deref()
+    }
+}
 
 /// Authenticated daemon session projected into the MCP bridge.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -116,6 +232,26 @@ pub struct BridgeResourceContents {
     pub blob: Option<String>,
 }
 
+/// Exact MCP result for one bounded resource read.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BridgeResourceReadResult {
+    contents: Vec<BridgeResourceContents>,
+}
+
+impl BridgeResourceReadResult {
+    /// Creates a resource result already admitted against its response budget.
+    #[must_use]
+    pub const fn new(contents: Vec<BridgeResourceContents>) -> Self {
+        Self { contents }
+    }
+
+    /// Borrows the returned resource contents.
+    #[must_use]
+    pub fn contents(&self) -> &[BridgeResourceContents] {
+        &self.contents
+    }
+}
+
 /// One MCP prompt argument declaration.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BridgePromptArgument {
@@ -145,6 +281,26 @@ pub struct BridgePromptMessage {
     pub role: String,
     /// Text content block.
     pub content: PromptTextContent,
+}
+
+/// Exact MCP result for one bounded prompt rendering.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BridgePromptGetResult {
+    messages: Vec<BridgePromptMessage>,
+}
+
+impl BridgePromptGetResult {
+    /// Creates a prompt result already admitted against its response budget.
+    #[must_use]
+    pub const fn new(messages: Vec<BridgePromptMessage>) -> Self {
+        Self { messages }
+    }
+
+    /// Borrows the rendered prompt messages.
+    #[must_use]
+    pub fn messages(&self) -> &[BridgePromptMessage] {
+        &self.messages
+    }
 }
 
 /// Text prompt content block.
@@ -323,6 +479,12 @@ impl BridgeConnectionClose {
 /// resources and prompts. Each returned future owns its daemon operation: implementations must
 /// propagate the supplied cancellation and must not detach accepted effects when the future is
 /// dropped. Returning a value is an observation; this trait has no grant API.
+///
+/// Every operation receives the exact JSON result capacity reserved before dispatch. That budget
+/// is an admission input, not a post-effect truncation target: implementations must establish a
+/// bounded projection before dispatching an effect and must page collections at the authority
+/// source instead of materializing a complete collection. List cursors are opaque authority tokens
+/// bound to the authenticated context and a stable source snapshot.
 pub trait AuthorityBridge: Send + Sync {
     /// Reconciles a new connection with durable authority for the exact session and generation.
     ///
@@ -349,8 +511,9 @@ pub trait AuthorityBridge: Send + Sync {
     fn list_tools<'a>(
         &'a self,
         context: &'a BridgeContext,
+        request: BridgePageRequest,
         cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeTool>, BridgeError>>;
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgeTool>, BridgeError>>;
 
     /// Routes one tool call through the authoritative C4/G0 lifecycle.
     fn call_tool<'a>(
@@ -358,6 +521,7 @@ pub trait AuthorityBridge: Send + Sync {
         context: &'a BridgeContext,
         name: &'a str,
         arguments: Value,
+        response_budget: BridgeResponseBudget,
         cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<BridgeToolCallResult, BridgeError>>;
 
@@ -365,23 +529,26 @@ pub trait AuthorityBridge: Send + Sync {
     fn list_resources<'a>(
         &'a self,
         context: &'a BridgeContext,
+        request: BridgePageRequest,
         cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeResource>, BridgeError>>;
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgeResource>, BridgeError>>;
 
     /// Reads one exact authority-filtered resource.
     fn read_resource<'a>(
         &'a self,
         context: &'a BridgeContext,
         uri: &'a str,
+        response_budget: BridgeResponseBudget,
         cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeResourceContents>, BridgeError>>;
+    ) -> BridgeFuture<'a, Result<BridgeResourceReadResult, BridgeError>>;
 
     /// Lists prompts visible through the exact authenticated A3 session.
     fn list_prompts<'a>(
         &'a self,
         context: &'a BridgeContext,
+        request: BridgePageRequest,
         cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgePrompt>, BridgeError>>;
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgePrompt>, BridgeError>>;
 
     /// Resolves one prompt template through current daemon state.
     fn get_prompt<'a>(
@@ -389,6 +556,7 @@ pub trait AuthorityBridge: Send + Sync {
         context: &'a BridgeContext,
         name: &'a str,
         arguments: Value,
+        response_budget: BridgeResponseBudget,
         cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgePromptMessage>, BridgeError>>;
+    ) -> BridgeFuture<'a, Result<BridgePromptGetResult, BridgeError>>;
 }

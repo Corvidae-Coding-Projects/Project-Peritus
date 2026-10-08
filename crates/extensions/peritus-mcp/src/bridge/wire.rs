@@ -1,9 +1,54 @@
 //! Manual MCP wire projections for bridge-owned domain observations.
 
 use super::{
-    BridgePrompt, BridgePromptArgument, BridgePromptMessage, BridgeResource,
-    BridgeResourceContents, BridgeTool, BridgeToolCallResult, PromptTextContent, ToolTextContent,
+    BridgePage, BridgePrompt, BridgePromptArgument, BridgePromptGetResult, BridgePromptMessage,
+    BridgeResource, BridgeResourceContents, BridgeResourceReadResult, BridgeTool,
+    BridgeToolCallResult, PromptTextContent, ToolTextContent,
 };
+
+fn serialize_page<S, T>(
+    page: &BridgePage<T>,
+    field: &'static str,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+    T: serde::Serialize,
+{
+    let mut map = serializer.serialize_map(Some(1 + usize::from(page.next_cursor.is_some())))?;
+    serde::ser::SerializeMap::serialize_entry(&mut map, field, &page.items)?;
+    if let Some(cursor) = &page.next_cursor {
+        serde::ser::SerializeMap::serialize_entry(&mut map, "nextCursor", cursor)?;
+    }
+    serde::ser::SerializeMap::end(map)
+}
+
+impl serde::Serialize for BridgePage<BridgeTool> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialize_page(self, "tools", serializer)
+    }
+}
+
+impl serde::Serialize for BridgePage<BridgeResource> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialize_page(self, "resources", serializer)
+    }
+}
+
+impl serde::Serialize for BridgePage<BridgePrompt> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serialize_page(self, "prompts", serializer)
+    }
+}
 
 impl serde::Serialize for BridgeTool {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -62,6 +107,17 @@ impl serde::Serialize for BridgeResourceContents {
     }
 }
 
+impl serde::Serialize for BridgeResourceReadResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        serde::ser::SerializeMap::serialize_entry(&mut map, "contents", &self.contents)?;
+        serde::ser::SerializeMap::end(map)
+    }
+}
+
 impl serde::Serialize for BridgePromptArgument {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -102,6 +158,17 @@ impl serde::Serialize for BridgePromptMessage {
         let mut map = serializer.serialize_map(Some(2))?;
         serde::ser::SerializeMap::serialize_entry(&mut map, "role", &self.role)?;
         serde::ser::SerializeMap::serialize_entry(&mut map, "content", &self.content)?;
+        serde::ser::SerializeMap::end(map)
+    }
+}
+
+impl serde::Serialize for BridgePromptGetResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(1))?;
+        serde::ser::SerializeMap::serialize_entry(&mut map, "messages", &self.messages)?;
         serde::ser::SerializeMap::end(map)
     }
 }

@@ -4,8 +4,10 @@ use std::{future::Future, sync::Arc, time::Duration};
 
 use peritus_mcp::{
     AuthorityBridge, BridgeConnectionClose, BridgeContext, BridgeError, BridgeErrorClass,
-    BridgeFuture, BridgePrompt, BridgePromptMessage, BridgeResource, BridgeResourceContents,
-    BridgeTool, BridgeToolCallResult, McpCancellation, McpServer, McpServerInfo, ServerLimits,
+    BridgeFuture, BridgePage, BridgePageRequest, BridgePrompt, BridgePromptGetResult,
+    BridgePromptMessage, BridgeResource, BridgeResourceContents, BridgeResourceReadResult,
+    BridgeResponseBudget, BridgeTool, BridgeToolCallResult, McpCancellation, McpServer,
+    McpServerInfo, ServerLimits,
 };
 use peritus_types::{ActorId, SessionId};
 use serde_json::Value;
@@ -30,6 +32,21 @@ where
         .block_on(future);
 }
 
+fn admitted<T: serde::Serialize>(
+    result: T,
+    budget: BridgeResponseBudget,
+) -> Result<T, BridgeError> {
+    if budget.admits_result(&result)? {
+        Ok(result)
+    } else {
+        Err(BridgeError::new(
+            BridgeErrorClass::Infrastructure,
+            "test_projection",
+            "test bridge projection exceeds its admitted response budget",
+        ))
+    }
+}
+
 impl AuthorityBridge for FakeBridge {
     fn reconcile_connection<'a>(
         &'a self,
@@ -49,21 +66,37 @@ impl AuthorityBridge for FakeBridge {
     fn list_tools<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        request: BridgePageRequest,
         _cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeTool>, BridgeError>> {
-        Box::pin(async {
-            Ok(vec![
-                BridgeTool {
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgeTool>, BridgeError>> {
+        Box::pin(async move {
+            let budget = request.response_budget();
+            let page = match request.cursor() {
+                None => BridgePage::new(
+                    vec![BridgeTool {
                     name: "fs.read".to_owned(),
                     description: "Read a file".to_owned(),
                     input_schema: json(r#"{"type":"object"}"#),
-                },
-                BridgeTool {
+                    }],
+                    Some("fake-tools-snapshot:3:1".to_owned()),
+                ),
+                Some("fake-tools-snapshot:3:1") => BridgePage::new(
+                    vec![BridgeTool {
                     name: "quality.run".to_owned(),
                     description: "Run one configured check".to_owned(),
                     input_schema: json(r#"{"type":"object"}"#),
-                },
-            ])
+                    }],
+                    None,
+                ),
+                Some(_) => {
+                    return Err(BridgeError::new(
+                        BridgeErrorClass::InvalidRequest,
+                        "invalid_cursor",
+                        "cursor does not belong to the fake authority snapshot",
+                    ));
+                }
+            };
+            admitted(page, budget)
         })
     }
 
@@ -72,6 +105,7 @@ impl AuthorityBridge for FakeBridge {
         _context: &'a BridgeContext,
         name: &'a str,
         arguments: Value,
+        response_budget: BridgeResponseBudget,
         cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<BridgeToolCallResult, BridgeError>> {
         Box::pin(async move {
@@ -90,26 +124,27 @@ impl AuthorityBridge for FakeBridge {
                     "tool is not exposed",
                 ));
             }
-            Ok(BridgeToolCallResult {
+            admitted(BridgeToolCallResult {
                 content: Vec::new(),
                 structured_content: Some(arguments),
                 is_error: false,
-            })
+            }, response_budget)
         })
     }
 
     fn list_resources<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        request: BridgePageRequest,
         _cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeResource>, BridgeError>> {
-        Box::pin(async {
-            Ok(vec![BridgeResource {
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgeResource>, BridgeError>> {
+        Box::pin(async move {
+            admitted(BridgePage::new(vec![BridgeResource {
                 uri: "peritus://status".to_owned(),
                 name: "status".to_owned(),
                 description: Some("Current status".to_owned()),
                 mime_type: Some("application/json".to_owned()),
-            }])
+            }], None), request.response_budget())
         })
     }
 
@@ -117,29 +152,31 @@ impl AuthorityBridge for FakeBridge {
         &'a self,
         _context: &'a BridgeContext,
         uri: &'a str,
+        response_budget: BridgeResponseBudget,
         _cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgeResourceContents>, BridgeError>> {
+    ) -> BridgeFuture<'a, Result<BridgeResourceReadResult, BridgeError>> {
         Box::pin(async move {
-            Ok(vec![BridgeResourceContents {
+            admitted(BridgeResourceReadResult::new(vec![BridgeResourceContents {
                 uri: uri.to_owned(),
                 mime_type: Some("application/json".to_owned()),
                 text: Some("{\"ready\":true}".to_owned()),
                 blob: None,
-            }])
+            }]), response_budget)
         })
     }
 
     fn list_prompts<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        request: BridgePageRequest,
         _cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgePrompt>, BridgeError>> {
-        Box::pin(async {
-            Ok(vec![BridgePrompt {
+    ) -> BridgeFuture<'a, Result<BridgePage<BridgePrompt>, BridgeError>> {
+        Box::pin(async move {
+            admitted(BridgePage::new(vec![BridgePrompt {
                 name: "review".to_owned(),
                 description: Some("Review a change".to_owned()),
                 arguments: Vec::new(),
-            }])
+            }], None), request.response_budget())
         })
     }
 
@@ -148,10 +185,17 @@ impl AuthorityBridge for FakeBridge {
         _context: &'a BridgeContext,
         name: &'a str,
         _arguments: Value,
+        response_budget: BridgeResponseBudget,
         _cancellation: &'a McpCancellation,
-    ) -> BridgeFuture<'a, Result<Vec<BridgePromptMessage>, BridgeError>> {
+    ) -> BridgeFuture<'a, Result<BridgePromptGetResult, BridgeError>> {
         Box::pin(async move {
-            Ok(vec![BridgePromptMessage::text("user", format!("use prompt {name}"))])
+            admitted(
+                BridgePromptGetResult::new(vec![BridgePromptMessage::text(
+                    "user",
+                    format!("use prompt {name}"),
+                )]),
+                response_budget,
+            )
         })
     }
 }
@@ -163,7 +207,7 @@ struct Harness {
 }
 
 impl Harness {
-    fn start(in_flight_requests: usize, page_entries: usize) -> Self {
+    fn start(in_flight_requests: usize, _page_entries: usize) -> Self {
         let context = BridgeContext::new(
             ActorId::new([1; 16]).expect("actor"),
             SessionId::new([2; 16]).expect("session"),
@@ -175,7 +219,7 @@ impl Harness {
                 Some("Peritus test bridge".to_owned()),
                 context,
                 Arc::new(FakeBridge),
-                ServerLimits { message_bytes: 64 * 1024, in_flight_requests, page_entries },
+                ServerLimits { message_bytes: 64 * 1024, in_flight_requests },
             )
             .expect("server"),
         );
@@ -231,10 +275,10 @@ fn lifecycle_pagination_tool_resource_and_prompt_methods_work() {
             .request(json(r#"{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}"#))
             .await;
         assert_eq!(first["result"]["tools"][0]["name"], "fs.read");
-        assert_eq!(first["result"]["nextCursor"], "1");
+        assert_eq!(first["result"]["nextCursor"], "fake-tools-snapshot:3:1");
         let second = harness
             .request(json(
-                r#"{"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"cursor":"1"}}"#,
+                r#"{"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"cursor":"fake-tools-snapshot:3:1"}}"#,
             ))
             .await;
         assert_eq!(second["result"]["tools"][0]["name"], "quality.run");

@@ -57,8 +57,8 @@ impl BridgeError {
         mut detail: String,
         source: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        code.truncate(128);
-        detail.truncate(1024);
+        truncate_utf8(&mut code, 128);
+        truncate_utf8(&mut detail, 1024);
         Self { class, code, detail, source }
     }
 
@@ -140,7 +140,7 @@ impl McpError {
         mut detail: String,
         source: Option<Box<dyn Error + Send + Sync>>,
     ) -> Self {
-        detail.truncate(1024);
+        truncate_utf8(&mut detail, 1024);
         Self { class, operation, detail, source }
     }
 
@@ -173,4 +173,15 @@ impl Error for McpError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.source.as_deref().map(|source| source as &(dyn Error + 'static))
     }
+}
+
+fn truncate_utf8(value: &mut String, maximum: usize) {
+    if value.len() <= maximum {
+        return;
+    }
+    let mut boundary = maximum;
+    while !value.is_char_boundary(boundary) {
+        boundary -= 1;
+    }
+    value.truncate(boundary);
 }

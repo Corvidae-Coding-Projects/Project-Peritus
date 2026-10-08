@@ -42,11 +42,10 @@ pub async fn read_message<R: AsyncBufRead + Unpin>(
     }
 }
 
-pub async fn write_response<W: AsyncWrite + Unpin>(
-    writer: &mut W,
+pub fn encode_response(
     response: &JsonRpcResponse,
     maximum: usize,
-) -> Result<(), McpError> {
+) -> Result<Vec<u8>, McpError> {
     let payload = serde_json::to_vec(response).map_err(|error| {
         McpError::with_source(
             McpErrorClass::Protocol,
@@ -62,7 +61,14 @@ pub async fn write_response<W: AsyncWrite + Unpin>(
             "MCP response exceeds its byte bound",
         ));
     }
-    writer.write_all(&payload).await.map_err(write_transport)?;
+    Ok(payload)
+}
+
+pub async fn write_response<W: AsyncWrite + Unpin>(
+    writer: &mut W,
+    payload: &[u8],
+) -> Result<(), McpError> {
+    writer.write_all(payload).await.map_err(write_transport)?;
     writer.write_all(b"\n").await.map_err(delimiter_transport)?;
     writer.flush().await.map_err(flush_transport)
 }
