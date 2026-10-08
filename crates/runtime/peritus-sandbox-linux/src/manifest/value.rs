@@ -1,23 +1,40 @@
-//! Bounded literal values carried by the Linux helper manifest.
+//! Literal values carried by the Linux helper manifest.
 
 use super::manifest_error;
 use crate::LinuxError;
 use peritus_sandbox::SecretRequirement;
-use std::fmt;
+use std::{
+    ffi::{OsStr, OsString},
+    fmt,
+    os::unix::ffi::OsStrExt,
+};
 
 /// Literal shell-free target executable and argv.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TargetCommand {
-    program: String,
-    arguments: Vec<String>,
+    program: OsString,
+    arguments: Vec<OsString>,
 }
 
 impl TargetCommand {
-    /// Creates a bounded literal command.
+    /// Creates an exact native literal command.
     ///
     /// # Errors
-    /// Rejects empty/NUL-bearing programs, NUL-bearing arguments, or more than 256 arguments.
-    pub fn new(program: String, arguments: Vec<String>) -> Result<Self, LinuxError> {
+    /// Rejects empty or NUL-bearing programs and NUL-bearing arguments.
+    pub fn new(program: OsString, arguments: Vec<OsString>) -> Result<Self, LinuxError> {
+        if program.is_empty() || program.as_bytes().contains(&0) {
+            return Err(manifest_error("target command is empty or contains NUL"));
+        }
+        if arguments.iter().any(|argument| argument.as_bytes().contains(&0)) {
+            return Err(manifest_error("target argument contains NUL"));
+        }
+        Ok(Self { program, arguments })
+    }
+
+    pub(super) fn new_legacy(
+        program: String,
+        arguments: Vec<String>,
+    ) -> Result<Self, LinuxError> {
         if program.is_empty() || program.as_bytes().contains(&0) || arguments.len() > 256 {
             return Err(manifest_error("target command is empty, contains NUL, or is oversized"));
         }
@@ -27,16 +44,19 @@ impl TargetCommand {
         {
             return Err(manifest_error("target argument contains NUL or is oversized"));
         }
-        Ok(Self { program, arguments })
+        Ok(Self {
+            program: program.into(),
+            arguments: arguments.into_iter().map(Into::into).collect(),
+        })
     }
     /// Returns the exact program.
     #[must_use]
-    pub fn program(&self) -> &str {
+    pub fn program(&self) -> &OsStr {
         &self.program
     }
     /// Returns literal arguments.
     #[must_use]
-    pub fn arguments(&self) -> &[String] {
+    pub fn arguments(&self) -> &[OsString] {
         &self.arguments
     }
 }
@@ -44,16 +64,27 @@ impl TargetCommand {
 /// One exact non-secret environment assignment.
 #[derive(Clone, Eq, PartialEq)]
 pub struct EnvironmentEntry {
-    pub(super) name: String,
-    value: String,
+    pub(super) name: OsString,
+    value: OsString,
 }
 
 impl EnvironmentEntry {
-    /// Creates a portable environment assignment.
+    /// Creates an exact native environment assignment.
     ///
     /// # Errors
-    /// Rejects invalid names, NUL, or values exceeding 64 KiB.
-    pub fn new(name: String, value: String) -> Result<Self, LinuxError> {
+    /// Rejects an empty name, equals or NUL in the name, and NUL in the value.
+    pub fn new(name: OsString, value: OsString) -> Result<Self, LinuxError> {
+        if name.is_empty()
+            || name.as_bytes().contains(&b'=')
+            || name.as_bytes().contains(&0)
+            || value.as_bytes().contains(&0)
+        {
+            return Err(manifest_error("environment assignment is invalid"));
+        }
+        Ok(Self { name, value })
+    }
+
+    pub(super) fn new_legacy(name: String, value: String) -> Result<Self, LinuxError> {
         let valid_name = !name.is_empty()
             && name.len() <= 255
             && name.bytes().enumerate().all(|(index, byte)| {
@@ -62,16 +93,16 @@ impl EnvironmentEntry {
         if !valid_name || value.len() > 64 * 1024 || value.as_bytes().contains(&0) {
             return Err(manifest_error("environment assignment is invalid or oversized"));
         }
-        Ok(Self { name, value })
+        Ok(Self { name: name.into(), value: value.into() })
     }
     /// Returns the name.
     #[must_use]
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &OsStr {
         &self.name
     }
     /// Returns the exact non-secret value.
     #[must_use]
-    pub fn value(&self) -> &str {
+    pub fn value(&self) -> &OsStr {
         &self.value
     }
 }
@@ -81,7 +112,7 @@ impl fmt::Debug for EnvironmentEntry {
         formatter
             .debug_struct("EnvironmentEntry")
             .field("name", &self.name)
-            .field("value_bytes", &self.value.len())
+            .field("value_bytes", &self.value.as_bytes().len())
             .finish()
     }
 }

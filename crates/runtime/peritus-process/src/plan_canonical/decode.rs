@@ -17,13 +17,14 @@ use crate::{
     TerminalSize, WorkingDirectory, WorkspaceAccess, error::invalid,
 };
 
-use super::{DOMAIN_V1, DOMAIN_V2, DOMAIN_V3};
+use super::{DOMAIN_V1, DOMAIN_V2, DOMAIN_V3, DOMAIN_V4};
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Version {
     V1,
     V2,
     V3,
+    V4,
 }
 
 pub(crate) struct RestoredBackend {
@@ -60,15 +61,17 @@ pub(crate) fn restore(bytes: &[u8]) -> Result<RestoredPlan, ProcessError> {
         (Version::V2, DOMAIN_V2.len())
     } else if bytes.starts_with(DOMAIN_V3) {
         (Version::V3, DOMAIN_V3.len())
+    } else if bytes.starts_with(DOMAIN_V4) {
+        (Version::V4, DOMAIN_V4.len())
     } else {
         return Err(invalid("execution plan canonical domain is unsupported"));
     };
-    let mut reader = Reader::new(bytes, offset);
-    if version == Version::V3 {
+    let mut reader = Reader::new(bytes, offset, version == Version::V4);
+    if matches!(version, Version::V3 | Version::V4) {
         reader.require_native_platform()?;
     }
     let identity = decode_identity(&mut reader)?;
-    let (executable, arguments, directory) = if version == Version::V3 {
+    let (executable, arguments, directory) = if matches!(version, Version::V3 | Version::V4) {
         let executable = reader.native_text()?;
         let arguments = reader.sequence(4, |reader| reader.native_text())?;
         let directory = PathBuf::from(reader.native_text()?);
@@ -214,7 +217,7 @@ fn decode_environment(
 ) -> Result<EnvironmentPlan, ProcessError> {
     let source = match reader.u8()? {
         1 => EnvironmentSource::Cleared,
-        2 => EnvironmentSource::Allowlisted(if version == Version::V3 {
+        2 => EnvironmentSource::Allowlisted(if matches!(version, Version::V3 | Version::V4) {
             reader.sequence(4, |reader| reader.native_text())?
         } else {
             reader.sequence(4, |reader| Ok(OsString::from(reader.text()?)))?
@@ -227,7 +230,7 @@ fn decode_environment(
             2 => EnvironmentValueSource::Literal,
             _ => return Err(invalid("environment value-source tag is invalid")),
         };
-        let (name, value) = if version == Version::V3 {
+        let (name, value) = if matches!(version, Version::V3 | Version::V4) {
             (reader.native_text()?, reader.native_text()?)
         } else {
             (OsString::from(reader.text()?), OsString::from(reader.text()?))
@@ -432,11 +435,12 @@ fn decode_bool(tag: u8) -> Result<bool, ProcessError> {
 struct Reader<'a> {
     bytes: &'a [u8],
     position: usize,
+    wide: bool,
 }
 
 impl<'a> Reader<'a> {
-    const fn new(bytes: &'a [u8], position: usize) -> Self {
-        Self { bytes, position }
+    const fn new(bytes: &'a [u8], position: usize, wide: bool) -> Self {
+        Self { bytes, position, wide }
     }
 
     fn finish(&self) -> Result<(), ProcessError> {
@@ -486,6 +490,12 @@ impl<'a> Reader<'a> {
         Ok(u64::from_be_bytes(self.array()?))
     }
 
+    fn length(&mut self) -> Result<usize, ProcessError> {
+        let value = if self.wide { self.u64()? } else { u64::from(self.u32()?) };
+        usize::try_from(value)
+            .map_err(|_| invalid("execution plan length is unsupported on this platform"))
+    }
+
     fn optional_u64(&mut self) -> Result<Option<u64>, ProcessError> {
         match self.u8()? {
             0 => Ok(None),
@@ -495,8 +505,7 @@ impl<'a> Reader<'a> {
     }
 
     fn text(&mut self) -> Result<String, ProcessError> {
-        let length = usize::try_from(self.u32()?)
-            .map_err(|_| invalid("execution plan text length is unsupported"))?;
+        let length = self.length()?;
         let value = std::str::from_utf8(self.take(length)?)
             .map_err(|_| invalid("execution plan text is not UTF-8"))?;
         let mut owned = String::new();
@@ -512,8 +521,7 @@ impl<'a> Reader<'a> {
         minimum_item_bytes: usize,
         mut decode: impl FnMut(&mut Self) -> Result<T, ProcessError>,
     ) -> Result<Vec<T>, ProcessError> {
-        let count = usize::try_from(self.u32()?)
-            .map_err(|_| invalid("execution plan sequence count is unsupported"))?;
+        let count = self.length()?;
         if minimum_item_bytes == 0 || count > self.remaining() / minimum_item_bytes {
             return Err(invalid("execution plan sequence count exceeds its bytes"));
         }
@@ -540,8 +548,7 @@ impl<'a> Reader<'a> {
     fn native_text(&mut self) -> Result<OsString, ProcessError> {
         use std::os::unix::ffi::OsStringExt as _;
 
-        let length = usize::try_from(self.u32()?)
-            .map_err(|_| invalid("execution native text length is unsupported"))?;
+        let length = self.length()?;
         let value = self.take(length)?;
         let mut owned = Vec::new();
         owned
@@ -555,8 +562,7 @@ impl<'a> Reader<'a> {
     fn native_text(&mut self) -> Result<OsString, ProcessError> {
         use std::os::windows::ffi::OsStringExt as _;
 
-        let length = usize::try_from(self.u32()?)
-            .map_err(|_| invalid("execution native text length is unsupported"))?;
+        let length = self.length()?;
         if length > self.remaining() / 2 {
             return Err(invalid("execution native text is truncated"));
         }

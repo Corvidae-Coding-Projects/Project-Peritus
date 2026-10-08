@@ -3,8 +3,6 @@
 use crate::{BackendAdmission, CheckedSandboxPlan, FeatureSet, SandboxError};
 use peritus_types::Sha256Digest;
 
-const MAX_IDENTITY_BYTES: usize = 128;
-
 /// Validated stable backend name.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct BackendName(String);
@@ -13,7 +11,7 @@ impl BackendName {
     /// Validates an ASCII backend name.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or non-identifier names.
+    /// Rejects empty or non-identifier names.
     pub fn new(value: impl Into<String>) -> Result<Self, SandboxError> {
         let value = value.into();
         if !valid_identity(&value) {
@@ -36,7 +34,7 @@ impl BackendVersion {
     /// Validates an ASCII backend version.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or non-identifier versions.
+    /// Rejects empty or non-identifier versions.
     pub fn new(value: impl Into<String>) -> Result<Self, SandboxError> {
         let value = value.into();
         if !valid_identity(&value) {
@@ -53,7 +51,6 @@ impl BackendVersion {
 
 fn valid_identity(value: &str) -> bool {
     !value.is_empty()
-        && value.len() <= MAX_IDENTITY_BYTES
         && value.is_ascii()
         && value.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._+-".contains(&byte))
 }

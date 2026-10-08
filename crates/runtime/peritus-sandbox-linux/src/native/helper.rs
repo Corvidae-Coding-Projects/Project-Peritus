@@ -1,4 +1,4 @@
-//! Version-one helper handshake, enforcement installation, and literal target exec.
+//! Versioned helper handshake, enforcement installation, and literal target exec.
 
 mod proxy;
 
@@ -14,8 +14,6 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 use zeroize::Zeroizing;
-
-const MANIFEST_LIMIT: usize = 1024 * 1024;
 
 pub(super) fn helper_main() -> Result<(), LinuxError> {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -84,9 +82,25 @@ fn run_target(
     super::rlimit::install(manifest.resources())?;
     super::landlock_policy::install(&manifest)?;
     super::seccomp_policy::install()?;
-    let mut command = Command::new(manifest.target().program());
+    let admitted_command = peritus_process::CommandSpec::new(
+        manifest.target().program().to_owned(),
+        manifest.target().arguments().to_vec(),
+    )
+    .map_err(|_| helper_error("target command failed native helper validation"))?;
+    let mut admitted_variables = manifest
+        .environment()
+        .iter()
+        .map(|entry| {
+            peritus_process::EnvironmentVariable::new(
+                entry.name().to_owned(),
+                entry.value().to_owned(),
+            )
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| helper_error("target environment failed native helper validation"))?;
+    let mut command = Command::new(admitted_command.executable());
     command
-        .args(manifest.target().arguments())
+        .args(admitted_command.arguments())
         .current_dir(manifest.working_directory())
         .env_clear();
     for entry in manifest.environment() {
@@ -96,17 +110,43 @@ fn run_target(
         match payload {
             PreparedPayload::Environment { name, value } => {
                 command.env(name, OsStr::from_bytes(value));
+                admitted_variables.push(
+                    peritus_process::EnvironmentVariable::new(
+                        name.clone(),
+                        OsStr::from_bytes(value),
+                    )
+                    .map_err(|_| helper_error("protected environment payload is invalid"))?,
+                );
             }
             PreparedPayload::Brokered { label, descriptor } => {
-                command.env(format!("PERITUS_BROKERED_HANDLE_LABEL_V1_{index}"), label);
-                command
-                    .env(format!("PERITUS_BROKERED_HANDLE_FD_V1_{index}"), descriptor.to_string());
+                let label_name = format!("PERITUS_BROKERED_HANDLE_LABEL_V1_{index}");
+                let descriptor_name = format!("PERITUS_BROKERED_HANDLE_FD_V1_{index}");
+                let descriptor_value = descriptor.to_string();
+                command.env(&label_name, label).env(&descriptor_name, &descriptor_value);
+                admitted_variables.push(
+                    peritus_process::EnvironmentVariable::new(label_name.clone(), label.clone())
+                        .map_err(|_| helper_error("brokered handle environment is invalid"))?,
+                );
+                admitted_variables.push(
+                    peritus_process::EnvironmentVariable::new(
+                        descriptor_name.clone(),
+                        descriptor_value.clone(),
+                    )
+                    .map_err(|_| helper_error("brokered handle environment is invalid"))?,
+                );
             }
         }
     }
     if let Some(proxy) = prepared_proxy {
-        proxy.configure(&mut command);
+        proxy.configure(&mut command, &mut admitted_variables)?;
     }
+    let admitted_environment = peritus_process::EnvironmentPlan::cleared(admitted_variables)
+        .map_err(|_| helper_error("target environment failed native helper validation"))?;
+    peritus_process::validate_native_command_environment(
+        &admitted_command,
+        &admitted_environment,
+    )
+    .map_err(|_| helper_error("target exceeds current native exec capacity"))?;
     if let Some(attachment) = pty {
         attachment
             .configure(&mut command)
@@ -272,8 +312,8 @@ fn read_manifest_frame(reader: &mut impl Read) -> Result<Vec<u8>, LinuxError> {
     })?;
     let length = usize::try_from(u32::from_le_bytes(length))
         .map_err(|_| helper_error("manifest frame length is invalid"))?;
-    if length == 0 || length > MANIFEST_LIMIT {
-        return Err(helper_error("manifest frame length exceeds its bound"));
+    if length == 0 {
+        return Err(helper_error("manifest frame is empty"));
     }
     let mut bytes = vec![0; length];
     reader

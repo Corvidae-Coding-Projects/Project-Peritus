@@ -19,8 +19,6 @@ mod projection;
 
 use projection::validate_sandbox_projection;
 
-const MAX_BACKEND_TOKEN_BYTES: usize = 128;
-
 /// Whether the exact plan requests isolation or an explicitly authorized raw effect.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ExecutionIsolation {
@@ -65,12 +63,35 @@ pub struct BackendSelection {
 }
 
 impl BackendSelection {
+    fn restore(
+        name: String,
+        version: String,
+        native: bool,
+        resource_fidelity: BackendResourceFidelity,
+        descriptor_digest: Sha256Digest,
+        support_digest: Sha256Digest,
+        preparation_digest: Sha256Digest,
+    ) -> Result<Self, ProcessError> {
+        if !valid_backend_token(&name) || !valid_backend_token(&version) {
+            return Err(invalid("restored backend name or version is invalid"));
+        }
+        Ok(Self {
+            name,
+            version,
+            native,
+            resource_fidelity,
+            descriptor_digest,
+            support_digest,
+            preparation_digest,
+        })
+    }
+
     /// Projects one fail-closed sandbox admission into the execution identity.
     ///
     /// # Errors
     ///
     /// Returns an error when the admission does not bind the supplied checked plan or its backend
-    /// identity cannot be represented by execution plan version one.
+    /// identity does not use the closed backend-token grammar.
     pub fn from_admission(
         plan: &CheckedSandboxPlan,
         admission: &BackendAdmission,
@@ -82,7 +103,7 @@ impl BackendSelection {
         let name = descriptor.name().as_str().to_owned();
         let version = descriptor.version().as_str().to_owned();
         if !valid_backend_token(&name) || !valid_backend_token(&version) {
-            return Err(invalid("backend name or version is invalid or exceeds its bound"));
+            return Err(invalid("backend name or version is invalid"));
         }
         Ok(Self {
             name,
@@ -158,7 +179,112 @@ pub struct ExecutionPlan {
 }
 
 impl ExecutionPlan {
-    /// Validates cross-field identities and freezes complete canonical version-one bytes.
+    /// Restores and revalidates exact V1, V2, or current-platform V3 canonical bytes.
+    ///
+    /// # Errors
+    /// Rejects malformed, noncanonical, cross-platform, internally inconsistent, or trailing
+    /// input. Restoration does not re-resolve the already canonical working-directory path.
+    pub fn restore_canonical(bytes: Vec<u8>) -> Result<Self, ProcessError> {
+        let restored = crate::plan_canonical::restore(&bytes)?;
+        let backend = BackendSelection::restore(
+            restored.backend.name,
+            restored.backend.version,
+            restored.backend.native,
+            restored.backend.resource_fidelity,
+            restored.backend.descriptor_digest,
+            restored.backend.support_digest,
+            restored.backend.preparation_digest,
+        )?;
+        let exact_target = restored.identity.workspace_id()
+            == restored.working_directory.workspace_id()
+            && restored.identity.resource_id() == restored.working_directory.resource_id()
+            && restored.identity.environment_id() == restored.working_directory.environment_id()
+            && restored.identity.revision().workspace_id()
+                == restored.working_directory.workspace_id()
+            && restored.identity.revision().workspace_generation()
+                == restored.working_directory.generation()
+            && restored.identity.revision().workspace_revision()
+                == restored.working_directory.revision();
+        if !exact_target {
+            return Err(invalid("restored working directory differs from execution identity"));
+        }
+        if restored.isolation == ExecutionIsolation::Restricted && !backend.is_native() {
+            return Err(invalid("restored restricted execution uses a non-native backend"));
+        }
+        if restored.deadlines.wall_timeout_millis().is_some_and(|deadline| {
+            restored.resources.wall_millis().is_some_and(|maximum| deadline > maximum)
+        }) || exceeds_selected(restored.output.spool_limit(), restored.resources.output_limit())
+            || exceeds_selected(restored.output.stdout_limit(), restored.resources.output_limit())
+            || exceeds_selected(restored.output.stderr_limit(), restored.resources.output_limit())
+            || exceeds_selected(restored.output.terminal_limit(), restored.resources.output_limit())
+        {
+            return Err(invalid("restored deadline or output policy exceeds resource policy"));
+        }
+        let mut plan = Self {
+            identity: restored.identity,
+            command: restored.command,
+            working_directory: restored.working_directory,
+            environment: restored.environment,
+            io_mode: restored.io_mode,
+            stdin: restored.stdin,
+            terminal: restored.terminal,
+            output: restored.output,
+            deadlines: restored.deadlines,
+            resources: restored.resources,
+            caller_binding: restored.caller_binding,
+            isolation: restored.isolation,
+            sandbox_digest: restored.sandbox_digest,
+            backend,
+            canonical: bytes,
+            digest: Sha256Digest::new([0; 32]),
+        };
+        if crate::plan_canonical::encode(&plan)? != plan.canonical {
+            return Err(invalid("execution plan bytes are not the exact canonical representation"));
+        }
+        plan.digest = Sha256Digest::new(Sha256::digest(&plan.canonical).into());
+        Ok(plan)
+    }
+
+    pub(crate) fn validate_restored_sandbox(
+        &self,
+        sandbox: &CheckedSandboxPlan,
+    ) -> Result<(), ProcessError> {
+        let isolation = match sandbox.isolation() {
+            IsolationRequirement::Restricted => ExecutionIsolation::Restricted,
+            IsolationRequirement::ExplicitRawEffect => ExecutionIsolation::ExplicitRawEffect,
+        };
+        let operation = match sandbox.operation_class() {
+            SandboxOperationClass::Execution => ExecutionIsolation::Restricted,
+            SandboxOperationClass::RawEffect => ExecutionIsolation::ExplicitRawEffect,
+        };
+        let binding = sandbox.binding();
+        if isolation != self.isolation
+            || operation != self.isolation
+            || sandbox.digest() != self.sandbox_digest
+            || binding.process_id() != self.identity.process_id()
+            || binding.resource_id() != self.identity.resource_id()
+            || binding.environment_id() != self.identity.environment_id()
+            || binding.revision() != self.identity.revision()
+        {
+            return Err(invalid("restored sandbox differs from execution plan identity"));
+        }
+        let terminal = validate_sandbox_projection(
+            sandbox,
+            &self.command,
+            &self.working_directory,
+            &self.environment,
+            self.io_mode,
+            self.stdin,
+            self.output,
+            self.resources,
+        )?;
+        if terminal != self.terminal {
+            return Err(invalid("restored terminal capabilities differ from sandbox projection"));
+        }
+        Ok(())
+    }
+
+    /// Validates cross-field identities and freezes complete versioned canonical bytes.
     ///
     /// # Errors
     ///
@@ -212,6 +338,8 @@ impl ExecutionPlan {
         }
         let terminal = validate_sandbox_projection(
             sandbox_plan,
+            &command,
+            &working_directory,
             &environment,
             io_mode,
             stdin,
@@ -228,10 +356,10 @@ impl ExecutionPlan {
         }
         if deadlines.wall_timeout_millis().is_some_and(|deadline| {
             resources.wall_millis().is_some_and(|maximum| deadline > maximum)
-        }) || output.spool_bytes() > resources.output_bytes()
-            || output.stdout_bytes() > resources.output_bytes()
-            || output.stderr_bytes() > resources.output_bytes()
-            || output.terminal_bytes() > resources.output_bytes()
+        }) || exceeds_selected(output.spool_limit(), resources.output_limit())
+            || exceeds_selected(output.stdout_limit(), resources.output_limit())
+            || exceeds_selected(output.stderr_limit(), resources.output_limit())
+            || exceeds_selected(output.terminal_limit(), resources.output_limit())
         {
             return Err(invalid("deadline or output policy exceeds the resource policy"));
         }
@@ -342,7 +470,7 @@ impl ExecutionPlan {
     pub const fn backend(&self) -> &BackendSelection {
         &self.backend
     }
-    /// Borrows complete canonical version-one bytes.
+    /// Borrows complete versioned canonical bytes.
     #[must_use]
     pub fn canonical_bytes(&self) -> &[u8] {
         &self.canonical
@@ -354,10 +482,13 @@ impl ExecutionPlan {
     }
 }
 
+const fn exceeds_selected(value: Option<u64>, maximum: Option<u64>) -> bool {
+    matches!((value, maximum), (Some(value), Some(maximum)) if value > maximum)
+}
+
 fn valid_backend_token(value: &str) -> bool {
     !value.is_empty()
-        && value.len() <= MAX_BACKEND_TOKEN_BYTES
         && value
             .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'+'))
 }

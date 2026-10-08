@@ -6,10 +6,22 @@ pub const MAX_PROTOCOL_BYTES: usize = 1024 * 1024;
 pub const MAX_ITEMS: usize = 256;
 
 pub fn push_bytes(output: &mut Vec<u8>, value: &[u8]) -> Result<(), LinuxError> {
+    push_bytes_unbounded(output, value)?;
+    check_total(output)
+}
+
+pub fn push_bytes_unbounded(output: &mut Vec<u8>, value: &[u8]) -> Result<(), LinuxError> {
     let length = u32::try_from(value.len()).map_err(|_| protocol_error("value is too large"))?;
+    let additional = value
+        .len()
+        .checked_add(4)
+        .ok_or_else(|| protocol_error("protocol payload size overflowed"))?;
+    output
+        .try_reserve(additional)
+        .map_err(|_| protocol_error("protocol payload cannot be represented in native memory"))?;
     output.extend_from_slice(&length.to_be_bytes());
     output.extend_from_slice(value);
-    check_total(output)
+    Ok(())
 }
 
 pub fn push_str(output: &mut Vec<u8>, value: &str) -> Result<(), LinuxError> {
@@ -23,6 +35,25 @@ pub fn push_count(output: &mut Vec<u8>, count: usize) -> Result<(), LinuxError> 
     let count = u32::try_from(count).map_err(|_| protocol_error("collection is too large"))?;
     output.extend_from_slice(&count.to_be_bytes());
     check_total(output)
+}
+
+pub fn push_count_unbounded(output: &mut Vec<u8>, count: usize) -> Result<(), LinuxError> {
+    let count = u32::try_from(count).map_err(|_| protocol_error("collection is too large"))?;
+    output
+        .try_reserve(4)
+        .map_err(|_| protocol_error("protocol payload cannot be represented in native memory"))?;
+    output.extend_from_slice(&count.to_be_bytes());
+    Ok(())
+}
+
+pub fn push_bounded_count_unbounded_total(
+    output: &mut Vec<u8>,
+    count: usize,
+) -> Result<(), LinuxError> {
+    if count > MAX_ITEMS {
+        return Err(protocol_error("collection exceeds protocol bound"));
+    }
+    push_count_unbounded(output, count)
 }
 
 pub fn check_total(output: &[u8]) -> Result<(), LinuxError> {
@@ -74,8 +105,16 @@ impl<'a> Reader<'a> {
         }
         Ok(self.take(length)?.to_vec())
     }
+    pub(crate) fn bytes_unbounded(&mut self) -> Result<Vec<u8>, LinuxError> {
+        let length = usize::try_from(self.u32()?).map_err(|_| protocol_error("bad length"))?;
+        Ok(self.take(length)?.to_vec())
+    }
     pub(crate) fn string(&mut self) -> Result<String, LinuxError> {
         String::from_utf8(self.bytes()?).map_err(|_| protocol_error("field is not UTF-8"))
+    }
+    pub(crate) fn string_unbounded(&mut self) -> Result<String, LinuxError> {
+        String::from_utf8(self.bytes_unbounded()?)
+            .map_err(|_| protocol_error("field is not UTF-8"))
     }
     pub(crate) fn count(&mut self) -> Result<usize, LinuxError> {
         let count = usize::try_from(self.u32()?).map_err(|_| protocol_error("bad count"))?;
@@ -84,6 +123,9 @@ impl<'a> Reader<'a> {
         } else {
             Ok(count)
         }
+    }
+    pub(crate) fn count_unbounded(&mut self) -> Result<usize, LinuxError> {
+        usize::try_from(self.u32()?).map_err(|_| protocol_error("bad count"))
     }
     pub(crate) fn finish(self) -> Result<(), LinuxError> {
         if self.offset == self.bytes.len() {

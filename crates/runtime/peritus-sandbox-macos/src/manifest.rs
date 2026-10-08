@@ -1,6 +1,10 @@
 //! Versioned bounded helper manifest and activation-record protocol.
 
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::{OsStr, OsString},
+    os::unix::ffi::OsStrExt,
+    path::{Path, PathBuf},
+};
 
 use peritus_process::CommandSpec;
 use peritus_sandbox::CheckedSandboxPlan;
@@ -17,15 +21,16 @@ mod fields;
 
 use fields::{
     encode_containment, encode_proxy, encode_resources, encode_strings, encode_terminal,
-    expected_preparation, path_text, validate_control_environment, validate_executable_path,
+    expected_preparation, validate_control_environment, validate_executable_path,
     validate_executable_text, validate_protected_handles, validate_working_directory,
 };
 
 const MAGIC: [u8; 8] = *b"PRTSMAC1";
-const VERSION: u16 = 1;
+const LEGACY_VERSION: u16 = 1;
+const NATIVE_VERSION: u16 = 2;
+const VERSION: u16 = 3;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const MAX_FRAME_BYTES: usize = 512 * 1_024;
-const MAX_ARGUMENTS: usize = 4_096;
 const PREPARATION_DOMAIN: &[u8] = b"PERITUS-SANDBOX-PREPARATION-V1\0";
 
 /// The protected manifest frame arrives on helper standard input.
@@ -56,6 +61,7 @@ impl ManifestHandle {
 /// Complete target and native-control data delivered to the helper as bounded binary bytes.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HelperManifest {
+    encoding_version: u16,
     process_id: ProcessId,
     plan_digest: Sha256Digest,
     descriptor_digest: Sha256Digest,
@@ -64,8 +70,8 @@ pub struct HelperManifest {
     profile_digest: Sha256Digest,
     profile: String,
     seatbelt_executable: PathBuf,
-    target_executable: String,
-    target_arguments: Vec<String>,
+    target_executable: OsString,
+    target_arguments: Vec<OsString>,
     working_directory: PathBuf,
     environment: Vec<EnvironmentEntry>,
     exec_status_descriptor: u32,
@@ -111,7 +117,11 @@ impl HelperManifest {
                 "admitted preparation digest is not bound to this plan and descriptor",
             ));
         }
-        if command.executable() != plan.requirements().process().program().as_str() {
+        let authorized = plan.native_execution().map_or_else(
+            || OsStr::new(plan.requirements().process().program().as_str()),
+            peritus_sandbox::NativeExecutionAuthority::executable,
+        );
+        if command.executable() != authorized {
             return Err(error::mismatch(
                 MacosErrorKind::PreparationMismatch,
                 "target executable differs from checked process requirements",
@@ -132,6 +142,7 @@ impl HelperManifest {
         }
         validate_protected_handles(exec_status_descriptor, proxy.as_ref(), &secrets)?;
         let mut manifest = Self {
+            encoding_version: VERSION,
             process_id,
             plan_digest: plan.digest(),
             descriptor_digest,
@@ -220,13 +231,13 @@ impl HelperManifest {
 
     /// Returns the literal target executable.
     #[must_use]
-    pub fn target_executable(&self) -> &str {
+    pub fn target_executable(&self) -> &OsStr {
         &self.target_executable
     }
 
     /// Returns literal target argv excluding argv zero.
     #[must_use]
-    pub fn target_arguments(&self) -> &[String] {
+    pub fn target_arguments(&self) -> &[OsString] {
         &self.target_arguments
     }
 
@@ -288,6 +299,49 @@ impl HelperManifest {
     }
 
     fn encode(&self) -> Result<Vec<u8>, MacosError> {
+        if self.encoding_version == LEGACY_VERSION {
+            return self.encode_legacy();
+        }
+        let mut body = Writer::native();
+        body.fixed(self.process_id.as_bytes())?;
+        body.fixed(self.plan_digest.as_bytes())?;
+        body.fixed(self.descriptor_digest.as_bytes())?;
+        body.fixed(self.support_digest.as_bytes())?;
+        body.fixed(self.preparation_digest.as_bytes())?;
+        body.fixed(self.profile_digest.as_bytes())?;
+        body.native_bytes(self.profile.as_bytes())?;
+        body.native_bytes(self.seatbelt_executable.as_os_str().as_bytes())?;
+        body.native_bytes(self.target_executable.as_bytes())?;
+        encode_strings(&mut body, &self.target_arguments)?;
+        body.native_bytes(self.working_directory.as_os_str().as_bytes())?;
+        body.native_count(self.environment.len())?;
+        for entry in &self.environment {
+            entry.encode(&mut body)?;
+        }
+        body.u32(self.exec_status_descriptor)?;
+        encode_proxy(&mut body, self.proxy.as_ref())?;
+        encode_resources(&mut body, &self.resources)?;
+        encode_containment(&mut body, self.containment, self.encoding_version)?;
+        encode_terminal(&mut body, self.terminal)?;
+        body.count(self.secrets.len())?;
+        for secret in &self.secrets {
+            secret.encode(&mut body)?;
+        }
+        let body = body.finish();
+        let mut envelope = Writer::native();
+        envelope.fixed(&MAGIC)?;
+        envelope.u16(self.encoding_version)?;
+        envelope.u32(u32::try_from(body.len()).map_err(|_| {
+            error::limited(MacosOperation::Manifest, "manifest body is too large")
+        })?)?;
+        envelope.native_bytes(&body)?;
+        let mut bytes = envelope.finish();
+        let checksum = peritus_codec::sha256(&bytes);
+        bytes.extend_from_slice(checksum.as_bytes());
+        Ok(bytes)
+    }
+
+    fn encode_legacy(&self) -> Result<Vec<u8>, MacosError> {
         let mut body = Writer::new();
         body.fixed(self.process_id.as_bytes())?;
         body.fixed(self.plan_digest.as_bytes())?;
@@ -296,18 +350,34 @@ impl HelperManifest {
         body.fixed(self.preparation_digest.as_bytes())?;
         body.fixed(self.profile_digest.as_bytes())?;
         body.string(&self.profile)?;
-        body.string(path_text(&self.seatbelt_executable)?)?;
-        body.string(&self.target_executable)?;
-        encode_strings(&mut body, &self.target_arguments)?;
-        body.string(path_text(&self.working_directory)?)?;
+        body.string(self.seatbelt_executable.to_str().ok_or_else(|| {
+            error::invalid(MacosOperation::Manifest, "legacy executable path is not UTF-8")
+        })?)?;
+        body.string(self.target_executable.to_str().ok_or_else(|| {
+            error::invalid(MacosOperation::Manifest, "legacy target path is not UTF-8")
+        })?)?;
+        body.count(self.target_arguments.len())?;
+        for argument in &self.target_arguments {
+            body.string(argument.to_str().ok_or_else(|| {
+                error::invalid(MacosOperation::Manifest, "legacy target argument is not UTF-8")
+            })?)?;
+        }
+        body.string(self.working_directory.to_str().ok_or_else(|| {
+            error::invalid(MacosOperation::Manifest, "legacy working directory is not UTF-8")
+        })?)?;
         body.count(self.environment.len())?;
         for entry in &self.environment {
-            entry.encode(&mut body)?;
+            body.string(entry.name().to_str().ok_or_else(|| {
+                error::invalid(MacosOperation::Manifest, "legacy environment name is not UTF-8")
+            })?)?;
+            body.string(entry.value().to_str().ok_or_else(|| {
+                error::invalid(MacosOperation::Manifest, "legacy environment value is not UTF-8")
+            })?)?;
         }
         body.u32(self.exec_status_descriptor)?;
         encode_proxy(&mut body, self.proxy.as_ref())?;
         encode_resources(&mut body, &self.resources)?;
-        encode_containment(&mut body, self.containment)?;
+        encode_containment(&mut body, self.containment, LEGACY_VERSION)?;
         encode_terminal(&mut body, self.terminal)?;
         body.count(self.secrets.len())?;
         for secret in &self.secrets {
@@ -316,7 +386,7 @@ impl HelperManifest {
         let body = body.finish();
         let mut envelope = Writer::new();
         envelope.fixed(&MAGIC)?;
-        envelope.u16(VERSION)?;
+        envelope.u16(LEGACY_VERSION)?;
         envelope.u32(u32::try_from(body.len()).map_err(|_| {
             error::limited(MacosOperation::Manifest, "manifest body is too large")
         })?)?;

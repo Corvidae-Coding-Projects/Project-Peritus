@@ -3,9 +3,9 @@
 use crate::{
     EnvironmentMode, FeatureSet, FileDecision, FileOperation, InputPermission,
     IsolationRequirement, NetworkDecision, ResizePermission, SandboxBinding, SandboxContract,
-    SandboxError, SandboxFeature, SandboxOperationClass, SandboxRequirements, SecretDelivery,
-    SignalPolicy, TerminalMode, TerminalSignalPermission, TreeContainment, canonical, error,
-    verified,
+    NativeExecutionAuthority, SandboxError, SandboxFeature, SandboxOperationClass,
+    SandboxRequirements, SandboxResourceKind, SecretDelivery, SignalPolicy, TerminalMode,
+    TerminalSignalPermission, TreeContainment, canonical, error, verified,
 };
 use peritus_types::Sha256Digest;
 
@@ -17,12 +17,24 @@ pub struct CheckedSandboxPlan {
     operation_class: SandboxOperationClass,
     contract: SandboxContract,
     requirements: SandboxRequirements,
+    native_execution: Option<NativeExecutionAuthority>,
     required_features: FeatureSet,
     canonical_bytes: Vec<u8>,
     digest: Sha256Digest,
 }
 
 impl CheckedSandboxPlan {
+    /// Restores and revalidates one exact V1, V2, or current-platform V3 canonical plan.
+    ///
+    /// The decoder reconstructs every domain through its checked constructor and requires the
+    /// resulting canonical bytes to equal the supplied bytes exactly.
+    ///
+    /// # Errors
+    /// Rejects malformed, noncanonical, cross-platform, denied, or trailing input.
+    pub fn restore_canonical(bytes: Vec<u8>) -> Result<Self, SandboxError> {
+        canonical::restore_plan(bytes)
+    }
+
     /// Returns the exact target binding.
     #[must_use]
     pub const fn binding(&self) -> SandboxBinding {
@@ -48,6 +60,11 @@ impl CheckedSandboxPlan {
     pub const fn requirements(&self) -> &SandboxRequirements {
         &self.requirements
     }
+    /// Returns optional exact current-platform process authority.
+    #[must_use]
+    pub const fn native_execution(&self) -> Option<&NativeExecutionAuthority> {
+        self.native_execution.as_ref()
+    }
     /// Returns the complete backend feature requirement.
     #[must_use]
     pub const fn required_features(&self) -> FeatureSet {
@@ -63,6 +80,34 @@ impl CheckedSandboxPlan {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+
+    /// Adds exact native process authority and recomputes the versioned plan identity.
+    ///
+    /// This must occur before backend admission so the admission preparation digest binds the
+    /// exact native executable, working directory, and environment-name semantics.
+    ///
+    /// # Errors
+    /// Rejects a second native authority binding.
+    pub fn bind_native_execution(
+        mut self,
+        authority: NativeExecutionAuthority,
+    ) -> Result<Self, SandboxError> {
+        if self.native_execution.is_some() {
+            return Err(error::invalid("sandbox plan already has native execution authority"));
+        }
+        self.native_execution = Some(authority);
+        self.canonical_bytes = canonical::plan_bytes(
+            self.binding,
+            self.isolation,
+            self.operation_class,
+            &self.contract,
+            &self.requirements,
+            self.native_execution.as_ref(),
+            self.required_features,
+        );
+        self.digest = peritus_codec::sha256(&self.canonical_bytes);
+        Ok(self)
+    }
 }
 
 /// Compiles a complete sandbox plan or rejects the first denied domain.
@@ -77,6 +122,11 @@ pub fn compile_sandbox(
     contract: SandboxContract,
     requirements: SandboxRequirements,
 ) -> Result<CheckedSandboxPlan, SandboxError> {
+    if isolation == IsolationRequirement::Restricted
+        && contract.process().containment() != TreeContainment::Required
+    {
+        return Err(error::denied("restricted isolation requires complete process-tree containment"));
+    }
     let facts = compilation_facts(isolation, operation_class, &contract, &requirements);
     let class_matches = (facts.isolation_ordinal == 0 && facts.operation_class_ordinal == 0)
         || (facts.isolation_ordinal == 1 && facts.operation_class_ordinal == 1);
@@ -114,6 +164,7 @@ pub fn compile_sandbox(
         operation_class,
         &contract,
         &requirements,
+        None,
         required_features,
     );
     let digest = peritus_codec::sha256(&canonical_bytes);
@@ -123,6 +174,7 @@ pub fn compile_sandbox(
         operation_class,
         contract,
         requirements,
+        native_execution: None,
         required_features,
         canonical_bytes,
         digest,
@@ -219,17 +271,19 @@ fn derive_features(contract: &SandboxContract) -> FeatureSet {
             SecretDelivery::BrokeredHandle(_) => SandboxFeature::SecretHandle,
         });
     }
-    for feature in [
-        SandboxFeature::WallTime,
-        SandboxFeature::CpuTime,
-        SandboxFeature::Memory,
-        SandboxFeature::Disk,
-        SandboxFeature::Output,
-        SandboxFeature::OpenHandles,
-        SandboxFeature::ProcessCount,
-        SandboxFeature::Concurrency,
+    for (kind, feature) in [
+        (SandboxResourceKind::WallTime, SandboxFeature::WallTime),
+        (SandboxResourceKind::CpuTime, SandboxFeature::CpuTime),
+        (SandboxResourceKind::Memory, SandboxFeature::Memory),
+        (SandboxResourceKind::Disk, SandboxFeature::Disk),
+        (SandboxResourceKind::Output, SandboxFeature::Output),
+        (SandboxResourceKind::OpenHandles, SandboxFeature::OpenHandles),
+        (SandboxResourceKind::Processes, SandboxFeature::ProcessCount),
+        (SandboxResourceKind::Concurrency, SandboxFeature::Concurrency),
     ] {
-        features.insert(feature);
+        if contract.resources().selected_limit(kind).is_some() {
+            features.insert(feature);
+        }
     }
     if contract.terminal().modes().contains(TerminalMode::Pipes) {
         features.insert(SandboxFeature::Pipes);

@@ -1,4 +1,4 @@
-//! Versioned bounded helper manifest.
+//! Versioned helper manifest with exact native command and environment values.
 
 mod activation;
 mod delivery;
@@ -14,14 +14,18 @@ use crate::{
 use peritus_sandbox::{SecretGrant, SecretReference};
 use peritus_types::ResourceId;
 use peritus_types::Sha256Digest;
+use std::ffi::OsString;
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::path::PathBuf;
 
 const MANIFEST_MAGIC: [u8; 8] = *b"PRTLNXM1";
-const VERSION: u16 = 1;
+const LEGACY_VERSION: u16 = 1;
+const VERSION: u16 = 2;
 
-/// Complete version-one helper preparation input.
+/// Complete versioned helper preparation input.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HelperManifest {
+    encoding_version: u16,
     plan_digest: Sha256Digest,
     backend_digest: Sha256Digest,
     support_digest: Sha256Digest,
@@ -42,7 +46,7 @@ impl HelperManifest {
     /// Creates and validates a complete helper manifest.
     ///
     /// # Errors
-    /// Rejects relative working directories, duplicate names/handles, and unbounded collections.
+    /// Rejects relative working directories, duplicate names/handles, and invalid control data.
     #[allow(clippy::too_many_arguments, reason = "complete authority-relevant helper manifest")]
     pub fn new(
         plan_digest: Sha256Digest,
@@ -61,14 +65,16 @@ impl HelperManifest {
     ) -> Result<Self, LinuxError> {
         if !working_directory.is_absolute()
             || !valid_cgroup_leaf(&cgroup_leaf)
-            || environment.len() > 256
             || landlock_rules.len() > 256
             || inherited_handles.len() > 256
         {
             return Err(manifest_error("manifest path or collection is invalid"));
         }
-        environment.sort_by(|left, right| left.name.cmp(&right.name));
-        if environment.windows(2).any(|pair| pair[0].name == pair[1].name) {
+        environment.sort_by(|left, right| left.name.as_bytes().cmp(right.name.as_bytes()));
+        if environment
+            .windows(2)
+            .any(|pair| pair[0].name.as_bytes() == pair[1].name.as_bytes())
+        {
             return Err(manifest_error("manifest environment contains duplicate names"));
         }
         landlock_rules.sort();
@@ -81,6 +87,7 @@ impl HelperManifest {
             return Err(manifest_error("manifest inherited handles collide"));
         }
         Ok(Self {
+            encoding_version: VERSION,
             plan_digest,
             backend_digest,
             support_digest,
@@ -202,8 +209,11 @@ impl HelperManifest {
     /// Encodes with a trailing SHA-256 checksum over every preceding byte.
     ///
     /// # Errors
-    /// Returns a helper protocol error if a field exceeds the one-MiB total bound.
+    /// Returns a helper protocol error if exact native values exceed the protocol's u32 framing.
     pub fn encode(&self) -> Result<Vec<u8>, LinuxError> {
+        if self.encoding_version == LEGACY_VERSION {
+            return self.encode_legacy();
+        }
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&MANIFEST_MAGIC);
         bytes.extend_from_slice(&VERSION.to_be_bytes());
@@ -212,22 +222,115 @@ impl HelperManifest {
         {
             bytes.extend_from_slice(digest.as_bytes());
         }
-        crate::canonical::push_str(&mut bytes, self.target.program())?;
+        crate::canonical::push_bytes_unbounded(&mut bytes, self.target.program().as_bytes())?;
+        crate::canonical::push_count_unbounded(&mut bytes, self.target.arguments().len())?;
+        for argument in self.target.arguments() {
+            crate::canonical::push_bytes_unbounded(&mut bytes, argument.as_bytes())?;
+        }
+        crate::canonical::push_bytes_unbounded(
+            &mut bytes,
+            self.working_directory.as_os_str().as_bytes(),
+        )?;
+        crate::canonical::push_bytes_unbounded(&mut bytes, self.cgroup_leaf.as_os_str().as_bytes())?;
+        bytes.push(u8::from(self.pty));
+        crate::canonical::push_count_unbounded(&mut bytes, self.environment.len())?;
+        for entry in &self.environment {
+            crate::canonical::push_bytes_unbounded(&mut bytes, entry.name().as_bytes())?;
+            crate::canonical::push_bytes_unbounded(&mut bytes, entry.value().as_bytes())?;
+        }
+        crate::canonical::push_bounded_count_unbounded_total(
+            &mut bytes,
+            self.landlock_rules.len(),
+        )?;
+        for rule in &self.landlock_rules {
+            crate::canonical::push_bytes_unbounded(&mut bytes, rule.path().as_os_str().as_bytes())?;
+            bytes.extend_from_slice(&rule.access().bits().to_be_bytes());
+        }
+        self.resources.encode(&mut bytes);
+        bytes.push(self.network.tag());
+        crate::canonical::push_bounded_count_unbounded_total(
+            &mut bytes,
+            self.inherited_handles.len(),
+        )?;
+        for handle in &self.inherited_handles {
+            bytes.extend_from_slice(&handle.descriptor().to_be_bytes());
+            crate::canonical::push_bytes_unbounded(&mut bytes, handle.label().as_bytes())?;
+        }
+        crate::canonical::push_bounded_count_unbounded_total(
+            &mut bytes,
+            self.protected_payloads.len(),
+        )?;
+        for binding in &self.protected_payloads {
+            bytes.extend_from_slice(binding.requirement.reference().resource_id().as_bytes());
+            bytes.extend_from_slice(binding.requirement.reference().version().as_bytes());
+            delivery::encode_v2(&mut bytes, binding.requirement.delivery())?;
+            bytes.extend_from_slice(&binding.handle.descriptor().to_be_bytes());
+            crate::canonical::push_bytes_unbounded(
+                &mut bytes,
+                binding.handle.label().as_bytes(),
+            )?;
+            bytes.extend_from_slice(&binding.payload_len.to_be_bytes());
+        }
+        let checksum = peritus_codec::sha256(&bytes);
+        bytes.extend_from_slice(checksum.as_bytes());
+        Ok(bytes)
+    }
+
+    fn encode_legacy(&self) -> Result<Vec<u8>, LinuxError> {
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&MANIFEST_MAGIC);
+        bytes.extend_from_slice(&LEGACY_VERSION.to_be_bytes());
+        for digest in
+            [self.plan_digest, self.backend_digest, self.support_digest, self.preparation_digest]
+        {
+            bytes.extend_from_slice(digest.as_bytes());
+        }
+        crate::canonical::push_str(
+            &mut bytes,
+            self.target
+                .program()
+                .to_str()
+                .ok_or_else(|| manifest_error("legacy target is not UTF-8"))?,
+        )?;
         crate::canonical::push_count(&mut bytes, self.target.arguments().len())?;
         for argument in self.target.arguments() {
-            crate::canonical::push_str(&mut bytes, argument)?;
+            crate::canonical::push_str(
+                &mut bytes,
+                argument
+                    .to_str()
+                    .ok_or_else(|| manifest_error("legacy argument is not UTF-8"))?,
+            )?;
         }
-        crate::canonical::push_str(&mut bytes, self.working_directory.to_string_lossy().as_ref())?;
-        crate::canonical::push_str(&mut bytes, self.cgroup_leaf.to_string_lossy().as_ref())?;
+        crate::canonical::push_str(
+            &mut bytes,
+            self.working_directory
+                .to_str()
+                .ok_or_else(|| manifest_error("legacy working directory is not UTF-8"))?,
+        )?;
+        crate::canonical::push_str(
+            &mut bytes,
+            self.cgroup_leaf
+                .to_str()
+                .ok_or_else(|| manifest_error("legacy cgroup path is not UTF-8"))?,
+        )?;
         bytes.push(u8::from(self.pty));
         crate::canonical::push_count(&mut bytes, self.environment.len())?;
         for entry in &self.environment {
-            crate::canonical::push_str(&mut bytes, entry.name())?;
-            crate::canonical::push_str(&mut bytes, entry.value())?;
+            crate::canonical::push_str(
+                &mut bytes,
+                entry.name().to_str().ok_or_else(|| manifest_error("legacy name is not UTF-8"))?,
+            )?;
+            crate::canonical::push_str(
+                &mut bytes,
+                entry.value().to_str().ok_or_else(|| manifest_error("legacy value is not UTF-8"))?,
+            )?;
         }
         crate::canonical::push_count(&mut bytes, self.landlock_rules.len())?;
         for rule in &self.landlock_rules {
-            crate::canonical::push_str(&mut bytes, rule.path().to_string_lossy().as_ref())?;
+            crate::canonical::push_str(
+                &mut bytes,
+                rule.path().to_str().ok_or_else(|| manifest_error("legacy rule is not UTF-8"))?,
+            )?;
             bytes.extend_from_slice(&rule.access().bits().to_be_bytes());
         }
         self.resources.encode(&mut bytes);
@@ -241,7 +344,7 @@ impl HelperManifest {
         for binding in &self.protected_payloads {
             bytes.extend_from_slice(binding.requirement.reference().resource_id().as_bytes());
             bytes.extend_from_slice(binding.requirement.reference().version().as_bytes());
-            delivery::encode(&mut bytes, binding.requirement.delivery())?;
+            delivery::encode_legacy(&mut bytes, binding.requirement.delivery())?;
             bytes.extend_from_slice(&binding.handle.descriptor().to_be_bytes());
             crate::canonical::push_str(&mut bytes, binding.handle.label())?;
             bytes.extend_from_slice(&binding.payload_len.to_be_bytes());
@@ -258,7 +361,7 @@ impl HelperManifest {
     /// # Errors
     /// Rejects truncation, corruption, unknown versions/tags, and invalid decoded fields.
     pub fn decode(bytes: &[u8]) -> Result<Self, LinuxError> {
-        if bytes.len() < 32 || bytes.len() > crate::canonical::MAX_PROTOCOL_BYTES {
+        if bytes.len() < 32 {
             return Err(manifest_error("manifest length is outside its bound"));
         }
         let split = bytes.len() - 32;
@@ -267,37 +370,77 @@ impl HelperManifest {
             return Err(manifest_error("manifest checksum mismatch"));
         }
         let mut reader = crate::canonical::Reader::new(body);
-        if reader.fixed::<8>()? != MANIFEST_MAGIC || reader.u16()? != VERSION {
+        if reader.fixed::<8>()? != MANIFEST_MAGIC {
+            return Err(manifest_error("manifest magic or version is unsupported"));
+        }
+        let version = reader.u16()?;
+        if !matches!(version, LEGACY_VERSION | VERSION)
+            || (version == LEGACY_VERSION && bytes.len() > crate::canonical::MAX_PROTOCOL_BYTES)
+        {
             return Err(manifest_error("manifest magic or version is unsupported"));
         }
         let plan_digest = Sha256Digest::new(reader.fixed()?);
         let backend_digest = Sha256Digest::new(reader.fixed()?);
         let support_digest = Sha256Digest::new(reader.fixed()?);
         let preparation_digest = Sha256Digest::new(reader.fixed()?);
-        let program = reader.string()?;
-        let argument_count = reader.count()?;
-        let mut arguments = Vec::with_capacity(argument_count);
-        for _ in 0..argument_count {
-            arguments.push(reader.string()?);
-        }
-        let target = TargetCommand::new(program, arguments)?;
-        let working_directory = PathBuf::from(reader.string()?);
-        let cgroup_leaf = PathBuf::from(reader.string()?);
+        let target = if version == LEGACY_VERSION {
+            let program = reader.string()?;
+            let argument_count = reader.count()?;
+            let mut arguments = Vec::with_capacity(argument_count);
+            for _ in 0..argument_count {
+                arguments.push(reader.string()?);
+            }
+            TargetCommand::new_legacy(program, arguments)?
+        } else {
+            let program = OsString::from_vec(reader.bytes_unbounded()?);
+            let argument_count = reader.count_unbounded()?;
+            let mut arguments = Vec::with_capacity(argument_count);
+            for _ in 0..argument_count {
+                arguments.push(OsString::from_vec(reader.bytes_unbounded()?));
+            }
+            TargetCommand::new(program, arguments)?
+        };
+        let working_directory = PathBuf::from(if version == LEGACY_VERSION {
+            OsString::from(reader.string()?)
+        } else {
+            OsString::from_vec(reader.bytes_unbounded()?)
+        });
+        let cgroup_leaf = PathBuf::from(if version == LEGACY_VERSION {
+            OsString::from(reader.string()?)
+        } else {
+            OsString::from_vec(reader.bytes_unbounded()?)
+        });
         let pty = match reader.u8()? {
             0 => false,
             1 => true,
             _ => return Err(manifest_error("manifest PTY tag is invalid")),
         };
-        let environment_count = reader.count()?;
+        let environment_count = if version == LEGACY_VERSION {
+            reader.count()?
+        } else {
+            reader.count_unbounded()?
+        };
         let mut environment = Vec::with_capacity(environment_count);
         for _ in 0..environment_count {
-            environment.push(EnvironmentEntry::new(reader.string()?, reader.string()?)?);
+            let entry = if version == LEGACY_VERSION {
+                EnvironmentEntry::new_legacy(reader.string()?, reader.string()?)?
+            } else {
+                EnvironmentEntry::new(
+                    OsString::from_vec(reader.bytes_unbounded()?),
+                    OsString::from_vec(reader.bytes_unbounded()?),
+                )?
+            };
+            environment.push(entry);
         }
         let rule_count = reader.count()?;
         let mut landlock_rules = Vec::with_capacity(rule_count);
         for _ in 0..rule_count {
             landlock_rules.push(LandlockRule::new(
-                PathBuf::from(reader.string()?),
+                PathBuf::from(if version == LEGACY_VERSION {
+                    OsString::from(reader.string()?)
+                } else {
+                    OsString::from_vec(reader.bytes_unbounded()?)
+                }),
                 LandlockAccess::from_bits(reader.u16()?)?,
             )?);
         }
@@ -310,26 +453,42 @@ impl HelperManifest {
         let handle_count = reader.count()?;
         let mut handles = Vec::with_capacity(handle_count);
         for _ in 0..handle_count {
-            handles.push(InheritedHandle::new(reader.u64()?, reader.string()?)?);
+            let descriptor = reader.u64()?;
+            let label = if version == LEGACY_VERSION {
+                reader.string()?
+            } else {
+                reader.string_unbounded()?
+            };
+            handles.push(InheritedHandle::new(descriptor, label)?);
         }
         let protected_count = reader.count()?;
         let mut protected_payloads = Vec::with_capacity(protected_count);
         for _ in 0..protected_count {
             let resource_id = ResourceId::new(reader.fixed::<16>()?)
                 .map_err(|_| manifest_error("protected payload resource identity is invalid"))?;
-            let version = Sha256Digest::new(reader.fixed()?);
-            let delivery = delivery::decode(&mut reader)?;
-            let handle = InheritedHandle::new(reader.u64()?, reader.string()?)?;
+            let payload_version = Sha256Digest::new(reader.fixed()?);
+            let delivery = if version == LEGACY_VERSION {
+                delivery::decode(&mut reader)?
+            } else {
+                delivery::decode_v2(&mut reader)?
+            };
+            let descriptor = reader.u64()?;
+            let label = if version == LEGACY_VERSION {
+                reader.string()?
+            } else {
+                reader.string_unbounded()?
+            };
+            let handle = InheritedHandle::new(descriptor, label)?;
             let payload_len = usize::try_from(reader.u32()?)
                 .map_err(|_| manifest_error("protected payload length is invalid"))?;
             protected_payloads.push(ProtectedPayloadBinding::new(
-                SecretGrant::new(SecretReference::new(resource_id, version), delivery),
+                SecretGrant::new(SecretReference::new(resource_id, payload_version), delivery),
                 handle,
                 payload_len,
             )?);
         }
         reader.finish()?;
-        Self::new(
+        let mut manifest = Self::new(
             plan_digest,
             backend_digest,
             support_digest,
@@ -344,7 +503,9 @@ impl HelperManifest {
             network,
             handles,
         )?
-        .with_protected_payloads(protected_payloads)
+        .with_protected_payloads(protected_payloads)?;
+        manifest.encoding_version = version;
+        Ok(manifest)
     }
 
     /// Returns the digest of complete encoded bytes.

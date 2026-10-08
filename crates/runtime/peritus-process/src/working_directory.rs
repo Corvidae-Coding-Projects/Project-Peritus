@@ -31,12 +31,37 @@ pub struct WorkingDirectory {
 }
 
 impl WorkingDirectory {
+    pub(crate) fn restore_canonical_path(
+        canonical_path: PathBuf,
+        workspace_id: WorkspaceId,
+        resource_id: ResourceId,
+        environment_id: EnvironmentId,
+        generation: Generation,
+        revision: RevisionNumber,
+        access: WorkspaceAccess,
+    ) -> Result<Self, ProcessError> {
+        if canonical_path.as_os_str().is_empty()
+            || !canonical_path.is_absolute()
+            || crate::command::contains_nul(canonical_path.as_os_str())
+        {
+            return Err(cwd_error("restored canonical working directory is invalid"));
+        }
+        Ok(Self {
+            canonical_path,
+            workspace_id,
+            resource_id,
+            environment_id,
+            generation,
+            revision,
+            access,
+        })
+    }
+
     /// Opens and canonicalizes a directory before authorization.
     ///
     /// # Errors
     ///
-    /// Returns an error when the path is missing, not a directory, cannot be canonicalized, or
-    /// cannot be represented in the version-one canonical execution format.
+    /// Returns an error when the path is missing, not a directory, or cannot be canonicalized.
     #[allow(clippy::too_many_arguments)]
     pub fn open(
         path: impl AsRef<Path>,
@@ -54,11 +79,6 @@ impl WorkingDirectory {
         }
         let canonical_path = fs::canonicalize(path.as_ref())
             .map_err(|_| cwd_error("working directory cannot be canonicalized"))?;
-        if canonical_path.to_str().is_none() {
-            return Err(cwd_error(
-                "working directory is not representable in canonical version one",
-            ));
-        }
         Ok(Self {
             canonical_path,
             workspace_id,
@@ -110,6 +130,10 @@ impl WorkingDirectory {
     #[must_use]
     pub const fn access(&self) -> WorkspaceAccess {
         self.access
+    }
+
+    pub(crate) fn uses_legacy_encoding(&self) -> bool {
+        self.canonical_path.to_str().is_some()
     }
 }
 

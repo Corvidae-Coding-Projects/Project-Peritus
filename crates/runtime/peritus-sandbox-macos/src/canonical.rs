@@ -8,11 +8,16 @@ const MAX_STRING_BYTES: usize = 256 * 1_024;
 
 pub(crate) struct Writer {
     bytes: Vec<u8>,
+    maximum: Option<usize>,
 }
 
 impl Writer {
     pub(crate) const fn new() -> Self {
-        Self { bytes: Vec::new() }
+        Self { bytes: Vec::new(), maximum: Some(MAX_CANONICAL_BYTES) }
+    }
+
+    pub(crate) const fn native() -> Self {
+        Self { bytes: Vec::new(), maximum: None }
     }
 
     pub(crate) fn u8(&mut self, value: u8) -> Result<(), MacosError> {
@@ -55,6 +60,13 @@ impl Writer {
         self.bytes(value.as_bytes())
     }
 
+    pub(crate) fn native_bytes(&mut self, value: &[u8]) -> Result<(), MacosError> {
+        let length = u32::try_from(value.len())
+            .map_err(|_| error::limited(MacosOperation::Manifest, "native value is too large"))?;
+        self.u32(length)?;
+        self.fixed(value)
+    }
+
     pub(crate) fn count(&mut self, value: usize) -> Result<(), MacosError> {
         if value > MAX_COLLECTION_ITEMS {
             return Err(error::limited(
@@ -62,6 +74,13 @@ impl Writer {
                 "collection exceeds manifest bound",
             ));
         }
+        self.u32(
+            u32::try_from(value)
+                .map_err(|_| error::limited(MacosOperation::Manifest, "collection is too large"))?,
+        )
+    }
+
+    pub(crate) fn native_count(&mut self, value: usize) -> Result<(), MacosError> {
         self.u32(
             u32::try_from(value)
                 .map_err(|_| error::limited(MacosOperation::Manifest, "collection is too large"))?,
@@ -77,10 +96,15 @@ impl Writer {
             self.bytes.len().checked_add(additional).ok_or_else(|| {
                 error::limited(MacosOperation::Manifest, "manifest size overflow")
             })?;
-        if next > MAX_CANONICAL_BYTES {
+        if self.maximum.is_some_and(|maximum| next > maximum) {
             return Err(error::limited(MacosOperation::Manifest, "manifest exceeds byte bound"));
         }
-        self.bytes.reserve(additional);
+        self.bytes.try_reserve(additional).map_err(|_| {
+            error::limited(
+                MacosOperation::Manifest,
+                "manifest cannot be represented in native memory",
+            )
+        })?;
         Ok(())
     }
 }
@@ -96,6 +120,10 @@ impl<'a> Reader<'a> {
             return Err(error::limited(MacosOperation::Manifest, "manifest exceeds byte bound"));
         }
         Ok(Self { input, offset: 0 })
+    }
+
+    pub(crate) const fn native(input: &'a [u8]) -> Self {
+        Self { input, offset: 0 }
     }
 
     pub(crate) fn u8(&mut self) -> Result<u8, MacosError> {
@@ -137,6 +165,12 @@ impl<'a> Reader<'a> {
         self.take(length)
     }
 
+    pub(crate) fn native_bytes(&mut self) -> Result<&'a [u8], MacosError> {
+        let length = usize::try_from(self.u32()?)
+            .map_err(|_| error::limited(MacosOperation::Manifest, "byte length is too large"))?;
+        self.take(length)
+    }
+
     pub(crate) fn string(&mut self) -> Result<String, MacosError> {
         let value = self.bytes()?;
         String::from_utf8(value.to_vec())
@@ -154,6 +188,11 @@ impl<'a> Reader<'a> {
             ));
         }
         Ok(value)
+    }
+
+    pub(crate) fn native_count(&mut self) -> Result<usize, MacosError> {
+        usize::try_from(self.u32()?)
+            .map_err(|_| error::limited(MacosOperation::Manifest, "collection count is too large"))
     }
 
     pub(crate) fn finish(self) -> Result<(), MacosError> {
