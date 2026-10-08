@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3968,
-        "tip_oid": "540541fdea6fcdbf082a39af02c6315145215961",
-        "prefix_sha256": "4dbdb0157996af3998560512d7617941511c769744e9f5bba6e7ab3678cb38a3"
+        "sequence": 3969,
+        "tip_oid": "d3793c077cc3ae16c73c08f813d0990325477b53",
+        "prefix_sha256": "87838f78b7384b6782c0083671451f10089f3c97c7f7235952b3ab41e939bfe3"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3187,
+  "next_comment_id": 3188,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -2449,11 +2449,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.259669358Z",
-      "updated_at": "2026-10-06T13:27:51.261961258Z",
+      "updated_at": "2026-10-08T02:09:01.830172968Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0a7904bd-f3e6-40e5-bb80-4a93b335ad72": {
+          "display_id": 3187,
+          "author": "6ME5",
+          "content": "Code complete in commit d8695b97b: independent C2 custody retains an authority-bound named Job and exact target handle; suspended target PID/birth/Job membership must be verified and durably handed off before helper resume. Native recovery schema3/RPC carries Job and target identity with legacy decoding, and adoption requires actual retained native handles. Explicit resource representation preflights before consumption; absent CPU remains untimed. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:09:01.821164809Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAA61b+wqwZbVejfeDFLQGxazCibi+8Jd64IKAuiqfKgSgLQIzibCuhCsV0yAaed/LcUf7s5SsgeWrDIk4qSwXBA=="
+        },
         "1398d3a5-c47f-41b7-b7c7-6ac2eef6f172": {
           "display_id": 2738,
           "author": "6ME5",
