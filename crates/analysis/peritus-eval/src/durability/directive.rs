@@ -6,7 +6,7 @@ use peritus_scheduler::{WorkId, WorkSpec};
 
 use crate::{
     EvaluationCampaignId, EvaluationError, EvaluationErrorKind, EvaluationOperation,
-    EvaluationRecovery, ReportRecord, RolloutId,
+    EvaluationRecovery, ReportRecord, RetryIntent, RolloutId,
 };
 
 /// Destination for exact D3 submit/cancel effects.
@@ -146,6 +146,15 @@ pub enum ExecutionDirectiveKind {
         /// Complete frozen execution request digest.
         request_digest: peritus_types::Sha256Digest,
     },
+    /// Execute one exact attempt, including retained retry provenance when applicable.
+    ExecuteAttempt {
+        /// Complete frozen execution request digest.
+        request_digest: peritus_types::Sha256Digest,
+        /// Exact one-based attempt identity.
+        attempt: u16,
+        /// Retained policy-bound retry provenance; absent only for initial attempt one.
+        retry: Option<RetryIntent>,
+    },
     /// Cancel owned external execution for the rollout.
     Cancel,
 }
@@ -167,6 +176,31 @@ impl ExecutionDirective {
         request_digest: peritus_types::Sha256Digest,
     ) -> Self {
         Self { campaign_id, rollout_id, kind: ExecutionDirectiveKind::Execute { request_digest } }
+    }
+    /// Creates an attempt-specific initial or retained-retry execution directive.
+    ///
+    /// # Errors
+    /// Rejects attempt zero, a noninitial attempt without retry intent, or mismatched retry identity.
+    pub fn execute_attempt(
+        campaign_id: EvaluationCampaignId,
+        rollout_id: RolloutId,
+        request_digest: peritus_types::Sha256Digest,
+        attempt: u16,
+        retry: Option<RetryIntent>,
+    ) -> Result<Self, EvaluationError> {
+        if attempt == 0
+            || retry.is_none() && attempt != 1
+            || retry.is_some_and(|intent| {
+                intent.next_attempt() != attempt || intent.retained().rollout_id() != rollout_id
+            })
+        {
+            return Err(binding("execution directive attempt and retry intent differ"));
+        }
+        Ok(Self {
+            campaign_id,
+            rollout_id,
+            kind: ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry },
+        })
     }
     /// Creates one exact cancellation directive.
     #[must_use]
@@ -198,6 +232,15 @@ impl ExecutionDirective {
                 writer.write_u8(1).map_err(codec)?;
                 writer.write_fixed(request_digest.as_bytes()).map_err(codec)?;
             }
+            ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry } => {
+                writer.write_u8(3).map_err(codec)?;
+                writer.write_fixed(request_digest.as_bytes()).map_err(codec)?;
+                writer.write_u16(attempt).map_err(codec)?;
+                writer.write_option_tag(retry.is_some()).map_err(codec)?;
+                if let Some(value) = retry {
+                    writer.write_bytes(&value.canonical_bytes()?).map_err(codec)?;
+                }
+            }
             ExecutionDirectiveKind::Cancel => writer.write_u8(2).map_err(codec)?,
         }
         Ok(writer.into_bytes())
@@ -217,6 +260,29 @@ impl ExecutionDirective {
                 ),
             },
             2 => ExecutionDirectiveKind::Cancel,
+            3 => {
+                let request_digest = peritus_types::Sha256Digest::new(
+                    reader.read_fixed().map_err(codec)?,
+                );
+                let attempt = reader.read_u16().map_err(codec)?;
+                let retry = reader
+                    .read_option_tag()
+                    .map_err(codec)?
+                    .then(|| {
+                        RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)
+                    })
+                    .transpose()?;
+                if attempt == 0
+                    || retry.is_none() && attempt != 1
+                    || retry.is_some_and(|intent| {
+                        intent.next_attempt() != attempt
+                            || intent.retained().rollout_id() != rollout_id
+                    })
+                {
+                    return Err(corrupt("execution attempt and retry intent differ"));
+                }
+                ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry }
+            }
             _ => return Err(corrupt("unknown execution directive kind")),
         };
         reader.finish().map_err(codec)?;
@@ -226,9 +292,19 @@ impl ExecutionDirective {
         let mut semantic = vec![match self.kind {
             ExecutionDirectiveKind::Execute { .. } => 1,
             ExecutionDirectiveKind::Cancel => 2,
+            ExecutionDirectiveKind::ExecuteAttempt { .. } => 3,
         }];
         if let ExecutionDirectiveKind::Execute { request_digest } = self.kind {
             semantic.extend_from_slice(request_digest.as_bytes());
+        }
+        if let ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry } = self.kind
+        {
+            semantic.extend_from_slice(request_digest.as_bytes());
+            semantic.extend_from_slice(&attempt.to_be_bytes());
+            semantic.push(u8::from(retry.is_some()));
+            if let Some(value) = retry {
+                semantic.extend_from_slice(&value.canonical_bytes()?);
+            }
         }
         derived_outbox_id(
             EXECUTION_ID_DOMAIN,

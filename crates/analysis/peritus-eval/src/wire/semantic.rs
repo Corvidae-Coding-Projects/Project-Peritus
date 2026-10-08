@@ -16,7 +16,7 @@ use crate::{
     EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
     EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanBatch, PlanDigest, PlanRecord,
     PlannedRolloutBinding, PublicationCancellationRecord, PublicationRecord, ReportRecord,
-    ResultDigest, RolloutId, RolloutTerminalClass, TerminalRecordRef,
+    ResultDigest, RetryIntent, RolloutId, RolloutTerminalClass, TerminalRecordRef,
 };
 
 pub(super) fn encode(kind: &EvaluationCommandKind) -> Result<Vec<u8>, EvaluationError> {
@@ -130,6 +130,15 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
         },
         22 => EvaluationCommandKind::SettlePublicationCancellation {
             cancellation: publication_cancellation(&mut reader)?,
+        },
+        23 => EvaluationCommandKind::RetainRetryableAttemptAndRetry {
+            rollout_id: rollout(&mut reader)?,
+            retry: RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)?,
+        },
+        24 => EvaluationCommandKind::StartRetryRollout {
+            rollout_id: rollout(&mut reader)?,
+            retry: RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)?,
+            started_at_tick: reader.read_u64().map_err(codec)?,
         },
         _ => return Err(protocol("unknown evaluation semantic tag")),
     };

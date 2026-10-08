@@ -18,5 +18,6 @@ pub use state::EvaluationState;
 pub use types::{
     AnalysisSafePoint, CampaignFailure, CampaignFailureCode, EvaluationPhase, PlanBatch, PlanRecord,
     PlannedRolloutBinding, PublicationCancellationRecord, PublicationRecord, ReportRecord,
-    RolloutProgress, RolloutStatus, RolloutTerminalClass, TerminalRecordRef,
+    RetryAttemptRecord, RetryIntent, RolloutProgress, RolloutStatus, RolloutTerminalClass,
+    TerminalRecordRef,
 };

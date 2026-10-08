@@ -15,8 +15,8 @@ use crate::{
     EvaluationError, EvaluationErrorKind, EvaluationLimits, EvaluationOperation, EvaluationPhase,
     EvaluationPlanId, EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanDigest, PlanRecord,
     PlannedRolloutBinding, ProfileDigest, PublicationCancellationRecord, PublicationRecord,
-    ReportRecord, ResultDigest, RolloutId, RolloutProgress, RolloutStatus, RolloutTerminalClass,
-    TerminalRecordRef,
+    ReportRecord, ResultDigest, RetryIntent, RolloutId, RolloutProgress, RolloutStatus,
+    RolloutTerminalClass, TerminalRecordRef,
 };
 
 const STATE_DOMAIN: &[u8] = b"peritus.evaluation.state.v1\0";
@@ -297,6 +297,22 @@ impl EvaluationState {
             );
             let attempts = reader.read_u16().map_err(codec)?;
             let status = decode_status(&mut reader)?;
+            if matches!(
+                status,
+                RolloutStatus::RetryPending { retry }
+                    if retry.profile_digest() != profile_digest
+                        || retry.retained().rollout_id() != id
+                        || retry.retained().attempt() != attempts
+            ) || matches!(
+                status,
+                RolloutStatus::RetryRunning { retry }
+                    if retry.profile_digest() != profile_digest
+                        || retry.retained().rollout_id() != id
+                        || retry.retained().attempt() != attempts
+                        || attempts.checked_add(1) != Some(retry.next_attempt())
+            ) {
+                return Err(corrupt("retained retry and rollout attempt count differ"));
+            }
             let progress = RolloutProgress::decoded(binding, status, attempts);
             if rollouts.insert(id, progress).is_some() {
                 return Err(corrupt("duplicate rollout in evaluation checkpoint"));
@@ -572,6 +588,14 @@ fn encode_status(
             writer.write_u8(4).map_err(codec)?;
             writer.write_u16(attempt).map_err(codec)?;
         }
+        RolloutStatus::RetryPending { retry } => {
+            writer.write_u8(7).map_err(codec)?;
+            writer.write_bytes(&retry.canonical_bytes()?).map_err(codec)?;
+        }
+        RolloutStatus::RetryRunning { retry } => {
+            writer.write_u8(8).map_err(codec)?;
+            writer.write_bytes(&retry.canonical_bytes()?).map_err(codec)?;
+        }
         RolloutStatus::Settled(record) => {
             writer.write_u8(5).map_err(codec)?;
             writer.write_u8(record.class().tag()).map_err(codec)?;
@@ -612,6 +636,12 @@ fn decode_status(reader: &mut CanonicalReader<'_>) -> Result<RolloutStatus, Eval
         6 => Ok(RolloutStatus::Cancelled {
             reason_digest: digest(reader)?,
             observation_digest: digest(reader)?,
+        }),
+        7 => Ok(RolloutStatus::RetryPending {
+            retry: RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)?,
+        }),
+        8 => Ok(RolloutStatus::RetryRunning {
+            retry: RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)?,
         }),
         _ => Err(corrupt("unknown rollout progress tag")),
     }

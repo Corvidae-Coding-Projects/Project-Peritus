@@ -1,13 +1,17 @@
 //! Compact durable campaign value records.
 
 use peritus_artifact_store::ArtifactDigest;
+use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_scheduler::WorkId;
 use peritus_types::{ActorId, EvidenceId, Sha256Digest};
 
 use crate::{
     EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
-    EvaluationRecovery, EvaluationReportId, PlanDigest, RolloutId,
+    EvaluationRecovery, EvaluationReportId, EvaluationRetryPolicy, PlanDigest, ProfileDigest,
+    RolloutId, RolloutOutcome, RolloutRecord,
 };
+
+const RETRY_INTENT_DOMAIN: &[u8] = b"peritus.evaluation.retry-intent.v1\0";
 
 /// Closed durable campaign phase.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -127,6 +131,245 @@ impl AnalysisSafePoint {
     #[must_use]
     pub const fn artifact_bytes(self) -> u64 {
         self.artifact_bytes
+    }
+}
+
+/// Artifact-backed evidence retained from one retryable execution attempt.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RetryAttemptRecord {
+    rollout_id: RolloutId,
+    attempt: u16,
+    observation_digest: Sha256Digest,
+    record_digest: Sha256Digest,
+    artifact: ArtifactDigest,
+    artifact_bytes: u64,
+    continuation_digest: Option<Sha256Digest>,
+}
+
+impl RetryAttemptRecord {
+    /// Creates one complete retained retryable-attempt record.
+    ///
+    /// # Errors
+    /// Rejects attempt zero or an empty retained artifact.
+    pub(crate) const fn new(
+        rollout_id: RolloutId,
+        attempt: u16,
+        observation_digest: Sha256Digest,
+        record_digest: Sha256Digest,
+        artifact: ArtifactDigest,
+        artifact_bytes: u64,
+        continuation_digest: Option<Sha256Digest>,
+    ) -> Result<Self, EvaluationError> {
+        if attempt == 0 || artifact_bytes == 0 {
+            Err(invalid("retryable attempt record has zero attempt or artifact size"))
+        } else {
+            Ok(Self {
+                rollout_id,
+                attempt,
+                observation_digest,
+                record_digest,
+                artifact,
+                artifact_bytes,
+                continuation_digest,
+            })
+        }
+    }
+    /// Binds a checked retryable rollout record to its finalized retained artifact.
+    ///
+    /// # Errors
+    /// Rejects a nonretryable logical outcome or an empty retained artifact.
+    pub fn from_rollout_record(
+        record: RolloutRecord,
+        artifact: ArtifactDigest,
+        artifact_bytes: u64,
+    ) -> Result<Self, EvaluationError> {
+        if !matches!(
+            record.outcome(),
+            RolloutOutcome::InfrastructureFailed { retryable: true, .. }
+        ) {
+            return Err(invalid("retained retry record does not contain a retryable outcome"));
+        }
+        Self::new(
+            record.rollout_id(),
+            record.attempt().number(),
+            record.attempt().observation_digest(),
+            record.digest(),
+            artifact,
+            artifact_bytes,
+            record.continuation().map(crate::ExecutionContinuation::digest),
+        )
+    }
+    /// Logical rollout whose attempt evidence was retained.
+    #[must_use]
+    pub const fn rollout_id(self) -> RolloutId {
+        self.rollout_id
+    }
+    /// Retained completed attempt.
+    #[must_use]
+    pub const fn attempt(self) -> u16 {
+        self.attempt
+    }
+    /// Complete retained observation digest.
+    #[must_use]
+    pub const fn observation_digest(self) -> Sha256Digest {
+        self.observation_digest
+    }
+    /// Complete semantic retained rollout-record digest.
+    #[must_use]
+    pub const fn record_digest(self) -> Sha256Digest {
+        self.record_digest
+    }
+    /// Exact retained attempt artifact.
+    #[must_use]
+    pub const fn artifact(self) -> ArtifactDigest {
+        self.artifact
+    }
+    /// Exact retained attempt artifact byte length.
+    #[must_use]
+    pub const fn artifact_bytes(self) -> u64 {
+        self.artifact_bytes
+    }
+    /// Exact same-stage continuation identity retained by the execution owner.
+    #[must_use]
+    pub const fn continuation_digest(self) -> Option<Sha256Digest> {
+        self.continuation_digest
+    }
+}
+
+/// Frozen retry decision that names the exact next attempt and deterministic backoff.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct RetryIntent {
+    retained: RetryAttemptRecord,
+    next_attempt: u16,
+    backoff_micros: u64,
+    profile_digest: ProfileDigest,
+    policy: EvaluationRetryPolicy,
+}
+
+impl RetryIntent {
+    /// Derives a retry from retained evidence and the exact frozen caller policy.
+    ///
+    /// # Errors
+    /// Rejects an exhausted finite policy or exhausted attempt-number representation.
+    pub(crate) fn new(
+        retained: RetryAttemptRecord,
+        profile_digest: ProfileDigest,
+        policy: EvaluationRetryPolicy,
+    ) -> Result<Self, EvaluationError> {
+        let (next_attempt, backoff_micros) = policy
+            .next_retry(retained.attempt())
+            .ok_or_else(|| invalid("retry intent exceeds the frozen stopping policy"))?;
+        Ok(Self { retained, next_attempt, backoff_micros, profile_digest, policy })
+    }
+    /// Retained evidence from the completed retryable attempt.
+    #[must_use]
+    pub const fn retained(self) -> RetryAttemptRecord {
+        self.retained
+    }
+    /// Exact next attempt to execute.
+    #[must_use]
+    pub const fn next_attempt(self) -> u16 {
+        self.next_attempt
+    }
+    /// Frozen deterministic delay before the next attempt is eligible.
+    #[must_use]
+    pub const fn backoff_micros(self) -> u64 {
+        self.backoff_micros
+    }
+    /// Frozen evaluation profile that owns this retry policy.
+    #[must_use]
+    pub const fn profile_digest(self) -> ProfileDigest {
+        self.profile_digest
+    }
+    /// Exact finite or persistent caller retry policy.
+    #[must_use]
+    pub const fn policy(self) -> EvaluationRetryPolicy {
+        self.policy
+    }
+
+    pub(crate) fn canonical_bytes(self) -> Result<Vec<u8>, EvaluationError> {
+        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+        writer.write_bytes(RETRY_INTENT_DOMAIN).map_err(retry_codec)?;
+        writer.write_fixed(self.retained.rollout_id().as_bytes()).map_err(retry_codec)?;
+        writer.write_u16(self.retained.attempt()).map_err(retry_codec)?;
+        writer
+            .write_fixed(self.retained.observation_digest().as_bytes())
+            .map_err(retry_codec)?;
+        writer.write_fixed(self.retained.record_digest().as_bytes()).map_err(retry_codec)?;
+        writer.write_fixed(self.retained.artifact().as_bytes()).map_err(retry_codec)?;
+        writer.write_u64(self.retained.artifact_bytes()).map_err(retry_codec)?;
+        writer
+            .write_option_tag(self.retained.continuation_digest().is_some())
+            .map_err(retry_codec)?;
+        if let Some(value) = self.retained.continuation_digest() {
+            writer.write_fixed(value.as_bytes()).map_err(retry_codec)?;
+        }
+        writer.write_u16(self.next_attempt).map_err(retry_codec)?;
+        writer.write_u64(self.backoff_micros).map_err(retry_codec)?;
+        writer.write_fixed(self.profile_digest.as_bytes()).map_err(retry_codec)?;
+        writer.write_option_tag(self.policy.stop_after_attempt().is_some()).map_err(retry_codec)?;
+        if let Some(value) = self.policy.stop_after_attempt() {
+            writer.write_u16(value).map_err(retry_codec)?;
+        }
+        writer.write_u64(self.policy.initial_backoff_micros()).map_err(retry_codec)?;
+        writer.write_u64(self.policy.maximum_backoff_micros()).map_err(retry_codec)?;
+        Ok(writer.into_bytes())
+    }
+
+    pub(crate) fn decode_canonical(bytes: &[u8]) -> Result<Self, EvaluationError> {
+        let mut reader = CanonicalReader::new(bytes, CodecLimits::PRODUCTION);
+        if reader.read_bytes().map_err(retry_codec)? != RETRY_INTENT_DOMAIN {
+            return Err(protocol("unsupported retry-intent domain"));
+        }
+        let rollout_id = RolloutId::new(reader.read_fixed().map_err(retry_codec)?)?;
+        let attempt = reader.read_u16().map_err(retry_codec)?;
+        let observation_digest = Sha256Digest::new(reader.read_fixed().map_err(retry_codec)?);
+        let record_digest = Sha256Digest::new(reader.read_fixed().map_err(retry_codec)?);
+        let artifact = ArtifactDigest::from_sha256(Sha256Digest::new(
+            reader.read_fixed().map_err(retry_codec)?,
+        ));
+        let artifact_bytes = reader.read_u64().map_err(retry_codec)?;
+        let continuation_digest = reader
+            .read_option_tag()
+            .map_err(retry_codec)?
+            .then(|| {
+                Ok::<_, EvaluationError>(Sha256Digest::new(
+                    reader.read_fixed().map_err(retry_codec)?,
+                ))
+            })
+            .transpose()?;
+        let encoded_next_attempt = reader.read_u16().map_err(retry_codec)?;
+        let encoded_backoff_micros = reader.read_u64().map_err(retry_codec)?;
+        let profile_digest = ProfileDigest::new(Sha256Digest::new(
+            reader.read_fixed().map_err(retry_codec)?,
+        ));
+        let stop_after_attempt = reader
+            .read_option_tag()
+            .map_err(retry_codec)?
+            .then(|| reader.read_u16().map_err(retry_codec))
+            .transpose()?;
+        let policy = EvaluationRetryPolicy::from_canonical(
+            stop_after_attempt,
+            reader.read_u64().map_err(retry_codec)?,
+            reader.read_u64().map_err(retry_codec)?,
+        )?;
+        reader.finish().map_err(retry_codec)?;
+        let retained = RetryAttemptRecord::new(
+            rollout_id,
+            attempt,
+            observation_digest,
+            record_digest,
+            artifact,
+            artifact_bytes,
+            continuation_digest,
+        )?;
+        let intent = Self::new(retained, profile_digest, policy)?;
+        if intent.next_attempt != encoded_next_attempt
+            || intent.backoff_micros != encoded_backoff_micros
+        {
+            return Err(protocol("retry intent differs from its frozen policy"));
+        }
+        Ok(intent)
     }
 }
 
@@ -284,6 +527,16 @@ pub enum RolloutStatus {
     Running {
         /// One-based durably started attempt.
         attempt: u16,
+    },
+    /// A retained retry is durably paired with its exact outstanding execution directive.
+    RetryPending {
+        /// Complete retained evidence, policy, delay, and next-attempt identity.
+        retry: RetryIntent,
+    },
+    /// The exact retained retry attempt was committed before its external effect began.
+    RetryRunning {
+        /// Complete retained evidence, policy, delay, and active attempt identity.
+        retry: RetryIntent,
     },
     /// Logical terminal record was committed.
     Settled(TerminalRecordRef),
@@ -628,4 +881,8 @@ const fn protocol(detail: &'static str) -> EvaluationError {
         EvaluationRecovery::Quarantine,
         detail,
     )
+}
+
+const fn retry_codec(_: peritus_codec::CodecError) -> EvaluationError {
+    protocol("retry intent violates canonical codec bounds")
 }

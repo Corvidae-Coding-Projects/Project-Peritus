@@ -1,6 +1,6 @@
 //! Deterministic crash-recovery decisions from durable observations.
 
-use crate::{EvaluationPhase, EvaluationState, RolloutStatus};
+use crate::{EvaluationPhase, EvaluationState, RetryIntent, RolloutId, RolloutStatus};
 
 /// Exact external facts observed during recovery; no field grants mutation authority.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -32,6 +32,13 @@ pub enum EvaluationRecoveryDecision {
     RedeliverScheduling,
     /// Redeliver existing execution/cancellation directives.
     RedeliverExecution,
+    /// Redeliver the exact retained retry directive already committed with its predecessor ack.
+    RedeliverRetainedRetry {
+        /// Logical rollout that owns the retained continuation.
+        rollout_id: RolloutId,
+        /// Complete artifact, continuation, policy, delay, and next-attempt identity.
+        retry: RetryIntent,
+    },
     /// Every logical rollout is terminal; deterministic analysis may begin.
     BeginAnalysis,
     /// Report bytes must be finalized or reconciled.
@@ -67,6 +74,26 @@ pub fn decide_recovery(
     }
     if state.phase() == EvaluationPhase::Suspended {
         return EvaluationRecoveryDecision::RemainSuspended;
+    }
+    let mut retained_retries = state.rollouts().filter_map(|(rollout_id, progress)| {
+        match progress.status() {
+            RolloutStatus::RetryPending { retry } | RolloutStatus::RetryRunning { retry } => {
+                Some((rollout_id, retry))
+            }
+            _ => None,
+        }
+    });
+    if let Some((rollout_id, retry)) = retained_retries.next() {
+        let Some(required_directives) = u32::try_from(retained_retries.count())
+            .ok()
+            .and_then(|additional| additional.checked_add(1))
+        else {
+            return EvaluationRecoveryDecision::Quarantine;
+        };
+        if observed.execution_directives < required_directives {
+            return EvaluationRecoveryDecision::Quarantine;
+        }
+        return EvaluationRecoveryDecision::RedeliverRetainedRetry { rollout_id, retry };
     }
     if observed.schedule_directives > 0 {
         return EvaluationRecoveryDecision::RedeliverScheduling;

@@ -180,11 +180,37 @@ fn transition_outbox(
             let progress = state
                 .rollout(*rollout_id)
                 .ok_or_else(|| binding::binding("scheduled rollout vanished"))?;
-            let directive = ExecutionDirective::execute(
+            let attempt = progress
+                .attempts_retained()
+                .checked_add(1)
+                .ok_or_else(|| binding::binding("scheduled rollout attempt overflowed"))?;
+            let directive = ExecutionDirective::execute_attempt(
                 command.campaign_id(),
                 *rollout_id,
                 progress.binding().request_digest(),
-            );
+                attempt,
+                None,
+            )?;
+            Ok(vec![outbox(
+                directive.outbox_id()?,
+                EXECUTION_DESTINATION,
+                directive.canonical_bytes()?,
+            )?])
+        }
+        EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry } => {
+            let progress = state
+                .rollout(*rollout_id)
+                .ok_or_else(|| binding::binding("retained retry rollout vanished"))?;
+            if progress.status() != (RolloutStatus::RetryPending { retry: *retry }) {
+                return Err(binding::binding("retained retry state differs from its command"));
+            }
+            let directive = ExecutionDirective::execute_attempt(
+                command.campaign_id(),
+                *rollout_id,
+                progress.binding().request_digest(),
+                retry.next_attempt(),
+                Some(*retry),
+            )?;
             Ok(vec![outbox(
                 directive.outbox_id()?,
                 EXECUTION_DESTINATION,
@@ -228,6 +254,12 @@ fn artifact_dependencies(kind: &EvaluationEventKind) -> Vec<ArtifactDependency> 
         EvaluationCommandKind::SettleRollout { terminal, .. } => {
             vec![ArtifactDependency::new(terminal.artifact().sha256())]
         }
+        EvaluationCommandKind::RetainRetryableAttemptAndRetry { retry, .. } => {
+            vec![ArtifactDependency::new(retry.retained().artifact().sha256())]
+        }
+        EvaluationCommandKind::StartRetryRollout { retry, .. } => {
+            vec![ArtifactDependency::new(retry.retained().artifact().sha256())]
+        }
         EvaluationCommandKind::CompleteAnalysis { artifact, .. } => {
             vec![ArtifactDependency::new(artifact.sha256())]
         }
@@ -258,7 +290,9 @@ fn validate_mode(
         CommitMode::Ordinary => match command.kind() {
             EvaluationCommandKind::RecordSchedule { .. }
             | EvaluationCommandKind::StartRollout { .. }
+            | EvaluationCommandKind::StartRetryRollout { .. }
             | EvaluationCommandKind::RetainRetryableAttempt { .. }
+            | EvaluationCommandKind::RetainRetryableAttemptAndRetry { .. }
             | EvaluationCommandKind::SettleRollout { .. }
             | EvaluationCommandKind::SettleCancellation { .. }
             | EvaluationCommandKind::RecordPublication { .. }
@@ -269,26 +303,46 @@ fn validate_mode(
         },
         CommitMode::Claimed(claim) => match (command.kind(), claim) {
             (
-                EvaluationCommandKind::StartRollout { rollout_id, .. },
+                EvaluationCommandKind::StartRollout { rollout_id, attempt, .. },
                 EvaluationDirectiveClaim::Execution(value),
             ) if value.directive().campaign_id() == command.campaign_id()
                 && value.directive().rollout_id() == *rollout_id
-                && matches!(value.directive().kind(), ExecutionDirectiveKind::Execute { .. })
+                && execution_claim_matches(state, *rollout_id, *attempt, value, None)
                 && matches!(
                     state.rollout(*rollout_id).map(crate::RolloutProgress::status),
-                    Some(RolloutStatus::Running { .. })
+                    Some(RolloutStatus::Running { attempt: running }) if running == *attempt
                 ) =>
+            {
+                Ok(())
+            }
+            (
+                EvaluationCommandKind::StartRetryRollout { rollout_id, retry, .. },
+                EvaluationDirectiveClaim::Execution(value),
+            ) if value.directive().campaign_id() == command.campaign_id()
+                && value.directive().rollout_id() == *rollout_id
+                && execution_claim_matches(
+                    state,
+                    *rollout_id,
+                    retry.next_attempt(),
+                    value,
+                    Some(*retry),
+                )
+                && state.rollout(*rollout_id).is_some_and(|progress| {
+                    progress.status()
+                        == (RolloutStatus::RetryRunning { retry: *retry })
+                }) =>
             {
                 Ok(())
             }
             _ => Err(binding::binding("claimed directive differs from pre-effect transition")),
         },
-        CommitMode::Settlement(claim) => validate_settlement(command, claim),
+        CommitMode::Settlement(claim) => validate_settlement(command, state, claim),
     }
 }
 
 fn validate_settlement(
     command: &EvaluationCommand,
+    state: &EvaluationState,
     claim: &EvaluationDirectiveClaim,
 ) -> Result<(), EvaluationError> {
     let matches = match (command.kind(), claim) {
@@ -307,7 +361,28 @@ fn validate_settlement(
         ) => {
             value.directive().campaign_id() == command.campaign_id()
                 && value.directive().rollout_id() == *rollout_id
-                && matches!(value.directive().kind(), ExecutionDirectiveKind::Execute { .. })
+                && execution_settlement_matches(command, state, *rollout_id, value)
+        }
+        (
+            EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry },
+            EvaluationDirectiveClaim::Execution(value),
+        ) => {
+            value.directive().campaign_id() == command.campaign_id()
+                && value.directive().rollout_id() == *rollout_id
+                && matches!(
+                    value.directive().kind(),
+                    ExecutionDirectiveKind::ExecuteAttempt {
+                        attempt,
+                        ..
+                    } if attempt == retry.retained().attempt()
+                )
+                && execution_claim_matches(
+                    state,
+                    *rollout_id,
+                    retry.retained().attempt(),
+                    value,
+                    None,
+                )
         }
         (
             EvaluationCommandKind::RecordPublication { publication },
@@ -342,12 +417,51 @@ fn validate_settlement(
                 && value.directive().rollout_id() == *rollout_id
                 && matches!(
                     value.directive().kind(),
-                    ExecutionDirectiveKind::Execute { .. } | ExecutionDirectiveKind::Cancel
+                    ExecutionDirectiveKind::Execute { .. }
+                        | ExecutionDirectiveKind::ExecuteAttempt { .. }
+                        | ExecutionDirectiveKind::Cancel
                 )
         }
         _ => false,
     };
     if matches { Ok(()) } else { Err(binding::binding("claim differs from effect settlement")) }
+}
+
+fn execution_settlement_matches(
+    command: &EvaluationCommand,
+    state: &EvaluationState,
+    rollout_id: crate::RolloutId,
+    claim: &crate::ExecutionDirectiveClaim,
+) -> bool {
+    let expected_attempt = match command.kind() {
+        EvaluationCommandKind::RetainRetryableAttempt { attempt, .. } => *attempt,
+        EvaluationCommandKind::SettleRollout { terminal, .. } => terminal.attempt(),
+        _ => return false,
+    };
+    execution_claim_matches(state, rollout_id, expected_attempt, claim, None)
+}
+
+fn execution_claim_matches(
+    state: &EvaluationState,
+    rollout_id: crate::RolloutId,
+    expected_attempt: u16,
+    claim: &crate::ExecutionDirectiveClaim,
+    expected_retry: Option<crate::RetryIntent>,
+) -> bool {
+    let Some(progress) = state.rollout(rollout_id) else {
+        return false;
+    };
+    match claim.directive().kind() {
+        ExecutionDirectiveKind::Execute { request_digest } => {
+            expected_retry.is_none() && request_digest == progress.binding().request_digest()
+        }
+        ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry } => {
+            request_digest == progress.binding().request_digest()
+                && attempt == expected_attempt
+                && expected_retry.is_none_or(|expected| retry == Some(expected))
+        }
+        ExecutionDirectiveKind::Cancel => false,
+    }
 }
 
 fn validate_current(

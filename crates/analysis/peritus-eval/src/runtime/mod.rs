@@ -17,8 +17,12 @@ pub use publication::{
 pub use recovery::{EvaluationRecoveryDecision, RecoveryObservation, decide_recovery};
 
 use crate::{
-    AnalysisSafePoint, EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationState,
-    EvaluationTransition, commit_evaluation_transition, decide,
+    AnalysisSafePoint, EvaluationCommand, EvaluationCommandKind, EvaluationError,
+    EvaluationErrorKind, EvaluationOperation, EvaluationRecovery, EvaluationState,
+    EvaluationTransition, ExecutionDirectiveClaim, ExecutionDirectiveKind,
+    FrozenEvaluationProfile, RetryAttemptRecord, RetryIntent, RolloutStatus,
+    commit_evaluation_claimed_transition, commit_evaluation_settlement,
+    commit_evaluation_transition, decide,
 };
 
 /// Caller-reserved command/event identities for one exact transition.
@@ -96,6 +100,113 @@ impl<'a> EvaluationRuntime<'a> {
         transition: &EvaluationTransition,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
         let batch = commit_evaluation_transition(self.journal, command, transition)?;
+        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    }
+
+    /// Commits the exact claimed initial or retained-retry attempt before external execution.
+    ///
+    /// # Errors
+    /// Rejects directive/state drift, a mismatched retry identity, stale fences, or C0 failure.
+    pub fn start_claimed_rollout(
+        &mut self,
+        state: &EvaluationState,
+        claim: ExecutionDirectiveClaim,
+        started_at_tick: u64,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        let directive = *claim.directive();
+        let progress = state
+            .rollout(directive.rollout_id())
+            .ok_or_else(|| runtime_binding("execution directive references an unknown rollout"))?;
+        if directive.campaign_id() != state.campaign_id() {
+            return Err(runtime_binding("execution directive campaign differs from state"));
+        }
+        let kind = match directive.kind() {
+            ExecutionDirectiveKind::Execute { request_digest } => {
+                let attempt = progress
+                    .attempts_retained()
+                    .checked_add(1)
+                    .ok_or_else(|| runtime_binding("legacy execution attempt overflowed"))?;
+                if request_digest != progress.binding().request_digest()
+                    || !matches!(progress.status(), RolloutStatus::Scheduled { .. })
+                {
+                    return Err(runtime_binding("legacy execution directive differs from state"));
+                }
+                EvaluationCommandKind::StartRollout {
+                    rollout_id: directive.rollout_id(),
+                    attempt,
+                    started_at_tick,
+                }
+            }
+            ExecutionDirectiveKind::ExecuteAttempt { request_digest, attempt, retry: None } => {
+                if request_digest != progress.binding().request_digest()
+                    || attempt != progress.attempts_retained().checked_add(1).unwrap_or(0)
+                    || !matches!(progress.status(), RolloutStatus::Scheduled { .. })
+                {
+                    return Err(runtime_binding("initial execution attempt differs from state"));
+                }
+                EvaluationCommandKind::StartRollout {
+                    rollout_id: directive.rollout_id(),
+                    attempt,
+                    started_at_tick,
+                }
+            }
+            ExecutionDirectiveKind::ExecuteAttempt {
+                request_digest,
+                attempt,
+                retry: Some(retry),
+            } => {
+                if request_digest != progress.binding().request_digest()
+                    || attempt != retry.next_attempt()
+                    || progress.status() != (RolloutStatus::RetryPending { retry })
+                {
+                    return Err(runtime_binding("retained retry directive differs from state"));
+                }
+                EvaluationCommandKind::StartRetryRollout {
+                    rollout_id: directive.rollout_id(),
+                    retry,
+                    started_at_tick,
+                }
+            }
+            ExecutionDirectiveKind::Cancel => {
+                return Err(runtime_binding("cancellation directive cannot start execution"));
+            }
+        };
+        let command = command(state, ids, kind)?;
+        let transition = decide(Some(state), &command)?;
+        let batch =
+            commit_evaluation_claimed_transition(self.journal, &command, &transition, claim)?;
+        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    }
+
+    /// Retains one retryable attempt and atomically replaces its claim with the frozen retry.
+    ///
+    /// # Errors
+    /// Rejects exhausted finite policy, profile/state drift, missing artifacts, claim drift, or C0
+    /// failure. Persistent policy stops only at the attempt representation boundary or cancellation.
+    pub fn retain_retryable_attempt(
+        &mut self,
+        state: &EvaluationState,
+        profile: &FrozenEvaluationProfile,
+        retained: RetryAttemptRecord,
+        claim: ExecutionDirectiveClaim,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        if profile.digest() != state.profile_digest() {
+            return Err(runtime_binding("retry profile differs from campaign state"));
+        }
+        let retry = RetryIntent::new(retained, profile.digest(), profile.retry())?;
+        let rollout_id = claim.directive().rollout_id();
+        if retry.retained().rollout_id() != rollout_id {
+            return Err(runtime_binding("retry evidence belongs to another logical rollout"));
+        }
+        let command = command(
+            state,
+            ids,
+            EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry },
+        )?;
+        let transition = decide(Some(state), &command)?;
+        let batch = commit_evaluation_settlement(self.journal, &command, &transition, claim)?;
         Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
     }
 
@@ -203,16 +314,7 @@ impl<'a> EvaluationRuntime<'a> {
         ids: TransitionIds,
         kind: EvaluationCommandKind,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
-        let command = EvaluationCommand::new(
-            ids.command_id(),
-            ids.event_id(),
-            state.campaign_id(),
-            state.sequence(),
-            Some(state.last_event_id()),
-            state.state_digest(),
-            state.profile_digest(),
-            kind,
-        )?;
+        let command = command(state, ids, kind)?;
         let transition = decide(Some(state), &command)?;
         self.commit(&command, &transition)
     }
@@ -222,4 +324,30 @@ impl<'a> EvaluationRuntime<'a> {
     pub const fn journal(&mut self) -> &mut SqliteJournal {
         self.journal
     }
+}
+
+fn command(
+    state: &EvaluationState,
+    ids: TransitionIds,
+    kind: EvaluationCommandKind,
+) -> Result<EvaluationCommand, EvaluationError> {
+    EvaluationCommand::new(
+        ids.command_id(),
+        ids.event_id(),
+        state.campaign_id(),
+        state.sequence(),
+        Some(state.last_event_id()),
+        state.state_digest(),
+        state.profile_digest(),
+        kind,
+    )
+}
+
+const fn runtime_binding(detail: &'static str) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Binding,
+        EvaluationOperation::Commit,
+        EvaluationRecovery::Quarantine,
+        detail,
+    )
 }

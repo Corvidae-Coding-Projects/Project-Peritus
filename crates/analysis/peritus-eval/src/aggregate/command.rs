@@ -7,7 +7,7 @@ use crate::{
     AnalysisSafePoint, CampaignFailure, DatasetDigest, EvaluationCampaignId, EvaluationError,
     EvaluationErrorKind, EvaluationOperation, EvaluationRecovery, FrozenEvaluationProfile,
     LedgerCounts, PlanBatch, PlanRecord, ProfileDigest, PublicationCancellationRecord,
-    PublicationRecord, ReportRecord, ResultDigest, RolloutId, TerminalRecordRef,
+    PublicationRecord, ReportRecord, ResultDigest, RetryIntent, RolloutId, TerminalRecordRef,
 };
 
 const COMMAND_DOMAIN: &[u8] = b"peritus.evaluation.command.v1\0";
@@ -76,6 +76,15 @@ pub enum EvaluationCommandKind {
         /// Positive caller monotonic start tick.
         started_at_tick: u64,
     },
+    /// Commits the exact frozen retry attempt before external I/O.
+    StartRetryRollout {
+        /// Scheduled logical rollout identity.
+        rollout_id: RolloutId,
+        /// Exact retained retry intent carried by the claimed directive.
+        retry: RetryIntent,
+        /// Positive caller monotonic start tick.
+        started_at_tick: u64,
+    },
     /// Retains a retryable attempt artifact before returning to scheduled state.
     RetainRetryableAttempt {
         /// Executed rollout identity.
@@ -84,6 +93,13 @@ pub enum EvaluationCommandKind {
         attempt: u16,
         /// Complete retained attempt digest.
         observation_digest: Sha256Digest,
+    },
+    /// Retains retry evidence and atomically requests the frozen next attempt.
+    RetainRetryableAttemptAndRetry {
+        /// Executed logical rollout identity.
+        rollout_id: RolloutId,
+        /// Artifact-backed retry evidence, policy, backoff, and next attempt.
+        retry: RetryIntent,
     },
     /// Settles one logical terminal and its exact result artifact.
     SettleRollout {
@@ -325,6 +341,9 @@ fn validate_kind(kind: &EvaluationCommandKind) -> Result<(), EvaluationError> {
             if *attempt == 0 || *started_at_tick == 0 =>
         {
             Err(invalid("rollout attempt or start tick is zero"))
+        }
+        EvaluationCommandKind::StartRetryRollout { started_at_tick: 0, .. } => {
+            Err(invalid("retry rollout start tick is zero"))
         }
         EvaluationCommandKind::RetainRetryableAttempt { attempt, .. } if *attempt == 0 => {
             Err(invalid("retained rollout attempt is zero"))

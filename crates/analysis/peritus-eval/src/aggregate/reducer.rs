@@ -303,10 +303,21 @@ fn apply_kind(
             progress.set_status(RolloutStatus::Running { attempt: *attempt });
             state.phase = EvaluationPhase::Running;
         }
+        EvaluationCommandKind::StartRetryRollout { rollout_id, retry, .. } => {
+            require_phase(&state, &[EvaluationPhase::Scheduling, EvaluationPhase::Running])?;
+            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
+            if progress.status() != (RolloutStatus::RetryPending { retry: *retry })
+                || progress.attempts_retained().checked_add(1) != Some(retry.next_attempt())
+            {
+                return Err(binding("retry start differs from the retained retry intent"));
+            }
+            progress.set_status(RolloutStatus::RetryRunning { retry: *retry });
+            state.phase = EvaluationPhase::Running;
+        }
         EvaluationCommandKind::RetainRetryableAttempt { rollout_id, attempt, .. } => {
             require_effect_phase(&state, &[EvaluationPhase::Running])?;
             let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if progress.status() != (RolloutStatus::Running { attempt: *attempt }) {
+            if !running_attempt_matches(progress.status(), *attempt) {
                 return Err(binding("retryable attempt differs from the running attempt"));
             }
             progress.retain_attempt(*attempt);
@@ -314,10 +325,24 @@ fn apply_kind(
                 acknowledgement_digest: progress.binding().request_digest(),
             });
         }
+        EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry } => {
+            require_effect_phase(&state, &[EvaluationPhase::Running])?;
+            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
+            let retained = retry.retained();
+            if retry.profile_digest() != state.profile_digest
+                || retained.rollout_id() != *rollout_id
+                || !running_attempt_matches(progress.status(), retained.attempt())
+                || progress.attempts_retained().checked_add(1) != Some(retained.attempt())
+            {
+                return Err(binding("retained retry differs from the running attempt"));
+            }
+            progress.retain_attempt(retained.attempt());
+            progress.set_status(RolloutStatus::RetryPending { retry: *retry });
+        }
         EvaluationCommandKind::SettleRollout { rollout_id, terminal } => {
             require_effect_phase(&state, &[EvaluationPhase::Running])?;
             let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if progress.status() != (RolloutStatus::Running { attempt: terminal.attempt() })
+            if !running_attempt_matches(progress.status(), terminal.attempt())
                 || progress.attempts_retained().checked_add(1) != Some(terminal.attempt())
             {
                 return Err(binding("terminal result differs from the running attempt"));
@@ -357,6 +382,8 @@ fn apply_kind(
                 progress.status(),
                 RolloutStatus::Scheduling
                     | RolloutStatus::Scheduled { .. }
+                    | RolloutStatus::RetryPending { .. }
+                    | RolloutStatus::RetryRunning { .. }
                     | RolloutStatus::Running { .. }
             ) {
                 return Err(binding("cancellation settlement has no outstanding external work"));
@@ -391,6 +418,8 @@ fn apply_kind(
                     RolloutStatus::Settled(_) | RolloutStatus::Cancelled { .. } => {}
                     RolloutStatus::Scheduling
                     | RolloutStatus::Scheduled { .. }
+                    | RolloutStatus::RetryPending { .. }
+                    | RolloutStatus::RetryRunning { .. }
                     | RolloutStatus::Running { .. } => {
                         return Err(binding(
                             "campaign cancellation still has outstanding external work",
@@ -542,6 +571,13 @@ fn retain_analysis_safe_point(
     state.analysis_safe_point = Some(safe_point);
     Ok(())
 }
+fn running_attempt_matches(status: RolloutStatus, attempt: u16) -> bool {
+    match status {
+        RolloutStatus::Running { attempt: running } => running == attempt,
+        RolloutStatus::RetryRunning { retry } => retry.next_attempt() == attempt,
+        _ => false,
+    }
+}
 const fn unknown_rollout() -> EvaluationError {
     binding("command references an unknown rollout")
 }
@@ -631,6 +667,12 @@ pub(crate) fn encode_kind(
             writer.write_u16(*attempt).map_err(codec)?;
             writer.write_u64(*started_at_tick).map_err(codec)?;
         }
+        EvaluationCommandKind::StartRetryRollout { rollout_id, retry, started_at_tick } => {
+            writer.write_u8(24).map_err(codec)?;
+            writer.write_fixed(rollout_id.as_bytes()).map_err(codec)?;
+            writer.write_bytes(&retry.canonical_bytes()?).map_err(codec)?;
+            writer.write_u64(*started_at_tick).map_err(codec)?;
+        }
         EvaluationCommandKind::RetainRetryableAttempt {
             rollout_id,
             attempt,
@@ -640,6 +682,11 @@ pub(crate) fn encode_kind(
             writer.write_fixed(rollout_id.as_bytes()).map_err(codec)?;
             writer.write_u16(*attempt).map_err(codec)?;
             writer.write_fixed(observation_digest.as_bytes()).map_err(codec)?;
+        }
+        EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry } => {
+            writer.write_u8(23).map_err(codec)?;
+            writer.write_fixed(rollout_id.as_bytes()).map_err(codec)?;
+            writer.write_bytes(&retry.canonical_bytes()?).map_err(codec)?;
         }
         EvaluationCommandKind::SettleRollout { rollout_id, terminal } => {
             writer.write_u8(8).map_err(codec)?;

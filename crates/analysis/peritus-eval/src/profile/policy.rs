@@ -104,11 +104,52 @@ impl EvaluationRetryPolicy {
         self.maximum_backoff_micros
     }
 
+    /// Derives the next representable attempt and its deterministic frozen backoff.
+    ///
+    /// Returns `None` when the caller-selected finite stopping point or the attempt-number
+    /// representation has been reached. Persistent policy has no synthetic stopping point.
+    #[must_use]
+    pub fn next_retry(self, completed_attempt: u16) -> Option<(u16, u64)> {
+        if completed_attempt == 0 {
+            return None;
+        }
+        let next_attempt = completed_attempt.checked_add(1)?;
+        if self.stop_after_attempt.is_some_and(|stop| next_attempt > stop) {
+            return None;
+        }
+        let exponent = u32::from(completed_attempt - 1);
+        let backoff = if self.initial_backoff_micros == 0 {
+            0
+        } else if exponent >= u64::BITS {
+            self.maximum_backoff_micros
+        } else {
+            self.initial_backoff_micros
+                .checked_mul(1_u64 << exponent)
+                .unwrap_or(self.maximum_backoff_micros)
+                .min(self.maximum_backoff_micros)
+        };
+        Some((next_attempt, backoff))
+    }
+
     pub(crate) const fn canonical_stop_after_attempt(self) -> u16 {
         match self.stop_after_attempt {
             Some(value) => value,
             None => 0,
         }
+    }
+
+    pub(crate) fn from_canonical(
+        stop_after_attempt: Option<u16>,
+        initial_backoff_micros: u64,
+        maximum_backoff_micros: u64,
+    ) -> Result<Self, EvaluationError> {
+        let policy = Self {
+            stop_after_attempt,
+            initial_backoff_micros,
+            maximum_backoff_micros,
+        };
+        policy.validate()?;
+        Ok(policy)
     }
 
     pub(crate) const fn validate(self) -> Result<(), EvaluationError> {
