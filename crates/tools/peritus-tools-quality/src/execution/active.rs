@@ -979,6 +979,7 @@ fn validate_retained_binding(
     let request = RetainedOwnerRequest::decode(reservation.request().to_vec())
         .map_err(|error| failure::process(&error))?;
     let plan = request.execution_plan();
+    checkpoint.validate_plan(plan)?;
     let caller = plan.caller_binding().ok_or_else(|| {
         adapter_failure(
             "quality-adoption-owner",

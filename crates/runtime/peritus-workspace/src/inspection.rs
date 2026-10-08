@@ -1,10 +1,13 @@
 //! Structured no-follow inspection of an immutable workspace snapshot.
 
-use std::fs;
+use std::{fs, path::PathBuf};
 
 use peritus_patch::WorkspacePath;
 
-use crate::{ReadOnlyWorkspace, WorkspaceError};
+use crate::{
+    ErrorCode, FolderInspection, ReadOnlyWorkspace, RecoveryClass, WorkspaceError,
+    WorkspaceOperation,
+};
 
 /// Historical buffer ceiling retained for source compatibility; reads use caller-owned capacity.
 pub const MAX_INSPECTION_FILE_BYTES: u64 = 8 * 1_024 * 1_024;
@@ -74,7 +77,51 @@ impl DirectoryEntry {
     }
 }
 
+impl FolderInspection {
+    /// Resolves one existing directory beneath this exact root without following any path component.
+    /// `None` selects the root itself.
+    ///
+    /// # Errors
+    /// Rejects missing, non-directory, linked, replaced, or canonically escaping selections.
+    pub fn resolve_directory(
+        &self,
+        path: Option<&WorkspacePath>,
+    ) -> Result<PathBuf, WorkspaceError> {
+        let reopened = Self::open(self.identity())?;
+        let root = reopened.identity().root();
+        let Some(path) = path else {
+            return Ok(root.to_owned());
+        };
+        if reopened.metadata(path)?.kind() != WorkspaceEntryKind::Directory {
+            return Err(directory_invalid("selected workspace path is not a directory"));
+        }
+        let candidate = root.join(path.as_str());
+        let canonical = fs::canonicalize(&candidate).map_err(directory_io)?;
+        if canonical != candidate || !canonical.starts_with(root) {
+            return Err(directory_invalid(
+                "selected workspace directory does not resolve exactly beneath its bound root",
+            ));
+        }
+        if reopened.metadata(path)?.kind() != WorkspaceEntryKind::Directory {
+            return Err(directory_invalid("selected workspace directory changed during resolution"));
+        }
+        Ok(canonical)
+    }
+}
+
 impl ReadOnlyWorkspace {
+    /// Resolves one existing directory in this immutable snapshot without following links.
+    /// `None` selects the snapshot root.
+    ///
+    /// # Errors
+    /// Rejects missing, non-directory, linked, replaced, or canonically escaping selections.
+    pub fn resolve_directory(
+        &self,
+        path: Option<&WorkspacePath>,
+    ) -> Result<PathBuf, WorkspaceError> {
+        self.file_inspection().resolve_directory(path)
+    }
+
     /// Streams an exact selection from this immutable snapshot into caller-owned storage.
     ///
     /// # Errors
@@ -165,4 +212,23 @@ impl ReadOnlyWorkspace {
             .read_file(path, crate::FileReadSelection::all(), maximum_bytes)
             .map(crate::InspectedFile::into_bytes)
     }
+}
+
+const fn directory_invalid(detail: &'static str) -> WorkspaceError {
+    WorkspaceError::new(
+        ErrorCode::InvalidInput,
+        WorkspaceOperation::Inspect,
+        RecoveryClass::CorrectRequest,
+        detail,
+    )
+}
+
+fn directory_io(error: std::io::Error) -> WorkspaceError {
+    WorkspaceError::new(
+        ErrorCode::Indeterminate,
+        WorkspaceOperation::Inspect,
+        RecoveryClass::Reobserve,
+        "selected workspace directory could not be canonicalized",
+    )
+    .with_io_source(error)
 }

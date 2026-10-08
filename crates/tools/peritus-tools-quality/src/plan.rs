@@ -9,7 +9,9 @@ use peritus_sandbox::{
 };
 use peritus_tool_protocol::PreparedToolCall;
 
-use crate::{CheckDefinition, EnvironmentProfile, QualityError, QualityErrorKind};
+use crate::{
+    CheckDefinition, CleanQualitySnapshot, EnvironmentProfile, QualityError, QualityErrorKind,
+};
 
 /// Exact non-command C2 inputs and resolved environment profile for a quality run.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +50,41 @@ impl QualityPlanInputs {
         sandbox: &CheckedSandboxPlan,
         admission: &BackendAdmission,
     ) -> Result<ExecutionPlan, QualityError> {
+        if definition.working_directory().is_some() {
+            return Err(invalid(
+                "a declared quality subdirectory requires snapshot-bound plan compilation",
+            ));
+        }
+        self.compile_inner(prepared, caller_binding, definition, sandbox, admission)
+    }
+
+    /// Compiles a selected definition against its exact clean snapshot directory binding.
+    ///
+    /// # Errors
+    /// Returns a typed failure for any definition, snapshot, profile, caller, or C2 mismatch.
+    pub fn compile_for_snapshot(
+        &self,
+        prepared: &PreparedToolCall,
+        caller_binding: ExecutionCallerBinding,
+        definition: &CheckDefinition,
+        snapshot: &CleanQualitySnapshot,
+        sandbox: &CheckedSandboxPlan,
+        admission: &BackendAdmission,
+    ) -> Result<ExecutionPlan, QualityError> {
+        let plan =
+            self.compile_inner(prepared, caller_binding, definition, sandbox, admission)?;
+        snapshot.validate_plan(&plan, definition)?;
+        Ok(plan)
+    }
+
+    fn compile_inner(
+        &self,
+        prepared: &PreparedToolCall,
+        caller_binding: ExecutionCallerBinding,
+        definition: &CheckDefinition,
+        sandbox: &CheckedSandboxPlan,
+        admission: &BackendAdmission,
+    ) -> Result<ExecutionPlan, QualityError> {
         if definition.environment_profile() != &self.environment_profile {
             return Err(invalid("resolved environment profile differs from the check definition"));
         }
@@ -68,6 +105,9 @@ impl QualityPlanInputs {
             || sandbox.operation_class() != SandboxOperationClass::Execution
         {
             return Err(invalid("quality runs require a restricted execution sandbox plan"));
+        }
+        if self.working_directory.access() != peritus_process::WorkspaceAccess::ReadOnly {
+            return Err(invalid("quality runs require a read-only working directory"));
         }
         if caller_binding.action_id() != prepared.call().action_id()
             || caller_binding.capability_name() != prepared.descriptor().name()

@@ -3,7 +3,7 @@
 use peritus_artifact_store::ArtifactStore;
 use peritus_process::{
     ExecutionAuthorizationRequest, ExecutionGateway, ExecutionIsolation, ExecutionPlan, IoMode,
-    NativeSandboxBackend,
+    NativeSandboxBackend, WorkspaceAccess,
 };
 use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
 use peritus_tool_protocol::{ImplementationIdentity, SchemaDigest};
@@ -26,6 +26,7 @@ pub struct QualityRunDispatcher<'gateway, 'authority, B> {
     backend: Option<B>,
     artifacts: Option<ArtifactStore>,
     catalog: CheckCatalog,
+    snapshot: Option<CleanQualitySnapshot>,
     descriptor: peritus_tool_protocol::ToolDescriptor,
 }
 
@@ -49,8 +50,28 @@ where
         artifacts: ArtifactStore,
         catalog: CheckCatalog,
     ) -> Result<Self, QualityError> {
-        snapshot.validate_plan(&plan)?;
-        Self::new(gateway, authorization, plan, sandbox, admission, backend, artifacts, catalog)
+        snapshot.validate_plan_target(&plan)?;
+        snapshot.validate_write_roots(gateway.store().root(), artifacts.root())?;
+        if !catalog
+            .checks()
+            .iter()
+            .any(|entry| definition_matches_plan(entry.definition(), &plan, Some(snapshot)))
+        {
+            return Err(mismatch(
+                "no catalog definition matches the snapshot-bound C2 quality plan",
+            ));
+        }
+        Self::bind(
+            gateway,
+            authorization,
+            plan,
+            sandbox,
+            admission,
+            backend,
+            artifacts,
+            catalog,
+            Some(snapshot.clone()),
+        )
     }
 
     /// Binds a discovered catalog and exact restricted lower-layer execution resources.
@@ -68,6 +89,41 @@ where
         backend: B,
         artifacts: ArtifactStore,
         catalog: CheckCatalog,
+    ) -> Result<Self, QualityError> {
+        if plan.working_directory().access() != WorkspaceAccess::ReadOnly
+            || catalog
+                .checks()
+                .iter()
+                .any(|entry| entry.definition().working_directory().is_some())
+        {
+            return Err(mismatch(
+                "declared quality subdirectories require a read-only snapshot-bound dispatcher",
+            ));
+        }
+        Self::bind(
+            gateway,
+            authorization,
+            plan,
+            sandbox,
+            admission,
+            backend,
+            artifacts,
+            catalog,
+            None,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn bind(
+        gateway: &'gateway ExecutionGateway,
+        authorization: &'gateway ExecutionAuthorizationRequest<'authority>,
+        plan: ExecutionPlan,
+        sandbox: CheckedSandboxPlan,
+        admission: BackendAdmission,
+        backend: B,
+        artifacts: ArtifactStore,
+        catalog: CheckCatalog,
+        snapshot: Option<CleanQualitySnapshot>,
     ) -> Result<Self, QualityError> {
         let descriptor = run_descriptor()?;
         let binding = plan
@@ -92,6 +148,7 @@ where
             backend: Some(backend),
             artifacts: Some(artifacts),
             catalog,
+            snapshot,
             descriptor,
         })
     }
@@ -135,6 +192,27 @@ where
                 "selected gate is absent from the authorized combined catalog",
             )
         })?;
+        if let Some(snapshot) = &self.snapshot {
+            snapshot
+                .validate_plan(plan, &definition)
+                .and_then(|()| {
+                    snapshot.validate_write_roots(
+                        self.gateway.store().root(),
+                        self.artifacts
+                            .as_ref()
+                            .ok_or_else(|| mismatch("quality artifact store was already consumed"))?
+                            .root(),
+                    )
+                })
+                .map_err(|error| adapter_failure("quality-snapshot-binding", error.detail()))?;
+        } else if definition.working_directory().is_some()
+            || plan.working_directory().access() != WorkspaceAccess::ReadOnly
+        {
+            return Err(adapter_failure(
+                "quality-snapshot-binding",
+                "selected quality directory has no read-only snapshot binding",
+            ));
+        }
         let command = definition
             .command()
             .map_err(|error| adapter_failure("quality-command", error.detail()))?;
@@ -185,13 +263,12 @@ where
         let started_at = invocation.observed_at();
         let prepared = invocation.into_prepared();
         let process_id = plan.identity().process_id();
-        let plan_digest = plan.digest();
         let checkpoint = checkpoint::Owner::prepare(
             self.gateway.store(),
             &prepared,
             &definition,
-            plan_digest,
-            process_id,
+            plan,
+            self.snapshot.as_ref(),
             self.artifacts.as_ref().ok_or_else(|| {
                 adapter_failure(
                     "quality-run-consumed",
@@ -250,6 +327,17 @@ where
             }
         }
     }
+}
+
+fn definition_matches_plan(
+    definition: &crate::CheckDefinition,
+    plan: &ExecutionPlan,
+    snapshot: Option<&CleanQualitySnapshot>,
+) -> bool {
+    definition.command().is_ok_and(|command| &command == plan.command())
+        && plan.deadline_policy().wall_timeout_millis() == definition.timeout_millis()
+        && output_policy_matches(plan.output_policy(), definition.output_limit())
+        && snapshot.is_none_or(|snapshot| snapshot.validate_plan(plan, definition).is_ok())
 }
 
 fn mismatch(detail: &'static str) -> QualityError {

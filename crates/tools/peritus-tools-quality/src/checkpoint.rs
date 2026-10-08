@@ -13,7 +13,7 @@ use peritus_codec::{
 };
 use peritus_patch::WorkspacePath;
 use peritus_policy::AuthorityInstant;
-use peritus_process::{ProcessCursor, ProcessStore, TerminalResult};
+use peritus_process::{ExecutionPlan, ProcessCursor, ProcessStore, TerminalResult};
 use peritus_tool_protocol::{
     FailureCategory, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem, ResultStatus,
     Retryability,
@@ -22,8 +22,9 @@ use peritus_tool_router::DispatchFailure;
 use peritus_types::{ActionId, EventId, GateId, Generation, ProcessId, Sha256Digest};
 
 use crate::{
-    CheckDefinition, CheckRequirement, CheckSource, EnvironmentProfile, ExpectedSuccess,
-    OutputParser, dispatcher::dispatch_failure,
+    CheckDefinition, CheckRequirement, CheckSource, CleanQualitySnapshot, EnvironmentProfile,
+    ExpectedSuccess, OutputParser, dispatcher::dispatch_failure,
+    snapshot::SnapshotExecutionBinding,
 };
 
 const DIRECTORY: &str = "quality-checkpoints-v1";
@@ -82,6 +83,7 @@ struct Binding {
     prepared_digest: Sha256Digest,
     replay_identity: Sha256Digest,
     definition: CheckDefinition,
+    snapshot: Option<SnapshotExecutionBinding>,
     plan_digest: Sha256Digest,
     process_id: ProcessId,
     artifact_root_digest: Sha256Digest,
@@ -101,12 +103,25 @@ impl Owner {
         process_store: &ProcessStore,
         prepared: &PreparedToolCall,
         definition: &CheckDefinition,
-        plan_digest: Sha256Digest,
-        process_id: ProcessId,
+        plan: &ExecutionPlan,
+        snapshot: Option<&CleanQualitySnapshot>,
         artifacts: &ArtifactStore,
         creating_event: EventId,
         started_at: AuthorityInstant,
     ) -> Result<Self, DispatchFailure> {
+        let snapshot = snapshot
+            .map(|snapshot| snapshot.execution_binding(definition, plan))
+            .transpose()
+            .map_err(checkpoint_quality)?;
+        if let Some(snapshot) = &snapshot {
+            snapshot
+                .validate_write_roots(process_store.root(), artifacts.root())
+                .map_err(checkpoint_quality)?;
+        } else if definition.working_directory().is_some() {
+            return Err(checkpoint_failure(
+                "declared quality subdirectory has no durable snapshot binding",
+            ));
+        }
         let directory = checkpoint_directory(process_store.root(), prepared.call().action_id());
         create_directory(&directory)?;
         let binding = Binding {
@@ -115,8 +130,9 @@ impl Owner {
             prepared_digest: prepared.prepared_digest(),
             replay_identity: prepared.replay_identity().digest(),
             definition: definition.clone(),
-            plan_digest,
-            process_id,
+            snapshot,
+            plan_digest: plan.digest(),
+            process_id: plan.identity().process_id(),
             artifact_root_digest: path_digest(artifacts.root()),
             creating_event,
             started_at,
@@ -139,16 +155,22 @@ impl Owner {
         }
         let frame = match decode_message::<CheckpointFrame>(&bytes, CODEC_LIMITS) {
             Ok(frame) => frame,
-            Err(current_error) => match decode_message::<LegacyCheckpointFrame>(&bytes, CODEC_LIMITS)
-            {
-                Ok(legacy) => legacy.upgrade(),
-                Err(_) => {
-                    return Err(checkpoint_codec(
-                        "decode quality checkpoint",
-                        current_error,
-                    ));
+            Err(current_error) => {
+                match decode_message::<LegacyCheckpointFrameV2>(&bytes, CODEC_LIMITS) {
+                    Ok(legacy) => legacy.upgrade(),
+                    Err(_) => {
+                        match decode_message::<LegacyCheckpointFrame>(&bytes, CODEC_LIMITS) {
+                            Ok(legacy) => legacy.upgrade(),
+                            Err(_) => {
+                                return Err(checkpoint_codec(
+                                    "decode quality checkpoint",
+                                    current_error,
+                                ));
+                            }
+                        }
+                    }
                 }
-            },
+            }
         };
         if frame.generation != candidate.generation
             || frame.action_id != prepared.call().action_id()
@@ -162,12 +184,22 @@ impl Owner {
             ));
         }
         let definition = frame.definition.into_definition()?;
+        let snapshot = frame
+            .snapshot
+            .map(|snapshot| snapshot.into_binding(&definition))
+            .transpose()?;
+        if let Some(snapshot) = &snapshot {
+            snapshot
+                .validate_write_roots(process_store.root(), artifacts.root())
+                .map_err(checkpoint_quality)?;
+        }
         let binding = Binding {
             action_id: frame.action_id,
             prepared_bytes: frame.prepared_bytes,
             prepared_digest: frame.prepared_digest,
             replay_identity: frame.replay_identity,
             definition,
+            snapshot,
             plan_digest: frame.plan_digest,
             process_id: frame.process_id,
             artifact_root_digest: frame.artifact_root_digest,
@@ -248,6 +280,15 @@ impl Owner {
     pub(crate) const fn started_at(&self) -> AuthorityInstant {
         self.binding.started_at
     }
+
+    pub(crate) fn validate_plan(&self, plan: &ExecutionPlan) -> Result<(), DispatchFailure> {
+        if let Some(snapshot) = &self.binding.snapshot {
+            snapshot
+                .validate_plan(plan, &self.binding.definition)
+                .map_err(checkpoint_quality)?;
+        }
+        Ok(())
+    }
 }
 
 struct CheckpointFrame {
@@ -257,6 +298,7 @@ struct CheckpointFrame {
     prepared_digest: Sha256Digest,
     replay_identity: Sha256Digest,
     definition: DefinitionFrame,
+    snapshot: Option<SnapshotFrame>,
     plan_digest: Sha256Digest,
     process_id: ProcessId,
     artifact_root_digest: Sha256Digest,
@@ -274,6 +316,7 @@ impl CheckpointFrame {
             prepared_digest: binding.prepared_digest,
             replay_identity: binding.replay_identity,
             definition: DefinitionFrame::from_definition(&binding.definition),
+            snapshot: binding.snapshot.as_ref().map(SnapshotFrame::from_binding),
             plan_digest: binding.plan_digest,
             process_id: binding.process_id,
             artifact_root_digest: binding.artifact_root_digest,
@@ -286,7 +329,7 @@ impl CheckpointFrame {
 
 impl CanonicalEncode for CheckpointFrame {
     const FAMILY: u16 = 0xc451;
-    const SCHEMA_VERSION: u16 = 2;
+    const SCHEMA_VERSION: u16 = 3;
 
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
         writer.write_u64(self.generation)?;
@@ -295,6 +338,10 @@ impl CanonicalEncode for CheckpointFrame {
         writer.write_fixed(self.prepared_digest.as_bytes())?;
         writer.write_fixed(self.replay_identity.as_bytes())?;
         self.definition.encode(writer)?;
+        writer.write_option_tag(self.snapshot.is_some())?;
+        if let Some(snapshot) = &self.snapshot {
+            snapshot.encode(writer)?;
+        }
         writer.write_fixed(self.plan_digest.as_bytes())?;
         writer.write_fixed(self.process_id.as_bytes())?;
         writer.write_fixed(self.artifact_root_digest.as_bytes())?;
@@ -305,6 +352,155 @@ impl CanonicalEncode for CheckpointFrame {
 }
 
 impl CanonicalDecode for CheckpointFrame {
+    const FAMILY: u16 = 0xc451;
+    const SCHEMA_VERSION: u16 = 3;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        let generation = reader.read_u64()?;
+        if generation == 0 {
+            return Err(domain(reader));
+        }
+        let action_id = ActionId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let prepared_bytes = reader.read_bytes_owned()?;
+        if prepared_bytes.is_empty() {
+            return Err(domain(reader));
+        }
+        let prepared_digest = Sha256Digest::new(reader.read_fixed()?);
+        let replay_identity = Sha256Digest::new(reader.read_fixed()?);
+        let definition = DefinitionFrame::decode(reader)?;
+        let snapshot = if reader.read_option_tag()? {
+            Some(SnapshotFrame::decode(reader)?)
+        } else {
+            None
+        };
+        let plan_digest = Sha256Digest::new(reader.read_fixed()?);
+        let process_id = ProcessId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let artifact_root_digest = Sha256Digest::new(reader.read_fixed()?);
+        let creating_event = EventId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let started_at = decode_instant(reader)?;
+        let state = decode_state(reader)?;
+        if state.last_observed_at.epoch() != started_at.epoch()
+            || state.last_observed_at.tick_millis() < started_at.tick_millis()
+            || state.pending.is_some_and(|pending| {
+                pending.next_progress < state.committed.next_progress
+            })
+            || state.terminal.is_some() && !state.launch_accepted
+            || state.settlement.is_some_and(|settlement| {
+                settlement.finished_at.epoch() != started_at.epoch()
+                    || settlement.finished_at.tick_millis() < started_at.tick_millis()
+                    || settlement.progress_frontier < state.committed.next_progress
+                    || state.terminal.is_none()
+                    || state.pending.is_some_and(|pending| {
+                        pending.next_progress > settlement.progress_frontier
+                    })
+            })
+        {
+            return Err(domain(reader));
+        }
+        Ok(Self {
+            generation,
+            action_id,
+            prepared_bytes,
+            prepared_digest,
+            replay_identity,
+            definition,
+            snapshot,
+            plan_digest,
+            process_id,
+            artifact_root_digest,
+            creating_event,
+            started_at,
+            state,
+        })
+    }
+}
+
+struct SnapshotFrame {
+    snapshot_digest: Sha256Digest,
+    root: PathBuf,
+    working_directory: PathBuf,
+}
+
+impl SnapshotFrame {
+    fn from_binding(binding: &SnapshotExecutionBinding) -> Self {
+        Self {
+            snapshot_digest: binding.snapshot_digest(),
+            root: binding.root().to_owned(),
+            working_directory: binding.working_directory().to_owned(),
+        }
+    }
+
+    fn into_binding(
+        self,
+        definition: &CheckDefinition,
+    ) -> Result<SnapshotExecutionBinding, DispatchFailure> {
+        SnapshotExecutionBinding::restore(
+            self.snapshot_digest,
+            self.root,
+            self.working_directory,
+            definition,
+        )
+        .map_err(checkpoint_quality)
+    }
+
+    fn encode(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        let root = self
+            .root
+            .to_str()
+            .ok_or_else(|| CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len()))?;
+        let working_directory = self.working_directory.to_str().ok_or_else(|| {
+            CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len())
+        })?;
+        writer.write_fixed(self.snapshot_digest.as_bytes())?;
+        writer.write_str(root)?;
+        writer.write_str(working_directory)
+    }
+
+    fn decode(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        Ok(Self {
+            snapshot_digest: Sha256Digest::new(reader.read_fixed()?),
+            root: PathBuf::from(read_owned(reader)?),
+            working_directory: PathBuf::from(read_owned(reader)?),
+        })
+    }
+}
+
+struct LegacyCheckpointFrameV2 {
+    generation: u64,
+    action_id: ActionId,
+    prepared_bytes: Vec<u8>,
+    prepared_digest: Sha256Digest,
+    replay_identity: Sha256Digest,
+    definition: DefinitionFrame,
+    plan_digest: Sha256Digest,
+    process_id: ProcessId,
+    artifact_root_digest: Sha256Digest,
+    creating_event: EventId,
+    started_at: AuthorityInstant,
+    state: State,
+}
+
+impl LegacyCheckpointFrameV2 {
+    fn upgrade(self) -> CheckpointFrame {
+        CheckpointFrame {
+            generation: self.generation,
+            action_id: self.action_id,
+            prepared_bytes: self.prepared_bytes,
+            prepared_digest: self.prepared_digest,
+            replay_identity: self.replay_identity,
+            definition: self.definition,
+            snapshot: None,
+            plan_digest: self.plan_digest,
+            process_id: self.process_id,
+            artifact_root_digest: self.artifact_root_digest,
+            creating_event: self.creating_event,
+            started_at: self.started_at,
+            state: self.state,
+        }
+    }
+}
+
+impl CanonicalDecode for LegacyCheckpointFrameV2 {
     const FAMILY: u16 = 0xc451;
     const SCHEMA_VERSION: u16 = 2;
 
@@ -389,6 +585,7 @@ impl LegacyCheckpointFrame {
             prepared_digest: self.prepared_digest,
             replay_identity: self.replay_identity,
             definition: self.definition,
+            snapshot: None,
             plan_digest: self.plan_digest,
             process_id: self.process_id,
             artifact_root_digest: self.artifact_root_digest,
@@ -982,6 +1179,10 @@ fn unknown_tag(reader: &CanonicalReader<'_>) -> CodecError {
 
 fn checkpoint_codec(operation: &str, error: CodecError) -> DispatchFailure {
     checkpoint_error("quality-checkpoint-codec", &format!("{operation}: {error}"))
+}
+
+fn checkpoint_quality(error: crate::QualityError) -> DispatchFailure {
+    checkpoint_error("quality-checkpoint-binding", error.detail())
 }
 
 fn checkpoint_failure(detail: &'static str) -> DispatchFailure {
