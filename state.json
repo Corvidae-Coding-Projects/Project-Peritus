@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3929,
-        "tip_oid": "d7c14a7c83bbe6704c8b1e44cf91d2cac28c0e10",
-        "prefix_sha256": "f1816c562e17f80d765dab57e56fa72237d46ad6f03fa8a5ab5adcd0ca34ea76"
+        "sequence": 3930,
+        "tip_oid": "2b0fbc4a2b6115f511bbe3b0b256abc87e00bcda",
+        "prefix_sha256": "1055e35fc9268a5e9d905776f5ec5da9d098a6d1508c3be7f35a2b1e194eeb6c"
       },
       "NWAR": {
         "sequence": 39,
@@ -17648,12 +17648,13 @@
       "display_id": 513,
       "title": "[L433] E3 refuses cancellation once deterministic analysis begins",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L433.\n\n- Evidence: `crates/analysis/peritus-eval/src/aggregate/reducer.rs:285-293,337-365`, `src/aggregate/command.rs:13-111`, `src/aggregate/types.rs:20-79`, `src/runtime/mod.rs:75-105` in the same crate.\n- Behavior: CancelCampaign returns a quarantining binding error in Analyzing or ReportReady. The command vocabulary has no pause/resume operation for those phases. FailCampaign can force failure, but is not cancellation or suspension with resumable work.\n- Consequence: A caller cannot request normal durable cancellation after statistical analysis starts or while publication is pending. This is an explicit phase blocker even when no external rollout remains. It does not prove the installed writer uses E3, and it does not establish that session context is deleted.\n- Repair direction: Model cancellation and suspension as durable intent across every nonterminal phase, with analysis/publication safe points and retained results. Preserve publication integrity instead of using a blanket late-phase cancellation rejection. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.529379128Z",
-      "updated_at": "2026-10-08T01:06:03.109319604Z",
+      "updated_at": "2026-10-08T01:07:33.314275480Z",
+      "closed_at": "2026-10-08T01:07:33.311356442Z",
       "labels": [
         "daily-driving-limiter"
       ],
