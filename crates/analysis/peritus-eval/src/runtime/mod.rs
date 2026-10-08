@@ -5,18 +5,20 @@ mod publication;
 mod recovery;
 
 use peritus_journal::{CommittedBatch, SqliteJournal};
-use peritus_types::{CommandId, EventId};
+use peritus_types::{CommandId, EventId, Sha256Digest};
 
 pub use artifact::{
     FinalizedEvaluationArtifact, commit_report_ready, finalize_report_artifact,
     stage_and_commit_report,
 };
-pub use publication::{PublicationExecution, publish_claimed_report};
+pub use publication::{
+    PublicationExecution, cancel_claimed_publication, publish_claimed_report,
+};
 pub use recovery::{EvaluationRecoveryDecision, RecoveryObservation, decide_recovery};
 
 use crate::{
-    EvaluationCommand, EvaluationError, EvaluationState, EvaluationTransition,
-    commit_evaluation_transition,
+    AnalysisSafePoint, EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationState,
+    EvaluationTransition, commit_evaluation_transition, decide,
 };
 
 /// Caller-reserved command/event identities for one exact transition.
@@ -95,6 +97,124 @@ impl<'a> EvaluationRuntime<'a> {
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
         let batch = commit_evaluation_transition(self.journal, command, transition)?;
         Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    }
+
+    /// Retains a resumable owner-bound analysis checkpoint.
+    ///
+    /// # Errors
+    /// Rejects phase, ownership, artifact, fence, or C0 commit failures.
+    pub fn record_analysis_safe_point(
+        &mut self,
+        state: &EvaluationState,
+        safe_point: AnalysisSafePoint,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::RecordAnalysisSafePoint { safe_point },
+        )
+    }
+
+    /// Durably suspends a nonterminal campaign at its current safe boundary.
+    ///
+    /// # Errors
+    /// Rejects unsafe analysis suspension, invalid phases, stale fences, or C0 failures.
+    pub fn suspend_campaign(
+        &mut self,
+        state: &EvaluationState,
+        reason_digest: Sha256Digest,
+        analysis_safe_point: Option<AnalysisSafePoint>,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::SuspendCampaign { reason_digest, analysis_safe_point },
+        )
+    }
+
+    /// Resumes the exact phase retained by a matching durable suspension.
+    ///
+    /// # Errors
+    /// Rejects a mismatched reason, invalid phase, stale fence, or C0 failure.
+    pub fn resume_campaign(
+        &mut self,
+        state: &EvaluationState,
+        reason_digest: Sha256Digest,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::ResumeCampaign { reason_digest },
+        )
+    }
+
+    /// Starts cancellation from any nonterminal campaign phase.
+    ///
+    /// # Errors
+    /// Rejects duplicate cancellation, stale fences, or C0 failures.
+    pub fn cancel_campaign(
+        &mut self,
+        state: &EvaluationState,
+        reason_digest: Sha256Digest,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::CancelCampaign { reason_digest },
+        )
+    }
+
+    /// Confirms active analysis cancellation and retains its final safe point.
+    ///
+    /// # Errors
+    /// Rejects ownership, monotonicity, phase, artifact, fence, or C0 failures.
+    pub fn settle_analysis_cancellation(
+        &mut self,
+        state: &EvaluationState,
+        safe_point: AnalysisSafePoint,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::SettleAnalysisCancellation { safe_point },
+        )
+    }
+
+    /// Completes cancellation only after every owned effect has been reconciled.
+    ///
+    /// # Errors
+    /// Rejects incomplete effect settlement, stale fences, or C0 failures.
+    pub fn complete_cancellation(
+        &mut self,
+        state: &EvaluationState,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(state, ids, EvaluationCommandKind::CompleteCancellation)
+    }
+
+    fn commit_kind(
+        &mut self,
+        state: &EvaluationState,
+        ids: TransitionIds,
+        kind: EvaluationCommandKind,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        let command = EvaluationCommand::new(
+            ids.command_id(),
+            ids.event_id(),
+            state.campaign_id(),
+            state.sequence(),
+            Some(state.last_event_id()),
+            state.state_digest(),
+            state.profile_digest(),
+            kind,
+        )?;
+        let transition = decide(Some(state), &command)?;
+        self.commit(&command, &transition)
     }
 
     /// Borrows the underlying journal for C0 claim/replay composition.

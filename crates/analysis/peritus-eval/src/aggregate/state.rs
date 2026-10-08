@@ -6,20 +6,22 @@ use peritus_artifact_store::ArtifactDigest;
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_scheduler::WorkId;
 use peritus_types::{
-    AcceptanceSpecId, EventId, EvidenceId, Generation, HarnessId, PolicyId, ProviderProfileId,
-    RevisionNumber, RevisionTuple, Sha256Digest, WorkspaceId,
+    AcceptanceSpecId, ActorId, EventId, EvidenceId, Generation, HarnessId, PolicyId,
+    ProviderProfileId, RevisionNumber, RevisionTuple, Sha256Digest, WorkspaceId,
 };
 
 use crate::{
-    CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCampaignId, EvaluationError,
-    EvaluationErrorKind, EvaluationOperation, EvaluationPhase, EvaluationPlanId,
-    EvaluationLimits, EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanDigest, PlanRecord,
-    PlannedRolloutBinding, ProfileDigest, PublicationRecord, ReportRecord, ResultDigest, RolloutId,
-    RolloutProgress, RolloutStatus, RolloutTerminalClass, TerminalRecordRef,
+    AnalysisSafePoint, CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCampaignId,
+    EvaluationError, EvaluationErrorKind, EvaluationLimits, EvaluationOperation, EvaluationPhase,
+    EvaluationPlanId, EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanDigest, PlanRecord,
+    PlannedRolloutBinding, ProfileDigest, PublicationCancellationRecord, PublicationRecord,
+    ReportRecord, ResultDigest, RolloutId, RolloutProgress, RolloutStatus, RolloutTerminalClass,
+    TerminalRecordRef,
 };
 
 const STATE_DOMAIN: &[u8] = b"peritus.evaluation.state.v1\0";
 const STATE_PAGE_EXTENSION_TAG: u8 = 1;
+const STATE_CONTROL_EXTENSION_TAG: u8 = 2;
 
 /// Complete authoritative E3 campaign state.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -48,6 +50,12 @@ pub struct EvaluationState {
     pub(crate) report: Option<ReportRecord>,
     pub(crate) publication: Option<PublicationRecord>,
     pub(crate) cancellation_reason: Option<Sha256Digest>,
+    pub(crate) suspension_origin: Option<EvaluationPhase>,
+    pub(crate) suspension_reason: Option<Sha256Digest>,
+    pub(crate) cancellation_origin: Option<EvaluationPhase>,
+    pub(crate) analysis_safe_point: Option<AnalysisSafePoint>,
+    pub(crate) analysis_cancellation_settled: bool,
+    pub(crate) publication_cancellation: Option<PublicationCancellationRecord>,
     pub(crate) failure: Option<CampaignFailure>,
 }
 
@@ -156,6 +164,36 @@ impl EvaluationState {
     #[must_use]
     pub const fn cancellation_reason(&self) -> Option<Sha256Digest> {
         self.cancellation_reason
+    }
+    /// Exact phase at which the current suspension was committed.
+    #[must_use]
+    pub const fn suspension_origin(&self) -> Option<EvaluationPhase> {
+        self.suspension_origin
+    }
+    /// Exact reason required to resume the current suspension.
+    #[must_use]
+    pub const fn suspension_reason(&self) -> Option<Sha256Digest> {
+        self.suspension_reason
+    }
+    /// Nonterminal phase at which cancellation won.
+    #[must_use]
+    pub const fn cancellation_origin(&self) -> Option<EvaluationPhase> {
+        self.cancellation_origin
+    }
+    /// Latest retained owner-bound analysis checkpoint.
+    #[must_use]
+    pub const fn analysis_safe_point(&self) -> Option<AnalysisSafePoint> {
+        self.analysis_safe_point
+    }
+    /// Whether active analysis has acknowledged the current cancellation.
+    #[must_use]
+    pub const fn analysis_cancellation_settled(&self) -> bool {
+        self.analysis_cancellation_settled
+    }
+    /// Exact retained outcome of a cancelled publication claim.
+    #[must_use]
+    pub const fn publication_cancellation(&self) -> Option<PublicationCancellationRecord> {
+        self.publication_cancellation
     }
     /// Terminal typed failure.
     #[must_use]
@@ -314,17 +352,66 @@ impl EvaluationState {
                 ))
             })
             .transpose()?;
-        let state_page_bytes = match reader.remaining() {
-            32 => EvaluationLimits::MAX_STATE_BYTES,
+        let (
+            state_page_bytes,
+            suspension_origin,
+            suspension_reason,
+            cancellation_origin,
+            analysis_safe_point,
+            analysis_cancellation_settled,
+            publication_cancellation,
+        ) = match reader.remaining() {
+            32 => (
+                EvaluationLimits::MAX_STATE_BYTES,
+                None,
+                None,
+                None,
+                None,
+                false,
+                None,
+            ),
             41 => {
                 if reader.read_u8().map_err(codec)? != STATE_PAGE_EXTENSION_TAG {
                     return Err(corrupt("unknown evaluation state extension"));
                 }
-                let value = reader.read_u64().map_err(codec)?;
-                if value == 0 || value > EvaluationLimits::MAX_STATE_BYTES {
-                    return Err(corrupt("evaluation state-page size exceeds the C0 ceiling"));
+                let value = decode_state_page_bytes(&mut reader)?;
+                (value, None, None, None, None, false, None)
+            }
+            remaining if remaining > 41 => {
+                if reader.read_u8().map_err(codec)? != STATE_CONTROL_EXTENSION_TAG {
+                    return Err(corrupt("unknown evaluation state extension"));
                 }
-                value
+                let value = decode_state_page_bytes(&mut reader)?;
+                let suspension_origin = decode_phase_option(&mut reader)?;
+                let suspension_reason = reader
+                    .read_option_tag()
+                    .map_err(codec)?
+                    .then(|| digest(&mut reader))
+                    .transpose()?;
+                let cancellation_origin = decode_phase_option(&mut reader)?;
+                let analysis_safe_point = reader
+                    .read_option_tag()
+                    .map_err(codec)?
+                    .then(|| decode_analysis_safe_point(&mut reader))
+                    .transpose()?;
+                let analysis_cancellation_settled = reader.read_option_tag().map_err(codec)?;
+                let publication_cancellation = reader
+                    .read_option_tag()
+                    .map_err(codec)?
+                    .then(|| decode_publication_cancellation(&mut reader))
+                    .transpose()?;
+                if reader.remaining() != 32 {
+                    return Err(corrupt("evaluation control extension length is invalid"));
+                }
+                (
+                    value,
+                    suspension_origin,
+                    suspension_reason,
+                    cancellation_origin,
+                    analysis_safe_point,
+                    analysis_cancellation_settled,
+                    publication_cancellation,
+                )
             }
             _ => return Err(corrupt("evaluation state extension length is invalid")),
         };
@@ -355,8 +442,15 @@ impl EvaluationState {
             report,
             publication,
             cancellation_reason,
+            suspension_origin,
+            suspension_reason,
+            cancellation_origin,
+            analysis_safe_point,
+            analysis_cancellation_settled,
+            publication_cancellation,
             failure,
         };
+        validate_control_state(&state)?;
         let advertised = state.state_digest;
         state.refresh_digest()?;
         if state.state_digest != advertised {
@@ -438,7 +532,25 @@ fn encode_identity(
         writer.write_u8(value.code().tag()).map_err(codec)?;
         writer.write_fixed(value.digest().as_bytes()).map_err(codec)?;
     }
-    if state.state_page_bytes != EvaluationLimits::MAX_STATE_BYTES {
+    if control_extension_present(state) {
+        writer.write_u8(STATE_CONTROL_EXTENSION_TAG).map_err(codec)?;
+        writer.write_u64(state.state_page_bytes).map_err(codec)?;
+        encode_phase_option(writer, state.suspension_origin)?;
+        writer.write_option_tag(state.suspension_reason.is_some()).map_err(codec)?;
+        if let Some(value) = state.suspension_reason {
+            writer.write_fixed(value.as_bytes()).map_err(codec)?;
+        }
+        encode_phase_option(writer, state.cancellation_origin)?;
+        writer.write_option_tag(state.analysis_safe_point.is_some()).map_err(codec)?;
+        if let Some(value) = state.analysis_safe_point {
+            encode_analysis_safe_point(writer, value)?;
+        }
+        writer.write_option_tag(state.analysis_cancellation_settled).map_err(codec)?;
+        writer.write_option_tag(state.publication_cancellation.is_some()).map_err(codec)?;
+        if let Some(value) = state.publication_cancellation {
+            encode_publication_cancellation(writer, value)?;
+        }
+    } else if state.state_page_bytes != EvaluationLimits::MAX_STATE_BYTES {
         writer.write_u8(STATE_PAGE_EXTENSION_TAG).map_err(codec)?;
         writer.write_u64(state.state_page_bytes).map_err(codec)?;
     }
@@ -575,6 +687,133 @@ fn decode_publication(
             .map_err(|_| corrupt("invalid publication evidence identity"))?,
         reader.read_u64().map_err(codec)?,
     )
+}
+
+fn encode_analysis_safe_point(
+    writer: &mut CanonicalWriter,
+    value: AnalysisSafePoint,
+) -> Result<(), EvaluationError> {
+    writer.write_fixed(value.owner().as_bytes()).map_err(codec)?;
+    writer.write_u64(value.sequence()).map_err(codec)?;
+    writer.write_fixed(value.checkpoint_digest().as_bytes()).map_err(codec)?;
+    writer.write_fixed(value.artifact().as_bytes()).map_err(codec)?;
+    writer.write_u64(value.artifact_bytes()).map_err(codec)
+}
+fn decode_analysis_safe_point(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<AnalysisSafePoint, EvaluationError> {
+    AnalysisSafePoint::new(
+        ActorId::new(reader.read_fixed().map_err(codec)?)
+            .map_err(|_| corrupt("invalid analysis safe-point owner"))?,
+        reader.read_u64().map_err(codec)?,
+        digest(reader)?,
+        ArtifactDigest::from_sha256(digest(reader)?),
+        reader.read_u64().map_err(codec)?,
+    )
+}
+fn encode_publication_cancellation(
+    writer: &mut CanonicalWriter,
+    value: PublicationCancellationRecord,
+) -> Result<(), EvaluationError> {
+    encode_report(writer, value.report())?;
+    writer.write_fixed(value.observation_digest().as_bytes()).map_err(codec)?;
+    writer.write_option_tag(value.admitted_evidence().is_some()).map_err(codec)?;
+    if let Some(evidence) = value.admitted_evidence() {
+        writer.write_fixed(evidence.as_bytes()).map_err(codec)?;
+    }
+    Ok(())
+}
+fn decode_publication_cancellation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<PublicationCancellationRecord, EvaluationError> {
+    let report = decode_report(reader)?;
+    let observation_digest = digest(reader)?;
+    let admitted_evidence = reader
+        .read_option_tag()
+        .map_err(codec)?
+        .then(|| {
+            EvidenceId::new(reader.read_fixed().map_err(codec)?)
+                .map_err(|_| corrupt("invalid retained publication evidence identity"))
+        })
+        .transpose()?;
+    Ok(PublicationCancellationRecord::new(
+        report,
+        observation_digest,
+        admitted_evidence,
+    ))
+}
+
+fn encode_phase_option(
+    writer: &mut CanonicalWriter,
+    value: Option<EvaluationPhase>,
+) -> Result<(), EvaluationError> {
+    writer.write_option_tag(value.is_some()).map_err(codec)?;
+    if let Some(value) = value {
+        writer.write_u8(value.tag()).map_err(codec)?;
+    }
+    Ok(())
+}
+fn decode_phase_option(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<Option<EvaluationPhase>, EvaluationError> {
+    reader
+        .read_option_tag()
+        .map_err(codec)?
+        .then(|| EvaluationPhase::from_tag(reader.read_u8().map_err(codec)?))
+        .transpose()
+}
+fn decode_state_page_bytes(reader: &mut CanonicalReader<'_>) -> Result<u64, EvaluationError> {
+    let value = reader.read_u64().map_err(codec)?;
+    if value == 0 || value > EvaluationLimits::MAX_STATE_BYTES {
+        Err(corrupt("evaluation state-page size exceeds the C0 ceiling"))
+    } else {
+        Ok(value)
+    }
+}
+fn control_extension_present(state: &EvaluationState) -> bool {
+    state.suspension_origin.is_some()
+        || state.suspension_reason.is_some()
+        || state.cancellation_origin.is_some()
+        || state.analysis_safe_point.is_some()
+        || state.analysis_cancellation_settled
+        || state.publication_cancellation.is_some()
+}
+fn validate_control_state(state: &EvaluationState) -> Result<(), EvaluationError> {
+    let has_suspension = state.suspension_origin.is_some() && state.suspension_reason.is_some();
+    if (state.phase == EvaluationPhase::Suspended) != has_suspension
+        || state.suspension_origin.is_some() != state.suspension_reason.is_some()
+    {
+        return Err(corrupt("suspension phase, origin, and reason presence differ"));
+    }
+    if state.suspension_origin.is_some_and(|phase| {
+        phase.terminal()
+            || matches!(phase, EvaluationPhase::Cancelling | EvaluationPhase::Suspended)
+    }) {
+        return Err(corrupt("suspension origin is not a resumable phase"));
+    }
+    if let Some(origin) = state.cancellation_origin {
+        if origin.terminal()
+            || matches!(origin, EvaluationPhase::Cancelling | EvaluationPhase::Suspended)
+            || state.cancellation_reason.is_none()
+            || !matches!(
+                state.phase,
+                EvaluationPhase::Cancelling | EvaluationPhase::Cancelled | EvaluationPhase::Failed
+            )
+        {
+            return Err(corrupt("cancellation origin is inconsistent with campaign state"));
+        }
+    }
+    if state.analysis_cancellation_settled
+        && state.cancellation_origin != Some(EvaluationPhase::Analyzing)
+    {
+        return Err(corrupt("analysis cancellation settlement has no analysis origin"));
+    }
+    if state.publication_cancellation.is_some()
+        && state.cancellation_origin != Some(EvaluationPhase::ReportReady)
+    {
+        return Err(corrupt("publication cancellation has no report-ready origin"));
+    }
+    Ok(())
 }
 
 fn encode_revision(

@@ -12,11 +12,11 @@ use peritus_types::{
 };
 
 use crate::{
-    CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCommandKind, EvaluationError,
-    EvaluationErrorKind, EvaluationOperation, EvaluationPlanId, EvaluationRecovery,
-    EvaluationReportId, LedgerCounts, PlanBatch, PlanDigest, PlanRecord, PlannedRolloutBinding,
-    PublicationRecord, ReportRecord, ResultDigest, RolloutId, RolloutTerminalClass,
-    TerminalRecordRef,
+    AnalysisSafePoint, CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCommandKind,
+    EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
+    EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanBatch, PlanDigest, PlanRecord,
+    PlannedRolloutBinding, PublicationCancellationRecord, PublicationRecord, ReportRecord,
+    ResultDigest, RolloutId, RolloutTerminalClass, TerminalRecordRef,
 };
 
 pub(super) fn encode(kind: &EvaluationCommandKind) -> Result<Vec<u8>, EvaluationError> {
@@ -112,6 +112,24 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
             dataset_artifact: ArtifactDigest::from_sha256(digest(&mut reader)?),
             profile_artifact: ArtifactDigest::from_sha256(digest(&mut reader)?),
             state_page_bytes: reader.read_u64().map_err(codec)?,
+        },
+        18 => EvaluationCommandKind::RecordAnalysisSafePoint {
+            safe_point: analysis_safe_point(&mut reader)?,
+        },
+        19 => EvaluationCommandKind::SuspendCampaign {
+            reason_digest: digest(&mut reader)?,
+            analysis_safe_point: reader
+                .read_option_tag()
+                .map_err(codec)?
+                .then(|| analysis_safe_point(&mut reader))
+                .transpose()?,
+        },
+        20 => EvaluationCommandKind::ResumeCampaign { reason_digest: digest(&mut reader)? },
+        21 => EvaluationCommandKind::SettleAnalysisCancellation {
+            safe_point: analysis_safe_point(&mut reader)?,
+        },
+        22 => EvaluationCommandKind::SettlePublicationCancellation {
+            cancellation: publication_cancellation(&mut reader)?,
         },
         _ => return Err(protocol("unknown evaluation semantic tag")),
     };
@@ -270,6 +288,37 @@ fn report(reader: &mut CanonicalReader<'_>) -> Result<ReportRecord, EvaluationEr
         ArtifactDigest::from_sha256(digest(reader)?),
         reader.read_u64().map_err(codec)?,
     )
+}
+fn analysis_safe_point(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<AnalysisSafePoint, EvaluationError> {
+    AnalysisSafePoint::new(
+        ActorId::new(reader.read_fixed().map_err(codec)?)
+            .map_err(|_| protocol("invalid analysis safe-point owner"))?,
+        reader.read_u64().map_err(codec)?,
+        digest(reader)?,
+        ArtifactDigest::from_sha256(digest(reader)?),
+        reader.read_u64().map_err(codec)?,
+    )
+}
+fn publication_cancellation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<PublicationCancellationRecord, EvaluationError> {
+    let retained_report = report(reader)?;
+    let observation_digest = digest(reader)?;
+    let admitted_evidence = reader
+        .read_option_tag()
+        .map_err(codec)?
+        .then(|| {
+            EvidenceId::new(reader.read_fixed().map_err(codec)?)
+                .map_err(|_| protocol("invalid retained publication evidence identity"))
+        })
+        .transpose()?;
+    Ok(PublicationCancellationRecord::new(
+        retained_report,
+        observation_digest,
+        admitted_evidence,
+    ))
 }
 fn rollout(reader: &mut CanonicalReader<'_>) -> Result<RolloutId, EvaluationError> {
     RolloutId::new(reader.read_fixed().map_err(codec)?)

@@ -16,7 +16,7 @@ pub use reducer::{apply_event, decide, replay};
 pub(crate) use reducer::{encode_kind, encode_work};
 pub use state::EvaluationState;
 pub use types::{
-    CampaignFailure, CampaignFailureCode, EvaluationPhase, PlanBatch, PlanRecord,
-    PlannedRolloutBinding, PublicationRecord, ReportRecord, RolloutProgress, RolloutStatus,
-    RolloutTerminalClass, TerminalRecordRef,
+    AnalysisSafePoint, CampaignFailure, CampaignFailureCode, EvaluationPhase, PlanBatch, PlanRecord,
+    PlannedRolloutBinding, PublicationCancellationRecord, PublicationRecord, ReportRecord,
+    RolloutProgress, RolloutStatus, RolloutTerminalClass, TerminalRecordRef,
 };

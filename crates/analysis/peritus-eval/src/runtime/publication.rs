@@ -5,13 +5,13 @@ use peritus_evidence::{
     EvidenceDraft, EvidenceKind, EvidenceRecord, EvidenceSource, EvidenceStore,
 };
 use peritus_journal::SqliteJournal;
-use peritus_types::EvidenceId;
+use peritus_types::{EvidenceId, Sha256Digest};
 
 use crate::{
     EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationErrorKind,
     EvaluationOperation, EvaluationPhase, EvaluationRecovery, EvaluationState,
-    PublicationDirectiveClaim, PublicationRecord, ValidatedEvaluationReport,
-    commit_evaluation_settlement, decide,
+    PublicationCancellationRecord, PublicationDirectiveClaim, PublicationRecord,
+    ValidatedEvaluationReport, commit_evaluation_settlement, decide,
 };
 
 use super::{CommittedEvaluationTransition, FinalizedEvaluationArtifact, TransitionIds};
@@ -103,6 +103,48 @@ pub fn publish_claimed_report(
         evidence,
         committed: CommittedEvaluationTransition::new(batch, transition.state().clone()),
     })
+}
+
+/// Atomically acknowledges a claimed publication after cancellation won its state race.
+///
+/// Any evidence admitted before cancellation is retained as an identity fact without changing the
+/// campaign to `Published` or granting downstream promotion authority.
+///
+/// # Errors
+/// Rejects report/claim drift, the wrong cancellation origin, duplicate settlement, or C0 failure.
+pub fn cancel_claimed_publication(
+    journal: &mut SqliteJournal,
+    state: &EvaluationState,
+    claim: PublicationDirectiveClaim,
+    observation_digest: Sha256Digest,
+    admitted_evidence: Option<EvidenceId>,
+    ids: TransitionIds,
+) -> Result<CommittedEvaluationTransition, EvaluationError> {
+    let report = state.report().ok_or_else(|| binding("cancelled publication has no report"))?;
+    let directive = *claim.directive();
+    if state.phase() != EvaluationPhase::Cancelling
+        || state.cancellation_origin() != Some(EvaluationPhase::ReportReady)
+        || state.publication_cancellation().is_some()
+        || directive.campaign_id() != state.campaign_id()
+        || directive.report() != report
+    {
+        return Err(binding("publication cancellation state, report, or claim differs"));
+    }
+    let cancellation =
+        PublicationCancellationRecord::new(report, observation_digest, admitted_evidence);
+    let command = EvaluationCommand::new(
+        ids.command_id(),
+        ids.event_id(),
+        state.campaign_id(),
+        state.sequence(),
+        Some(state.last_event_id()),
+        state.state_digest(),
+        state.profile_digest(),
+        EvaluationCommandKind::SettlePublicationCancellation { cancellation },
+    )?;
+    let transition = decide(Some(state), &command)?;
+    let batch = commit_evaluation_settlement(journal, &command, &transition, claim)?;
+    Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
 }
 
 fn report_evidence_id(report: &ValidatedEvaluationReport) -> Result<EvidenceId, EvaluationError> {

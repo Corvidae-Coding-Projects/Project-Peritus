@@ -4,10 +4,10 @@ use peritus_codec::{CanonicalWriter, CodecLimits};
 use peritus_types::{CommandId, EventId, RevisionTuple, Sha256Digest};
 
 use crate::{
-    CampaignFailure, DatasetDigest, EvaluationCampaignId, EvaluationError, EvaluationErrorKind,
-    EvaluationOperation, EvaluationRecovery, FrozenEvaluationProfile, LedgerCounts, PlanBatch,
-    PlanRecord, ProfileDigest, PublicationRecord, ReportRecord, ResultDigest, RolloutId,
-    TerminalRecordRef,
+    AnalysisSafePoint, CampaignFailure, DatasetDigest, EvaluationCampaignId, EvaluationError,
+    EvaluationErrorKind, EvaluationOperation, EvaluationRecovery, FrozenEvaluationProfile,
+    LedgerCounts, PlanBatch, PlanRecord, ProfileDigest, PublicationCancellationRecord,
+    PublicationRecord, ReportRecord, ResultDigest, RolloutId, TerminalRecordRef,
 };
 
 const COMMAND_DOMAIN: &[u8] = b"peritus.evaluation.command.v1\0";
@@ -129,6 +129,33 @@ pub enum EvaluationCommandKind {
     RecordPublication {
         /// Exact report/evidence provenance.
         publication: PublicationRecord,
+    },
+    /// Retains a resumable analysis boundary while analysis remains active.
+    RecordAnalysisSafePoint {
+        /// Exact owner-bound retained checkpoint.
+        safe_point: AnalysisSafePoint,
+    },
+    /// Stops a nonterminal campaign at an explicit durable boundary.
+    SuspendCampaign {
+        /// Exact reason required to resume this suspension.
+        reason_digest: Sha256Digest,
+        /// New analysis boundary retained atomically with suspension, when supplied.
+        analysis_safe_point: Option<AnalysisSafePoint>,
+    },
+    /// Resumes the exact durably suspended campaign phase.
+    ResumeCampaign {
+        /// Exact digest that authorized the matching suspension.
+        reason_digest: Sha256Digest,
+    },
+    /// Confirms that active analysis stopped and retains its final resumable boundary.
+    SettleAnalysisCancellation {
+        /// Last owner-bound analysis checkpoint retained before cancellation.
+        safe_point: AnalysisSafePoint,
+    },
+    /// Settles the exact claimed publication without asserting publication success.
+    SettlePublicationCancellation {
+        /// Retained report, observation, and any already-admitted evidence identity.
+        cancellation: PublicationCancellationRecord,
     },
     /// Terminates a nonterminal campaign with a typed failure.
     FailCampaign {

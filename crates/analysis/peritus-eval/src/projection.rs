@@ -3,8 +3,8 @@
 use peritus_types::{EvidenceId, Sha256Digest};
 
 use crate::{
-    EvaluationCampaignId, EvaluationPhase, EvaluationReportId, EvaluationState, LedgerCounts,
-    ProfileDigest,
+    AnalysisSafePoint, EvaluationCampaignId, EvaluationPhase, EvaluationReportId, EvaluationState,
+    LedgerCounts, ProfileDigest, PublicationCancellationRecord,
 };
 
 /// Inert query projection with no command, execution, or promotion capability.
@@ -19,6 +19,10 @@ pub struct EvaluationProjection {
     report_id: Option<EvaluationReportId>,
     evidence_id: Option<EvidenceId>,
     cancellation_reason: Option<Sha256Digest>,
+    suspension_origin: Option<EvaluationPhase>,
+    suspension_reason: Option<Sha256Digest>,
+    analysis_safe_point: Option<AnalysisSafePoint>,
+    publication_cancellation: Option<PublicationCancellationRecord>,
     failure_digest: Option<Sha256Digest>,
 }
 
@@ -36,6 +40,10 @@ impl EvaluationProjection {
             report_id: state.report().map(crate::ReportRecord::id),
             evidence_id: state.publication().map(crate::PublicationRecord::evidence_id),
             cancellation_reason: state.cancellation_reason(),
+            suspension_origin: state.suspension_origin(),
+            suspension_reason: state.suspension_reason(),
+            analysis_safe_point: state.analysis_safe_point(),
+            publication_cancellation: state.publication_cancellation(),
             failure_digest: state.failure().map(crate::CampaignFailure::digest),
         }
     }
@@ -83,6 +91,26 @@ impl EvaluationProjection {
     #[must_use]
     pub const fn cancellation_reason(self) -> Option<Sha256Digest> {
         self.cancellation_reason
+    }
+    /// Phase retained by a durable suspension.
+    #[must_use]
+    pub const fn suspension_origin(self) -> Option<EvaluationPhase> {
+        self.suspension_origin
+    }
+    /// Exact durable suspension reason.
+    #[must_use]
+    pub const fn suspension_reason(self) -> Option<Sha256Digest> {
+        self.suspension_reason
+    }
+    /// Latest retained resumable analysis checkpoint.
+    #[must_use]
+    pub const fn analysis_safe_point(self) -> Option<AnalysisSafePoint> {
+        self.analysis_safe_point
+    }
+    /// Retained result of cancelling a claimed publication.
+    #[must_use]
+    pub const fn publication_cancellation(self) -> Option<PublicationCancellationRecord> {
+        self.publication_cancellation
     }
     /// Terminal failure digest.
     #[must_use]

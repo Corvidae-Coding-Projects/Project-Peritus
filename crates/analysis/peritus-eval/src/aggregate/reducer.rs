@@ -199,6 +199,12 @@ fn apply_kind(
             report: None,
             publication: None,
             cancellation_reason: None,
+            suspension_origin: None,
+            suspension_reason: None,
+            cancellation_origin: None,
+            analysis_safe_point: None,
+            analysis_cancellation_settled: false,
+            publication_cancellation: None,
             failure: None,
         });
     }
@@ -274,7 +280,10 @@ fn apply_kind(
             }
         }
         EvaluationCommandKind::RecordSchedule { rollout_id, acknowledgement_digest } => {
-            require_phase(&state, &[EvaluationPhase::Scheduling, EvaluationPhase::Running])?;
+            require_effect_phase(
+                &state,
+                &[EvaluationPhase::Scheduling, EvaluationPhase::Running],
+            )?;
             let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
             if progress.status() != RolloutStatus::Scheduling {
                 return Err(binding("schedule acknowledgement has no outstanding request"));
@@ -295,7 +304,7 @@ fn apply_kind(
             state.phase = EvaluationPhase::Running;
         }
         EvaluationCommandKind::RetainRetryableAttempt { rollout_id, attempt, .. } => {
-            require_phase(&state, &[EvaluationPhase::Running])?;
+            require_effect_phase(&state, &[EvaluationPhase::Running])?;
             let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
             if progress.status() != (RolloutStatus::Running { attempt: *attempt }) {
                 return Err(binding("retryable attempt differs from the running attempt"));
@@ -306,7 +315,7 @@ fn apply_kind(
             });
         }
         EvaluationCommandKind::SettleRollout { rollout_id, terminal } => {
-            require_phase(&state, &[EvaluationPhase::Running])?;
+            require_effect_phase(&state, &[EvaluationPhase::Running])?;
             let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
             if progress.status() != (RolloutStatus::Running { attempt: terminal.attempt() })
                 || progress.attempts_retained().checked_add(1) != Some(terminal.attempt())
@@ -317,13 +326,28 @@ fn apply_kind(
             progress.set_status(RolloutStatus::Settled(*terminal));
         }
         EvaluationCommandKind::CancelCampaign { reason_digest } => {
-            if state.phase == EvaluationPhase::Analyzing
-                || state.phase == EvaluationPhase::ReportReady
-            {
-                return Err(binding("campaign cancellation is too late after analysis began"));
+            if state.phase == EvaluationPhase::Cancelling {
+                return Err(binding("campaign cancellation is already being reconciled"));
             }
+            let was_suspended = state.phase == EvaluationPhase::Suspended;
+            let origin = if was_suspended {
+                state.suspension_origin.ok_or_else(transition)?
+            } else {
+                state.phase
+            };
+            if origin.terminal()
+                || matches!(origin, EvaluationPhase::Cancelling | EvaluationPhase::Suspended)
+            {
+                return Err(transition());
+            }
+            state.analysis_cancellation_settled = origin == EvaluationPhase::Analyzing
+                && (was_suspended || state.analysis_digest.is_some());
+            state.publication_cancellation = None;
+            state.cancellation_origin = Some(origin);
             state.phase = EvaluationPhase::Cancelling;
             state.cancellation_reason = Some(*reason_digest);
+            state.suspension_origin = None;
+            state.suspension_reason = None;
         }
         EvaluationCommandKind::SettleCancellation { rollout_id, observation_digest } => {
             require_phase(&state, &[EvaluationPhase::Cancelling])?;
@@ -345,6 +369,17 @@ fn apply_kind(
         EvaluationCommandKind::CompleteCancellation => {
             require_phase(&state, &[EvaluationPhase::Cancelling])?;
             let reason = state.cancellation_reason.ok_or_else(transition)?;
+            match state.cancellation_origin {
+                Some(EvaluationPhase::Analyzing) if !state.analysis_cancellation_settled => {
+                    return Err(binding("active analysis cancellation is not settled"));
+                }
+                Some(EvaluationPhase::ReportReady)
+                    if state.publication_cancellation.is_none() =>
+                {
+                    return Err(binding("claimed publication cancellation is not settled"));
+                }
+                _ => {}
+            }
             for progress in state.rollouts.values_mut() {
                 match progress.status() {
                     RolloutStatus::Planned => {
@@ -405,9 +440,69 @@ fn apply_kind(
             state.publication = Some(*publication);
             state.phase = EvaluationPhase::Published;
         }
+        EvaluationCommandKind::RecordAnalysisSafePoint { safe_point } => {
+            require_phase(&state, &[EvaluationPhase::Analyzing])?;
+            if state.analysis_digest.is_some() {
+                return Err(binding("completed analysis cannot record another safe point"));
+            }
+            retain_analysis_safe_point(&mut state, *safe_point, false)?;
+        }
+        EvaluationCommandKind::SuspendCampaign { reason_digest, analysis_safe_point } => {
+            if state.phase.terminal()
+                || matches!(state.phase, EvaluationPhase::Cancelling | EvaluationPhase::Suspended)
+            {
+                return Err(transition());
+            }
+            if state.phase == EvaluationPhase::Analyzing {
+                if let Some(safe_point) = analysis_safe_point {
+                    retain_analysis_safe_point(&mut state, *safe_point, true)?;
+                }
+                if state.analysis_digest.is_none() && state.analysis_safe_point.is_none() {
+                    return Err(binding("active analysis suspension has no retained safe point"));
+                }
+            } else if analysis_safe_point.is_some() {
+                return Err(binding("analysis safe point supplied outside analysis"));
+            }
+            state.suspension_origin = Some(state.phase);
+            state.suspension_reason = Some(*reason_digest);
+            state.phase = EvaluationPhase::Suspended;
+        }
+        EvaluationCommandKind::ResumeCampaign { reason_digest } => {
+            require_phase(&state, &[EvaluationPhase::Suspended])?;
+            if state.suspension_reason != Some(*reason_digest) {
+                return Err(binding("resume reason differs from the durable suspension"));
+            }
+            state.phase = state.suspension_origin.ok_or_else(transition)?;
+            state.suspension_origin = None;
+            state.suspension_reason = None;
+        }
+        EvaluationCommandKind::SettleAnalysisCancellation { safe_point } => {
+            require_phase(&state, &[EvaluationPhase::Cancelling])?;
+            if state.cancellation_origin != Some(EvaluationPhase::Analyzing)
+                || state.analysis_cancellation_settled
+            {
+                return Err(binding("analysis cancellation is absent or already settled"));
+            }
+            retain_analysis_safe_point(&mut state, *safe_point, true)?;
+            state.analysis_cancellation_settled = true;
+        }
+        EvaluationCommandKind::SettlePublicationCancellation { cancellation } => {
+            require_phase(&state, &[EvaluationPhase::Cancelling])?;
+            if state.cancellation_origin != Some(EvaluationPhase::ReportReady)
+                || state.publication_cancellation.is_some()
+                || state.report != Some(cancellation.report())
+            {
+                return Err(binding(
+                    "publication cancellation differs from the retained committed report",
+                ));
+            }
+            state.publication_cancellation = Some(*cancellation);
+        }
         EvaluationCommandKind::FailCampaign { failure } => {
             state.failure = Some(*failure);
             state.phase = EvaluationPhase::Failed;
+            state.suspension_origin = None;
+            state.suspension_reason = None;
         }
     }
     Ok(state)
@@ -418,6 +513,34 @@ fn require_phase(
     allowed: &[EvaluationPhase],
 ) -> Result<(), EvaluationError> {
     if allowed.contains(&state.phase()) { Ok(()) } else { Err(transition()) }
+}
+fn require_effect_phase(
+    state: &EvaluationState,
+    allowed: &[EvaluationPhase],
+) -> Result<(), EvaluationError> {
+    let phase = if state.phase() == EvaluationPhase::Suspended {
+        state.suspension_origin.ok_or_else(transition)?
+    } else {
+        state.phase()
+    };
+    if allowed.contains(&phase) { Ok(()) } else { Err(transition()) }
+}
+fn retain_analysis_safe_point(
+    state: &mut EvaluationState,
+    safe_point: crate::AnalysisSafePoint,
+    allow_equal: bool,
+) -> Result<(), EvaluationError> {
+    if let Some(current) = state.analysis_safe_point {
+        if current.owner() != safe_point.owner()
+            || safe_point.sequence() < current.sequence()
+            || (safe_point.sequence() == current.sequence()
+                && (!allow_equal || safe_point != current))
+        {
+            return Err(binding("analysis safe point owner or monotonic sequence differs"));
+        }
+    }
+    state.analysis_safe_point = Some(safe_point);
+    Ok(())
 }
 const fn unknown_rollout() -> EvaluationError {
     binding("command references an unknown rollout")
@@ -553,6 +676,35 @@ pub(crate) fn encode_kind(
             writer.write_fixed(publication.evidence_id().as_bytes()).map_err(codec)?;
             writer.write_u64(publication.report_commit_position()).map_err(codec)?;
         }
+        EvaluationCommandKind::RecordAnalysisSafePoint { safe_point } => {
+            writer.write_u8(18).map_err(codec)?;
+            encode_analysis_safe_point(writer, *safe_point)?;
+        }
+        EvaluationCommandKind::SuspendCampaign { reason_digest, analysis_safe_point } => {
+            writer.write_u8(19).map_err(codec)?;
+            writer.write_fixed(reason_digest.as_bytes()).map_err(codec)?;
+            writer.write_option_tag(analysis_safe_point.is_some()).map_err(codec)?;
+            if let Some(safe_point) = analysis_safe_point {
+                encode_analysis_safe_point(writer, *safe_point)?;
+            }
+        }
+        EvaluationCommandKind::ResumeCampaign { reason_digest } => {
+            writer.write_u8(20).map_err(codec)?;
+            writer.write_fixed(reason_digest.as_bytes()).map_err(codec)?;
+        }
+        EvaluationCommandKind::SettleAnalysisCancellation { safe_point } => {
+            writer.write_u8(21).map_err(codec)?;
+            encode_analysis_safe_point(writer, *safe_point)?;
+        }
+        EvaluationCommandKind::SettlePublicationCancellation { cancellation } => {
+            writer.write_u8(22).map_err(codec)?;
+            encode_report(writer, cancellation.report())?;
+            writer.write_fixed(cancellation.observation_digest().as_bytes()).map_err(codec)?;
+            writer.write_option_tag(cancellation.admitted_evidence().is_some()).map_err(codec)?;
+            if let Some(evidence) = cancellation.admitted_evidence() {
+                writer.write_fixed(evidence.as_bytes()).map_err(codec)?;
+            }
+        }
         EvaluationCommandKind::FailCampaign { failure } => {
             writer.write_u8(15).map_err(codec)?;
             writer.write_u8(failure.code().tag()).map_err(codec)?;
@@ -666,6 +818,16 @@ fn encode_report(
     writer.write_fixed(value.payload_digest().as_bytes()).map_err(codec)?;
     writer.write_fixed(value.artifact().as_bytes()).map_err(codec)?;
     writer.write_u64(value.size()).map_err(codec)
+}
+fn encode_analysis_safe_point(
+    writer: &mut CanonicalWriter,
+    value: crate::AnalysisSafePoint,
+) -> Result<(), EvaluationError> {
+    writer.write_fixed(value.owner().as_bytes()).map_err(codec)?;
+    writer.write_u64(value.sequence()).map_err(codec)?;
+    writer.write_fixed(value.checkpoint_digest().as_bytes()).map_err(codec)?;
+    writer.write_fixed(value.artifact().as_bytes()).map_err(codec)?;
+    writer.write_u64(value.artifact_bytes()).map_err(codec)
 }
 const fn codec(_: peritus_codec::CodecError) -> EvaluationError {
     EvaluationError::new(

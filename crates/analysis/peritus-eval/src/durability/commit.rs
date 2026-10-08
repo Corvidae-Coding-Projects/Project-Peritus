@@ -234,6 +234,14 @@ fn artifact_dependencies(kind: &EvaluationEventKind) -> Vec<ArtifactDependency> 
         EvaluationCommandKind::CompleteReport { report } => {
             vec![ArtifactDependency::new(report.artifact().sha256())]
         }
+        EvaluationCommandKind::RecordAnalysisSafePoint { safe_point }
+        | EvaluationCommandKind::SettleAnalysisCancellation { safe_point } => {
+            vec![ArtifactDependency::new(safe_point.artifact().sha256())]
+        }
+        EvaluationCommandKind::SuspendCampaign {
+            analysis_safe_point: Some(safe_point),
+            ..
+        } => vec![ArtifactDependency::new(safe_point.artifact().sha256())],
         _ => Vec::new(),
     };
     dependencies.sort_unstable();
@@ -253,7 +261,8 @@ fn validate_mode(
             | EvaluationCommandKind::RetainRetryableAttempt { .. }
             | EvaluationCommandKind::SettleRollout { .. }
             | EvaluationCommandKind::SettleCancellation { .. }
-            | EvaluationCommandKind::RecordPublication { .. } => {
+            | EvaluationCommandKind::RecordPublication { .. }
+            | EvaluationCommandKind::SettlePublicationCancellation { .. } => {
                 Err(binding::binding("effect transition requires its exact claimed directive"))
             }
             _ => Ok(()),
@@ -306,6 +315,13 @@ fn validate_settlement(
         ) => {
             value.directive().campaign_id() == command.campaign_id()
                 && value.directive().report().id() == publication.report_id()
+        }
+        (
+            EvaluationCommandKind::SettlePublicationCancellation { cancellation },
+            EvaluationDirectiveClaim::Publication(value),
+        ) => {
+            value.directive().campaign_id() == command.campaign_id()
+                && value.directive().report() == cancellation.report()
         }
         (
             EvaluationCommandKind::SettleCancellation { rollout_id, .. },

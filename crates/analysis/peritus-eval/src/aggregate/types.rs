@@ -2,7 +2,7 @@
 
 use peritus_artifact_store::ArtifactDigest;
 use peritus_scheduler::WorkId;
-use peritus_types::{EvidenceId, Sha256Digest};
+use peritus_types::{ActorId, EvidenceId, Sha256Digest};
 
 use crate::{
     EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
@@ -32,6 +32,8 @@ pub enum EvaluationPhase {
     Failed,
     /// Cancellation completed for every unsettled rollout.
     Cancelled,
+    /// Work is durably stopped at an explicit resumable boundary.
+    Suspended,
 }
 
 impl EvaluationPhase {
@@ -52,6 +54,7 @@ impl EvaluationPhase {
             Self::Published => 8,
             Self::Failed => 9,
             Self::Cancelled => 10,
+            Self::Suspended => 11,
         }
     }
     pub(crate) const fn from_tag(tag: u8) -> Result<Self, EvaluationError> {
@@ -66,8 +69,64 @@ impl EvaluationPhase {
             8 => Ok(Self::Published),
             9 => Ok(Self::Failed),
             10 => Ok(Self::Cancelled),
+            11 => Ok(Self::Suspended),
             _ => Err(protocol("unknown evaluation phase tag")),
         }
+    }
+}
+
+/// Artifact-backed resumable analysis boundary owned by one exact actor.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AnalysisSafePoint {
+    owner: ActorId,
+    sequence: u64,
+    checkpoint_digest: Sha256Digest,
+    artifact: ArtifactDigest,
+    artifact_bytes: u64,
+}
+
+impl AnalysisSafePoint {
+    /// Creates one nonempty monotonic analysis checkpoint.
+    ///
+    /// # Errors
+    /// Rejects a zero sequence or empty checkpoint artifact.
+    pub const fn new(
+        owner: ActorId,
+        sequence: u64,
+        checkpoint_digest: Sha256Digest,
+        artifact: ArtifactDigest,
+        artifact_bytes: u64,
+    ) -> Result<Self, EvaluationError> {
+        if sequence == 0 || artifact_bytes == 0 {
+            Err(invalid("analysis safe point has zero sequence or artifact size"))
+        } else {
+            Ok(Self { owner, sequence, checkpoint_digest, artifact, artifact_bytes })
+        }
+    }
+    /// Actor that exclusively owns continuation from this boundary.
+    #[must_use]
+    pub const fn owner(self) -> ActorId {
+        self.owner
+    }
+    /// One-based monotonic checkpoint sequence within the owner.
+    #[must_use]
+    pub const fn sequence(self) -> u64 {
+        self.sequence
+    }
+    /// Digest of the complete resumable analysis state.
+    #[must_use]
+    pub const fn checkpoint_digest(self) -> Sha256Digest {
+        self.checkpoint_digest
+    }
+    /// Finalized retained checkpoint artifact.
+    #[must_use]
+    pub const fn artifact(self) -> ArtifactDigest {
+        self.artifact
+    }
+    /// Exact retained checkpoint byte length.
+    #[must_use]
+    pub const fn artifact_bytes(self) -> u64 {
+        self.artifact_bytes
     }
 }
 
@@ -421,6 +480,41 @@ pub struct PublicationRecord {
     report_id: EvaluationReportId,
     evidence_id: EvidenceId,
     report_commit_position: u64,
+}
+
+/// Exact retained outcome when cancellation wins a report-publication race.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PublicationCancellationRecord {
+    report: ReportRecord,
+    observation_digest: Sha256Digest,
+    admitted_evidence: Option<EvidenceId>,
+}
+
+impl PublicationCancellationRecord {
+    /// Creates an exact cancellation observation for a committed report.
+    #[must_use]
+    pub const fn new(
+        report: ReportRecord,
+        observation_digest: Sha256Digest,
+        admitted_evidence: Option<EvidenceId>,
+    ) -> Self {
+        Self { report, observation_digest, admitted_evidence }
+    }
+    /// Complete report that was prevented from becoming published state.
+    #[must_use]
+    pub const fn report(self) -> ReportRecord {
+        self.report
+    }
+    /// External publication-cancellation observation.
+    #[must_use]
+    pub const fn observation_digest(self) -> Sha256Digest {
+        self.observation_digest
+    }
+    /// Evidence already admitted before cancellation won, when present.
+    #[must_use]
+    pub const fn admitted_evidence(self) -> Option<EvidenceId> {
+        self.admitted_evidence
+    }
 }
 
 impl PublicationRecord {

@@ -42,6 +42,8 @@ pub enum EvaluationRecoveryDecision {
     ReconcileEvidenceSettlement,
     /// Cancellation routing/settlement must continue.
     ContinueCancellation,
+    /// Durable suspension remains authoritative until an explicit matching resume.
+    RemainSuspended,
     /// Campaign is already terminal and consistent.
     Complete,
     /// Conflicting external identities require quarantine.
@@ -62,6 +64,9 @@ pub fn decide_recovery(
     }
     if state.phase() == EvaluationPhase::Cancelling {
         return EvaluationRecoveryDecision::ContinueCancellation;
+    }
+    if state.phase() == EvaluationPhase::Suspended {
+        return EvaluationRecoveryDecision::RemainSuspended;
     }
     if observed.schedule_directives > 0 {
         return EvaluationRecoveryDecision::RedeliverScheduling;
@@ -84,7 +89,12 @@ pub fn decide_recovery(
             return EvaluationRecoveryDecision::RetryPublication;
         }
     }
-    if state.counts().complete() && state.phase() != EvaluationPhase::Analyzing {
+    if state.counts().complete()
+        && matches!(
+            state.phase(),
+            EvaluationPhase::Planned | EvaluationPhase::Scheduling | EvaluationPhase::Running
+        )
+    {
         return EvaluationRecoveryDecision::BeginAnalysis;
     }
     EvaluationRecoveryDecision::Continue
