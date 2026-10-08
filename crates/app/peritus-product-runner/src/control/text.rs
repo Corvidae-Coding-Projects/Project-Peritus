@@ -8,6 +8,18 @@ use serde::Serialize;
 #[derive(Clone, Eq, PartialEq, Serialize)]
 pub struct ControlText<const MAX: usize>(String);
 
+/// Exact inert conversation title without a domain work quota.
+///
+/// The enclosing canonical operation and journal state retain their physical representation
+/// limits, so this alias changes no durable string representation.
+pub type ControlTitle = ControlText<{ usize::MAX }>;
+
+/// Exact inert goal text without a domain work quota.
+///
+/// Durable goal operations and projections use the independently paged control representation,
+/// so the enclosing storage and transport layers retain their physical allocation limits.
+pub type GoalText = ControlText<{ usize::MAX }>;
+
 /// Concrete borrowed text iterator used by ordinary-safe control APIs.
 pub type ControlTextIter<'a, const MAX: usize> =
     std::iter::Map<std::slice::Iter<'a, ControlText<MAX>>, fn(&'a ControlText<MAX>) -> &'a str>;

@@ -14,6 +14,17 @@ impl ConversationRecord {
             ControlIntent::StartExecution { run, settings_digest } => {
                 self.start_execution(operation.id, *run, *settings_digest)
             }
+            ControlIntent::ContinueExecution {
+                run,
+                start_operation,
+                context_generation,
+                settings_digest,
+            } => self.continue_execution(
+                *run,
+                *start_operation,
+                *context_generation,
+                *settings_digest,
+            ),
             ControlIntent::StartGoal { .. }
             | ControlIntent::PauseGoal { .. }
             | ControlIntent::ResumeGoal { .. }
@@ -216,6 +227,28 @@ impl ConversationRecord {
         )
     }
 
+    fn continue_execution(
+        &self,
+        run: [u8; 16],
+        start_operation: crate::control::OperationId,
+        context_generation: u64,
+        settings_digest: [u8; 32],
+    ) -> Result<(), ControlError> {
+        let execution = self.execution.as_ref().ok_or(ControlError::NotFound)?;
+        if self.archived
+            || self.goal.is_some()
+            || run == [0; 16]
+            || settings_digest == [0; 32]
+            || execution.run != run
+            || execution.start_operation != start_operation
+            || self.inputs.generation() != context_generation
+            || self.inputs.capture()?.pending().is_empty()
+        {
+            return Err(ControlError::InvalidInput);
+        }
+        Ok(())
+    }
+
     fn start_execution(
         &mut self,
         operation: crate::control::OperationId,
@@ -240,7 +273,7 @@ impl ConversationRecord {
         operation: crate::control::OperationId,
         run: [u8; 16],
         settings_digest: [u8; 32],
-        objective: &crate::control::ControlText<8192>,
+        objective: &crate::control::GoalText,
         criteria: &[crate::control::GoalCriterion],
         now_unix_millis: u64,
     ) -> Result<(), ControlError> {

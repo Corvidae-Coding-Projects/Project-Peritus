@@ -142,6 +142,7 @@ const RESPONSES: &[AppPayloadDescriptor] = &[
     AppPayloadDescriptor { tag: 47, name: "harness-improvement-evidence-page" },
     AppPayloadDescriptor { tag: 48, name: "harness-improvement-text-page" },
     AppPayloadDescriptor { tag: 60, name: "workbench-goal" },
+    AppPayloadDescriptor { tag: 61, name: "workbench-goal-extended" },
     AppPayloadDescriptor { tag: 80, name: "workbench-review" },
     AppPayloadDescriptor { tag: 100, name: "workbench-result" },
     AppPayloadDescriptor { tag: 101, name: "workbench-preview" },

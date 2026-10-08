@@ -4,7 +4,7 @@ use crate::{
     ControlOperationId, WorkbenchCheckpointName, WorkbenchContextPreference, WorkbenchIntent,
     WorkbenchLaunchText, WorkbenchPreviewInput,
 };
-use peritus_codec::{CanonicalReader, CodecError};
+use peritus_codec::{CanonicalReader, CodecError, CodecErrorKind};
 
 use crate::wire::{
     primitive::{invalid, read_digest, read_id, unknown},
@@ -26,6 +26,7 @@ pub(super) fn control(
         110 => WorkbenchIntent::ForkConversation(workbench_library::read_fork(reader)?),
         5 => WorkbenchIntent::Queue(workbench_inputs::read_intent(reader)?),
         6 => WorkbenchIntent::StartExecution(super::super::read_settings(reader)?),
+        16 => WorkbenchIntent::ContinueExecution(super::super::read_settings(reader)?),
         _ => return unknown(offset),
     })
 }
@@ -71,6 +72,9 @@ pub(super) fn preparation(
             preview: workbench_files::read_import_preview(reader)?,
             text: workbench_inputs::read_text(reader)?,
         },
+        17 => WorkbenchIntent::AttachFileSource {
+            preview: workbench_files::read_import_preview(reader)?,
+        },
         10 => WorkbenchIntent::AttachFile {
             preview: workbench_files::read_preview(reader)?,
             text: workbench_inputs::read_text(reader)?,
@@ -91,6 +95,10 @@ pub(super) fn goal(
     Ok(match tag {
         30 => WorkbenchIntent::StartGoal {
             definition: workbench_goal::read_definition(reader)?,
+            settings: super::super::read_settings(reader)?,
+        },
+        33 => WorkbenchIntent::StartGoal {
+            definition: workbench_goal::read_definition_v2(reader)?,
             settings: super::super::read_settings(reader)?,
         },
         31 => WorkbenchIntent::PauseGoal {
@@ -157,11 +165,16 @@ pub(super) fn checkpoint(
     offset: usize,
 ) -> Result<WorkbenchIntent, CodecError> {
     Ok(match tag {
-        90 => WorkbenchIntent::CreateCheckpoint(invalid(
-            offset,
-            WorkbenchCheckpointName::new(reader.read_str()?.to_owned()),
-        )?),
+        90 | 92 => {
+            let name =
+                invalid(offset, WorkbenchCheckpointName::new(reader.read_str()?.to_owned()))?;
+            if name.requires_manifest_feature() != (tag == 92) {
+                return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
+            }
+            WorkbenchIntent::CreateCheckpoint(name)
+        }
         91 => WorkbenchIntent::ApplyRewind(workbench_checkpoints::read_preview(reader)?),
+        93 => WorkbenchIntent::ApplyRewind(workbench_checkpoints::read_preview_as(reader, true)?),
         _ => return unknown(offset),
     })
 }

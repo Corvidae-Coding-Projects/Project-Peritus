@@ -5,6 +5,49 @@ use crate::{
 };
 use peritus_types::RunId;
 
+/// Exact inert goal text. Transport and storage enforce physical frame/page limits separately.
+#[derive(Clone, Eq, PartialEq)]
+pub struct WorkbenchGoalText(String);
+
+impl WorkbenchGoalText {
+    /// Validates nonempty inert goal text without imposing a product work quota.
+    ///
+    /// # Errors
+    /// Rejects empty text and terminal controls other than newline and tab.
+    pub fn new(text: String) -> Result<Self, AppProtocolError> {
+        if text.trim().is_empty()
+            || text.chars().any(|ch| ch.is_control() && ch != '\n' && ch != '\t')
+        {
+            return Err(invalid());
+        }
+        Ok(Self(text))
+    }
+
+    /// Borrows the exact accepted text.
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub(crate) fn legacy_wire_representable(&self) -> bool {
+        self.0.len() <= crate::MAX_WORKBENCH_INPUT_BYTES
+    }
+}
+
+impl From<WorkbenchInputText> for WorkbenchGoalText {
+    fn from(value: WorkbenchInputText) -> Self {
+        Self(value.as_str().to_owned())
+    }
+}
+
+impl std::fmt::Debug for WorkbenchGoalText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WorkbenchGoalText")
+            .field("bytes", &self.0.len())
+            .finish_non_exhaustive()
+    }
+}
+
 /// Typed completion evidence requirement.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkbenchGoalCriterionKind {
@@ -20,19 +63,19 @@ pub enum WorkbenchGoalCriterionKind {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkbenchGoalCriterionDefinition {
     kind: WorkbenchGoalCriterionKind,
-    description: WorkbenchInputText,
+    description: WorkbenchGoalText,
     mandatory: bool,
 }
 
 impl WorkbenchGoalCriterionDefinition {
     /// Creates an exact typed criterion.
     #[must_use]
-    pub const fn new(
+    pub fn new(
         kind: WorkbenchGoalCriterionKind,
-        description: WorkbenchInputText,
+        description: impl Into<WorkbenchGoalText>,
         mandatory: bool,
     ) -> Self {
-        Self { kind, description, mandatory }
+        Self { kind, description: description.into(), mandatory }
     }
     /// Criterion evidence kind.
     #[must_use]
@@ -41,7 +84,7 @@ impl WorkbenchGoalCriterionDefinition {
     }
     /// Exact displayed criterion text.
     #[must_use]
-    pub const fn description(&self) -> &WorkbenchInputText {
+    pub const fn description(&self) -> &WorkbenchGoalText {
         &self.description
     }
     /// Whether goal completion requires this criterion.
@@ -54,7 +97,7 @@ impl WorkbenchGoalCriterionDefinition {
 /// Exact definition shown before confirmation.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WorkbenchGoalDefinition {
-    objective: WorkbenchInputText,
+    objective: WorkbenchGoalText,
     criteria: Vec<WorkbenchGoalCriterionDefinition>,
 }
 
@@ -64,11 +107,10 @@ impl WorkbenchGoalDefinition {
     /// # Errors
     /// Rejects empty/unrepresentable criteria or a definition with no mandatory runner acceptance.
     pub fn new(
-        objective: WorkbenchInputText,
+        objective: impl Into<WorkbenchGoalText>,
         criteria: Vec<WorkbenchGoalCriterionDefinition>,
     ) -> Result<Self, AppProtocolError> {
         if criteria.is_empty()
-            || u16::try_from(criteria.len()).is_err()
             || !criteria.iter().any(|criterion| {
                 criterion.mandatory
                     && criterion.kind == WorkbenchGoalCriterionKind::RunnerAcceptance
@@ -76,17 +118,25 @@ impl WorkbenchGoalDefinition {
         {
             return Err(invalid());
         }
-        Ok(Self { objective, criteria })
+        Ok(Self { objective: objective.into(), criteria })
     }
     /// Exact user-confirmed objective.
     #[must_use]
-    pub const fn objective(&self) -> &WorkbenchInputText {
+    pub const fn objective(&self) -> &WorkbenchGoalText {
         &self.objective
     }
     /// Typed completion criteria.
     #[must_use]
     pub fn criteria(&self) -> &[WorkbenchGoalCriterionDefinition] {
         &self.criteria
+    }
+
+    pub(crate) fn legacy_wire_representable(&self) -> bool {
+        self.objective.legacy_wire_representable()
+            && u16::try_from(self.criteria.len()).is_ok()
+            && self.criteria.iter().all(|criterion| {
+                criterion.description.legacy_wire_representable()
+            })
     }
 }
 

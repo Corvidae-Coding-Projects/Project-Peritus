@@ -6,13 +6,14 @@ use super::{
 use crate::product_run::ProductRunServiceError;
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, WorkbenchCommand, WorkbenchGoalCriterion,
-    WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState,
-    WorkbenchGoalPauseMode, WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot,
-    WorkbenchGoalState, WorkbenchGoalUsage, WorkbenchIntent, WorkbenchQuery,
+    WorkbenchGoalAmount, WorkbenchGoalCount, WorkbenchGoalCriterionDefinition,
+    WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState, WorkbenchGoalPauseMode,
+    WorkbenchGoalRole, WorkbenchGoalRoleUsage, WorkbenchGoalSnapshot, WorkbenchGoalState,
+    WorkbenchGoalText, WorkbenchGoalUsage, WorkbenchIntent, WorkbenchQuery,
 };
 use peritus_product_runner::control::{
-    ControlError, ControlOperation, ConversationId, GoalCriterion, GoalCriterionKind,
-    GoalCriterionState, GoalPauseMode, GoalRecord, GoalRoleUsage, GoalState,
+    ControlError, ControlOperation, ConversationId, GoalAmount, GoalCount, GoalCriterion,
+    GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord, GoalRoleUsage, GoalState,
 };
 use peritus_types::{ActorId, RunId};
 use std::sync::atomic::Ordering;
@@ -248,7 +249,7 @@ fn projection(
                         WorkbenchGoalCriterionKind::HumanValidation
                     }
                 },
-                peritus_app_protocol::WorkbenchInputText::new(criterion.description().to_owned())
+                WorkbenchGoalText::new(criterion.description().to_owned())
                     .map_err(|_| ControlError::InvalidInput)?,
                 criterion.mandatory(),
             );
@@ -267,17 +268,21 @@ fn projection(
     let usage = goal.usage();
     let domain_roles = usage.roles();
     let roles = [
-        role_projection(WorkbenchGoalRole::Writer, domain_roles[0]),
-        role_projection(WorkbenchGoalRole::Reviewer, domain_roles[1]),
-        role_projection(WorkbenchGoalRole::Fixer, domain_roles[2]),
+        role_projection(WorkbenchGoalRole::Writer, &domain_roles[0])?,
+        role_projection(WorkbenchGoalRole::Reviewer, &domain_roles[1])?,
+        role_projection(WorkbenchGoalRole::Fixer, &domain_roles[2])?,
     ];
-    let public_usage = WorkbenchGoalUsage::new(
+    let active_millis = usage.active_millis();
+    let retries = usage.retries();
+    let provider_failovers = usage.provider_failovers();
+    let compactions = usage.compactions();
+    let public_usage = WorkbenchGoalUsage::new_exact(
         roles,
-        usage.active_millis(),
+        amount_projection(&active_millis)?,
         now_millis().saturating_sub(goal.created_unix_millis()),
-        usage.retries(),
-        usage.provider_failovers(),
-        usage.compactions(),
+        count_projection(&retries)?,
+        count_projection(&provider_failovers)?,
+        count_projection(&compactions)?,
         usage.workspace_bytes(),
         usage.workspace_growth_bytes(),
         usage.peak_rss_bytes(),
@@ -287,7 +292,7 @@ fn projection(
         aggregate_revision,
         ControlOperationId::new(*goal.id().as_bytes()).map_err(|_| ControlError::InvalidInput)?,
         RunId::new(*goal.run_bytes()).map_err(|_| ControlError::InvalidInput)?,
-        peritus_app_protocol::WorkbenchInputText::new(goal.objective().to_owned())
+        WorkbenchGoalText::new(goal.objective().to_owned())
             .map_err(|_| ControlError::InvalidInput)?,
         match goal.state() {
             GoalState::Active => WorkbenchGoalState::Active,
@@ -313,13 +318,31 @@ fn projection(
     .map_err(|_| ControlError::InvalidInput.into())
 }
 
-fn role_projection(role: WorkbenchGoalRole, usage: GoalRoleUsage) -> WorkbenchGoalRoleUsage {
-    WorkbenchGoalRoleUsage::new(
+fn role_projection(
+    role: WorkbenchGoalRole,
+    usage: &GoalRoleUsage,
+) -> Result<WorkbenchGoalRoleUsage, ControlError> {
+    let requests = usage.requests();
+    let completed_requests = usage.completed_requests();
+    let tool_calls = usage.tool_calls();
+    let total_tokens = usage.total_tokens();
+    let provider_cost = usage.provider_cost_microunits();
+    Ok(WorkbenchGoalRoleUsage::new_exact(
         role,
-        usage.requests(),
-        usage.completed_requests(),
-        usage.tool_calls(),
-        usage.tokens_known().then_some(usage.total_tokens()),
-        usage.cost_known().then_some(usage.provider_cost_microunits()),
-    )
+        count_projection(&requests)?,
+        count_projection(&completed_requests)?,
+        count_projection(&tool_calls)?,
+        usage.tokens_known().then(|| amount_projection(&total_tokens)).transpose()?,
+        usage.cost_known().then(|| amount_projection(&provider_cost)).transpose()?,
+    ))
+}
+
+fn count_projection(value: &GoalCount) -> Result<WorkbenchGoalCount, ControlError> {
+    WorkbenchGoalCount::from_segments(value.segments().to_vec())
+        .map_err(|_| ControlError::InvalidInput)
+}
+
+fn amount_projection(value: &GoalAmount) -> Result<WorkbenchGoalAmount, ControlError> {
+    WorkbenchGoalAmount::from_segments(value.segments().to_vec())
+        .map_err(|_| ControlError::InvalidInput)
 }

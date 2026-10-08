@@ -11,12 +11,12 @@ pub enum ControlIntent {
     /// Creates a non-running conversation; it grants no execution authority.
     CreateConversation {
         /// User-selected title, not a provider-generated instruction.
-        title: crate::control::ControlText<256>,
+        title: crate::control::ControlTitle,
     },
     /// Revises only the library title.
     RenameConversation {
         /// Exact replacement title.
-        title: crate::control::ControlText<256>,
+        title: crate::control::ControlTitle,
     },
     /// Revises library pinning without affecting execution or retention of required evidence.
     PinConversation {
@@ -81,6 +81,17 @@ pub enum ControlIntent {
         /// Canonical provider/mode/model selection; this grants no additional tool authority.
         settings_digest: [u8; 32],
     },
+    /// Admits one exact continuation over newly eligible inputs without changing lineage.
+    ContinueExecution {
+        /// Existing product-run identity.
+        run: [u8; 16],
+        /// Original execution-admission operation.
+        start_operation: crate::control::OperationId,
+        /// Exact input generation inspected by the client command.
+        context_generation: u64,
+        /// Canonical provider/mode/model selection for this attempt.
+        settings_digest: [u8; 32],
+    },
     /// Confirms and starts one persistent goal over the existing runner.
     StartGoal {
         /// Existing product-run identity; retries retain this identity.
@@ -88,7 +99,7 @@ pub enum ControlIntent {
         /// Canonical provider/mode/model selection.
         settings_digest: [u8; 32],
         /// Exact objective already present in the user-confirmed brief.
-        objective: crate::control::ControlText<8192>,
+        objective: crate::control::GoalText,
         /// Typed completion criteria; unsupported kinds remain visibly unavailable.
         criteria: Vec<crate::control::GoalCriterion>,
         /// Host-observed acceptance timestamp.
@@ -243,6 +254,11 @@ pub enum ControlIntent {
         /// User-confirmed caption, governed by the ordinary queue lifecycle.
         text: crate::control::ControlText<8192>,
     },
+    /// Publishes a confirmed immutable external file source without a synthetic queue caption.
+    AttachFileSource {
+        /// Exact source descriptor and external artifact binding.
+        file: crate::control::FileAttachment,
+    },
     /// Revises future file inclusion without modifying any historical request.
     SelectFile {
         /// Original reference operation, independent of refresh versions.
@@ -280,7 +296,7 @@ pub enum ControlIntent {
         /// Stable original add-operation identity.
         comment: crate::control::OperationId,
     },
-    /// Publishes one bounded covered-path checkpoint; exact before-images are journal artifacts.
+    /// Publishes complete covered-path metadata; exact before-images are immutable artifacts.
     CreateCheckpoint(crate::control::UserCheckpoint),
     /// Publishes a host-owned automatic before-image outside the bounded user projection.
     ///

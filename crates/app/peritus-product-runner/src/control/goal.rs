@@ -1,6 +1,6 @@
 //! Durable goal state, cumulative accounting, and safe-boundary admission.
 
-use super::{ControlError, ControlText, OperationId};
+use super::{ControlError, GoalText, OperationId};
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -10,7 +10,9 @@ mod lifecycle;
 mod validation;
 
 use accounting::GoalAttemptProgress;
-pub use accounting::{GoalAdmission, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport};
+pub use accounting::{
+    GoalAdmission, GoalAmount, GoalCount, GoalRoleUsage, GoalSettlement, GoalUsage, GoalUsageReport,
+};
 
 #[cfg(test)]
 mod tests;
@@ -100,7 +102,7 @@ pub enum GoalCriterionState {
 #[serde(deny_unknown_fields)]
 pub struct GoalCriterion {
     kind: GoalCriterionKind,
-    description: ControlText<2048>,
+    description: GoalText,
     mandatory: bool,
     state: GoalCriterionState,
     evidence_revision: Option<u64>,
@@ -162,10 +164,10 @@ impl GoalCriterion {
 pub struct GoalRecord {
     id: OperationId,
     run: [u8; 16],
-    objective: ControlText<8192>,
+    objective: GoalText,
     criteria: Vec<GoalCriterion>,
     state: GoalState,
-    reason: ControlText<512>,
+    reason: GoalText,
     user_revision: u64,
     required_input_generation: u64,
     attempt: u32,

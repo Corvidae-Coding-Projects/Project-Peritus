@@ -13,7 +13,7 @@ mod guidance;
 mod identity;
 pub use files::{
     FileAttachment, FileAttachments, FileMode, FileObservation, FileRange, FileSelection,
-    FileSource, FileVersion,
+    FileSource, FileSourceLabel, FileVersion,
 };
 pub use guidance::{
     GuidanceAudit, GuidanceContent, GuidanceScope, GuidanceSelection, GuidanceSource,
@@ -22,8 +22,9 @@ mod images;
 pub use images::{ImageAttachment, ImageAttachments, ImageFormat, ImageMetadata, ImageSelection};
 mod goal;
 pub use goal::{
-    GoalAdmission, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord,
-    GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
+    GoalAdmission, GoalAmount, GoalCount, GoalCriterion, GoalCriterionKind, GoalCriterionState,
+    GoalPauseMode, GoalRecord, GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage,
+    GoalUsageReport,
 };
 mod inputs;
 mod permissions;
@@ -37,15 +38,17 @@ mod text;
 pub use branch::{ConversationBranch, ConversationBranchMode};
 pub use brief::{BriefBinding, BriefField, TaskBrief};
 pub use checkpoint::{
-    CheckpointCoverage, CheckpointFileMode, CheckpointFileVersion, CheckpointPath, CheckpointRange,
-    CheckpointReferences, CheckpointVersion, RestoreOperation, RestoreStatus, UserCheckpoint,
+    CheckpointCoverage, CheckpointExclusion, CheckpointExclusionDetails, CheckpointExclusionReason,
+    CheckpointExclusions, CheckpointFileMode, CheckpointFileVersion, CheckpointPath,
+    CheckpointRange, CheckpointReferences, CheckpointText, CheckpointTextIter, CheckpointVersion,
+    RestoreOperation, RestoreStatus, UserCheckpoint,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};
 pub use identity::{CheckpointId, ConversationId, InputId, InvocationId, OperationId, RestoreId};
 pub use inputs::{
     InputCapture, InputLedger, InputRevision, InputSelection, InputState, InvocationInputs,
-    QueueIntent,
+    QueueIntent, RequestSource,
 };
 pub use permissions::{HostPermissions, PermissionCapability, PermissionPolicy};
 pub use record::{
@@ -57,7 +60,7 @@ pub use review::{
     ReviewAnchor, ReviewComment, ReviewCommentState, ReviewFeedback, ReviewLedger, ReviewRange,
     ReviewTarget,
 };
-pub use text::{ControlText, ControlTextIter};
+pub use text::{ControlText, ControlTextIter, ControlTitle, GoalText};
 
 /// Maximum exact bytes in one control operation or current-state projection.
 pub const MAX_CONTROL_BYTES: usize = peritus_journal::MAX_STATE_BYTES;

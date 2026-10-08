@@ -1,15 +1,16 @@
 //! Goal construction, inspection, and user-controlled lifecycle transitions.
 
 use super::{
-    ControlError, ControlText, GoalAttemptProgress, GoalCriterion, GoalCriterionKind,
+    ControlError, GoalAttemptProgress, GoalCriterion, GoalCriterionKind,
     GoalCriterionState, GoalPauseMode, GoalRecord, GoalState, GoalUsage, OperationId,
 };
+use crate::control::GoalText;
 
 impl GoalRecord {
     pub(in crate::control) fn start(
         id: OperationId,
         run: [u8; 16],
-        objective: ControlText<8192>,
+        objective: GoalText,
         criteria: Vec<GoalCriterion>,
         required_input_generation: u64,
         now: u64,
@@ -17,7 +18,6 @@ impl GoalRecord {
         if run == [0; 16]
             || required_input_generation == 0
             || criteria.is_empty()
-            || u16::try_from(criteria.len()).is_err()
             || !criteria.iter().any(|criterion| {
                 criterion.mandatory && criterion.kind == GoalCriterionKind::RunnerAcceptance
             })
@@ -30,7 +30,7 @@ impl GoalRecord {
             objective,
             criteria,
             state: GoalState::Active,
-            reason: ControlText::new(
+            reason: GoalText::new(
                 "Goal confirmed; awaiting the next admitted operation.".to_owned(),
             )?,
             user_revision: 1,
@@ -83,8 +83,8 @@ impl GoalRecord {
     }
     /// Current cumulative usage and unresolved-reporting provenance.
     #[must_use]
-    pub const fn usage(&self) -> GoalUsage {
-        self.usage
+    pub const fn usage(&self) -> &GoalUsage {
+        &self.usage
     }
     /// One-based current attempt; resume increments without replacing the goal or usage.
     #[must_use]
@@ -132,7 +132,7 @@ impl GoalRecord {
             GoalState::Pausing
         };
         self.pause_mode = (self.state == GoalState::Pausing).then_some(mode);
-        self.reason = ControlText::new(
+        self.reason = GoalText::new(
             match self.state {
                 GoalState::Paused => "Paused at the existing idle boundary.",
                 GoalState::Pausing => {
@@ -157,7 +157,7 @@ impl GoalRecord {
         self.state = GoalState::Active;
         self.pause_mode = None;
         self.reason =
-            ControlText::new("Explicitly resumed with cumulative accounting retained.".to_owned())?;
+            GoalText::new("Explicitly resumed with cumulative accounting retained.".to_owned())?;
         self.updated_unix_millis = now;
         Ok(())
     }
@@ -169,7 +169,7 @@ impl GoalRecord {
         self.user_revision = self.user_revision.checked_add(1).ok_or(ControlError::Capacity)?;
         self.state = GoalState::Cancelled;
         self.pause_mode = None;
-        self.reason = ControlText::new(
+        self.reason = GoalText::new(
             "Goal continuation cancelled; completed effects and history are retained.".to_owned(),
         )?;
         self.updated_unix_millis = now;
@@ -197,14 +197,14 @@ impl GoalRecord {
         if objective_changed {
             self.state = GoalState::Blocked;
             self.pause_mode = None;
-            self.reason = ControlText::new(
+            self.reason = GoalText::new(
                 "The confirmed objective changed; clear or explicitly replace this goal."
                     .to_owned(),
             )?;
         } else if self.state == GoalState::Achieved {
             self.state = GoalState::Blocked;
             self.pause_mode = None;
-            self.reason = ControlText::new(
+            self.reason = GoalText::new(
                 "Newer governing input invalidated prior completion evidence; explicitly resume."
                     .to_owned(),
             )?;

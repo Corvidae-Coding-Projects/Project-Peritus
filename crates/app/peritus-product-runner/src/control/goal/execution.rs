@@ -1,10 +1,10 @@
 //! Host-observed request, tool, runner, and graphical evidence transitions.
 
 use super::{
-    ControlError, ControlText, GoalAdmission, GoalAttemptProgress, GoalCriterionKind,
-    GoalCriterionState, GoalPauseMode, GoalRecord, GoalRole, GoalSettlement, GoalState,
-    GoalUsageReport,
+    ControlError, GoalAdmission, GoalAttemptProgress, GoalCriterionKind, GoalCriterionState,
+    GoalPauseMode, GoalRecord, GoalRole, GoalSettlement, GoalState, GoalUsageReport,
 };
+use crate::control::GoalText;
 
 impl GoalRecord {
     pub(in crate::control) fn reserve_request(
@@ -21,7 +21,7 @@ impl GoalRecord {
             return Ok(GoalAdmission::Inactive);
         }
         let usage = &mut self.usage.roles[role.index()];
-        usage.requests = usage.requests.checked_add(1).ok_or(ControlError::Capacity)?;
+        usage.requests.increment();
         self.updated_unix_millis = now;
         Ok(GoalAdmission::Accepted)
     }
@@ -40,30 +40,23 @@ impl GoalRecord {
         if usage.completed_requests >= usage.requests {
             return Err(ControlError::InvalidInput);
         }
-        usage.completed_requests =
-            usage.completed_requests.checked_add(1).ok_or(ControlError::Capacity)?;
+        usage.completed_requests.increment();
         if report.has_tokens() {
-            usage.token_reported_requests =
-                usage.token_reported_requests.checked_add(1).ok_or(ControlError::Capacity)?;
+            usage.token_reported_requests.increment();
         }
         if report.provider_cost_microunits.is_some() {
-            usage.cost_reported_requests =
-                usage.cost_reported_requests.checked_add(1).ok_or(ControlError::Capacity)?;
+            usage.cost_reported_requests.increment();
         }
-        usage.input_tokens = add(usage.input_tokens, report.input_tokens)?;
-        usage.cached_input_tokens = add(usage.cached_input_tokens, report.cached_input_tokens)?;
-        usage.output_tokens = add(usage.output_tokens, report.output_tokens)?;
-        let derived = report
-            .input_tokens
-            .unwrap_or(0)
-            .checked_add(report.output_tokens.unwrap_or(0))
-            .ok_or(ControlError::Capacity)?;
-        usage.total_tokens = usage
-            .total_tokens
-            .checked_add(report.total_tokens.unwrap_or(derived))
-            .ok_or(ControlError::Capacity)?;
-        usage.provider_cost_microunits =
-            add(usage.provider_cost_microunits, report.provider_cost_microunits)?;
+        usage.input_tokens.add_u64(report.input_tokens.unwrap_or(0));
+        usage.cached_input_tokens.add_u64(report.cached_input_tokens.unwrap_or(0));
+        usage.output_tokens.add_u64(report.output_tokens.unwrap_or(0));
+        if let Some(total) = report.total_tokens {
+            usage.total_tokens.add_u64(total);
+        } else {
+            usage.total_tokens.add_u64(report.input_tokens.unwrap_or(0));
+            usage.total_tokens.add_u64(report.output_tokens.unwrap_or(0));
+        }
+        usage.provider_cost_microunits.add_u64(report.provider_cost_microunits.unwrap_or(0));
         self.updated_unix_millis = now;
         self.boundary(true, now)
     }
@@ -90,7 +83,7 @@ impl GoalRecord {
             return Ok(GoalAdmission::Inactive);
         }
         let usage = &mut self.usage.roles[role.index()];
-        usage.tool_calls = usage.tool_calls.checked_add(1).ok_or(ControlError::Capacity)?;
+        usage.tool_calls.increment();
         self.updated_unix_millis = now;
         Ok(GoalAdmission::Accepted)
     }
@@ -131,26 +124,12 @@ impl GoalRecord {
         {
             return Err(ControlError::InvalidInput);
         }
-        self.usage.active_millis = self
-            .usage
-            .active_millis
-            .checked_add(elapsed_millis - previous.elapsed_millis)
-            .ok_or(ControlError::Capacity)?;
-        self.usage.retries = self
-            .usage
-            .retries
-            .checked_add(retries - previous.retries)
-            .ok_or(ControlError::Capacity)?;
-        self.usage.provider_failovers = self
-            .usage
+        self.usage.active_millis.add_u64(elapsed_millis - previous.elapsed_millis);
+        self.usage.retries.add_u64(u64::from(retries - previous.retries));
+        self.usage
             .provider_failovers
-            .checked_add(provider_failovers - previous.provider_failovers)
-            .ok_or(ControlError::Capacity)?;
-        self.usage.compactions = self
-            .usage
-            .compactions
-            .checked_add(compactions - previous.compactions)
-            .ok_or(ControlError::Capacity)?;
+            .add_u64(u64::from(provider_failovers - previous.provider_failovers));
+        self.usage.compactions.add_u64(u64::from(compactions - previous.compactions));
         self.usage.workspace_bytes = workspace_bytes;
         self.usage.workspace_growth_bytes =
             self.usage.workspace_growth_bytes.max(workspace_growth_bytes);
@@ -194,39 +173,39 @@ impl GoalRecord {
                     .all(|criterion| criterion.state == GoalCriterionState::Satisfied)
                 {
                     self.state = GoalState::Achieved;
-                    self.reason = ControlText::new(
+                    self.reason = GoalText::new(
                         "Every mandatory current criterion has admissible evidence.".to_owned(),
                     )?;
                 } else {
                     self.state = GoalState::WaitingForUser;
-                    self.reason = ControlText::new(
+                    self.reason = GoalText::new(
                         "Runner acceptance settled, but mandatory external evidence is still missing or unavailable.".to_owned(),
                     )?;
                 }
             }
             GoalSettlement::WaitingForUser => {
                 self.state = GoalState::WaitingForUser;
-                self.reason = ControlText::new(
+                self.reason = GoalText::new(
                     "Execution requires material user input before another attempt.".to_owned(),
                 )?;
             }
             GoalSettlement::RecoveryRequired => {
                 self.state = GoalState::Blocked;
-                self.reason = ControlText::new(
+                self.reason = GoalText::new(
                     "Recovery must reconcile preserved or ambiguous effects before resume."
                         .to_owned(),
                 )?;
             }
             GoalSettlement::Cancelled => {
                 self.state = GoalState::Cancelled;
-                self.reason = ControlText::new(
+                self.reason = GoalText::new(
                     "Execution was cancelled; completed effects and accounting are retained."
                         .to_owned(),
                 )?;
             }
             GoalSettlement::Accepted | GoalSettlement::Failed => {
                 self.state = GoalState::Blocked;
-                self.reason = ControlText::new(
+                self.reason = GoalText::new(
                     "The attempt ended without complete current acceptance evidence.".to_owned(),
                 )?;
             }
@@ -271,11 +250,11 @@ impl GoalRecord {
         {
             self.state = GoalState::Achieved;
             self.pause_mode = None;
-            self.reason = ControlText::new(
+            self.reason = GoalText::new(
                 "Every mandatory current criterion has admissible evidence.".to_owned(),
             )?;
         } else if self.state == GoalState::WaitingForUser {
-            self.reason = ControlText::new(
+            self.reason = GoalText::new(
                 "Graphical evidence settled, but another mandatory criterion is still missing."
                     .to_owned(),
             )?;
@@ -283,8 +262,4 @@ impl GoalRecord {
         self.updated_unix_millis = now;
         Ok(())
     }
-}
-
-fn add(current: u64, value: Option<u64>) -> Result<u64, ControlError> {
-    current.checked_add(value.unwrap_or(0)).ok_or(ControlError::Capacity)
 }

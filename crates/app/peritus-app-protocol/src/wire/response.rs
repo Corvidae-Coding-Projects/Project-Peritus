@@ -233,7 +233,9 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchFilePreview(_) => 26,
         AppResponsePayload::WorkbenchFileImportPreview(_) => 28,
         AppResponsePayload::WorkbenchFiles(_) => 27,
-        AppResponsePayload::WorkbenchGoal(_) => 60,
+        AppResponsePayload::WorkbenchGoal(value) => {
+            if value.legacy_wire_representable() { 60 } else { 61 }
+        }
     }
 }
 
@@ -348,6 +350,7 @@ pub(super) fn read_response(
             reader,
         )?),
         60 => AppResponsePayload::WorkbenchGoal(super::workbench_goal::read_snapshot(reader)?),
+        61 => AppResponsePayload::WorkbenchGoal(super::workbench_goal::read_snapshot_v2(reader)?),
         _ => return unknown(tag_offset),
     };
     let response = AppResponseEnvelope::new(context, request_id, correlation_id, payload);

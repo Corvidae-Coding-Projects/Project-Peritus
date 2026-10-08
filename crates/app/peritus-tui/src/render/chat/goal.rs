@@ -2,6 +2,7 @@
 
 use crate::model::{AppModel, format_id};
 use peritus_app_protocol::{
+    WorkbenchGoalAmount,
     WorkbenchGoalCriterionKind, WorkbenchGoalCriterionState, WorkbenchGoalPauseMode,
     WorkbenchGoalRole, WorkbenchGoalState,
 };
@@ -144,7 +145,7 @@ fn model_label(choice: &peritus_app_protocol::ProductModelChoice) -> &str {
     if choice.id().is_empty() { "configured model" } else { choice.id() }
 }
 
-fn known(value: Option<u64>) -> String {
+fn known(value: Option<WorkbenchGoalAmount>) -> String {
     value.map_or_else(|| "unknown".to_owned(), |value| value.to_string())
 }
 

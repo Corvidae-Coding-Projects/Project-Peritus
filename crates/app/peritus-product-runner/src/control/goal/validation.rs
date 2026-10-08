@@ -1,6 +1,7 @@
 //! Goal admission boundaries and aggregate invariant validation.
 
-use super::{ControlError, ControlText, GoalAdmission, GoalPauseMode, GoalRecord, GoalState};
+use super::{ControlError, GoalAdmission, GoalPauseMode, GoalRecord, GoalState};
+use crate::control::GoalText;
 
 impl GoalRecord {
     pub(super) fn boundary(
@@ -32,7 +33,7 @@ impl GoalRecord {
     pub(super) fn mark_paused(&mut self, now: u64) -> Result<(), ControlError> {
         self.state = GoalState::Paused;
         self.pause_mode = None;
-        self.reason = ControlText::new(
+        self.reason = GoalText::new(
             "Paused at a durable safe boundary; resume retains all cumulative accounting."
                 .to_owned(),
         )?;
@@ -46,7 +47,6 @@ impl GoalRecord {
             || self.required_input_generation == 0
             || self.attempt == 0
             || self.criteria.is_empty()
-            || u16::try_from(self.criteria.len()).is_err()
             || (self.state == GoalState::Pausing) != self.pause_mode.is_some()
             || self.usage.roles.iter().any(|usage| {
                 usage.completed_requests > usage.requests

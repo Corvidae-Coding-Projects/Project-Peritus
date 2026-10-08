@@ -3,9 +3,9 @@
 use super::primitive::{invalid, read_id, unknown, write_id};
 use crate::{
     WorkbenchGoalCriterion, WorkbenchGoalCriterionDefinition, WorkbenchGoalCriterionKind as Kind,
-    WorkbenchGoalCriterionState as CriterionState, WorkbenchGoalDefinition,
+    WorkbenchGoalCriterionState as CriterionState, WorkbenchGoalCounter, WorkbenchGoalDefinition,
     WorkbenchGoalPauseMode as Pause, WorkbenchGoalRole as Role, WorkbenchGoalRoleUsage,
-    WorkbenchGoalSnapshot, WorkbenchGoalState as State, WorkbenchGoalUsage,
+    WorkbenchGoalSnapshot, WorkbenchGoalState as State, WorkbenchGoalText, WorkbenchGoalUsage,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
@@ -13,11 +13,26 @@ pub(super) fn write_definition(
     w: &mut CanonicalWriter,
     value: &WorkbenchGoalDefinition,
 ) -> Result<(), CodecError> {
+    if !value.legacy_wire_representable() {
+        return write_definition_v2(w, value);
+    }
     w.write_str(value.objective().as_str())?;
     w.write_u16(
         u16::try_from(value.criteria().len())
             .map_err(|_| CodecError::at(CodecErrorKind::LimitExceeded, w.len()))?,
     )?;
+    for criterion in value.criteria() {
+        write_definition_criterion(w, criterion)?;
+    }
+    Ok(())
+}
+
+fn write_definition_v2(
+    w: &mut CanonicalWriter,
+    value: &WorkbenchGoalDefinition,
+) -> Result<(), CodecError> {
+    w.write_str(value.objective().as_str())?;
+    w.write_collection_len(value.criteria().len())?;
     for criterion in value.criteria() {
         write_definition_criterion(w, criterion)?;
     }
@@ -35,6 +50,23 @@ pub(super) fn read_definition(
         criteria.push(read_definition_criterion(r)?);
     }
     invalid(offset, WorkbenchGoalDefinition::new(objective, criteria))
+}
+
+pub(super) fn read_definition_v2(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchGoalDefinition, CodecError> {
+    let offset = r.offset();
+    let objective = read_goal_text(r)?;
+    let count = r.read_collection_len(7)?;
+    let mut criteria = r.reserve_collection(count)?;
+    for _ in 0..count {
+        criteria.push(read_definition_criterion_v2(r)?);
+    }
+    let definition = invalid(offset, WorkbenchGoalDefinition::new(objective, criteria))?;
+    if definition.legacy_wire_representable() {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
+    }
+    Ok(definition)
 }
 
 pub(super) fn write_pause(w: &mut CanonicalWriter, value: Pause) -> Result<(), CodecError> {
@@ -59,6 +91,9 @@ pub(super) fn write_snapshot(
     w: &mut CanonicalWriter,
     value: &WorkbenchGoalSnapshot,
 ) -> Result<(), CodecError> {
+    if !value.legacy_wire_representable() {
+        return write_snapshot_v2(w, value);
+    }
     super::workbench::write_query(w, value.query())?;
     w.write_u64(value.aggregate_revision())?;
     write_id(w, value.goal().as_bytes())?;
@@ -81,6 +116,31 @@ pub(super) fn write_snapshot(
         write_criterion(w, criterion)?;
     }
     write_usage(w, value.usage())
+}
+
+fn write_snapshot_v2(
+    w: &mut CanonicalWriter,
+    value: &WorkbenchGoalSnapshot,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    w.write_u64(value.aggregate_revision())?;
+    write_id(w, value.goal().as_bytes())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_str(value.objective().as_str())?;
+    write_state(w, value.state())?;
+    w.write_str(value.reason())?;
+    w.write_u64(value.user_revision())?;
+    w.write_u32(value.attempt())?;
+    w.write_bool(value.restart_eligible())?;
+    w.write_option_tag(value.pause_mode().is_some())?;
+    if let Some(mode) = value.pause_mode() {
+        write_pause(w, mode)?;
+    }
+    w.write_collection_len(value.criteria().len())?;
+    for criterion in value.criteria() {
+        write_criterion(w, criterion)?;
+    }
+    write_usage_v2(w, value.usage())
 }
 
 pub(super) fn read_snapshot(
@@ -124,6 +184,51 @@ pub(super) fn read_snapshot(
     )
 }
 
+pub(super) fn read_snapshot_v2(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchGoalSnapshot, CodecError> {
+    let offset = r.offset();
+    let query = super::workbench::read_query(r)?;
+    let aggregate_revision = r.read_u64()?;
+    let goal = read_id(r, crate::ControlOperationId::new)?;
+    let run = read_id(r, peritus_types::RunId::new)?;
+    let objective = read_goal_text(r)?;
+    let state = read_state(r)?;
+    let reason = r.read_str()?.to_owned();
+    let user_revision = r.read_u64()?;
+    let attempt = r.read_u32()?;
+    let restart_eligible = r.read_bool()?;
+    let pause_mode = if r.read_option_tag()? { Some(read_pause(r)?) } else { None };
+    let count = r.read_collection_len(10)?;
+    let mut criteria = r.reserve_collection(count)?;
+    for _ in 0..count {
+        criteria.push(read_criterion_v2(r)?);
+    }
+    let usage = read_usage_v2(r)?;
+    let snapshot = invalid(
+        offset,
+        WorkbenchGoalSnapshot::new(
+            query,
+            aggregate_revision,
+            goal,
+            run,
+            objective,
+            state,
+            reason,
+            user_revision,
+            attempt,
+            restart_eligible,
+            pause_mode,
+            criteria,
+            usage,
+        ),
+    )?;
+    if snapshot.legacy_wire_representable() {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
+    }
+    Ok(snapshot)
+}
+
 fn write_definition_criterion(
     w: &mut CanonicalWriter,
     value: &WorkbenchGoalCriterionDefinition,
@@ -139,6 +244,16 @@ fn read_definition_criterion(
     Ok(WorkbenchGoalCriterionDefinition::new(
         read_kind(r)?,
         super::workbench_inputs::read_text(r)?,
+        r.read_bool()?,
+    ))
+}
+
+fn read_definition_criterion_v2(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchGoalCriterionDefinition, CodecError> {
+    Ok(WorkbenchGoalCriterionDefinition::new(
+        read_kind(r)?,
+        read_goal_text(r)?,
         r.read_bool()?,
     ))
 }
@@ -160,6 +275,19 @@ fn write_criterion(
 fn read_criterion(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalCriterion, CodecError> {
     let offset = r.offset();
     let definition = read_definition_criterion(r)?;
+    let state = match r.read_u16()? {
+        1 => CriterionState::Pending,
+        2 => CriterionState::Satisfied,
+        3 => CriterionState::Unavailable,
+        4 => CriterionState::Stale,
+        _ => return unknown(offset),
+    };
+    Ok(WorkbenchGoalCriterion::new(definition, state, read_option_u64(r)?))
+}
+
+fn read_criterion_v2(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalCriterion, CodecError> {
+    let offset = r.offset();
+    let definition = read_definition_criterion_v2(r)?;
     let state = match r.read_u16()? {
         1 => CriterionState::Pending,
         2 => CriterionState::Satisfied,
@@ -221,17 +349,40 @@ fn write_usage(w: &mut CanonicalWriter, value: &WorkbenchGoalUsage) -> Result<()
             Role::Reviewer => 2,
             Role::Fixer => 3,
         })?;
-        w.write_u32(role.requests())?;
-        w.write_u32(role.completed_requests())?;
-        w.write_u32(role.tool_calls())?;
-        write_option_u64(w, role.total_tokens())?;
-        write_option_u64(w, role.provider_cost_microunits())?;
+        w.write_u32(legacy_u32(w, &role.requests())?)?;
+        w.write_u32(legacy_u32(w, &role.completed_requests())?)?;
+        w.write_u32(legacy_u32(w, &role.tool_calls())?)?;
+        write_option_counter_legacy(w, role.total_tokens().as_ref())?;
+        write_option_counter_legacy(w, role.provider_cost_microunits().as_ref())?;
     }
-    w.write_u64(value.active_millis())?;
+    w.write_u64(legacy_u64(w, &value.active_millis())?)?;
     w.write_u64(value.wall_millis())?;
-    w.write_u32(value.retries())?;
-    w.write_u32(value.provider_failovers())?;
-    w.write_u32(value.compactions())?;
+    w.write_u32(legacy_u32(w, &value.retries())?)?;
+    w.write_u32(legacy_u32(w, &value.provider_failovers())?)?;
+    w.write_u32(legacy_u32(w, &value.compactions())?)?;
+    w.write_u64(value.workspace_bytes())?;
+    w.write_u64(value.workspace_growth_bytes())?;
+    w.write_u64(value.peak_rss_bytes())
+}
+
+fn write_usage_v2(w: &mut CanonicalWriter, value: &WorkbenchGoalUsage) -> Result<(), CodecError> {
+    for role in value.roles() {
+        w.write_u16(match role.role() {
+            Role::Writer => 1,
+            Role::Reviewer => 2,
+            Role::Fixer => 3,
+        })?;
+        write_counter(w, &role.requests())?;
+        write_counter(w, &role.completed_requests())?;
+        write_counter(w, &role.tool_calls())?;
+        write_option_counter(w, role.total_tokens().as_ref())?;
+        write_option_counter(w, role.provider_cost_microunits().as_ref())?;
+    }
+    write_counter(w, &value.active_millis())?;
+    w.write_u64(value.wall_millis())?;
+    write_counter(w, &value.retries())?;
+    write_counter(w, &value.provider_failovers())?;
+    write_counter(w, &value.compactions())?;
     w.write_u64(value.workspace_bytes())?;
     w.write_u64(value.workspace_growth_bytes())?;
     w.write_u64(value.peak_rss_bytes())
@@ -272,6 +423,116 @@ fn read_usage(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalUsage, CodecEr
         r.read_u64()?,
         r.read_u64()?,
     ))
+}
+
+fn read_usage_v2(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalUsage, CodecError> {
+    let offset = r.offset();
+    let mut rows = Vec::with_capacity(3);
+    for expected in [Role::Writer, Role::Reviewer, Role::Fixer] {
+        let role = match r.read_u16()? {
+            1 => Role::Writer,
+            2 => Role::Reviewer,
+            3 => Role::Fixer,
+            _ => return unknown(offset),
+        };
+        if role != expected {
+            return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, offset));
+        }
+        rows.push(WorkbenchGoalRoleUsage::new_exact(
+            role,
+            read_counter(r)?,
+            read_counter(r)?,
+            read_counter(r)?,
+            read_option_counter(r)?,
+            read_option_counter(r)?,
+        ));
+    }
+    let roles: [WorkbenchGoalRoleUsage; 3] =
+        rows.try_into().map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, offset))?;
+    Ok(WorkbenchGoalUsage::new_exact(
+        roles,
+        read_counter(r)?,
+        r.read_u64()?,
+        read_counter(r)?,
+        read_counter(r)?,
+        read_counter(r)?,
+        r.read_u64()?,
+        r.read_u64()?,
+        r.read_u64()?,
+    ))
+}
+
+fn read_goal_text(r: &mut CanonicalReader<'_>) -> Result<WorkbenchGoalText, CodecError> {
+    let offset = r.offset();
+    invalid(offset, WorkbenchGoalText::new(r.read_str()?.to_owned()))
+}
+
+fn write_counter<const LEGACY_BITS: u8>(
+    w: &mut CanonicalWriter,
+    value: &WorkbenchGoalCounter<LEGACY_BITS>,
+) -> Result<(), CodecError> {
+    w.write_collection_len(value.segments().len())?;
+    for segment in value.segments() {
+        w.write_u64(*segment)?;
+    }
+    Ok(())
+}
+
+fn read_counter<const LEGACY_BITS: u8>(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchGoalCounter<LEGACY_BITS>, CodecError> {
+    let offset = r.offset();
+    let count = r.read_collection_len(8)?;
+    let mut segments = r.reserve_collection(count)?;
+    for _ in 0..count {
+        segments.push(r.read_u64()?);
+    }
+    invalid(offset, WorkbenchGoalCounter::from_segments(segments))
+}
+
+fn write_option_counter<const LEGACY_BITS: u8>(
+    w: &mut CanonicalWriter,
+    value: Option<&WorkbenchGoalCounter<LEGACY_BITS>>,
+) -> Result<(), CodecError> {
+    w.write_option_tag(value.is_some())?;
+    value.map_or(Ok(()), |value| write_counter(w, value))
+}
+
+fn read_option_counter<const LEGACY_BITS: u8>(
+    r: &mut CanonicalReader<'_>,
+) -> Result<Option<WorkbenchGoalCounter<LEGACY_BITS>>, CodecError> {
+    if r.read_option_tag()? { Ok(Some(read_counter(r)?)) } else { Ok(None) }
+}
+
+fn legacy_u32<const LEGACY_BITS: u8>(
+    w: &CanonicalWriter,
+    value: &WorkbenchGoalCounter<LEGACY_BITS>,
+) -> Result<u32, CodecError> {
+    value
+        .legacy_value()
+        .and_then(|value| u32::try_from(value).ok())
+        .ok_or_else(|| CodecError::at(CodecErrorKind::LimitExceeded, w.len()))
+}
+
+fn legacy_u64<const LEGACY_BITS: u8>(
+    w: &CanonicalWriter,
+    value: &WorkbenchGoalCounter<LEGACY_BITS>,
+) -> Result<u64, CodecError> {
+    value
+        .legacy_value()
+        .ok_or_else(|| CodecError::at(CodecErrorKind::LimitExceeded, w.len()))
+}
+
+fn write_option_counter_legacy<const LEGACY_BITS: u8>(
+    w: &mut CanonicalWriter,
+    value: Option<&WorkbenchGoalCounter<LEGACY_BITS>>,
+) -> Result<(), CodecError> {
+    w.write_option_tag(value.is_some())?;
+    if let Some(value) = value {
+        let scalar = legacy_u64(w, value)?;
+        w.write_u64(scalar)?;
+    }
+    Ok(())
 }
 
 fn write_option_u64(w: &mut CanonicalWriter, value: Option<u64>) -> Result<(), CodecError> {
