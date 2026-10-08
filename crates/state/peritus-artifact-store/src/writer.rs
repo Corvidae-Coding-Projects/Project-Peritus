@@ -142,6 +142,8 @@ pub struct ArtifactWriter<'store> {
     written: u64,
     failed: bool,
     quota_limit: Option<u64>,
+    operation_identity: u64,
+    publication_reserved: bool,
 }
 
 impl<'store> ArtifactWriter<'store> {
@@ -176,6 +178,8 @@ impl<'store> ArtifactWriter<'store> {
             written: 0,
             failed: false,
             quota_limit,
+            operation_identity: writer_identity,
+            publication_reserved: false,
         })
     }
 
@@ -243,6 +247,7 @@ impl<'store> ArtifactWriter<'store> {
         }
         let file = self.file.as_mut().ok_or_else(|| invalid_request("writer is closed"))?;
         synchronize_temporary(file)?;
+        sync_directory(self.paths.temporary())?;
         self.file.take();
         let partial = ArtifactMetadata::new(
             self.request.expected_digest,
@@ -253,7 +258,12 @@ impl<'store> ArtifactWriter<'store> {
             self.request.creating_event,
             QuarantineState::Active,
         );
-        self.catalog.reserve_publication(&partial, self.quota_limit)?;
+        self.catalog.reserve_publication(
+            &partial,
+            self.operation_identity,
+            self.quota_limit,
+        )?;
+        self.publication_reserved = true;
         let temporary = self
             .temporary_path
             .as_ref()
@@ -318,10 +328,21 @@ impl<'store> ArtifactWriter<'store> {
 impl Drop for ArtifactWriter<'_> {
     fn drop(&mut self) {
         self.file.take();
-        if let Some(path) = self.temporary_path.take() {
+        if !self.publication_reserved
+            && let Some(path) = self.temporary_path.take()
+        {
             let _ = fs::remove_file(path);
         }
     }
+}
+
+pub(crate) fn temporary_path(
+    paths: &StorePaths,
+    digest: ArtifactDigest,
+    writer_identity: u64,
+) -> PathBuf {
+    let name = format!(".artifact-{writer_identity:016x}-{}.tmp", digest.to_hex());
+    paths.temporary().join(name)
 }
 
 pub(super) fn create_temporary(
@@ -331,8 +352,7 @@ pub(super) fn create_temporary(
     expected_size: u64,
     minimum_free_bytes: u64,
 ) -> Result<(File, PathBuf), ArtifactStoreError> {
-    let name = format!(".artifact-{writer_identity:016x}-{}.tmp", digest.to_hex());
-    let path = paths.temporary().join(name);
+    let path = temporary_path(paths, digest, writer_identity);
     let file = match OpenOptions::new().write(true).create_new(true).open(&path) {
         Ok(file) => file,
         Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {

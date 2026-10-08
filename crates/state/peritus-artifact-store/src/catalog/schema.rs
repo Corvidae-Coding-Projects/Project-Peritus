@@ -67,6 +67,11 @@ CREATE TABLE IF NOT EXISTS artifact_operation_sequence (
     last_identity INTEGER NOT NULL CHECK(last_identity >= 0)
 ) STRICT;
 INSERT OR IGNORE INTO artifact_operation_sequence(singleton, last_identity) VALUES (1, 0);
+CREATE TABLE IF NOT EXISTS artifact_partial_publications (
+    artifact_digest BLOB PRIMARY KEY NOT NULL CHECK(length(artifact_digest) = 32),
+    operation_identity INTEGER NOT NULL UNIQUE CHECK(operation_identity > 0),
+    FOREIGN KEY(artifact_digest) REFERENCES artifact_records(digest) ON DELETE CASCADE
+) STRICT;
 CREATE TABLE IF NOT EXISTS artifact_repair_obligations (
     artifact_digest BLOB PRIMARY KEY NOT NULL CHECK(length(artifact_digest) = 32),
     reason INTEGER NOT NULL CHECK(reason IN (1, 2)),
@@ -75,7 +80,7 @@ CREATE TABLE IF NOT EXISTS artifact_repair_obligations (
 CREATE TABLE IF NOT EXISTS artifact_repair_containments (
     operation_identity INTEGER PRIMARY KEY NOT NULL CHECK(operation_identity > 0),
     artifact_digest BLOB NOT NULL CHECK(length(artifact_digest) = 32),
-    namespace INTEGER NOT NULL CHECK(namespace IN (1, 2)),
+    namespace INTEGER NOT NULL CHECK(namespace IN (1, 2, 3)),
     FOREIGN KEY(artifact_digest) REFERENCES artifact_repair_obligations(artifact_digest)
         ON DELETE CASCADE
 ) STRICT;

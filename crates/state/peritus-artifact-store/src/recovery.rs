@@ -6,7 +6,7 @@ use crate::{
     ArtifactDigest, ArtifactMetadata, ArtifactStore, ArtifactStoreError, ErrorCode,
     FinalizationState, IntegrityState, QuarantineState, RecoveryClass, ReferenceOwner,
     StoreOperation,
-    finalize::{inspect_file, verify_finalized},
+    finalize::{inspect_file, publish, verify_finalized},
     path::{io, sync_directory},
 };
 
@@ -63,11 +63,11 @@ impl ContainedLayoutNamespace {
         }
     }
 
-    pub(crate) const fn database_tag(self) -> Option<i64> {
+    pub(crate) const fn database_tag(self) -> i64 {
         match self {
-            Self::Temporary => None,
-            Self::Objects => Some(1),
-            Self::Quarantine => Some(2),
+            Self::Objects => 1,
+            Self::Quarantine => 2,
+            Self::Temporary => 3,
         }
     }
 }
@@ -383,7 +383,6 @@ impl ArtifactStore {
             observer,
         };
         self.reconcile_repair_containments(&mut run)?;
-        self.remove_temporary_files(&mut run)?;
         self.contain_malformed_digest_entries(
             self.paths.objects_root(),
             ContainedLayoutNamespace::Objects,
@@ -395,6 +394,7 @@ impl ArtifactStore {
             &mut run,
         )?;
         self.reconcile_partial_publications(&mut run)?;
+        self.remove_temporary_files(&mut run)?;
         self.reconcile_finalized_artifacts(&mut run)?;
         self.reconcile_untracked_quarantine(&mut run)?;
         self.reconcile_untracked_objects(&mut run)?;
@@ -563,22 +563,35 @@ impl ArtifactStore {
     ) -> Result<(), ArtifactStoreError> {
         let mut cursor = None;
         loop {
-            let partials = self.catalog.partial_metadata_after(cursor, 256)?;
+            let partials = self.catalog.partial_publications_after(cursor, 256)?;
             if partials.is_empty() {
                 return Ok(());
             }
-            for partial in &partials {
+            for publication in &partials {
+                let partial = publication.metadata();
                 let digest = partial.digest();
                 let object = self.paths.object(digest);
                 let quarantine = self.paths.quarantine(digest);
+                let temporary = crate::writer::temporary_path(
+                    &self.paths,
+                    digest,
+                    publication.operation_identity(),
+                );
                 let object_state = verify_path(&object, digest, partial.size())?;
                 let quarantine_state = verify_path(&quarantine, digest, partial.size())?;
-                let repair_reason = if object_state == FileVerification::Corrupt
+                let temporary_state = verify_path(&temporary, digest, partial.size())?;
+                let observed_reason = if object_state == FileVerification::Corrupt
                     || quarantine_state == FileVerification::Corrupt
+                    || temporary_state == FileVerification::Corrupt
                 {
+                    ArtifactRepairReason::Corrupt
+                } else {
+                    ArtifactRepairReason::Missing
+                };
+                let repair_reason = if observed_reason == ArtifactRepairReason::Corrupt {
                     Some(
                         self.catalog
-                            .record_repair_obligation(digest, ArtifactRepairReason::Corrupt)?,
+                            .record_repair_obligation(digest, observed_reason)?,
                     )
                 } else {
                     None
@@ -609,6 +622,19 @@ impl ArtifactStore {
                     }
                     FileVerification::Missing => false,
                 };
+                let valid_temporary = match temporary_state {
+                    FileVerification::Valid => true,
+                    FileVerification::Corrupt => {
+                        self.contain_path(
+                            &temporary,
+                            ContainedLayoutNamespace::Temporary,
+                            Some(digest),
+                            run,
+                        )?;
+                        false
+                    }
+                    FileVerification::Missing => false,
+                };
                 if valid_object {
                     if valid_quarantine {
                         remove_file_durable(
@@ -622,11 +648,24 @@ impl ArtifactStore {
                     run.report.completed_state_moves =
                         increment(run.report.completed_state_moves)?;
                     self.complete_partial_publication(partial, run)?;
+                } else if valid_temporary {
+                    let destination_parent = self.paths.ensure_object_parent(digest)?;
+                    let mut publication = None;
+                    publish(
+                        &temporary,
+                        &object,
+                        &destination_parent,
+                        self.paths.temporary(),
+                        digest,
+                        partial.size(),
+                        &mut publication,
+                    )?;
+                    self.complete_partial_publication(partial, run)?;
                 } else {
-                    if let Some(reason) = repair_reason {
-                        self.observe_corruption(partial, reason, run)?;
-                    }
-                    self.catalog.delete_partial(digest)?;
+                    let reason = self
+                        .catalog
+                        .fence_partial_repair(digest, repair_reason.unwrap_or(observed_reason))?;
+                    self.observe_corruption(partial, reason, run)?;
                 }
                 cursor = Some(digest);
             }
@@ -997,6 +1036,7 @@ fn parse_repair_container_name(
     let namespace = match namespace {
         "objects" => ContainedLayoutNamespace::Objects,
         "quarantine" => ContainedLayoutNamespace::Quarantine,
+        "temporary" => ContainedLayoutNamespace::Temporary,
         _ => return Ok(None),
     };
     let identity = u64::from_str_radix(identity, 16)

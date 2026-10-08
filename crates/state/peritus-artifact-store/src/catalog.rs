@@ -23,6 +23,21 @@ pub struct Catalog {
     connection: Connection,
 }
 
+pub(crate) struct PartialPublication {
+    metadata: ArtifactMetadata,
+    operation_identity: u64,
+}
+
+impl PartialPublication {
+    pub(crate) const fn metadata(&self) -> &ArtifactMetadata {
+        &self.metadata
+    }
+
+    pub(crate) const fn operation_identity(&self) -> u64 {
+        self.operation_identity
+    }
+}
+
 const MAX_BUNDLE_CHILDREN: usize = 256;
 
 impl Catalog {
@@ -86,6 +101,7 @@ impl Catalog {
     pub(crate) fn reserve_publication(
         &self,
         metadata: &ArtifactMetadata,
+        operation_identity: u64,
         quota_limit: Option<u64>,
     ) -> Result<(), ArtifactStoreError> {
         if metadata.finalization() != FinalizationState::Partial
@@ -94,16 +110,25 @@ impl Catalog {
         {
             return Err(corrupt_catalog("publication reservation has an invalid durable state"));
         }
+        if operation_identity == 0 {
+            return Err(corrupt_catalog("publication reservation has an invalid identity"));
+        }
+        let operation_identity = sqlite_integer(operation_identity)?;
         let size = sqlite_integer(metadata.size())?;
         let transaction =
             Transaction::new_unchecked(&self.connection, TransactionBehavior::Immediate)
                 .map_err(catalog_error)?;
         if let Some(existing) = metadata_in(&transaction, metadata.digest())? {
+            let existing_identity =
+                partial_operation_identity_in(&transaction, metadata.digest())?;
             match existing.finalization() {
-                FinalizationState::Finalized if same_physical_artifact(&existing, metadata) => {}
+                FinalizationState::Finalized
+                    if same_physical_artifact(&existing, metadata)
+                        && existing_identity.is_none() => {}
                 FinalizationState::Partial
                     if same_physical_artifact(&existing, metadata)
-                        && existing.quarantine() == QuarantineState::Active => {}
+                        && existing.quarantine() == QuarantineState::Active
+                        && existing_identity == Some(operation_identity) => {}
                 _ => {
                     return Err(corrupt_catalog(
                         "durable publication reservation disagrees with accepted metadata",
@@ -141,6 +166,13 @@ impl Catalog {
                 ],
             )
             .map_err(catalog_error)?;
+        transaction
+            .execute(
+                "INSERT INTO artifact_partial_publications(artifact_digest, operation_identity)
+                 VALUES (?1, ?2)",
+                params![metadata.digest().as_bytes().as_slice(), operation_identity],
+            )
+            .map_err(catalog_error)?;
         transaction.commit().map_err(catalog_error)?;
         Ok(())
     }
@@ -165,12 +197,32 @@ impl Catalog {
                         "durable publication reservation disagrees with finalized content",
                     ));
                 }
-                transaction
+                let changed = transaction
                     .execute(
                         "UPDATE artifact_records SET finalization_state = 2 WHERE digest = ?1 AND finalization_state = 1",
                         [metadata.digest().as_bytes().as_slice()],
                     )
                     .map_err(catalog_error)?;
+                if changed != 1 {
+                    return Err(corrupt_catalog(
+                        "publication reservation changed during finalization",
+                    ));
+                }
+                let deleted = transaction
+                    .execute(
+                        "DELETE FROM artifact_partial_publications WHERE artifact_digest = ?1",
+                        [metadata.digest().as_bytes().as_slice()],
+                    )
+                    .map_err(catalog_error)?;
+                if deleted != 1 {
+                    return Err(corrupt_catalog(
+                        "publication reservation has no temporary-file ownership",
+                    ));
+                }
+            } else if partial_operation_identity_in(&transaction, metadata.digest())?.is_some() {
+                return Err(corrupt_catalog(
+                    "finalized artifact retains temporary-file ownership",
+                ));
             }
             let restored = matches!(existing.quarantine(), QuarantineState::Quarantined { .. });
             let repaired = existing.integrity() == IntegrityState::Corrupt;
@@ -318,12 +370,79 @@ impl Catalog {
         transaction.commit().map_err(catalog_error)
     }
 
-    pub(crate) fn partial_metadata_after(
+    pub(crate) fn partial_publications_after(
         &self,
         after: Option<ArtifactDigest>,
         maximum: usize,
-    ) -> Result<Vec<ArtifactMetadata>, ArtifactStoreError> {
-        self.metadata_after_where(after, maximum, "finalization_state = 1")
+    ) -> Result<Vec<PartialPublication>, ArtifactStoreError> {
+        validate_page(maximum)?;
+        let mut statement = self
+            .connection
+            .prepare(
+                "SELECT record.digest, record.size, record.media_type,
+                    record.encryption_algorithm, record.encryption_key_reference,
+                    record.encryption_parameters_digest, record.finalization_state,
+                    record.creating_event, record.quarantine_state,
+                    record.quarantine_generation, record.integrity_state,
+                    publication.operation_identity
+                   FROM artifact_records AS record
+                   LEFT JOIN artifact_partial_publications AS publication
+                     ON publication.artifact_digest = record.digest
+                  WHERE record.finalization_state = 1 AND record.digest > ?1
+                  ORDER BY record.digest LIMIT ?2",
+            )
+            .map_err(catalog_io)?;
+        let rows = statement
+            .query_map(
+                params![
+                    after.map_or_else(Vec::new, |digest| digest.as_bytes().to_vec()),
+                    i64::try_from(maximum).map_err(|_| {
+                        corrupt_catalog(
+                            "partial-publication recovery page cannot be represented",
+                        )
+                    })?
+                ],
+                |row| {
+                    Ok((
+                        row.get::<_, Vec<u8>>(0)?,
+                        RawMetadata {
+                            size: row.get(1)?,
+                            media_type: row.get(2)?,
+                            algorithm: row.get(3)?,
+                            key_reference: row.get(4)?,
+                            parameters_digest: row.get(5)?,
+                            finalization: row.get(6)?,
+                            creating_event: row.get(7)?,
+                            quarantine: row.get(8)?,
+                            quarantine_generation: row.get(9)?,
+                            integrity: row.get(10)?,
+                        },
+                        row.get::<_, Option<i64>>(11)?,
+                    ))
+                },
+            )
+            .map_err(catalog_io)?;
+        let mut publications = Vec::new();
+        for row in rows {
+            let (digest, raw, operation_identity) = row.map_err(catalog_io)?;
+            let operation_identity = operation_identity.ok_or_else(|| {
+                corrupt_catalog("partial publication has no temporary-file ownership")
+            })?;
+            let operation_identity = u64::try_from(operation_identity).map_err(|_| {
+                corrupt_catalog("partial publication has an invalid operation identity")
+            })?;
+            if operation_identity == 0 {
+                return Err(corrupt_catalog(
+                    "partial publication has an invalid operation identity",
+                ));
+            }
+            let digest = ArtifactDigest::new(array::<32>(&digest)?);
+            publications.push(PartialPublication {
+                metadata: raw.validate(digest)?,
+                operation_identity,
+            });
+        }
+        Ok(publications)
     }
 
     pub(crate) fn finalized_metadata_after(
@@ -450,6 +569,63 @@ impl Catalog {
         Ok(persisted)
     }
 
+    pub(crate) fn fence_partial_repair(
+        &self,
+        digest: ArtifactDigest,
+        observed_reason: ArtifactRepairReason,
+    ) -> Result<ArtifactRepairReason, ArtifactStoreError> {
+        let transaction =
+            Transaction::new_unchecked(&self.connection, TransactionBehavior::Immediate)
+                .map_err(catalog_error)?;
+        let changed = transaction
+            .execute(
+                "UPDATE artifact_records
+                    SET finalization_state = 2, integrity_state = 2,
+                        quarantine_state = 1, quarantine_generation = NULL
+                  WHERE digest = ?1 AND finalization_state = 1",
+                [digest.as_bytes().as_slice()],
+            )
+            .map_err(catalog_error)?;
+        if changed != 1 {
+            return Err(corrupt_catalog(
+                "repair fence does not identify one partial publication",
+            ));
+        }
+        let deleted = transaction
+            .execute(
+                "DELETE FROM artifact_partial_publications WHERE artifact_digest = ?1",
+                [digest.as_bytes().as_slice()],
+            )
+            .map_err(catalog_error)?;
+        if deleted != 1 {
+            return Err(corrupt_catalog(
+                "partial repair fence has no temporary-file ownership",
+            ));
+        }
+        transaction
+            .execute(
+                "INSERT INTO artifact_repair_obligations(artifact_digest, reason)
+                 VALUES (?1, ?2)
+                 ON CONFLICT(artifact_digest) DO UPDATE SET
+                    reason = MAX(artifact_repair_obligations.reason, excluded.reason)",
+                params![
+                    digest.as_bytes().as_slice(),
+                    encode_repair_reason(observed_reason)
+                ],
+            )
+            .map_err(catalog_error)?;
+        let persisted: i64 = transaction
+            .query_row(
+                "SELECT reason FROM artifact_repair_obligations WHERE artifact_digest = ?1",
+                [digest.as_bytes().as_slice()],
+                |row| row.get(0),
+            )
+            .map_err(catalog_error)?;
+        let persisted = decode_repair_reason(persisted)?;
+        transaction.commit().map_err(catalog_error)?;
+        Ok(persisted)
+    }
+
     pub(crate) fn record_repair_containment(
         &self,
         digest: ArtifactDigest,
@@ -457,9 +633,7 @@ impl Catalog {
         namespace: ContainedLayoutNamespace,
     ) -> Result<Option<bool>, ArtifactStoreError> {
         let identity = sqlite_integer(identity)?;
-        let namespace = namespace.database_tag().ok_or_else(|| {
-            corrupt_catalog("temporary layout cannot contain durable artifact content")
-        })?;
+        let namespace = namespace.database_tag();
         let changed = self
             .connection
             .execute(
@@ -548,23 +722,6 @@ impl Catalog {
             metadata.push(raw.validate(ArtifactDigest::new(array::<32>(&digest)?))?);
         }
         Ok(metadata)
-    }
-
-    pub(crate) fn delete_partial(
-        &self,
-        digest: ArtifactDigest,
-    ) -> Result<(), ArtifactStoreError> {
-        let changed = self
-            .connection
-            .execute(
-                "DELETE FROM artifact_records WHERE digest = ?1 AND finalization_state = 1",
-                [digest.as_bytes().as_slice()],
-            )
-            .map_err(catalog_io)?;
-        if changed != 1 {
-            return Err(corrupt_catalog("publication reservation changed during recovery"));
-        }
-        Ok(())
     }
 
     pub(crate) fn add_reference(
@@ -922,6 +1079,7 @@ impl Catalog {
             let namespace = match namespace {
                 1 => ContainedLayoutNamespace::Objects,
                 2 => ContainedLayoutNamespace::Quarantine,
+                3 => ContainedLayoutNamespace::Temporary,
                 _ => return Err(corrupt_catalog("unknown repair containment namespace")),
             };
             containments.push((identity, namespace));
@@ -1060,6 +1218,21 @@ fn metadata_in(
         .map_err(catalog_error)?
         .map(|raw| raw.validate(digest))
         .transpose()
+}
+
+fn partial_operation_identity_in(
+    connection: &Connection,
+    digest: ArtifactDigest,
+) -> Result<Option<i64>, ArtifactStoreError> {
+    connection
+        .query_row(
+            "SELECT operation_identity FROM artifact_partial_publications
+              WHERE artifact_digest = ?1",
+            [digest.as_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(catalog_error)
 }
 
 fn validate_bundle_request<I>(
