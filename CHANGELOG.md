@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L036] Command preflight checkpoints every enrolled file (#135)
 - [L609] Windows manifest encoding and transport disagree at their maximum size (#665)
 - [L438] E3 repeatedly copies and replays the complete campaign instead of resuming bounded work (#518)
 - [L035] Tool writes and completed-command receipts impose a tighter file ceiling (#134)
