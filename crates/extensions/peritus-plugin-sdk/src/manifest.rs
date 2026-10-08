@@ -5,7 +5,9 @@ use std::path::{Component, Path};
 use serde::Deserialize;
 use sha2::{Digest as _, Sha256};
 
-use crate::{ManifestDigest, PluginId, PluginVersion, SdkError, SdkErrorKind};
+use crate::{
+    JsonStructure, JsonWirePolicy, ManifestDigest, PluginId, PluginVersion, SdkError, SdkErrorKind,
+};
 
 mod wire;
 
@@ -272,6 +274,8 @@ pub struct PluginQuotas {
     pub frame_bytes: u32,
     /// Maximum result bytes over one invocation.
     pub output_bytes: u64,
+    /// Explicit recursive JSON representation policy.
+    pub json: JsonStructure,
     /// Optional maximum wall-clock duration per invocation; `None` selects an untimed operation.
     pub invocation_millis: Option<u64>,
     /// Request accounting policy during one host lifecycle.
@@ -298,6 +302,7 @@ impl PluginQuotas {
                 "physical plugin quota values must be positive",
             ))
         } else {
+            self.json.validate()?;
             self.lifecycle_requests.validate()?;
             self.protocol_violations.validate()?;
             Ok(self)
@@ -311,6 +316,7 @@ impl PluginQuotas {
             concurrent_requests: min_u16(self.concurrent_requests, ceiling.concurrent_requests),
             frame_bytes: min_u32(self.frame_bytes, ceiling.frame_bytes),
             output_bytes: min_u64(self.output_bytes, ceiling.output_bytes),
+            json: self.json.narrow(ceiling.json),
             invocation_millis: min_optional_u64(
                 self.invocation_millis,
                 ceiling.invocation_millis,
@@ -320,7 +326,47 @@ impl PluginQuotas {
         }
     }
 
+    /// Returns whether every policy is exactly representable by protocol version one.
+    #[must_use]
+    pub const fn is_v1_compatible(self) -> bool {
+        self.legacy_values().is_some()
+    }
+
+    /// Builds the selected host-to-plugin request wire policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when these quotas do not describe a valid wire policy.
+    pub fn request_wire_policy(self) -> Result<JsonWirePolicy, SdkError> {
+        JsonWirePolicy::new(self.frame_bytes, self.frame_bytes, self.json)
+    }
+
+    /// Builds the selected plugin-to-host response wire policy.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when these quotas do not describe a valid wire policy.
+    pub fn response_wire_policy(self) -> Result<JsonWirePolicy, SdkError> {
+        let payload_bytes = u32::try_from(
+            self.output_bytes.min(u64::from(self.frame_bytes)),
+        )
+        .map_err(|error| {
+            SdkError::new(
+                SdkErrorKind::LimitExceeded,
+                "construct plugin response policy",
+                error.to_string(),
+            )
+        })?;
+        JsonWirePolicy::new(self.frame_bytes, payload_bytes, self.json)
+    }
+
     pub(crate) const fn legacy_values(self) -> Option<(u64, u64, u16)> {
+        if self.json.max_depth != JsonStructure::V1_COMPATIBILITY.max_depth
+            || self.json.max_members != JsonStructure::V1_COMPATIBILITY.max_members
+            || self.json.max_string_bytes != JsonStructure::V1_COMPATIBILITY.max_string_bytes
+        {
+            return None;
+        }
         let Some(invocation_millis) = self.invocation_millis else { return None };
         let Some(lifecycle_requests) = self.lifecycle_requests.legacy_value() else { return None };
         let Some(protocol_violations) = self.protocol_violations.legacy_value() else { return None };
@@ -665,6 +711,7 @@ impl LegacyPluginQuotas {
             concurrent_requests: self.concurrent_requests,
             frame_bytes: self.frame_bytes,
             output_bytes: self.output_bytes,
+            json: JsonStructure::V1_COMPATIBILITY,
             invocation_millis: Some(self.invocation_millis),
             lifecycle_requests: CumulativeQuota::Limited {
                 limit: self.lifecycle_requests,

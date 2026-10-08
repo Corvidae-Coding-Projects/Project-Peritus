@@ -17,7 +17,8 @@ use peritus_plugin_host::{
     InvocationSubject, PluginHost, PluginInvocationResult, PluginLifecycle, discover,
 };
 use peritus_plugin_sdk::{
-    CumulativeQuota, JsonBounds, JsonPayload, PluginId, PluginQuotas, PluginVersion, RequestId,
+    CumulativeQuota, JsonBounds, JsonPayload, JsonStructure, PluginId, PluginQuotas,
+    PluginVersion, RequestId,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -199,6 +200,7 @@ impl Fixture {
                 concurrent_requests: 2,
                 frame_bytes: 65_536,
                 output_bytes,
+                json: JsonStructure::V1_COMPATIBILITY,
                 invocation_millis: Some(5_000),
                 lifecycle_requests: CumulativeQuota::Limited { limit: 16 },
                 protocol_violations: CumulativeQuota::Limited { limit: 2 },
@@ -218,7 +220,11 @@ fn subject() -> InvocationSubject {
 }
 
 fn payload(value: Value) -> JsonPayload {
-    JsonPayload::new(value, JsonBounds::PRODUCTION).expect("payload")
+    JsonPayload::new(
+        value,
+        JsonBounds::new(1024 * 1024, JsonStructure::V1_COMPATIBILITY),
+    )
+    .expect("payload")
 }
 
 fn json(text: &str) -> Value {

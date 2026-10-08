@@ -221,10 +221,11 @@ impl Serialize for PluginQuotas {
     where
         S: Serializer,
     {
-        let mut value = serializer.serialize_struct("PluginQuotas", 6)?;
+        let mut value = serializer.serialize_struct("PluginQuotas", 7)?;
         value.serialize_field("concurrent_requests", &self.concurrent_requests)?;
         value.serialize_field("frame_bytes", &self.frame_bytes)?;
         value.serialize_field("output_bytes", &self.output_bytes)?;
+        value.serialize_field("json", &self.json)?;
         value.serialize_field("invocation_millis", &self.invocation_millis)?;
         value.serialize_field("lifecycle_requests", &self.lifecycle_requests)?;
         value.serialize_field("protocol_violations", &self.protocol_violations)?;

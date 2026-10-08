@@ -5,8 +5,8 @@ use std::{
 };
 
 use peritus_plugin_sdk::{
-    HostRequest, PluginRequestEnvelope, PluginResponseEnvelope, RequestId, decode_frame,
-    encode_frame,
+    HostRequest, JsonWirePolicy, PluginQuotas, PluginRequestEnvelope, PluginResponseEnvelope,
+    RequestId, decode_frame, encode_frame,
 };
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
@@ -27,7 +27,8 @@ pub struct PluginConnection {
     stdin: Mutex<ChildStdin>,
     stdout: Mutex<ChildStdout>,
     transaction: Mutex<()>,
-    frame_bytes: u32,
+    request_policy: JsonWirePolicy,
+    response_policy: JsonWirePolicy,
 }
 
 enum ResponseWait {
@@ -39,9 +40,15 @@ enum ResponseWait {
 impl PluginConnection {
     pub(crate) fn spawn(
         plan: LaunchPlan,
-        frame_bytes: u32,
+        quotas: PluginQuotas,
         protocol_version: u16,
     ) -> Result<Arc<Self>, HostError> {
+        let request_policy = quotas
+            .request_wire_policy()
+        .map_err(|error| wire_policy_error(error.to_string()))?;
+        let response_policy = quotas
+            .response_wire_policy()
+        .map_err(|error| wire_policy_error(error.to_string()))?;
         let mut command = match plan {
             LaunchPlan::Process { executable, arguments, working_directory } => {
                 let mut command = Command::new(executable);
@@ -88,7 +95,8 @@ impl PluginConnection {
             stdin: Mutex::new(stdin),
             stdout: Mutex::new(stdout),
             transaction: Mutex::new(()),
-            frame_bytes,
+            request_policy,
+            response_policy,
         }))
     }
 
@@ -181,7 +189,7 @@ impl PluginConnection {
     }
 
     async fn write(&self, request: &PluginRequestEnvelope) -> Result<(), HostError> {
-        let frame = encode_frame(request, self.frame_bytes).map_err(|error| {
+        let frame = encode_frame(request, self.request_policy).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
                 RecoveryDisposition::CorrectRequest,
@@ -203,7 +211,7 @@ impl PluginConnection {
             .await
             .map_err(|error| io_error("read plugin response header", error))?;
         let length = u32::from_be_bytes(header);
-        if length == 0 || length > self.frame_bytes {
+        if length == 0 || length > self.response_policy.frame_bytes() {
             return Err(HostError::new(
                 HostFailureClass::Protocol,
                 RecoveryDisposition::RestartPlugin,
@@ -211,15 +219,18 @@ impl PluginConnection {
                 "plugin declared a zero or oversized frame",
             ));
         }
-        let mut frame = Vec::with_capacity(4 + length as usize);
+        let frame_length = 4_usize
+            .checked_add(length as usize)
+            .ok_or_else(|| transport_error("plugin frame allocation length overflowed"))?;
+        let mut frame = Vec::with_capacity(frame_length);
         frame.extend_from_slice(&header);
-        frame.resize(4 + length as usize, 0);
+        frame.resize(frame_length, 0);
         stdout
             .read_exact(&mut frame[4..])
             .await
             .map_err(|error| io_error("read plugin response body", error))?;
         drop(stdout);
-        decode_frame(&frame, self.frame_bytes).map_err(|error| {
+        decode_frame(&frame, self.response_policy).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
                 RecoveryDisposition::RestartPlugin,
@@ -258,6 +269,15 @@ fn transport_error(detail: &'static str) -> HostError {
         HostFailureClass::Infrastructure,
         RecoveryDisposition::RestartPlugin,
         "launch isolated plugin",
+        detail,
+    )
+}
+
+fn wire_policy_error(detail: String) -> HostError {
+    HostError::new(
+        HostFailureClass::Protocol,
+        RecoveryDisposition::CorrectRequest,
+        "configure plugin wire policy",
         detail,
     )
 }

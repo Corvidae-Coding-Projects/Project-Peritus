@@ -1,13 +1,14 @@
-//! Manual response-side encoding for the version-one plugin protocol.
+//! Response encoding without intermediate JSON value trees.
 
-use serde::Deserialize;
-use serde::de;
-use serde::ser::SerializeStruct;
-use serde_json::Value;
+use serde::{
+    Deserialize,
+    de,
+    ser::{SerializeMap, SerializeStruct},
+};
+use serde_json::value::RawValue;
 
-use super::wire::{decode_content, object_value, serialize_tagged, tagged_parts, to_value};
 use super::{FailureClass, PluginFailure, PluginResponse, PluginResponseEnvelope, PluginStatus};
-use crate::JsonPayload;
+use crate::{JsonPayload, RequestId};
 
 impl serde::Serialize for FailureClass {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -98,20 +99,54 @@ impl serde::Serialize for PluginResponse {
     where
         S: serde::Serializer,
     {
-        let (kind, body) = match self {
+        let mut map = serializer.serialize_map(Some(2))?;
+        match self {
             Self::Status { status } => {
-                ("status", object_value([("status", to_value::<S::Error, _>(status)?)]))
+                map.serialize_entry("kind", "status")?;
+                map.serialize_entry("body", &StatusRef { status: *status })?;
             }
-            Self::Success { output, rendering } => (
-                "success",
-                object_value([
-                    ("output", to_value::<S::Error, _>(output)?),
-                    ("rendering", to_value::<S::Error, _>(rendering)?),
-                ]),
-            ),
-            Self::Failure(failure) => ("failure", to_value::<S::Error, _>(failure)?),
-        };
-        serialize_tagged(serializer, "kind", kind, "body", Some(body))
+            Self::Success { output, rendering } => {
+                map.serialize_entry("kind", "success")?;
+                map.serialize_entry("body", &SuccessRef { output, rendering })?;
+            }
+            Self::Failure(failure) => {
+                map.serialize_entry("kind", "failure")?;
+                map.serialize_entry("body", failure)?;
+            }
+        }
+        map.end()
+    }
+}
+
+struct StatusRef {
+    status: PluginStatus,
+}
+
+impl serde::Serialize for StatusRef {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("StatusBody", 1)?;
+        state.serialize_field("status", &self.status)?;
+        state.end()
+    }
+}
+
+struct SuccessRef<'a> {
+    output: &'a JsonPayload,
+    rendering: &'a Option<String>,
+}
+
+impl serde::Serialize for SuccessRef<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("SuccessBody", 2)?;
+        state.serialize_field("output", self.output)?;
+        state.serialize_field("rendering", self.rendering)?;
+        state.end()
     }
 }
 
@@ -120,20 +155,36 @@ impl<'de> Deserialize<'de> for PluginResponse {
     where
         D: serde::Deserializer<'de>,
     {
-        let value = Value::deserialize(deserializer)?;
-        let (kind, body) = tagged_parts(value, "kind", "body").map_err(de::Error::custom)?;
-        match kind.as_str() {
-            "status" => {
-                let body: StatusBody = decode_content(body, "body")?;
-                Ok(Self::Status { status: body.status })
-            }
-            "success" => {
-                let body: SuccessBody = decode_content(body, "body")?;
-                Ok(Self::Success { output: body.output, rendering: body.rendering })
-            }
-            "failure" => Ok(Self::Failure(decode_content(body, "body")?)),
-            _ => Err(de::Error::unknown_variant(&kind, &["status", "success", "failure"])),
+        let raw = Box::<RawValue>::deserialize(deserializer)?;
+        decode_response(&raw)
+    }
+}
+
+fn decode_response<E>(raw: &RawValue) -> Result<PluginResponse, E>
+where
+    E: de::Error,
+{
+    let wire: TaggedResponse<'_> = decode_raw(raw, "plugin response")?;
+    match wire.kind.as_str() {
+        "status" => {
+            let body: StatusBody = decode_raw(wire.body, "status body")?;
+            Ok(PluginResponse::Status { status: body.status })
         }
+        "success" => {
+            let body: SuccessBody<'_> = decode_raw(wire.body, "success body")?;
+            let output = JsonPayload::parse_active(body.output.get().as_bytes())
+                .map_err(E::custom)?;
+            let rendering = body
+                .rendering
+                .map(|raw| decode_raw::<String, E>(raw, "success rendering"))
+                .transpose()?;
+            Ok(PluginResponse::Success {
+                output,
+                rendering,
+            })
+        }
+        "failure" => Ok(PluginResponse::Failure(decode_raw(wire.body, "failure body")?)),
+        _ => Err(E::unknown_variant(&wire.kind, &["status", "success", "failure"])),
     }
 }
 
@@ -150,6 +201,46 @@ impl serde::Serialize for PluginResponseEnvelope {
     }
 }
 
+impl<'de> Deserialize<'de> for PluginResponseEnvelope {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = ResponseEnvelopeWire::deserialize(deserializer)?;
+        Ok(Self {
+            protocol_version: wire.protocol_version,
+            request_id: wire.request_id,
+            response: decode_response(wire.response)?,
+        })
+    }
+}
+
+fn decode_raw<'a, T, E>(raw: &'a RawValue, label: &'static str) -> Result<T, E>
+where
+    T: Deserialize<'a>,
+    E: de::Error,
+{
+    serde_json::from_str(raw.get())
+        .map_err(|error| E::custom(format!("malformed {label}: {error}")))
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ResponseEnvelopeWire<'a> {
+    protocol_version: u16,
+    request_id: RequestId,
+    #[serde(borrow)]
+    response: &'a RawValue,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TaggedResponse<'a> {
+    kind: String,
+    #[serde(borrow)]
+    body: &'a RawValue,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct StatusBody {
@@ -158,7 +249,9 @@ struct StatusBody {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct SuccessBody {
-    output: JsonPayload,
-    rendering: Option<String>,
+struct SuccessBody<'a> {
+    #[serde(borrow)]
+    output: &'a RawValue,
+    #[serde(borrow)]
+    rendering: Option<&'a RawValue>,
 }

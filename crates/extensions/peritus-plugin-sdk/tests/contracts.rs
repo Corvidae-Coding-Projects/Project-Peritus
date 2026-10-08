@@ -1,8 +1,9 @@
 //! Canonical G3 plugin SDK contract and framing acceptance tests.
 
 use peritus_plugin_sdk::{
-    CumulativeQuota, HostRequest, JsonBounds, JsonPayload, PluginManifest, PluginQuotas,
-    PluginRequestEnvelope, PluginVersion, RequestId, SdkErrorKind, decode_frame, encode_frame,
+    CumulativeQuota, HostRequest, JsonBounds, JsonPayload, JsonStructure, JsonWirePolicy,
+    PluginManifest, PluginQuotas, PluginRequestEnvelope, PluginVersion, RequestId, SdkErrorKind,
+    decode_frame, encode_frame,
 };
 use serde_json::Value;
 
@@ -97,6 +98,7 @@ fn host_quota_intersection_never_widens_a_manifest() {
         concurrent_requests: 2,
         frame_bytes: 1_024,
         output_bytes: 2_048,
+        json: JsonStructure::V1_COMPATIBILITY,
         invocation_millis: Some(5_000),
         lifecycle_requests: CumulativeQuota::Limited { limit: 10 },
         protocol_violations: CumulativeQuota::Limited { limit: 1 },
@@ -106,15 +108,16 @@ fn host_quota_intersection_never_widens_a_manifest() {
 
 #[test]
 fn payloads_are_canonical_and_recursively_bounded() {
-    let payload = JsonPayload::new(json(r#"{"z":3,"a":[true,1]}"#), JsonBounds::PRODUCTION)
+    let bounds = JsonBounds::new(1024 * 1024, JsonStructure::V1_COMPATIBILITY);
+    let payload = JsonPayload::new(json(r#"{"z":3,"a":[true,1]}"#), bounds)
         .expect("bounded payload");
     assert_eq!(payload.canonical_bytes(), br#"{"a":[true,1],"z":3}"#);
 
-    let float = JsonPayload::new(json(r#"{"value":1.5}"#), JsonBounds::PRODUCTION)
-        .expect_err("floating point is not canonical");
-    assert_eq!(float.kind(), SdkErrorKind::InvalidJson);
+    let decimal = JsonPayload::new(json(r#"{"value":1.5}"#), bounds)
+        .expect("exact decimal payload");
+    assert_eq!(decimal.canonical_bytes(), br#"{"value":1.5}"#);
 
-    let tiny = JsonBounds { max_bytes: 8, ..JsonBounds::PRODUCTION };
+    let tiny = JsonBounds::new(8, JsonStructure::V1_COMPATIBILITY);
     assert_eq!(
         JsonPayload::new(json(r#"{"long":"value"}"#), tiny).expect_err("byte bound").kind(),
         SdkErrorKind::LimitExceeded
@@ -123,25 +126,31 @@ fn payloads_are_canonical_and_recursively_bounded() {
 
 #[test]
 fn framed_protocol_roundtrips_and_rejects_trailing_or_oversized_input() {
+    let policy = JsonWirePolicy::new(4_096, 4_096, JsonStructure::V1_COMPATIBILITY)
+        .expect("wire policy");
     let envelope = PluginRequestEnvelope {
         protocol_version: 1,
         request_id: RequestId::new("request-1").expect("request id"),
         request: HostRequest::Health,
     };
-    let frame = encode_frame(&envelope, 4_096).expect("frame");
-    let decoded: PluginRequestEnvelope = decode_frame(&frame, 4_096).expect("decode");
+    let frame = encode_frame(&envelope, policy).expect("frame");
+    let decoded: PluginRequestEnvelope = decode_frame(&frame, policy).expect("decode");
     assert_eq!(decoded, envelope);
 
     let mut trailing = frame.clone();
     trailing.push(0);
     assert_eq!(
-        decode_frame::<PluginRequestEnvelope>(&trailing, 4_096)
+        decode_frame::<PluginRequestEnvelope>(&trailing, policy)
             .expect_err("trailing byte rejected")
             .kind(),
         SdkErrorKind::InvalidFrame
     );
     assert_eq!(
-        decode_frame::<PluginRequestEnvelope>(&frame, 1)
+        decode_frame::<PluginRequestEnvelope>(
+            &frame,
+            JsonWirePolicy::new(1, 1, JsonStructure::V1_COMPATIBILITY)
+                .expect("small wire policy"),
+        )
             .expect_err("declared length exceeds limit")
             .kind(),
         SdkErrorKind::LimitExceeded

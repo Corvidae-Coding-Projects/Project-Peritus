@@ -15,14 +15,14 @@ mod payload;
 mod protocol;
 
 pub use error::{SdkError, SdkErrorKind};
-pub use framing::{decode_frame, encode_frame};
+pub use framing::{PluginFrame, decode_frame, encode_frame};
 pub use identity::{ManifestDigest, PluginId, PluginVersion, RequestId};
 pub use manifest::{
     CapabilityDeclaration, CumulativeQuota, LEGACY_MANIFEST_VERSION, MANIFEST_VERSION,
     PluginEntrypoint, PluginKind, PluginManifest, PluginOperation, PluginQuotas, ProtocolRange,
     SignatureDeclaration, TrustMaterial,
 };
-pub use payload::{JsonBounds, JsonPayload};
+pub use payload::{JsonBounds, JsonPayload, JsonStructure, JsonWirePolicy};
 pub use protocol::{
     FailureClass, HostRequest, InvocationContext, LEGACY_PROTOCOL_VERSION, PROTOCOL_VERSION,
     PluginFailure, PluginRequestEnvelope, PluginResponse, PluginResponseEnvelope, PluginRole,

@@ -164,8 +164,16 @@ impl PluginHost {
             .narrow(self.config.quota_ceiling)
             .validate()
             .map_err(plugin_protocol_error)?;
+        if protocol_version == LEGACY_PROTOCOL_VERSION && !quotas.is_v1_compatible() {
+            return Err(HostError::new(
+                HostFailureClass::Protocol,
+                RecoveryDisposition::CorrectRequest,
+                "negotiate plugin policy",
+                "selected host ceilings are not representable by plugin protocol version one",
+            ));
+        }
         let plan = self.launch_plan(&discovered);
-        let connection = PluginConnection::spawn(plan, quotas.frame_bytes, protocol_version)?;
+        let connection = PluginConnection::spawn(plan, quotas, protocol_version)?;
         let instance = Arc::new(PluginInstance {
             discovered,
             connection,

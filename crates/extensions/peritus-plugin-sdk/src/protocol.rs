@@ -2,11 +2,11 @@
 
 use serde::Deserialize;
 
-use crate::{JsonPayload, PluginId, PluginQuotas, PluginVersion, RequestId};
+use crate::{JsonBounds, JsonPayload, PluginId, PluginQuotas, PluginVersion, RequestId};
+use crate::framing::PluginFrame;
 
 mod request_wire;
 mod response_wire;
-mod wire;
 
 /// Historical plugin protocol with numeric finite quotas and compulsory deadlines.
 pub const LEGACY_PROTOCOL_VERSION: u16 = 1;
@@ -159,8 +159,7 @@ pub enum PluginResponse {
 }
 
 /// Complete versioned plugin response envelope.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PluginResponseEnvelope {
     /// Exact protocol schema version.
     pub protocol_version: u16,
@@ -168,4 +167,22 @@ pub struct PluginResponseEnvelope {
     pub request_id: RequestId,
     /// Typed response body.
     pub response: PluginResponse,
+}
+
+impl PluginFrame for PluginRequestEnvelope {
+    fn validate_payloads(&self, bounds: JsonBounds) -> Result<(), crate::SdkError> {
+        if let HostRequest::Invoke { input, .. } = &self.request {
+            input.validate_bounds(bounds)?;
+        }
+        Ok(())
+    }
+}
+
+impl PluginFrame for PluginResponseEnvelope {
+    fn validate_payloads(&self, bounds: JsonBounds) -> Result<(), crate::SdkError> {
+        if let PluginResponse::Success { output, .. } = &self.response {
+            output.validate_bounds(bounds)?;
+        }
+        Ok(())
+    }
 }
