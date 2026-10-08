@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4152,
-        "tip_oid": "ef39221fb10a877936592fc3bda79d3db2a6bb4c",
-        "prefix_sha256": "7a7c0ac6e6301c97015f54cbe4e81e3f3b009beef2e00577d7601cef72881179"
+        "sequence": 4153,
+        "tip_oid": "e2b3b1e12a72dbc665f29a01f4fae8ee9dd01996",
+        "prefix_sha256": "e26976e179efb53a65784f061786598f5d2262caac84a5489ba32cf6a4bda6b2"
       },
       "NWAR": {
         "sequence": 39,
@@ -64,7 +64,7 @@
       }
     }
   },
-  "next_display_id": 826,
+  "next_display_id": 827,
   "next_comment_id": 3279,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
@@ -176,6 +176,7 @@
     "1fda0f55-5264-5fe3-bfa1-7e6665e41cab": 500,
     "20a50119-6b79-5936-9ff7-c4f66d339890": 753,
     "20ab4104-29c9-5280-b157-a7bdae34bca2": 330,
+    "20c9929f-61e3-4fde-9b53-418c6a1ce4f5": 826,
     "20da7435-7f36-5874-9128-008c9e48a723": 135,
     "2126dc7d-342b-590c-a5a3-cc8de3ca2786": 179,
     "2194b9c5-c19f-47a2-9c91-d84a6c3c7b84": 46,
@@ -6306,6 +6307,16 @@
           "kind": "decision"
         }
       }
+    },
+    "20c9929f-61e3-4fde-9b53-418c6a1ce4f5": {
+      "uuid": "20c9929f-61e3-4fde-9b53-418c6a1ce4f5",
+      "display_id": 826,
+      "title": "Continue: validate and publish the existing 20 minimum repairs",
+      "status": "open",
+      "priority": "high",
+      "created_by": "6ME5",
+      "created_at": "2026-10-08T14:47:29.994627132Z",
+      "updated_at": "2026-10-08T14:47:29.994627132Z"
     },
     "20da7435-7f36-5874-9128-008c9e48a723": {
       "uuid": "20da7435-7f36-5874-9128-008c9e48a723",
