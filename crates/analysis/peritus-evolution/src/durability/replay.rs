@@ -5,15 +5,17 @@ use peritus_journal::{SqliteJournal, StoreId};
 use peritus_types::EventSequence;
 
 use crate::{
-    CampaignEvent, CampaignState, EvolutionCampaignId, EvolutionError, PointerEvent,
-    ProductionHarnessState, apply_campaign_event, apply_pointer_event,
+    CampaignEvent, CampaignState, DurableActivationHistory, DurableActivationOrigin,
+    EvolutionCampaignId, EvolutionError, PendingActivation, PointerCommandKind, PointerEvent,
+    PointerEventKind, ProductionHarnessState, apply_campaign_event, apply_pointer_event,
     wire::{CampaignEventFrame, PointerEventFrame},
 };
+use crate::pointer::apply_pointer_event_legacy_eviction;
 
 use super::{
     CAMPAIGN_STATE_NAMESPACE, POINTER_STATE_NAMESPACE, campaign::codec, campaign::journal_error,
     campaign::recovery, campaign_aggregate_key, campaign_state_key, checkpoint,
-    pointer_aggregate_key, pointer_state_key,
+    pointer::pointer_event_revision_digest, pointer_aggregate_key, pointer_state_key,
 };
 
 /// Fully replayed campaign observation.
@@ -48,6 +50,7 @@ pub struct PointerReplay {
     store_id: StoreId,
     events: Vec<PointerEvent>,
     state: Option<ProductionHarnessState>,
+    activation_history: DurableActivationHistory,
 }
 
 impl PointerReplay {
@@ -65,6 +68,11 @@ impl PointerReplay {
     #[must_use]
     pub const fn state(&self) -> Option<&ProductionHarnessState> {
         self.state.as_ref()
+    }
+    /// Complete activation ledger reconstructed from immutable event/checkpoint origins.
+    #[must_use]
+    pub const fn activation_history(&self) -> &DurableActivationHistory {
+        &self.activation_history
     }
 }
 
@@ -125,21 +133,71 @@ pub fn recover_pointer(
 ) -> Result<PointerReplay, EvolutionError> {
     let aggregate = pointer_aggregate_key(project_id)?;
     let records = journal.records_for_aggregate(aggregate).map_err(journal_error)?;
+    let state_key = pointer_state_key(project_id);
     let checkpoint = journal
-        .state_record(POINTER_STATE_NAMESPACE, &pointer_state_key(project_id))
+        .state_record(POINTER_STATE_NAMESPACE, &state_key)
         .map_err(journal_error)?;
     if records.is_empty() != checkpoint.is_none() {
         return Err(recovery("pointer events/checkpoint presence differs"));
     }
     let mut state = None;
     let mut events = Vec::with_capacity(records.len());
+    let mut activation_history = DurableActivationHistory::empty(journal.store_id(), project_id);
     for record in &records {
         let frame =
             decode_message::<PointerEventFrame>(record.frame_bytes(), CodecLimits::PRODUCTION)
                 .map_err(codec)?;
-        let event = frame.check(state.as_ref())?;
+        let event = frame.into_event()?;
         validate_record(record, event.sequence(), event.id(), event.previous_event())?;
-        state = Some(apply_pointer_event(state.as_ref(), &event)?);
+        let historical = journal
+            .state_record_revision(POINTER_STATE_NAMESPACE, &state_key, event.sequence())
+            .map_err(journal_error)?
+            .ok_or_else(|| recovery("pointer event has no immutable checkpoint revision"))?;
+        let observed = checkpoint::decode_pointer(journal, &historical, project_id)?.into_state();
+        validate_pointer_checkpoint(journal, record, &event, &historical, &observed)?;
+        validate_durable_rollback_event(&activation_history, state.as_ref(), &event)?;
+
+        let reconstructed = match apply_pointer_event(state.as_ref(), &event) {
+            Ok(candidate) if candidate == observed => candidate,
+            _ if legacy_eviction_shape(state.as_ref(), &event, &observed) => {
+                apply_pointer_event_legacy_eviction(state.as_ref(), &event)?
+            }
+            _ => return Err(recovery("pointer checkpoint differs from pure event replay")),
+        };
+        if reconstructed != observed {
+            return Err(recovery("legacy pointer checkpoint differs from exact eviction replay"));
+        }
+
+        if event.successor_generation() != event.prior_generation() {
+            let activation = observed
+                .history()
+                .last()
+                .cloned()
+                .ok_or_else(|| recovery("activation event checkpoint has no activation record"))?;
+            let origin = DurableActivationOrigin::from_committed(
+                journal.store_id(),
+                project_id,
+                activation,
+                event.sequence(),
+                event.id(),
+                event.command_id(),
+                record.global_position(),
+                record.previous_event_hash(),
+                record.event_hash(),
+                record.frame_digest(),
+                record.revision_digest(),
+                event.successor_state_digest(),
+                historical.digest(),
+                historical.producing_position(),
+            )?;
+            activation_history.push(origin)?;
+        }
+        if !activation_history.matches_state(&observed) {
+            return Err(recovery(
+                "pointer checkpoint cache is not a suffix of durable activation history",
+            ));
+        }
+        state = Some(observed);
         events.push(event);
     }
     if let Some(record) = checkpoint {
@@ -149,14 +207,104 @@ pub fn recover_pointer(
             state.as_ref().ok_or_else(|| recovery("pointer checkpoint has no semantic events"))?;
         let last =
             records.last().ok_or_else(|| recovery("pointer checkpoint has no producing event"))?;
+        let historical = journal
+            .state_record_revision(POINTER_STATE_NAMESPACE, &state_key, reconstructed.sequence())
+            .map_err(journal_error)?
+            .ok_or_else(|| recovery("current pointer has no immutable checkpoint revision"))?;
         if record.revision() != reconstructed.sequence()
             || !checkpoint_producer_matches(journal, &record, last)?
+            || record.digest() != historical.digest()
+            || record.producing_position() != historical.producing_position()
             || observed != *reconstructed
         {
             return Err(recovery("pointer checkpoint differs from replay"));
         }
     }
-    Ok(PointerReplay { store_id: journal.store_id(), events, state })
+    Ok(PointerReplay {
+        store_id: journal.store_id(),
+        events,
+        state,
+        activation_history,
+    })
+}
+
+fn validate_pointer_checkpoint(
+    journal: &SqliteJournal,
+    record: &peritus_journal::CommittedRecord,
+    event: &PointerEvent,
+    checkpoint: &peritus_journal::DurableStateRecord,
+    observed: &ProductionHarnessState,
+) -> Result<(), EvolutionError> {
+    if checkpoint.revision() != event.sequence()
+        || !checkpoint_producer_matches(journal, checkpoint, record)?
+        || observed.project_id() != event.project_id()
+        || observed.sequence() != event.sequence()
+        || observed.last_event() != event.id()
+        || observed.generation() != event.successor_generation()
+        || observed.policy().digest() != event.policy_digest()
+        || observed.state_digest() != event.successor_state_digest()
+        || record.revision_digest() != pointer_event_revision_digest(observed)
+    {
+        return Err(recovery(
+            "pointer event, committed origin, and historical checkpoint differ",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_durable_rollback_event(
+    history: &DurableActivationHistory,
+    prior: Option<&ProductionHarnessState>,
+    event: &PointerEvent,
+) -> Result<(), EvolutionError> {
+    let PointerEventKind::Accepted(kind) = event.kind();
+    let valid = match kind {
+        PointerCommandKind::PrepareRollback(proposal) => history.validates_proposal(proposal),
+        PointerCommandKind::ActivateRollback { rollback_id, .. } => {
+            matches!(
+                prior.and_then(|state| state.pending()),
+                Some(PendingActivation::Rollback(proposal))
+                    if proposal.id() == *rollback_id && history.validates_proposal(proposal)
+            )
+        }
+        _ => true,
+    };
+    if valid {
+        Ok(())
+    } else {
+        Err(recovery(
+            "rollback event target has no matching immutable activation origin",
+        ))
+    }
+}
+
+fn legacy_eviction_shape(
+    prior: Option<&ProductionHarnessState>,
+    event: &PointerEvent,
+    observed: &ProductionHarnessState,
+) -> bool {
+    let Some(prior) = prior else {
+        return false;
+    };
+    let Some(limit) = prior.limits().activation_history_limit().map(usize::from) else {
+        return false;
+    };
+    let PointerEventKind::Accepted(kind) = event.kind();
+    let activation = matches!(
+        kind,
+        PointerCommandKind::ActivatePromotion { .. }
+            | PointerCommandKind::ActivateRollback { .. }
+    );
+    if !activation
+        || prior.history().len() != limit
+        || observed.history().len() != limit
+        || prior.generation().checked_add(1) != Some(observed.generation())
+        || event.successor_generation() != observed.generation()
+    {
+        return false;
+    }
+    let retained = &prior.history()[1..];
+    observed.history().get(..retained.len()) == Some(retained)
 }
 
 fn checkpoint_producer_matches(

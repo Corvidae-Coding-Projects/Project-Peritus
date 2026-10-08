@@ -1,8 +1,9 @@
 //! Exact authorization boundary facts and auditable rollback proposals.
 
 use crate::{
-    ActivationId, EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
-    ProductionHarnessBinding, ProductionHarnessState, RollbackId, identity::digest_parts,
+    ActivationId, DurableActivationOrigin, EvolutionError, EvolutionErrorKind, EvolutionOperation,
+    EvolutionRecovery, ProductionHarnessBinding, ProductionHarnessState, RollbackId,
+    identity::digest_parts,
 };
 use peritus_types::{ProjectId, Sha256Digest};
 
@@ -133,7 +134,7 @@ impl CompatibilityWitness {
     }
 }
 
-/// One append-only rollback action targeting a retained prior activation.
+/// One append-only rollback action targeting an immutable prior activation origin.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RollbackProposal {
     id: RollbackId,
@@ -160,18 +161,70 @@ impl RollbackProposal {
         witness: CompatibilityWitness,
         evidence_bundle_artifact: Sha256Digest,
     ) -> Result<Self, EvolutionError> {
+        if !state
+            .history()
+            .iter()
+            .any(|record| record.id() == target_activation && record.successor() == target)
+        {
+            return Err(illegal());
+        }
+        Self::from_checked_target(
+            state,
+            target,
+            target_activation,
+            witness,
+            evidence_bundle_artifact,
+        )
+    }
+
+    /// Constructs a rollback from an exact journal-reconstructed activation origin.
+    ///
+    /// This is the canonical path for targets outside the current checkpoint cache. The proposal
+    /// retains the existing schema-v1 bytes and content identity because `target_activation`
+    /// already commits to the complete activation record; C0 revalidates its origin before commit.
+    ///
+    /// # Errors
+    /// Rejects another project/store history, a non-prior target, policy drift, or incompatibility.
+    pub fn new_from_origin(
+        state: &ProductionHarnessState,
+        origin: &DurableActivationOrigin,
+        witness: CompatibilityWitness,
+        evidence_bundle_artifact: Sha256Digest,
+    ) -> Result<Self, EvolutionError> {
+        let activation = origin.activation();
+        if origin.project_id() != state.project_id()
+            || activation.generation() >= state.generation()
+        {
+            return Err(illegal());
+        }
+        Self::from_checked_target(
+            state,
+            activation.successor(),
+            activation.id(),
+            witness,
+            evidence_bundle_artifact,
+        )
+    }
+
+    fn from_checked_target(
+        state: &ProductionHarnessState,
+        target: ProductionHarnessBinding,
+        target_activation: ActivationId,
+        witness: CompatibilityWitness,
+        evidence_bundle_artifact: Sha256Digest,
+    ) -> Result<Self, EvolutionError> {
         let current = state.current();
-        let rollback_of =
-            state.history().last().map(ActivationRecordRef::id).ok_or_else(illegal)?;
+        let rollback_of = state
+            .history()
+            .last()
+            .map(crate::ActivationRecord::id)
+            .ok_or_else(illegal)?;
         if current == target
+            || target_activation == rollback_of
             || witness.current_digest() != current.digest()
             || witness.target_digest() != target.digest()
             || witness.policy_digest() != state.policy().digest()
             || !witness.compatible()
-            || !state
-                .history()
-                .iter()
-                .any(|record| record.id() == target_activation && record.successor() == target)
         {
             return Err(illegal());
         }
@@ -296,15 +349,6 @@ impl RollbackProposal {
     #[must_use]
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
-    }
-}
-
-trait ActivationRecordRef {
-    fn id(&self) -> ActivationId;
-}
-impl ActivationRecordRef for crate::ActivationRecord {
-    fn id(&self) -> ActivationId {
-        self.id()
     }
 }
 

@@ -7,7 +7,7 @@ use crate::{
     RollbackId,
 };
 
-/// Compact non-authoritative pointer and activation-history query value.
+/// Compact non-authoritative pointer and checkpoint-cache query value.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProductionHarnessProjection {
     project_id: ProjectId,
@@ -69,7 +69,9 @@ impl ProductionHarnessProjection {
     pub const fn generation(self) -> u64 {
         self.generation
     }
-    /// Number of activation records retained for rollback.
+    /// Number of activation records present in the current checkpoint cache.
+    ///
+    /// Use [`crate::DurableActivationHistory`] when enumerating rollback-eligible origins.
     #[must_use]
     pub const fn retained_activations(self) -> u32 {
         self.retained_activations

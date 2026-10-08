@@ -179,6 +179,16 @@ impl PointerEventFrame {
         self,
         prior: Option<&ProductionHarnessState>,
     ) -> Result<PointerEvent, EvolutionError> {
+        let event = self.into_event()?;
+        let _ = apply_pointer_event(prior, &event)?;
+        Ok(event)
+    }
+
+    /// Reconstructs and digest-checks the event without selecting a replay compatibility rule.
+    ///
+    /// Historical recovery uses this before comparing current and legacy reducer results with the
+    /// exact immutable checkpoint installed by the same command.
+    pub(crate) fn into_event(self) -> Result<PointerEvent, EvolutionError> {
         let kind = super::semantic::decode_pointer_kind(&self.kind_bytes)?;
         let expected_sequence = self.sequence.checked_sub(1).ok_or_else(corrupt)?;
         let command = PointerCommand::new(
@@ -209,7 +219,6 @@ impl PointerEventFrame {
             self.successor_state_digest,
             PointerEventKind::Accepted(kind),
         );
-        let _ = apply_pointer_event(prior, &event)?;
         Ok(event)
     }
     /// Event identity.

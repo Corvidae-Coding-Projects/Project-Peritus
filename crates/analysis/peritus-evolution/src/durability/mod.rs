@@ -23,6 +23,7 @@ pub use directive::{
     EvolutionPublicationKind,
 };
 pub use pointer::{
-    commit_pointer_transition, commit_pointer_transition_with_storage, resolve_pointer_receipt,
+    commit_pointer_transition, commit_pointer_transition_with_storage, prepare_rollback_proposal,
+    recover_activation_history, resolve_activation_origin, resolve_pointer_receipt,
 };
 pub use replay::{CampaignReplay, PointerReplay, recover_campaign, recover_pointer};

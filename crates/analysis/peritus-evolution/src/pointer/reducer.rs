@@ -12,8 +12,9 @@ use super::state::activation_record;
 /// Decides one pointer command without effects.
 ///
 /// # Errors
-/// Rejects stale fences, illegal pending transitions, baseline drift, policy drift, unknown
-/// rollback targets, mismatched authority, and generation overflow.
+/// Rejects stale fences, illegal pending transitions, baseline drift, policy drift, malformed
+/// rollback target identities, mismatched authority, and generation overflow. The C0 adapter owns
+/// durable target-origin reachability before any accepted transition is committed.
 pub fn decide_pointer(
     prior: Option<&ProductionHarnessState>,
     command: &PointerCommand,
@@ -27,6 +28,7 @@ pub fn decide_pointer(
         command.event_id(),
         command.policy_digest(),
         command.kind(),
+        HistoryRetention::Preserve,
     )?;
     state.refresh_digest();
     let event = PointerEvent::from_replay_parts(
@@ -54,6 +56,25 @@ pub fn apply_pointer_event(
     prior: Option<&ProductionHarnessState>,
     event: &PointerEvent,
 ) -> Result<ProductionHarnessState, EvolutionError> {
+    apply_pointer_event_with_retention(prior, event, HistoryRetention::Preserve)
+}
+
+/// Replays one event under the former finite-cache eviction rule.
+///
+/// This remains crate-private and is used only after an exact historical checkpoint proves that a
+/// legacy event was produced by that rule. New decisions always preserve activation history.
+pub(crate) fn apply_pointer_event_legacy_eviction(
+    prior: Option<&ProductionHarnessState>,
+    event: &PointerEvent,
+) -> Result<ProductionHarnessState, EvolutionError> {
+    apply_pointer_event_with_retention(prior, event, HistoryRetention::LegacyEvictOldest)
+}
+
+fn apply_pointer_event_with_retention(
+    prior: Option<&ProductionHarnessState>,
+    event: &PointerEvent,
+    retention: HistoryRetention,
+) -> Result<ProductionHarnessState, EvolutionError> {
     let expected_sequence = prior.map_or(1, |state| state.sequence().saturating_add(1));
     let expected_head = prior.map(ProductionHarnessState::last_event);
     let expected_generation = prior.map_or(0, ProductionHarnessState::generation);
@@ -78,6 +99,7 @@ pub fn apply_pointer_event(
         event.id(),
         event.policy_digest(),
         kind,
+        retention,
     )?;
     state.refresh_digest();
     if state.generation() != event.successor_generation()
@@ -142,6 +164,7 @@ fn apply_kind(
     event_id: peritus_types::EventId,
     policy_digest: Sha256Digest,
     kind: &PointerCommandKind,
+    retention: HistoryRetention,
 ) -> Result<ProductionHarnessState, EvolutionError> {
     if let PointerCommandKind::InitializeProductionHarness {
         initial,
@@ -245,7 +268,7 @@ fn apply_kind(
             );
             state.current = successor;
             state.generation = generation;
-            append_history(&mut state, record)?;
+            append_history(&mut state, record, retention)?;
             state.pending = None;
             state.phase = PointerPhase::Active;
         }
@@ -254,12 +277,15 @@ fn apply_kind(
             if proposal.project_id() != state.project_id
                 || proposal.current() != state.current
                 || proposal.policy_digest() != state.policy.digest()
-                || !state.history.iter().any(|value| {
-                    value.id() == proposal.target_activation()
-                        && value.successor() == proposal.target()
-                })
+                || proposal.target() == state.current
+                || state
+                    .history
+                    .last()
+                    .is_none_or(|value| value.id() != proposal.rollback_of())
             {
-                return Err(binding("rollback proposal lost its retained target or current fence"));
+                return Err(binding(
+                    "rollback proposal lost its durable target identity or current fence",
+                ));
             }
             state.pending = Some(PendingActivation::Rollback(proposal.clone()));
             state.phase = PointerPhase::RollbackPending;
@@ -276,10 +302,11 @@ fn apply_kind(
             if proposal.id() != *rollback_id
                 || proposal.current() != state.current
                 || authorization.action_digest() != proposal.digest()
-                || !state.history.iter().any(|value| {
-                    value.id() == proposal.target_activation()
-                        && value.successor() == proposal.target()
-                })
+                || proposal.target() == state.current
+                || state
+                    .history
+                    .last()
+                    .is_none_or(|value| value.id() != proposal.rollback_of())
             {
                 return Err(binding(
                     "rollback activation differs from prepared action or authority",
@@ -302,7 +329,7 @@ fn apply_kind(
             );
             state.current = successor;
             state.generation = generation;
-            append_history(&mut state, record)?;
+            append_history(&mut state, record, retention)?;
             state.pending = None;
             state.phase = PointerPhase::Active;
         }
@@ -320,21 +347,36 @@ fn apply_kind(
 fn append_history(
     state: &mut ProductionHarnessState,
     record: crate::ActivationRecord,
+    retention: HistoryRetention,
 ) -> Result<(), EvolutionError> {
-    if state
-        .limits
-        .activation_history_limit()
-        .is_some_and(|limit| state.history.len() >= usize::from(limit))
-    {
-        return Err(EvolutionError::new(
-            EvolutionErrorKind::LimitExceeded,
-            EvolutionOperation::TransitionPointer,
-            EvolutionRecovery::SuccessorCampaign,
-            "pointer history policy requires an owner-approved scope expansion",
-        ));
+    if let Some(limit) = state.limits.activation_history_limit().map(usize::from) {
+        if state.history.len() > limit {
+            return Err(corrupt("pointer activation cache already exceeds its policy"));
+        }
+        if state.history.len() == limit {
+            match retention {
+                HistoryRetention::Preserve => {
+                    return Err(EvolutionError::new(
+                        EvolutionErrorKind::LimitExceeded,
+                        EvolutionOperation::TransitionPointer,
+                        EvolutionRecovery::SuccessorCampaign,
+                        "pointer history policy requires an owner-approved scope expansion",
+                    ));
+                }
+                HistoryRetention::LegacyEvictOldest => {
+                    state.history.remove(0);
+                }
+            }
+        }
     }
     state.history.push(record);
     Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum HistoryRetention {
+    Preserve,
+    LegacyEvictOldest,
 }
 
 fn require_active(state: &ProductionHarnessState) -> Result<(), EvolutionError> {

@@ -203,7 +203,10 @@ impl ProductionHarnessState {
     pub const fn phase(&self) -> PointerPhase {
         self.phase
     }
-    /// Canonical retained activation suffix in chronological order.
+    /// Canonical checkpoint activation cache in chronological order.
+    ///
+    /// New states preserve the complete history. Legacy finite checkpoints can contain a suffix;
+    /// durable rollback eligibility is resolved through [`crate::DurableActivationHistory`].
     #[must_use]
     pub fn history(&self) -> &[ActivationRecord] {
         &self.history

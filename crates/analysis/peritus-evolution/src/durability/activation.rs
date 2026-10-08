@@ -22,7 +22,8 @@ use super::{
     campaign_aggregate_key, campaign_state_key,
     directive::pointer_outbox,
     pointer::{
-        artifact_dependencies as pointer_artifacts, validate_current as validate_pointer_current,
+        artifact_dependencies as pointer_artifacts, validate_atomic_pointer_history,
+        validate_current as validate_pointer_current,
     },
     pointer_aggregate_key, pointer_state_key,
 };
@@ -210,6 +211,11 @@ pub fn commit_atomic_activation_with_storage(
     let pointer_current =
         journal.state_record(POINTER_STATE_NAMESPACE, &pointer_key).map_err(journal_error)?;
     validate_pointer_current(journal, pointer_command, pointer_head, pointer_current.as_ref())?;
+    validate_atomic_pointer_history(
+        journal,
+        pointer_command,
+        crate::runtime::approval_use_digest(&approval),
+    )?;
     let mut heads = vec![expectation(pointer_aggregate, pointer_head)];
     if let Some((campaign_command, _)) = campaign {
         let campaign_aggregate = campaign_aggregate_key(campaign_command.campaign_id())?;

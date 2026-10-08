@@ -5,11 +5,13 @@ use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
     HeadExpectation, SqliteJournal,
 };
-use peritus_types::EventSequence;
+use peritus_types::{EventSequence, ProjectId, Sha256Digest};
 
 use crate::{
-    EvolutionError, EvolutionStorageLimits, PointerCommand, PointerCommandKind, PointerTransition,
-    ProductionHarnessState,
+    ActivationId, CompatibilityWitness, DurableActivationHistory, DurableActivationOrigin,
+    EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery,
+    EvolutionStorageLimits, PendingActivation, PointerCommand, PointerCommandKind,
+    PointerTransition, ProductionHarnessState, RollbackProposal,
     wire::{PointerCommandFrame, PointerEventFrame},
 };
 
@@ -76,6 +78,7 @@ pub fn commit_pointer_transition_with_storage(
     let current =
         journal.state_record(POINTER_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
     validate_current(journal, command, head, current.as_ref())?;
+    validate_durable_rollback(journal, command)?;
     let event = transition.event();
     let draft = EventDraft::new(
         aggregate,
@@ -138,6 +141,48 @@ pub fn resolve_pointer_receipt(
         }
         CommandResolution::DefinitelyAbsent => Ok(None),
     }
+}
+
+/// Reconstructs the complete immutable activation ledger for one project.
+///
+/// # Errors
+/// Rejects malformed events, missing historical checkpoints, legacy histories that do not exactly
+/// match the former eviction rule, or contradictory activation provenance.
+pub fn recover_activation_history(
+    journal: &SqliteJournal,
+    project_id: ProjectId,
+) -> Result<DurableActivationHistory, EvolutionError> {
+    Ok(super::replay::recover_pointer(journal, project_id)?
+        .activation_history()
+        .clone())
+}
+
+/// Resolves one exact activation from immutable C0 history rather than the checkpoint cache.
+///
+/// # Errors
+/// Rejects any malformed or contradictory pointer history. Absence is explicit.
+pub fn resolve_activation_origin(
+    journal: &SqliteJournal,
+    project_id: ProjectId,
+    activation_id: ActivationId,
+) -> Result<Option<DurableActivationOrigin>, EvolutionError> {
+    Ok(recover_activation_history(journal, project_id)?.origin(activation_id).cloned())
+}
+
+/// Constructs a compatibility-checked rollback proposal from a durable activation origin.
+///
+/// # Errors
+/// Rejects an absent target, stale current state, policy drift, or incompatible evidence.
+pub fn prepare_rollback_proposal(
+    journal: &SqliteJournal,
+    state: &ProductionHarnessState,
+    target_activation: ActivationId,
+    witness: CompatibilityWitness,
+    evidence_bundle_artifact: Sha256Digest,
+) -> Result<RollbackProposal, EvolutionError> {
+    let origin = resolve_activation_origin(journal, state.project_id(), target_activation)?
+        .ok_or_else(missing_origin)?;
+    RollbackProposal::new_from_origin(state, &origin, witness, evidence_bundle_artifact)
 }
 
 pub(super) fn pointer_event_revision_digest(
@@ -207,6 +252,86 @@ pub(super) fn validate_current(
     Ok(())
 }
 
+pub(super) fn validate_durable_rollback(
+    journal: &SqliteJournal,
+    command: &PointerCommand,
+) -> Result<(), EvolutionError> {
+    if !matches!(
+        command.kind(),
+        PointerCommandKind::PrepareRollback(_) | PointerCommandKind::ActivateRollback { .. }
+    ) {
+        return Ok(());
+    }
+    let replay = super::replay::recover_pointer(journal, command.project_id())?;
+    validate_replay_fence(&replay, command)?;
+    validate_replay_rollback(&replay, command)
+}
+
+pub(super) fn validate_atomic_pointer_history(
+    journal: &SqliteJournal,
+    command: &PointerCommand,
+    approval_use_digest: Sha256Digest,
+) -> Result<(), EvolutionError> {
+    let replay = super::replay::recover_pointer(journal, command.project_id())?;
+    validate_replay_fence(&replay, command)?;
+    validate_replay_rollback(&replay, command)?;
+    if replay.activation_history().contains_approval_use(approval_use_digest) {
+        return Err(binding::binding(
+            "atomic activation reuses authority retained by durable activation history",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_replay_fence(
+    replay: &super::replay::PointerReplay,
+    command: &PointerCommand,
+) -> Result<(), EvolutionError> {
+    let state = replay
+        .state()
+        .ok_or_else(|| binding::binding("pointer command has no durable predecessor"))?;
+    if replay.store_id() == replay.activation_history().store_id()
+        && state.project_id() == command.project_id()
+        && state.sequence() == command.expected_sequence()
+        && Some(state.last_event()) == command.expected_head()
+        && state.generation() == command.expected_generation()
+        && state.state_digest() == command.prior_state_digest()
+        && state.policy().digest() == command.policy_digest()
+    {
+        Ok(())
+    } else {
+        Err(binding::binding(
+            "pointer command fence differs from reconstructed durable history",
+        ))
+    }
+}
+
+fn validate_replay_rollback(
+    replay: &super::replay::PointerReplay,
+    command: &PointerCommand,
+) -> Result<(), EvolutionError> {
+    let proposal = match command.kind() {
+        PointerCommandKind::PrepareRollback(proposal) => Some(proposal),
+        PointerCommandKind::ActivateRollback { rollback_id, .. } => {
+            match replay.state().and_then(|state| state.pending()) {
+                Some(PendingActivation::Rollback(proposal)) if proposal.id() == *rollback_id => {
+                    Some(proposal)
+                }
+                _ => None,
+            }
+        }
+        _ => return Ok(()),
+    }
+    .ok_or_else(|| binding::binding("rollback command has no exact durable prepared action"))?;
+    if replay.activation_history().validates_proposal(proposal) {
+        Ok(())
+    } else {
+        Err(binding::binding(
+            "rollback target has no exact immutable activation origin",
+        ))
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn resolve_existing(
     journal: &SqliteJournal,
@@ -243,4 +368,13 @@ fn resolve_existing(
     } else {
         Err(recovery("resolved pointer checkpoint differs from successor"))
     }
+}
+
+const fn missing_origin() -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::PolicyRejected,
+        EvolutionOperation::Rollback,
+        EvolutionRecovery::ObtainEvidence,
+        "rollback target is absent from immutable activation history",
+    )
 }

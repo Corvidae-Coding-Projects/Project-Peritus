@@ -6,6 +6,7 @@ mod publication;
 mod recovery;
 
 use peritus_journal::{CommittedApprovalUse, CommittedBatch, SqliteJournal};
+use peritus_types::{ProjectId, Sha256Digest};
 
 pub use artifact::{FinalizedEvolutionArtifact, finalize_evolution_artifact};
 pub(crate) use authority::approval_use_digest;
@@ -14,11 +15,13 @@ pub use publication::{EvolutionPublication, publish_claimed_evolution};
 pub use recovery::{EvolutionRecoveryDecision, EvolutionRecoveryObservation, decide_recovery};
 
 use crate::{
-    AtomicActivation, CampaignCommand, CampaignState, CampaignTransition, EvolutionError,
+    ActivationId, AtomicActivation, CampaignCommand, CampaignState, CampaignTransition,
+    CompatibilityWitness, DurableActivationHistory, DurableActivationOrigin, EvolutionError,
     EvolutionStorageLimits, PointerCommand, PointerTransition, ProductionHarnessState,
-    commit_atomic_activation_with_storage,
+    RollbackProposal, commit_atomic_activation_with_storage,
     commit_campaign_transition_with_storage, commit_pointer_transition_with_storage,
-    decide_campaign, decide_pointer, resolve_campaign_receipt, resolve_pointer_receipt,
+    decide_campaign, decide_pointer, prepare_rollback_proposal, recover_activation_history,
+    resolve_activation_origin, resolve_campaign_receipt, resolve_pointer_receipt,
 };
 
 /// Production F0 facade over one externally owned C0 journal connection.
@@ -63,6 +66,49 @@ impl<'a> EvolutionRuntime<'a> {
         command: &PointerCommand,
     ) -> Result<Option<CommittedBatch>, EvolutionError> {
         resolve_pointer_receipt(&*self.journal, command)
+    }
+
+    /// Reconstructs the complete immutable activation ledger for one project.
+    ///
+    /// # Errors
+    /// Rejects any malformed event, historical checkpoint, origin, or legacy eviction record.
+    pub fn activation_history(
+        &mut self,
+        project_id: ProjectId,
+    ) -> Result<DurableActivationHistory, EvolutionError> {
+        recover_activation_history(&*self.journal, project_id)
+    }
+
+    /// Resolves one exact rollback target independently of the current checkpoint cache.
+    ///
+    /// # Errors
+    /// Rejects contradictory durable history. Absence remains explicit.
+    pub fn activation_origin(
+        &mut self,
+        project_id: ProjectId,
+        activation_id: ActivationId,
+    ) -> Result<Option<DurableActivationOrigin>, EvolutionError> {
+        resolve_activation_origin(&*self.journal, project_id, activation_id)
+    }
+
+    /// Builds a rollback proposal from an exact durable origin and compatibility witness.
+    ///
+    /// # Errors
+    /// Rejects an absent target, stale current pointer, policy drift, or incompatibility.
+    pub fn prepare_rollback(
+        &mut self,
+        state: &ProductionHarnessState,
+        target_activation: ActivationId,
+        witness: CompatibilityWitness,
+        evidence_bundle_artifact: Sha256Digest,
+    ) -> Result<RollbackProposal, EvolutionError> {
+        prepare_rollback_proposal(
+            &*self.journal,
+            state,
+            target_activation,
+            witness,
+            evidence_bundle_artifact,
+        )
     }
 
     /// Resolves an exact receipt before deciding and committing a new campaign command.
