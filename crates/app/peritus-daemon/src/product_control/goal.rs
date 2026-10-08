@@ -10,7 +10,7 @@ use peritus_product_runner::control::{
 };
 use peritus_types::{ActorId, RunId, WorkspaceId};
 
-use replay::{apply_versioned_tool_goal, equivalent_host_intent, goal_tool_key};
+use replay::{apply_versioned_tool_goal, equivalent_host_intent};
 
 /// Stable goal meaning that must remain true across off-lane obligation work.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -226,8 +226,9 @@ impl ControlStore {
             self,
             start,
             &record,
-            goal_tool_key(b"tool-reserve-v2", attempt, role, invocation, sequence),
-            goal_key(b"tool-reserve", attempt, &sequence.to_be_bytes()),
+            role,
+            invocation,
+            sequence,
             intent,
         )?;
         let next_goal = exact_goal(&next, goal_id)?;
@@ -261,8 +262,9 @@ impl ControlStore {
             self,
             start,
             &record,
-            goal_tool_key(b"tool-complete-v2", attempt, role, invocation, sequence),
-            goal_key(b"tool-complete", attempt, &sequence.to_be_bytes()),
+            role,
+            invocation,
+            sequence,
             intent,
         )?;
         Ok(state_admission(exact_goal(&next, goal_id)?.state()))

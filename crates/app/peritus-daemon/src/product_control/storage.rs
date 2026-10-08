@@ -1,16 +1,18 @@
 //! Exact operation replay, scoped C0 ownership, and restart-safe state publication.
 
 use super::ControlStoreError as Error;
-use peritus_codec::sha256;
+use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};
 use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendPlan, AppendRequest, CommandResolution,
-    EventDraft, HeadExpectation, JournalCancellation, SqliteJournal, StateInstall, StoreId,
+    EventDraft, ExactFrame, HeadExpectation, JournalCancellation, SqliteJournal, StateInstall,
+    StoreId,
 };
 use peritus_product_runner::control::{
     ControlError, ControlIntent, ControlOperation, ControlReceipt, ConversationId,
     ConversationRecord, OperationId,
 };
 use peritus_types::{CommandId, EventId, EventSequence, RunId, WorkspaceId};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     fs::{File, OpenOptions},
@@ -29,6 +31,34 @@ const REPLY_DESCRIPTOR_NAMESPACE: u16 = 3487;
 const IMAGE_DESCRIPTOR_NAMESPACE: u16 = 3488;
 const FILE_DESCRIPTOR_NAMESPACE: u16 = 3490;
 const HOST_GOAL_OPERATION_NAMESPACE: u16 = 3420;
+const HOST_GOAL_MIGRATION_NAMESPACE: u16 = 3421;
+const HOST_GOAL_MIGRATION_FRAME_FAMILY: u16 = 3421;
+const HOST_GOAL_MIGRATION_SCHEMA: u16 = 1;
+const LEGACY_GOAL_TOOL_IDENTITY_SCHEMA: u16 = 1;
+const CURRENT_GOAL_TOOL_IDENTITY_SCHEMA: u16 = 2;
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HostGoalMigration {
+    schema: u16,
+    source_identity_schema: u16,
+    target_identity_schema: u16,
+    conversation: ConversationId,
+    legacy_reserve: OperationId,
+    legacy_complete: OperationId,
+    current_reserve: OperationId,
+    current_complete: OperationId,
+    legacy_reserve_payload_digest: [u8; 32],
+    legacy_complete_payload_digest: [u8; 32],
+    legacy_reserve_receipt_digest: [u8; 32],
+    legacy_complete_receipt_digest: [u8; 32],
+    legacy_reserve_revision: u64,
+    legacy_complete_revision: u64,
+    root_revision: u64,
+    root_digest: [u8; 32],
+    root_producing_position: u64,
+    root_event: EventId,
+}
 
 mod checkpoints;
 pub use checkpoints::snapshot::CheckpointSnapshots;
@@ -988,6 +1018,335 @@ impl ControlStore {
         )
     }
 
+    pub(super) fn resolve_host_goal_migration(
+        &self,
+        legacy_reserve: OperationId,
+        legacy_complete: OperationId,
+        current_reserve: OperationId,
+        current_complete: OperationId,
+    ) -> Result<Option<(ControlOperation, ControlOperation)>, Error> {
+        let Some(row) = self
+            .journal
+            .state_record(HOST_GOAL_MIGRATION_NAMESPACE, legacy_reserve.as_bytes())?
+        else {
+            return Ok(None);
+        };
+        if row.revision() != 1 {
+            return Err(Error::Corrupt("invalid host goal migration revision"));
+        }
+        let migration: HostGoalMigration = serde_json::from_slice(row.bytes())
+            .map_err(|_| Error::Corrupt("invalid host goal migration"))?;
+        if serde_json::to_vec(&migration)
+            .map_err(|_| Error::Corrupt("cannot encode host goal migration"))?
+            != row.bytes()
+        {
+            return Err(Error::Corrupt("noncanonical host goal migration"));
+        }
+        if migration.schema != HOST_GOAL_MIGRATION_SCHEMA
+            || migration.source_identity_schema != LEGACY_GOAL_TOOL_IDENTITY_SCHEMA
+            || migration.target_identity_schema != CURRENT_GOAL_TOOL_IDENTITY_SCHEMA
+        {
+            return Err(ControlError::UnsupportedSchema.into());
+        }
+        if (
+            migration.legacy_reserve,
+            migration.legacy_complete,
+            migration.current_reserve,
+            migration.current_complete,
+        ) != (legacy_reserve, legacy_complete, current_reserve, current_complete)
+        {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
+        if self.host_goal_operation(current_reserve)?.is_some()
+            || self.host_goal_operation(current_complete)?.is_some()
+        {
+            return Err(Error::Corrupt(
+                "migrated goal tool identity also has a current operation",
+            ));
+        }
+
+        let migration_id = host_goal_migration_id(
+            legacy_reserve,
+            legacy_complete,
+            current_reserve,
+            current_complete,
+        )?;
+        let command = host_goal_migration_command_id(migration_id)?;
+        let batch = match self.journal.resolve_command(command, sha256(row.bytes()))? {
+            CommandResolution::DefinitelyAbsent => {
+                return Err(Error::Corrupt("host goal migration command is absent"));
+            }
+            CommandResolution::Conflict { .. } => {
+                return Err(ControlError::IdempotencyConflict.into());
+            }
+            CommandResolution::Committed(batch) => batch,
+        };
+        let [record] = batch.records() else {
+            return Err(Error::Corrupt("host goal migration event count is invalid"));
+        };
+        let aggregate = host_goal_migration_aggregate(migration_id)?;
+        let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
+            .map_err(|_| Error::Corrupt("invalid host goal migration frame"))?;
+        if row.producing_position() != batch.last_position()
+            || record.global_position() != batch.last_position()
+            || record.aggregate() != aggregate
+            || record.sequence().get() != 1
+            || record.previous_event_id().is_some()
+            || record.command_id() != command
+            || record.event_id() != host_goal_migration_event_id(migration_id)?
+            || frame.header().family() != HOST_GOAL_MIGRATION_FRAME_FAMILY
+            || frame.header().schema_version() != HOST_GOAL_MIGRATION_SCHEMA
+            || frame.payload() != row.bytes()
+            || record.revision_digest().into_bytes() != migration.root_digest
+        {
+            return Err(Error::Corrupt("host goal migration event does not match its state"));
+        }
+
+        let legacy_reserve_operation = self
+            .host_goal_operation(legacy_reserve)?
+            .ok_or(Error::Corrupt("migrated legacy goal tool reservation is absent"))?;
+        let legacy_complete_operation = self
+            .host_goal_operation(legacy_complete)?
+            .ok_or(Error::Corrupt("migrated legacy goal tool settlement is absent"))?;
+        let reserve_receipt = self
+            .resolve(&legacy_reserve_operation)?
+            .ok_or(Error::Corrupt("legacy goal tool reservation is unresolved"))?;
+        let complete_receipt = self
+            .resolve(&legacy_complete_operation)?
+            .ok_or(Error::Corrupt("legacy goal tool settlement is unresolved"))?;
+        if legacy_reserve_operation.conversation() != migration.conversation
+            || legacy_complete_operation.conversation() != migration.conversation
+            || reserve_receipt.payload_digest().into_bytes()
+                != migration.legacy_reserve_payload_digest
+            || complete_receipt.payload_digest().into_bytes()
+                != migration.legacy_complete_payload_digest
+            || sha256(&reserve_receipt.canonical_bytes()?).into_bytes()
+                != migration.legacy_reserve_receipt_digest
+            || sha256(&complete_receipt.canonical_bytes()?).into_bytes()
+                != migration.legacy_complete_receipt_digest
+            || reserve_receipt.accepted_revision() != migration.legacy_reserve_revision
+            || complete_receipt.accepted_revision() != migration.legacy_complete_revision
+            || reserve_receipt.accepted_revision() >= complete_receipt.accepted_revision()
+        {
+            return Err(Error::Corrupt(
+                "host goal migration differs from its legacy evidence",
+            ));
+        }
+
+        let root = self
+            .journal
+            .state_record_revision(
+                ROOT_NAMESPACE,
+                migration.conversation.as_bytes(),
+                migration.root_revision,
+            )?
+            .ok_or(Error::Corrupt("host goal migration recovery root is absent"))?;
+        let root_event = self
+            .journal
+            .aggregate_events_after(
+                aggregate(migration.conversation)?,
+                migration
+                    .root_revision
+                    .checked_sub(1)
+                    .ok_or(Error::Corrupt("host goal migration root revision is zero"))?,
+                1,
+            )?
+            .into_iter()
+            .next()
+            .ok_or(Error::Corrupt("host goal migration root event is absent"))?;
+        if root.digest().into_bytes() != migration.root_digest
+            || root.producing_position() != migration.root_producing_position
+            || root_event.global_position() != migration.root_producing_position
+            || root_event.event_id() != migration.root_event
+            || root_event.sequence().get() != migration.root_revision
+            || record.causal_parents()
+                != host_goal_migration_parents(
+                    &legacy_reserve_operation,
+                    &legacy_complete_operation,
+                    migration.root_event,
+                )?
+        {
+            return Err(Error::Corrupt(
+                "host goal migration recovery root does not match its evidence",
+            ));
+        }
+        Ok(Some((legacy_reserve_operation, legacy_complete_operation)))
+    }
+
+    #[allow(clippy::too_many_arguments, reason = "both identity generations stay explicit")]
+    pub(super) fn migrate_host_goal_operations(
+        &mut self,
+        start: &ControlOperation,
+        current: &ConversationRecord,
+        current_reserve: OperationId,
+        current_complete: OperationId,
+        legacy_reserve: &ControlOperation,
+        legacy_complete: &ControlOperation,
+    ) -> Result<(), Error> {
+        self.require_operation_scope(start)?;
+        self.require_operation_scope(legacy_reserve)?;
+        self.require_operation_scope(legacy_complete)?;
+        let _commit = self.generation.acquire_commit(&self.cancellation)?;
+        if self
+            .resolve_host_goal_migration(
+                legacy_reserve.id(),
+                legacy_complete.id(),
+                current_reserve,
+                current_complete,
+            )?
+            .is_some()
+        {
+            return Ok(());
+        }
+        if self.host_goal_operation(current_reserve)?.is_some()
+            || self.host_goal_operation(current_complete)?.is_some()
+        {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
+        if self.load(start.conversation())?.as_ref() != Some(current) {
+            return Err(ControlError::StaleRevision.into());
+        }
+        let reserve_receipt = self
+            .resolve(legacy_reserve)?
+            .ok_or(Error::Corrupt("legacy goal tool reservation is unresolved"))?;
+        let complete_receipt = self
+            .resolve(legacy_complete)?
+            .ok_or(Error::Corrupt("legacy goal tool settlement is unresolved"))?;
+        if legacy_reserve.conversation() != start.conversation()
+            || legacy_complete.conversation() != start.conversation()
+            || legacy_reserve.actor_bytes() != start.actor_bytes()
+            || legacy_complete.actor_bytes() != start.actor_bytes()
+            || legacy_reserve.workspace_bytes() != start.workspace_bytes()
+            || legacy_complete.workspace_bytes() != start.workspace_bytes()
+            || reserve_receipt.accepted_revision() >= complete_receipt.accepted_revision()
+        {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
+
+        let root = self
+            .journal
+            .state_record(ROOT_NAMESPACE, start.conversation().as_bytes())?
+            .ok_or(Error::Corrupt("goal tool migration has no recovery root"))?;
+        if root.revision() != current.revision() {
+            return Err(ControlError::StaleRevision.into());
+        }
+        let control_aggregate = aggregate(start.conversation())?;
+        let root_event = self
+            .journal
+            .aggregate_events_after(
+                control_aggregate,
+                root.revision()
+                    .checked_sub(1)
+                    .ok_or(Error::Corrupt("goal tool migration root revision is zero"))?,
+                1,
+            )?
+            .into_iter()
+            .next()
+            .ok_or(Error::Corrupt("goal tool migration root event is absent"))?;
+        let head = self
+            .journal
+            .head(control_aggregate)?
+            .ok_or(Error::Corrupt("goal tool migration conversation head is absent"))?;
+        if head.sequence().get() != root.revision()
+            || head.event_id() != root_event.event_id()
+            || root_event.global_position() != root.producing_position()
+        {
+            return Err(Error::Corrupt(
+                "goal tool migration recovery root and head disagree",
+            ));
+        }
+
+        let migration = HostGoalMigration {
+            schema: HOST_GOAL_MIGRATION_SCHEMA,
+            source_identity_schema: LEGACY_GOAL_TOOL_IDENTITY_SCHEMA,
+            target_identity_schema: CURRENT_GOAL_TOOL_IDENTITY_SCHEMA,
+            conversation: start.conversation(),
+            legacy_reserve: legacy_reserve.id(),
+            legacy_complete: legacy_complete.id(),
+            current_reserve,
+            current_complete,
+            legacy_reserve_payload_digest: reserve_receipt.payload_digest().into_bytes(),
+            legacy_complete_payload_digest: complete_receipt.payload_digest().into_bytes(),
+            legacy_reserve_receipt_digest: sha256(&reserve_receipt.canonical_bytes()?)
+                .into_bytes(),
+            legacy_complete_receipt_digest: sha256(&complete_receipt.canonical_bytes()?)
+                .into_bytes(),
+            legacy_reserve_revision: reserve_receipt.accepted_revision(),
+            legacy_complete_revision: complete_receipt.accepted_revision(),
+            root_revision: root.revision(),
+            root_digest: root.digest().into_bytes(),
+            root_producing_position: root.producing_position(),
+            root_event: root_event.event_id(),
+        };
+        let bytes = serde_json::to_vec(&migration)
+            .map_err(|_| Error::Corrupt("cannot encode host goal migration"))?;
+        let migration_id = host_goal_migration_id(
+            legacy_reserve.id(),
+            legacy_complete.id(),
+            current_reserve,
+            current_complete,
+        )?;
+        let migration_aggregate = host_goal_migration_aggregate(migration_id)?;
+        let command = host_goal_migration_command_id(migration_id)?;
+        let event = EventDraft::new(
+            migration_aggregate,
+            EventSequence::new(1).map_err(|_| ControlError::Capacity)?,
+            host_goal_migration_event_id(migration_id)?,
+            None,
+            ExactFrame::new(
+                encode_frame(
+                    HOST_GOAL_MIGRATION_FRAME_FAMILY,
+                    HOST_GOAL_MIGRATION_SCHEMA,
+                    &bytes,
+                    CodecLimits::PRODUCTION,
+                )
+                .map_err(|_| Error::Corrupt("cannot encode host goal migration frame"))?,
+            )?,
+            root.digest(),
+            host_goal_migration_parents(legacy_reserve, legacy_complete, root_event.event_id())?,
+        )?;
+        let install = StateInstall::new(
+            HOST_GOAL_MIGRATION_NAMESPACE,
+            legacy_reserve.id().as_bytes().to_vec(),
+            None,
+            1,
+            bytes.clone(),
+        )?;
+        let plan = AppendRequest::new(
+            self.store,
+            command,
+            sha256(&bytes),
+            vec![HeadExpectation::Absent(migration_aggregate)],
+            vec![event],
+            vec![install],
+            Vec::new(),
+            None,
+            None,
+            Vec::new(),
+        )
+        .plan()?;
+        if let Err(error) = self.journal.append(plan)
+            && self
+                .resolve_host_goal_migration(
+                    legacy_reserve.id(),
+                    legacy_complete.id(),
+                    current_reserve,
+                    current_complete,
+                )?
+                .is_none()
+        {
+            return Err(error.into());
+        }
+        self.resolve_host_goal_migration(
+            legacy_reserve.id(),
+            legacy_complete.id(),
+            current_reserve,
+            current_complete,
+        )?
+        .ok_or(Error::Corrupt("committed host goal migration is absent"))?;
+        Ok(())
+    }
+
     pub(super) fn accept_archived(
         &mut self,
         operation: &ControlOperation,
@@ -1155,6 +1514,55 @@ impl ControlStore {
 
 fn contention_pause() {
     std::thread::sleep(Duration::from_millis(1));
+}
+
+fn host_goal_migration_id(
+    legacy_reserve: OperationId,
+    legacy_complete: OperationId,
+    current_reserve: OperationId,
+    current_complete: OperationId,
+) -> Result<OperationId, Error> {
+    let mut binding = b"peritus-workbench/goal-tool-identity-migration/v1".to_vec();
+    for id in [legacy_reserve, legacy_complete, current_reserve, current_complete] {
+        binding.extend_from_slice(id.as_bytes());
+    }
+    let digest = sha256(&binding);
+    let mut bytes = [0; 16];
+    bytes.copy_from_slice(&digest.as_bytes()[..16]);
+    bytes[0] |= 1;
+    Ok(OperationId::new(bytes)?)
+}
+
+fn host_goal_migration_command_id(id: OperationId) -> Result<CommandId, Error> {
+    CommandId::new(*id.as_bytes()).map_err(|_| ControlError::InvalidInput.into())
+}
+
+fn host_goal_migration_aggregate(id: OperationId) -> Result<AggregateKey, Error> {
+    Ok(AggregateKey::new(
+        AggregateKind::Application,
+        AggregateId::new(*id.as_bytes())?,
+    ))
+}
+
+fn host_goal_migration_event_id(id: OperationId) -> Result<EventId, Error> {
+    let mut binding = b"peritus-workbench/goal-tool-identity-migration-event/v1".to_vec();
+    binding.extend_from_slice(id.as_bytes());
+    let digest = sha256(&binding);
+    let mut bytes = [0; 16];
+    bytes.copy_from_slice(&digest.as_bytes()[..16]);
+    bytes[0] |= 1;
+    EventId::new(bytes).map_err(|_| ControlError::InvalidInput.into())
+}
+
+fn host_goal_migration_parents(
+    legacy_reserve: &ControlOperation,
+    legacy_complete: &ControlOperation,
+    root: EventId,
+) -> Result<Vec<EventId>, Error> {
+    let mut parents = vec![event_id(legacy_reserve)?, event_id(legacy_complete)?, root];
+    parents.sort_unstable();
+    parents.dedup();
+    Ok(parents)
 }
 
 fn aggregate(id: ConversationId) -> Result<AggregateKey, Error> {

@@ -6,22 +6,205 @@ use peritus_product_runner::control::{
 
 use super::{ControlStore, Error, goal_key, host_operation_id};
 
+struct GoalToolIdentity {
+    role: GoalRole,
+    current_reserve_key: Vec<u8>,
+    current_complete_key: Vec<u8>,
+    current_reserve: peritus_product_runner::control::OperationId,
+    current_complete: peritus_product_runner::control::OperationId,
+    legacy_reserve: peritus_product_runner::control::OperationId,
+    legacy_complete: peritus_product_runner::control::OperationId,
+}
+
 pub(super) fn apply_versioned_tool_goal(
     store: &mut ControlStore,
     start: &ControlOperation,
     current: &ConversationRecord,
-    semantic_key: Vec<u8>,
-    legacy_key: Vec<u8>,
+    role: GoalRole,
+    invocation: &str,
+    sequence: u32,
     intent: ControlIntent,
 ) -> Result<ConversationRecord, Error> {
-    let current_id = host_operation_id(start.id(), &semantic_key)?;
-    if store.host_goal_operation(current_id)?.is_none() {
-        let legacy_id = host_operation_id(start.id(), &legacy_key)?;
-        if store.host_goal_operation(legacy_id)?.is_some() {
-            return Err(ControlError::UnsupportedSchema.into());
+    let identity = GoalToolIdentity::new(start, role, invocation, sequence, &intent)?;
+    let current_id = identity.current_id(&intent)?;
+    let current_operation = store.host_goal_operation(current_id)?;
+    let migration = store.resolve_host_goal_migration(
+        identity.legacy_reserve,
+        identity.legacy_complete,
+        identity.current_reserve,
+        identity.current_complete,
+    )?;
+    match (current_operation, migration) {
+        (Some(_), Some(_)) => {
+            return Err(Error::Corrupt(
+                "goal tool identity has both an operation and a migration",
+            ));
+        }
+        (Some(_), None) => {
+            return store.apply_host_goal(
+                start,
+                current,
+                identity.current_key(&intent)?,
+                intent,
+            );
+        }
+        (None, Some((legacy_reserve, legacy_complete))) => {
+            validate_legacy_pair(
+                start,
+                identity.role,
+                &intent,
+                &legacy_reserve,
+                &legacy_complete,
+            )?;
+            return store
+                .load(start.conversation())?
+                .ok_or_else(|| ControlError::NotFound.into());
+        }
+        (None, None) => {}
+    }
+
+    let legacy_reserve = store.host_goal_operation(identity.legacy_reserve)?;
+    let legacy_complete = store.host_goal_operation(identity.legacy_complete)?;
+    match (legacy_reserve, legacy_complete) {
+        (None, None) => store.apply_host_goal(
+            start,
+            current,
+            identity.current_key(&intent)?,
+            intent,
+        ),
+        (Some(_), None) => Err(ControlError::NotFound.into()),
+        (None, Some(_)) => Err(Error::Corrupt(
+            "legacy goal tool settlement has no reservation",
+        )),
+        (Some(legacy_reserve), Some(legacy_complete)) => {
+            validate_legacy_pair(
+                start,
+                identity.role,
+                &intent,
+                &legacy_reserve,
+                &legacy_complete,
+            )?;
+            store.migrate_host_goal_operations(
+                start,
+                current,
+                identity.current_reserve,
+                identity.current_complete,
+                &legacy_reserve,
+                &legacy_complete,
+            )?;
+            store
+                .load(start.conversation())?
+                .ok_or_else(|| ControlError::NotFound.into())
         }
     }
-    store.apply_host_goal(start, current, semantic_key, intent)
+}
+
+impl GoalToolIdentity {
+    fn new(
+        start: &ControlOperation,
+        role: GoalRole,
+        invocation: &str,
+        sequence: u32,
+        intent: &ControlIntent,
+    ) -> Result<Self, Error> {
+        let attempt = match intent {
+            ControlIntent::ReserveGoalTool { attempt, .. }
+            | ControlIntent::CompleteGoalTool { attempt, .. } => *attempt,
+            _ => return Err(ControlError::InvalidInput.into()),
+        };
+        let current_reserve_key =
+            goal_tool_key(b"tool-reserve-v2", attempt, role, invocation, sequence);
+        let current_complete_key =
+            goal_tool_key(b"tool-complete-v2", attempt, role, invocation, sequence);
+        Ok(Self {
+            role,
+            current_reserve: host_operation_id(start.id(), &current_reserve_key)?,
+            current_complete: host_operation_id(start.id(), &current_complete_key)?,
+            current_reserve_key,
+            current_complete_key,
+            legacy_reserve: host_operation_id(
+                start.id(),
+                &goal_key(b"tool-reserve", attempt, &sequence.to_be_bytes()),
+            )?,
+            legacy_complete: host_operation_id(
+                start.id(),
+                &goal_key(b"tool-complete", attempt, &sequence.to_be_bytes()),
+            )?,
+        })
+    }
+
+    fn current_id(
+        &self,
+        intent: &ControlIntent,
+    ) -> Result<peritus_product_runner::control::OperationId, Error> {
+        match intent {
+            ControlIntent::ReserveGoalTool { .. } => Ok(self.current_reserve),
+            ControlIntent::CompleteGoalTool { .. } => Ok(self.current_complete),
+            _ => Err(ControlError::InvalidInput.into()),
+        }
+    }
+
+    fn current_key(&self, intent: &ControlIntent) -> Result<Vec<u8>, Error> {
+        match intent {
+            ControlIntent::ReserveGoalTool { .. } => Ok(self.current_reserve_key.clone()),
+            ControlIntent::CompleteGoalTool { .. } => Ok(self.current_complete_key.clone()),
+            _ => return Err(ControlError::InvalidInput.into()),
+        }
+    }
+}
+
+fn validate_legacy_pair(
+    start: &ControlOperation,
+    role: GoalRole,
+    requested: &ControlIntent,
+    reserve: &ControlOperation,
+    complete: &ControlOperation,
+) -> Result<(), Error> {
+    for operation in [reserve, complete] {
+        if operation.conversation() != start.conversation()
+            || operation.actor_bytes() != start.actor_bytes()
+            || operation.workspace_bytes() != start.workspace_bytes()
+        {
+            return Err(ControlError::ScopeMismatch.into());
+        }
+    }
+    let (goal, attempt, mutation_capable) = match reserve.intent() {
+        ControlIntent::ReserveGoalTool {
+            goal,
+            role: legacy_role,
+            attempt,
+            mutation_capable,
+            ..
+        } if *legacy_role == role => (*goal, *attempt, *mutation_capable),
+        _ => return Err(ControlError::IdempotencyConflict.into()),
+    };
+    match complete.intent() {
+        ControlIntent::CompleteGoalTool {
+            goal: complete_goal,
+            attempt: complete_attempt,
+            ..
+        } if (*complete_goal, *complete_attempt) == (goal, attempt) => {}
+        _ => return Err(ControlError::IdempotencyConflict.into()),
+    }
+    match requested {
+        ControlIntent::ReserveGoalTool {
+            goal: requested_goal,
+            role: requested_role,
+            attempt: requested_attempt,
+            mutation_capable: requested_mutation,
+            ..
+        } if (*requested_goal, *requested_role, *requested_attempt, *requested_mutation)
+            == (goal, role, attempt, mutation_capable) =>
+        {
+            Ok(())
+        }
+        ControlIntent::CompleteGoalTool {
+            goal: requested_goal,
+            attempt: requested_attempt,
+            ..
+        } if (*requested_goal, *requested_attempt) == (goal, attempt) => Ok(()),
+        _ => Err(ControlError::IdempotencyConflict.into()),
+    }
 }
 
 pub(super) fn goal_tool_key(
