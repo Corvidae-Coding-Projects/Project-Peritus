@@ -12,6 +12,7 @@ mod discovery;
 mod error;
 mod host;
 mod quota;
+mod state;
 mod transport;
 mod trust;
 
@@ -23,4 +24,8 @@ pub use cancellation::HostCancellation;
 pub use discovery::{DiscoveredPlugin, DiscoveryLimits, PluginCatalog, discover};
 pub use error::{HostError, HostFailureClass, RecoveryDisposition};
 pub use host::{HostConfig, PluginHost, PluginInvocationResult, PluginLifecycle, PluginSnapshot};
+pub use state::{
+    HostStateStore, InvocationEvidence, InvocationFrontier, PluginInstanceEvidence,
+    PluginInstanceFrontier, PluginInstanceId, ReconciliationResolution, StateOwnerId,
+};
 pub use trust::{DigestTrustStore, TrustDecision, TrustVerifier};

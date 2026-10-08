@@ -8,15 +8,18 @@ use peritus_plugin_sdk::{
     HostRequest, JsonWirePolicy, PluginQuotas, PluginRequestEnvelope, PluginResponseEnvelope,
     RequestId, decode_frame, encode_frame,
 };
+use sha2::{Digest as _, Sha256};
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
     process::{Child, ChildStdin, ChildStdout, Command},
-    sync::Mutex,
-    time::Sleep,
+    sync::{Mutex, MutexGuard},
+    time::{Instant, Sleep},
 };
 
 use crate::{
-    HostCancellation, HostError, HostFailureClass, RecoveryDisposition, quota::QuotaPermit,
+    HostCancellation, HostError, HostFailureClass, RecoveryDisposition,
+    quota::QuotaPermit,
+    state::InvocationClaim,
 };
 
 #[derive(Clone, Debug)]
@@ -32,6 +35,17 @@ pub struct PluginConnection {
     transaction: Mutex<()>,
     request_policy: JsonWirePolicy,
     response_policy: JsonWirePolicy,
+}
+
+pub(crate) struct PluginDispatch<'a> {
+    connection: &'a PluginConnection,
+    _transaction: MutexGuard<'a, ()>,
+    deadline: Option<Pin<Box<Sleep>>>,
+}
+
+pub(crate) struct PluginExchange {
+    pub(crate) response: PluginResponseEnvelope,
+    pub(crate) response_sha256: [u8; 32],
 }
 
 enum PhaseWait<T> {
@@ -109,17 +123,21 @@ impl PluginConnection {
         timeout: Option<Duration>,
         cancellation: &HostCancellation,
     ) -> Result<PluginResponseEnvelope, HostError> {
-        self.exchange_inner(request, timeout, cancellation, None).await
+        self.exchange_inner(request, timeout, cancellation).await.map(|exchange| exchange.response)
     }
 
-    pub(crate) async fn exchange_admitted(
+    pub(crate) async fn admit_dispatch(
         &self,
-        request: PluginRequestEnvelope,
         timeout: Option<Duration>,
         cancellation: &HostCancellation,
-        permit: &mut QuotaPermit<'_>,
-    ) -> Result<PluginResponseEnvelope, HostError> {
-        self.exchange_inner(request, timeout, cancellation, Some(permit)).await
+    ) -> Result<PluginDispatch<'_>, HostError> {
+        let mut deadline = timeout.map(|timeout| Box::pin(tokio::time::sleep(timeout)));
+        let transaction = match await_phase(self.transaction.lock(), &mut deadline, cancellation).await {
+            PhaseWait::Cancelled => return Err(cancelled_before_send()),
+            PhaseWait::TimedOut => return Err(timeout_before_send()),
+            PhaseWait::Completed(transaction) => transaction,
+        };
+        Ok(PluginDispatch { connection: self, _transaction: transaction, deadline })
     }
 
     async fn exchange_inner(
@@ -127,8 +145,7 @@ impl PluginConnection {
         request: PluginRequestEnvelope,
         timeout: Option<Duration>,
         cancellation: &HostCancellation,
-        mut permit: Option<&mut QuotaPermit<'_>>,
-    ) -> Result<PluginResponseEnvelope, HostError> {
+    ) -> Result<PluginExchange, HostError> {
         let mut deadline = timeout.map(|timeout| Box::pin(tokio::time::sleep(timeout)));
         let _transaction = match await_phase(
             self.transaction.lock(),
@@ -141,6 +158,17 @@ impl PluginConnection {
             PhaseWait::TimedOut => return Err(timeout_before_send()),
             PhaseWait::Completed(transaction) => transaction,
         };
+        self.exchange_locked(request, cancellation, &mut deadline, None, None).await
+    }
+
+    async fn exchange_locked(
+        &self,
+        request: PluginRequestEnvelope,
+        cancellation: &HostCancellation,
+        deadline: &mut Option<Pin<Box<Sleep>>>,
+        mut permit: Option<&mut QuotaPermit<'_>>,
+        claim: Option<&InvocationClaim>,
+    ) -> Result<PluginExchange, HostError> {
         let frame = encode_frame(&request, self.request_policy).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
@@ -150,29 +178,57 @@ impl PluginConnection {
                 error,
             )
         })?;
-        let mut stdin = match await_phase(self.stdin.lock(), &mut deadline, cancellation).await {
-            PhaseWait::Cancelled => return Err(cancelled_before_send()),
-            PhaseWait::TimedOut => return Err(timeout_before_send()),
+        let mut stdin = match await_phase(self.stdin.lock(), deadline, cancellation).await {
+            PhaseWait::Cancelled => {
+                if let Err(error) = mark_prepared_unsent(claim) {
+                    return Err(self.end_unsent_transport_failure(error).await);
+                }
+                return Err(cancelled_before_send());
+            }
+            PhaseWait::TimedOut => {
+                if let Err(error) = mark_prepared_unsent(claim) {
+                    return Err(self.end_unsent_transport_failure(error).await);
+                }
+                return Err(timeout_before_send());
+            }
             PhaseWait::Completed(stdin) => stdin,
         };
-        let written = match await_phase(stdin.write(&frame), &mut deadline, cancellation).await {
+        if let Some(claim) = claim {
+            if let Err(error) = claim.mark_dispatching() {
+                drop(stdin);
+                return Err(self.end_unsent_transport_failure(error).await);
+            }
+        }
+        let written = match await_phase(stdin.write(&frame), deadline, cancellation).await {
             PhaseWait::Cancelled => {
                 drop(stdin);
+                if let Err(error) = mark_dispatch_unsent(claim) {
+                    return Err(self.end_unsent_transport_failure(error).await);
+                }
                 return Err(cancelled_before_send());
             }
             PhaseWait::TimedOut => {
                 drop(stdin);
+                if let Err(error) = mark_dispatch_unsent(claim) {
+                    return Err(self.end_unsent_transport_failure(error).await);
+                }
                 return Err(timeout_before_send());
             }
             PhaseWait::Completed(Ok(written)) => written,
             PhaseWait::Completed(Err(error)) => {
                 drop(stdin);
+                if let Err(state_error) = mark_dispatch_unsent(claim) {
+                    return Err(self.end_unsent_transport_failure(state_error).await);
+                }
                 let failure = io_error("write plugin request", error);
                 return Err(self.end_unsent_transport_failure(failure).await);
             }
         };
         if written == 0 {
             drop(stdin);
+            if let Err(error) = mark_dispatch_unsent(claim) {
+                return Err(self.end_unsent_transport_failure(error).await);
+            }
             let failure = io_error(
                 "write plugin request",
                 std::io::Error::new(
@@ -185,7 +241,13 @@ impl PluginConnection {
         if let Some(permit) = permit.as_mut() {
             permit.admit();
         }
-        match await_phase(stdin.write_all(&frame[written..]), &mut deadline, cancellation).await {
+        if let Some(claim) = claim {
+            if let Err(error) = claim.mark_accepted() {
+                drop(stdin);
+                return Err(self.end_indeterminate_failure(error).await);
+            }
+        }
+        match await_phase(stdin.write_all(&frame[written..]), deadline, cancellation).await {
             PhaseWait::Cancelled => {
                 drop(stdin);
                 return Err(self
@@ -205,7 +267,7 @@ impl PluginConnection {
                 return Err(self.end_indeterminate_failure(failure).await);
             }
         }
-        match await_phase(stdin.flush(), &mut deadline, cancellation).await {
+        match await_phase(stdin.flush(), deadline, cancellation).await {
             PhaseWait::Cancelled => {
                 drop(stdin);
                 return Err(self
@@ -226,7 +288,7 @@ impl PluginConnection {
             }
         }
         drop(stdin);
-        let response = match await_phase(self.read(), &mut deadline, cancellation).await {
+        let exchange = match await_phase(self.read(), deadline, cancellation).await {
             PhaseWait::Cancelled => {
                 return Err(self
                     .end_aborted_exchange(&request, false, true)
@@ -237,13 +299,13 @@ impl PluginConnection {
                     .end_aborted_exchange(&request, true, true)
                     .await);
             }
-            PhaseWait::Completed(Ok(response)) => response,
+            PhaseWait::Completed(Ok(exchange)) => exchange,
             PhaseWait::Completed(Err(error)) => {
                 return Err(self.end_indeterminate_failure(error).await);
             }
         };
-        if response.request_id != request.request_id
-            || response.protocol_version != request.protocol_version
+        if exchange.response.request_id != request.request_id
+            || exchange.response.protocol_version != request.protocol_version
         {
             let failure = HostError::new(
                 HostFailureClass::Protocol,
@@ -253,7 +315,12 @@ impl PluginConnection {
             );
             return Err(self.end_indeterminate_failure(failure).await);
         }
-        Ok(response)
+        if let Some(claim) = claim {
+            if let Err(error) = claim.mark_responded(exchange.response_sha256) {
+                return Err(self.end_indeterminate_failure(error).await);
+            }
+        }
+        Ok(exchange)
     }
 
     async fn end_aborted_exchange(
@@ -379,7 +446,7 @@ impl PluginConnection {
         stdin.flush().await.map_err(|error| io_error("flush plugin request", error))
     }
 
-    async fn read(&self) -> Result<PluginResponseEnvelope, HostError> {
+    async fn read(&self) -> Result<PluginExchange, HostError> {
         let mut stdout = self.stdout.lock().await;
         let mut header = [0_u8; 4];
         stdout
@@ -406,7 +473,7 @@ impl PluginConnection {
             .await
             .map_err(|error| io_error("read plugin response body", error))?;
         drop(stdout);
-        decode_frame(&frame, self.response_policy).map_err(|error| {
+        let response = decode_frame(&frame, self.response_policy).map_err(|error| {
             HostError::with_source(
                 HostFailureClass::Protocol,
                 RecoveryDisposition::RestartPlugin,
@@ -414,8 +481,85 @@ impl PluginConnection {
                 error.to_string(),
                 error,
             )
-        })
+        })?;
+        let response_sha256 = Sha256::digest(&frame).into();
+        Ok(PluginExchange { response, response_sha256 })
     }
+}
+
+impl PluginDispatch<'_> {
+    pub(crate) async fn await_before_send<F, T>(
+        &mut self,
+        future: F,
+        cancellation: &HostCancellation,
+    ) -> Result<T, HostError>
+    where
+        F: Future<Output = Result<T, HostError>>,
+    {
+        match await_phase(future, &mut self.deadline, cancellation).await {
+            PhaseWait::Cancelled => Err(cancelled_before_send()),
+            PhaseWait::TimedOut => Err(timeout_before_send()),
+            PhaseWait::Completed(result) => result,
+        }
+    }
+
+    pub(crate) fn narrow_timeout(&mut self, timeout: Option<Duration>) {
+        let Some(timeout) = timeout else { return };
+        let candidate = Instant::now() + timeout;
+        match self.deadline.as_mut() {
+            Some(deadline) if candidate < deadline.deadline() => deadline.as_mut().reset(candidate),
+            Some(_) => {}
+            None => self.deadline = Some(Box::pin(tokio::time::sleep_until(candidate))),
+        }
+    }
+
+    pub(crate) fn request_sha256(
+        &self,
+        request: &PluginRequestEnvelope,
+    ) -> Result<[u8; 32], HostError> {
+        let frame = encode_frame(request, self.connection.request_policy).map_err(|error| {
+            HostError::with_source(
+                HostFailureClass::Protocol,
+                RecoveryDisposition::CorrectRequest,
+                "encode plugin request identity",
+                error.to_string(),
+                error,
+            )
+        })?;
+        Ok(Sha256::digest(frame).into())
+    }
+
+    pub(crate) async fn exchange_admitted(
+        mut self,
+        request: PluginRequestEnvelope,
+        cancellation: &HostCancellation,
+        permit: &mut QuotaPermit<'_>,
+        claim: &InvocationClaim,
+    ) -> Result<PluginExchange, HostError> {
+        self.connection
+            .exchange_locked(
+                request,
+                cancellation,
+                &mut self.deadline,
+                Some(permit),
+                Some(claim),
+            )
+            .await
+    }
+}
+
+fn mark_prepared_unsent(claim: Option<&InvocationClaim>) -> Result<(), HostError> {
+    if let Some(claim) = claim {
+        claim.mark_prepared_unsent()?;
+    }
+    Ok(())
+}
+
+fn mark_dispatch_unsent(claim: Option<&InvocationClaim>) -> Result<(), HostError> {
+    if let Some(claim) = claim {
+        claim.mark_unsent()?;
+    }
+    Ok(())
 }
 
 async fn await_phase<F>(

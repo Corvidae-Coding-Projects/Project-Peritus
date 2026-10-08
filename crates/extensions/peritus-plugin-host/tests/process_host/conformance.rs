@@ -75,9 +75,14 @@ async fn trust_required(
         fixture.catalog.clone(),
         Arc::new(Allow),
         Arc::new(DigestTrustStore::new()),
+        HostStateStore::open(
+            &fixture.state_root,
+            StateOwnerId::new("process-host-fixture").expect("state owner id"),
+        )
+        .expect("host state store"),
     );
     let denied = hosted
-        .start(&fixture.id, fixture.version)
+        .start(&fixture.id, fixture.version, instance_id())
         .await
         .is_err_and(|error| error.class() == HostFailureClass::Trust);
     let empty = hosted.snapshots().await.is_empty();
@@ -100,7 +105,7 @@ async fn authority_denied(
 ) -> Result<PluginConformanceObservation, PluginConformanceError> {
     let hosted = host(fixture, Arc::new(Deny), 4_096);
     hosted
-        .start(&fixture.id, fixture.version)
+        .start(&fixture.id, fixture.version, instance_id())
         .await
         .map_err(|_| PluginConformanceError::Infrastructure)?;
     let denied = hosted
@@ -134,7 +139,7 @@ async fn lifecycle(
 ) -> Result<PluginConformanceObservation, PluginConformanceError> {
     let hosted = host(fixture, Arc::new(Allow), 4_096);
     hosted
-        .start(&fixture.id, fixture.version)
+        .start(&fixture.id, fixture.version, instance_id())
         .await
         .map_err(|_| PluginConformanceError::Infrastructure)?;
     let succeeded = hosted
@@ -172,7 +177,7 @@ async fn observe_failure(
     let output = if mode == "oversize" { 128 } else { 4_096 };
     let hosted = host(fixture, Arc::new(Allow), output);
     hosted
-        .start(&fixture.id, fixture.version)
+        .start(&fixture.id, fixture.version, instance_id())
         .await
         .map_err(|_| PluginConformanceError::Infrastructure)?;
     let failed = hosted
@@ -206,7 +211,7 @@ async fn observe_cancellation(
 ) -> Result<PluginConformanceObservation, PluginConformanceError> {
     let hosted = Arc::new(host(fixture, Arc::new(Allow), 4_096));
     hosted
-        .start(&fixture.id, fixture.version)
+        .start(&fixture.id, fixture.version, instance_id())
         .await
         .map_err(|_| PluginConformanceError::Infrastructure)?;
     let cancellation = HostCancellation::new();

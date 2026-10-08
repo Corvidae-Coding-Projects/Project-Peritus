@@ -13,8 +13,9 @@ use std::{
 
 use peritus_plugin_host::{
     AuthorityDecision, AuthorityMediator, AuthorityRequest, DigestTrustStore, DiscoveryLimits,
-    HostCancellation, HostConfig, HostError, HostFailureClass, HostFuture, InvocationGrant,
-    InvocationSubject, PluginHost, PluginInvocationResult, PluginLifecycle, discover,
+    HostCancellation, HostConfig, HostError, HostFailureClass, HostFuture, HostStateStore,
+    InvocationGrant, InvocationSubject, PluginHost, PluginInstanceId, PluginInvocationResult,
+    PluginLifecycle, StateOwnerId, discover,
 };
 use peritus_plugin_sdk::{
     CumulativeQuota, JsonBounds, JsonPayload, JsonStructure, PluginId, PluginQuotas,
@@ -153,6 +154,7 @@ impl AuthorityMediator for Deny {
 struct Fixture {
     _temporary: TempDir,
     root: PathBuf,
+    state_root: PathBuf,
     catalog: peritus_plugin_host::PluginCatalog,
     id: PluginId,
     version: PluginVersion,
@@ -162,6 +164,7 @@ impl Fixture {
     fn new() -> Self {
         let temporary = tempfile::tempdir().expect("temporary plugin root");
         let root = temporary.path().join("plugins");
+        let state_root = temporary.path().join("host-state");
         let plugin = root.join("fixture");
         fs::create_dir_all(&plugin).expect("plugin directory");
         fs::write(plugin.join("peritus-plugin.toml"), MANIFEST).expect("manifest");
@@ -176,6 +179,7 @@ impl Fixture {
         Self {
             _temporary: temporary,
             root,
+            state_root,
             catalog,
             id: PluginId::new("corvidae.fixture").expect("plugin id"),
             version: PluginVersion::new(1, 0, 0),
@@ -243,12 +247,22 @@ where
 }
 
 fn host(fixture: &Fixture, authority: Arc<dyn AuthorityMediator>, output_bytes: u64) -> PluginHost {
+    let state = HostStateStore::open(
+        &fixture.state_root,
+        StateOwnerId::new("process-host-fixture").expect("state owner id"),
+    )
+    .expect("host state store");
     PluginHost::new(
         Fixture::config(output_bytes),
         fixture.catalog.clone(),
         authority,
         Arc::new(fixture.trust()),
+        state,
     )
+}
+
+fn instance_id() -> PluginInstanceId {
+    PluginInstanceId::new("fixture-process-1").expect("plugin instance id")
 }
 
 #[test]
@@ -264,16 +278,25 @@ fn discovery_trust_lifecycle_and_invocation_are_real_process_boundaries() {
             fixture.catalog.clone(),
             Arc::new(Allow),
             Arc::new(DigestTrustStore::new()),
+            HostStateStore::open(
+                &fixture.state_root,
+                StateOwnerId::new("process-host-fixture").expect("state owner id"),
+            )
+            .expect("host state store"),
         );
         let error = untrusted
-            .start(&fixture.id, fixture.version)
+            .start(&fixture.id, fixture.version, instance_id())
             .await
             .expect_err("untrusted plugin rejected");
         assert_eq!(error.class(), HostFailureClass::Trust);
         assert!(untrusted.snapshots().await.is_empty());
+        drop(untrusted);
 
         let trusted = host(&fixture, Arc::new(Allow), 4_096);
-        trusted.start(&fixture.id, fixture.version).await.expect("start trusted plugin");
+        trusted
+            .start(&fixture.id, fixture.version, instance_id())
+            .await
+            .expect("start trusted plugin");
         let snapshots = trusted.snapshots().await;
         assert_eq!(snapshots.len(), 1);
         assert_eq!(snapshots[0].lifecycle, PluginLifecycle::Ready);
@@ -306,7 +329,10 @@ fn authority_denial_occurs_before_plugin_effect() {
     run_async(async {
         let fixture = Fixture::new();
         let denied = host(&fixture, Arc::new(Deny), 4_096);
-        denied.start(&fixture.id, fixture.version).await.expect("start plugin");
+        denied
+            .start(&fixture.id, fixture.version, instance_id())
+            .await
+            .expect("start plugin");
         let error = denied
             .invoke(
                 &fixture.id,
@@ -332,12 +358,16 @@ fn host_output_ceiling_and_duplicate_start_are_enforced() {
         let left = {
             let hosted = Arc::clone(&hosted);
             let id = fixture.id.clone();
-            tokio::spawn(async move { hosted.start(&id, PluginVersion::new(1, 0, 0)).await })
+            tokio::spawn(async move {
+                hosted.start(&id, PluginVersion::new(1, 0, 0), instance_id()).await
+            })
         };
         let right = {
             let hosted = Arc::clone(&hosted);
             let id = fixture.id.clone();
-            tokio::spawn(async move { hosted.start(&id, PluginVersion::new(1, 0, 0)).await })
+            tokio::spawn(async move {
+                hosted.start(&id, PluginVersion::new(1, 0, 0), instance_id()).await
+            })
         };
         let outcomes = [left.await.expect("left join"), right.await.expect("right join")];
         assert_eq!(outcomes.iter().filter(|result| result.is_ok()).count(), 1);
@@ -363,7 +393,10 @@ fn cancellation_terminates_the_owned_plugin_process() {
     run_async(async {
         let fixture = Fixture::new();
         let hosted = Arc::new(host(&fixture, Arc::new(Allow), 4_096));
-        hosted.start(&fixture.id, fixture.version).await.expect("start plugin");
+        hosted
+            .start(&fixture.id, fixture.version, instance_id())
+            .await
+            .expect("start plugin");
         let cancellation = HostCancellation::new();
         let invocation = {
             let hosted = Arc::clone(&hosted);

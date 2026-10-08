@@ -11,9 +11,10 @@ use tokio::sync::Mutex;
 
 use crate::{
     AuthorityDecision, AuthorityMediator, AuthorityRequest, DiscoveredPlugin, HostCancellation,
-    HostError, HostFailureClass, InvocationGrant, InvocationSubject, PluginCatalog,
-    RecoveryDisposition, TrustDecision, TrustVerifier,
+    HostError, HostFailureClass, HostStateStore, InvocationGrant, InvocationSubject, PluginCatalog,
+    PluginInstanceFrontier, PluginInstanceId, RecoveryDisposition, TrustDecision, TrustVerifier,
     quota::QuotaLedger,
+    state::authority_fingerprint,
     transport::{LaunchPlan, PluginConnection, internal_request_id},
 };
 
@@ -54,6 +55,8 @@ pub struct PluginSnapshot {
     pub id: PluginId,
     /// Exact plugin version.
     pub version: PluginVersion,
+    /// Caller-generated identity of the exact owned process.
+    pub instance_id: PluginInstanceId,
     /// Current host-owned lifecycle.
     pub lifecycle: PluginLifecycle,
     /// Active invocation count.
@@ -87,6 +90,7 @@ struct PluginInstance {
     protocol_version: u16,
     lifecycle: Mutex<PluginLifecycle>,
     trust_anchor: String,
+    instance_id: PluginInstanceId,
 }
 
 /// Bounded registry and lifecycle owner for isolated plugins.
@@ -97,6 +101,7 @@ pub struct PluginHost {
     trust: Arc<dyn TrustVerifier>,
     start_gate: Mutex<()>,
     instances: Mutex<BTreeMap<PluginId, Arc<PluginInstance>>>,
+    state: HostStateStore,
 }
 
 impl PluginHost {
@@ -107,6 +112,7 @@ impl PluginHost {
         catalog: PluginCatalog,
         authority: Arc<dyn AuthorityMediator>,
         trust: Arc<dyn TrustVerifier>,
+        state: HostStateStore,
     ) -> Self {
         Self {
             config,
@@ -115,6 +121,7 @@ impl PluginHost {
             trust,
             start_gate: Mutex::new(()),
             instances: Mutex::new(BTreeMap::new()),
+            state,
         }
     }
 
@@ -124,7 +131,12 @@ impl PluginHost {
     ///
     /// Rejects unknown/already-running plugins, missing trust, launch failure, timeout, or an
     /// invalid initialization response.
-    pub async fn start(&self, id: &PluginId, version: PluginVersion) -> Result<(), HostError> {
+    pub async fn start(
+        &self,
+        id: &PluginId,
+        version: PluginVersion,
+        instance_id: PluginInstanceId,
+    ) -> Result<(), HostError> {
         let _start = self.start_gate.lock().await;
         if self.instances.lock().await.contains_key(id) {
             return Err(HostError::new(
@@ -172,8 +184,15 @@ impl PluginHost {
                 "selected host ceilings are not representable by plugin protocol version one",
             ));
         }
+        self.state.register_instance(&discovered, &instance_id)?;
         let plan = self.launch_plan(&discovered);
-        let connection = PluginConnection::spawn(plan, quotas, protocol_version)?;
+        let connection = match PluginConnection::spawn(plan, quotas, protocol_version) {
+            Ok(connection) => connection,
+            Err(error) => {
+                self.state.transition_instance(id, &instance_id, PluginInstanceFrontier::Failed)?;
+                return Err(error);
+            }
+        };
         let instance = Arc::new(PluginInstance {
             discovered,
             connection,
@@ -181,6 +200,7 @@ impl PluginHost {
             protocol_version,
             lifecycle: Mutex::new(PluginLifecycle::Starting),
             trust_anchor,
+            instance_id,
         });
         let initialize = PluginRequestEnvelope {
             protocol_version,
@@ -207,12 +227,36 @@ impl PluginHost {
                     PluginResponse::Status { status: PluginStatus::Ready }
                 ) =>
             {
+                if let Err(error) = self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Ready,
+                ) {
+                    let termination = instance.connection.terminate().await;
+                    let failed = self.state.transition_instance(
+                        id,
+                        &instance.instance_id,
+                        PluginInstanceFrontier::Failed,
+                    );
+                    if let Err(termination) = termination {
+                        return Err(termination);
+                    }
+                    failed?;
+                    return Err(error);
+                }
                 *instance.lifecycle.lock().await = PluginLifecycle::Ready;
                 self.instances.lock().await.insert(id.clone(), instance);
                 Ok(())
             }
             Ok(_) => {
-                instance.connection.terminate().await?;
+                let termination = instance.connection.terminate().await;
+                let failed = self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Failed,
+                );
+                termination?;
+                failed?;
                 Err(HostError::new(
                     HostFailureClass::Protocol,
                     RecoveryDisposition::CorrectRequest,
@@ -221,7 +265,14 @@ impl PluginHost {
                 ))
             }
             Err(error) => {
-                instance.connection.terminate().await?;
+                let termination = instance.connection.terminate().await;
+                let failed = self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Failed,
+                );
+                termination?;
+                failed?;
                 Err(error)
             }
         }
@@ -243,9 +294,6 @@ impl PluginHost {
         cancellation: &HostCancellation,
     ) -> Result<PluginInvocationResult, HostError> {
         let instance = self.instance(plugin_id).await?;
-        if *instance.lifecycle.lock().await != PluginLifecycle::Ready {
-            return Err(unavailable("plugin is not in the ready lifecycle state"));
-        }
         let capability = instance
             .discovered
             .manifest()
@@ -253,8 +301,26 @@ impl PluginHost {
             .iter()
             .find(|candidate| candidate.name() == capability_name)
             .ok_or_else(|| authorization_error("plugin capability was not declared"))?;
-        let decision =
-            self.authority.authorize(AuthorityRequest::new(plugin_id, capability, subject)).await?;
+        let mut permit = instance.quotas.reserve()?;
+        let local_timeout = instance
+            .quotas
+            .limits()
+            .invocation_millis
+            .map(Duration::from_millis);
+        let mut dispatch = instance
+            .connection
+            .admit_dispatch(local_timeout, cancellation)
+            .await?;
+        let mut lifecycle = instance.lifecycle.lock().await;
+        if *lifecycle != PluginLifecycle::Ready {
+            return Err(unavailable("plugin is not in the ready lifecycle state at dispatch"));
+        }
+        let decision = dispatch
+            .await_before_send(
+                self.authority.authorize(AuthorityRequest::new(plugin_id, capability, subject)),
+                cancellation,
+            )
+            .await?;
         let grant = match decision {
             AuthorityDecision::Authorized(grant) => grant,
             AuthorityDecision::Denied { code, detail } => {
@@ -267,6 +333,7 @@ impl PluginHost {
             }
         };
         validate_grant(capability_name, &grant)?;
+        dispatch.narrow_timeout(grant.deadline_millis().map(Duration::from_millis));
         let deadline_millis = min_optional_millis(
             instance.quotas.limits().invocation_millis,
             grant.deadline_millis(),
@@ -285,28 +352,57 @@ impl PluginHost {
             request_id,
             request: HostRequest::Invoke { capability: capability_name.to_owned(), input, context },
         };
-        let timeout = deadline_millis.map(Duration::from_millis);
-        let mut permit = instance.quotas.reserve()?;
-        let response = instance
-            .connection
-            .exchange_admitted(request, timeout, cancellation, &mut permit)
+        let command_sha256 = dispatch.request_sha256(&request)?;
+        let authority_sha256 = authority_fingerprint(subject, &grant, capability_name);
+        let claim = self.state.prepare_invocation(
+            &instance.discovered,
+            &instance.instance_id,
+            &request.request_id,
+            capability_name,
+            command_sha256,
+            authority_sha256,
+        )?;
+        let exchange = dispatch
+            .exchange_admitted(request, cancellation, &mut permit, &claim)
             .await;
-        let response = match response {
-            Ok(response) => response,
+        let exchange = match exchange {
+            Ok(exchange) => exchange,
             Err(error) => {
                 if permit.is_admitted() || error.class() == HostFailureClass::Infrastructure {
-                    *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                    *lifecycle = PluginLifecycle::Failed;
+                    if let Err(state_error) = self.state.transition_instance(
+                        plugin_id,
+                        &instance.instance_id,
+                        PluginInstanceFrontier::Failed,
+                    ) {
+                        return Err(HostError::with_source(
+                            error.class(),
+                            error.recovery(),
+                            "record failed plugin process",
+                            format!(
+                                "{error}; the durable failed-process transition also failed: {state_error}"
+                            ),
+                            error,
+                        ));
+                    }
                 }
                 return Err(error);
             }
         };
-        match response.response {
+        match exchange.response.response {
             PluginResponse::Success { output, rendering } => {
                 let output_size = output.canonical_bytes().len() as u64
                     + rendering.as_ref().map_or(0, |text| text.len() as u64);
                 if output_size > instance.quotas.limits().output_bytes {
-                    *instance.lifecycle.lock().await = PluginLifecycle::Failed;
-                    instance.connection.terminate().await?;
+                    *lifecycle = PluginLifecycle::Failed;
+                    let termination = instance.connection.terminate().await;
+                    let failed = self.state.transition_instance(
+                        plugin_id,
+                        &instance.instance_id,
+                        PluginInstanceFrontier::Failed,
+                    );
+                    termination?;
+                    failed?;
                     return Err(HostError::new(
                         HostFailureClass::Quota,
                         RecoveryDisposition::RestartPlugin,
@@ -326,12 +422,23 @@ impl PluginHost {
             PluginResponse::Status { status: PluginStatus::Cancelled } => {
                 Ok(PluginInvocationResult::Cancelled)
             }
-            PluginResponse::Status { .. } => Err(HostError::new(
-                HostFailureClass::Protocol,
-                RecoveryDisposition::RestartPlugin,
-                "accept plugin result",
-                "plugin returned a lifecycle status for an invocation",
-            )),
+            PluginResponse::Status { .. } => {
+                *lifecycle = PluginLifecycle::Failed;
+                let termination = instance.connection.terminate().await;
+                let failed = self.state.transition_instance(
+                    plugin_id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Failed,
+                );
+                termination?;
+                failed?;
+                Err(HostError::new(
+                    HostFailureClass::Protocol,
+                    RecoveryDisposition::RestartPlugin,
+                    "accept plugin result",
+                    "plugin returned a lifecycle status for an invocation",
+                ))
+            }
         }
     }
 
@@ -347,6 +454,11 @@ impl PluginHost {
             if matches!(*lifecycle, PluginLifecycle::Stopping | PluginLifecycle::Stopped) {
                 return Ok(());
             }
+            self.state.transition_instance(
+                id,
+                &instance.instance_id,
+                PluginInstanceFrontier::Stopping,
+            )?;
             *lifecycle = PluginLifecycle::Stopping;
         }
         let request = PluginRequestEnvelope {
@@ -364,6 +476,21 @@ impl PluginHost {
             .await;
         if let Err(error) = instance.connection.terminate().await {
             *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+            if let Err(state_error) = self.state.transition_instance(
+                id,
+                &instance.instance_id,
+                PluginInstanceFrontier::Failed,
+            ) {
+                return Err(HostError::with_source(
+                    HostFailureClass::Infrastructure,
+                    RecoveryDisposition::Reconcile,
+                    "terminate owned plugin",
+                    format!(
+                        "{error}; the durable failed-process transition also failed: {state_error}"
+                    ),
+                    error,
+                ));
+            }
             return Err(error);
         }
         self.instances.lock().await.remove(id);
@@ -374,11 +501,21 @@ impl PluginHost {
                     PluginResponse::Status { status: PluginStatus::Stopped }
                 ) =>
             {
+                self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Stopped,
+                )?;
                 *instance.lifecycle.lock().await = PluginLifecycle::Stopped;
                 Ok(())
             }
             Ok(_) => {
                 *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Failed,
+                )?;
                 Err(HostError::new(
                     HostFailureClass::Protocol,
                     RecoveryDisposition::None,
@@ -388,6 +525,11 @@ impl PluginHost {
             }
             Err(error) => {
                 *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+                self.state.transition_instance(
+                    id,
+                    &instance.instance_id,
+                    PluginInstanceFrontier::Failed,
+                )?;
                 Err(error)
             }
         }
@@ -401,6 +543,7 @@ impl PluginHost {
             snapshots.push(PluginSnapshot {
                 id: instance.discovered.manifest().id().clone(),
                 version: instance.discovered.manifest().version(),
+                instance_id: instance.instance_id.clone(),
                 lifecycle: *instance.lifecycle.lock().await,
                 active_requests: instance.quotas.active(),
                 lifecycle_requests: instance.quotas.used(),

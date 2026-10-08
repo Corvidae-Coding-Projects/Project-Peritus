@@ -12,13 +12,15 @@ readme = "README.md"
 [dependencies]
 peritus-plugin-sdk = { version = "=0.0.5", path = "../peritus-plugin-sdk" }
 peritus-policy = { version = "=0.0.5", path = "../../foundation/peritus-policy" }
+fs4.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 sha2.workspace = true
 tokio = { workspace = true, features = ["process"] }
 vstd.workspace = true
 
 [dev-dependencies]
 peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
-serde_json.workspace = true
 tempfile.workspace = true
 
 [package.metadata.peritus]
