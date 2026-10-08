@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L054] Selected run horizons also impose a separate phase-finalization reserve (#153)
 - [L471] Compatible profiles exclude all provider-side continuation and several unused capabilities (#549)
 - [L053] Failure to publish a waiting notice cancels provider work (#152)
 - [L470] Compatible API defaults retain finite retry and private production capacities (#548)
