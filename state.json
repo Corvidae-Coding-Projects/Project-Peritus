@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3995,
-        "tip_oid": "4e03d948ef4efaebee933a4f52a13d51d0f851d6",
-        "prefix_sha256": "862e64cb8969ae47b4311edd8177f5bffb9d1e8be83618ce4e00bb6d0b90ef8c"
+        "sequence": 3996,
+        "tip_oid": "550cd9b5b8874287065aadbd8106df5ec459f3f4",
+        "prefix_sha256": "0d631af343e51f1a0b250f0fd0d0b96fc2107d0d953d002e52451cb5860e06b3"
       },
       "NWAR": {
         "sequence": 39,
@@ -28730,12 +28730,13 @@
       "display_id": 140,
       "title": "[L041] Workspace inspection truncates or omits evidence",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L041.\n\n- `developer_tools/inspection.rs:31-68` lists at default depth **3**, clamped to **1..12**, and stops after **2,000 entries** with `truncated=true`. The response provides no continuation cursor in this file; callers can target narrower paths. Child errors are skipped.\n- Search at lines 99,127-150 returns default **200**, at most **1,000 matches**, silently skips files above **2 MiB**, unsupported/non-UTF-8 content and child I/O errors, and stops with `truncated=true` at its result ceiling.\n- Read at lines 168-185 defaults to **500 lines** and rejects an entire file above 2 MiB unless a line range was explicit. Selected individual line accumulation above **2 MiB** fails at lines 220-224. Multiple line output can grow before a separate `effect::limit` truncates it; `effect.rs:9,49-54` now verifies the separate **512 KiB output-prefix cap plus a truncation marker**; read replies retain the requested line interval despite that cut.\n- Effect: broad grounding can omit relevant files/content. Read replies retain requested start/end fields even after output truncation rather than the exact last displayed line in this function. Explicit pagination/narrowing can help, but this implementation does not establish full coverage from one successful observation.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.002823635Z",
-      "updated_at": "2026-10-08T02:50:47.278416847Z",
+      "updated_at": "2026-10-08T02:52:22.604609680Z",
+      "closed_at": "2026-10-08T02:52:22.601721866Z",
       "labels": [
         "daily-driving-limiter"
       ],
