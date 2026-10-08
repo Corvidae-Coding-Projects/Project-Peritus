@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4084,
-        "tip_oid": "d447c97e24bb1953018d892ced77a702e22a471b",
-        "prefix_sha256": "cb03601308d82263a2cbf2af0a51f368131c8def356bf13e5821939bc0c8be86"
+        "sequence": 4085,
+        "tip_oid": "958415aa829fa33d2a468bb4bff88158e87bbfa9",
+        "prefix_sha256": "9c4f74f2b133b073d91683da394e93d6e33ee1eed691eb865a55194172927e5f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3245,
+  "next_comment_id": 3246,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -34885,11 +34885,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.046037642Z",
-      "updated_at": "2026-10-06T13:19:08.048226918Z",
+      "updated_at": "2026-10-08T05:29:18.782022373Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "5bf203a3-3331-43f0-b416-911be7262480": {
+          "display_id": 3245,
+          "author": "6ME5",
+          "content": "Code complete in commit 1287de4e0. Same-provider safe recovery no longer depends on invocation count or workspace material progress. Retained task/role/profile/native context, transcript, grounding and obligations guide reconnect; configured media/provider switches carry explicit acceptance-safe transfer and preserve corrections. Ambiguous and unsafe terminal acceptance still requires reconciliation. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T05:29:18.773834858Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9UdWNkoMmTeMGea/Ae1RGTdZGxJW4dQU6umRke/Mn1u8+Tdy6h4k1GEneDXD+qElDYbyQriICD+bV+pz2iZ5Ag=="
+        },
         "cad5faf5-ec24-451d-a34f-8dd000298a05": {
           "display_id": 2222,
           "author": "6ME5",
