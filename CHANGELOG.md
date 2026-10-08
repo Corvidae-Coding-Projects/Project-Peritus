@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L057] Local context archive, record, and artifact storage capacities (#156)
 - [L056] Local-memory ownership has a separate 250 ms acquisition deadline (#155)
 - [L472] Compatible Retry-After parsing silently loses provider scheduling information (#550)
 - [L055] Conversation request identity narrows the durable revision range (#154)
