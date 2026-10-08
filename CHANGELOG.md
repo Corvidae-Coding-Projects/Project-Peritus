@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L475] Compatible rejection recovery waits for the entire error body first (#553)
 - [L060] Recovered torn trace data still blocks new context work (#159)
 - [L637] Filesystem dispatch is synchronous, loses error distinctions, and retains candidate handoff only in its live object (#688)
 - [L474] Compatible catalog discovery rejects safe configured queries and custom operation paths (#552)
