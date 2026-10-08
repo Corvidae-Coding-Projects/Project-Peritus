@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L463] C5 reconstruction materializes full bounded content before aggregate request checks (#541)
 - [L628] Projection installation compares generation ownership but does not check that its candidate still represents the current journal (#682)
 - [L627] Any journal advance forces an in-memory genesis rebuild rather than incremental continuation (#681)
 - [L048] File ownership can require a new run for deletion (#147)
