@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4070,
-        "tip_oid": "fb03f8270793a73608b3d4ff395db1a4494beba2",
-        "prefix_sha256": "63c99f86711657ae75879e083e6eef20f2e862f5b66ab181a7b4c97dc7f847b4"
+        "sequence": 4071,
+        "tip_oid": "2b25fc11981565aff7baf28b049dc506c4bc2a66",
+        "prefix_sha256": "23789333e208371f80ed47d84a90eb6ff7530ec393e7bef53bedecca20769120"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3238,
+  "next_comment_id": 3239,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32722,7 +32722,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.344465562Z",
-      "updated_at": "2026-10-06T13:27:51.346809785Z",
+      "updated_at": "2026-10-08T05:04:26.585578097Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32733,6 +32733,15 @@
           "content": "Systemic repair plan for L629: Malformed projection metadata bypasses the advertised reasoned rebuild plan.\n\nOwning contract and implementation boundary: crates/state/peritus-projection/src/sqlite/store.rs:80-125,157-209; src/catalog.rs:124-155; src/sqlite/swap.rs:178-191; tests/rebuild.rs:90-125. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nNormalize derived-catalog corruption into an explicit rebuild/containment plan, validate complete checkpoint metadata, and preserve original diagnostic bytes without treating projection corruption as a reason to repair valid journal history. Source review only; no tests run.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "db21fe1e-2834-4eca-acfc-52524881b876": {
+          "display_id": 3238,
+          "author": "6ME5",
+          "content": "Code complete in commit 6da5d1baf. Derived catalog corruption yields explicit containment/rebuild plans with immutable raw SQLite diagnostics, preserving journal authority and forensic/recovery roots. Typed reuse and install verify payload, invariant, count, frontier and complete metadata binding; legacy unbound state remains published until checked atomic migration replacement. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T05:04:26.577124149Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABATBlHQth497l3TuUlBs4Xm3NUXe5fo7KgRSvzgkaNmjT9S7txu/VygX7UgVFoOFcsjcLJB1ON30N7PHxXZyeyAg=="
         }
       }
     },
