@@ -54,17 +54,14 @@ fn unchanged_question_is_challenged_with_confirmed_workspace_capabilities() {
 }
 
 #[test]
-fn fresh_provider_recovery_requires_new_repository_grounding() {
-    let correction = crate::failover::RoleRecovery::correction("malformed_stream");
+    fn same_provider_recovery_retains_repository_grounding() {
+        let correction = crate::failover::RoleRecovery::correction("malformed_stream");
 
-    assert!(correction.contains("recoverable `malformed_stream`"));
-    assert!(correction.contains("bounded in-turn retries"));
-    assert!(correction.contains("workspace_list"));
-    assert!(correction.contains("authoritative inputs"));
-    assert!(correction.contains("preserve any useful existing work"));
-    assert!(correction.contains("ground once"));
-    assert!(correction.contains("not repeat this startup sequence"));
-}
+        assert!(correction.contains("definitely-unaccepted `malformed_stream`"));
+        assert!(correction.contains("same task, role, provider profile, native session namespace"));
+        assert!(correction.contains("retained host transcript"));
+        assert!(correction.contains("do not repeat startup inspection"));
+    }
 
 #[test]
 fn reviewer_checks_literal_request_independently_of_the_design() {

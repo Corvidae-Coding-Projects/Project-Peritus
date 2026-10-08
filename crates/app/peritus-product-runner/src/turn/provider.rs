@@ -6,13 +6,12 @@ use crate::ProductRunnerError;
 use crate::budget::RunAccounting;
 use crate::execution::ProductRunInput;
 use crate::failover::{ProviderCursor, RoleRecovery};
-use crate::progress::WorkspaceCheckpoint;
 
 use super::{DeveloperInvocation, developer_error};
 
 pub(super) enum ProviderResolution {
     Outcome(DeveloperLoopOutcome),
-    Retry(Option<&'static str>),
+    Retry(&'static str),
     ContinueSegment,
 }
 
@@ -21,7 +20,6 @@ pub(super) fn resolve(
     providers: &mut ProviderCursor<'_>,
     identity: DeveloperInvocation<'_>,
     result: Result<DeveloperLoopOutcome, DeveloperLoopError>,
-    checkpoint: &mut WorkspaceCheckpoint,
     recovery: &mut RoleRecovery,
     accounting: &mut RunAccounting,
 ) -> Result<ProviderResolution, ProductRunnerError> {
@@ -39,25 +37,16 @@ pub(super) fn resolve(
     if matches!(error, DeveloperLoopError::SegmentExhausted) {
         recovery.reset();
         accounting.record_role_retry()?;
-        return Ok(ProviderResolution::Retry(Some("segment_boundary")));
-    }
-    if RoleRecovery::may_continue_after_progress(&error) {
-        let current = input.checkpoint()?;
-        if current != *checkpoint {
-            *checkpoint = current;
-            recovery.reset();
-            accounting.record_role_retry()?;
-            return Ok(ProviderResolution::Retry(None));
-        }
+        return Ok(ProviderResolution::Retry("segment_boundary"));
     }
     if let Some(reason) = recovery.retry(&error) {
         accounting.record_role_retry()?;
-        return Ok(ProviderResolution::Retry(Some(reason)));
+        return Ok(ProviderResolution::Retry(reason));
     }
     if let Some(switch) = providers.advance(&error) {
         crate::failover::record_switch(input, identity.role, identity.cycle, accounting, switch)?;
         recovery.reset();
-        return Ok(ProviderResolution::Retry(Some("provider_transfer")));
+        return Ok(ProviderResolution::Retry("provider_transfer"));
     }
     Err(developer_error(&error))
 }
@@ -69,13 +58,14 @@ pub(super) fn apply(
 ) -> Option<DeveloperLoopOutcome> {
     match resolution {
         ProviderResolution::Outcome(result) => Some(result),
-        ProviderResolution::Retry(Some(reason)) => {
-            *correction = Some(RoleRecovery::correction(reason));
+        ProviderResolution::Retry("provider_transfer") => {
+            *correction = Some(RoleRecovery::transfer_correction(correction.as_deref()));
             *pending_question = None;
             None
         }
-        ProviderResolution::Retry(None) => {
-            (*correction, *pending_question) = (None, None);
+        ProviderResolution::Retry(reason) => {
+            *correction = Some(RoleRecovery::correction(reason));
+            *pending_question = None;
             None
         }
         ProviderResolution::ContinueSegment => None,

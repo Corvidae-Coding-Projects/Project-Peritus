@@ -130,6 +130,9 @@ pub async fn complete(
             Ok(media) => media,
             Err(error) if let Some(switch) = providers.advance_for_capability(&error) => {
                 crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
+                correction = Some(crate::failover::RoleRecovery::transfer_correction(
+                    correction.as_deref(),
+                ));
                 continue;
             }
             Err(error) => return Err(error),
@@ -242,7 +245,9 @@ pub async fn complete(
                 if let Some(switch) = providers.advance(&error) {
                     crate::failover::record_switch(input, "reviewer", cycle, accounting, switch)?;
                     provider_recovery.reset();
-                    correction = None;
+                    correction = Some(crate::failover::RoleRecovery::transfer_correction(
+                        correction.as_deref(),
+                    ));
                     continue;
                 }
                 return Err(turn::developer_error(&error));

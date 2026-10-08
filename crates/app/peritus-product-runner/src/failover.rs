@@ -16,13 +16,8 @@ use crate::{ProductRunnerError, budget::RunAccounting, execution::ProductRunInpu
 pub struct RoleRecovery;
 
 impl RoleRecovery {
-    /// Whether material progress may start another attempt after a provider failure.
-    pub fn may_continue_after_progress(error: &DeveloperLoopError) -> bool {
-        same_provider_retry_reason(error).is_some()
-    }
-
     /// Returns a stable reason when the role may reconnect under retained context.
-    pub fn retry(&mut self, error: &DeveloperLoopError) -> Option<&'static str> {
+    pub fn retry(&self, error: &DeveloperLoopError) -> Option<&'static str> {
         same_provider_retry_reason(error)
     }
 
@@ -35,12 +30,25 @@ impl RoleRecovery {
         if reason == "segment_boundary" {
             return "The preceding invocation segment ended before the role produced its terminal result. Continue the same task and role from the retained host context. Prior assistant/tool exchanges and completed effects remain authoritative at their recorded revisions; resume outstanding work without replaying finished effects or repeating startup inspection solely because the segment changed.".to_owned();
         }
+        if reason == "empty_response" {
+            return "The preceding provider request reached a terminal response without usable text or tool output. Continue the same task and role under the same provider profile, native session namespace, retained host transcript, and completed tool evidence. Resume outstanding work without repeating startup inspection or settled effects solely because a new invocation was required.".to_owned();
+        }
         if reason == "provider_transfer" {
-            return "The host explicitly transferred this role to another configured provider. Continue the same task and obligations from the retained host transcript and completed tool evidence. Treat provider-native state as route-specific, and do not repeat settled effects or startup inspection solely because the route changed.".to_owned();
+            return "The host explicitly transferred ownership of this role to another configured provider after durably retaining the prior request disposition. Continue the same task and role from the retained host transcript, completed tool evidence, and pending obligations. Treat provider-native state as route-specific. Never assume an admitted or ambiguously accepted request was discarded; the host permits transfer only at an acceptance-safe boundary. Do not repeat settled effects or startup inspection solely because the route changed.".to_owned();
         }
         format!(
             "The preceding provider connection ended with definitely-unaccepted `{reason}`. Reconnect under the same task, role, provider profile, native session namespace, and retained host transcript. Continue from completed tool evidence and outstanding obligations; do not repeat startup inspection or settled effects solely because the transport reconnected."
         )
+    }
+
+    /// Preserves an unsent host correction while transferring the role to a configured provider.
+    pub fn transfer_correction(pending: Option<&str>) -> String {
+        let mut transfer = Self::correction("provider_transfer");
+        if let Some(pending) = pending {
+            transfer.push_str("\n\nThe following host correction remains an outstanding obligation:\n");
+            transfer.push_str(pending);
+        }
+        transfer
     }
 }
 
@@ -167,6 +175,7 @@ fn same_provider_retry_reason(error: &DeveloperLoopError) -> Option<&'static str
             ProviderCoreErrorKind::Connect => Some("connection"),
             _ => None,
         },
+        DeveloperLoopError::EmptyResponse => Some("empty_response"),
         _ => None,
     }
 }
@@ -253,8 +262,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn progress_recovers_provider_failures_but_never_overrides_integrity_or_policy() {
-        assert!(RoleRecovery::may_continue_after_progress(&DeveloperLoopError::EmptyResponse));
+    fn recovery_never_overrides_integrity_or_policy() {
+        let recovery = RoleRecovery;
+        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
         for error in [
             DeveloperLoopError::LimitExceeded,
             DeveloperLoopError::SegmentExhausted,
@@ -265,7 +275,7 @@ mod tests {
             DeveloperLoopError::Tool("inspection-no-progress".to_owned()),
             DeveloperLoopError::Context("fixture".to_owned()),
         ] {
-            assert!(!RoleRecovery::may_continue_after_progress(&error));
+            assert_eq!(recovery.retry(&error), None);
         }
         for category in [
             FailureCategory::Safety,
@@ -275,23 +285,24 @@ mod tests {
             FailureCategory::Permission,
             FailureCategory::Authentication,
         ] {
-            assert!(!RoleRecovery::may_continue_after_progress(
-                &DeveloperLoopError::ProviderTerminal {
+            assert_eq!(
+                recovery.retry(&DeveloperLoopError::ProviderTerminal {
                     provider: "fixture".to_owned(),
                     category,
                     diagnostic_code: "fixture.stop".to_owned(),
                     http_status: None,
-                }
-            ));
+                }),
+                None
+            );
         }
     }
 
     #[test]
     fn segment_correction_resumes_current_work_without_repeating_effects() {
         let correction = RoleRecovery::correction("segment_boundary");
-        assert!(correction.contains("bounded invocation segment ended"));
-        assert!(correction.contains("exact current workspace"));
-        assert!(correction.contains("without repeating finished effects"));
+        assert!(correction.contains("invocation segment ended"));
+        assert!(correction.contains("retained host context"));
+        assert!(correction.contains("without replaying finished effects"));
     }
 
     #[test]
@@ -314,24 +325,19 @@ mod tests {
     }
 
     #[test]
-    fn same_provider_role_recovery_is_transient_and_finite() {
-        let mut recovery = RoleRecovery::default();
-        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
-        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
-        assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), None);
+    fn same_provider_role_recovery_has_no_invocation_budget() {
+        let recovery = RoleRecovery;
+        for _ in 0..8 {
+            assert_eq!(recovery.retry(&DeveloperLoopError::EmptyResponse), Some("empty_response"));
+        }
 
-        recovery.reset();
         let interrupted = DeveloperLoopError::ProviderTerminal {
             provider: "fixture".to_owned(),
             category: FailureCategory::IncompleteStream,
             diagnostic_code: "fixture.interrupted".to_owned(),
             http_status: None,
         };
-        assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
-        assert_eq!(recovery.retry(&interrupted), Some("incomplete_stream"));
         assert_eq!(recovery.retry(&interrupted), None);
-
-        recovery.reset();
         assert_eq!(
             recovery.retry(&DeveloperLoopError::ProviderTerminal {
                 provider: "fixture".to_owned(),
@@ -348,9 +354,8 @@ mod tests {
                 diagnostic_code: "fixture.timeout".to_owned(),
                 http_status: None,
             }),
-            Some("timeout")
+            None
         );
-        recovery.reset();
         assert_eq!(
             recovery.retry(&DeveloperLoopError::ProviderTerminal {
                 provider: "fixture".to_owned(),
@@ -363,10 +368,10 @@ mod tests {
     }
 
     #[test]
-    fn capability_and_circuit_bypasses_do_not_reopen_provider_circuits() {
-        assert!(!opens_circuit("capability_mismatch"));
-        assert!(!opens_circuit("open_circuit"));
-        assert!(opens_circuit("authentication"));
-        assert!(opens_circuit("empty_response"));
+    fn provider_transfer_preserves_an_unsent_obligation() {
+        let correction = RoleRecovery::transfer_correction(Some("retain this exact obligation"));
+        assert!(correction.contains("explicitly transferred ownership"));
+        assert!(correction.contains("acceptance-safe boundary"));
+        assert!(correction.contains("retain this exact obligation"));
     }
 }

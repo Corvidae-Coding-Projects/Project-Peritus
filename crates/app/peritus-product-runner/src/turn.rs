@@ -128,6 +128,10 @@ pub async fn complete_developer_turn(
             Ok(selected) => selected,
             Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
         }) else {
+            correction = Some(crate::failover::RoleRecovery::transfer_correction(
+                correction.as_deref(),
+            ));
+            pending_question = None;
             continue;
         };
         let retained_grounding = tools.grounding().clone();
@@ -181,7 +185,6 @@ pub async fn complete_developer_turn(
             &mut providers,
             identity,
             result,
-            &mut checkpoint,
             &mut provider_recovery,
             accounting,
         ) {
