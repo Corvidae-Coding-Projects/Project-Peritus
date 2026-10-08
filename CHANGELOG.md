@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L474] Compatible catalog discovery rejects safe configured queries and custom operation paths (#552)
 - [L059] Optional local semantic subprocess envelope (#158)
 - [L058] Local working-memory defaults and configuration admission (#157)
 - [L473] Optional compatible observations can fail an already accepted response (#551)
