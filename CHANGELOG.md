@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L039] Tool authority and mode gates can suppress process work (#138)
 - [L442] F0 has nine mandatory positive compiled bounds frozen into campaigns and pointers (#521)
 - [L611] Windows ConPTY control workers have detached and blocking ownership (#667)
 - [L038] Inspection-loop feedback has a finite observation window and does not enforce convergence (#137)
