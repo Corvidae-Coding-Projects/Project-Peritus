@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4124,
-        "tip_oid": "877055fe2386307e452c8cbac271d3e44e9aa137",
-        "prefix_sha256": "c55a710be18242a18b590a2d3588db0875f15359da19eee75f676096082bc887"
+        "sequence": 4125,
+        "tip_oid": "e9f3d20cff941d673c602a7157643b6e13243f98",
+        "prefix_sha256": "7f9adb99fd42d1386c6ac60f66aa9e18dd9799135c90014643e980f580ed0748"
       },
       "NWAR": {
         "sequence": 39,
@@ -1959,12 +1959,13 @@
       "display_id": 688,
       "title": "[L637] Filesystem dispatch is synchronous, loses error distinctions, and retains candidate handoff only in its live object",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L637.\n\n- Evidence: `crates/tools/peritus-tools-fs/src/catalog.rs:115-118`; `src/dispatcher.rs:71-78,132-174,201-228,273-303,311-357`; `src/error.rs:77-94,125-131`; `src/read.rs:377-390` in the same crate.\n- Behavior: Descriptors now have no timeout, but ControlSet::NONE and synchronous start provide no pause/cancel/progress handle. Terminal timing uses the same pre-execution AuthorityInstant as start and completion. Workspace inspection preserves only a broad recovery class, discarding the underlying code/source; every apply_patch error is collapsed to Workspace/Reconcile. CorrectInput failures request NewAction with no recovery route; Reobserve/Reauthorize also require a new action. A successful MutationOutcome for the later candidate step is held in an Option on the live FsDispatcher and can only be taken once; no reconstruction API exists here.\n- Consequence: Removing deadlines does not make long filesystem operations interruptible or restartable, and generic errors cannot tell a retry owner which exact state needs recovery. Losing the dispatcher loses this handoff value, connecting to the workspace candidate recovery gap already documented in L582. This is source behavior, not a fresh diagnosis of the live session.\n- Repair direction: Preserve typed redaction-safe causes and durable operation/outcome references, distinguish retry/reobserve/reconcile semantics, measure real completion, and introduce cancellable phase ownership without adding a new lifetime cutoff. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.367928575Z",
-      "updated_at": "2026-10-08T09:47:43.769898824Z",
+      "updated_at": "2026-10-08T09:49:07.518965884Z",
+      "closed_at": "2026-10-08T09:49:07.516008411Z",
       "labels": [
         "daily-driving-limiter"
       ],
