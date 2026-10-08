@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4028,
-        "tip_oid": "a3bad6505983f534b2dcf7db9f4e8c62d6bff7a2",
-        "prefix_sha256": "fc602c5356d60439050b2215ebb53b721e3c1c1949549227f0f46f13e0ffd765"
+        "sequence": 4029,
+        "tip_oid": "873b37fe63a395c5d79efe88405f0aa4fcd98cb9",
+        "prefix_sha256": "21434c606757f6ddb807fa91de6030f66eb362f6022e5badad1945ef6c385025"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3217,
+  "next_comment_id": 3218,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20912,11 +20912,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.301718862Z",
-      "updated_at": "2026-10-06T13:27:51.304270549Z",
+      "updated_at": "2026-10-08T03:49:44.176211330Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "1cf4eb76-cc3a-4da6-85cf-2094ffbe20e0": {
+          "display_id": 3217,
+          "author": "6ME5",
+          "content": "Code complete in commit 10c1a925a. Removed implicit five-second evidence busy timeout, added explicit fail-fast/selected-timeout/cancelable-wait policies with retained owner cancellation across storage operations, and wired the live daemon store to existing cancellation. Exact draft identity remains across retries; busy versus locked and signed-integer representation failures retain distinct actionable causes. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:49:44.167370744Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXps6vtWJJQXl4bjWk9vkmahWDpNk1TNhAA561je7m3KkWy2nfM1FjZg5xcty/ILPt967USyrBn2zo1VkxwlsBw=="
+        },
         "be786d86-8993-4172-8576-b28f10e13d08": {
           "display_id": 2747,
           "author": "6ME5",
