@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4055,
-        "tip_oid": "40c0b01eb4f22ec4b5b9dc690b4fd94f70a5e36b",
-        "prefix_sha256": "783a765bb7ef8a38f91f6588bcaa15c2723616f9f11cadbacbb09c09eed65694"
+        "sequence": 4056,
+        "tip_oid": "0eabe345737a124a595164038103e25bbdcdd8a3",
+        "prefix_sha256": "c88b1cc2655f2df9d60a21e23e48db403113e4dc970e554a9ee49b700781a473"
       },
       "NWAR": {
         "sequence": 39,
@@ -16173,12 +16173,13 @@
       "display_id": 539,
       "title": "[L461] C5 nested admission and persistence checks can disagree under selected limits",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L461.\n\n- Evidence: `crates/model/peritus-model-protocol/src/request/validation.rs:35-67,77-101`, `src/canonical_decode/primitive.rs:57-90`, `src/canonical_decode/content.rs:132-138`, `src/event_codec/encode.rs:19-36,119-128`, `src/event_codec/decode.rs:159-164,206-218,290-302`, `src/message_codec.rs:17-31,39-57` in the same crate.\n- Behavior: request admission checks aggregate counts/media and capabilities but does not recursively recheck previously constructed text, schema, tool JSON or replay values against the selected ProtocolLimits. Canonical reconstruction does recheck these nested constructors. Event encoding uses a shared maximum across domains, whereas fragment decoding specifically applies max_event_bytes. For example, a two-byte fragment constructed under production limits can encode under a selected one-byte event limit when the other codec byte maxima permit two bytes, then fail decoding under that same selected profile. Message-archive encoding likewise trusts nested values.\n- Consequence: a value accepted or persisted through one public API can be impossible to reconstruct under the selected limit profile. The dedicated extension-byte maximum is not consistently applied to ProviderExtension: request/event extension decoding uses JsonBounds::value, while reasoning replay explicitly uses max_extension_bytes. This is a source-derived API mismatch, not a reproduced installed-session failure. Existing inspected round-trip fixtures construct small nested values under the same production limits.\n- Repair direction: use one recursively checked admission contract for construction, encoding and reconstruction; preserve and version the exact selected limits with durable data. Reject incompatible selected limits before publication, and distinguish extension payload policy from tool JSON policy. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.653646137Z",
-      "updated_at": "2026-10-08T04:36:13.472481856Z",
+      "updated_at": "2026-10-08T04:37:54.880176890Z",
+      "closed_at": "2026-10-08T04:37:54.877470081Z",
       "labels": [
         "daily-driving-limiter"
       ],
