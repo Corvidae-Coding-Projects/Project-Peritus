@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4063,
-        "tip_oid": "30e1965c4d79d75eb6cd430c4250930847893d62",
-        "prefix_sha256": "c538919adb6e8dfca96ad7012d004d4a5f8f8214ed3798f087d0e7268571a9af"
+        "sequence": 4064,
+        "tip_oid": "4165078fd3221dae4ed92b44a567fd2599885537",
+        "prefix_sha256": "65e3111f6d725e964a9480e07327642614d5462bb4dde9220b269b38f55c261d"
       },
       "NWAR": {
         "sequence": 39,
@@ -24340,12 +24340,13 @@
       "display_id": 681,
       "title": "[L627] Any journal advance forces an in-memory genesis rebuild rather than incremental continuation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L627.\n\n- Evidence: `crates/state/peritus-projection/README.md:20-32`; `src/catalog.rs:124-155`; `src/rebuild.rs:45-55`; `src/replay.rs:75-129`; `src/fold.rs:44-94`; `src/sqlite/store.rs:80-125`; `src/agent.rs:86-119` in the same crate.\n- Behavior: Startup compares against the exact final position/head and selects RebuildFromGenesis on any position change. Replay requires the complete contiguous export from position one, creates fresh state, folds all records, encodes the entire state, and computes another whole-state invariant encoding. Checkpoints bind digests rather than providing a typed state decoder or replay cursor. Candidate work exists only in memory until the final install. Each configured projection independently drives this path; this crate has no incremental catch-up, automatic startup coordinator, or cancellation/continuation API.\n- Consequence: An interrupted or contended rebuild repeats old reads and computation from genesis; costs grow with retained history. Agent projection entries retain phase/counters/digests, not the complete context or reducer state needed to resume a turn. A valid derived checkpoint alone does not establish session reconnection.\n- Repair direction: Persist an integrity-bound typed checkpoint and aggregate cursors, apply verified suffixes, and retain rebuild phase progress without changing the authoritative run/context identity. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.334285230Z",
-      "updated_at": "2026-10-08T04:50:29.748628207Z",
+      "updated_at": "2026-10-08T04:52:11.408198993Z",
+      "closed_at": "2026-10-08T04:52:11.405445879Z",
       "labels": [
         "daily-driving-limiter"
       ],
