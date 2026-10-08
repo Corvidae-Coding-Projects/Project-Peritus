@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4187,
-        "tip_oid": "82f6603a537392fbee9fbb72c8a2a85d5a6e5439",
-        "prefix_sha256": "00cf59170ebaa28c2db2d41cfaff6b85eaaa4208ee03178a4c5b6a3f207956bb"
+        "sequence": 4188,
+        "tip_oid": "ad88950c20b59d03c1c0dd35e8290d154766b34d",
+        "prefix_sha256": "09e3cfe930c98b0376063a6b7ab61d6837440e5786bc40475cc6181ddb4da5f9"
       },
       "NWAR": {
         "sequence": 39,
@@ -34680,12 +34680,13 @@
       "display_id": 744,
       "title": "[L712] Checkpoint and rewind coverage use whole 65,535-item lists and production-sized preview hashing",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L712.\n\n- Evidence: `crates/app/peritus-app-protocol/src/workbench/checkpoints.rs:6-7,347-369,385-394`; `src/workbench/checkpoints/rewind.rs:188-213`; `src/wire/workbench_checkpoints.rs:174-186,229-241,267-288,332-354` in the same crate.\n- Behavior: Names are 256 bytes, relative paths 4,096 bytes, each coverage/exclusion/effect list at most 65,535 entries, and exclusion/effect descriptions 512 bytes in previews. All preview facts are encoded together under production codec limits to form the confirmation fingerprint. Wire allocates raw-u16 list capacities without the generic collection ceiling, with path length validated after owned copying. Per-file captured size itself is u64 without a fixed byte policy here.\n- Consequence: A large workspace can hit list or whole-preview codec limits before consent can be represented, despite individual files being supported. Raw-count allocation retains L702's issue. Exact preimage/postimage/conflict checks protect user changes and are not synthetic deadlines.\n- Repair direction: Bind consent to durable paginated coverage manifests and stream their hash while retaining complete exact path decisions and visible exclusions. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.622796501Z",
-      "updated_at": "2026-10-08T16:16:04.487274597Z",
+      "updated_at": "2026-10-08T16:17:41.516071912Z",
+      "closed_at": "2026-10-08T16:17:41.513107403Z",
       "labels": [
         "daily-driving-limiter"
       ],
