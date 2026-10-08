@@ -18,13 +18,16 @@ mod snapshot;
 
 pub use acceptance::QualityAcceptanceBinding;
 pub use catalog::{
-    discover_descriptor, legacy_discover_descriptor, legacy_run_descriptor, run_descriptor,
+    discover_descriptor, legacy_discover_descriptor, legacy_discover_descriptor_v3,
+    legacy_run_descriptor, run_descriptor,
 };
 pub use definition::{
     CheckDefinition, CheckRequirement, CheckSource, EnvironmentProfile, ExpectedSuccess,
     OutputParser,
 };
-pub use discovery::{CheckCatalog, DiscoveredCheck};
+pub use discovery::{
+    CheckCatalog, DiscoveredCheck, DiscoveryCause, DiscoveryCoverage, DiscoveryDiagnostic,
+};
 pub use dispatcher::{QualityDiscoverDispatcher, QualityRunDispatcher};
 pub use error::{QualityError, QualityErrorKind};
 pub use input::RunInput;

@@ -17,6 +17,30 @@ use crate::{QualityError, QualityErrorKind};
 pub fn discover_descriptor() -> Result<ToolDescriptor, QualityError> {
     descriptor(
         "quality.discover",
+        Schema::object(
+            vec![SchemaProperty::new("cursor".into(), Schema::string(224, 224)?, false)?],
+            false,
+        )?,
+        OperationClass::Inspection,
+        vec![RiskClass::Read],
+        SideEffectClass::None,
+        IdempotencySemantics::ReplayTerminal,
+        ControlSet::NONE,
+        4,
+        "peritus-tools-quality/quality.discover/v4",
+        "Page an immutable explicit and known-project quality catalog with discovery coverage diagnostics.",
+    )
+}
+
+/// Reconstructs the frozen v3 discovery descriptor for historical receipt decoding.
+///
+/// This descriptor is not included in the production catalog and cannot admit new work.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_discover_descriptor_v3() -> Result<ToolDescriptor, QualityError> {
+    descriptor(
+        "quality.discover",
         Schema::object(Vec::new(), false)?,
         OperationClass::Inspection,
         vec![RiskClass::Read],
