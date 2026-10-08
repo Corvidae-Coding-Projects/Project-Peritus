@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4023,
-        "tip_oid": "fc7db3a20f4a8c8092a89143d690b859f72d735b",
-        "prefix_sha256": "aa44a06af1021a9afc946e5fbdfebe2f185494a5d19d32ec7df50f30228985bc"
+        "sequence": 4024,
+        "tip_oid": "3ea1e78a90068033eeaaa2467cdd3864a797888e",
+        "prefix_sha256": "f0e31dcbb5dd5d184a7c2fadc8e006ef25d59180f15a8f8a6f10e042bfb87e46"
       },
       "NWAR": {
         "sequence": 39,
@@ -24767,12 +24767,13 @@
       "display_id": 673,
       "title": "[L617] Windows session observations and release predicates assume unmeasured native facts",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L617.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/session.rs:56-93,150-176,180-245,248-261`; `src/session/teardown.rs:12-27,83-100`; `src/release.rs:57-65`; `src/verified.rs:71-143`; `crates/runtime/peritus-process/src/native.rs:318-328`.\n- Behavior: Prepared sessions label every capability verified, including unused ConPTY and secrets, and resource controls installed before the helper installs them. WindowsSession does not override resource polling, inheriting an unconditional continue result despite declared supervisor disk/open-handle support. Rich observations cap at 64; the closed normal lifecycle emits at most four more after 18 initial entries, so ordinary exhaustion is not demonstrated. Release accepts any phase, assumes helper-reaped true, and release completeness passes job-closed true to the formal predicate. Secret removal treats a failed removal followed by `exists() == false` as absence, allowing inspection errors to collapse into clean state. C2 normally supplies lifecycle ordering; this backend does not independently verify the assumed native facts.\n- Consequence: Capacity and teardown claims can outpace native evidence. Missing backend-owned resource measurements are an enforcement/qualification gap, not proof of a synthetic timeout. Public out-of-order release or ambiguous filesystem inspection can produce misleading completion evidence and obstruct safe recovery.\n- Repair direction: Acquire and retain actual selected native observations, implement advertised supervisor measurements, and require explicit process/job quiescence and trustworthy absence before publishing cleanup completion.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.292199025Z",
-      "updated_at": "2026-10-08T03:39:50.654419396Z",
+      "updated_at": "2026-10-08T03:41:29.742312757Z",
+      "closed_at": "2026-10-08T03:41:29.739391166Z",
       "labels": [
         "daily-driving-limiter"
       ],
