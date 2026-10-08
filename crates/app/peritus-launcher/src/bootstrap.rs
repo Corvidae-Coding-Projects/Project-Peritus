@@ -91,6 +91,7 @@ impl ProductBootstrap {
     ) -> Result<PreparedProduct, LauncherError> {
         let lock_path = self.layout.state_root().join("bootstrap.lock");
         let _lock = BootstrapLock::acquire(&lock_path)?;
+        crate::workspace_setup::validate_registration_publication(&profile)?;
         let store = ProductStateStore::open(self.layout.product_state_root())?;
         let mut state = store.load_or_initialize()?;
         if state.configure_workspace(profile)? {

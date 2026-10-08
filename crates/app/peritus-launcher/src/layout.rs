@@ -83,6 +83,23 @@ impl AppLayout {
         self.workspace_registrations_root().join(format!("{workspace_id}.bin"))
     }
 
+    /// Returns one immutable C1 registration publication path.
+    #[must_use]
+    pub fn workspace_registration_publication_file(
+        &self,
+        workspace_id: &str,
+        digest: &str,
+        recovery: u64,
+    ) -> PathBuf {
+        let suffix = if recovery == 0 {
+            String::new()
+        } else {
+            format!("-recovery-{recovery:020}")
+        };
+        self.workspace_registrations_root()
+            .join(format!("{workspace_id}-{digest}{suffix}.bin"))
+    }
+
     /// Returns the isolated transaction root for one workspace lineage.
     #[must_use]
     pub fn workspace_transaction_root(&self, workspace_id: &str) -> PathBuf {

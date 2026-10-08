@@ -12,7 +12,7 @@ use peritus_workspace::{WorkspaceBinding, WorkspaceRegistration};
 use super::discovery::{DiscoveredRepository, hex};
 use crate::{
     AppLayout, LauncherError,
-    persistence::{read_exact_or_publish, replace_recovery_file},
+    persistence::read_exact_or_publish,
 };
 
 /// User-facing state of one recent workspace.
@@ -129,15 +129,7 @@ pub fn trust(
     )?;
     let registration =
         WorkspaceRegistration::new(&binding, repository, &worktree, transaction_root.clone())?;
-    let registration_path = layout.workspace_registration_file(profile.workspace_id());
-    let actual = read_exact_or_publish(&registration_path, registration.canonical_bytes())?;
-    if actual != registration.canonical_bytes() && repair {
-        replace_recovery_file(&registration_path, registration.canonical_bytes())?;
-    } else if actual != registration.canonical_bytes() {
-        return Err(LauncherError::WorkspaceSetup(
-            "a workspace registration already exists with different content".to_owned(),
-        ));
-    }
+    let registration_path = publish_registration(layout, &profile, &registration)?;
     let decoded =
         WorkspaceRegistration::decode(&fs::read(&registration_path).map_err(|error| {
             LauncherError::filesystem(
@@ -151,65 +143,66 @@ pub fn trust(
             "the repaired workspace registration did not validate".to_owned(),
         ));
     }
-    profile
+    let trusted = profile
         .trust(
             path_text(&registration_path)?,
             hex(registration.digest().as_bytes()),
             path_text(worktree.root())?,
             path_text(&transaction_root)?,
         )
-        .map_err(LauncherError::from)
+        .map_err(LauncherError::from)?;
+    validate_registration_publication(&trusted)?;
+    Ok(trusted)
 }
 
 /// Revalidates one recent workspace without changing its source checkout.
 #[must_use]
-pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
+pub fn observe_health(profile: &WorkspaceProfile) -> Result<WorkspaceHealth, LauncherError> {
     if profile.is_direct_folder() {
-        return match DiscoveredRepository::folder(Path::new(profile.repository_root())) {
-            Ok(folder) if folder.identity_text() == profile.repository_identity() => {
-                if profile.trust_level() == WorkspaceTrust::Trusted {
-                    WorkspaceHealth::Ready
-                } else {
-                    WorkspaceHealth::Restricted
-                }
-            }
-            _ => WorkspaceHealth::NeedsRepair,
-        };
+        let folder = DiscoveredRepository::folder(Path::new(profile.repository_root()))?;
+        if folder.identity_text() != profile.repository_identity() {
+            return Ok(WorkspaceHealth::NeedsRepair);
+        }
+        return Ok(if profile.trust_level() == WorkspaceTrust::Trusted {
+            WorkspaceHealth::Ready
+        } else {
+            WorkspaceHealth::Restricted
+        });
     }
-    let Ok(repository) =
-        peritus_git::GitRepository::open(RepositoryOptions::new(profile.repository_root()))
-    else {
-        return WorkspaceHealth::NeedsRepair;
-    };
+    let repository =
+        peritus_git::GitRepository::open(RepositoryOptions::new(profile.repository_root()))?;
     if hex(repository.identity().digest().as_bytes()) != profile.repository_identity() {
-        return WorkspaceHealth::NeedsRepair;
+        return Ok(WorkspaceHealth::NeedsRepair);
     }
     if profile.trust_level() == WorkspaceTrust::Restricted {
-        return WorkspaceHealth::Restricted;
+        return Ok(WorkspaceHealth::Restricted);
     }
     let Some(registration_file) = profile.registration_file() else {
-        return WorkspaceHealth::NeedsRepair;
+        return Ok(WorkspaceHealth::NeedsRepair);
     };
-    let Ok(bytes) = fs::read(registration_file) else {
-        return WorkspaceHealth::NeedsRepair;
+    let bytes = match fs::read(registration_file) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(WorkspaceHealth::NeedsRepair);
+        }
+        Err(error) => {
+            return Err(LauncherError::filesystem(
+                "read workspace registration during health inspection",
+                registration_file,
+                error,
+            ));
+        }
     };
     let Ok(registration) = WorkspaceRegistration::decode(&bytes) else {
-        return WorkspaceHealth::NeedsRepair;
+        return Ok(WorkspaceHealth::NeedsRepair);
     };
-    if hex(registration.digest().as_bytes()) != profile.registration_digest().unwrap_or_default()
-        || registration.repository_root() != Path::new(profile.repository_root())
-        || registration.worktree_manifest().root()
-            != Path::new(profile.managed_root().unwrap_or_default())
-        || registration.transaction_root()
-            != Path::new(profile.transaction_root().unwrap_or_default())
-    {
-        return WorkspaceHealth::NeedsRepair;
+    if !registration_matches_profile(&registration, profile)? {
+        return Ok(WorkspaceHealth::NeedsRepair);
     }
-    let Ok(worktree) = repository.reopen_worktree(registration.worktree_manifest()) else {
-        let Ok(name) = WorktreeName::new(format!("workspace_{}", &profile.workspace_id()[..16]))
-        else {
-            return WorkspaceHealth::NeedsRepair;
-        };
+    let worktree = match repository.reopen_worktree(registration.worktree_manifest()) {
+        Ok(worktree) => worktree,
+        Err(reopen_error) => {
+        let name = WorktreeName::new(format!("workspace_{}", &profile.workspace_id()[..16]))?;
         let request = RecoverWorktree::new(
             name,
             registration.worktree_manifest().root(),
@@ -222,16 +215,92 @@ pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
                     && current.baseline() != registration.worktree_manifest().baseline()
                     && registration.worktree_manifest().access() == WorktreeAccess::Writable =>
             {
-                WorkspaceHealth::Advanced
+                Ok(WorkspaceHealth::Advanced)
             }
-            _ => WorkspaceHealth::NeedsRepair,
+            Ok(_) => Ok(WorkspaceHealth::NeedsRepair),
+            Err(_) => Err(reopen_error.into()),
         };
+        }
     };
-    match repository.status(&worktree) {
-        Ok(status) if status.is_clean() => WorkspaceHealth::Ready,
-        Ok(_) => WorkspaceHealth::Dirty,
-        Err(_) => WorkspaceHealth::NeedsRepair,
+    let status = repository.status(&worktree)?;
+    Ok(if status.is_clean() { WorkspaceHealth::Ready } else { WorkspaceHealth::Dirty })
+}
+
+#[cfg(test)]
+#[must_use]
+pub fn health(profile: &WorkspaceProfile) -> WorkspaceHealth {
+    observe_health(profile).unwrap_or(WorkspaceHealth::NeedsRepair)
+}
+
+pub(crate) fn validate_registration_publication(
+    profile: &WorkspaceProfile,
+) -> Result<(), LauncherError> {
+    if profile.is_direct_folder() || profile.trust_level() == WorkspaceTrust::Restricted {
+        return Ok(());
     }
+    let registration_file = profile.registration_file().ok_or_else(|| {
+        LauncherError::WorkspaceSetup(
+            "trusted managed workspace has no registration publication".to_owned(),
+        )
+    })?;
+    let bytes = fs::read(registration_file).map_err(|error| {
+        LauncherError::filesystem(
+            "read workspace registration publication",
+            registration_file,
+            error,
+        )
+    })?;
+    let registration = WorkspaceRegistration::decode(&bytes)?;
+    if !registration_matches_profile(&registration, profile)? {
+        return Err(LauncherError::WorkspaceSetup(
+            "workspace registration publication differs from its exact profile binding"
+                .to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn publish_registration(
+    layout: &AppLayout,
+    profile: &WorkspaceProfile,
+    registration: &WorkspaceRegistration,
+) -> Result<std::path::PathBuf, LauncherError> {
+    let digest = hex(registration.digest().as_bytes());
+    let mut recovery = 0_u64;
+    loop {
+        let path = layout.workspace_registration_publication_file(
+            profile.workspace_id(),
+            &digest,
+            recovery,
+        );
+        let actual = read_exact_or_publish(&path, registration.canonical_bytes())?;
+        if actual == registration.canonical_bytes() {
+            return Ok(path);
+        }
+        recovery = recovery.checked_add(1).ok_or_else(|| {
+            LauncherError::WorkspaceSetup(
+                "workspace registration recovery identity is exhausted".to_owned(),
+            )
+        })?;
+    }
+}
+
+fn registration_matches_profile(
+    registration: &WorkspaceRegistration,
+    profile: &WorkspaceProfile,
+) -> Result<bool, LauncherError> {
+    Ok(hex(registration.digest().as_bytes())
+        == profile.registration_digest().unwrap_or_default()
+        && registration.workspace_id() == workspace_id(profile)?
+        && registration.resource_id() == resource_id(profile)?
+        && registration.environment_id() == environment_id(profile)?
+        && registration.repository_root() == Path::new(profile.repository_root())
+        && hex(registration.worktree_manifest().repository_digest().as_bytes())
+            == profile.repository_identity()
+        && registration.worktree_manifest().root()
+            == Path::new(profile.managed_root().unwrap_or_default())
+        && registration.transaction_root()
+            == Path::new(profile.transaction_root().unwrap_or_default()))
 }
 
 fn workspace_id(profile: &WorkspaceProfile) -> Result<WorkspaceId, LauncherError> {

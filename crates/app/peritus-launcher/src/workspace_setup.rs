@@ -12,7 +12,10 @@ mod folder_tests;
 mod managed;
 
 use discovery::{DiscoveredRepository, user_path};
-use managed::{WorkspaceHealth, health, new_profile, trust};
+pub(crate) use managed::validate_registration_publication;
+use managed::{WorkspaceHealth, new_profile, observe_health, trust};
+#[cfg(test)]
+use managed::health;
 
 /// Selects the requested/current/recent repository, prompting only when a choice is necessary.
 pub fn ensure_configured(
@@ -23,19 +26,23 @@ pub fn ensure_configured(
         let discovered = DiscoveredRepository::open(path)?;
         return activate_repository(prepared, discovered);
     }
-    if let Ok(current) = env::current_dir()
-        && let Ok(discovered) = DiscoveredRepository::open(&current)
-    {
-        return activate_repository(prepared, discovered);
-    }
-    if let Some(profile) = prepared.state().workspaces().active().cloned() {
-        match health(&profile) {
-            WorkspaceHealth::Advanced => return refresh_advanced(&prepared, profile),
-            WorkspaceHealth::NeedsRepair => {}
-            _ => return Ok(prepared),
+    let current = match env::current_dir() {
+        Ok(current) => current,
+        Err(error) => {
+            return choose_workspace(
+                prepared,
+                LauncherError::filesystem(
+                    "resolve implicit current workspace directory",
+                    Path::new("."),
+                    error,
+                ),
+            );
         }
+    };
+    match DiscoveredRepository::open(&current) {
+        Ok(discovered) => activate_repository(prepared, discovered),
+        Err(error) => choose_workspace(prepared, error),
     }
-    choose_workspace(prepared)
 }
 
 /// Opens focused workspace settings for switching, adding, trusting, repairing, or forgetting.
@@ -60,7 +67,10 @@ pub fn configure(mut prepared: PreparedProduct) -> Result<PreparedProduct, Launc
         if let Some(index) = prefixed_index(&answer, 't') {
             let profile = recent(&prepared, index)?.clone();
             if profile.trust_level() == WorkspaceTrust::Trusted
-                && matches!(health(&profile), WorkspaceHealth::Ready | WorkspaceHealth::Dirty)
+                && matches!(
+                    observe_health(&profile)?,
+                    WorkspaceHealth::Ready | WorkspaceHealth::Dirty
+                )
             {
                 terminal.line("That workspace is already trusted and ready.")?;
                 continue;
@@ -86,10 +96,21 @@ pub fn configure(mut prepared: PreparedProduct) -> Result<PreparedProduct, Launc
             continue;
         }
         if let Some(index) = parse_index(&answer) {
-            let workspace_id = recent(&prepared, index)?.workspace_id().to_owned();
-            prepared =
-                ProductBootstrap::new(prepared.layout().clone()).select_workspace(&workspace_id)?;
-            terminal.line("Active workspace changed.")?;
+            let profile = recent(&prepared, index)?.clone();
+            match observe_health(&profile)? {
+                WorkspaceHealth::Advanced => {
+                    prepared = refresh_advanced(&prepared, profile)?;
+                    terminal.line("Active workspace refreshed and selected.")?;
+                }
+                WorkspaceHealth::NeedsRepair => terminal.line(
+                    "That workspace needs repair. Choose its t<number> action before selecting it.",
+                )?,
+                _ => {
+                    prepared = ProductBootstrap::new(prepared.layout().clone())
+                        .select_workspace(profile.workspace_id())?;
+                    terminal.line("Active workspace changed.")?;
+                }
+            }
             continue;
         }
         terminal.line("Choose a listed number, t<number>, r<number>, a, or Enter.")?;
@@ -110,22 +131,25 @@ fn activate_repository(
         .find_repository(repository.root_text(), repository.identity_text())
         .cloned()
     {
-        let selected = ProductBootstrap::new(prepared.layout().clone())
-            .select_workspace(existing.workspace_id())?;
-        match health(&existing) {
-            WorkspaceHealth::Advanced => return refresh_advanced(&selected, existing),
+        match observe_health(&existing)? {
+            WorkspaceHealth::Advanced => return refresh_advanced(&prepared, existing),
             WorkspaceHealth::NeedsRepair => {}
-            _ => return Ok(selected),
+            _ => {
+                return ProductBootstrap::new(prepared.layout().clone())
+                    .select_workspace(existing.workspace_id());
+            }
         }
         let mut terminal = Terminal::stdio();
         terminal.line("")?;
         terminal.line("This workspace needs a quick repair before agent runs can resume.")?;
         terminal.line(&format!("Repository: {}", repository.root_text()))?;
         if !terminal.confirm("Repair its managed workspace now? [Y/n]: ", true)? {
-            return Ok(selected);
+            return Err(LauncherError::Interaction(
+                "the exact selected workspace still requires repair".to_owned(),
+            ));
         }
-        let trusted = trust(selected.layout(), &repository, existing)?;
-        return persist_profile(&selected, trusted);
+        let trusted = trust(prepared.layout(), &repository, existing)?;
+        return persist_profile(&prepared, trusted);
     }
 
     let restricted = new_profile(&repository)?;
@@ -159,12 +183,18 @@ fn activate_repository(
     Ok(configured)
 }
 
-fn choose_workspace(prepared: PreparedProduct) -> Result<PreparedProduct, LauncherError> {
+fn choose_workspace(
+    prepared: PreparedProduct,
+    discovery_error: LauncherError,
+) -> Result<PreparedProduct, LauncherError> {
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
     terminal.line("Choose a workspace")?;
+    terminal.line(&format!(
+        "Current-directory workspace discovery failed: {discovery_error}"
+    ))?;
     if prepared.state().workspaces().recent().is_empty() {
-        terminal.line("Peritus could not access the current directory. Select a folder.")?;
+        terminal.line("Select a folder explicitly to continue.")?;
         let repository = prompt_repository(&mut terminal)?;
         return activate_repository(prepared, repository);
     }
@@ -177,12 +207,13 @@ fn choose_workspace(prepared: PreparedProduct) -> Result<PreparedProduct, Launch
         }
         if let Some(index) = parse_index(&answer) {
             let profile = recent(&prepared, index)?.clone();
-            let selected = ProductBootstrap::new(prepared.layout().clone())
-                .select_workspace(profile.workspace_id())?;
-            match health(&profile) {
-                WorkspaceHealth::Advanced => return refresh_advanced(&selected, profile),
+            match observe_health(&profile)? {
+                WorkspaceHealth::Advanced => return refresh_advanced(&prepared, profile),
                 WorkspaceHealth::NeedsRepair => {}
-                _ => return Ok(selected),
+                _ => {
+                    return ProductBootstrap::new(prepared.layout().clone())
+                        .select_workspace(profile.workspace_id());
+                }
             }
             terminal.line("That workspace needs repair. Choose t<number> in `peritus workspaces`, or select another repository.")?;
         } else {
@@ -198,11 +229,15 @@ fn show_recent(
     let active = prepared.state().workspaces().active().map(WorkspaceProfile::workspace_id);
     for (index, profile) in prepared.state().workspaces().recent().into_iter().enumerate() {
         let marker = if active == Some(profile.workspace_id()) { "active, " } else { "" };
+        let status = match observe_health(profile) {
+            Ok(health) => health.label().to_owned(),
+            Err(error) => format!("Unavailable — {error}"),
+        };
         terminal.line(&format!(
             "  {}. {} — {marker}{}",
             index + 1,
             profile.repository_root(),
-            health(profile).label(),
+            status,
         ))?;
     }
     Ok(())
@@ -223,9 +258,9 @@ fn prompt_repository(terminal: &mut Terminal<'_>) -> Result<DiscoveredRepository
         };
         match DiscoveredRepository::open(&path) {
             Ok(repository) => return Ok(repository),
-            Err(_) => terminal.line(
-                "That path is not an accessible workspace directory. Check it and choose another path.",
-            )?,
+            Err(error) => terminal.line(&format!(
+                "That path could not be opened as the exact requested workspace: {error}"
+            ))?,
         }
     }
 }
