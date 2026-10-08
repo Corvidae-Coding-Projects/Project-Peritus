@@ -27,6 +27,7 @@ impl ConnectionHeartbeat {
         &mut self,
         frames: &mut AppFrameStream<S>,
         status: DaemonStatus,
+        maximum_diagnostic_bytes: usize,
     ) -> Result<(), DaemonError>
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -43,7 +44,11 @@ impl ConnectionHeartbeat {
         self.pending = Some((heartbeat_id, sequence));
         let event = AppEventEnvelope::new(
             self.context,
-            AppEventPayload::Heartbeat(DaemonHeartbeat::new(heartbeat_id, sequence, status)),
+            AppEventPayload::Heartbeat(DaemonHeartbeat::new(
+                heartbeat_id,
+                sequence,
+                status.constrained(maximum_diagnostic_bytes),
+            )),
         );
         frames.write(&AppMessage::Event(event)).await
     }

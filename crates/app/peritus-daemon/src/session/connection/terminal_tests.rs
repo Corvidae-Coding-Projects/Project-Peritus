@@ -34,9 +34,19 @@ async fn unavailable_attachment_does_not_end_the_application_connection() {
             RequestId::new([9; 16]).unwrap(),
         );
         let mut bindings = vec![binding, other];
-        pump_terminals(&mut frames, &registry, &mut bindings, actor, session, context, negotiated)
-            .await
-            .expect("attachment failure is local");
+        pump_terminals(
+            &mut frames,
+            &registry,
+            &mut bindings,
+            actor,
+            session,
+            context,
+            AppProtocolLimits::PRODUCTION.max_diagnostic_bytes(),
+            negotiated,
+            negotiated,
+        )
+        .await
+        .expect("attachment failure is local");
         assert!(bindings.is_empty(), "failed attachment must not be polled forever");
         for expected in [binding, other] {
             let AppMessage::Event(event) = peer.read().await.unwrap() else {

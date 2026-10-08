@@ -4,6 +4,7 @@
 
 mod error;
 mod handle;
+mod command_slots;
 mod orchestrator;
 mod prompt;
 mod runtime;
@@ -41,21 +42,27 @@ impl AuthorityOwner {
         lifecycle: DaemonLifecycle,
         artifacts: ArtifactStore,
         maximum_artifact_bytes: u64,
-        maximum_transfers: usize,
+        maximum_active_commands: usize,
         authority_epoch: u64,
         queue_capacity: usize,
     ) -> Result<(AuthorityHandle, JoinHandle<Result<(), DaemonError>>), DaemonError> {
-        if queue_capacity == 0 || queue_capacity > 65_536 {
+        if queue_capacity == 0
+            || queue_capacity > 65_536
+            || maximum_active_commands == 0
+            || maximum_active_commands
+                > peritus_app_protocol::AppProtocolLimits::PRODUCTION
+                    .max_active_idempotency_slots()
+        {
             return Err(DaemonError::new(
                 DaemonErrorCode::InvalidInput,
                 DaemonRecovery::CorrectRequest,
                 "start authority owner",
-                "authority queue capacity is outside production bounds",
+                "authority queue or active-command capacity is outside production bounds",
             ));
         }
-        let artifact_authority =
-            ArtifactAuthority::new(artifacts, maximum_artifact_bytes, maximum_transfers)?;
+        let artifact_authority = ArtifactAuthority::production(artifacts, maximum_artifact_bytes)?;
         let (sender, receiver) = mpsc::channel(queue_capacity);
+        let internal_sender = sender.downgrade();
         let handle = AuthorityHandle::new(sender);
         let prompts = PromptBroker::new(PromptBrokerLimits::PRODUCTION);
         let authority_clock = AuthorityClock::new(authority_epoch)?;
@@ -65,6 +72,8 @@ impl AuthorityOwner {
             artifact_authority,
             prompts,
             authority_clock,
+            maximum_active_commands,
+            internal_sender,
             receiver,
         ));
         Ok((handle, task))

@@ -179,7 +179,7 @@ const fn default_explanation(code: AppErrorCode) -> &'static str {
             "A request identifier was reused for different work. Submit a new request identifier."
         }
         AppErrorCode::IdempotencyCapacity => {
-            "The daemon cannot retain another deduplication record. Wait for capacity or restart before retrying."
+            "Every active command slot is occupied. Wait for a command to settle, then retry the same request and idempotency key."
         }
         AppErrorCode::StaleRevision => {
             "The request used outdated state. Refresh current state and submit a new request."

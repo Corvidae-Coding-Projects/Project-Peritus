@@ -33,7 +33,7 @@ pub enum AppErrorCode {
     SessionMismatch = 20,
     /// One actor reused an idempotency key within a durable session for a different request.
     IdempotencyConflict = 21,
-    /// The bounded idempotency window has no free entry.
+    /// Every negotiated active idempotency slot is occupied.
     IdempotencyCapacity = 22,
     /// The command's expected revision is not current.
     StaleRevision = 23,
@@ -206,8 +206,8 @@ impl AppErrorCode {
             | Self::TerminalState
             | Self::TerminalOrdering
             | Self::Cancelled => RetryDisposition::NewRequest,
-            Self::IdempotencyCapacity
-            | Self::Backpressure
+            Self::IdempotencyCapacity => RetryDisposition::SameRequest,
+            Self::Backpressure
             | Self::ReadOnly
             | Self::NotReady
             | Self::Internal => RetryDisposition::AfterRecovery,

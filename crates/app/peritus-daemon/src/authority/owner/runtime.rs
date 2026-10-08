@@ -1,7 +1,7 @@
 //! Serialized receive loop and closed message dispatch.
 
 use peritus_app_protocol::AppProtocolLimits;
-use peritus_journal::SqliteJournal;
+use peritus_journal::{ApplicationCommandAdmission, ApplicationCommandState, SqliteJournal};
 use tokio::sync::mpsc;
 
 use super::{
@@ -27,11 +27,13 @@ pub(super) async fn run(
     mut artifacts: ArtifactAuthority,
     mut prompts: PromptBroker,
     authority_clock: AuthorityClock,
+    maximum_active_commands: usize,
     sender: mpsc::WeakSender<AuthorityMessage>,
     mut receiver: mpsc::Receiver<AuthorityMessage>,
 ) -> Result<(), DaemonError> {
     artifacts.reconcile_restart(&mut journal)?;
     let mut scheduler_session = peritus_scheduler::SchedulerSession::default();
+    let mut active_commands = super::command_slots::ActiveCommandSlots::new(maximum_active_commands);
     while let Some(message) = receiver.recv().await {
         match message {
             AuthorityMessage::Status { respond } => reply(
@@ -338,9 +340,37 @@ pub(super) async fn run(
                 respond,
                 journal.advance_application_session(session_id, state).map_err(journal_error),
             ),
-            AuthorityMessage::AdmitCommand { command, respond } => {
+            AuthorityMessage::AdmitCommand {
+                command,
+                maximum_active_commands,
+                respond,
+            } => {
                 let result = require_mutation(&lifecycle).and_then(|()| {
-                    journal.admit_application_command(command).map_err(journal_error)
+                    let can_insert = active_commands.can_claim(
+                        command.command_id(),
+                        command.session_id(),
+                        maximum_active_commands,
+                    )?;
+                    let admission = journal
+                        .classify_or_admit_application_command(command, can_insert)
+                        .map_err(journal_error)?
+                        .ok_or_else(super::command_slots::capacity)?;
+                    match &admission {
+                        ApplicationCommandAdmission::Inserted(record)
+                        | ApplicationCommandAdmission::Existing(record)
+                            if matches!(
+                                record.state(),
+                                ApplicationCommandState::Pending
+                                    | ApplicationCommandState::Indeterminate
+                            ) =>
+                        {
+                            active_commands.claim(record, maximum_active_commands)?;
+                        }
+                        ApplicationCommandAdmission::Inserted(_)
+                        | ApplicationCommandAdmission::Existing(_)
+                        | ApplicationCommandAdmission::Conflict(_) => {}
+                    }
+                    Ok(admission)
                 });
                 reply(respond, result);
             }
@@ -351,28 +381,32 @@ pub(super) async fn run(
                 reply(respond, result);
             }
             AuthorityMessage::SettleCommand { command_id, request_digest, settlement, respond } => {
-                reply(
-                    respond,
-                    journal
-                        .settle_application_command(command_id, request_digest, settlement)
-                        .map_err(journal_error),
-                );
+                let result = journal
+                    .settle_application_command(command_id, request_digest, settlement)
+                    .map_err(journal_error);
+                if let Ok(record) = &result {
+                    active_commands.release_if_terminal(record);
+                }
+                reply(respond, result);
             }
             AuthorityMessage::ReconcileCommand {
                 command_id,
                 request_digest,
                 domain_command_digest,
                 respond,
-            } => reply(
-                respond,
-                reconcile_command(
+            } => {
+                let result = reconcile_command(
                     &mut journal,
                     &mut scheduler_session,
                     command_id,
                     request_digest,
                     domain_command_digest,
-                ),
-            ),
+                );
+                if let Ok(record) = &result {
+                    active_commands.release_if_terminal(record);
+                }
+                reply(respond, result);
+            }
             AuthorityMessage::RecoverCommands { maximum, respond } => reply(
                 respond,
                 journal.unsettled_application_commands(maximum).map_err(journal_error),

@@ -1,4 +1,4 @@
-//! Exact B3 command submission binding, final results, and bounded idempotency.
+//! Exact B3 command submission binding, final results, bounded active slots, and durable replay.
 
 mod binding;
 mod idempotency;

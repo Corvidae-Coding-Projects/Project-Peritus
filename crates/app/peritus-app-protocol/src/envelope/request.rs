@@ -222,6 +222,7 @@ impl AppRequestPayload {
             Self::QueryWorkbenchPermissions(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPermissions)
             }
+            Self::Shutdown(_) => Some(crate::WellKnownProtocolFeature::GracefulShutdown),
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
             }

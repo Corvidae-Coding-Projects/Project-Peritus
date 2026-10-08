@@ -1,4 +1,4 @@
-//! Bounded pure final-result idempotency window.
+//! Bounded active idempotency slots with immutable final-result history.
 
 use std::collections::VecDeque;
 
@@ -54,8 +54,14 @@ impl IdempotencyEntry {
 /// Pure admission classification before command execution.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IdempotencyAdmission {
-    /// No retained entry uses this durable-session/actor/key and capacity remains.
+    /// No active slot or historical receipt uses this durable-session/actor/key, and one active
+    /// slot was reserved for the exact request.
     New,
+    /// The exact request already owns an active slot but does not yet have a final result.
+    Pending {
+        /// Identity of the originally admitted request.
+        original_request_id: RequestId,
+    },
     /// The exact request has a retained final result.
     Replay {
         /// Identity of the originally completed request.
@@ -68,7 +74,7 @@ pub enum IdempotencyAdmission {
         /// Identity of the request that already owns the key.
         original_request_id: RequestId,
     },
-    /// No matching entry exists and the bounded window is full.
+    /// No matching request exists and every active slot is occupied.
     Capacity,
 }
 
@@ -81,15 +87,31 @@ pub enum IdempotencyRecordDisposition {
     AlreadyRecorded,
 }
 
-/// Insertion-ordered, explicitly bounded final-result idempotency state.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct IdempotencyReservation {
+    actor_id: ActorId,
+    session_id: SessionId,
+    key: IdempotencyKey,
+    request_digest: RequestDigest,
+    original_request_id: RequestId,
+}
+
+/// Explicitly bounded active commands plus insertion-ordered immutable receipt history.
+///
+/// Capacity applies only to reservations and completed results that have not yet been
+/// acknowledged through [`Self::retire_oldest`]. Retiring such a result releases its active slot
+/// while moving the receipt into immutable history, where exact replay and conflict detection
+/// remain available for the lifetime of this state machine.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct IdempotencyWindow {
     capacity: usize,
-    entries: VecDeque<IdempotencyEntry>,
+    reservations: Vec<IdempotencyReservation>,
+    unacknowledged: VecDeque<IdempotencyEntry>,
+    history: VecDeque<IdempotencyEntry>,
 }
 
 impl IdempotencyWindow {
-    /// Creates an empty bounded final-result window.
+    /// Creates an empty bounded active-command window with immutable receipt history.
     ///
     /// # Errors
     ///
@@ -98,51 +120,73 @@ impl IdempotencyWindow {
         if capacity == 0 {
             Err(AppProtocolError::new(AppErrorCode::InvalidLimits, None))
         } else {
-            Ok(Self { capacity, entries: VecDeque::new() })
+            Ok(Self {
+                capacity,
+                reservations: Vec::new(),
+                unacknowledged: VecDeque::new(),
+                history: VecDeque::new(),
+            })
         }
     }
 
-    /// Creates an empty window using the negotiated retained-entry ceiling.
+    /// Creates an empty window using the negotiated active-slot ceiling.
     ///
     /// # Errors
     ///
     /// Returns an invalid-limits error only if the supplied limit set violated its type invariant.
     pub const fn from_limits(limits: crate::AppProtocolLimits) -> Result<Self, AppProtocolError> {
-        Self::new(limits.max_idempotency_entries())
+        Self::new(limits.max_active_idempotency_slots())
     }
 
-    /// Classifies a bound request without mutating retained state.
-    #[must_use]
-    pub fn admit(&self, binding: &CommandBinding) -> IdempotencyAdmission {
-        self.find(binding).map_or(
-            if self.entries.len() >= self.capacity {
-                IdempotencyAdmission::Capacity
-            } else {
-                IdempotencyAdmission::New
-            },
-            |entry| {
-                if entry.request_digest == binding.request_digest() {
-                    IdempotencyAdmission::Replay {
-                        original_request_id: entry.original_request_id,
-                        result: entry.result.as_replay(),
-                    }
-                } else {
-                    IdempotencyAdmission::Conflict {
-                        original_request_id: entry.original_request_id,
-                    }
+    /// Classifies a bound request and reserves one active slot when it is new.
+    ///
+    /// Exact active and historical identities remain reachable even while all other slots are
+    /// occupied. A caller receiving [`IdempotencyAdmission::New`] must eventually record a final
+    /// result; repeating the same request before then returns [`IdempotencyAdmission::Pending`].
+    pub fn admit(&mut self, binding: &CommandBinding) -> IdempotencyAdmission {
+        if let Some(entry) = self.find_receipt(binding) {
+            return if entry.request_digest == binding.request_digest() {
+                IdempotencyAdmission::Replay {
+                    original_request_id: entry.original_request_id,
+                    result: entry.result.as_replay(),
                 }
-            },
-        )
+            } else {
+                IdempotencyAdmission::Conflict {
+                    original_request_id: entry.original_request_id,
+                }
+            };
+        }
+        if let Some(reservation) = self.find_reservation(binding) {
+            return if reservation.request_digest == binding.request_digest() {
+                IdempotencyAdmission::Pending {
+                    original_request_id: reservation.original_request_id,
+                }
+            } else {
+                IdempotencyAdmission::Conflict {
+                    original_request_id: reservation.original_request_id,
+                }
+            };
+        }
+        if self.active_len() >= self.capacity {
+            return IdempotencyAdmission::Capacity;
+        }
+        self.reservations.push(IdempotencyReservation {
+            actor_id: binding.actor_id(),
+            session_id: binding.session_id(),
+            key: binding.idempotency_key().clone(),
+            request_digest: binding.request_digest(),
+            original_request_id: binding.request_id(),
+        });
+        IdempotencyAdmission::New
     }
 
-    /// Records a final result after a `New` admission.
+    /// Replaces the exact active reservation with an unacknowledged immutable final receipt.
     ///
     /// # Errors
     ///
-    /// Returns a command-binding error when the final result names another original request, an
-    /// idempotency-conflict error for session/actor/key reuse with a different digest, or an
-    /// idempotency-capacity error when no entry can be appended. Callers must explicitly retire an
-    /// entry before retrying a capacity failure.
+    /// Returns a command-binding error when the final result names another original request or no
+    /// exact active reservation exists, and an idempotency-conflict error for
+    /// session/actor/key reuse with a different digest.
     pub fn record(
         &mut self,
         binding: &CommandBinding,
@@ -151,57 +195,92 @@ impl IdempotencyWindow {
         if result.original_request_id() != binding.request_id() {
             return Err(AppProtocolError::new(AppErrorCode::CommandBindingMismatch, None));
         }
-        if let Some(entry) = self.find(binding) {
+        if let Some(entry) = self.find_receipt(binding) {
             return if entry.request_digest == binding.request_digest() {
                 Ok(IdempotencyRecordDisposition::AlreadyRecorded)
             } else {
                 Err(AppProtocolError::new(AppErrorCode::IdempotencyConflict, None))
             };
         }
-        if self.entries.len() >= self.capacity {
-            return Err(AppProtocolError::new(AppErrorCode::IdempotencyCapacity, None));
+        let Some(index) = self.reservations.iter().position(|reservation| {
+            reservation.actor_id == binding.actor_id()
+                && reservation.session_id == binding.session_id()
+                && reservation.key == *binding.idempotency_key()
+        }) else {
+            return Err(AppProtocolError::new(AppErrorCode::CommandBindingMismatch, None));
+        };
+        if self.reservations[index].request_digest != binding.request_digest() {
+            return Err(AppProtocolError::new(AppErrorCode::IdempotencyConflict, None));
         }
-        self.entries.push_back(IdempotencyEntry {
+        let reservation = self.reservations.remove(index);
+        self.unacknowledged.push_back(IdempotencyEntry {
             actor_id: binding.actor_id(),
             session_id: binding.session_id(),
             key: binding.idempotency_key().clone(),
             request_digest: binding.request_digest(),
-            original_request_id: binding.request_id(),
+            original_request_id: reservation.original_request_id,
             result,
         });
         Ok(IdempotencyRecordDisposition::Stored)
     }
 
-    /// Explicitly retires and returns the oldest retained final entry.
+    /// Acknowledges the oldest final result, releases its active slot, and archives its receipt.
+    ///
+    /// The returned value is a copy of the receipt now held in immutable history. Its
+    /// durable-session/actor/key binding remains available to exact replay and conflict checks.
     pub fn retire_oldest(&mut self) -> Option<IdempotencyEntry> {
-        self.entries.pop_front()
+        let entry = self.unacknowledged.pop_front()?;
+        self.history.push_back(entry.clone());
+        Some(entry)
     }
-    /// Returns the configured entry capacity.
+    /// Returns the configured active-slot capacity.
     #[must_use]
     pub const fn capacity(&self) -> usize {
         self.capacity
     }
-    /// Returns the number of retained final entries.
+    /// Returns the number of occupied active slots.
     #[must_use]
     pub fn len(&self) -> usize {
-        self.entries.len()
+        self.active_len()
     }
-    /// Returns whether no final entries are retained.
+    /// Returns whether no command currently occupies an active slot.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.active_len() == 0
     }
-    /// Iterates retained entries in explicit oldest-to-newest retirement order.
+    /// Iterates unacknowledged final receipts in oldest-to-newest acknowledgement order.
     #[must_use]
     pub fn entries(&self) -> std::collections::vec_deque::Iter<'_, IdempotencyEntry> {
-        self.entries.iter()
+        self.unacknowledged.iter()
+    }
+    /// Iterates every immutable receipt in completion order, including acknowledged history.
+    #[must_use]
+    pub fn receipts(&self) -> impl Iterator<Item = &IdempotencyEntry> {
+        self.history.iter().chain(self.unacknowledged.iter())
+    }
+    /// Returns the number of acknowledged immutable historical receipts.
+    #[must_use]
+    pub fn historical_len(&self) -> usize {
+        self.history.len()
     }
 
-    fn find(&self, binding: &CommandBinding) -> Option<&IdempotencyEntry> {
-        self.entries.iter().find(|entry| {
+    fn active_len(&self) -> usize {
+        self.reservations.len().saturating_add(self.unacknowledged.len())
+    }
+
+    fn find_receipt(&self, binding: &CommandBinding) -> Option<&IdempotencyEntry> {
+        self.history.iter().chain(self.unacknowledged.iter()).find(|entry| {
             entry.actor_id == binding.actor_id()
                 && entry.session_id == binding.session_id()
                 && entry.key == *binding.idempotency_key()
+        })
+    }
+
+    fn find_reservation(&self, binding: &CommandBinding) -> Option<&IdempotencyReservation> {
+        self.reservations.iter().find(|reservation| {
+            reservation.actor_id == binding.actor_id()
+                && reservation.session_id == binding.session_id()
+                && reservation.key == *binding.idempotency_key()
         })
     }
 }

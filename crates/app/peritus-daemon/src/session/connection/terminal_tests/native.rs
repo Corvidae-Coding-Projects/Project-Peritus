@@ -96,7 +96,17 @@ async fn backpressured_attachment_preserves_live_process_and_healthy_sibling() {
     let mut peer = crate::AppFrameStream::new(peer, AppProtocolLimits::PRODUCTION);
     let mut bindings = vec![slow, healthy];
     for _ in 0..12 {
-        pump_terminals(&mut frames, &registry, &mut bindings, actor, session, context, true)
+        pump_terminals(
+            &mut frames,
+            &registry,
+            &mut bindings,
+            actor,
+            session,
+            context,
+            AppProtocolLimits::PRODUCTION.max_diagnostic_bytes(),
+            true,
+            true,
+        )
             .await
             .unwrap();
         if !bindings.contains(&slow) {

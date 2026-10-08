@@ -22,6 +22,8 @@ use crate::{AppFrameStream, AuthorityHandle, DaemonError, DaemonErrorCode, Daemo
 
 static ATTEMPT_NONCE: AtomicU64 = AtomicU64::new(1);
 const REDELIVERY_INTERVAL: Duration = Duration::from_secs(2);
+/// Physical live subscription owners on one connection, independent of topics per filter.
+const MAX_ACTIVE_SUBSCRIPTIONS: usize = 64;
 
 struct LiveSubscription {
     state: SubscriptionState,
@@ -36,8 +38,8 @@ pub struct SubscriptionRegistry {
 }
 
 impl SubscriptionRegistry {
-    pub(crate) const fn new(limits: AppProtocolLimits) -> Self {
-        Self { entries: BTreeMap::new(), maximum: limits.max_topics() }
+    pub(crate) const fn new() -> Self {
+        Self { entries: BTreeMap::new(), maximum: MAX_ACTIVE_SUBSCRIPTIONS }
     }
 
     pub(crate) fn open(

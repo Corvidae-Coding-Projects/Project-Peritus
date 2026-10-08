@@ -239,7 +239,7 @@ pub(super) fn write_limits(
     for item in [
         value.max_versions(),
         value.max_features(),
-        value.max_idempotency_entries(),
+        value.max_active_idempotency_slots(),
         value.max_topics(),
         value.max_in_flight_events(),
         value.max_artifact_chunk_bytes(),

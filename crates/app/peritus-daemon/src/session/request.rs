@@ -171,11 +171,21 @@ where
             AppRequestPayload::Doctor(value) => {
                 query::respond(product_runs, actor_id, query::Request::Doctor(*value)).await
             }
-            AppRequestPayload::SubmitCommand(value) => AppResponsePayload::CommandResult(
-                command::submit(authority, actor_id, value).await?,
-            ),
+            AppRequestPayload::SubmitCommand(value) => match command::submit_with_capacity(
+                authority,
+                actor_id,
+                value,
+                limits.max_active_idempotency_slots(),
+            )
+            .await
+            {
+                Ok(result) => AppResponsePayload::CommandResult(result),
+                Err(error) => command_error_payload(&error),
+            },
             AppRequestPayload::DaemonStatus => {
-                AppResponsePayload::DaemonStatus(authority.status().await?)
+                AppResponsePayload::DaemonStatus(
+                    authority.status().await?.constrained(limits.max_diagnostic_bytes()),
+                )
             }
             AppRequestPayload::Subscribe(value) => match subscriptions.open(value, limits) {
                 Ok(started) => AppResponsePayload::SubscriptionStarted(started),
@@ -431,6 +441,7 @@ mod response;
 mod workbench;
 use response::terminal_error_payload;
 use response::{
-    acknowledged, artifact_error_payload, canonical_request_frame, constrain_error_diagnostic,
-    product_run_error, prompt_error_payload, subscription_error_code, terminal_operation,
+    acknowledged, artifact_error_payload, canonical_request_frame, command_error_payload,
+    constrain_error_diagnostic, product_run_error, prompt_error_payload, subscription_error_code,
+    terminal_operation,
 };

@@ -74,6 +74,30 @@ impl DaemonStatus {
     pub fn diagnostic(&self) -> Option<&str> {
         self.diagnostic.as_deref()
     }
+
+    /// Constrains optional diagnostic prose to a peer's negotiated UTF-8 byte ceiling.
+    ///
+    /// Readiness remains available when the ceiling cannot retain a complete character.
+    #[must_use]
+    pub fn constrained(mut self, maximum_diagnostic_bytes: usize) -> Self {
+        let Some(diagnostic) = self.diagnostic.as_mut() else { return self };
+        if diagnostic.len() <= maximum_diagnostic_bytes {
+            return self;
+        }
+        let suffix = if maximum_diagnostic_bytes >= 4 { "..." } else { "" };
+        let mut end = maximum_diagnostic_bytes.saturating_sub(suffix.len());
+        while end > 0 && !diagnostic.is_char_boundary(end) {
+            end -= 1;
+        }
+        if end == 0 && suffix.is_empty() {
+            self.diagnostic = None;
+            return self;
+        }
+        diagnostic.truncate(end);
+        diagnostic.push_str(suffix);
+        self
+    }
+
     /// Returns whether mutation admission may proceed to its ordinary checks.
     #[must_use]
     pub const fn mutation_ready(&self) -> bool {

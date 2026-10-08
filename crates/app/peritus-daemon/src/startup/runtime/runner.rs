@@ -166,7 +166,7 @@ impl DaemonRuntime {
             lifecycle,
             artifacts,
             config.limits().maximum_artifact_bytes(),
-            AppProtocolLimits::PRODUCTION.max_idempotency_entries(),
+            AppProtocolLimits::PRODUCTION.max_active_idempotency_slots(),
             authority_epoch.get(),
             config.limits().authority_queue(),
         )?;

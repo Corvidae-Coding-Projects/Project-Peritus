@@ -19,6 +19,21 @@ pub async fn submit(
     actor_id: ActorId,
     binding: &CommandBinding,
 ) -> Result<CommandResult, DaemonError> {
+    submit_with_capacity(
+        authority,
+        actor_id,
+        binding,
+        peritus_app_protocol::AppProtocolLimits::PRODUCTION.max_active_idempotency_slots(),
+    )
+    .await
+}
+
+pub(crate) async fn submit_with_capacity(
+    authority: &AuthorityHandle,
+    actor_id: ActorId,
+    binding: &CommandBinding,
+    maximum_active_commands: usize,
+) -> Result<CommandResult, DaemonError> {
     if binding.actor_id() != actor_id {
         return Err(DaemonError::new(
             DaemonErrorCode::Unauthorized,
@@ -43,7 +58,7 @@ pub async fn submit(
     )
     .map_err(journal_value_error)?;
 
-    match authority.admit_command(command).await? {
+    match authority.admit_command(command, maximum_active_commands).await? {
         ApplicationCommandAdmission::Conflict(_) => Ok(CommandResult::rejected(
             binding.request_id(),
             AppProtocolError::new(AppErrorCode::IdempotencyConflict, None),

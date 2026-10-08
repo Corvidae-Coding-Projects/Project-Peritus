@@ -20,6 +20,16 @@ pub(super) fn product_run_observations(
     }
 }
 
+pub(super) fn product_run_page(
+    service: &crate::product_run::ProductRunService,
+    query: peritus_app_protocol::ProductRunPageQuery,
+) -> AppResponsePayload {
+    match service.query_run_page(query) {
+        Ok(page) => AppResponsePayload::ProductRunPage(page),
+        Err(error) => product_run_error(error),
+    }
+}
+
 pub(super) fn product_run_error(error: ProductRunServiceError) -> AppResponsePayload {
     error.response()
 }
@@ -124,6 +134,22 @@ pub(super) fn artifact_error_payload(error: &DaemonError) -> AppResponsePayload 
         code,
         retry,
         subsystem,
+        daemon_diagnostic(error),
+    ))
+}
+
+pub(super) fn command_error_payload(error: &DaemonError) -> AppResponsePayload {
+    let (code, retry) = if error.code_kind() == DaemonErrorCode::ResourceLimit
+        && error.operation() == "admit application command"
+    {
+        (AppErrorCode::IdempotencyCapacity, RetryDisposition::SameRequest)
+    } else {
+        (public_error_code(error), recovery_retry(error.recovery()))
+    };
+    AppResponsePayload::Error(AppProtocolError::classified(
+        code,
+        retry,
+        ResponsibleSubsystem::Command,
         daemon_diagnostic(error),
     ))
 }

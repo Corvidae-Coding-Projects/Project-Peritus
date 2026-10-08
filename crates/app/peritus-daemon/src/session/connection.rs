@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 mod select;
+mod terminal_delivery;
 #[cfg(test)]
 mod terminal_tests;
 
@@ -25,8 +26,9 @@ use crate::{
     artifact::ArtifactClient,
     product_run::ProductRunService,
     subscription::SubscriptionRegistry,
-    terminal::{TerminalBridgeError, TerminalBridgeEvent, TerminalRegistry},
+    terminal::{TerminalBridgeEvent, TerminalRegistry},
 };
+use terminal_delivery::{terminal_diagnostic, terminal_gap_diagnostic};
 
 pub async fn run_connection(
     connection: AuthenticatedConnection,
@@ -52,8 +54,8 @@ pub async fn run_connection(
         };
     };
     let mut frames = frames.into_inner().into_framed(context.limits());
-    let mut subscriptions = SubscriptionRegistry::new(context.limits());
-    let mut artifacts = ArtifactClient::new(context.limits());
+    let mut subscriptions = SubscriptionRegistry::new();
+    let mut artifacts = ArtifactClient::new();
     let mut terminal_bindings = Vec::new();
     let mut heartbeat = ConnectionHeartbeat::new(context.protocol());
     let mut delivery_tick = tokio::time::interval(Duration::from_millis(100));
@@ -130,13 +132,7 @@ pub async fn run_connection(
                         )
                         .await?;
                         if let Some(events) = shutdown_events {
-                            authority
-                                .abandon_artifact_transfers(
-                                    context.actor_id(),
-                                    context.protocol().session_id(),
-                                    artifacts.transfer_ids(),
-                                )
-                                .await?;
+                            abandon_artifact_transfers(&authority, &artifacts, &context).await?;
                             terminals.release_attachments(
                                 context.actor_id(),
                                 context.protocol().session_id(),
@@ -181,8 +177,12 @@ pub async fn run_connection(
                         context.actor_id(),
                         context.protocol().session_id(),
                         context.protocol(),
+                        context.limits().max_diagnostic_bytes(),
                         context.supports(
                             peritus_app_protocol::WellKnownProtocolFeature::TerminalFailure,
+                        ),
+                        context.supports(
+                            peritus_app_protocol::WellKnownProtocolFeature::TerminalOutputGaps,
                         ),
                     )
                     .await?;
@@ -200,7 +200,13 @@ pub async fn run_connection(
                     frames.write(&AppMessage::Response(response)).await?;
                 }
                 ConnectionAction::Heartbeat => {
-                    heartbeat.send(&mut frames, authority.status().await?).await?;
+                    heartbeat
+                        .send(
+                            &mut frames,
+                            authority.status().await?,
+                            context.limits().max_diagnostic_bytes(),
+                        )
+                        .await?;
                 }
             }
         }
@@ -210,13 +216,7 @@ pub async fn run_connection(
     let cleanup = if resources_released {
         Ok(())
     } else {
-        let cleanup = authority
-            .abandon_artifact_transfers(
-                context.actor_id(),
-                context.protocol().session_id(),
-                artifacts.transfer_ids(),
-            )
-            .await;
+        let cleanup = abandon_artifact_transfers(&authority, &artifacts, &context).await;
         terminals.release_attachments(
             context.actor_id(),
             context.protocol().session_id(),
@@ -228,6 +228,28 @@ pub async fn run_connection(
         (Err(error), _) => Err(error),
         (Ok(()), Err(error)) => Err(error),
         (Ok(()), Ok(())) => Ok(()),
+    }
+}
+
+async fn abandon_artifact_transfers(
+    authority: &AuthorityHandle,
+    artifacts: &ArtifactClient,
+    context: &super::negotiation::ConnectionContext,
+) -> Result<(), DaemonError> {
+    let mut after = None;
+    loop {
+        let batch = artifacts.transfer_batch(after);
+        let Some(last) = batch.last().copied() else {
+            return Ok(());
+        };
+        authority
+            .abandon_artifact_transfers(
+                context.actor_id(),
+                context.protocol().session_id(),
+                batch,
+            )
+            .await?;
+        after = Some(last);
     }
 }
 
@@ -269,7 +291,9 @@ async fn pump_terminals<S>(
     actor_id: peritus_types::ActorId,
     session_id: peritus_types::SessionId,
     context: peritus_app_protocol::ProtocolContext,
+    maximum_diagnostic_bytes: usize,
     report_attachment_failure: bool,
+    report_output_gaps: bool,
 ) -> Result<(), DaemonError>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
@@ -284,7 +308,7 @@ where
                 let payload = if report_attachment_failure {
                     AppEventPayload::TerminalUnavailable(binding)
                 } else {
-                    terminal_diagnostic(&error)?
+                    terminal_diagnostic(&error, maximum_diagnostic_bytes)?
                 };
                 frames.write(&AppMessage::Event(AppEventEnvelope::new(context, payload))).await?;
                 continue;
@@ -294,6 +318,25 @@ where
             let (payload, terminal) = match event {
                 TerminalBridgeEvent::Output(output) => {
                     (AppEventPayload::TerminalOutput(output), None)
+                }
+                TerminalBridgeEvent::Gap(gap) if report_output_gaps => {
+                    (AppEventPayload::TerminalOutputGap(gap), None)
+                }
+                TerminalBridgeEvent::Gap(gap) => {
+                    terminals.release_attachments(actor_id, session_id, &[binding]);
+                    completed.push(binding);
+                    let payload = if report_attachment_failure {
+                        AppEventPayload::TerminalUnavailable(binding)
+                    } else {
+                        terminal_gap_diagnostic(
+                            gap.missing_bytes(),
+                            maximum_diagnostic_bytes,
+                        )?
+                    };
+                    frames
+                        .write(&AppMessage::Event(AppEventEnvelope::new(context, payload)))
+                        .await?;
+                    break;
                 }
                 TerminalBridgeEvent::Exited(exit) => {
                     let process_id = exit.binding().process_id();
@@ -307,7 +350,7 @@ where
                     frames
                         .write(&AppMessage::Event(AppEventEnvelope::new(
                             context,
-                            terminal_diagnostic(&error)?,
+                            terminal_diagnostic(&error, maximum_diagnostic_bytes)?,
                         )))
                         .await?;
                 }
@@ -316,20 +359,6 @@ where
     }
     bindings.retain(|binding| !completed.contains(binding));
     Ok(())
-}
-
-fn terminal_diagnostic(error: &TerminalBridgeError) -> Result<AppEventPayload, DaemonError> {
-    // Only the stable category is public, never provider/process diagnostic contents.
-    let text = format!(
-        "Terminal delivery unavailable ({:?}); process state is unchanged. Inspect the preview or explicitly cancel it.",
-        error.kind()
-    );
-    peritus_app_protocol::AppDiagnostic::new(
-        text,
-        AppProtocolLimits::PRODUCTION.max_diagnostic_bytes(),
-    )
-    .map(AppEventPayload::Diagnostic)
-    .map_err(|_| invalid("terminal failure diagnostic exceeds its bound"))
 }
 
 fn handle_control(

@@ -81,13 +81,23 @@ impl ClientSession {
         let mut io = connect_local(endpoint).await?;
         let limits = AppProtocolLimits::PRODUCTION;
         let hello = client_hello(protocol_id, requested_session, limits)?;
-        write_frame(&mut io, &AppMessage::ClientHello(hello), limits).await?;
+        write_frame(&mut io, &AppMessage::ClientHello(hello.clone()), limits).await?;
         let response = read_frame(&mut io, limits).await?;
         let AppMessage::ServerHello(server_hello) = response else {
             return Err(TuiError::ProtocolViolation(
                 "first daemon frame was not ServerHello".to_owned(),
             ));
         };
+        if matches!(
+            server_hello.outcome(),
+            NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol)
+                if !hello.accepts(protocol)
+        ) {
+            return Err(TuiError::ProtocolViolation(
+                "daemon selected a version, feature, or capacity outside the client offer"
+                    .to_owned(),
+            ));
+        }
         let established = establish(protocol_id, &server_hello)?;
         let limits = established.limits;
         let context = established.context;

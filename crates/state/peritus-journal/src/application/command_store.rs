@@ -30,6 +30,30 @@ impl SqliteJournal {
         &mut self,
         command: NewApplicationCommand,
     ) -> Result<ApplicationCommandAdmission, JournalError> {
+        self.classify_or_admit_application_command(command, true)?.ok_or_else(|| {
+            corrupt("enabled application command admission did not return a classification")
+        })
+    }
+
+    /// Atomically classifies an idempotency identity and conditionally admits new work.
+    ///
+    /// Existing exact receipts and conflicts are always returned. When `admit_new` is false and
+    /// no matching identity exists, the transaction performs no insertion and returns `None`.
+    /// This lets a bounded execution owner apply pressure without losing historical replay or
+    /// growing a second durable backlog.
+    ///
+    /// # Errors
+    ///
+    /// Returns invalid input when the actor/session is not active, or a typed storage error.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "conditional admission consumes the one-shot command only when capacity exists"
+    )]
+    pub fn classify_or_admit_application_command(
+        &mut self,
+        command: NewApplicationCommand,
+        admit_new: bool,
+    ) -> Result<Option<ApplicationCommandAdmission>, JournalError> {
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -48,7 +72,7 @@ impl SqliteJournal {
             transaction.commit().map_err(|error| {
                 JournalError::sqlite("complete application command admission", error)
             })?;
-            return Ok(admission);
+            return Ok(Some(admission));
         }
         let session = super::store::load_session(&transaction, command.session_id)?
             .ok_or_else(|| invalid("application command session does not exist"))?;
@@ -56,6 +80,12 @@ impl SqliteJournal {
             || session.state() != ApplicationSessionState::Active
         {
             return Err(invalid("application command session is not active for the actor"));
+        }
+        if !admit_new {
+            transaction.commit().map_err(|error| {
+                JournalError::sqlite("complete application command classification", error)
+            })?;
+            return Ok(None);
         }
         let (envelope_digest, envelope_byte_length, domain_command_byte_length) =
             match command.submission.as_ref() {
@@ -98,7 +128,7 @@ impl SqliteJournal {
         transaction
             .commit()
             .map_err(|error| JournalError::sqlite("commit application command admission", error))?;
-        Ok(ApplicationCommandAdmission::Inserted(inserted))
+        Ok(Some(ApplicationCommandAdmission::Inserted(inserted)))
     }
 
     /// Reads a command ledger row by its B3 command identity.

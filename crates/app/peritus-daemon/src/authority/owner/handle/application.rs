@@ -77,9 +77,14 @@ impl AuthorityHandle {
     pub async fn admit_command(
         &self,
         command: NewApplicationCommand,
+        maximum_active_commands: usize,
     ) -> Result<ApplicationCommandAdmission, DaemonError> {
         let (respond, receive) = oneshot::channel();
-        self.send(AuthorityMessage::AdmitCommand { command, respond }, receive).await
+        self.send(
+            AuthorityMessage::AdmitCommand { command, maximum_active_commands, respond },
+            receive,
+        )
+        .await
     }
 
     /// Decodes, reduces, and durably commits one explicitly registered B3 command family.

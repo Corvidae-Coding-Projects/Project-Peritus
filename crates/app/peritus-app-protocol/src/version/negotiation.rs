@@ -17,12 +17,15 @@ impl ImplementationMetadata {
     /// # Errors
     ///
     /// Returns a malformed-frame error for empty text and a limit error above the smaller of the
-    /// negotiated string ceiling and `MAX_IMPLEMENTATION_METADATA_BYTES`.
+    /// negotiated diagnostic/string ceilings and `MAX_IMPLEMENTATION_METADATA_BYTES`.
     pub fn new(value: String, limits: AppProtocolLimits) -> Result<Self, AppProtocolError> {
         if value.is_empty() {
             return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
         }
-        let ceiling = limits.codec().max_string_bytes.min(MAX_IMPLEMENTATION_METADATA_BYTES);
+        let ceiling = limits
+            .max_diagnostic_bytes()
+            .min(limits.codec().max_string_bytes)
+            .min(MAX_IMPLEMENTATION_METADATA_BYTES);
         if value.len() > ceiling {
             Err(AppProtocolError::new(AppErrorCode::LimitExceeded, None))
         } else {
@@ -153,6 +156,20 @@ impl ClientHello {
     #[must_use]
     pub const fn implementation(&self) -> &ImplementationMetadata {
         &self.implementation
+    }
+
+    /// Returns whether a server selection is wholly contained in this exact offer.
+    ///
+    /// This is the client-side counterpart to server negotiation. It rejects versions, features,
+    /// or receive ceilings that the client did not offer while requiring every required feature.
+    #[must_use]
+    pub fn accepts(&self, selected: &NegotiatedProtocol) -> bool {
+        self.versions.iter().any(|range| range.contains(selected.version()))
+            && self.required_features.is_subset_of(selected.features())
+            && selected.features().as_slice().iter().all(|feature| {
+                self.required_features.contains(feature) || self.optional_features.contains(feature)
+            })
+            && self.receive_limits.permits_all(selected.limits())
     }
 }
 

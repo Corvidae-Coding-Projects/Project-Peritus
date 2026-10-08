@@ -26,7 +26,7 @@ pub struct AppProtocolLimits {
     codec: CodecLimits,
     max_versions: usize,
     max_features: usize,
-    max_idempotency_entries: usize,
+    max_active_idempotency_slots: usize,
     max_topics: usize,
     max_in_flight_events: usize,
     max_artifact_chunk_bytes: usize,
@@ -42,7 +42,7 @@ impl AppProtocolLimits {
         codec: CodecLimits::PRODUCTION,
         max_versions: 16,
         max_features: 64,
-        max_idempotency_entries: 4_096,
+        max_active_idempotency_slots: 4_096,
         max_topics: 64,
         max_in_flight_events: 256,
         max_artifact_chunk_bytes: 256 * 1024,
@@ -56,14 +56,15 @@ impl AppProtocolLimits {
     ///
     /// # Errors
     ///
-    /// Returns [`LimitConfigurationError`] when a ceiling is zero or cannot be represented safely
-    /// within its enclosing codec ceiling.
+    /// Returns [`LimitConfigurationError`] when a ceiling is zero or a per-frame collection,
+    /// string, or opaque-field ceiling exceeds its enclosing codec ceiling. Runtime windows and
+    /// active slots remain independent of the codec's per-frame collection bound.
     #[allow(clippy::too_many_arguments, reason = "independent protocol limits are security inputs")]
     pub fn new(
         codec: CodecLimits,
         max_versions: usize,
         max_features: usize,
-        max_idempotency_entries: usize,
+        max_active_idempotency_slots: usize,
         max_topics: usize,
         max_in_flight_events: usize,
         max_artifact_chunk_bytes: usize,
@@ -76,7 +77,7 @@ impl AppProtocolLimits {
             codec,
             max_versions,
             max_features,
-            max_idempotency_entries,
+            max_active_idempotency_slots,
             max_topics,
             max_in_flight_events,
             max_artifact_chunk_bytes,
@@ -107,7 +108,7 @@ impl AppProtocolLimits {
             codec,
             self.max_versions.min(other.max_versions),
             self.max_features.min(other.max_features),
-            self.max_idempotency_entries.min(other.max_idempotency_entries),
+            self.max_active_idempotency_slots.min(other.max_active_idempotency_slots),
             self.max_topics.min(other.max_topics),
             self.max_in_flight_events.min(other.max_in_flight_events),
             self.max_artifact_chunk_bytes.min(other.max_artifact_chunk_bytes),
@@ -129,7 +130,7 @@ impl AppProtocolLimits {
             && self.codec.max_nesting_depth >= requested.codec.max_nesting_depth
             && self.max_versions >= requested.max_versions
             && self.max_features >= requested.max_features
-            && self.max_idempotency_entries >= requested.max_idempotency_entries
+            && self.max_active_idempotency_slots >= requested.max_active_idempotency_slots
             && self.max_topics >= requested.max_topics
             && self.max_in_flight_events >= requested.max_in_flight_events
             && self.max_artifact_chunk_bytes >= requested.max_artifact_chunk_bytes
@@ -144,52 +145,60 @@ impl AppProtocolLimits {
     pub const fn codec(self) -> CodecLimits {
         self.codec
     }
-    /// Returns the maximum advertised version ranges.
+    /// Returns the maximum version ranges carried by one hello frame.
     #[must_use]
     pub const fn max_versions(self) -> usize {
         self.max_versions
     }
-    /// Returns the maximum feature names in one collection.
+    /// Returns the maximum feature names carried by one hello selection or offer.
     #[must_use]
     pub const fn max_features(self) -> usize {
         self.max_features
     }
-    /// Returns the maximum retained final idempotency entries.
+    /// Returns the maximum commands that may occupy active idempotency slots.
+    #[must_use]
+    pub const fn max_active_idempotency_slots(self) -> usize {
+        self.max_active_idempotency_slots
+    }
+    /// Returns the active idempotency-slot ceiling under its version-one wire name.
+    ///
+    /// The encoded field name is retained for compatibility. Completed receipts are immutable
+    /// history and do not consume this capacity.
     #[must_use]
     pub const fn max_idempotency_entries(self) -> usize {
-        self.max_idempotency_entries
+        self.max_active_idempotency_slots
     }
-    /// Returns the maximum subscription topics.
+    /// Returns the maximum topics carried by one subscription filter.
     #[must_use]
     pub const fn max_topics(self) -> usize {
         self.max_topics
     }
-    /// Returns the maximum unacknowledged event deliveries.
+    /// Returns the maximum unacknowledged deliveries in one subscription window.
     #[must_use]
     pub const fn max_in_flight_events(self) -> usize {
         self.max_in_flight_events
     }
-    /// Returns the maximum artifact chunk bytes.
+    /// Returns the maximum opaque bytes carried by one artifact chunk.
     #[must_use]
     pub const fn max_artifact_chunk_bytes(self) -> usize {
         self.max_artifact_chunk_bytes
     }
-    /// Returns the maximum choices in one prompt.
+    /// Returns the maximum choices carried by one prompt.
     #[must_use]
     pub const fn max_prompt_choices(self) -> usize {
         self.max_prompt_choices
     }
-    /// Returns the maximum terminal-stream chunk bytes.
+    /// Returns the maximum opaque bytes carried by one terminal-stream chunk.
     #[must_use]
     pub const fn max_terminal_chunk_bytes(self) -> usize {
         self.max_terminal_chunk_bytes
     }
-    /// Returns the maximum diagnostic UTF-8 bytes.
+    /// Returns the maximum UTF-8 bytes carried by one diagnostic field.
     #[must_use]
     pub const fn max_diagnostic_bytes(self) -> usize {
         self.max_diagnostic_bytes
     }
-    /// Returns the maximum bounded remaining-work records.
+    /// Returns the maximum remaining-work records carried by one shutdown frame.
     #[must_use]
     pub const fn max_remaining_work_items(self) -> usize {
         self.max_remaining_work_items
@@ -215,14 +224,14 @@ impl AppProtocolLimits {
         for (value, dimension) in [
             (self.max_versions, LimitDimension::Versions),
             (self.max_features, LimitDimension::Features),
-            (self.max_idempotency_entries, LimitDimension::IdempotencyEntries),
             (self.max_topics, LimitDimension::Topics),
-            (self.max_in_flight_events, LimitDimension::InFlightEvents),
             (self.max_prompt_choices, LimitDimension::PromptChoices),
             (self.max_remaining_work_items, LimitDimension::RemainingWorkItems),
         ] {
             bounded(value, codec.max_collection_items, dimension)?;
         }
+        positive(self.max_active_idempotency_slots, LimitDimension::IdempotencyEntries)?;
+        positive(self.max_in_flight_events, LimitDimension::InFlightEvents)?;
         bounded(
             self.max_artifact_chunk_bytes,
             codec.max_opaque_bytes,
@@ -271,25 +280,25 @@ pub enum LimitDimension {
     OpaqueBytes,
     /// Aggregate nesting depth.
     NestingDepth,
-    /// Version ranges.
+    /// Version ranges in one hello frame.
     Versions,
-    /// Feature names.
+    /// Feature names in one hello frame.
     Features,
-    /// Retained idempotency results.
+    /// Active idempotency slots (the version-one wire field is named idempotency entries).
     IdempotencyEntries,
-    /// Subscription topics.
+    /// Topics in one subscription filter.
     Topics,
-    /// Unacknowledged event deliveries.
+    /// Unacknowledged deliveries in one subscription window.
     InFlightEvents,
-    /// Artifact chunk bytes.
+    /// Artifact bytes in one chunk.
     ArtifactChunkBytes,
-    /// Prompt choices.
+    /// Choices in one prompt.
     PromptChoices,
-    /// Terminal chunk bytes.
+    /// Terminal bytes in one chunk.
     TerminalChunkBytes,
-    /// Diagnostic bytes.
+    /// Bytes in one diagnostic field.
     DiagnosticBytes,
-    /// Remaining-work records.
+    /// Remaining-work records in one shutdown frame.
     RemainingWorkItems,
 }
 

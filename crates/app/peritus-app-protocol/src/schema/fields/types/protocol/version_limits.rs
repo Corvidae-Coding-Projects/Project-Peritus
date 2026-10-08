@@ -149,7 +149,7 @@ pub(in crate::schema::fields::types) const VERSION_LIMIT_TYPES: &[AppTypeDescrip
             field(
                 "maxIdempotencyEntries",
                 CanonicalWireType::U64,
-                &[B::NonZero, B::CodecCollectionItems],
+                &[B::NonZero],
                 "usize",
                 "UInt64",
                 J::U64String,

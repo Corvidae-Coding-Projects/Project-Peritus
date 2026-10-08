@@ -4,7 +4,7 @@ use std::{ffi::OsStr, time::Duration};
 
 use peritus_app_protocol::{
     AppMessage, AppProtocolLimits, CURRENT_PROTOCOL_RANGE, ClientHello, NegotiationOutcome,
-    ProtocolContext, ProtocolFeatureName, ProtocolId, WellKnownProtocolFeature,
+    ProtocolContext, ProtocolFeatureName, ProtocolFeatureSet, ProtocolId, WellKnownProtocolFeature,
 };
 use peritus_types::SessionId;
 
@@ -21,6 +21,7 @@ pub struct Client {
     pub(crate) context: ProtocolContext,
     pub(crate) timeout: Option<Duration>,
     pub(crate) usable: bool,
+    features: ProtocolFeatureSet,
 }
 
 impl Client {
@@ -63,8 +64,15 @@ impl Client {
             .collect::<Result<Vec<_>, _>>()?;
         let optional = [
             WellKnownProtocolFeature::TerminalFailure,
+            WellKnownProtocolFeature::TerminalOutputGaps,
             WellKnownProtocolFeature::TerminalPipes,
+            WellKnownProtocolFeature::WorkbenchInputMoves,
+            WellKnownProtocolFeature::WorkbenchRequestSources,
+            WellKnownProtocolFeature::WorkbenchFileSources,
+            WellKnownProtocolFeature::HarnessImprovements,
+            WellKnownProtocolFeature::HarnessImprovementPages,
             WellKnownProtocolFeature::WorkbenchCheckpointCoverage,
+            WellKnownProtocolFeature::WorkbenchCheckpointManifests,
         ]
         .into_iter()
         .filter(|feature| !required.contains(feature))
@@ -79,18 +87,20 @@ impl Client {
             AppProtocolLimits::PRODUCTION,
             format!("peritus/{}", env!("CARGO_PKG_VERSION")),
         )?;
-        stream.write(&AppMessage::ClientHello(hello)).await?;
+        stream.write(&AppMessage::ClientHello(hello.clone())).await?;
         let AppMessage::ServerHello(server) = stream.read().await? else {
             return Err(ClientError::negotiation("daemon did not answer with ServerHello"));
         };
         if server.protocol_id() != protocol_id {
             return Err(ClientError::negotiation("daemon echoed a different protocol identity"));
         }
-        let (version, limits) = match server.outcome() {
+        let (version, limits, features) = match server.outcome() {
             NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol) => {
-                if protocol.version() != CURRENT_PROTOCOL_RANGE.preferred() {
+                if protocol.version() != CURRENT_PROTOCOL_RANGE.preferred()
+                    || !hello.accepts(protocol)
+                {
                     return Err(ClientError::negotiation(
-                        "daemon selected a version outside the offered range",
+                        "daemon selected a version, feature, or capacity outside the client offer",
                     ));
                 }
                 for feature in required {
@@ -102,7 +112,7 @@ impl Client {
                         )));
                     }
                 }
-                (protocol.version(), protocol.limits())
+                (protocol.version(), protocol.limits(), protocol.features().clone())
             }
             NegotiationOutcome::Incompatible(reason) => {
                 return Err(ClientError::negotiation(format!("incompatible protocol: {reason:?}")));
@@ -122,6 +132,7 @@ impl Client {
             context: ProtocolContext::new(protocol_id, version, session),
             timeout,
             usable: true,
+            features,
         })
     }
 
@@ -135,6 +146,12 @@ impl Client {
     #[must_use]
     pub const fn limits(&self) -> AppProtocolLimits {
         self.stream.limits()
+    }
+
+    /// Reports whether the peer negotiated a particular application representation.
+    #[must_use]
+    pub fn supports(&self, feature: WellKnownProtocolFeature) -> bool {
+        self.features.as_slice().iter().any(|name| name.as_str() == feature.as_str())
     }
 
     /// Whether the stream has completed every previous frame exchange.

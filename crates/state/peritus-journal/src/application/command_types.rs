@@ -151,6 +151,18 @@ impl NewApplicationCommand {
         });
         Ok(command)
     }
+
+    /// Returns the durable session that scopes this command's idempotency key.
+    #[must_use]
+    pub const fn session_id(&self) -> SessionId {
+        self.session_id
+    }
+
+    /// Returns the reserved domain command identity.
+    #[must_use]
+    pub const fn command_id(&self) -> CommandId {
+        self.command_id
+    }
 }
 
 /// One durable application command ledger row.

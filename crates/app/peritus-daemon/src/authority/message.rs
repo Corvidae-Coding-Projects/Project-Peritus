@@ -103,6 +103,7 @@ pub(super) enum AuthorityMessage {
         session_id: SessionId,
         request: ArtifactOpenRequest,
         maximum_chunk_bytes: usize,
+        maximum_media_type_bytes: usize,
         respond: Response<ArtifactMetadata>,
     },
     PollArtifact {
@@ -133,6 +134,16 @@ pub(super) enum AuthorityMessage {
         maximum_bytes: u64,
         respond: Response<(ApplicationArtifact, Vec<u8>)>,
     },
+    AuthorizeScopedText {
+        scope: crate::artifact::ArtifactScope,
+        artifact_id: ArtifactId,
+        respond: Response<ApplicationArtifact>,
+    },
+    AuthorizeScopedArtifact {
+        scope: crate::artifact::ArtifactScope,
+        artifact_id: ArtifactId,
+        respond: Response<ApplicationArtifact>,
+    },
     UploadArtifactChunk {
         actor_id: ActorId,
         session_id: SessionId,
@@ -143,6 +154,10 @@ pub(super) enum AuthorityMessage {
         actor_id: ActorId,
         session_id: SessionId,
         completion: ArtifactCompletion,
+        respond: Response<()>,
+    },
+    ArtifactUploadFinalized {
+        completed: crate::artifact::CompletedArtifactFinalization,
         respond: Response<()>,
     },
     CancelArtifactTransfer {
@@ -180,6 +195,7 @@ pub(super) enum AuthorityMessage {
     },
     AdmitCommand {
         command: NewApplicationCommand,
+        maximum_active_commands: usize,
         respond: Response<ApplicationCommandAdmission>,
     },
     DispatchCommand {
