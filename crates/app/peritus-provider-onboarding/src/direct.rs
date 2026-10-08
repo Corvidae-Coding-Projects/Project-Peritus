@@ -47,6 +47,47 @@ pub struct DirectProviderDraft {
     credential_header: Option<String>,
 }
 
+/// Credential publication owned between durable profile preparation and OS-store publication.
+///
+/// The profile may be committed to a new immutable product generation before this value is
+/// consumed. Its durable effect receipt then distinguishes an uncommitted preparation from a
+/// committed publication attempt.
+pub struct PreparedDirectProvider {
+    profile: DirectProviderProfile,
+}
+
+impl fmt::Debug for PreparedDirectProvider {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("PreparedDirectProvider")
+            .field("profile", &self.profile)
+            .finish()
+    }
+}
+
+impl PreparedDirectProvider {
+    /// Borrows the durable non-secret profile to commit before credential publication.
+    #[must_use]
+    pub const fn profile(&self) -> &DirectProviderProfile {
+        &self.profile
+    }
+
+    /// Publishes the credential after its exact profile has been durably committed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an effect-journal, credential-store, or publication-identity failure. The durable
+    /// committed receipt remains available when publication cannot be acknowledged.
+    pub fn publish(
+        self,
+        effects: &ProviderEffectStore,
+    ) -> Result<DirectProviderProfile, OnboardingError> {
+        let Self { profile } = self;
+        effects.publish_credential(profile.credential_reference())?;
+        Ok(profile)
+    }
+}
+
 impl DirectProviderDraft {
     /// Binds an exact compatible model-catalog endpoint for discovery and durable configuration.
     #[must_use]
@@ -116,16 +157,19 @@ impl DirectProviderDraft {
         }
     }
 
-    /// Publishes credential material and returns only durable non-secret profile data.
+    /// Prepares a durable profile and stages credential material under an effect-owned reference.
+
+    /// The staged resource is not the route credential. It exists only so the exact route
+    /// publication can be recovered after the product generation commits.
     ///
     /// # Errors
     ///
-    /// Returns a random-source, credential-store, or direct-profile validation failure.
-    pub fn store(
+    /// Returns a random-source, effect-journal, or direct-profile validation failure.
+    pub fn prepare(
         self,
-        credential: &DirectCredential,
+        credential: DirectCredential,
         effects: &ProviderEffectStore,
-    ) -> Result<DirectProviderProfile, OnboardingError> {
+    ) -> Result<PreparedDirectProvider, OnboardingError> {
         let model_facts = self.model_facts.clone().ok_or_else(|| {
             peritus_product_state::ProductStateError::InvalidPayload(
                 "selected direct model capacity and feature facts are unresolved".to_owned(),
@@ -147,13 +191,18 @@ impl DirectProviderDraft {
             }
         };
         let resource_id = random_resource_id()?;
+        let staged_resource_id = loop {
+            let candidate = random_resource_id()?;
+            if candidate != resource_id {
+                break candidate;
+            }
+        };
         let route_identity = ProviderRouteIdentity::new(*resource_id.as_bytes())?;
-        let expected_reference = credential.0.expose(|bytes| {
+        let (expected_reference, staged_reference) = credential.0.expose(|bytes| {
             let digest = Sha256::digest(bytes);
-            format!(
-                "peritus-secret-v1:{}:{}",
-                hex(resource_id.as_bytes()),
-                hex(&digest),
+            (
+                credential_reference(resource_id, &digest),
+                credential_reference(staged_resource_id, &digest),
             )
         });
         let profile = DirectProviderProfile::new_with_route_identity_and_catalog_endpoint(
@@ -167,59 +216,16 @@ impl DirectProviderDraft {
             self.credential_header,
         )?
         .with_model_facts(model_facts)?;
-        effects.begin_credential(&expected_reference)?;
-        let store = PlatformCredentialStore::providers();
-        match store.store(resource_id, &credential.0) {
-            Ok(reference) if format_credential_reference(reference) == expected_reference => {
-                if let Err(error) = effects.credential_published(&expected_reference) {
-                    return Err(reconcile_publication_failure(
-                        &store,
-                        effects,
-                        resource_id,
-                        expected_reference,
-                        error,
-                    ));
-                }
-                Ok(profile)
-            }
-            Ok(_) => Err(reconcile_publication_failure(
-                &store,
-                effects,
-                resource_id,
-                expected_reference.clone(),
-                OnboardingError::CredentialPublication {
-                    credential_reference: expected_reference,
-                    detail: "credential store returned a different content identity",
-                },
-            )),
-            Err(error) => Err(reconcile_publication_failure(
-                &store,
-                effects,
-                resource_id,
-                expected_reference,
-                OnboardingError::Secret(error),
-            )),
+        effects.begin_credential(&expected_reference, &staged_reference)?;
+        let staged = PlatformCredentialStore::providers().store(staged_resource_id, &credential.0)?;
+        if format_credential_reference(staged) != staged_reference {
+            return Err(OnboardingError::CredentialPublication {
+                credential_reference: expected_reference,
+                detail: "credential store returned a different staged content identity",
+            });
         }
-    }
-}
-
-fn reconcile_publication_failure(
-    store: &PlatformCredentialStore,
-    effects: &ProviderEffectStore,
-    resource_id: ResourceId,
-    credential_reference: String,
-    publication: OnboardingError,
-) -> OnboardingError {
-    match store.remove(resource_id) {
-        Ok(()) => effects.credential_settled(&credential_reference).err().unwrap_or(publication),
-        Err(cleanup) => {
-            let _retained = effects.credential_cleanup_required(&credential_reference);
-            OnboardingError::CredentialReconciliation {
-                credential_reference,
-                publication: publication.to_string(),
-                cleanup,
-            }
-        }
+        effects.credential_staged(profile.credential_reference())?;
+        Ok(PreparedDirectProvider { profile })
     }
 }
 
@@ -241,6 +247,14 @@ fn random_resource_id() -> Result<ResourceId, OnboardingError> {
         bytes[0] = 1;
     }
     ResourceId::new(bytes).map_err(|_| OnboardingError::Random("generated a zero identity".into()))
+}
+
+fn credential_reference(resource_id: ResourceId, digest: &[u8]) -> String {
+    format!(
+        "peritus-secret-v1:{}:{}",
+        hex(resource_id.as_bytes()),
+        hex(digest),
+    )
 }
 
 fn hex(bytes: &[u8]) -> String {

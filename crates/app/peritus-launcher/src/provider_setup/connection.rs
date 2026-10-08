@@ -10,11 +10,11 @@ pub(super) async fn existing(
     profile: &DirectProviderProfile,
     effects: &ProviderEffectStore,
     cancellation: &CancellationToken,
-) -> Result<DirectProviderProfile, LauncherError> {
+) -> Result<super::direct::PreparedRoute, LauncherError> {
     loop {
         let answer = terminal.prompt(&format!("{} / {}: Enter to keep, r to replace key/model, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
         match answer.to_ascii_lowercase().as_str() {
-            "" => return Ok(profile.clone()),
+            "" => return Ok(super::direct::PreparedRoute::retained(profile.clone())),
             "r" => {
                 return super::direct::setup(
                     terminal,
@@ -24,44 +24,51 @@ pub(super) async fn existing(
                 )
                 .await;
             }
-            "t" => test(terminal, profile)?,
+            "t" => test(terminal, profile, cancellation).await?,
             _ => terminal.line("Press Enter, r, or t.")?,
         }
     }
 }
 
-pub(super) fn offer(
+pub(super) async fn offer(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
+    cancellation: &CancellationToken,
 ) -> Result<(), LauncherError> {
     if terminal.confirm(
         "Test generation and tool calling now? Up to 3 small requests may use paid tokens. [y/N]: ",
         false,
     )? {
-        test(terminal, profile)?;
+        test(terminal, profile, cancellation).await?;
     }
     Ok(())
 }
 
-fn test(terminal: &mut Terminal<'_>, profile: &DirectProviderProfile) -> Result<(), LauncherError> {
+async fn test(
+    terminal: &mut Terminal<'_>,
+    profile: &DirectProviderProfile,
+    cancellation: &CancellationToken,
+) -> Result<(), LauncherError> {
+    if cancellation.is_cancelled() {
+        return Err(LauncherError::Cancelled { operation: "provider connection test" });
+    }
     terminal.line(&format!("Testing {} / {}…", profile.kind().label(), profile.model()))?;
-    let result = std::thread::scope(|scope| {
-        scope
-            .spawn(|| {
-                let route = route(profile)?;
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|error| LauncherError::Interaction(error.to_string()))?;
-                runtime
-                    .block_on(peritus_daemon::test_provider_connection(&route))
-                    .map_err(|error| LauncherError::Interaction(error.to_string()))
-            })
-            .join()
-            .map_err(|_| {
-                LauncherError::Interaction("provider connection test worker stopped".to_owned())
-            })?
-    });
+    let route = route(profile)?;
+    let mut operation = Box::pin(peritus_daemon::test_provider_connection(&route, cancellation));
+    let result = tokio::select! {
+        result = &mut operation => {
+            result.map_err(|error| LauncherError::Interaction(error.to_string()))
+        }
+        signal = tokio::signal::ctrl_c() => {
+            let _ = cancellation.cancel();
+            return match signal {
+                Ok(()) => Err(LauncherError::Cancelled { operation: "provider connection test" }),
+                Err(error) => Err(LauncherError::Interaction(format!(
+                    "cannot observe provider connection-test cancellation: {error}",
+                ))),
+            };
+        }
+    };
     match result {
         Ok(report) => {
             for stage in report.completed {

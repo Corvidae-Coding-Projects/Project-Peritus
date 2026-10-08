@@ -29,16 +29,14 @@ pub async fn ensure_configured(
     let cancellation = CancellationToken::new();
     let effects = ProviderEffectStore::open(prepared.layout().provider_effects_root())?;
     effects.reconcile_credentials(prepared.state().providers())?;
-    let observations = ProviderCatalog::observe(&cancellation).await?;
-    if !prepared.state().provider_setup_complete() {
-        return first_run(&prepared, &observations, &cancellation, &effects).await;
+    if prepared.state().provider_setup_complete() {
+        return Ok(prepared);
     }
-    repair_if_needed(prepared, &observations, &cancellation, &effects).await
+    first_run(&prepared, &cancellation, &effects).await
 }
 
 async fn first_run(
     prepared: &PreparedProduct,
-    observations: &[ProviderObservation],
     cancellation: &CancellationToken,
     effects: &ProviderEffectStore,
 ) -> Result<PreparedProduct, LauncherError> {
@@ -46,34 +44,35 @@ async fn first_run(
     terminal.line("")?;
     terminal.line("Welcome to Peritus")?;
     terminal.line("Choose how Peritus may run coding agents. You can change this later.")?;
-    show_catalog(&mut terminal, observations, None)?;
+    show_catalog(&mut terminal, None)?;
 
-    let ready = ready_kinds(observations);
-    let default_text = selection_text(&ready);
-    let (requested, used_ready_default) =
-        choose_provider_set(&mut terminal, ready, "ready providers")?;
-    if used_ready_default && !default_text.is_empty() {
-        terminal.line(&format!("Using {default_text}."))?;
-    }
+    let (requested, _) = choose_provider_set(&mut terminal, Vec::new(), "offline mode")?;
 
     let activated =
-        activate_requested(&mut terminal, observations, requested, None, cancellation, effects)
-            .await?;
+        activate_requested(&mut terminal, requested, None, cancellation, effects).await?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let default_route = choose_default_route(
         &mut terminal,
         default,
-        &activated.direct_profiles,
+        &activated.direct_profiles(),
         None,
     )?;
     let automatic_failover = choose_failover(&mut terminal, activated.route_count(), false)?;
     let selection = ProviderSelection::with_routes_and_failover(
-        activated.enabled,
+        activated.enabled.clone(),
         default_route,
-        activated.direct_profiles,
+        activated.direct_profiles(),
         automatic_failover,
     )?;
-    persist(prepared, selection, effects, cancellation).await
+    persist(
+        prepared,
+        selection,
+        effects,
+        cancellation,
+        &mut terminal,
+        activated.direct_routes,
+    )
+    .await
 }
 
 /// Opens provider settings without replaying unrelated first-run setup.
@@ -83,30 +82,31 @@ pub async fn configure(
     let cancellation = CancellationToken::new();
     let effects = ProviderEffectStore::open(prepared.layout().provider_effects_root())?;
     effects.reconcile_credentials(prepared.state().providers())?;
-    let observations = ProviderCatalog::observe(&cancellation).await?;
     let current = prepared.state().providers().clone();
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
     terminal.line("Provider settings")?;
     terminal
         .line("Select one or more providers. Existing credentials stay in the OS key store.")?;
-    show_catalog(&mut terminal, &observations, Some(&current))?;
+    show_catalog(&mut terminal, Some(&current))?;
     let (requested, _) =
         choose_provider_set(&mut terminal, current.enabled().to_vec(), "current selection")?;
     let activated = activate_requested(
         &mut terminal,
-        &observations,
         requested,
         Some(&current),
         &cancellation,
         &effects,
     )
     .await?;
-    let default = choose_default(&mut terminal, &activated.enabled)?;
+    let default = match current.default().filter(|kind| activated.enabled.contains(kind)) {
+        Some(default) => Some(default),
+        None => choose_default(&mut terminal, &activated.enabled)?,
+    };
     let default_route = choose_default_route(
         &mut terminal,
         default,
-        &activated.direct_profiles,
+        &activated.direct_profiles(),
         current.default_route(),
     )?;
     let automatic_failover = choose_failover(
@@ -115,125 +115,39 @@ pub async fn configure(
         current.automatic_failover(),
     )?;
     let selection = ProviderSelection::with_routes_and_failover(
-        activated.enabled,
+        activated.enabled.clone(),
         default_route,
-        activated.direct_profiles.clone(),
+        activated.direct_profiles(),
         automatic_failover,
     )?;
-    record_replaced_credentials(&effects, &current, &activated.direct_profiles)?;
-    let configured = persist(prepared, selection, &effects, &cancellation).await?;
+    let configured = persist(
+        prepared,
+        selection,
+        &effects,
+        &cancellation,
+        &mut terminal,
+        activated.direct_routes,
+    )
+    .await?;
     terminal.line("Provider settings saved.")?;
     Ok(configured)
 }
 
-async fn repair_if_needed(
-    prepared: PreparedProduct,
-    observations: &[ProviderObservation],
-    cancellation: &CancellationToken,
-    effects: &ProviderEffectStore,
-) -> Result<PreparedProduct, LauncherError> {
-    let selected = prepared.state().providers().enabled();
-    let unhealthy = selected
-        .iter()
-        .filter_map(|kind| observation(observations, *kind))
-        .filter(|item| item.status() != ProviderStatus::Ready)
-        .collect::<Vec<_>>();
-    if unhealthy.is_empty() {
-        return Ok(prepared);
-    }
-
-    let mut terminal = Terminal::stdio();
-    terminal.line("")?;
-    terminal.line("A provider needs attention")?;
-    terminal
-        .line("Your workspace is safe; repair sign-in now or continue without this provider.")?;
-    let mut retained = selected.to_vec();
-    for item in unhealthy {
-        terminal.line(&format!("  {} — {}", item.kind().label(), item.status().label()))?;
-        show_diagnostic(&mut terminal, item)?;
-        if matches!(
-            item.status(),
-            ProviderStatus::Unknown
-                | ProviderStatus::Infrastructure
-                | ProviderStatus::NeedsAttention
-        ) {
-            continue;
-        }
-        let sign_in = match item.status() {
-            ProviderStatus::SignedOut => terminal.confirm(
-                "Sign in now? Press Enter for yes, or type n to continue without it: ",
-                true,
-            )?,
-            ProviderStatus::Unavailable => {
-                if install::offer(&mut terminal, item.kind(), cancellation, effects).await? {
-                    true
-                } else {
-                    installation_guidance(&mut terminal, item.kind())?;
-                    false
-                }
-            }
-            ProviderStatus::Ready => true,
-            ProviderStatus::Unknown
-            | ProviderStatus::Infrastructure
-            | ProviderStatus::NeedsAttention => false,
-        };
-        let outcome = if sign_in {
-            login(&mut terminal, item.kind(), cancellation).await?
-        } else {
-            LoginOutcome::Unavailable
-        };
-        if outcome == LoginOutcome::Unavailable {
-            retained.retain(|kind| kind != &item.kind());
-        }
-    }
-    let old_default = prepared.state().providers().default();
-    let default =
-        old_default.filter(|kind| retained.contains(kind)).or_else(|| retained.first().copied());
-    let direct_profiles = prepared
-        .state()
-        .providers()
-        .direct_profiles()
-        .iter()
-        .filter(|profile| retained.contains(&profile.kind()))
-        .cloned()
-        .collect();
-    let default_route = choose_default_route(
-        &mut terminal,
-        default,
-        &direct_profiles,
-        prepared.state().providers().default_route(),
-    )?;
-    let route_count = retained.iter().filter(|kind| kind.is_account()).count()
-        + direct_profiles.len();
-    let automatic_failover =
-        prepared.state().providers().automatic_failover() && route_count > 1;
-    let selection = ProviderSelection::with_routes_and_failover(
-        retained,
-        default_route,
-        direct_profiles,
-        automatic_failover,
-    )?;
-    persist(&prepared, selection, effects, cancellation).await
-}
-
 fn show_catalog(
     terminal: &mut Terminal<'_>,
-    observations: &[ProviderObservation],
     current: Option<&ProviderSelection>,
 ) -> Result<(), LauncherError> {
     terminal.line("")?;
-    for (index, item) in observations.iter().enumerate() {
-        let selected = current.is_some_and(|selection| selection.enabled().contains(&item.kind()));
-        let marker = if selected { "selected, " } else { "" };
-        terminal.line(&format!(
-            "  {}. {:<38} {marker}{}",
-            index + 1,
-            item.kind().label(),
-            item.status().label()
-        ))?;
-        show_diagnostic(terminal, item)?;
-    }
-    for (index, kind) in ProviderKind::ALL.into_iter().enumerate().skip(2) {
+    for (index, kind) in ProviderKind::ALL.into_iter().enumerate() {
+        if kind.is_account() {
+            let status = if current.is_some_and(|selection| selection.enabled().contains(&kind)) {
+                "selected; retained without a launch-time health probe"
+            } else {
+                "Health checked only when selected"
+            };
+            terminal.line(&format!("  {}. {:<38} {status}", index + 1, kind.label()))?;
+            continue;
+        }
         let configured = current.and_then(|selection| selection.direct_profile(kind)).is_some();
         let status = if configured {
             "selected, configured; connection not tested this session"
@@ -248,14 +162,13 @@ fn show_catalog(
 
 async fn activate_requested(
     terminal: &mut Terminal<'_>,
-    observations: &[ProviderObservation],
     requested: Vec<ProviderKind>,
     existing: Option<&ProviderSelection>,
     cancellation: &CancellationToken,
     effects: &ProviderEffectStore,
 ) -> Result<ActivatedProviders, LauncherError> {
     let mut enabled = Vec::new();
-    let mut direct_profiles = Vec::new();
+    let mut direct_routes = Vec::new();
     for kind in requested {
         if kind.is_direct() {
             let existing_profiles = existing
@@ -265,71 +178,52 @@ async fn activate_requested(
                 .collect::<Vec<_>>();
             enabled.push(kind);
             if existing_profiles.is_empty() {
-                direct_profiles.push(direct::setup(terminal, kind, effects, cancellation).await?);
+                direct_routes.push(direct::setup(terminal, kind, effects, cancellation).await?);
             } else {
                 for profile in existing_profiles {
-                    direct_profiles.push(
+                    direct_routes.push(
                         connection::existing(terminal, profile, effects, cancellation).await?,
                     );
                 }
             }
             continue;
         }
-        let Some(item) = observation(observations, kind) else {
-            continue;
-        };
         let retained = existing.is_some_and(|selection| selection.enabled().contains(&kind));
-        let is_ready = match item.status() {
-            ProviderStatus::Ready => true,
+        if retained {
+            enabled.push(kind);
+            continue;
+        }
+        let mut observations = ProviderCatalog::observe_selected(&[kind], cancellation).await?;
+        let item = observations.pop().ok_or_else(|| {
+            LauncherError::Interaction("selected account provider was not observed".to_owned())
+        })?;
+        terminal.line(&format!("\n{} — {}", kind.label(), item.status().label()))?;
+        show_diagnostic(terminal, &item)?;
+        match item.status() {
+            ProviderStatus::Ready => {}
             ProviderStatus::SignedOut => {
                 terminal.line(&format!("\n{} requires sign-in.", kind.label()))?;
-                match login(terminal, kind, cancellation).await? {
-                    LoginOutcome::Ready => true,
-                    LoginOutcome::Unverified => retained,
-                    LoginOutcome::Unavailable => false,
+                let _outcome = login(terminal, kind, cancellation).await?;
             }
             ProviderStatus::Unavailable => {
                 if install::offer(terminal, kind, cancellation, effects).await? {
-                    match login(terminal, kind, cancellation).await? {
-                        LoginOutcome::Ready => true,
-                        LoginOutcome::Unverified => retained,
-                        LoginOutcome::Unavailable => false,
-                    }
+                    let _outcome = login(terminal, kind, cancellation).await?;
                 } else {
                     installation_guidance(terminal, kind)?;
-                    false
                 }
             }
             ProviderStatus::Unknown
             | ProviderStatus::Infrastructure
             | ProviderStatus::NeedsAttention => {
                 terminal.line(&format!("{} could not report a usable login status.", kind.label()))?;
-                show_diagnostic(terminal, item)?;
-                retained
             }
-        };
-        if is_ready {
-            enabled.push(kind);
         }
+        enabled.push(kind);
     }
     if enabled.is_empty() {
         terminal.line("Continuing in offline browse mode. Agent runs will ask for a provider.")?;
     }
-    Ok(ActivatedProviders { enabled, direct_profiles })
-}
-
-fn record_replaced_credentials(
-    effects: &ProviderEffectStore,
-    previous: &ProviderSelection,
-    retained: &[peritus_product_state::DirectProviderProfile],
-) -> Result<(), LauncherError> {
-    for old in previous.direct_profiles() {
-        if retained.iter().any(|profile| profile == old) {
-            continue;
-        }
-        effects.record_credential_cleanup(old.credential_reference())?;
-    }
-    Ok(())
+    Ok(ActivatedProviders { enabled, direct_routes })
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -356,9 +250,18 @@ async fn login(
         AccountLogin::Browser
     };
     terminal.line("Handing the terminal to the official provider login…")?;
-    let observation = {
+    let observation = match {
         let _title = crate::terminal::product_title()?;
-        provider.login(mode, cancellation).await?
+        provider.login(mode, cancellation).await
+    } {
+        Ok(observation) => observation,
+        Err(error @ peritus_provider_onboarding::OnboardingError::Cancelled) => {
+            return Err(error.into());
+        }
+        Err(error) => {
+            terminal.line(&format!("{} sign-in could not be verified: {error}", kind.label()))?;
+            return Ok(LoginOutcome::Unverified);
+        }
     };
     if observation.status() == ProviderStatus::Ready {
         terminal.line(&format!("{} is ready.", observation.kind().label()))?;
@@ -388,9 +291,11 @@ async fn persist(
     selection: ProviderSelection,
     effects: &ProviderEffectStore,
     cancellation: &CancellationToken,
+    terminal: &mut Terminal<'_>,
+    direct_routes: Vec<direct::PreparedRoute>,
 ) -> Result<PreparedProduct, LauncherError> {
     let selection = models::account_selections(
-        &mut Terminal::stdio(),
+        terminal,
         selection,
         prepared.state().providers(),
         cancellation,
@@ -398,27 +303,11 @@ async fn persist(
     .await?;
     let layout = prepared.layout().clone();
     let configured = ProductBootstrap::new(layout).configure_providers(selection)?;
+    for route in direct_routes {
+        route.publish(terminal, effects, cancellation).await?;
+    }
     effects.reconcile_credentials(configured.state().providers())?;
     Ok(configured)
-}
-
-fn observation(
-    observations: &[ProviderObservation],
-    kind: ProviderKind,
-) -> Option<&ProviderObservation> {
-    observations.iter().find(|item| item.kind() == kind)
-}
-
-fn ready_kinds(observations: &[ProviderObservation]) -> Vec<ProviderKind> {
-    observations
-        .iter()
-        .filter(|item| item.status() == ProviderStatus::Ready)
-        .map(ProviderObservation::kind)
-        .collect()
-}
-
-fn selection_text(kinds: &[ProviderKind]) -> String {
-    kinds.iter().map(|kind| kind.label()).collect::<Vec<_>>().join(" and ")
 }
 
 fn installation_guidance(
@@ -434,13 +323,20 @@ fn installation_guidance(
 
 struct ActivatedProviders {
     enabled: Vec<ProviderKind>,
-    direct_profiles: Vec<peritus_product_state::DirectProviderProfile>,
+    direct_routes: Vec<direct::PreparedRoute>,
 }
 
 impl ActivatedProviders {
     fn route_count(&self) -> usize {
         self.enabled.iter().filter(|kind| kind.is_account()).count()
-            + self.direct_profiles.len()
+            + self.direct_routes.len()
+    }
+
+    fn direct_profiles(&self) -> Vec<peritus_product_state::DirectProviderProfile> {
+        self.direct_routes
+            .iter()
+            .map(|route| route.profile().clone())
+            .collect()
     }
 }
 

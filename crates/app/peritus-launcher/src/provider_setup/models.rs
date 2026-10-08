@@ -393,10 +393,13 @@ pub(super) async fn interruptible<T>(
     tokio::select! {
         result = &mut operation => result,
         signal = tokio::signal::ctrl_c() => {
-            if signal.is_ok() {
-                let _ = cancellation.cancel();
+            match signal {
+                Ok(()) => {
+                    let _ = cancellation.cancel();
+                    Err(OnboardingError::Cancelled)
+                }
+                Err(_) => operation.await,
             }
-            operation.await
         }
     }
 }

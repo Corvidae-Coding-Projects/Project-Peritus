@@ -221,6 +221,23 @@ impl ProviderCatalog {
         );
         Ok(vec![codex?, claude?])
     }
+
+    /// Observes only the explicitly selected account routes in caller order.
+    ///
+    /// # Errors
+    ///
+    /// Returns a cancellation failure when the caller cancels an active probe.
+    #[must_use]
+    pub async fn observe_selected(
+        kinds: &[ProviderKind],
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<ProviderObservation>, OnboardingError> {
+        let mut observations = Vec::with_capacity(kinds.len());
+        for kind in kinds.iter().copied().filter(|kind| kind.is_account()) {
+            observations.push(observe_provider(kind, cancellation).await?);
+        }
+        Ok(observations)
+    }
 }
 
 async fn observe_provider(

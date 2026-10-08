@@ -14,6 +14,7 @@ use std::sync::Arc;
 /// Returns a safe construction or stage-specific connection failure. No workspace is opened.
 pub async fn test_provider_connection(
     route: &ProviderRoute,
+    cancellation: &CancellationToken,
 ) -> Result<ConnectionReport, DaemonError> {
     let declaration = route.declaration()?;
     let id = declaration.profile().profile_id();
@@ -27,7 +28,7 @@ pub async fn test_provider_connection(
     let provider = registry
         .current_provider(id)
         .ok_or_else(|| connection_error("selected provider was not registered"))?;
-    verify_provider_connection(provider.as_ref(), CancellationToken::new())
+    verify_provider_connection(provider.as_ref(), cancellation.clone())
         .await
         .map_err(connection_error)
 }

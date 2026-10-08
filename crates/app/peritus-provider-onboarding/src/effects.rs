@@ -8,7 +8,10 @@ use std::{
 
 use peritus_product_state::{ProviderKind, ProviderSelection};
 use peritus_process::{NativeWindowsContainmentIdentity, ProcessTreeIdentity};
-use peritus_secrets::{PlatformCredentialStore, SecretErrorKind, parse_credential_reference};
+use peritus_secrets::{
+    CredentialStore, PlatformCredentialStore, SecretErrorKind, format_credential_reference,
+    parse_credential_reference,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::OnboardingError;
@@ -111,21 +114,36 @@ impl ProviderEffectStore {
     pub(crate) fn begin_credential(
         &self,
         credential_reference: &str,
+        staged_reference: &str,
     ) -> Result<(), OnboardingError> {
         let path = self.credential_path(credential_reference)?;
         let record = CredentialRecord {
             version: RECORD_VERSION,
             credential_reference: credential_reference.to_owned(),
+            staged_reference: Some(staged_reference.to_owned()),
             phase: CredentialPhase::Prepared,
         };
         write_new(&path, &record)
     }
 
-    pub(crate) fn credential_published(
+    pub(crate) fn credential_staged(
         &self,
         credential_reference: &str,
     ) -> Result<(), OnboardingError> {
-        self.update_credential(credential_reference, CredentialPhase::Published)
+        self.update_credential(credential_reference, CredentialPhase::Staged)
+    }
+
+    pub(crate) fn publish_credential(
+        &self,
+        credential_reference: &str,
+    ) -> Result<(), OnboardingError> {
+        let path = self.credential_path(credential_reference)?;
+        let record = read_required::<CredentialRecord>(&path)?;
+        validate_credential_record(&record)?;
+        if record.credential_reference != credential_reference {
+            return Err(journal_detail("credential effect identity differs"));
+        }
+        self.publish_staged(&record)
     }
 
     pub(crate) fn credential_cleanup_required(
@@ -139,20 +157,15 @@ impl ProviderEffectStore {
             let record = CredentialRecord {
                 version: RECORD_VERSION,
                 credential_reference: credential_reference.to_owned(),
+                staged_reference: None,
                 phase: CredentialPhase::CleanupRequired,
             };
             write_new(&path, &record)
         }
     }
 
-    pub(crate) fn credential_settled(
-        &self,
-        credential_reference: &str,
-    ) -> Result<(), OnboardingError> {
-        remove_record(&self.credential_path(credential_reference)?)
-    }
-
-    /// Adopts credentials present in product state and cleans every other exact journaled entry.
+    /// Reconciles publication receipts against current product state without deleting credentials
+    /// that an immutable daemon generation or an accepted continuation may still reference.
     ///
     /// # Errors
     /// Returns a journal, reference, or exact credential cleanup failure. Failed records remain.
@@ -176,21 +189,41 @@ impl ProviderEffectStore {
             let path = entry.path();
             let record = read_required::<CredentialRecord>(&path)?;
             validate_credential_record(&record)?;
-            if adopted.contains(record.credential_reference.as_str()) {
-                remove_record(&path)?;
-                continue;
-            }
-            let reference = parse_credential_reference(&record.credential_reference)?;
-            match PlatformCredentialStore::providers().remove(reference.resource_id()) {
-                Ok(()) => remove_record(&path)?,
-                Err(error) if error.kind() == SecretErrorKind::Missing => remove_record(&path)?,
-                Err(cleanup) => {
-                    return Err(OnboardingError::CredentialReconciliation {
+            let is_adopted = adopted.contains(record.credential_reference.as_str());
+            match record.phase {
+                CredentialPhase::Prepared
+                | CredentialPhase::Staged
+                | CredentialPhase::Committed
+                    if record.staged_reference.is_some() =>
+                {
+                    match self.publish_staged(&record) {
+                        Ok(()) => {}
+                        Err(OnboardingError::Secret(error))
+                            if record.phase == CredentialPhase::Prepared
+                                && !is_adopted
+                                && error.kind() == SecretErrorKind::Missing =>
+                        {
+                            remove_record(&path)?;
+                        }
+                        Err(error) => return Err(error),
+                    }
+                }
+                CredentialPhase::Prepared if is_adopted => {
+                    return Err(OnboardingError::CredentialPublication {
                         credential_reference: record.credential_reference,
-                        publication: format!("durable {:?} effect is not adopted", record.phase),
-                        cleanup,
+                        detail: "committed credential publication has no recoverable stage",
                     });
                 }
+                CredentialPhase::Prepared => remove_record(&path)?,
+                CredentialPhase::Published if record.staged_reference.is_some() => {
+                    self.settle_staged(&record)?;
+                }
+                CredentialPhase::Staged | CredentialPhase::Committed => {
+                    return Err(journal_detail("credential publication stage is absent"));
+                }
+                CredentialPhase::Published
+                | CredentialPhase::Complete
+                | CredentialPhase::CleanupRequired => {}
             }
         }
         Ok(())
@@ -220,6 +253,55 @@ impl ProviderEffectStore {
         }
         record.phase = phase;
         write_existing(&path, &record)
+    }
+
+    fn publish_staged(&self, record: &CredentialRecord) -> Result<(), OnboardingError> {
+        let staged_reference = record
+            .staged_reference
+            .as_deref()
+            .ok_or_else(|| journal_detail("credential publication stage is absent"))?;
+        let staged = parse_credential_reference(staged_reference)?;
+        let destination = parse_credential_reference(&record.credential_reference)?;
+        let store = PlatformCredentialStore::providers();
+        let material = store.lookup(staged)?;
+        if record.phase != CredentialPhase::Committed {
+            self.update_credential(
+                &record.credential_reference,
+                CredentialPhase::Committed,
+            )?;
+        }
+        let published = store.store(destination.resource_id(), &material)?;
+        if format_credential_reference(published) != record.credential_reference {
+            return Err(OnboardingError::CredentialPublication {
+                credential_reference: record.credential_reference.clone(),
+                detail: "credential store returned a different content identity",
+            });
+        }
+        self.update_credential(
+            &record.credential_reference,
+            CredentialPhase::Published,
+        )?;
+        self.settle_staged(record)
+    }
+
+    fn settle_staged(&self, record: &CredentialRecord) -> Result<(), OnboardingError> {
+        let staged_reference = record
+            .staged_reference
+            .as_deref()
+            .ok_or_else(|| journal_detail("credential publication stage is absent"))?;
+        let staged = parse_credential_reference(staged_reference)?;
+        match PlatformCredentialStore::providers().remove(staged.resource_id()) {
+            Ok(()) => {}
+            Err(error) if error.kind() == SecretErrorKind::Missing => {}
+            Err(cleanup) => {
+                return Err(OnboardingError::CredentialReconciliation {
+                    credential_reference: record.credential_reference.clone(),
+                    publication: "published credential stage cleanup is incomplete".to_owned(),
+                    cleanup,
+                });
+            }
+        }
+        self.update_credential(&record.credential_reference, CredentialPhase::Complete)
     }
 
     fn install_path(&self, kind: ProviderKind) -> Result<PathBuf, OnboardingError> {
@@ -407,14 +489,19 @@ enum InstallPhase {
 struct CredentialRecord {
     version: u8,
     credential_reference: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    staged_reference: Option<String>,
     phase: CredentialPhase,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum CredentialPhase {
     Prepared,
+    Staged,
+    Committed,
     Published,
+    Complete,
     CleanupRequired,
 }
 
@@ -494,7 +581,20 @@ fn validate_credential_record(record: &CredentialRecord) -> Result<(), Onboardin
     if record.version != RECORD_VERSION {
         return Err(journal_detail("credential effect version is unsupported"));
     }
-    let _reference = parse_credential_reference(&record.credential_reference)?;
+    let destination = parse_credential_reference(&record.credential_reference)?;
+    if let Some(staged_reference) = record.staged_reference.as_deref() {
+        let staged = parse_credential_reference(staged_reference)?;
+        if staged.resource_id() == destination.resource_id()
+            || staged.version() != destination.version()
+        {
+            return Err(journal_detail("credential publication stage identity is invalid"));
+        }
+    } else if matches!(
+        record.phase,
+        CredentialPhase::Staged | CredentialPhase::Committed | CredentialPhase::Complete
+    ) {
+        return Err(journal_detail("credential publication stage is absent"));
+    }
     Ok(())
 }
 

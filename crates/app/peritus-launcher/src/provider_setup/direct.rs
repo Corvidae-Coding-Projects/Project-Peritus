@@ -12,7 +12,9 @@ use crossterm::{
 };
 use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
 use peritus_provider_core::CancellationToken;
-use peritus_provider_onboarding::{DirectCredential, DirectProviderDraft, ProviderEffectStore};
+use peritus_provider_onboarding::{
+    DirectCredential, DirectProviderDraft, PreparedDirectProvider, ProviderEffectStore,
+};
 use zeroize::Zeroizing;
 
 use crate::{LauncherError, terminal::Terminal};
@@ -24,7 +26,7 @@ pub(super) async fn setup(
     kind: ProviderKind,
     effects: &ProviderEffectStore,
     cancellation: &CancellationToken,
-) -> Result<DirectProviderProfile, LauncherError> {
+) -> Result<PreparedRoute, LauncherError> {
     terminal.line("")?;
     terminal.line(kind.label())?;
     terminal.line("The key will be stored by your operating system, not in Peritus files.")?;
@@ -32,7 +34,7 @@ pub(super) async fn setup(
     let (endpoint, catalog_endpoint, model, protocol, header) = settings(terminal, kind)?;
     terminal.line("Paste the API key and press Enter. Input is hidden: ")?;
     let credential = read_secret()?;
-    terminal.line("Credential captured. Saving it to the operating-system credential store…")?;
+    terminal.line("Credential captured. It will be published after setup is durably saved.")?;
     let draft = DirectProviderDraft::new(kind, endpoint, model, protocol, header);
     let draft = if let Some(endpoint) = catalog_endpoint {
         draft.with_catalog_endpoint(endpoint)
@@ -54,10 +56,43 @@ pub(super) async fn setup(
     } else {
         draft
     };
-    let profile = draft.store(&credential, effects)?;
-    terminal.line(&format!("{} is configured. Connection not yet tested.", kind.label()))?;
-    super::connection::offer(terminal, &profile)?;
-    Ok(profile)
+    let publication = draft.prepare(credential, effects)?;
+    terminal.line(&format!(
+        "{} is ready to save. Connection not yet tested.",
+        kind.label()
+    ))?;
+    Ok(PreparedRoute::new(publication))
+}
+
+pub(super) struct PreparedRoute {
+    profile: DirectProviderProfile,
+    publication: Option<PreparedDirectProvider>,
+}
+
+impl PreparedRoute {
+    fn new(publication: PreparedDirectProvider) -> Self {
+        Self { profile: publication.profile().clone(), publication: Some(publication) }
+    }
+
+    pub(super) fn retained(profile: DirectProviderProfile) -> Self {
+        Self { profile, publication: None }
+    }
+
+    pub(super) const fn profile(&self) -> &DirectProviderProfile {
+        &self.profile
+    }
+
+    pub(super) async fn publish(
+        self,
+        terminal: &mut Terminal<'_>,
+        effects: &ProviderEffectStore,
+        cancellation: &CancellationToken,
+    ) -> Result<(), LauncherError> {
+        let Some(publication) = self.publication else { return Ok(()) };
+        let profile = publication.publish(effects)?;
+        terminal.line(&format!("{} is configured.", profile.kind().label()))?;
+        super::connection::offer(terminal, &profile, cancellation).await
+    }
 }
 
 fn settings(
