@@ -21,7 +21,7 @@ pub fn encode(
     request: &ModelRequest,
     config: &AnthropicConfig,
 ) -> Result<Vec<u8>, ProviderCoreError> {
-    validate_controls(request)?;
+    validate(request, config)?;
     let mut system = Vec::new();
     let mut messages = Vec::new();
     for message in request.messages() {
@@ -77,6 +77,40 @@ pub fn encode(
     })
 }
 
+pub(crate) fn validate(
+    request: &ModelRequest,
+    config: &AnthropicConfig,
+) -> Result<(), ProviderCoreError> {
+    validate_controls(request)?;
+    let mut conversational_message = false;
+    for message in request.messages() {
+        match message.role() {
+            Role::System | Role::Developer => {
+                for block in message.content() {
+                    let _ = system_block(block)?;
+                }
+            }
+            role => {
+                let _ = message_role(role)?;
+                conversational_message = true;
+                for block in message.content() {
+                    validate_content_block(block, config)?;
+                }
+            }
+        }
+    }
+    if !conversational_message {
+        return Err(invalid("Anthropic Messages requires at least one user or assistant message"));
+    }
+    validate_cache(request.options().cache())?;
+    for definition in request.tools() {
+        let _ = tool(definition)?;
+    }
+    let (_, effort) = thinking(request.options().reasoning())?;
+    let _ = output_config(request.options().output(), effort)?;
+    Ok(())
+}
+
 fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     if !request.negotiated().includes(Capability::Streaming) {
         return Err(invalid(
@@ -115,6 +149,45 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
         ));
     }
     Ok(())
+}
+
+fn validate_content_block(
+    block: &ContentBlock,
+    config: &AnthropicConfig,
+) -> Result<(), ProviderCoreError> {
+    match block {
+        ContentBlock::Image(media)
+            if media.inline_bytes_for_wire().is_none() && media.reference_for_wire().is_none() =>
+        {
+            if media.kind() != MediaKind::Image {
+                return Err(invalid("media semantic kind does not match its content block"));
+            }
+            Ok(())
+        }
+        ContentBlock::Document(media)
+            if media.inline_bytes_for_wire().is_none() && media.reference_for_wire().is_none() =>
+        {
+            if media.kind() != MediaKind::Document {
+                return Err(invalid("media semantic kind does not match its content block"));
+            }
+            Ok(())
+        }
+        _ => content_block(block, config).map(drop),
+    }
+}
+
+const fn validate_cache(cache: &CachePolicy) -> Result<(), ProviderCoreError> {
+    match cache {
+        CachePolicy::Disabled
+        | CachePolicy::Automatic
+        | CachePolicy::Ephemeral { ttl_seconds: 300 | 3600 } => Ok(()),
+        CachePolicy::Ephemeral { .. } => {
+            Err(invalid("Anthropic cache TTL must be exactly five minutes or one hour"))
+        }
+        CachePolicy::Explicit(_) => {
+            Err(invalid("Anthropic Messages has no explicit cache-key reuse contract"))
+        }
+    }
 }
 
 fn valid_tool_name(value: &str) -> bool {

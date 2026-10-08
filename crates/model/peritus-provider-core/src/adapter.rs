@@ -28,6 +28,18 @@ pub trait ModelProvider: Send + Sync {
     /// Returns the exact profile implemented by this provider instance.
     fn profile(&self) -> &ProviderProfile;
 
+    /// Validates one complete semantic request against this adapter's selected operation.
+    ///
+    /// This performs no provider I/O and does not resolve host-owned artifact bytes. Callers use
+    /// it before durably admitting a new provider attempt; [`Self::start`] still validates the
+    /// final, possibly materialized request before submission.
+    ///
+    /// # Errors
+    /// Returns an exact profile-binding or provider-operation mapping failure.
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        validate_request_profile(self.profile(), request)
+    }
+
     /// Explicit effort bound to this immutable selection; absent retains the caller's default.
     fn reasoning_effort(&self) -> Option<peritus_model_protocol::ReasoningEffort> {
         None

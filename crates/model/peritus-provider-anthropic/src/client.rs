@@ -65,7 +65,7 @@ impl AnthropicClient {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
-            validate_request_profile(self.config.profile(), &request)?;
+            self.validate_request(&request)?;
             let body = crate::request::encode(&request, &self.config)?;
             let endpoint = self.config.operation_endpoint()?;
             let started = Instant::now();
@@ -196,6 +196,11 @@ impl AnthropicClient {
 }
 
 impl ModelProvider for AnthropicClient {
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        validate_request_profile(self.config.profile(), request)?;
+        crate::request::validate(request, &self.config)
+    }
+
     fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
         self.profile()
             .capabilities()

@@ -104,6 +104,7 @@ pub(super) async fn complete_turn(
         remaining_tool_calls,
     )?;
     let recovery_probe = RetryContext::bind_session(retry_context.as_ref(), kind, recovery_probe);
+    provider.validate_request(&recovery_probe)?;
     let recovered = if selection_superseded {
         None
     } else {
@@ -165,6 +166,7 @@ pub(super) async fn complete_turn(
             remaining_tool_calls,
         )?;
         let model_request = RetryContext::bind_session(retry_context.as_ref(), kind, model_request);
+        provider.validate_request(&model_request)?;
         if let Some(owner) = retry_context.as_mut() {
             owner.tools.observe_model_context(model_request.messages())?;
         }

@@ -215,6 +215,10 @@ impl ModelProvider for HostedProvider {
         self.adapter.profile()
     }
 
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        self.adapter.validate_request(request)
+    }
+
     fn route(&self) -> peritus_provider_core::ProviderRoute {
         peritus_provider_core::ProviderRoute::CompatibleApi
     }

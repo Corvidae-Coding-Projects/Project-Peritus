@@ -57,6 +57,20 @@ impl ModelProvider for EffortSelection {
         self.provider.profile()
     }
 
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        self.provider.validate_request(request)?;
+        if !matches!(request.options().reasoning(),
+            ReasoningPolicy::Effort { effort, .. } if effort == self.effort)
+        {
+            return Err(ProviderCoreError::new(
+                ProviderCoreErrorKind::InvalidRequest,
+                "selected_effort",
+                "request did not retain the explicitly selected reasoning effort",
+            ));
+        }
+        Ok(())
+    }
+
     fn reasoning_effort(&self) -> Option<ReasoningEffort> {
         Some(self.effort)
     }
@@ -89,16 +103,8 @@ impl ModelProvider for EffortSelection {
         request: ModelRequest,
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
-        if !matches!(request.options().reasoning(),
-            peritus_model_protocol::ReasoningPolicy::Effort { effort, .. } if effort == self.effort)
-        {
-            return Box::pin(async {
-                Err(ProviderCoreError::new(
-                    ProviderCoreErrorKind::InvalidRequest,
-                    "selected_effort",
-                    "request did not retain the explicitly selected reasoning effort",
-                ))
-            });
+        if let Err(error) = self.validate_request(&request) {
+            return Box::pin(async move { Err(error) });
         }
         self.provider.start(request, cancellation)
     }
