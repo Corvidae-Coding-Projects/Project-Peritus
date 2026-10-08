@@ -12,11 +12,15 @@ pub use artifact::{
     stage_and_commit_report,
 };
 pub use publication::{
-    PublicationExecution, cancel_claimed_publication, publish_claimed_report,
+    PublicationExecution, PublicationIntentRecovery, PublicationOwnershipReceipt,
+    cancel_claimed_publication, load_publication_ownership, observe_publication_recovery,
+    publish_claimed_report, reconcile_interrupted_publication, reconcile_publication_intent,
 };
 pub use recovery::{
     DeliveryRecoveryObservation, EvaluationDeliveryTarget, EvaluationRecoveryDecision,
-    RecoveryObservation, decide_recovery, decide_recovery_with_delivery,
+    PublicationDependencyStatus, PublicationDirectiveObservation,
+    PublicationRecoveryObservation, RecoveryObservation, decide_publication_recovery,
+    decide_recovery, decide_recovery_with_delivery,
 };
 
 use crate::{

@@ -11,7 +11,7 @@ use crate::{
     EvaluationCommand, EvaluationCommandKind, EvaluationDirectiveClaim, EvaluationError,
     EvaluationErrorKind, EvaluationEvent, EvaluationEventKind, EvaluationOperation,
     EvaluationRecovery, EvaluationState, EvaluationTransition, ExecutionDirective,
-    ExecutionDirectiveKind, PUBLICATION_DESTINATION, PublicationDirective, RolloutStatus,
+    ExecutionDirectiveKind, PublicationDirective, RolloutStatus,
     SCHEDULE_DESTINATION, ScheduleDirective, ScheduleDirectiveKind,
     wire::{EvaluationCommandFrame, EvaluationEventFrame},
 };
@@ -264,11 +264,7 @@ fn transition_outbox(
         }
         EvaluationCommandKind::CompleteReport { report } => {
             let directive = PublicationDirective::new(command.campaign_id(), *report);
-            Ok(vec![outbox(
-                directive.outbox_id()?,
-                PUBLICATION_DESTINATION,
-                directive.canonical_bytes()?,
-            )?])
+            Ok(vec![directive.outbox_draft()?])
         }
         _ => {
             // Cancellation reuses the rollout's one outstanding schedule/execution claim. Emitting

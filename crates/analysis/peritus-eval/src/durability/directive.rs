@@ -2,7 +2,7 @@
 
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 use peritus_journal::{
-    OutboxDeliveryPolicy, OutboxDeliveryStatus, OutboxId, OutboxMessage, OutboxState,
+    OutboxDeliveryPolicy, OutboxDeliveryStatus, OutboxDraft, OutboxId, OutboxMessage, OutboxState,
 };
 use peritus_scheduler::{WorkId, WorkSpec};
 
@@ -375,6 +375,15 @@ impl PublicationDirective {
             self.report.id().as_bytes(),
             self.report.artifact().as_bytes(),
         )
+    }
+
+    pub(crate) fn outbox_draft(self) -> Result<OutboxDraft, EvaluationError> {
+        OutboxDraft::persistent(
+            self.outbox_id()?,
+            PUBLICATION_DESTINATION.to_owned(),
+            self.canonical_bytes()?,
+        )
+        .map_err(journal)
     }
 }
 

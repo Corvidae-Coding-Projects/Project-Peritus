@@ -1,12 +1,15 @@
 //! Deterministic crash-recovery decisions from durable observations.
 
 use peritus_journal::OutboxDeliveryStatus;
+use peritus_types::EvidenceId;
 
 use crate::{
     EvaluationDirectiveDelivery, EvaluationPhase, EvaluationState, ExecutionDirectiveKind,
-    PublicationDirectiveDelivery, RetryIntent, RolloutId, RolloutStatus,
-    ScheduleDirectiveDelivery, ScheduleDirectiveKind,
+    PublicationDirectiveDelivery, PublicationRecord, ReportRecord, RetryIntent, RolloutId,
+    RolloutStatus, ScheduleDirectiveDelivery, ScheduleDirectiveKind,
 };
+
+use super::PublicationOwnershipReceipt;
 
 /// Exact external facts observed during recovery; no field grants mutation authority.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -40,6 +43,7 @@ pub struct DeliveryRecoveryObservation<'a> {
     report_artifact_verified: bool,
     report_evidence_admitted: bool,
     identity_conflict: bool,
+    publication_ownership: Option<PublicationOwnershipReceipt>,
 }
 
 impl<'a> DeliveryRecoveryObservation<'a> {
@@ -56,7 +60,18 @@ impl<'a> DeliveryRecoveryObservation<'a> {
             report_artifact_verified,
             report_evidence_admitted,
             identity_conflict,
+            publication_ownership: None,
         }
+    }
+
+    /// Adds the exact immutable report/directive/settlement ownership proof for a published state.
+    #[must_use]
+    pub const fn with_publication_ownership(
+        mut self,
+        ownership: PublicationOwnershipReceipt,
+    ) -> Self {
+        self.publication_ownership = Some(ownership);
+        self
     }
 
     /// Exact retained rows observed through C0.
@@ -81,6 +96,113 @@ impl<'a> DeliveryRecoveryObservation<'a> {
     #[must_use]
     pub const fn identity_conflict(self) -> bool {
         self.identity_conflict
+    }
+
+    /// Exact terminal publication ownership proof, when independently recovered.
+    #[must_use]
+    pub const fn publication_ownership(self) -> Option<PublicationOwnershipReceipt> {
+        self.publication_ownership
+    }
+}
+
+/// Result of observing one exact publication dependency through its owning store.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationDependencyStatus {
+    /// The exact dependency exists and passed owner validation.
+    Verified,
+    /// The owner authoritatively reported the exact identity absent.
+    Missing,
+    /// The owner could not complete the observation and the same read may be retried.
+    Unavailable,
+}
+
+/// Read-only observation of the exact persistent publication directive.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PublicationDirectiveObservation {
+    /// The exact retained row was loaded, decoded, and bound to the report operation.
+    Observed(PublicationDirectiveDelivery),
+    /// The outbox owner authoritatively reported the canonical identity absent.
+    Missing,
+    /// The outbox owner could not complete the read.
+    Unavailable,
+}
+
+/// Identity-bound owner observations for one report publication restart.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PublicationRecoveryObservation {
+    campaign_id: crate::EvaluationCampaignId,
+    report: ReportRecord,
+    publication: PublicationRecord,
+    evidence_id: EvidenceId,
+    artifact: PublicationDependencyStatus,
+    evidence: PublicationDependencyStatus,
+    directive: PublicationDirectiveObservation,
+    ownership: Option<PublicationOwnershipReceipt>,
+}
+
+impl PublicationRecoveryObservation {
+    #[allow(clippy::too_many_arguments, reason = "independent owner facts remain explicit")]
+    pub(crate) const fn new(
+        campaign_id: crate::EvaluationCampaignId,
+        report: ReportRecord,
+        publication: PublicationRecord,
+        evidence_id: EvidenceId,
+        artifact: PublicationDependencyStatus,
+        evidence: PublicationDependencyStatus,
+        directive: PublicationDirectiveObservation,
+        ownership: Option<PublicationOwnershipReceipt>,
+    ) -> Self {
+        Self {
+            campaign_id,
+            report,
+            publication,
+            evidence_id,
+            artifact,
+            evidence,
+            directive,
+            ownership,
+        }
+    }
+
+    /// Owning evaluation campaign.
+    #[must_use]
+    pub const fn campaign_id(self) -> crate::EvaluationCampaignId {
+        self.campaign_id
+    }
+    /// Exact committed report.
+    #[must_use]
+    pub const fn report(self) -> ReportRecord {
+        self.report
+    }
+    /// Expected or accepted evidence-backed publication.
+    #[must_use]
+    pub const fn publication(self) -> PublicationRecord {
+        self.publication
+    }
+    /// Content-derived exact evidence identity.
+    #[must_use]
+    pub const fn evidence_id(self) -> EvidenceId {
+        self.evidence_id
+    }
+    /// Artifact-owner observation.
+    #[must_use]
+    pub const fn artifact(self) -> PublicationDependencyStatus {
+        self.artifact
+    }
+    /// Evidence-owner observation.
+    #[must_use]
+    pub const fn evidence(self) -> PublicationDependencyStatus {
+        self.evidence
+    }
+    /// Exact directive-owner observation.
+    #[must_use]
+    pub const fn directive(self) -> PublicationDirectiveObservation {
+        self.directive
+    }
+    /// Exact terminal operation ownership, present only after verified settlement recovery.
+    #[must_use]
+    pub const fn ownership(self) -> Option<PublicationOwnershipReceipt> {
+        self.ownership
     }
 }
 
@@ -132,6 +254,8 @@ pub enum EvaluationRecoveryDecision {
     BeginAnalysis,
     /// Report bytes must be finalized or reconciled.
     ReconcileReportArtifact,
+    /// Restore the canonical publication directive under the original report operation.
+    ReconcilePublicationIntent,
     /// Publication directive should be retried exactly.
     RetryPublication,
     /// Evidence exists after a crash; retry the exact atomic settlement.
@@ -140,6 +264,8 @@ pub enum EvaluationRecoveryDecision {
     ContinueCancellation,
     /// Durable suspension remains authoritative until an explicit matching resume.
     RemainSuspended,
+    /// A publication owner could not complete an exact observation; retry that read later.
+    AwaitPublicationObservation,
     /// Campaign is already terminal and consistent.
     Complete,
     /// Conflicting external identities require quarantine.
@@ -155,14 +281,36 @@ pub fn decide_recovery(
     if observed.identity_conflict {
         return EvaluationRecoveryDecision::Quarantine;
     }
-    if state.phase().terminal() {
-        return EvaluationRecoveryDecision::Complete;
-    }
-    if state.phase() == EvaluationPhase::Cancelling {
-        return EvaluationRecoveryDecision::ContinueCancellation;
-    }
-    if state.phase() == EvaluationPhase::Suspended {
-        return EvaluationRecoveryDecision::RemainSuspended;
+    match state.phase() {
+        EvaluationPhase::Published => return EvaluationRecoveryDecision::Quarantine,
+        EvaluationPhase::Failed | EvaluationPhase::Cancelled => {
+            return EvaluationRecoveryDecision::Complete;
+        }
+        EvaluationPhase::Cancelling => {
+            return EvaluationRecoveryDecision::ContinueCancellation;
+        }
+        EvaluationPhase::Suspended => return EvaluationRecoveryDecision::RemainSuspended,
+        EvaluationPhase::ReportReady => {
+            if state.report().is_none() {
+                return EvaluationRecoveryDecision::Quarantine;
+            }
+            if !observed.report_artifact_verified {
+                return EvaluationRecoveryDecision::ReconcileReportArtifact;
+            }
+            if observed.publication_directive {
+                return if observed.report_evidence_admitted {
+                    EvaluationRecoveryDecision::ReconcileEvidenceSettlement
+                } else {
+                    EvaluationRecoveryDecision::RetryPublication
+                };
+            }
+            return EvaluationRecoveryDecision::ReconcilePublicationIntent;
+        }
+        EvaluationPhase::Created
+        | EvaluationPhase::Planned
+        | EvaluationPhase::Scheduling
+        | EvaluationPhase::Running
+        | EvaluationPhase::Analyzing => {}
     }
     let mut retained_retries = state.rollouts().filter_map(|(rollout_id, progress)| {
         match progress.status() {
@@ -194,17 +342,6 @@ pub fn decide_recovery(
     {
         return EvaluationRecoveryDecision::RedeliverExecution;
     }
-    if state.phase() == EvaluationPhase::ReportReady {
-        if !observed.report_artifact_verified {
-            return EvaluationRecoveryDecision::ReconcileReportArtifact;
-        }
-        if observed.report_evidence_admitted {
-            return EvaluationRecoveryDecision::ReconcileEvidenceSettlement;
-        }
-        if observed.publication_directive {
-            return EvaluationRecoveryDecision::RetryPublication;
-        }
-    }
     if state.counts().complete()
         && matches!(
             state.phase(),
@@ -232,6 +369,16 @@ pub fn decide_recovery_with_delivery(
     let Some(targets) = expected_targets(state) else {
         return EvaluationRecoveryDecision::Quarantine;
     };
+    if state.phase() == EvaluationPhase::ReportReady
+        && targets.as_slice() == [EvaluationDeliveryTarget::Publication]
+        && observed.deliveries().is_empty()
+    {
+        return if observed.report_artifact_verified() {
+            EvaluationRecoveryDecision::ReconcilePublicationIntent
+        } else {
+            EvaluationRecoveryDecision::ReconcileReportArtifact
+        };
+    }
     if targets.len() != observed.deliveries().len() {
         return EvaluationRecoveryDecision::Quarantine;
     }
@@ -253,7 +400,23 @@ pub fn decide_recovery_with_delivery(
         }
         actions.push((target, status));
     }
-    if state.phase().terminal() {
+    if state.phase() == EvaluationPhase::Published {
+        let complete = state.report().is_some()
+            && state.publication().is_some_and(|publication| {
+                state.report().map(ReportRecord::id) == Some(publication.report_id())
+            })
+            && observed.report_artifact_verified()
+            && observed.report_evidence_admitted()
+            && observed
+                .publication_ownership()
+                .is_some_and(|ownership| ownership.matches_state(state));
+        return if complete {
+            EvaluationRecoveryDecision::Complete
+        } else {
+            EvaluationRecoveryDecision::Quarantine
+        };
+    }
+    if matches!(state.phase(), EvaluationPhase::Failed | EvaluationPhase::Cancelled) {
         return EvaluationRecoveryDecision::Complete;
     }
     if state.phase() == EvaluationPhase::Suspended {
@@ -304,6 +467,105 @@ pub fn decide_recovery_with_delivery(
         return EvaluationRecoveryDecision::BeginAnalysis;
     }
     EvaluationRecoveryDecision::Continue
+}
+
+/// Chooses publication restart work from exact artifact, evidence, directive, and operation owners.
+#[must_use]
+pub fn decide_publication_recovery(
+    state: &EvaluationState,
+    observed: PublicationRecoveryObservation,
+) -> EvaluationRecoveryDecision {
+    let Some(report) = state.report() else {
+        return EvaluationRecoveryDecision::Quarantine;
+    };
+    if observed.campaign_id() != state.campaign_id()
+        || observed.report() != report
+        || observed.evidence_id() != observed.publication().evidence_id()
+        || observed.publication().report_id() != report.id()
+    {
+        return EvaluationRecoveryDecision::Quarantine;
+    }
+    match state.phase() {
+        EvaluationPhase::ReportReady => {
+            if observed.ownership().is_some() {
+                return EvaluationRecoveryDecision::Quarantine;
+            }
+            if observed.artifact() == PublicationDependencyStatus::Unavailable
+                || observed.evidence() == PublicationDependencyStatus::Unavailable
+                || observed.directive() == PublicationDirectiveObservation::Unavailable
+            {
+                return EvaluationRecoveryDecision::AwaitPublicationObservation;
+            }
+            if observed.artifact() != PublicationDependencyStatus::Verified {
+                return EvaluationRecoveryDecision::ReconcileReportArtifact;
+            }
+            match observed.directive() {
+                PublicationDirectiveObservation::Missing => {
+                    EvaluationRecoveryDecision::ReconcilePublicationIntent
+                }
+                PublicationDirectiveObservation::Observed(delivery) => {
+                    let target = EvaluationDeliveryTarget::Publication;
+                    if !publication_delivery_matches(state, delivery) {
+                        return EvaluationRecoveryDecision::Quarantine;
+                    }
+                    match delivery.status() {
+                        OutboxDeliveryStatus::Pending
+                            if observed.evidence() == PublicationDependencyStatus::Verified =>
+                        {
+                            EvaluationRecoveryDecision::ReconcileEvidenceSettlement
+                        }
+                        OutboxDeliveryStatus::Pending
+                            if observed.evidence() == PublicationDependencyStatus::Missing =>
+                        {
+                            EvaluationRecoveryDecision::DeliverDirective {
+                                target,
+                                status: OutboxDeliveryStatus::Pending,
+                            }
+                        }
+                        status @ (OutboxDeliveryStatus::Waiting { .. }
+                        | OutboxDeliveryStatus::Reclaimable { .. }) => {
+                            EvaluationRecoveryDecision::DeliverDirective { target, status }
+                        }
+                        OutboxDeliveryStatus::Acknowledged
+                        | OutboxDeliveryStatus::Exhausted
+                        | OutboxDeliveryStatus::Pending => EvaluationRecoveryDecision::Quarantine,
+                    }
+                }
+                PublicationDirectiveObservation::Unavailable => {
+                    EvaluationRecoveryDecision::AwaitPublicationObservation
+                }
+            }
+        }
+        EvaluationPhase::Published => {
+            if state.publication() != Some(observed.publication()) {
+                return EvaluationRecoveryDecision::Quarantine;
+            }
+            if observed.artifact() == PublicationDependencyStatus::Unavailable
+                || observed.evidence() == PublicationDependencyStatus::Unavailable
+            {
+                return EvaluationRecoveryDecision::AwaitPublicationObservation;
+            }
+            if observed.artifact() == PublicationDependencyStatus::Verified
+                && observed.evidence() == PublicationDependencyStatus::Verified
+                && observed
+                    .ownership()
+                    .is_some_and(|ownership| ownership.matches_state(state))
+            {
+                EvaluationRecoveryDecision::Complete
+            } else {
+                EvaluationRecoveryDecision::Quarantine
+            }
+        }
+        EvaluationPhase::Created
+        | EvaluationPhase::Planned
+        | EvaluationPhase::Scheduling
+        | EvaluationPhase::Running
+        | EvaluationPhase::Cancelling
+        | EvaluationPhase::Analyzing
+        | EvaluationPhase::Failed
+        | EvaluationPhase::Cancelled
+        | EvaluationPhase::Suspended => EvaluationRecoveryDecision::Quarantine,
+    }
 }
 
 fn expected_targets(state: &EvaluationState) -> Option<Vec<EvaluationDeliveryTarget>> {

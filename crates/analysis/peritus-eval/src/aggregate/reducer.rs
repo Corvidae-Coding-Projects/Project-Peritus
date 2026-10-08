@@ -463,7 +463,9 @@ fn apply_kind(
         }
         EvaluationCommandKind::RecordPublication { publication } => {
             require_phase(&state, &[EvaluationPhase::ReportReady])?;
-            if state.report.map(crate::ReportRecord::id) != Some(publication.report_id()) {
+            if state.publication.is_some()
+                || state.report.map(crate::ReportRecord::id) != Some(publication.report_id())
+            {
                 return Err(binding("publication differs from the committed report"));
             }
             state.publication = Some(*publication);
