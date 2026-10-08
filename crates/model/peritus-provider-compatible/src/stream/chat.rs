@@ -1,6 +1,7 @@
 mod fields;
 mod hosted;
 mod tools;
+pub(super) use hosted::ReasoningCompletion;
 use tools::ToolState;
 
 use std::collections::BTreeMap;
@@ -27,7 +28,9 @@ pub(super) struct ChatDecoder {
     pub(super) service: Option<peritus_provider_core::hosted::HostedService>,
     provider: ProviderName,
     actual_model: Option<ModelName>,
-    reasoning: Map<String, Value>,
+    reasoning: crate::hosted_reasoning::HostedReasoning,
+    reasoning_completion: Option<hosted::ReasoningCompletion>,
+    reasoning_split: Option<usize>,
     pub(super) tool_choice: peritus_model_protocol::ToolChoice,
     expected_model: ModelName,
     structured: bool,
@@ -59,7 +62,9 @@ impl ChatDecoder {
             service: None,
             provider,
             actual_model: None,
-            reasoning: Map::new(),
+            reasoning: crate::hosted_reasoning::HostedReasoning::default(),
+            reasoning_completion: None,
+            reasoning_split: None,
             tool_choice: peritus_model_protocol::ToolChoice::Auto,
             expected_model,
             structured,
@@ -182,7 +187,14 @@ impl ChatDecoder {
         if events.is_empty() {
             events.push(ModelEvent::Heartbeat);
         }
-        Ok(FrameEvents { provider_sequence: None, provider_event_id: event_id, digest, events })
+        let continuation = self.take_reasoning_completion(&mut events);
+        Ok(FrameEvents {
+            provider_sequence: None,
+            provider_event_id: event_id,
+            digest,
+            events,
+            continuation,
+        })
     }
 
     pub fn done(&self) -> Result<Vec<ModelEvent>, ProviderCoreError> {
@@ -283,12 +295,7 @@ impl ChatDecoder {
         }
         for (name, value) in delta {
             if self.accepts_reasoning(name) {
-                crate::hosted_reasoning::append(
-                    &mut self.reasoning,
-                    name,
-                    value,
-                    self.limits.max_output_bytes(),
-                )?;
+                self.reasoning.append(name, value, self.limits.max_output_bytes())?;
             }
         }
         if let Some(content) =

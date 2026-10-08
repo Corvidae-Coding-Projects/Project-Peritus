@@ -1,7 +1,9 @@
 //! Hosted accounting, provider errors, and exact reasoning replay completion.
+use std::collections::VecDeque;
+
 use super::{ChatDecoder, FrameEvents, integer};
 use crate::error;
-use peritus_model_protocol::{ItemKind, ModelEvent, StreamFragment};
+use peritus_model_protocol::{ItemId, ItemKind, ModelEvent, ProtocolLimits, StreamFragment};
 use peritus_provider_core::{ProviderCoreError, SseFrame, hosted::HostedService};
 use serde_json::Value;
 
@@ -11,6 +13,37 @@ pub(super) const REQUIRED_TOOL_CHOICE_MISSING: &str =
 pub(super) struct CompletedChoice {
     pub(super) wire_reason: String,
     pub(super) accounting_seen: bool,
+}
+
+pub(crate) struct ReasoningCompletion {
+    item_id: ItemId,
+    replay: crate::hosted_reasoning::ReplayBytes,
+    limits: ProtocolLimits,
+    item_completed: bool,
+    trailing: VecDeque<ModelEvent>,
+}
+
+impl ReasoningCompletion {
+    pub(crate) const fn replaying(&self) -> bool {
+        !self.item_completed
+    }
+
+    pub(crate) fn next_event(&mut self) -> Result<Option<ModelEvent>, ProviderCoreError> {
+        if !self.item_completed {
+            let fragment_bytes = self.limits.max_event_bytes().min(16_384);
+            if let Some(bytes) = self.replay.next_chunk(fragment_bytes)? {
+                let fragment = StreamFragment::new(bytes, self.limits)
+                    .map_err(|_| error::limit("reasoning replay fragment exceeds bounds"))?;
+                return Ok(Some(ModelEvent::ReasoningReplayDelta {
+                    item_id: self.item_id.clone(),
+                    fragment,
+                }));
+            }
+            self.item_completed = true;
+            return Ok(Some(ModelEvent::ItemCompleted(self.item_id.clone())));
+        }
+        Ok(self.trailing.pop_front())
+    }
 }
 
 impl ChatDecoder {
@@ -91,6 +124,7 @@ impl ChatDecoder {
             provider_event_id: None,
             digest: peritus_codec::sha256(frame.data().as_bytes()),
             events: vec![ModelEvent::ResponseFailed(failure)],
+            continuation: None,
         })
     }
 
@@ -123,7 +157,7 @@ impl ChatDecoder {
     }
 
     pub(super) fn finish_reasoning(
-        &self,
+        &mut self,
         events: &mut Vec<ModelEvent>,
     ) -> Result<(), ProviderCoreError> {
         if let Some(service) = self.service
@@ -135,25 +169,32 @@ impl ChatDecoder {
                 .ok_or_else(|| error::malformed("reasoning has no response identity"))?;
             let item_id =
                 super::super::identity::item_id(response.expose_for_wire(), "-reasoning")?;
-            let bytes = serde_json::to_vec(
-                &serde_json::json!({"service":service.name(),"fields":self.reasoning}),
-            )
-            .map_err(|_| error::malformed("reasoning replay serialization failed"))?;
+            let reasoning = core::mem::take(&mut self.reasoning);
+            let replay = reasoning.replay(service, self.limits.max_output_bytes())?;
             events.push(ModelEvent::ItemStarted {
                 item_id: item_id.clone(),
                 index: 2,
                 kind: ItemKind::Reasoning,
             });
-            // Emit bounded fragments while retaining one exact replay object in the reducer.
-            for bytes in bytes.chunks(self.limits.max_event_bytes().min(16_384)) {
-                events.push(ModelEvent::ReasoningReplayDelta {
-                    item_id: item_id.clone(),
-                    fragment: StreamFragment::new(bytes.to_vec(), self.limits)
-                        .map_err(|_| error::limit("reasoning replay fragment exceeds bounds"))?,
-                });
-            }
-            events.push(ModelEvent::ItemCompleted(item_id));
+            self.reasoning_split = Some(events.len());
+            self.reasoning_completion = Some(ReasoningCompletion {
+                item_id,
+                replay,
+                limits: self.limits,
+                item_completed: false,
+                trailing: VecDeque::new(),
+            });
         }
         Ok(())
+    }
+
+    pub(super) fn take_reasoning_completion(
+        &mut self,
+        events: &mut Vec<ModelEvent>,
+    ) -> Option<ReasoningCompletion> {
+        let split = self.reasoning_split.take()?;
+        let mut completion = self.reasoning_completion.take()?;
+        completion.trailing.extend(events.drain(split..));
+        Some(completion)
     }
 }

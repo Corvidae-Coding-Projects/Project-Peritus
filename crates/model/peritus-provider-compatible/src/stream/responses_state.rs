@@ -25,6 +25,8 @@ pub(super) struct ItemState {
     pub bytes: peritus_provider_core::healing::ToolArgumentBuffer,
     pub value_done: bool,
     pub completed: bool,
+    pub parts_started: usize,
+    pub parts_completed: usize,
 }
 
 pub(super) struct PartState {
@@ -129,7 +131,16 @@ impl ResponsesState {
     }
 
     pub fn insert_part(&mut self, item: String, content: u32, part: PartState) -> bool {
-        self.parts.insert((item, content), part).is_none()
+        let key = (item, content);
+        if self.parts.contains_key(&key) {
+            return false;
+        }
+        let Some(owner) = self.items.get_mut(&key.0) else { return false };
+        let Some(parts_started) = owner.parts_started.checked_add(1) else { return false };
+        owner.parts_started = parts_started;
+        let previous = self.parts.insert(key, part);
+        debug_assert!(previous.is_none());
+        true
     }
 
     pub fn claim_normalized_id(&mut self, id: ItemId) -> bool {
@@ -163,20 +174,26 @@ impl ResponsesState {
         self.parts.get_mut(&(item.to_owned(), content))
     }
 
-    pub fn parts_complete(&self, item: &str) -> bool {
-        let mut found = false;
-        for (_, part) in self.parts.iter().filter(|((id, _), _)| id == item) {
-            found = true;
-            if !part.completed {
-                return false;
-            }
+    pub fn record_part_completion(&mut self, item: &str) -> bool {
+        let Some(owner) = self.items.get_mut(item) else { return false };
+        if owner.parts_completed >= owner.parts_started {
+            return false;
         }
-        found
+        let Some(parts_completed) = owner.parts_completed.checked_add(1) else { return false };
+        owner.parts_completed = parts_completed;
+        true
+    }
+
+    pub fn parts_complete(&self, item: &str) -> bool {
+        self.items.get(item).is_some_and(|item| {
+            item.parts_started != 0 && item.parts_started == item.parts_completed
+        })
     }
 
     pub fn all_complete(&self) -> bool {
-        self.items.values().all(|value| value.completed)
-            && self.parts.values().all(|value| value.completed)
+        self.items.values().all(|value| {
+            value.completed && value.parts_started == value.parts_completed
+        })
     }
 
     pub fn has_kind(&self, kind: ItemKind) -> bool {

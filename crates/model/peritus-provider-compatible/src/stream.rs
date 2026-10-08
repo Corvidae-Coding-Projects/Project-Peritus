@@ -24,6 +24,8 @@ pub struct CompatibleStream {
     body: Box<dyn ByteStream>,
     parser: SseParser,
     pending: VecDeque<EventEnvelope>,
+    framed: VecDeque<FramedItem>,
+    deferred: Option<DeferredFrame>,
     sequence: u64,
     terminal: bool,
     body_finished: bool,
@@ -35,6 +37,16 @@ pub struct CompatibleStream {
 enum Decoder {
     Responses(responses::ResponsesDecoder),
     Chat(chat::ChatDecoder),
+}
+
+struct FramedItem {
+    item: SseItem,
+    digest: peritus_types::Sha256Digest,
+}
+
+struct DeferredFrame {
+    events: chat::ReasoningCompletion,
+    digest: peritus_types::Sha256Digest,
 }
 
 impl Decoder {
@@ -102,6 +114,8 @@ impl CompatibleStream {
             body,
             parser: SseParser::new(framing),
             pending: VecDeque::new(),
+            framed: VecDeque::new(),
+            deferred: None,
             sequence: 0,
             terminal: false,
             body_finished: false,
@@ -156,6 +170,8 @@ impl CompatibleStream {
             body: Box::new(body),
             parser: SseParser::new(FramingLimits::PRODUCTION),
             pending: VecDeque::from([envelope]),
+            framed: VecDeque::new(),
+            deferred: None,
             sequence: 1,
             terminal: true,
             body_finished: true,
@@ -172,55 +188,81 @@ impl CompatibleStream {
         })
     }
 
-    fn process(&mut self, items: Vec<SseItem>) -> Result<(), ProviderCoreError> {
-        for item in items {
-            match item {
-                SseItem::Event(frame) => {
-                    if self.terminal {
-                        return Err(error::malformed("compatible data followed a terminal event"));
-                    }
-                    let decoded = self.decoder.decode(&frame)?;
-                    for (index, event) in decoded.events.into_iter().enumerate() {
-                        let started = matches!(event, ModelEvent::ResponseStarted { .. });
-                        self.enqueue(
-                            (index == 0).then_some(decoded.provider_sequence).flatten(),
-                            (index == 0).then(|| decoded.provider_event_id.clone()).flatten(),
-                            decoded.digest,
-                            event,
-                        )?;
-                        if started {
-                            while let Some(event) = self.metadata.pop_front() {
-                                self.enqueue(
-                                    None,
-                                    None,
-                                    peritus_codec::sha256(b"compatible-response-metadata"),
-                                    event,
-                                )?;
-                            }
-                        }
-                    }
-                }
-                SseItem::Comment(_) => self.enqueue(
-                    None,
-                    None,
-                    peritus_codec::sha256(b"compatible-sse-comment"),
-                    ModelEvent::Heartbeat,
-                )?,
-                SseItem::Done if self.terminal => {}
-                SseItem::Done => {
-                    let events = self.decoder.done()?;
-                    for event in events {
-                        self.enqueue(
-                            None,
-                            None,
-                            peritus_codec::sha256(b"compatible-sse-done"),
-                            event,
-                        )?;
-                    }
-                }
+    fn process(
+        &mut self,
+        items: Vec<SseItem>,
+        digest: peritus_types::Sha256Digest,
+    ) -> Result<(), ProviderCoreError> {
+        self.framed.extend(items.into_iter().map(|item| FramedItem { item, digest }));
+        self.resume_framed()
+    }
+
+    fn resume_framed(&mut self) -> Result<(), ProviderCoreError> {
+        while self.deferred.is_none() {
+            let Some(framed) = self.framed.pop_front() else { break };
+            if let Err(failure) = self.process_item(framed.item) {
+                self.framed.clear();
+                self.mapping_failure(&failure, framed.digest)?;
+                break;
             }
         }
         Ok(())
+    }
+
+    fn process_item(&mut self, item: SseItem) -> Result<(), ProviderCoreError> {
+        match item {
+            SseItem::Event(frame) => {
+                if self.terminal {
+                    return Err(error::malformed("compatible data followed a terminal event"));
+                }
+                let decoded = self.decoder.decode(&frame)?;
+                for (index, event) in decoded.events.into_iter().enumerate() {
+                    let started = matches!(event, ModelEvent::ResponseStarted { .. });
+                    self.enqueue(
+                        (index == 0).then_some(decoded.provider_sequence).flatten(),
+                        (index == 0).then(|| decoded.provider_event_id.clone()).flatten(),
+                        decoded.digest,
+                        event,
+                    )?;
+                    if started {
+                        while let Some(event) = self.metadata.pop_front() {
+                            self.enqueue(
+                                None,
+                                None,
+                                peritus_codec::sha256(b"compatible-response-metadata"),
+                                event,
+                            )?;
+                        }
+                    }
+                }
+                if let Some(events) = decoded.continuation {
+                    if self.deferred.is_some() {
+                        return Err(error::malformed("compatible deferred frame overlapped"));
+                    }
+                    self.deferred = Some(DeferredFrame { events, digest: decoded.digest });
+                }
+                Ok(())
+            }
+            SseItem::Comment(_) => self.enqueue(
+                None,
+                None,
+                peritus_codec::sha256(b"compatible-sse-comment"),
+                ModelEvent::Heartbeat,
+            ),
+            SseItem::Done if self.terminal => Ok(()),
+            SseItem::Done => {
+                let events = self.decoder.done()?;
+                for event in events {
+                    self.enqueue(
+                        None,
+                        None,
+                        peritus_codec::sha256(b"compatible-sse-done"),
+                        event,
+                    )?;
+                }
+                Ok(())
+            }
+        }
     }
 
     fn enqueue(
@@ -299,23 +341,31 @@ impl CompatibleStream {
         parsed: Result<Vec<SseItem>, ProviderCoreError>,
         digest: peritus_types::Sha256Digest,
     ) -> Result<(), ProviderCoreError> {
-        if let Err(error) = parsed.and_then(|items| self.process(items)) {
-            let (category, code, retryability) = if chat::required_tool_choice_missing(&error) {
-                (
-                    FailureCategory::Provider,
-                    "compatible.stream.required_tool_choice_missing",
-                    Retryability::SafeNewRequest,
-                )
-            } else {
-                (
-                    FailureCategory::MalformedPayload,
-                    "compatible.stream.malformed",
-                    Retryability::Never,
-                )
-            };
-            self.fail(category, code, digest, retryability)?;
+        match parsed {
+            Ok(items) => self.process(items, digest),
+            Err(failure) => self.mapping_failure(&failure, digest),
         }
-        Ok(())
+    }
+
+    fn mapping_failure(
+        &mut self,
+        failure: &ProviderCoreError,
+        digest: peritus_types::Sha256Digest,
+    ) -> Result<(), ProviderCoreError> {
+        let (category, code, retryability) = if chat::required_tool_choice_missing(failure) {
+            (
+                FailureCategory::Provider,
+                "compatible.stream.required_tool_choice_missing",
+                Retryability::SafeNewRequest,
+            )
+        } else {
+            (
+                FailureCategory::MalformedPayload,
+                "compatible.stream.malformed",
+                Retryability::Never,
+            )
+        };
+        self.fail(category, code, digest, retryability)
     }
 }
 
@@ -329,8 +379,68 @@ impl ModelStream for CompatibleStream {
                 if let Some(event) = self.pending.pop_front() {
                     return Ok(Some(event));
                 }
-                if self.terminal || self.body_finished {
+                if self.deferred.is_some() {
+                    if cancellation.is_cancelled()
+                        && self
+                            .deferred
+                            .as_ref()
+                            .is_some_and(|deferred| deferred.events.replaying())
+                    {
+                        self.deferred = None;
+                        self.framed.clear();
+                        self.body_finished = true;
+                        self.enqueue(
+                            None,
+                            None,
+                            peritus_codec::sha256(b"compatible-local-cancel"),
+                            ModelEvent::ResponseCancelled,
+                        )?;
+                        continue;
+                    }
+                    let digest = self
+                        .deferred
+                        .as_ref()
+                        .map(|deferred| deferred.digest)
+                        .ok_or_else(|| error::malformed("compatible deferred frame disappeared"))?;
+                    let next = self
+                        .deferred
+                        .as_mut()
+                        .ok_or_else(|| error::malformed("compatible deferred frame disappeared"))?
+                        .events
+                        .next_event();
+                    match next {
+                        Ok(Some(event)) => {
+                            self.enqueue(None, None, digest, event)?;
+                            continue;
+                        }
+                        Ok(None) => {
+                            self.deferred = None;
+                            self.resume_framed()?;
+                            continue;
+                        }
+                        Err(failure) => {
+                            self.deferred = None;
+                            self.framed.clear();
+                            self.mapping_failure(&failure, digest)?;
+                            continue;
+                        }
+                    }
+                }
+                self.resume_framed()?;
+                if !self.pending.is_empty() || self.deferred.is_some() {
+                    continue;
+                }
+                if self.terminal {
                     return Ok(None);
+                }
+                if self.body_finished {
+                    self.fail(
+                        FailureCategory::IncompleteStream,
+                        "compatible.stream.incomplete",
+                        peritus_codec::sha256(b"compatible-stream-incomplete"),
+                        Retryability::Never,
+                    )?;
+                    continue;
                 }
                 match self.body.next(cancellation).await {
                     Ok(Some(chunk)) => {
@@ -344,14 +454,6 @@ impl ModelStream for CompatibleStream {
                             parsed,
                             peritus_codec::sha256(b"compatible-final-frame"),
                         )?;
-                        if !self.terminal {
-                            self.fail(
-                                FailureCategory::IncompleteStream,
-                                "compatible.stream.incomplete",
-                                peritus_codec::sha256(b"compatible-stream-incomplete"),
-                                Retryability::Never,
-                            )?;
-                        }
                     }
                     Err(failure) => {
                         self.body_finished = true;
@@ -369,6 +471,8 @@ impl fmt::Debug for CompatibleStream {
             .debug_struct("CompatibleStream")
             .field("sequence", &self.sequence)
             .field("pending_events", &self.pending.len())
+            .field("pending_frames", &self.framed.len())
+            .field("deferred", &self.deferred.is_some())
             .field("terminal", &self.terminal)
             .field("body_finished", &self.body_finished)
             .field("body", &"[private byte stream]")

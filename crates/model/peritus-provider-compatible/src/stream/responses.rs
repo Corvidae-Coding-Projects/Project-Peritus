@@ -31,6 +31,7 @@ pub(super) struct FrameEvents {
     pub provider_event_id: Option<EventId>,
     pub digest: peritus_types::Sha256Digest,
     pub events: Vec<ModelEvent>,
+    pub continuation: Option<super::chat::ReasoningCompletion>,
 }
 
 #[derive(Deserialize)]
@@ -104,6 +105,7 @@ impl ResponsesDecoder {
             provider_event_id: Some(identity),
             digest,
             events,
+            continuation: None,
         })
     }
 
@@ -208,6 +210,8 @@ impl ResponsesDecoder {
                 bytes: peritus_provider_core::healing::ToolArgumentBuffer::default(),
                 value_done: false,
                 completed: false,
+                parts_started: 0,
+                parts_completed: 0,
             },
         ) {
             return Err(error::malformed("Responses-compatible item was duplicated"));
@@ -320,14 +324,24 @@ impl ResponsesDecoder {
 
     fn part_done(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {
         let (id, output, content) = coordinates(value)?;
-        let part = self.state.part_mut(id, content).ok_or_else(|| {
-            error::malformed("Responses-compatible content terminal preceded its part")
-        })?;
-        if part.index != output || !part.value_done || part.completed {
-            return Err(error::malformed("Responses-compatible content terminal was invalid"));
+        let normalized = {
+            let part = self.state.part_mut(id, content).ok_or_else(|| {
+                error::malformed("Responses-compatible content terminal preceded its part")
+            })?;
+            if part.index != output || !part.value_done || part.completed {
+                return Err(error::malformed(
+                    "Responses-compatible content terminal was invalid",
+                ));
+            }
+            part.completed = true;
+            part.normalized.clone()
+        };
+        if !self.state.record_part_completion(id) {
+            return Err(error::malformed(
+                "Responses-compatible content completion accounting changed",
+            ));
         }
-        part.completed = true;
-        Ok(vec![ModelEvent::ItemCompleted(part.normalized.clone())])
+        Ok(vec![ModelEvent::ItemCompleted(normalized)])
     }
 
     fn item_done(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {
