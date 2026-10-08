@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3962,
-        "tip_oid": "95ea255cb23742e490df87fed04c5fdd4900de68",
-        "prefix_sha256": "700ced6e624631a677ea890087fc39a23c1570344352ec4d37aebfac6f3e5e0b"
+        "sequence": 3963,
+        "tip_oid": "bd1f1a123c5e8e20d3e40f2aa8a758f47a2b23be",
+        "prefix_sha256": "7308adec2f1a1bc4c963a898b8515b497a3c0eaa6fa37adaf2f42b4c690663f9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3184,
+  "next_comment_id": 3185,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -6173,11 +6173,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.980257654Z",
-      "updated_at": "2026-10-06T13:19:07.982666837Z",
+      "updated_at": "2026-10-08T01:59:39.690573905Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0b7c1de8-3d48-401d-ae58-4373dbc2c40d": {
+          "display_id": 3184,
+          "author": "6ME5",
+          "content": "Code complete in commit 9d2062ccf: command preflight validates retained durable baselines rather than checkpoint-publishing every enrolled file. Completed commands derive exact changes from in-place scope, publish only affected retained preimages through a baseline-backed checkpoint boundary and seal streamed postimages. Existing checkpoint/artifact/restore/receipt identities and protected-path checks remain; incomplete legacy baselines reject safely. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:59:39.680373676Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwmkzSnlYCfgFAzebhn20TOOxE4PY1rSx6pR7sdAAAbhVasxEBSzTcTRVmyKPWqIQ4pIzJ73xTqGG2eZeNNWIAw=="
+        },
         "b532ed22-2294-436a-92f3-4d5ea1e0bff9": {
           "display_id": 2207,
           "author": "6ME5",
