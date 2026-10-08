@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3961,
-        "tip_oid": "dcd8553cd2d1efda0d43a9de16b30471e5031d2d",
-        "prefix_sha256": "0665580135570002cbb556fcf6ec3dca840abdc6df805c06c10589898fe3c0fb"
+        "sequence": 3962,
+        "tip_oid": "95ea255cb23742e490df87fed04c5fdd4900de68",
+        "prefix_sha256": "700ced6e624631a677ea890087fc39a23c1570344352ec4d37aebfac6f3e5e0b"
       },
       "NWAR": {
         "sequence": 39,
@@ -1525,12 +1525,13 @@
       "display_id": 665,
       "title": "[L609] Windows manifest encoding and transport disagree at their maximum size",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L609.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/manifest.rs:17-19,33-47,125-146,193-211`; `src/manifest/codec.rs:26-33,64-81,148-153,339-364`; `src/manifest/codec/scalars.rs:92-103`; `src/process.rs:14,297-316`; `src/secret.rs:10,80-95`; `src/process/profile.rs:7,56-66` in the same crate.\n- Behavior: The codec accepts a frame up to four MiB and then appends a 32-byte checksum; direct decode accepts four MiB plus checksum. Framed helper transport rejects anything over four MiB including checksum, so the last 32 bytes of the codec's accepted frame capacity cannot be transported. Arguments/environment cap at 4,096 entries, strings at one MiB; environment names additionally cap at 32,767 bytes. Target inherited handles and secret collections each cap at 64; AppContainer names at 128 ASCII bytes, SID text at 184 bytes. Environment alias checks sort by case-sensitive ordering before adjacent case-insensitive comparison. Codec errors discard the dimension/capacity cause. Framed reads block synchronously without cancellation.\n- Consequence: Near-boundary valid encoded manifests can fail the actual helper path; capacity and alias checks are inconsistent across representations. These are finite schema/transport gates, not elapsed-time limits.\n- Repair direction: Define a single complete-frame capacity including checksums, enforce all selected platform capacities before consumption, preserve dimension-specific errors, and use one global case-normalized environment identity.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.255123492Z",
-      "updated_at": "2026-10-08T01:56:37.341172239Z",
+      "updated_at": "2026-10-08T01:58:10.576303117Z",
+      "closed_at": "2026-10-08T01:58:10.573465821Z",
       "labels": [
         "daily-driving-limiter"
       ],
