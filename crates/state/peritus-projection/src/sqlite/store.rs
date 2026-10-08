@@ -5,40 +5,62 @@ use crate::{
     ActiveGeneration, CatalogGeneration, Checkpoint, ProjectionError, ProjectionErrorKind,
     ProjectionIdentity, ProjectionSchema, RecoveryClass, RepairAction,
 };
-use peritus_journal::IntegrityReport;
+use peritus_journal::{IntegrityReport, JournalCancellation};
 use peritus_types::Sha256Digest;
 use rusqlite::{Connection, OpenFlags, OptionalExtension, params};
 use std::{num::NonZeroU64, path::Path, time::Duration};
 
+use super::contention::{self, ContentionPolicy};
+
 /// `SQLite` connection policy for the projection adapter.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StoreOptions {
-    busy_timeout: Duration,
+    busy_timeout: Option<Duration>,
 }
 
 impl StoreOptions {
-    /// Creates options with a caller-selected busy timeout.
+    /// Creates options with an explicit finite busy timeout.
     #[must_use]
     pub const fn new(busy_timeout: Duration) -> Self {
-        Self { busy_timeout }
+        Self::with_timeout(busy_timeout)
     }
 
-    /// Returns the configured busy timeout.
+    /// Selects an explicit finite contention deadline for an isolated attempt.
     #[must_use]
-    pub const fn busy_timeout(self) -> Duration {
+    pub const fn with_timeout(busy_timeout: Duration) -> Self {
+        Self { busy_timeout: Some(busy_timeout) }
+    }
+
+    /// Selects immediate failure on database contention.
+    #[must_use]
+    pub const fn fail_fast() -> Self {
+        Self { busy_timeout: None }
+    }
+
+    /// Returns the explicit timeout, or `None` for fail-fast operation.
+    #[must_use]
+    pub const fn busy_timeout(self) -> Option<Duration> {
         self.busy_timeout
+    }
+
+    const fn contention(self) -> ContentionPolicy {
+        match self.busy_timeout {
+            Some(timeout) => ContentionPolicy::Timeout(timeout),
+            None => ContentionPolicy::FailFast,
+        }
     }
 }
 
 impl Default for StoreOptions {
     fn default() -> Self {
-        Self { busy_timeout: Duration::from_secs(5) }
+        Self::fail_fast()
     }
 }
 
 /// Projection-owned catalog in a caller-selected `SQLite` file.
 pub struct ProjectionStore {
     pub(super) connection: Connection,
+    pub(super) cancellation: Option<JournalCancellation>,
 }
 
 impl ProjectionStore {
@@ -49,14 +71,43 @@ impl ProjectionStore {
     ///
     /// Returns a typed storage error when `SQLite` cannot open, configure, or install the schema.
     pub fn open(path: impl AsRef<Path>, options: StoreOptions) -> Result<Self, ProjectionError> {
+        Self::open_configured(path.as_ref(), options.contention(), None)
+    }
+
+    /// Opens a projection catalog whose startup and later contention waits belong to the supplied
+    /// cancellation owner.
+    ///
+    /// This form has no elapsed patience deadline. Cancellation ends a pending wait with its
+    /// original busy or locked classification, and exact install retries retain their candidate
+    /// identity and compare-and-swap semantics.
+    ///
+    /// # Errors
+    ///
+    /// Returns a typed busy, locked, configuration, or schema-installation failure.
+    pub fn open_waiting(
+        path: impl AsRef<Path>,
+        cancellation: &JournalCancellation,
+    ) -> Result<Self, ProjectionError> {
+        contention::run(Some(cancellation), || {
+            Self::open_configured(
+                path.as_ref(),
+                ContentionPolicy::WaitForCancellation,
+                Some(cancellation.clone()),
+            )
+        })
+    }
+
+    fn open_configured(
+        path: &Path,
+        contention_policy: ContentionPolicy,
+        cancellation: Option<JournalCancellation>,
+    ) -> Result<Self, ProjectionError> {
         let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_NO_MUTEX;
         let connection = Connection::open_with_flags(path, flags)
             .map_err(|error| ProjectionError::sqlite("open projection database", error))?;
-        connection
-            .busy_timeout(options.busy_timeout())
-            .map_err(|error| ProjectionError::sqlite("set projection busy timeout", error))?;
+        contention::configure(&connection, contention_policy)?;
         connection
             .pragma_update(None, "journal_mode", "WAL")
             .map_err(|error| ProjectionError::sqlite("enable projection WAL", error))?;
@@ -69,7 +120,7 @@ impl ProjectionStore {
         connection
             .execute_batch(super::schema::INSTALL)
             .map_err(|error| ProjectionError::sqlite("install projection schema", error))?;
-        Ok(Self { connection })
+        Ok(Self { connection, cancellation })
     }
 
     /// Loads and validates the active generation for an expected projection identity.
@@ -81,28 +132,30 @@ impl ProjectionStore {
         &self,
         expected_schema: &ProjectionSchema,
     ) -> Result<Option<ActiveGeneration>, ProjectionError> {
-        let identity = expected_schema.identity();
-        let raw = self
-            .connection
-            .query_row(
-                "SELECT g.generation, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, g.record_count, g.payload FROM peritus_projection_catalog AS c JOIN peritus_projection_generations AS g ON g.projection_name = c.projection_name AND g.projection_version = c.projection_version AND g.generation = c.active_generation WHERE c.projection_name = ?1 AND c.projection_version = ?2",
-                params![identity.name().as_str(), u64_to_i64(identity.version().get(), "projection version")?],
-                |row| {
-                    Ok(RawGeneration {
-                        generation: row.get(0)?,
-                        last_position: row.get(1)?,
-                        journal_head: row.get(2)?,
-                        payload_digest: row.get(3)?,
-                        schema_digest: row.get(4)?,
-                        invariant_digest: row.get(5)?,
-                        record_count: row.get(6)?,
-                        payload: row.get(7)?,
-                    })
-                },
-            )
-            .optional()
-            .map_err(|error| ProjectionError::sqlite("load active projection", error))?;
-        raw.map(|raw| parse_generation(identity.clone(), raw)).transpose()
+        contention::run(self.cancellation.as_ref(), || {
+            let identity = expected_schema.identity();
+            let raw = self
+                .connection
+                .query_row(
+                    "SELECT g.generation, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, g.record_count, g.payload FROM peritus_projection_catalog AS c JOIN peritus_projection_generations AS g ON g.projection_name = c.projection_name AND g.projection_version = c.projection_version AND g.generation = c.active_generation WHERE c.projection_name = ?1 AND c.projection_version = ?2",
+                    params![identity.name().as_str(), u64_to_i64(identity.version().get(), "projection version")?],
+                    |row| {
+                        Ok(RawGeneration {
+                            generation: row.get(0)?,
+                            last_position: row.get(1)?,
+                            journal_head: row.get(2)?,
+                            payload_digest: row.get(3)?,
+                            schema_digest: row.get(4)?,
+                            invariant_digest: row.get(5)?,
+                            record_count: row.get(6)?,
+                            payload: row.get(7)?,
+                        })
+                    },
+                )
+                .optional()
+                .map_err(|error| ProjectionError::sqlite("load active projection", error))?;
+            raw.map(|raw| parse_generation(identity.clone(), raw)).transpose()
+        })
     }
 
     /// Plans startup reuse or rebuild against an exact checked journal report.
@@ -130,16 +183,18 @@ impl ProjectionStore {
     ///
     /// Returns a typed storage or corrupt-catalog error.
     pub fn generation_count(&self, schema: &ProjectionSchema) -> Result<u64, ProjectionError> {
-        let identity = schema.identity();
-        let count: i64 = self
-            .connection
-            .query_row(
-                "SELECT COUNT(*) FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2",
-                params![identity.name().as_str(), u64_to_i64(identity.version().get(), "projection version")?],
-                |row| row.get(0),
-            )
-            .map_err(|error| ProjectionError::sqlite("count projection generations", error))?;
-        nonnegative_u64(count, "generation count")
+        contention::run(self.cancellation.as_ref(), || {
+            let identity = schema.identity();
+            let count: i64 = self
+                .connection
+                .query_row(
+                    "SELECT COUNT(*) FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2",
+                    params![identity.name().as_str(), u64_to_i64(identity.version().get(), "projection version")?],
+                    |row| row.get(0),
+                )
+                .map_err(|error| ProjectionError::sqlite("count projection generations", error))?;
+            nonnegative_u64(count, "generation count")
+        })
     }
 }
 
@@ -158,7 +213,8 @@ fn parse_generation(
     identity: ProjectionIdentity,
     raw: RawGeneration,
 ) -> Result<ActiveGeneration, ProjectionError> {
-    let generation = CatalogGeneration::from_u64(positive_u64(raw.generation, "generation")?)?;
+    let generation =
+        CatalogGeneration::from_u64(stored_positive_u64(raw.generation, "generation")?)?;
     let last_position = nonnegative_u64(raw.last_position, "last position")?;
     let record_count = nonnegative_u64(raw.record_count, "record count")?;
     let schema_digest = digest(&raw.schema_digest, "schema digest")?;
@@ -184,10 +240,20 @@ pub(super) fn digest(bytes: &[u8], field: &'static str) -> Result<Sha256Digest, 
 }
 
 pub(super) fn u64_to_i64(value: u64, field: &'static str) -> Result<i64, ProjectionError> {
-    i64::try_from(value).map_err(|_| corrupt(field, "does not fit SQLite INTEGER"))
+    i64::try_from(value).map_err(|_| {
+        ProjectionError::new(
+            ProjectionErrorKind::InvalidInput,
+            RecoveryClass::CorrectInput,
+            "encode projection SQLite value",
+            format!("{field} does not fit SQLite INTEGER"),
+        )
+    })
 }
 
-fn positive_u64(value: i64, field: &'static str) -> Result<u64, ProjectionError> {
+pub(super) fn stored_positive_u64(
+    value: i64,
+    field: &'static str,
+) -> Result<u64, ProjectionError> {
     let value = nonnegative_u64(value, field)?;
     if NonZeroU64::new(value).is_none() {
         Err(corrupt(field, "must be positive"))

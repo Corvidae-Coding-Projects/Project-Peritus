@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use peritus_journal::{IntegrityExport, SqliteJournal};
+use peritus_journal::{IntegrityExport, JournalCancellation, SqliteJournal};
 use peritus_projection::{
     AgentProjection, ArtifactReferenceProjection, AuthorityProjection, BudgetProjection,
     EvidenceCatalogProjection, JournalCatalogProjection, LifecycleProjection, Projection,
-    ProjectionStore, RepairAction, StoreOptions, rebuild_from_genesis,
+    ProjectionStore, RepairAction, rebuild_from_genesis,
 };
 use peritus_trace::TraceProjection;
 
@@ -15,6 +15,7 @@ use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 pub fn ensure_current(
     journal: &mut SqliteJournal,
     database: &Path,
+    cancellation: &JournalCancellation,
 ) -> Result<ProjectionStore, DaemonError> {
     let export = journal.integrity_export().map_err(|error| {
         DaemonError::with_source(
@@ -26,7 +27,7 @@ pub fn ensure_current(
         )
     })?;
     let mut store =
-        ProjectionStore::open(database, StoreOptions::default()).map_err(projection_error)?;
+        ProjectionStore::open_waiting(database, cancellation).map_err(projection_error)?;
     ensure(&mut store, &export, &LifecycleProjection::new().map_err(projection_error)?)?;
     ensure(&mut store, &export, &BudgetProjection::new().map_err(projection_error)?)?;
     ensure(&mut store, &export, &AuthorityProjection::new().map_err(projection_error)?)?;

@@ -30,6 +30,10 @@ pub enum ProjectionErrorKind {
     CorruptCatalog,
     /// A generation or active-pointer compare-and-swap lost a race.
     Conflict,
+    /// `SQLite` reported database-level writer contention.
+    DatabaseBusy,
+    /// `SQLite` reported a locked table or schema object.
+    DatabaseLocked,
     /// `SQLite` could not complete the requested operation.
     Storage,
 }
@@ -82,14 +86,17 @@ impl ProjectionError {
     }
 
     pub(crate) fn sqlite(operation: &'static str, error: rusqlite::Error) -> Self {
-        let recovery = match error.sqlite_error_code() {
-            Some(rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked) => {
-                RecoveryClass::Retry
+        let (kind, recovery) = match error.sqlite_error_code() {
+            Some(rusqlite::ErrorCode::DatabaseBusy) => {
+                (ProjectionErrorKind::DatabaseBusy, RecoveryClass::Retry)
             }
-            _ => RecoveryClass::CorrectInput,
+            Some(rusqlite::ErrorCode::DatabaseLocked) => {
+                (ProjectionErrorKind::DatabaseLocked, RecoveryClass::Retry)
+            }
+            _ => (ProjectionErrorKind::Storage, RecoveryClass::CorrectInput),
         };
         Self {
-            kind: ProjectionErrorKind::Storage,
+            kind,
             recovery,
             operation,
             detail: error.to_string(),
@@ -113,6 +120,12 @@ impl ProjectionError {
     #[must_use]
     pub const fn operation(&self) -> &'static str {
         self.operation
+    }
+
+    /// Returns whether this failure is retryable `SQLite` contention.
+    #[must_use]
+    pub const fn is_contention(&self) -> bool {
+        matches!(self.kind, ProjectionErrorKind::DatabaseBusy | ProjectionErrorKind::DatabaseLocked)
     }
 }
 

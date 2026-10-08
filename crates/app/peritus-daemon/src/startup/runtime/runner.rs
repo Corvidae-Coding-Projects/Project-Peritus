@@ -313,7 +313,7 @@ fn prepare_startup_scoped(
         .map_err(|error| component_error("construct worker supervisor", error))?,
     );
 
-    let projections = ensure_current(&mut journal, &database)?;
+    let projections = ensure_current(&mut journal, &database, cancellation)?;
     progress.complete(StartupPhase::Projections)?;
     bootstrap_approval_registry(&mut journal, config.approval_registry())?;
     let expected = journal
