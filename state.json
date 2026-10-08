@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3927,
-        "tip_oid": "f7f6e5c30984dfb8c01cc4bf40b4f9936ad7ca4b",
-        "prefix_sha256": "1f27b58b711b548f9551054b29e509d96247cfc6de4d6d5558a279d56a73c675"
+        "sequence": 3928,
+        "tip_oid": "7c246f8545ced95bc3d34154968d99afc8e56807",
+        "prefix_sha256": "3b6aeb3091c207ce09e3bfcfd515eb15e409a238051af89d0af19d829b213509"
       },
       "NWAR": {
         "sequence": 39,
@@ -41199,12 +41199,13 @@
       "display_id": 512,
       "title": "[L432] E3 accepts a frozen profile whose component policies disagree with its final limits and provider",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L432.\n\n- Evidence: `crates/analysis/peritus-eval/src/profile/binding.rs:250-330,407-459`, `src/profile/provider.rs:165-201`, `src/profile/policy.rs:12-69,118-170`, `src/dataset/manifest.rs:24-70`, `src/aggregate/state.rs:185-195`, `src/durability/commit.rs:82-94` in the same crate.\n- Behavior: The final profile rechecks selected rollout cardinality, but does not recheck dataset task count, retry maximum, bootstrap count or pass-k count against the final EvaluationLimits. Previously checked components can come from different limits. Model controls incorporate the provider used at construction into a digest, but retain no independently checked provider binding; the final profile accepts a separate provider snapshot without comparing it. Aggregate checkpoint serialization uses CodecLimits::PRODUCTION rather than the frozen profile's state_bytes.\n- Consequence: A tighter advertised profile can still contain components constructed under larger limits, or seed controls checked for a different provider. This postpones rejection or permits policies that do not match the purported frozen contract. For example, a two-task dataset can be admitted with final tasks=1 if the independent rollout ceiling accommodates it. These are source-derived constructor/enforcement gaps, not executed examples or proof of an installed provider failure.\n- Repair direction: Validate the complete profile as one coherent contract; retain and compare provider bindings and distinguish explicit workload policy from storage limits. Any intentional limit should be enforced at its ownership boundary and remain recoverable. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.524105259Z",
-      "updated_at": "2026-10-08T01:03:03.269137305Z",
+      "updated_at": "2026-10-08T01:04:35.772741838Z",
+      "closed_at": "2026-10-08T01:04:35.769716754Z",
       "labels": [
         "daily-driving-limiter"
       ],
