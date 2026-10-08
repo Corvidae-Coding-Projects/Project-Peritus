@@ -167,7 +167,10 @@ impl SpawnedOwner {
         if stopped_before_start {
             return self.finish();
         }
-        while !self.failure.owner && (self.os_exit.is_none() || self.eof_count < self.reader_count)
+        while !self.failure.owner
+            && (self.os_exit.is_none()
+                || !self.cleanup.tree_quiescent
+                || self.eof_count < self.reader_count)
         {
             if self.tick().is_err() {
                 self.failure.owner = true;
@@ -276,14 +279,20 @@ impl SpawnedOwner {
             && let Some(exit) = self.process.try_wait()?
         {
             self.observe_exit(convert_exit(&exit))?;
-            self.cleanup.tree_quiescent = ensure_tree_quiescent(
-                &mut *self.process,
-                self.plan.deadline_policy().reap_millis(),
-                &mut self.escalation.forced,
-                &self.shared,
-                &self.plan,
-            )?;
-            if !self.cleanup.tree_quiescent {
+        }
+        if self.os_exit.is_some() && !self.cleanup.tree_quiescent {
+            self.cleanup.tree_quiescent = if self.lifecycle.first_trigger().is_some() {
+                ensure_tree_quiescent(
+                    &mut *self.process,
+                    self.plan.deadline_policy().reap_millis(),
+                    &mut self.escalation.forced,
+                    &self.shared,
+                    &self.plan,
+                )?
+            } else {
+                self.process.tree_quiescent()?
+            };
+            if self.lifecycle.first_trigger().is_some() && !self.cleanup.tree_quiescent {
                 return Err(supervisor_error("owned process tree did not become quiescent"));
             }
         }

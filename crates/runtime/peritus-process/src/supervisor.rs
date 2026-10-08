@@ -45,8 +45,11 @@ const CONTROL_QUEUE: usize = 64;
 const OUTPUT_QUEUE: usize = 64;
 const POLL_MILLIS: u64 = 5;
 
-/// Move-only owner of one supervisor thread and complete process lifecycle.
-#[must_use = "the owned process must be waited or dropped for bounded cancellation and join"]
+/// Move-only attachment to one supervisor thread and complete process lifecycle.
+///
+/// Dropping the attachment leaves the exact supervisor owner running. Call [`Self::wait`] when
+/// the terminal result is required, or request cancellation explicitly through [`ProcessControl`].
+#[must_use = "the owned process must be waited to observe its terminal result"]
 pub struct OwnedProcess {
     store: ProcessStore,
     control: ProcessControl,
@@ -195,17 +198,10 @@ impl OwnedProcess {
 
 impl Drop for OwnedProcess {
     fn drop(&mut self) {
-        let Some(owner) = self.owner.take() else {
-            return;
-        };
-        if let ProcessOwner::Local(join) = owner {
-            let _ = self.control.cancel_while(CancellationReason::SupervisorShutdown, || {
-                !join.is_finished()
-            });
-            let _ = join.join();
-        }
-        // Dropping a retained observer only detaches this daemon generation. The independent
-        // service owner continues the exact process and accepts a later same-key attachment.
+        // A local join handle is an observer attachment to the supervisor thread, just as a
+        // retained handle is an observer attachment to the independent service owner. Dropping
+        // either attachment must not synthesize cancellation or end the authorized process tree.
+        drop(self.owner.take());
     }
 }
 
