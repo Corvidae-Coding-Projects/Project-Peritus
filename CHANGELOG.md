@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L605] Windows capability gates rely on synchronous and incomplete probe evidence (#661)
 - [L433] E3 refuses cancellation once deterministic analysis begins (#513)
 - [L432] E3 accepts a frozen profile whose component policies disagree with its final limits and provider (#512)
 - [L603] macOS protected-secret metadata has separate finite capacities (#660)
