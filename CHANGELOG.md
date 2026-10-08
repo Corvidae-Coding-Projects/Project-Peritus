@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L061] Working-memory lineage has hard observation and entry-count ceilings (#160)
 - [L643] Git observation and rendering ceilings have no continuation protocol (#689)
 - [L475] Compatible rejection recovery waits for the entire error body first (#553)
 - [L060] Recovered torn trace data still blocks new context work (#159)
