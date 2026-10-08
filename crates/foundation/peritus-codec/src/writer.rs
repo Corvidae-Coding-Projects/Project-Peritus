@@ -7,6 +7,30 @@
 
 use crate::{CodecError, CodecErrorKind, CodecLimit, CodecLimits};
 
+/// Primitive canonical byte sink shared by allocating encoders and exact stream verifiers.
+pub trait CanonicalWrite {
+    /// Writes fixed-width bytes without a length prefix.
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), CodecError>;
+    /// Writes a length-prefixed opaque byte value.
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), CodecError>;
+    /// Writes a length-prefixed UTF-8 string.
+    fn write_str(&mut self, value: &str) -> Result<(), CodecError>;
+    /// Writes a bounded collection count.
+    fn write_collection_len(&mut self, value: usize) -> Result<(), CodecError>;
+    /// Writes one exact byte.
+    fn write_u8(&mut self, value: u8) -> Result<(), CodecError>;
+    /// Writes one big-endian `u16`.
+    fn write_u16(&mut self, value: u16) -> Result<(), CodecError>;
+    /// Writes one big-endian `u32`.
+    fn write_u32(&mut self, value: u32) -> Result<(), CodecError>;
+    /// Writes one big-endian `u64`.
+    fn write_u64(&mut self, value: u64) -> Result<(), CodecError>;
+    /// Writes a closed zero/one boolean tag.
+    fn write_bool(&mut self, value: bool) -> Result<(), CodecError>;
+    /// Writes a closed zero/one option-presence tag.
+    fn write_option_tag(&mut self, present: bool) -> Result<(), CodecError>;
+}
+
 /// Transactional primitive writer bounded by [`CodecLimits`].
 #[derive(Debug)]
 pub struct CanonicalWriter {
@@ -115,6 +139,16 @@ impl CanonicalWriter {
         Ok(())
     }
 
+    /// Writes a legacy `u16` collection count under the negotiated collection limit.
+    pub fn write_u16_collection_len(&mut self, value: usize) -> Result<(), CodecError> {
+        if value > self.limits.max_collection_items {
+            return Err(CodecError::limited(self.len(), CodecLimit::CollectionItems));
+        }
+        let value = u16::try_from(value)
+            .map_err(|_| CodecError::new(CodecErrorKind::LengthOverflow, self.len()))?;
+        self.write_u16(value)
+    }
+
     /// Writes a bounded collection count.
     pub fn write_collection_len(&mut self, value: usize) -> Result<(), CodecError> {
         if value > self.limits.max_collection_items {
@@ -157,5 +191,47 @@ impl CanonicalWriter {
             .try_reserve(additional)
             .map_err(|_| CodecError::new(CodecErrorKind::AllocationUnavailable, self.len()))?;
         Ok(())
+    }
+}
+
+impl CanonicalWrite for CanonicalWriter {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), CodecError> {
+        Self::write_fixed(self, value)
+    }
+
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), CodecError> {
+        Self::write_bytes(self, value)
+    }
+
+    fn write_str(&mut self, value: &str) -> Result<(), CodecError> {
+        Self::write_str(self, value)
+    }
+
+    fn write_collection_len(&mut self, value: usize) -> Result<(), CodecError> {
+        Self::write_collection_len(self, value)
+    }
+
+    fn write_u8(&mut self, value: u8) -> Result<(), CodecError> {
+        Self::write_u8(self, value)
+    }
+
+    fn write_u16(&mut self, value: u16) -> Result<(), CodecError> {
+        Self::write_u16(self, value)
+    }
+
+    fn write_u32(&mut self, value: u32) -> Result<(), CodecError> {
+        Self::write_u32(self, value)
+    }
+
+    fn write_u64(&mut self, value: u64) -> Result<(), CodecError> {
+        Self::write_u64(self, value)
+    }
+
+    fn write_bool(&mut self, value: bool) -> Result<(), CodecError> {
+        Self::write_bool(self, value)
+    }
+
+    fn write_option_tag(&mut self, present: bool) -> Result<(), CodecError> {
+        Self::write_option_tag(self, present)
     }
 }

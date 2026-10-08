@@ -1,6 +1,8 @@
 //! Authenticated physical pages for retained C5 history.
 
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
+use peritus_codec::{
+    CanonicalReader, CanonicalVerifier, CanonicalWrite, CanonicalWriter, CodecLimits,
+};
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
@@ -108,6 +110,111 @@ impl PhysicalPageCapacity {
     }
 }
 
+/// Authenticated page-boundary progress for one retained-history lineage.
+///
+/// This is a physical checkpoint, not a cumulative history allowance. Owners may retain it across
+/// cooperative cancellation and resume with the next page without retaining the preceding page.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HistoryArchiveProgress {
+    identity: HistoryArchiveIdentity,
+    next_page_index: u64,
+    next_ordinal: u64,
+    previous_page_digest: Option<Sha256Digest>,
+}
+
+impl HistoryArchiveProgress {
+    /// Begins a root page chain at the caller's exact expected message ordinal or event sequence.
+    #[must_use]
+    pub const fn new(identity: HistoryArchiveIdentity, first_ordinal: u64) -> Self {
+        Self {
+            identity,
+            next_page_index: 0,
+            next_ordinal: first_ordinal,
+            previous_page_digest: None,
+        }
+    }
+
+    /// Reconstructs a previously authenticated page-boundary checkpoint.
+    ///
+    /// The owner remains responsible for authenticating persisted checkpoint storage.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a root/non-root page index that disagrees with predecessor presence.
+    pub fn resume(
+        identity: HistoryArchiveIdentity,
+        next_page_index: u64,
+        next_ordinal: u64,
+        previous_page_digest: Option<Sha256Digest>,
+    ) -> Result<Self, ProtocolError> {
+        if (next_page_index == 0) != previous_page_digest.is_none() {
+            return Err(invalid_progress(
+                "history progress page index and predecessor presence disagree",
+            ));
+        }
+        Ok(Self { identity, next_page_index, next_ordinal, previous_page_digest })
+    }
+
+    /// Returns the bound thread/profile/run lineage.
+    #[must_use]
+    pub const fn identity(self) -> HistoryArchiveIdentity {
+        self.identity
+    }
+
+    /// Returns the next exact physical page index.
+    #[must_use]
+    pub const fn next_page_index(self) -> u64 {
+        self.next_page_index
+    }
+
+    /// Returns the next exact message ordinal or event sequence.
+    #[must_use]
+    pub const fn next_ordinal(self) -> u64 {
+        self.next_ordinal
+    }
+
+    /// Returns the authenticated predecessor digest for the next page.
+    #[must_use]
+    pub const fn previous_page_digest(self) -> Option<Sha256Digest> {
+        self.previous_page_digest
+    }
+
+    pub(crate) fn advance(
+        &mut self,
+        identity: HistoryArchiveIdentity,
+        page_index: u64,
+        first_ordinal: u64,
+        previous_page_digest: Option<Sha256Digest>,
+        page_digest: Sha256Digest,
+        item_count: usize,
+    ) -> Result<(), ProtocolError> {
+        if identity != self.identity
+            || page_index != self.next_page_index
+            || first_ordinal != self.next_ordinal
+            || previous_page_digest != self.previous_page_digest
+        {
+            return Err(invalid_progress(
+                "history page does not follow its authenticated checkpoint",
+            ));
+        }
+        let count = u64::try_from(item_count)
+            .map_err(|_| invalid_progress("history page item count is not representable"))?;
+        if count == 0 {
+            return Err(invalid_progress("history page is empty"));
+        }
+        let next_page_index = page_index
+            .checked_add(1)
+            .ok_or_else(|| invalid_progress("history page index overflow"))?;
+        let next_ordinal = first_ordinal
+            .checked_add(count)
+            .ok_or_else(|| invalid_progress("history page ordinal overflow"))?;
+        self.next_page_index = next_page_index;
+        self.next_ordinal = next_ordinal;
+        self.previous_page_digest = Some(page_digest);
+        Ok(())
+    }
+}
+
 pub(crate) struct DecodedArchivePage {
     pub(crate) identity: HistoryArchiveIdentity,
     pub(crate) page_index: u64,
@@ -202,20 +309,17 @@ pub(crate) fn decode_page(
         .len()
         .checked_sub(32)
         .ok_or_else(|| invalid_page("history page is shorter than its digest"))?;
-    if page_digest(&bytes[..digest_offset]) != digest {
-        return Err(invalid_page("history page digest does not authenticate its bytes"));
-    }
-    let (canonical, canonical_digest) = encode_page(
+    let canonical_digest = verify_page_prefix(
+        &bytes[..digest_offset],
         expected_kind,
         identity,
         page_index,
         first_ordinal,
         previous_page_digest,
         &payloads,
-        capacity,
     )?;
-    if canonical_digest != digest || canonical.as_slice() != bytes {
-        return Err(invalid_page("history page is not in canonical form"));
+    if canonical_digest != digest {
+        return Err(invalid_page("history page digest does not authenticate its bytes"));
     }
     Ok(DecodedArchivePage {
         identity,
@@ -225,6 +329,37 @@ pub(crate) fn decode_page(
         payloads,
         digest,
     })
+}
+
+fn verify_page_prefix(
+    expected: &[u8],
+    kind: ArchivePageKind,
+    identity: HistoryArchiveIdentity,
+    page_index: u64,
+    first_ordinal: u64,
+    previous_page_digest: Option<Sha256Digest>,
+    payloads: &[Vec<u8>],
+) -> Result<Sha256Digest, ProtocolError> {
+    let mut verifier = CanonicalVerifier::with_digest_prefix(expected, PAGE_DIGEST_DOMAIN);
+    verifier.write_fixed(&PAGE_MAGIC).map_err(noncanonical_page)?;
+    verifier.write_u16(PAGE_SCHEMA_VERSION).map_err(noncanonical_page)?;
+    verifier.write_u8(kind.tag()).map_err(noncanonical_page)?;
+    verifier.write_fixed(&identity.thread_id).map_err(noncanonical_page)?;
+    verifier.write_fixed(&identity.profile_id).map_err(noncanonical_page)?;
+    verifier.write_fixed(&identity.run_id).map_err(noncanonical_page)?;
+    verifier.write_u64(page_index).map_err(noncanonical_page)?;
+    verifier.write_u64(first_ordinal).map_err(noncanonical_page)?;
+    verifier
+        .write_option_tag(previous_page_digest.is_some())
+        .map_err(noncanonical_page)?;
+    if let Some(previous) = previous_page_digest {
+        verifier.write_fixed(previous.as_bytes()).map_err(noncanonical_page)?;
+    }
+    verifier.write_collection_len(payloads.len()).map_err(noncanonical_page)?;
+    for payload in payloads {
+        verifier.write_bytes(payload).map_err(noncanonical_page)?;
+    }
+    verifier.finish().map_err(noncanonical_page)
 }
 
 #[must_use]
@@ -282,6 +417,14 @@ fn malformed_page(_: peritus_codec::CodecError) -> ProtocolError {
     invalid_page("canonical history page is malformed or incomplete")
 }
 
+fn noncanonical_page(_: peritus_codec::CodecError) -> ProtocolError {
+    invalid_page("history page is not in canonical form")
+}
+
 fn invalid_page(detail: &'static str) -> ProtocolError {
     ProtocolError::at(ProtocolErrorKind::InvalidContent, "history_archive.page", detail)
+}
+
+fn invalid_progress(detail: &'static str) -> ProtocolError {
+    ProtocolError::at(ProtocolErrorKind::InvalidContent, "history_archive.progress", detail)
 }

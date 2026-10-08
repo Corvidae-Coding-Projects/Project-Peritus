@@ -1,6 +1,8 @@
-use peritus_codec::CanonicalWriter;
+use peritus_codec::{CanonicalVerifier, CanonicalWrite, CanonicalWriter};
 
-use super::primitive::{MAGIC, codec_limits, write_codec, write_option_u16, write_option_u64};
+use super::primitive::{
+    MAGIC, codec_limits, invalid, write_codec, write_option_u16, write_option_u64,
+};
 use crate::{
     CacheObservation, CacheStatus, EventEnvelope, FailureCategory, FinishReason, ItemKind,
     ModelEvent, ModelFailure, OutcomeCertainty, RateLimitDimension, RateLimitObservation,
@@ -22,22 +24,46 @@ pub fn encode_event_envelope(
 ) -> Result<Vec<u8>, crate::ProtocolError> {
     envelope.validate_under(limits)?;
     let mut writer = CanonicalWriter::new(codec_limits(limits));
+    envelope_value(&mut writer, envelope)?;
+    Ok(writer.into_bytes())
+}
+
+pub(super) fn verify_event_envelope(
+    envelope: &EventEnvelope,
+    limits: crate::ProtocolLimits,
+    bytes: &[u8],
+) -> Result<(), crate::ProtocolError> {
+    envelope.validate_under(limits)?;
+    let mut verifier = CanonicalVerifier::new(bytes);
+    if envelope_value(&mut verifier, envelope).is_err() || verifier.finish().is_err() {
+        return Err(invalid(
+            "canonical_event",
+            "decoded event bytes are not the canonical representation",
+        ));
+    }
+    Ok(())
+}
+
+fn envelope_value(
+    writer: &mut impl CanonicalWrite,
+    envelope: &EventEnvelope,
+) -> Result<(), crate::ProtocolError> {
     writer.write_fixed(&MAGIC).map_err(write_codec)?;
     writer.write_u16(super::EVENT_ENVELOPE_SCHEMA_VERSION).map_err(write_codec)?;
     writer.write_u16(envelope.protocol().major()).map_err(write_codec)?;
     writer.write_u16(envelope.protocol().minor()).map_err(write_codec)?;
     writer.write_u64(envelope.sequence()).map_err(write_codec)?;
-    write_option_u64(&mut writer, envelope.provider_sequence())?;
+    write_option_u64(writer, envelope.provider_sequence())?;
     writer.write_option_tag(envelope.provider_event_id().is_some()).map_err(write_codec)?;
     if let Some(id) = envelope.provider_event_id() {
         writer.write_str(id.expose_for_wire()).map_err(write_codec)?;
     }
     writer.write_fixed(envelope.provider_digest().as_bytes()).map_err(write_codec)?;
-    event(&mut writer, envelope.event())?;
-    Ok(writer.into_bytes())
+    event(writer, envelope.event())?;
+    Ok(())
 }
 
-fn event(writer: &mut CanonicalWriter, event: &ModelEvent) -> Result<(), crate::ProtocolError> {
+fn event(writer: &mut impl CanonicalWrite, event: &ModelEvent) -> Result<(), crate::ProtocolError> {
     match event {
         ModelEvent::ResponseStarted { response_id, model } => {
             writer.write_u8(1).map_err(write_codec)?;
@@ -118,7 +144,7 @@ fn event(writer: &mut CanonicalWriter, event: &ModelEvent) -> Result<(), crate::
 }
 
 fn fragment_event(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     tag: u8,
     identity: &str,
     bytes: &[u8],
@@ -140,7 +166,7 @@ const fn item_kind(kind: ItemKind) -> u8 {
 }
 
 fn usage(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     observation: &UsageObservation,
 ) -> Result<(), crate::ProtocolError> {
     writer
@@ -159,7 +185,7 @@ fn usage(
 }
 
 fn usage_counters(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     counters: UsageCounters,
 ) -> Result<(), crate::ProtocolError> {
     for value in [
@@ -178,7 +204,7 @@ fn usage_counters(
 }
 
 fn rate_limits(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     observation: &RateLimitObservation,
 ) -> Result<(), crate::ProtocolError> {
     writer.write_collection_len(observation.windows().len()).map_err(write_codec)?;
@@ -215,7 +241,7 @@ fn rate_limits(
 }
 
 fn cache(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     observation: &CacheObservation,
 ) -> Result<(), crate::ProtocolError> {
     writer
@@ -235,7 +261,10 @@ fn cache(
     write_option_u64(writer, observation.ttl_seconds())
 }
 
-fn finish(writer: &mut CanonicalWriter, reason: &FinishReason) -> Result<(), crate::ProtocolError> {
+fn finish(
+    writer: &mut impl CanonicalWrite,
+    reason: &FinishReason,
+) -> Result<(), crate::ProtocolError> {
     match reason {
         FinishReason::Stop => writer.write_u8(1).map_err(write_codec)?,
         FinishReason::Length => writer.write_u8(2).map_err(write_codec)?,
@@ -255,7 +284,7 @@ fn finish(writer: &mut CanonicalWriter, reason: &FinishReason) -> Result<(), cra
 }
 
 fn failure_value(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     failure: &ModelFailure,
 ) -> Result<(), crate::ProtocolError> {
     writer.write_str(failure.provider().as_str()).map_err(write_codec)?;

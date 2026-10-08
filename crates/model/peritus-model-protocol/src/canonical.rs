@@ -1,6 +1,6 @@
 //! Stable semantic request encoding independent of provider JSON field order.
 
-use peritus_codec::{CanonicalWriter, CodecLimits};
+use peritus_codec::{CanonicalVerifier, CanonicalWrite, CanonicalWriter, CodecLimits};
 use peritus_types::Sha256Digest;
 use sha2::{Digest as _, Sha256};
 
@@ -51,6 +51,18 @@ pub fn request_digest(request: &ModelRequest) -> Result<Sha256Digest, ProtocolEr
     let mut writer = DigestWriter::new();
     request_value(&mut writer, request)?;
     Ok(writer.finish())
+}
+
+pub(crate) fn request_matches_canonical_bytes(
+    request: &ModelRequest,
+    bytes: &[u8],
+) -> Result<bool, ProtocolError> {
+    request.validate_admission()?;
+    let mut verifier = CanonicalVerifier::new(bytes);
+    if request_value(&mut verifier, request).is_err() {
+        return Ok(false);
+    }
+    Ok(verifier.finish().is_ok())
 }
 
 fn request_value<W: CanonicalSink + ?Sized>(
@@ -356,6 +368,24 @@ impl CanonicalSink for CanonicalWriter {
 
     fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError> {
         CanonicalWriter::write_collection_len(self, value).map_err(codec)
+    }
+}
+
+impl CanonicalSink for CanonicalVerifier<'_> {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        CanonicalWrite::write_fixed(self, value).map_err(codec)
+    }
+
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        CanonicalWrite::write_bytes(self, value).map_err(codec)
+    }
+
+    fn write_str(&mut self, value: &str) -> Result<(), ProtocolError> {
+        CanonicalWrite::write_str(self, value).map_err(codec)
+    }
+
+    fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError> {
+        CanonicalWrite::write_collection_len(self, value).map_err(codec)
     }
 }
 

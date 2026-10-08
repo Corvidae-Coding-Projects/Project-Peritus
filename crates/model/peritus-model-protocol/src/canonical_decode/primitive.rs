@@ -51,7 +51,14 @@ pub(super) fn bounded_text(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<BoundedText, ProtocolError> {
-    BoundedText::new(reader.read_str().map_err(codec)?.to_owned(), limits)
+    let text = reader.read_str().map_err(codec)?;
+    if text.len() > limits.max_text_bytes() {
+        return Err(invalid(
+            "text",
+            "model text exceeds its selected allocation budget",
+        ));
+    }
+    BoundedText::new(text.to_owned(), limits)
 }
 
 pub(super) fn canonical_json(

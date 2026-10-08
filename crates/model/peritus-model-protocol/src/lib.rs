@@ -30,7 +30,7 @@ pub mod verified;
 pub mod version;
 
 pub use bounds::ProtocolLimits;
-pub use archive::{HistoryArchiveIdentity, PhysicalPageCapacity};
+pub use archive::{HistoryArchiveIdentity, HistoryArchiveProgress, PhysicalPageCapacity};
 pub use canonical_decode::decode_request;
 pub use capability::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, CapabilityState,
@@ -45,8 +45,8 @@ pub use error::{ProtocolError, ProtocolErrorKind};
 pub use event::{EventEnvelope, ItemKind, ModelEvent, StreamFragment};
 pub use event_codec::{
     EVENT_ENVELOPE_SCHEMA_VERSION, EventArchivePage, decode_event_archive_page,
-    decode_event_envelope, encode_event_archive_page, encode_event_envelope,
-    is_event_archive_page,
+    decode_event_envelope, decode_next_event_archive_page, encode_event_archive_page,
+    encode_event_envelope, is_event_archive_page,
 };
 pub use failure::{FailureCategory, ModelFailure, OutcomeCertainty, Retryability, TransportPhase};
 pub use finish::{FinishReason, TerminalOutcome};
@@ -57,7 +57,7 @@ pub use identity::{
 pub use message::{Message, Role};
 pub use message_codec::{
     MessageArchivePage, decode_message_archive_page, decode_messages,
-    encode_message_archive_page, encode_messages,
+    decode_next_message_archive_page, encode_message_archive_page, encode_messages,
 };
 pub use rate_limit::{
     CacheObservation, CacheStatus, RateLimitDimension, RateLimitObservation, RateLimitWindow,

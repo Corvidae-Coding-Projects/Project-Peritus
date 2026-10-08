@@ -8,9 +8,10 @@ use peritus_budget::{BudgetReceipt, UsageFinality};
 use peritus_codec::{CodecError, CodecLimits, sha256};
 use peritus_journal::SqliteJournal;
 use peritus_model_protocol::{
-    EventEnvelope, HistoryArchiveIdentity, ModelRequest, PhysicalPageCapacity, ProtocolLimits,
-    ReducerTransition, TerminalOutcome, decode_event_archive_page, decode_event_envelope,
-    encode_event_archive_page, is_event_archive_page,
+    EventEnvelope, HistoryArchiveIdentity, HistoryArchiveProgress, ModelRequest,
+    PhysicalPageCapacity, ProtocolLimits, ReducerTransition, TerminalOutcome,
+    decode_event_envelope, decode_next_event_archive_page, encode_event_archive_page,
+    is_event_archive_page,
 };
 use peritus_provider_core::{
     CancellationToken, ContinuationRestoreOutcome, ModelProvider, PersistedContinuation,
@@ -137,6 +138,8 @@ pub enum AgentDriverError {
     RuntimeResourceUnavailable,
     /// A previewed C5 transition differed after durable acknowledgement.
     RuntimeInvariant,
+    /// Cooperative restart reconstruction was cancelled at an authenticated page boundary.
+    RecoveryCancelled,
     /// The pure reducer rejected the transition without changing state.
     Rejected(AgentRejection),
     /// Canonical B3 projection failed.
@@ -164,6 +167,9 @@ impl fmt::Display for AgentDriverError {
             Self::RuntimeInvariant => {
                 formatter.write_str("durable acknowledgement changed a previewed runtime result")
             }
+            Self::RecoveryCancelled => {
+                formatter.write_str("agent restart reconstruction was cancelled")
+            }
             Self::Rejected(error) => fmt::Display::fmt(error, formatter),
             Self::Codec(error) => fmt::Display::fmt(error, formatter),
             Self::Durability(error) => fmt::Display::fmt(error, formatter),
@@ -186,7 +192,8 @@ impl std::error::Error for AgentDriverError {
             Self::MissingAggregate
             | Self::CheckpointMismatch
             | Self::RuntimeResourceUnavailable
-            | Self::RuntimeInvariant => None,
+            | Self::RuntimeInvariant
+            | Self::RecoveryCancelled => None,
         }
     }
 }
@@ -289,18 +296,60 @@ impl AgentDriver {
         limits: AgentLimits,
         codec_limits: CodecLimits,
     ) -> Result<Self, AgentDriverError> {
+        Self::restore_cancellable(
+            journal,
+            binding,
+            limits,
+            codec_limits,
+            &CancellationToken::new(),
+        )
+    }
+
+    /// Reconstructs one turn while observing cancellation between authenticated history pages.
+    ///
+    /// Cancellation never advances a durable or in-memory page checkpoint. Repeating this call
+    /// therefore verifies the same exact bytes and can resume from the owner's retained physical
+    /// page boundary without weakening canonical parity.
+    ///
+    /// # Errors
+    ///
+    /// Rejects cancellation, a missing aggregate, malformed chain, reducer disagreement, or
+    /// checkpoint drift.
+    pub fn restore_cancellable(
+        journal: &SqliteJournal,
+        binding: AgentBinding,
+        limits: AgentLimits,
+        codec_limits: CodecLimits,
+        cancellation: &CancellationToken,
+    ) -> Result<Self, AgentDriverError> {
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let durable = load_agent_replay(journal, binding.turn_id())?;
         if durable.events().is_empty() {
             return Err(AgentDriverError::MissingAggregate);
         }
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let archive_identity = history_archive_identity(&binding)?;
         let events = AgentEvent::recover_protocol_events(durable.events(), binding, limits)?;
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let recovered = recover_model_prefix(
             &events,
             archive_identity,
             event_page_capacity(codec_limits)?,
+            cancellation,
         )?;
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let state = replay(&events)?;
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let checkpoint = durable.checkpoint().ok_or(AgentDriverError::CheckpointMismatch)?;
         let digest_matches = checkpoint.state_digest() == state.state_digest();
         let payload_matches = checkpoint.payload() == state.canonical_bytes();
@@ -694,14 +743,19 @@ fn recover_model_prefix(
     events: &[AgentEvent],
     identity: HistoryArchiveIdentity,
     capacity: PhysicalPageCapacity,
+    cancellation: &CancellationToken,
 ) -> Result<RecoveredModelPrefix, AgentDriverError> {
     let mut recovered = RecoveredModelPrefix {
         envelopes: Vec::new(),
         next_page_index: 0,
         page_digest: None,
     };
+    let mut progress = HistoryArchiveProgress::new(identity, 1);
     let mut preserve_for_exact_resume = false;
     for event in events {
+        if cancellation.is_cancelled() {
+            return Err(AgentDriverError::RecoveryCancelled);
+        }
         let AgentEventKind::CommandAccepted(kind) = event.kind() else { continue };
         match kind {
             AgentCommandKind::ModelRequestStarted { .. } => {
@@ -709,6 +763,7 @@ fn recover_model_prefix(
                     recovered.envelopes.clear();
                     recovered.next_page_index = 0;
                     recovered.page_digest = None;
+                    progress = HistoryArchiveProgress::new(identity, 1);
                 }
                 preserve_for_exact_resume = false;
             }
@@ -718,35 +773,40 @@ fn recover_model_prefix(
                     continue;
                 }
                 if is_event_archive_page(capsule) {
-                    let page = decode_event_archive_page(
+                    let page = decode_next_event_archive_page(
                         capsule,
                         ProtocolLimits::PRODUCTION,
                         capacity,
+                        &mut progress,
                     )
                     .map_err(ModelDriveError::from)?;
-                    if page.identity() != identity
-                        || page.page_index() != recovered.next_page_index
-                        || page.previous_page_digest() != recovered.page_digest
-                        || page.envelopes().len() != 1
+                    if cancellation.is_cancelled() {
+                        return Err(AgentDriverError::RecoveryCancelled);
+                    }
+                    if page.envelopes().len() != 1
                         || peritus_codec::sha256(&page.encoded_envelopes()[0])
                             != record.event_digest()
                     {
                         return Err(AgentDriverError::RuntimeInvariant);
                     }
                     recovered.envelopes.push(page.envelopes()[0].clone());
-                    recovered.next_page_index = recovered
-                        .next_page_index
+                    recovered.next_page_index = progress.next_page_index();
+                    recovered.page_digest = progress.previous_page_digest();
+                } else {
+                    let envelope = decode_event_envelope(capsule, ProtocolLimits::PRODUCTION)
+                        .map_err(ModelDriveError::from)?;
+                    if cancellation.is_cancelled() {
+                        return Err(AgentDriverError::RecoveryCancelled);
+                    }
+                    let next_sequence = envelope
+                        .sequence()
                         .checked_add(1)
                         .ok_or(AgentDriverError::RuntimeInvariant)?;
-                    recovered.page_digest = Some(page.digest());
-                } else {
-                    recovered.envelopes.push(
-                        decode_event_envelope(capsule, ProtocolLimits::PRODUCTION)
-                            .map_err(ModelDriveError::from)?,
-                    );
+                    recovered.envelopes.push(envelope);
                     // A new writer may begin a page chain after any exact legacy prefix.
                     recovered.next_page_index = 0;
                     recovered.page_digest = None;
+                    progress = HistoryArchiveProgress::new(identity, next_sequence);
                 }
             }
             AgentCommandKind::ProviderRetryScheduled(record) => {
@@ -756,12 +816,14 @@ fn recover_model_prefix(
                     recovered.envelopes.clear();
                     recovered.next_page_index = 0;
                     recovered.page_digest = None;
+                    progress = HistoryArchiveProgress::new(identity, 1);
                 }
             }
             AgentCommandKind::ResultsRecorded { .. } => {
                 recovered.envelopes.clear();
                 recovered.next_page_index = 0;
                 recovered.page_digest = None;
+                progress = HistoryArchiveProgress::new(identity, 1);
             }
             _ => {}
         }

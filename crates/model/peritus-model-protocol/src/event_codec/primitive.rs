@@ -1,4 +1,4 @@
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
+use peritus_codec::{CanonicalReader, CanonicalWrite, CodecLimits};
 
 use crate::{ProtocolError, ProtocolErrorKind, ProtocolLimits};
 
@@ -45,7 +45,7 @@ pub(super) fn option_u16(reader: &mut CanonicalReader<'_>) -> Result<Option<u16>
 }
 
 pub(super) fn write_option_u64(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     value: Option<u64>,
 ) -> Result<(), ProtocolError> {
     writer.write_option_tag(value.is_some()).map_err(write_codec)?;
@@ -56,7 +56,7 @@ pub(super) fn write_option_u64(
 }
 
 pub(super) fn write_option_u16(
-    writer: &mut CanonicalWriter,
+    writer: &mut impl CanonicalWrite,
     value: Option<u16>,
 ) -> Result<(), ProtocolError> {
     writer.write_option_tag(value.is_some()).map_err(write_codec)?;

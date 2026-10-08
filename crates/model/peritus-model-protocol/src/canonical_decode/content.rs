@@ -7,6 +7,7 @@ use super::primitive::{
     bounded_text, canonical_json, codec, extension_json, invalid, optional_digest, optional_text,
     read_collection_len, unknown_tag,
 };
+use super::DecodeBudget;
 use crate::{
     CompletedToolCall, ContentBlock, ExtensionName, MediaInput, MediaKind, MediaReferenceKind,
     MediaType, Message, ProtocolError, ProtocolLimits, ProviderExtension, ReasoningReplay, Role,
@@ -16,6 +17,7 @@ use crate::{
 pub(super) fn message(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
+    budget: &mut DecodeBudget,
 ) -> Result<Message, ProtocolError> {
     let role = match reader.read_u8().map_err(codec)? {
         1 => Role::System,
@@ -26,9 +28,10 @@ pub(super) fn message(
         _ => return Err(unknown_tag("message.role")),
     };
     let count = read_collection_len(reader, limits.max_content_blocks(), 1 + 4, "message.content")?;
+    budget.charge_content_blocks(count)?;
     let mut blocks = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
-        blocks.push(block(reader, limits)?);
+        blocks.push(block(reader, limits, budget)?);
     }
     Message::new(role, blocks, limits)
 }
@@ -36,12 +39,13 @@ pub(super) fn message(
 fn block(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
+    budget: &mut DecodeBudget,
 ) -> Result<ContentBlock, ProtocolError> {
     match reader.read_u8().map_err(codec)? {
         1 => bounded_text(reader, limits).map(ContentBlock::Text),
-        2 => media(reader, MediaKind::Image, limits).map(ContentBlock::Image),
-        3 => media(reader, MediaKind::Audio, limits).map(ContentBlock::Audio),
-        4 => media(reader, MediaKind::Document, limits).map(ContentBlock::Document),
+        2 => media(reader, MediaKind::Image, limits, budget).map(ContentBlock::Image),
+        3 => media(reader, MediaKind::Audio, limits, budget).map(ContentBlock::Audio),
+        4 => media(reader, MediaKind::Document, limits, budget).map(ContentBlock::Document),
         5 => tool_call(reader, limits).map(ContentBlock::ToolCall),
         6 => tool_result(reader, limits).map(ContentBlock::ToolResult),
         7 => bounded_text(reader, limits).map(ContentBlock::Refusal),
@@ -55,6 +59,7 @@ fn media(
     reader: &mut CanonicalReader<'_>,
     expected_kind: MediaKind,
     limits: ProtocolLimits,
+    budget: &mut DecodeBudget,
 ) -> Result<MediaInput, ProtocolError> {
     let kind = match reader.read_u8().map_err(codec)? {
         1 => MediaKind::Image,
@@ -68,7 +73,15 @@ fn media(
     let media_type = MediaType::new(reader.read_str().map_err(codec)?.to_owned())?;
     match reader.read_u8().map_err(codec)? {
         1 => {
-            MediaInput::inline(kind, media_type, reader.read_bytes_owned().map_err(codec)?, limits)
+            let encoded = reader.read_bytes().map_err(codec)?;
+            if encoded.len() > limits.max_inline_media_bytes() {
+                return Err(invalid(
+                    "inline_media",
+                    "inline media exceeds its selected per-value allocation budget",
+                ));
+            }
+            budget.charge_inline_media(encoded.len())?;
+            MediaInput::inline(kind, media_type, owned_bytes(encoded, "inline_media")?, limits)
         }
         2 => referenced_media(reader, kind, media_type),
         3 => artifact_media(reader, kind, media_type),
@@ -125,7 +138,14 @@ fn reasoning(
     limits: ProtocolLimits,
 ) -> Result<ReasoningReplay, ProtocolError> {
     let summary = optional_text(reader, limits)?;
-    let opaque = reader.read_bytes_owned().map_err(codec)?;
+    let encoded = reader.read_bytes().map_err(codec)?;
+    if encoded.len() > limits.max_extension_bytes() {
+        return Err(invalid(
+            "reasoning_replay",
+            "reasoning replay exceeds its selected allocation budget",
+        ));
+    }
+    let opaque = owned_bytes(encoded, "reasoning_replay")?;
     ReasoningReplay::new(summary, opaque, limits)
 }
 
@@ -135,4 +155,13 @@ pub(super) fn extension(
 ) -> Result<ProviderExtension, ProtocolError> {
     let name = ExtensionName::new(reader.read_str().map_err(codec)?.to_owned())?;
     Ok(ProviderExtension::new(name, extension_json(reader, limits)?))
+}
+
+fn owned_bytes(bytes: &[u8], path: &'static str) -> Result<Vec<u8>, ProtocolError> {
+    let mut owned = Vec::new();
+    owned.try_reserve_exact(bytes.len()).map_err(|_| {
+        invalid(path, "canonical value allocation is unavailable")
+    })?;
+    owned.extend_from_slice(bytes);
+    Ok(owned)
 }

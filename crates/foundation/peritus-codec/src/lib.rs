@@ -7,6 +7,7 @@ mod limits;
 mod message;
 mod reader;
 mod receive;
+mod verifier;
 mod writer;
 
 pub use error::{CodecError, CodecErrorKind, CodecLimit};
@@ -19,4 +20,5 @@ pub use limits::CodecLimits;
 pub use message::{CanonicalDecode, CanonicalEncode, decode_message, encode_message};
 pub use reader::CanonicalReader;
 pub use receive::{FrameReceiver, RECEIVE_WINDOW_BYTES};
-pub use writer::CanonicalWriter;
+pub use verifier::CanonicalVerifier;
+pub use writer::{CanonicalWrite, CanonicalWriter};

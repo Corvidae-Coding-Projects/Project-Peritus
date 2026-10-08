@@ -3,8 +3,8 @@
 use peritus_types::Sha256Digest;
 
 use crate::{
-    EventEnvelope, HistoryArchiveIdentity, PhysicalPageCapacity, ProtocolError, ProtocolErrorKind,
-    ProtocolLimits,
+    EventEnvelope, HistoryArchiveIdentity, HistoryArchiveProgress, PhysicalPageCapacity,
+    ProtocolError, ProtocolErrorKind, ProtocolLimits,
     archive::{ArchivePageKind, decode_page, encode_page, is_page},
 };
 
@@ -85,6 +85,26 @@ impl EventArchivePage {
             && Some(self.page_index) == next_page
             && Some(self.first_sequence) == next_sequence
             && self.previous_page_digest == Some(previous.digest)
+    }
+
+    /// Authenticates and advances a resumable page-boundary event-history checkpoint.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a different lineage, sequence gap, predecessor mismatch, or overflow without
+    /// changing `progress`.
+    pub fn advance_progress(
+        &self,
+        progress: &mut HistoryArchiveProgress,
+    ) -> Result<(), ProtocolError> {
+        progress.advance(
+            self.identity,
+            self.page_index,
+            self.first_sequence,
+            self.previous_page_digest,
+            self.digest,
+            self.envelopes.len(),
+        )
     }
 
     /// Consumes the page and returns its normalized envelopes.
@@ -169,6 +189,26 @@ pub fn decode_event_archive_page(
         digest: page.digest,
         encoded_page: bytes.to_vec(),
     })
+}
+
+/// Decodes one exact page and advances `progress` only after complete authentication and parity.
+///
+/// Owners may stop between calls and retain `progress` as their cooperative cancellation
+/// checkpoint; this operation imposes no cumulative page or history ceiling.
+///
+/// # Errors
+///
+/// Rejects every [`decode_event_archive_page`] failure or a lineage/sequence discontinuity while
+/// leaving `progress` unchanged.
+pub fn decode_next_event_archive_page(
+    bytes: &[u8],
+    limits: ProtocolLimits,
+    capacity: PhysicalPageCapacity,
+    progress: &mut HistoryArchiveProgress,
+) -> Result<EventArchivePage, ProtocolError> {
+    let page = decode_event_archive_page(bytes, limits, capacity)?;
+    page.advance_progress(progress)?;
+    Ok(page)
 }
 
 /// Returns whether bytes begin with the closed authenticated-page magic.

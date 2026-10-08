@@ -1,11 +1,13 @@
 //! Profile-independent canonical message archives using the existing C5 content encoding.
 
 use crate::{
-    HistoryArchiveIdentity, Message, PhysicalPageCapacity, ProtocolError, ProtocolErrorKind,
-    ProtocolLimits,
+    HistoryArchiveIdentity, HistoryArchiveProgress, Message, PhysicalPageCapacity, ProtocolError,
+    ProtocolErrorKind, ProtocolLimits,
     archive::{ArchivePageKind, decode_page, encode_page},
 };
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
+use peritus_codec::{
+    CanonicalReader, CanonicalVerifier, CanonicalWrite, CanonicalWriter, CodecLimits,
+};
 use peritus_types::Sha256Digest;
 
 const MAGIC: [u8; 4] = *b"P5MS";
@@ -53,7 +55,7 @@ pub fn decode_messages(
     }
     let messages = crate::canonical_decode::decode_archived_messages(&mut reader, limits)?;
     reader.finish().map_err(codec)?;
-    if encode_messages(&messages, limits)? != bytes {
+    if !messages_match_canonical_bytes(&messages, bytes) {
         return Err(invalid());
     }
     Ok(messages)
@@ -134,6 +136,26 @@ impl MessageArchivePage {
             && self.previous_page_digest == Some(previous.digest)
     }
 
+    /// Authenticates and advances a resumable page-boundary history checkpoint.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a different lineage, ordinal gap, predecessor mismatch, or overflow without
+    /// changing `progress`.
+    pub fn advance_progress(
+        &self,
+        progress: &mut HistoryArchiveProgress,
+    ) -> Result<(), ProtocolError> {
+        progress.advance(
+            self.identity,
+            self.page_index,
+            self.first_message,
+            self.previous_page_digest,
+            self.digest,
+            self.messages.len(),
+        )
+    }
+
     /// Consumes the page and returns its retained messages.
     #[must_use]
     pub fn into_messages(self) -> Vec<Message> {
@@ -205,7 +227,10 @@ pub fn decode_message_archive_page(
     if page.payloads.len() != 1 {
         return Err(invalid_page("message history page must contain one legacy archive"));
     }
-    let legacy_archive = page.payloads[0].clone();
+    let mut payloads = page.payloads;
+    let legacy_archive = payloads
+        .pop()
+        .ok_or_else(|| invalid_page("message history page is missing its legacy archive"))?;
     let messages = decode_messages(&legacy_archive, limits)?;
     if messages.is_empty() {
         return Err(invalid_page("message history page is empty"));
@@ -225,6 +250,42 @@ pub fn decode_message_archive_page(
         digest: page.digest,
         encoded_page: bytes.to_vec(),
     })
+}
+
+/// Decodes one exact page and advances `progress` only after complete authentication and parity.
+///
+/// Owners may stop between calls and retain `progress` as their cooperative cancellation
+/// checkpoint; this operation imposes no cumulative page or history ceiling.
+///
+/// # Errors
+///
+/// Rejects every [`decode_message_archive_page`] failure or a lineage/ordinal discontinuity while
+/// leaving `progress` unchanged.
+pub fn decode_next_message_archive_page(
+    bytes: &[u8],
+    limits: ProtocolLimits,
+    capacity: PhysicalPageCapacity,
+    progress: &mut HistoryArchiveProgress,
+) -> Result<MessageArchivePage, ProtocolError> {
+    let page = decode_message_archive_page(bytes, limits, capacity)?;
+    page.advance_progress(progress)?;
+    Ok(page)
+}
+
+fn messages_match_canonical_bytes(messages: &[Message], bytes: &[u8]) -> bool {
+    let mut verifier = CanonicalVerifier::new(bytes);
+    if verifier.write_fixed(&MAGIC).is_err()
+        || verifier.write_u16(VERSION).is_err()
+        || verifier.write_collection_len(messages.len()).is_err()
+    {
+        return false;
+    }
+    for message in messages {
+        if crate::canonical::message_value(&mut verifier, message).is_err() {
+            return false;
+        }
+    }
+    verifier.finish().is_ok()
 }
 
 const fn decoder_limits(encoded_bytes: usize) -> CodecLimits {

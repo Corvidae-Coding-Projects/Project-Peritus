@@ -14,6 +14,56 @@ use crate::{
 };
 
 const CANONICAL_MAGIC: [u8; 4] = *b"P5MR";
+
+pub(super) struct DecodeBudget {
+    remaining_content_blocks: Option<usize>,
+    remaining_inline_media_bytes: Option<usize>,
+}
+
+impl DecodeBudget {
+    fn selected_request(limits: ProtocolLimits) -> Self {
+        Self {
+            remaining_content_blocks: Some(limits.max_content_blocks()),
+            remaining_inline_media_bytes: Some(limits.max_total_media_bytes()),
+        }
+    }
+
+    fn retained_message() -> Self {
+        Self { remaining_content_blocks: None, remaining_inline_media_bytes: None }
+    }
+
+    pub(super) fn charge_content_blocks(&mut self, count: usize) -> Result<(), ProtocolError> {
+        charge(
+            &mut self.remaining_content_blocks,
+            count,
+            "messages",
+            "aggregate content-block count exceeds its selected allocation budget",
+        )
+    }
+
+    pub(super) fn charge_inline_media(&mut self, bytes: usize) -> Result<(), ProtocolError> {
+        charge(
+            &mut self.remaining_inline_media_bytes,
+            bytes,
+            "messages",
+            "aggregate inline-media bytes exceed their selected allocation budget",
+        )
+    }
+}
+
+fn charge(
+    remaining: &mut Option<usize>,
+    amount: usize,
+    path: &'static str,
+    detail: &'static str,
+) -> Result<(), ProtocolError> {
+    let Some(remaining) = remaining.as_mut() else { return Ok(()) };
+    *remaining = remaining
+        .checked_sub(amount)
+        .ok_or_else(|| primitive::invalid(path, detail))?;
+    Ok(())
+}
+
 /// Decodes exact canonical v1 request bytes against their immutable profile revision.
 ///
 /// The canonical form deliberately excludes caller request identity and profile lifecycle facts,
@@ -52,7 +102,7 @@ pub fn decode_request(
         options,
         limits,
     )?;
-    if request.canonical_bytes()?.as_slice() != bytes {
+    if !crate::canonical::request_matches_canonical_bytes(&request, bytes)? {
         return Err(invalid(
             "canonical_request",
             "decoded request bytes are not the canonical v1 representation",
@@ -117,8 +167,9 @@ pub fn decode_messages(
 ) -> Result<Vec<Message>, ProtocolError> {
     let count = read_collection_len(reader, limits.max_messages(), 1 + 4, "messages")?;
     let mut messages = reader.reserve_collection(count).map_err(codec)?;
+    let mut budget = DecodeBudget::selected_request(limits);
     for _ in 0..count {
-        messages.push(content::message(reader, limits)?);
+        messages.push(content::message(reader, limits, &mut budget)?);
     }
     Ok(messages)
 }
@@ -133,7 +184,8 @@ pub(crate) fn decode_archived_messages(
     let count = reader.read_collection_len(1 + 4).map_err(codec)?;
     let mut messages = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
-        messages.push(content::message(reader, limits)?);
+        let mut budget = DecodeBudget::retained_message();
+        messages.push(content::message(reader, limits, &mut budget)?);
     }
     Ok(messages)
 }

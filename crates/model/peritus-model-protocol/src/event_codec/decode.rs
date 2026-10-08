@@ -62,12 +62,7 @@ pub fn decode_event_envelope(
     let envelope =
         EventEnvelope::new(sequence, provider_sequence, provider_event_id, provider_digest, event)?;
     envelope.validate_under(limits)?;
-    if super::encode::encode_event_envelope(&envelope, limits)?.as_slice() != bytes {
-        return Err(invalid(
-            "canonical_event",
-            "decoded event bytes are not the canonical representation",
-        ));
-    }
+    super::encode::verify_event_envelope(&envelope, limits, bytes)?;
     Ok(envelope)
 }
 
@@ -157,7 +152,19 @@ fn fragment(
     reader: &mut CanonicalReader<'_>,
     limits: ProtocolLimits,
 ) -> Result<StreamFragment, ProtocolError> {
-    StreamFragment::new(reader.read_bytes_owned().map_err(read_codec)?, limits)
+    let encoded = reader.read_bytes().map_err(read_codec)?;
+    if encoded.len() > limits.max_event_bytes() {
+        return Err(invalid(
+            "event.fragment",
+            "stream fragment exceeds its selected allocation budget",
+        ));
+    }
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(encoded.len()).map_err(|_| {
+        invalid("event.fragment", "stream fragment allocation is unavailable")
+    })?;
+    bytes.extend_from_slice(encoded);
+    StreamFragment::new(bytes, limits)
 }
 
 fn decode_item_kind(tag: u8) -> Result<ItemKind, ProtocolError> {
