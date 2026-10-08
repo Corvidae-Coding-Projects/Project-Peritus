@@ -2,7 +2,7 @@
 
 use super::CompatibleClient;
 use peritus_provider_core::{
-    CancellationToken, Endpoint, HttpHeaders, ProviderCoreError,
+    CancellationToken, HttpHeaders, ProviderCoreError,
     catalog::{CatalogDialect, DiscoveredModel, discover_http_models, unavailable},
 };
 
@@ -11,13 +11,14 @@ impl CompatibleClient {
         &self,
         cancellation: &CancellationToken,
     ) -> Result<Vec<DiscoveredModel>, ProviderCoreError> {
-        let source = self.config.endpoint().as_str();
-        let base = source.strip_suffix("/responses").or_else(|| source.strip_suffix("/chat/completions"))
-            .ok_or_else(|| unavailable("cannot derive a models route from this custom inference path; select an explicit model ID"))?;
-        let endpoint = Endpoint::new(format!("{base}/models"))?;
+        let endpoint = self.config.catalog_endpoint().ok_or_else(|| {
+            unavailable(
+                "compatible catalog endpoint is not configured; select an explicit model ID",
+            )
+        })?;
         discover_http_models(
             self.transport.as_ref(),
-            &endpoint,
+            endpoint,
             CatalogDialect::OpenAi,
             &|| {
                 let mut headers = vec![

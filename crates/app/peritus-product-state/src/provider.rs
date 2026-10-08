@@ -23,6 +23,26 @@ pub enum CompatibleProtocol {
     GoogleGenerateContent,
 }
 
+const COMPATIBLE_CATALOG_BINDING_VERSION: u16 = 1;
+
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[serde(deny_unknown_fields)]
+struct CompatibleCatalogBinding {
+    version: u16,
+    endpoint: String,
+}
+
+impl CompatibleCatalogBinding {
+    fn new(endpoint: String) -> Self {
+        Self { version: COMPATIBLE_CATALOG_BINDING_VERSION, endpoint }
+    }
+
+    fn is_valid(&self) -> bool {
+        self.version == COMPATIBLE_CATALOG_BINDING_VERSION
+            && bounded_text(&self.endpoint, 2_048)
+    }
+}
+
 /// Durable non-secret configuration for one direct provider route.
 #[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -30,6 +50,8 @@ pub struct DirectProviderProfile {
     kind: ProviderKind,
     credential_reference: String,
     endpoint: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    catalog_binding: Option<CompatibleCatalogBinding>,
     model: String,
     compatible_protocol: Option<CompatibleProtocol>,
     credential_header: Option<String>,
@@ -50,10 +72,36 @@ impl DirectProviderProfile {
         compatible_protocol: Option<CompatibleProtocol>,
         credential_header: Option<String>,
     ) -> Result<Self, ProductStateError> {
+        Self::new_with_catalog_endpoint(
+            kind,
+            credential_reference,
+            endpoint,
+            None,
+            model,
+            compatible_protocol,
+            credential_header,
+        )
+    }
+
+    /// Creates one bounded direct route with an optional resolved compatible catalog binding.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed route fields or a catalog binding on a non-compatible provider.
+    pub fn new_with_catalog_endpoint(
+        kind: ProviderKind,
+        credential_reference: String,
+        endpoint: Option<String>,
+        catalog_endpoint: Option<String>,
+        model: String,
+        compatible_protocol: Option<CompatibleProtocol>,
+        credential_header: Option<String>,
+    ) -> Result<Self, ProductStateError> {
         let profile = Self {
             kind,
             credential_reference,
             endpoint,
+            catalog_binding: catalog_endpoint.map(CompatibleCatalogBinding::new),
             model,
             compatible_protocol,
             credential_header,
@@ -78,6 +126,12 @@ impl DirectProviderProfile {
     #[must_use]
     pub fn endpoint(&self) -> Option<&str> {
         self.endpoint.as_deref()
+    }
+
+    /// Borrows the resolved compatible catalog endpoint when discovery was bound during setup.
+    #[must_use]
+    pub fn catalog_endpoint(&self) -> Option<&str> {
+        self.catalog_binding.as_ref().map(|binding| binding.endpoint.as_str())
     }
 
     /// Borrows the selected provider model.
@@ -119,6 +173,10 @@ impl DirectProviderProfile {
                     )
                 )
             || !compatible && self.credential_header.is_some()
+            || self
+                .catalog_binding
+                .as_ref()
+                .is_some_and(|binding| !compatible || !binding.is_valid())
             || !bounded_text(&self.model, 256)
             || !bounded_text(&self.credential_reference, 256)
             || !self.credential_reference.starts_with("peritus-secret-v1:")

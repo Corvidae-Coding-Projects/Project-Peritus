@@ -13,7 +13,7 @@ use std::time::Duration;
 use peritus_model_protocol::ProtocolLimits;
 use peritus_provider_core::{
     Credential, CredentialReference, Endpoint, FramingLimits, Header, HeaderName, HttpLimits,
-    ProviderCoreError, RetryPolicy,
+    ProviderCoreError, RetryPolicy, catalog::derive_compatible_catalog_endpoint,
 };
 
 use crate::error;
@@ -251,6 +251,7 @@ impl Default for CompatibleLimits {
 #[derive(Clone)]
 pub struct CompatibleConfig {
     endpoint: Endpoint,
+    catalog_endpoint: Option<Endpoint>,
     hosted_service: Option<peritus_provider_core::hosted::HostedService>,
     auth: CompatibleAuth,
     fixed_headers: Vec<CompatibleHeader>,
@@ -276,8 +277,10 @@ impl CompatibleConfig {
                 "compatible endpoint must include one exact non-root operation path",
             ));
         }
+        let catalog_endpoint = derive_compatible_catalog_endpoint(&endpoint)?;
         Ok(Self {
             endpoint,
+            catalog_endpoint,
             hosted_service: None,
             auth,
             fixed_headers: Vec::new(),
@@ -291,6 +294,23 @@ impl CompatibleConfig {
             finite_retries: false,
             limits: CompatibleLimits::PRODUCTION,
         })
+    }
+
+    /// Binds an explicit catalog endpoint for a direct compatible route.
+    ///
+    /// # Errors
+    /// Rejects a different origin or replacement of a reviewed hosted-service catalog.
+    pub fn with_catalog_endpoint(
+        mut self,
+        catalog_endpoint: Endpoint,
+    ) -> Result<Self, ProviderCoreError> {
+        if self.hosted_service.is_some() || !self.endpoint.same_origin(&catalog_endpoint) {
+            return Err(error::configuration(
+                "direct compatible catalog endpoint must share the inference origin",
+            ));
+        }
+        self.catalog_endpoint = Some(catalog_endpoint);
+        Ok(self)
     }
 
     /// Binds a reviewed hosted service's request and stream extensions to its exact endpoint.
@@ -313,6 +333,7 @@ impl CompatibleConfig {
                 "hosted service does not own this compatible endpoint",
             ));
         }
+        self.catalog_endpoint = Some(Endpoint::new(service.models_endpoint().to_owned())?);
         self.hosted_service = Some(service);
         Ok(self)
     }
@@ -374,6 +395,12 @@ impl CompatibleConfig {
     #[must_use]
     pub const fn endpoint(&self) -> &Endpoint {
         &self.endpoint
+    }
+
+    /// Returns the exact reviewed catalog endpoint when discovery is configured.
+    #[must_use]
+    pub const fn catalog_endpoint(&self) -> Option<&Endpoint> {
+        self.catalog_endpoint.as_ref()
     }
 
     /// Returns the exact header authentication contract.
@@ -445,6 +472,7 @@ impl fmt::Debug for CompatibleConfig {
         formatter
             .debug_struct("CompatibleConfig")
             .field("endpoint", &self.endpoint)
+            .field("catalog_endpoint", &self.catalog_endpoint)
             .field("hosted_service", &self.hosted_service)
             .field("auth", &self.auth)
             .field("fixed_headers", &self.fixed_headers)

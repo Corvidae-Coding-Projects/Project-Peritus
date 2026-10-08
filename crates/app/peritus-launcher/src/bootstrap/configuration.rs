@@ -210,6 +210,7 @@ pub fn render_direct_provider(
         toml_string(direct.credential_reference())
     );
     append_optional(&mut text, "endpoint", direct.endpoint());
+    append_optional(&mut text, "catalog_endpoint", direct.catalog_endpoint());
     append_optional(&mut text, "credential_header", direct.credential_header());
     text.push_str(&profile_block(
         profile_id,

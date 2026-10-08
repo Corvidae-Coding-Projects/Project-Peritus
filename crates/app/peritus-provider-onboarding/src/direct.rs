@@ -36,12 +36,20 @@ impl fmt::Debug for DirectCredential {
 pub struct DirectProviderDraft {
     kind: ProviderKind,
     endpoint: Option<String>,
+    catalog_endpoint: Option<String>,
     model: String,
     compatible_protocol: Option<CompatibleProtocol>,
     credential_header: Option<String>,
 }
 
 impl DirectProviderDraft {
+    /// Binds an exact compatible model-catalog endpoint for discovery and durable configuration.
+    #[must_use]
+    pub fn with_catalog_endpoint(mut self, endpoint: String) -> Self {
+        self.catalog_endpoint = Some(endpoint);
+        self
+    }
+
     /// Selects an exact discovered or explicitly entered model before credential publication.
     #[must_use]
     pub fn with_model(mut self, model: String) -> Self {
@@ -68,6 +76,7 @@ impl DirectProviderDraft {
         crate::models::direct(
             self.kind,
             self.endpoint.as_deref(),
+            self.catalog_endpoint.as_deref(),
             self.credential_header.as_deref(),
             &credential.0,
         )
@@ -81,7 +90,14 @@ impl DirectProviderDraft {
         compatible_protocol: Option<CompatibleProtocol>,
         credential_header: Option<String>,
     ) -> Self {
-        Self { kind, endpoint, model, compatible_protocol, credential_header }
+        Self {
+            kind,
+            endpoint,
+            catalog_endpoint: None,
+            model,
+            compatible_protocol,
+            credential_header,
+        }
     }
 
     /// Publishes credential material and returns only durable non-secret profile data.
@@ -93,13 +109,29 @@ impl DirectProviderDraft {
         self,
         credential: &DirectCredential,
     ) -> Result<DirectProviderProfile, OnboardingError> {
+        let catalog_endpoint = match (self.kind, self.catalog_endpoint.as_deref()) {
+            (ProviderKind::CompatibleEndpoint, configured) => {
+                let inference = self.endpoint.as_deref().ok_or(OnboardingError::ModelCatalog)?;
+                crate::models::compatible_catalog_endpoint(inference, configured)?
+                    .map(|endpoint| endpoint.as_str().to_owned())
+            }
+            (_, None) => None,
+            (_, Some(_)) => {
+                return Err(OnboardingError::ModelDiscovery(
+                    peritus_provider_core::catalog::unavailable(
+                        "catalog endpoint is only valid for a compatible provider",
+                    ),
+                ));
+            }
+        };
         let resource_id = random_resource_id()?;
         let store = PlatformCredentialStore::providers();
         let reference = store.store(resource_id, &credential.0)?;
-        let profile = DirectProviderProfile::new(
+        let profile = DirectProviderProfile::new_with_catalog_endpoint(
             self.kind,
             format_credential_reference(reference),
             self.endpoint,
+            catalog_endpoint,
             self.model,
             self.compatible_protocol,
             self.credential_header,

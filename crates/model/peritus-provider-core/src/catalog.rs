@@ -8,7 +8,7 @@ use peritus_model_protocol::{CapabilityProvenance, ModelName, ProviderProfile};
 use peritus_types::ProviderProfileId;
 use sha2::{Digest, Sha256};
 
-use crate::{ProviderCoreError, ProviderCoreErrorKind};
+use crate::{Endpoint, ProviderCoreError, ProviderCoreErrorKind};
 
 pub use http::{CatalogDialect, discover_http_models};
 use parse::parse_runtime_models;
@@ -47,6 +47,30 @@ impl DiscoveredModel {
         }
         Ok(Self { id, label, dialect: None, tools: None, input_tokens: None, output_tokens: None })
     }
+}
+
+/// Derives a same-origin OpenAI-compatible catalog endpoint from a supported operation path.
+///
+/// The parsed URL path is changed while its validated nonsensitive query is preserved. Custom
+/// operation paths return `None` so callers can require an explicit reviewed catalog endpoint or
+/// continue with an explicitly entered model identifier.
+///
+/// # Errors
+/// Returns an endpoint validation error if the derived URL cannot satisfy the endpoint boundary.
+pub fn derive_compatible_catalog_endpoint(
+    inference_endpoint: &Endpoint,
+) -> Result<Option<Endpoint>, ProviderCoreError> {
+    let path = inference_endpoint.url().path();
+    let path = path.strip_suffix('/').unwrap_or(path);
+    let Some(prefix) = path
+        .strip_suffix("/responses")
+        .or_else(|| path.strip_suffix("/chat/completions"))
+    else {
+        return Ok(None);
+    };
+    let mut catalog = inference_endpoint.url().clone();
+    catalog.set_path(&format!("{prefix}/models"));
+    Endpoint::new(catalog.to_string()).map(Some)
 }
 
 /// Derives a new immutable profile identity for a selected model, preserving the explicit route.

@@ -99,6 +99,7 @@ pub struct ProviderRoute {
     kind: ProviderRouteKind,
     profile: ProviderProfileDeclaration,
     endpoint: Option<String>,
+    catalog_endpoint: Option<String>,
     credential_reference: Option<String>,
     credential_header: Option<String>,
     executable: Option<PathBuf>,
@@ -169,6 +170,14 @@ impl ProviderRoute {
                     auth,
                 )
                 .map_err(provider_error)?;
+                let config = match &self.catalog_endpoint {
+                    Some(endpoint) => config
+                        .with_catalog_endpoint(
+                            Endpoint::new(endpoint.clone()).map_err(provider_error)?,
+                        )
+                        .map_err(provider_error)?,
+                    None => config,
+                };
                 let profile = if self.kind == ProviderRouteKind::CompatibleResponses {
                     CompatibleProfile::responses(profile)
                 } else {
@@ -320,7 +329,7 @@ pub(super) fn validate(routes: &[ProviderRoute]) -> Result<(), DaemonError> {
                 route.kind,
                 ProviderRouteKind::CompatibleResponses
                     | ProviderRouteKind::CompatibleChatCompletions
-            ) && route.credential_header.is_some()
+            ) && (route.credential_header.is_some() || route.catalog_endpoint.is_some())
         {
             return Err(invalid("provider route fields do not match the selected adapter kind"));
         }

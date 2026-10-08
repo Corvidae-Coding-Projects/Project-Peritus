@@ -6,8 +6,8 @@ use peritus_provider_core::{
     CancellationToken, Credential, Endpoint, Header, HeaderName, HttpHeaders, HttpLimits,
     ReqwestTransport,
     catalog::{
-        AccountCatalog, CatalogDialect, DiscoveredModel, discover_account_models,
-        discover_http_models,
+        AccountCatalog, CatalogDialect, DiscoveredModel, derive_compatible_catalog_endpoint,
+        discover_account_models, discover_http_models, unavailable,
     },
 };
 
@@ -32,6 +32,7 @@ impl AccountProvider {
 pub fn direct(
     kind: ProviderKind,
     endpoint: Option<&str>,
+    catalog_endpoint: Option<&str>,
     header: Option<&str>,
     credential: &peritus_secrets::SecretMaterial,
 ) -> Result<Vec<DiscoveredModel>, OnboardingError> {
@@ -61,13 +62,13 @@ pub fn direct(
             None,
         ),
         ProviderKind::CompatibleEndpoint => {
-            let endpoint = endpoint.ok_or(OnboardingError::ModelCatalog)?;
-            let root = endpoint
-                .strip_suffix("/responses")
-                .or_else(|| endpoint.strip_suffix("/chat/completions"))
-                .ok_or(OnboardingError::ModelCatalog)?;
+            let endpoint = compatible_catalog_endpoint(
+                endpoint.ok_or(OnboardingError::ModelCatalog)?,
+                catalog_endpoint,
+            )?
+            .ok_or(OnboardingError::ModelCatalog)?;
             (
-                format!("{root}/models"),
+                endpoint.as_str().to_owned(),
                 CatalogDialect::OpenAi,
                 header.unwrap_or("authorization"),
                 if header.is_none() { Some("Bearer ") } else { None },
@@ -123,6 +124,27 @@ pub fn direct(
         )
         .await
     })
+}
+
+pub(crate) fn compatible_catalog_endpoint(
+    inference_endpoint: &str,
+    configured_catalog_endpoint: Option<&str>,
+) -> Result<Option<Endpoint>, OnboardingError> {
+    let inference = Endpoint::new(inference_endpoint.to_owned())
+        .map_err(OnboardingError::ModelDiscovery)?;
+    let catalog = match configured_catalog_endpoint {
+        Some(endpoint) => Some(
+            Endpoint::new(endpoint.to_owned()).map_err(OnboardingError::ModelDiscovery)?,
+        ),
+        None => derive_compatible_catalog_endpoint(&inference)
+            .map_err(OnboardingError::ModelDiscovery)?,
+    };
+    if catalog.as_ref().is_some_and(|endpoint| !inference.same_origin(endpoint)) {
+        return Err(OnboardingError::ModelDiscovery(unavailable(
+            "direct compatible catalog endpoint must share the inference origin",
+        )));
+    }
+    Ok(catalog)
 }
 
 fn run(

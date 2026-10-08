@@ -26,11 +26,16 @@ pub(super) fn setup(
     terminal.line(kind.label())?;
     terminal.line("The key will be stored by your operating system, not in Peritus files.")?;
 
-    let (endpoint, model, protocol, header) = settings(terminal, kind)?;
+    let (endpoint, catalog_endpoint, model, protocol, header) = settings(terminal, kind)?;
     terminal.line("Paste the API key and press Enter. Input is hidden: ")?;
     let credential = read_secret()?;
     terminal.line("Credential captured. Saving it to the operating-system credential store…")?;
     let draft = DirectProviderDraft::new(kind, endpoint, model, protocol, header);
+    let draft = if let Some(endpoint) = catalog_endpoint {
+        draft.with_catalog_endpoint(endpoint)
+    } else {
+        draft
+    };
     terminal.line("Discovering available models from this provider…")?;
     let discovered = draft.discover_models(&credential);
     let (model, protocol) = super::models::choose_direct(terminal, kind, discovered)?;
@@ -47,25 +52,40 @@ fn settings(
     kind: ProviderKind,
 ) -> Result<DirectSettings, LauncherError> {
     match kind {
-        ProviderKind::OpenAiApi => Ok((None, String::new(), None, None)),
+        ProviderKind::OpenAiApi => Ok((None, None, String::new(), None, None)),
         ProviderKind::AnthropicApi => {
-            Ok((Some("https://api.anthropic.com".to_owned()), String::new(), None, None))
+            Ok((
+                Some("https://api.anthropic.com".to_owned()),
+                None,
+                String::new(),
+                None,
+                None,
+            ))
         }
         ProviderKind::GoogleGeminiApi => Ok((
             Some("https://generativelanguage.googleapis.com".to_owned()),
+            None,
             String::new(),
             None,
             None,
         )),
         ProviderKind::CompatibleEndpoint => compatible_settings(terminal),
-        _ if kind.hosted_service().is_some() => Ok((None, String::new(), None, None)),
+        _ if kind.hosted_service().is_some() => {
+            Ok((None, None, String::new(), None, None))
+        }
         _ => Err(LauncherError::Interaction(
             "the selected provider does not use direct credential setup".to_owned(),
         )),
     }
 }
 
-type DirectSettings = (Option<String>, String, Option<CompatibleProtocol>, Option<String>);
+type DirectSettings = (
+    Option<String>,
+    Option<String>,
+    String,
+    Option<CompatibleProtocol>,
+    Option<String>,
+);
 
 fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, LauncherError> {
     terminal.line("Protocol: 1. Responses  2. Chat Completions")?;
@@ -77,10 +97,19 @@ fn compatible_settings(terminal: &mut Terminal<'_>) -> Result<DirectSettings, La
         }
     };
     let endpoint = required(terminal, compatible_endpoint_prompt(protocol))?;
+    let catalog_endpoint = terminal.prompt(
+        "Exact model catalog URL [Enter to derive a standard same-origin /models route or use a manual model ID]: ",
+    )?;
     let header = terminal.prompt(
         "Credential header [Enter for Authorization: Bearer, or type an API-key header]: ",
     )?;
-    Ok((Some(endpoint), String::new(), Some(protocol), (!header.is_empty()).then_some(header)))
+    Ok((
+        Some(endpoint),
+        (!catalog_endpoint.is_empty()).then_some(catalog_endpoint),
+        String::new(),
+        Some(protocol),
+        (!header.is_empty()).then_some(header),
+    ))
 }
 
 const fn compatible_endpoint_prompt(protocol: CompatibleProtocol) -> &'static str {

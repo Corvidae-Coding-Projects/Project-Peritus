@@ -60,6 +60,12 @@ impl Endpoint {
         &self.serialized
     }
 
+    /// Returns whether another validated endpoint has the same scheme, host, and effective port.
+    #[must_use]
+    pub fn same_origin(&self, other: &Self) -> bool {
+        self.parsed.origin() == other.parsed.origin()
+    }
+
     /// Returns whether the canonical endpoint uses a literal loopback IP address.
     /// Hostnames (including `localhost`) are excluded: no DNS or proxy assumption proves locality.
     #[must_use]
