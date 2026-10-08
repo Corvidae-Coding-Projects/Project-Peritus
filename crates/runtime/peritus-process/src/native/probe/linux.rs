@@ -1,6 +1,6 @@
 //! Linux `/proc` birth-token and process-session recovery probe.
 
-use std::{io::ErrorKind, path::Path};
+use std::io::ErrorKind;
 
 use nix::{
     errno::Errno,
@@ -8,9 +8,9 @@ use nix::{
     unistd::Pid,
 };
 
-use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity};
+use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity, ProcessTreeQuiescence};
 
-use super::indeterminate;
+use super::{indeterminate, indeterminate_cause};
 
 pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation, ProcessError> {
     let Some((expected_start, expected_group)) = exact_binding(identity) else {
@@ -23,7 +23,7 @@ pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation,
             if start_token != expected_start || process_group != expected_group {
                 Ok(ProbeObservation::Mismatched)
             } else if matches!(state, b'Z' | b'X' | b'x') {
-                Ok(ProbeObservation::Unverifiable)
+                Ok(ProbeObservation::ExactAbsent)
             } else {
                 Ok(ProbeObservation::ExactLive)
             }
@@ -52,7 +52,25 @@ pub(super) fn terminate(identity: ProcessTreeIdentity) -> Result<(), ProcessErro
         .ok_or_else(|| indeterminate("Linux process-group identity is not representable"))?;
     match killpg(Pid::from_raw(group), Signal::SIGKILL) {
         Ok(()) | Err(Errno::ESRCH) => Ok(()),
-        Err(_) => Err(indeterminate("Linux exact process-group termination failed")),
+        Err(error) => Err(indeterminate_cause("Linux exact process-group termination failed", error)),
+    }
+}
+
+pub(super) fn observe_quiescence(
+    identity: ProcessTreeIdentity,
+) -> Result<ProcessTreeQuiescence, ProcessError> {
+    let Some((_, group)) = exact_binding(identity) else {
+        return Ok(ProcessTreeQuiescence::Unverifiable);
+    };
+    let group = i32::try_from(group)
+        .map_err(|_| indeterminate("Linux process-group identity is not representable"))?;
+    match killpg(Pid::from_raw(group), None) {
+        Err(Errno::ESRCH) => Ok(ProcessTreeQuiescence::Quiescent),
+        Ok(()) | Err(Errno::EPERM) => Ok(ProcessTreeQuiescence::Unverifiable),
+        Err(error) => Err(indeterminate_cause(
+            "Linux process-group quiescence cannot be observed",
+            error,
+        )),
     }
 }
 
@@ -65,16 +83,16 @@ fn exact_binding(identity: ProcessTreeIdentity) -> Option<(u64, u32)> {
 }
 
 fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
-    if !Path::new("/proc/self/stat").is_file() {
+    let procfs = std::fs::metadata("/proc/self/stat").map_err(|error| {
+        indeterminate_cause("Linux procfs process observations are unavailable", error)
+    })?;
+    if !procfs.is_file() {
         return Err(indeterminate("Linux procfs process observations are unavailable"));
     }
     let text = match std::fs::read_to_string(format!("/proc/{pid}/stat")) {
         Ok(text) => text,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Snapshot::Absent),
-        Err(error) if error.kind() == ErrorKind::PermissionDenied => {
-            return Ok(Snapshot::Unverifiable);
-        }
-        Err(_) => return Err(indeterminate("Linux process status cannot be read")),
+        Err(error) => return Err(indeterminate_cause("Linux process status cannot be read", error)),
     };
     Ok(parse_stat(pid, &text).unwrap_or(Snapshot::Unverifiable))
 }

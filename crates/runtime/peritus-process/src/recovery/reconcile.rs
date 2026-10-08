@@ -3,8 +3,8 @@
 use peritus_types::ProcessId;
 
 use crate::{
-    LifecyclePhase, ProcessCursor, ProcessError, ProcessStore, ProcessTreeIdentity,
-    RetainedOwnerRequest, RetainedProcessKey,
+    LifecyclePhase, NativeWindowsContainmentRecovery, ProcessCursor, ProcessError, ProcessStore,
+    ProcessTreeIdentity, RetainedOwnerRequest, RetainedProcessKey,
 };
 
 /// Exact observation made by a platform process-identity probe.
@@ -50,6 +50,41 @@ pub trait ProcessProbe {
         _identity: ProcessTreeIdentity,
     ) -> Result<ProcessTreeQuiescence, ProcessError> {
         Ok(ProcessTreeQuiescence::Unverifiable)
+    }
+
+    /// Observes a persisted Windows Job binding or adopted target without PID-only authority.
+    ///
+    /// # Errors
+    /// Returns the original native failure when the durable Job cannot be inspected.
+    fn observe_windows_containment(
+        &mut self,
+        _containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<ProbeObservation, ProcessError> {
+        Ok(ProbeObservation::Unverifiable)
+    }
+
+    /// Observes whether a persisted Windows Job has no remaining members.
+    ///
+    /// # Errors
+    /// Returns the original native failure when Job accounting cannot be inspected.
+    fn observe_windows_containment_quiescence(
+        &mut self,
+        _containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<ProcessTreeQuiescence, ProcessError> {
+        Ok(ProcessTreeQuiescence::Unverifiable)
+    }
+
+    /// Terminates only an adopted Windows Job whose target birth and membership remain exact.
+    ///
+    /// # Errors
+    /// Refuses intended-only, mismatched, inaccessible, or missing containment.
+    fn terminate_windows_containment(
+        &mut self,
+        _containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<(), ProcessError> {
+        Err(retained_recovery_error(
+            "Windows durable containment termination is unavailable",
+        ))
     }
 
     /// Terminates only the exact live tree supplied by a preceding observation.
@@ -235,11 +270,22 @@ impl ProcessStore {
             for record in page {
                 let process_id = record.process_id;
                 after = Some(process_id);
-                let record = self
-                    .authoritative_record(process_id)?
-                    .ok_or_else(|| retained_recovery_error(
-                        "indexed process record disappeared during reconciliation",
-                    ))?;
+                let record = match self.authoritative_record(process_id) {
+                    Ok(Some(record)) => record,
+                    Ok(None) => {
+                        observe(RecoveryObservation::failed(
+                            process_id,
+                            retained_recovery_error(
+                                "indexed process record disappeared during reconciliation",
+                            ),
+                        ))?;
+                        continue;
+                    }
+                    Err(error) => {
+                        observe(RecoveryObservation::failed(process_id, error))?;
+                        continue;
+                    }
+                };
                 let Some(manifest) = record.manifest else {
                     observe(RecoveryObservation::completed(RecoveryEntry::new(
                         process_id, RecoveryDisposition::Indeterminate, false,
@@ -277,42 +323,92 @@ impl ProcessStore {
                             continue;
                         }
                     };
-                    match native {
-                        ProbeObservation::ExactLive => {
-                            // The durable supervisor or its owner-death guard still has exact
-                            // custody. Restart attachment is observational and must not become an
-                            // implicit cancellation request.
-                            (RecoveryDisposition::LiveOwned, false)
+                    let windows_containment = if let Some(containment) =
+                        manifest.windows_containment.as_ref()
+                    {
+                        match probe.observe_windows_containment(containment) {
+                            Ok(observation) => Some(observation),
+                            Err(error) => {
+                                observe(RecoveryObservation::failed(process_id, error))?;
+                                continue;
+                            }
                         }
-                        ProbeObservation::ExactAbsent => {
-                            let quiescence = match probe.observe_quiescence(tree) {
+                    } else {
+                        None
+                    };
+                    if matches!(
+                        native,
+                        ProbeObservation::Mismatched | ProbeObservation::Unverifiable
+                    ) || matches!(
+                        windows_containment,
+                        Some(ProbeObservation::Mismatched | ProbeObservation::Unverifiable)
+                    ) {
+                        if let Err(error) = self.reconcile_ownership(&manifest, false) {
+                            observe(RecoveryObservation::failed(process_id, error))?;
+                            continue;
+                        }
+                        (RecoveryDisposition::Indeterminate, false)
+                    } else if native == ProbeObservation::ExactLive
+                        || windows_containment == Some(ProbeObservation::ExactLive)
+                    {
+                        // The durable supervisor, process group, or reopened Job still has exact
+                        // custody. Restart attachment is observational and must not become an
+                        // implicit cancellation request.
+                        (RecoveryDisposition::LiveOwned, false)
+                    } else {
+                        let quiescence = if let Some(containment) =
+                            manifest.windows_containment.as_ref()
+                        {
+                            match probe.observe_windows_containment_quiescence(containment) {
                                 Ok(quiescence) => quiescence,
                                 Err(error) => {
                                     observe(RecoveryObservation::failed(process_id, error))?;
                                     continue;
                                 }
-                            };
-                            let tree_quiescent = quiescence == ProcessTreeQuiescence::Quiescent;
-                            let settled = self.reconcile_ownership(&manifest, tree_quiescent)?;
-                            if settled != Some(true) || !tree_quiescent {
-                                (RecoveryDisposition::Indeterminate, false)
-                            } else if manifest.phase == LifecyclePhase::Terminal {
-                                (RecoveryDisposition::Terminal, false)
-                            } else {
-                                (RecoveryDisposition::AbsentUnobserved, false)
                             }
-                        }
-                        ProbeObservation::Mismatched | ProbeObservation::Unverifiable => {
-                            self.reconcile_ownership(&manifest, false)?;
+                        } else {
+                            match probe.observe_quiescence(tree) {
+                                Ok(quiescence) => quiescence,
+                                Err(error) => {
+                                    observe(RecoveryObservation::failed(process_id, error))?;
+                                    continue;
+                                }
+                            }
+                        };
+                        let tree_quiescent = quiescence == ProcessTreeQuiescence::Quiescent;
+                        let settled = match self.reconcile_ownership(&manifest, tree_quiescent) {
+                            Ok(settled) => settled,
+                            Err(error) => {
+                                observe(RecoveryObservation::failed(process_id, error))?;
+                                continue;
+                            }
+                        };
+                        if settled != Some(true) || !tree_quiescent {
                             (RecoveryDisposition::Indeterminate, false)
+                        } else if manifest.phase == LifecyclePhase::Terminal {
+                            (RecoveryDisposition::Terminal, false)
+                        } else {
+                            (RecoveryDisposition::AbsentUnobserved, false)
                         }
                     }
                 } else {
                     // Starting may have crossed the native effect boundary before recording its
                     // tree. A missing durable identity cannot prove that such an effect is absent.
+                    if let Some(containment) = manifest.windows_containment.as_ref()
+                        && let Err(error) = probe.observe_windows_containment(containment)
+                    {
+                        observe(RecoveryObservation::failed(process_id, error))?;
+                        continue;
+                    }
                     let tree_quiescent = manifest.tree_quiescent
                         || manifest.phase == LifecyclePhase::Authorized;
-                    let settled = self.reconcile_ownership(&manifest, tree_quiescent)?;
+                    let settled = match self.reconcile_ownership(&manifest, tree_quiescent) {
+                        Ok(settled) => settled,
+                        Err(error) => {
+                            observe(RecoveryObservation::failed(process_id, error))?;
+                            continue;
+                        }
+                    };
                     if settled != Some(true) || !tree_quiescent {
                         (RecoveryDisposition::Indeterminate, false)
                     } else if manifest.phase == LifecyclePhase::Terminal {

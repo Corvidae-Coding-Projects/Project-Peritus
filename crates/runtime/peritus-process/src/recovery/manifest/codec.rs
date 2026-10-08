@@ -8,7 +8,9 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     CancellationReason, ErrorCode, ExecutionIdentity, LifecyclePhase, NativeFailureObservation,
-    OsExitObservation, ProcessError, ProcessOperation, RecoveryClass, StopTrigger, WorkspaceAccess,
+    NativeWindowsContainmentBinding, NativeWindowsContainmentIdentity,
+    NativeWindowsContainmentRecovery, OsExitObservation, ProcessError, ProcessOperation,
+    RecoveryClass, StopTrigger, WorkspaceAccess,
     native::observation::{
         NativeObservationFrontier, NativeObservationPhase, NativeObservationState,
     },
@@ -25,6 +27,8 @@ use terminal_payload::{
     terminal_binding_valid as validate_terminal_binding,
 };
 
+const MAGIC_V7: &[u8] = b"PERITUS-PROCESS-MANIFEST-V7\0";
+const MAGIC_V6: &[u8] = b"PERITUS-PROCESS-MANIFEST-V6\0";
 const MAGIC_V5: &[u8] = b"PERITUS-PROCESS-MANIFEST-V5\0";
 const MAGIC_V4: &[u8] = b"PERITUS-PROCESS-MANIFEST-V4\0";
 const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-MANIFEST-V3\0";
@@ -38,6 +42,9 @@ pub(super) struct TerminalEvidence {
 }
 
 pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessError> {
+    if !windows_containment_binding_valid(manifest) {
+        return Err(corrupt("process manifest Windows containment is inconsistent"));
+    }
     let mut bytes = Vec::with_capacity(768);
     let uses_native_failure = matches!(
         manifest.exit.as_ref(),
@@ -45,7 +52,14 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
     ) || manifest.terminal.as_ref().is_some_and(|terminal| {
         matches!(terminal.os_exit(), OsExitObservation::NativeFailure(_))
     });
-    bytes.extend_from_slice(if uses_native_failure { MAGIC_V4 } else { MAGIC_V3 });
+    let has_windows_containment = manifest.windows_containment.is_some();
+    bytes.extend_from_slice(if has_windows_containment {
+        MAGIC_V6
+    } else if uses_native_failure {
+        MAGIC_V4
+    } else {
+        MAGIC_V3
+    });
     encode_identity(&mut bytes, &manifest.identity);
     for digest_value in [
         manifest.action_digest,
@@ -65,6 +79,9 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
     encode_lease(&mut bytes, manifest.lease);
     bytes.push(phase_tag(manifest.phase));
     encode_tree(&mut bytes, manifest.tree);
+    if has_windows_containment {
+        encode_windows_containment(&mut bytes, manifest.windows_containment.as_ref())?;
+    }
     encode_trigger(&mut bytes, manifest.trigger);
     encode_exit(&mut bytes, manifest.exit.as_ref())?;
     u64_value(&mut bytes, manifest.observed_output);
@@ -88,12 +105,14 @@ pub(super) fn encode_recovery_root(
         || manifest.phase != LifecyclePhase::Terminal
         || manifest.terminal_digest.is_none()
         || manifest.terminal.is_none()
+        || !windows_containment_binding_valid(manifest)
         || !validate_terminal_binding(manifest)?
     {
         return Err(corrupt("process manifest terminal evidence root is inconsistent"));
     }
     let mut bytes = Vec::with_capacity(768);
-    bytes.extend_from_slice(MAGIC_V5);
+    let has_windows_containment = manifest.windows_containment.is_some();
+    bytes.extend_from_slice(if has_windows_containment { MAGIC_V7 } else { MAGIC_V5 });
     encode_identity(&mut bytes, &manifest.identity);
     for digest_value in [
         manifest.action_digest,
@@ -113,6 +132,9 @@ pub(super) fn encode_recovery_root(
     encode_lease(&mut bytes, manifest.lease);
     bytes.push(phase_tag(manifest.phase));
     encode_tree(&mut bytes, manifest.tree);
+    if has_windows_containment {
+        encode_windows_containment(&mut bytes, manifest.windows_containment.as_ref())?;
+    }
     encode_trigger(&mut bytes, manifest.trigger);
     encode_exit(&mut bytes, manifest.exit.as_ref())?;
     u64_value(&mut bytes, manifest.observed_output);
@@ -133,7 +155,9 @@ pub(super) fn encode_recovery_root(
 }
 
 pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
-    let (magic, version) = if bytes.starts_with(MAGIC_V4) {
+    let (magic, version) = if bytes.starts_with(MAGIC_V6) {
+        (MAGIC_V6, 6_u8)
+    } else if bytes.starts_with(MAGIC_V4) {
         (MAGIC_V4, 4_u8)
     } else if bytes.starts_with(MAGIC_V3) {
         (MAGIC_V3, 3_u8)
@@ -176,6 +200,11 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         lease: decode_lease(&mut reader)?,
         phase: decode_phase(reader.u8()?)?,
         tree: decode_tree(&mut reader)?,
+        windows_containment: if version >= 6 {
+            decode_windows_containment(&mut reader)?
+        } else {
+            None
+        },
         trigger: decode_trigger(&mut reader)?,
         exit: decode_exit(&mut reader, version >= 4)?,
         observed_output: reader.u64()?,
@@ -190,6 +219,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         || manifest.retained_output > manifest.observed_output
         || manifest.dropped_output != manifest.observed_output - manifest.retained_output
         || !native_observation_binding_valid(&manifest)
+        || !windows_containment_binding_valid(&manifest)
         || !validate_terminal_binding(&manifest)?
     {
         return Err(corrupt("process manifest fields are noncanonical or inconsistent"));
@@ -204,10 +234,14 @@ pub(super) fn terminal_binding_valid(manifest: &ExecutionManifest) -> Result<boo
 pub(super) fn decode_recovery_root(
     bytes: &[u8],
 ) -> Result<(ExecutionManifest, Option<TerminalEvidence>), ProcessError> {
-    if !bytes.starts_with(MAGIC_V5) {
+    let (magic, has_windows_containment) = if bytes.starts_with(MAGIC_V7) {
+        (MAGIC_V7, true)
+    } else if bytes.starts_with(MAGIC_V5) {
+        (MAGIC_V5, false)
+    } else {
         return decode(bytes).map(|manifest| (manifest, None));
-    }
-    if bytes.len() < MAGIC_V5.len() + Sha256Digest::LENGTH
+    };
+    if bytes.len() < magic.len() + Sha256Digest::LENGTH
         || bytes.len() > MAX_RECOVERY_ROOT_BYTES
     {
         return Err(corrupt("process manifest recovery root has invalid framing"));
@@ -217,7 +251,7 @@ pub(super) fn decode_recovery_root(
     if bytes[payload_end..] != expected {
         return Err(corrupt("process manifest checksum differs"));
     }
-    let mut reader = Reader::new(&bytes[MAGIC_V5.len()..payload_end]);
+    let mut reader = Reader::new(&bytes[magic.len()..payload_end]);
     let identity = decode_identity(&mut reader)?;
     let action_digest = reader.digest()?;
     let plan_digest = reader.digest()?;
@@ -239,6 +273,11 @@ pub(super) fn decode_recovery_root(
         lease: decode_lease(&mut reader)?,
         phase: decode_phase(reader.u8()?)?,
         tree: decode_tree(&mut reader)?,
+        windows_containment: if has_windows_containment {
+            decode_windows_containment(&mut reader)?
+        } else {
+            None
+        },
         trigger: decode_trigger(&mut reader)?,
         exit: decode_exit(&mut reader, true)?,
         observed_output: reader.u64()?,
@@ -264,6 +303,7 @@ pub(super) fn decode_recovery_root(
         || manifest.retained_output > manifest.observed_output
         || manifest.dropped_output != manifest.observed_output - manifest.retained_output
         || !native_observation_binding_valid(&manifest)
+        || !windows_containment_binding_valid(&manifest)
     {
         return Err(corrupt("process manifest fields are noncanonical or inconsistent"));
     }
@@ -480,6 +520,89 @@ fn decode_tree(reader: &mut Reader<'_>) -> Result<Option<ProcessTreeIdentity>, P
             Ok(Some(ProcessTreeIdentity::new(root, start, group, reader.boolean()?)))
         }
         _ => Err(corrupt("manifest has an invalid optional process tree tag")),
+    }
+}
+
+fn encode_windows_containment(
+    bytes: &mut Vec<u8>,
+    containment: Option<&NativeWindowsContainmentRecovery>,
+) -> Result<(), ProcessError> {
+    let Some(containment) = containment else {
+        bytes.push(0);
+        return Ok(());
+    };
+    match containment {
+        NativeWindowsContainmentRecovery::Intended(binding) => {
+            bytes.push(1);
+            encode_windows_binding(bytes, binding)?;
+        }
+        NativeWindowsContainmentRecovery::Observed(containment) => {
+            bytes.push(2);
+            encode_windows_binding(bytes, &containment.binding())?;
+            encode_tree(bytes, Some(containment.target_identity()));
+        }
+    }
+    Ok(())
+}
+
+fn encode_windows_binding(
+    bytes: &mut Vec<u8>,
+    binding: &NativeWindowsContainmentBinding,
+) -> Result<(), ProcessError> {
+    digest(bytes, binding.job_identity());
+    let name = binding.object_name().as_bytes();
+    let length = u16::try_from(name.len())
+        .map_err(|_| corrupt("Windows containment object name exceeds its canonical bound"))?;
+    u16_value(bytes, length);
+    bytes.extend_from_slice(name);
+    Ok(())
+}
+
+fn decode_windows_containment(
+    reader: &mut Reader<'_>,
+) -> Result<Option<NativeWindowsContainmentRecovery>, ProcessError> {
+    let tag = reader.u8()?;
+    if tag == 0 {
+        return Ok(None);
+    }
+    let binding = NativeWindowsContainmentBinding::new(
+        reader.digest()?,
+        reader.string(crate::native::MAX_WINDOWS_JOB_OBJECT_NAME_BYTES)?,
+    )
+    .map_err(|_| corrupt("manifest contains an invalid Windows containment binding"))?;
+    match tag {
+        1 => Ok(Some(NativeWindowsContainmentRecovery::Intended(binding))),
+        2 => {
+            let target = decode_tree(reader)?
+                .ok_or_else(|| corrupt("manifest Windows containment target is missing"))?;
+            NativeWindowsContainmentIdentity::new(
+                binding.job_identity(),
+                binding.object_name().to_owned(),
+                target,
+            )
+            .map(NativeWindowsContainmentRecovery::Observed)
+            .map(Some)
+            .map_err(|_| corrupt("manifest Windows containment target is invalid"))
+        }
+        _ => Err(corrupt("manifest has an invalid Windows containment tag")),
+    }
+}
+
+fn windows_containment_binding_valid(manifest: &ExecutionManifest) -> bool {
+    match manifest.windows_containment.as_ref() {
+        None => true,
+        Some(NativeWindowsContainmentRecovery::Intended(_)) => {
+            matches!(
+                manifest.phase,
+                LifecyclePhase::Starting | LifecyclePhase::Stopping | LifecyclePhase::Exited
+            ) && manifest.tree.is_none()
+        }
+        Some(NativeWindowsContainmentRecovery::Observed(containment)) => {
+            !matches!(manifest.phase, LifecyclePhase::Authorized | LifecyclePhase::Starting)
+                && manifest.tree.is_some_and(|tree| {
+                    tree.root_pid() != containment.target_identity().root_pid()
+                })
+        }
     }
 }
 

@@ -34,8 +34,8 @@ use windows_sys::Win32::{
 
 use crate::{
     ErrorCode, NativePostActivationFailure, NativeProtectedHandle,
-    NativeWindowsContainmentIdentity, ProcessError, ProcessOperation, ProcessTreeIdentity,
-    RecoveryClass, TerminalSize,
+    NativeWindowsContainmentBinding, NativeWindowsContainmentIdentity, ProcessError,
+    ProcessOperation, ProcessTreeIdentity, RecoveryClass, TerminalSize,
 };
 use peritus_types::Sha256Digest;
 
@@ -343,6 +343,20 @@ impl NativeWindowsHelperChannels {
 
     pub(crate) const fn containment_job_identity(&self) -> Option<Sha256Digest> {
         self.containment_job_identity
+    }
+
+    pub(crate) fn containment_binding(
+        &self,
+    ) -> Result<Option<NativeWindowsContainmentBinding>, ProcessError> {
+        match (self.containment_job_identity, self.containment_job_name.as_ref()) {
+            (None, None) => Ok(None),
+            (Some(identity), Some(name)) => {
+                NativeWindowsContainmentBinding::new(identity, name.clone()).map(Some)
+            }
+            (Some(_), None) | (None, Some(_)) => {
+                Err(channel_error("Windows containment Job Object binding is incomplete"))
+            }
+        }
     }
 
     pub(crate) fn status_reader(&self) -> Result<File, ProcessError> {

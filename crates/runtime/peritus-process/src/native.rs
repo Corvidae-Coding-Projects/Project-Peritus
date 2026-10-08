@@ -74,7 +74,60 @@ pub enum NativeRecoveryPhase {
     Released,
 }
 
-const MAX_WINDOWS_JOB_OBJECT_NAME_BYTES: usize = 192;
+pub(crate) const MAX_WINDOWS_JOB_OBJECT_NAME_BYTES: usize = 192;
+
+/// Authorization-bound identity of a Windows Job Object created before target execution.
+///
+/// This binding is durable before the helper may create its target. It identifies the intended
+/// containment object, but does not by itself authorize termination of a live Job because it has
+/// no target birth identity with which to reject object-name reuse.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct NativeWindowsContainmentBinding {
+    job_identity: Sha256Digest,
+    object_name: String,
+}
+
+impl NativeWindowsContainmentBinding {
+    /// Creates one canonical authority-bound Job Object binding.
+    ///
+    /// # Errors
+    /// Rejects an empty identity or a noncanonical local Job Object name.
+    pub fn new(
+        job_identity: Sha256Digest,
+        object_name: impl Into<String>,
+    ) -> Result<Self, ProcessError> {
+        let object_name = object_name.into();
+        if job_identity == Sha256Digest::new([0; 32])
+            || object_name.is_empty()
+            || object_name.len() > MAX_WINDOWS_JOB_OBJECT_NAME_BYTES
+            || !object_name.is_ascii()
+            || !object_name.starts_with("Local\\PeritusJob-")
+            || object_name.bytes().any(|byte| byte.is_ascii_control())
+        {
+            return Err(native_mismatch("Windows containment binding is invalid"));
+        }
+        Ok(Self { job_identity, object_name })
+    }
+
+    /// Returns the authorization-bound Job Object identity digest.
+    #[must_use]
+    pub const fn job_identity(&self) -> Sha256Digest {
+        self.job_identity
+    }
+
+    /// Returns the exact native Job Object name created before target execution.
+    #[must_use]
+    pub fn object_name(&self) -> &str {
+        &self.object_name
+    }
+
+    /// Returns whether an observed target remains attached to this exact intended binding.
+    #[must_use]
+    pub fn matches(&self, containment: &NativeWindowsContainmentIdentity) -> bool {
+        self.job_identity == containment.job_identity
+            && self.object_name == containment.object_name
+    }
+}
 
 /// Exact Windows Job Object and adopted target identity retained by the live process owner.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -117,12 +170,8 @@ impl NativeWindowsContainmentIdentity {
         target: ProcessTreeIdentity,
     ) -> Result<Self, ProcessError> {
         let object_name = object_name.into();
-        if object_name.is_empty()
-            || object_name.len() > MAX_WINDOWS_JOB_OBJECT_NAME_BYTES
-            || !object_name.is_ascii()
-            || !object_name.starts_with("Local\\PeritusJob-")
-            || object_name.bytes().any(|byte| byte.is_ascii_control())
-            || target.root_pid() == 0
+        NativeWindowsContainmentBinding::new(job_identity, object_name.clone())?;
+        if target.root_pid() == 0
             || target.start_token().is_none_or(|token| token == 0)
             || target.process_group().is_some()
             || !target.complete_containment()
@@ -148,6 +197,36 @@ impl NativeWindowsContainmentIdentity {
     #[must_use]
     pub const fn target_identity(&self) -> ProcessTreeIdentity {
         self.target
+    }
+
+    /// Returns the pre-effect Job Object binding represented by this adopted target.
+    #[must_use]
+    pub fn binding(&self) -> NativeWindowsContainmentBinding {
+        NativeWindowsContainmentBinding {
+            job_identity: self.job_identity,
+            object_name: self.object_name.clone(),
+        }
+    }
+}
+
+/// Durable Windows containment evidence available during restart reconciliation.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum NativeWindowsContainmentRecovery {
+    /// The named Job was created and persisted before target effects, but no target birth identity
+    /// was durably adopted. Live membership cannot be attributed safely from this fact alone.
+    Intended(NativeWindowsContainmentBinding),
+    /// The target PID, birth token, and membership were verified before the Running transition.
+    Observed(NativeWindowsContainmentIdentity),
+}
+
+impl NativeWindowsContainmentRecovery {
+    /// Returns the common pre-effect Job Object binding.
+    #[must_use]
+    pub fn binding(&self) -> NativeWindowsContainmentBinding {
+        match self {
+            Self::Intended(binding) => binding.clone(),
+            Self::Observed(containment) => containment.binding(),
+        }
     }
 }
 
@@ -780,6 +859,25 @@ impl NativeLaunchDescription {
             .map(NativeWindowsHelperChannels::containment_identity)
             .transpose()
             .map(Option::flatten)
+    }
+
+    /// Returns the intended Windows Job Object binding before the target may execute.
+    pub fn windows_containment_binding(
+        &self,
+    ) -> Result<Option<NativeWindowsContainmentBinding>, ProcessError> {
+        #[cfg(windows)]
+        {
+            return self
+                .windows_helper_channels
+                .as_ref()
+                .map(NativeWindowsHelperChannels::containment_binding)
+                .transpose()
+                .map(Option::flatten);
+        }
+        #[cfg(not(windows))]
+        {
+            Ok(None)
+        }
     }
 
     /// Inspects every retained Windows helper channel and protected handle independently.

@@ -6,13 +6,13 @@
 )]
 
 use windows_sys::Win32::Foundation::{
-    CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER, FILETIME, GetLastError, HANDLE,
+    CloseHandle, ERROR_INVALID_PARAMETER, FILETIME, GetLastError, HANDLE,
 };
 use windows_sys::Win32::System::Threading::{GetProcessTimes, OpenProcess};
 
-use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity};
+use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity, ProcessTreeQuiescence};
 
-use super::indeterminate;
+use super::{indeterminate, indeterminate_cause};
 
 const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
 
@@ -22,12 +22,11 @@ pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation,
     };
     match snapshot(identity.root_pid())? {
         Snapshot::Absent => Ok(ProbeObservation::ExactAbsent),
-        Snapshot::Unverifiable => Ok(ProbeObservation::Unverifiable),
         Snapshot::Present { start_token, exited } => {
             if start_token != expected_start {
                 Ok(ProbeObservation::Mismatched)
             } else if exited {
-                Ok(ProbeObservation::Unverifiable)
+                Ok(ProbeObservation::ExactAbsent)
             } else {
                 Ok(ProbeObservation::ExactLive)
             }
@@ -50,6 +49,14 @@ pub(super) fn terminate(identity: ProcessTreeIdentity) -> Result<(), ProcessErro
     }
 }
 
+pub(super) const fn observe_quiescence(
+    _identity: ProcessTreeIdentity,
+) -> Result<ProcessTreeQuiescence, ProcessError> {
+    // A missing root query handle cannot prove that its job has no surviving descendants.
+    // Recovery needs a durable reopenable job identity before it can assert complete absence.
+    Ok(ProcessTreeQuiescence::Unverifiable)
+}
+
 const fn exact_binding(identity: ProcessTreeIdentity) -> Option<u64> {
     if identity.root_pid() != 0
         && identity.process_group().is_none()
@@ -64,7 +71,6 @@ const fn exact_binding(identity: ProcessTreeIdentity) -> Option<u64> {
 fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
     let handle = match ProcessHandle::open(pid)? {
         OpenResult::Absent => return Ok(Snapshot::Absent),
-        OpenResult::Unverifiable => return Ok(Snapshot::Unverifiable),
         OpenResult::Handle(handle) => handle,
     };
     let mut creation = zero_file_time();
@@ -77,11 +83,13 @@ fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
         GetProcessTimes(handle.0, &raw mut creation, &raw mut exit, &raw mut kernel, &raw mut user)
     } == 0
     {
-        return if unsafe { GetLastError() } == ERROR_ACCESS_DENIED {
-            Ok(Snapshot::Unverifiable)
-        } else {
-            Err(indeterminate("Windows process times cannot be observed"))
-        };
+        // SAFETY: GetLastError has no preconditions and is sampled immediately after the failed
+        // GetProcessTimes call, before another platform operation can replace its diagnostic.
+        let code = unsafe { GetLastError() };
+        return Err(indeterminate_cause(
+            "Windows process times cannot be observed",
+            std::io::Error::from_raw_os_error(code as i32),
+        ));
     }
     Ok(Snapshot::Present { start_token: file_time(creation), exited: file_time(exit) != 0 })
 }
@@ -106,8 +114,10 @@ impl ProcessHandle {
         // SAFETY: GetLastError has no preconditions and is sampled immediately after OpenProcess.
         match unsafe { GetLastError() } {
             ERROR_INVALID_PARAMETER => Ok(OpenResult::Absent),
-            ERROR_ACCESS_DENIED => Ok(OpenResult::Unverifiable),
-            _ => Err(indeterminate("Windows process handle cannot be opened")),
+            code => Err(indeterminate_cause(
+                "Windows process handle cannot be opened",
+                std::io::Error::from_raw_os_error(code as i32),
+            )),
         }
     }
 }
@@ -122,12 +132,10 @@ impl Drop for ProcessHandle {
 
 enum OpenResult {
     Absent,
-    Unverifiable,
     Handle(ProcessHandle),
 }
 
 enum Snapshot {
     Absent,
-    Unverifiable,
     Present { start_token: u64, exited: bool },
 }

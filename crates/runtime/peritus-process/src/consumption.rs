@@ -9,7 +9,9 @@ use peritus_leases::LeaseClaim;
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{
-    ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
+    ExecutionPlan, LifecyclePhase, NativeWindowsContainmentBinding,
+    NativeWindowsContainmentIdentity, NativeWindowsContainmentRecovery, OsExitObservation,
+    ProcessError, StopTrigger,
     platform::ProcessTreeIdentity,
     recovery::{claim::RetainedClaimBinding, manifest::ExecutionManifest},
     retained_owner::RetainedOwnerBinding,
@@ -421,10 +423,29 @@ impl ProcessStore {
         })
     }
 
+    pub(crate) fn record_starting(
+        &self,
+        process_id: ProcessId,
+        windows_containment: Option<NativeWindowsContainmentBinding>,
+    ) -> Result<(), ProcessError> {
+        self.update(process_id, |manifest| {
+            if !legal_manifest_advance(manifest.phase, LifecyclePhase::Starting)
+                || manifest.windows_containment.is_some()
+            {
+                return Err(store_error("durable process starting transition is illegal"));
+            }
+            manifest.windows_containment =
+                windows_containment.map(NativeWindowsContainmentRecovery::Intended);
+            manifest.phase = LifecyclePhase::Starting;
+            Ok(())
+        })
+    }
+
     pub(crate) fn record_started(
         &self,
         process_id: ProcessId,
         tree: ProcessTreeIdentity,
+        windows_containment: Option<NativeWindowsContainmentIdentity>,
     ) -> Result<(), ProcessError> {
         self.update(process_id, |manifest| {
             if manifest.phase != LifecyclePhase::Starting
@@ -432,7 +453,22 @@ impl ProcessStore {
             {
                 return Err(store_error("process startup observation is out of sequence"));
             }
+            match (&manifest.windows_containment, &windows_containment) {
+                (None, None) => {}
+                (
+                    Some(NativeWindowsContainmentRecovery::Intended(binding)),
+                    Some(containment),
+                ) if binding.matches(containment)
+                    && tree.root_pid() != containment.target_identity().root_pid() => {}
+                _ => {
+                    return Err(store_error(
+                        "Windows target containment differs from its pre-effect binding",
+                    ));
+                }
+            }
             manifest.tree = Some(tree);
+            manifest.windows_containment =
+                windows_containment.map(NativeWindowsContainmentRecovery::Observed);
             manifest.phase = LifecyclePhase::Running;
             Ok(())
         })
@@ -496,6 +532,7 @@ impl ProcessStore {
             manifest.exit = Some(OsExitObservation::Unavailable);
             manifest.tree_quiescent = true;
             manifest.support_tasks_joined = support_tasks_joined;
+            manifest.windows_containment = None;
             manifest.phase = LifecyclePhase::Closed;
             Ok(())
         })
@@ -524,6 +561,9 @@ impl ProcessStore {
             manifest.dropped_output = dropped;
             manifest.tree_quiescent = tree_quiescent;
             manifest.support_tasks_joined = support_tasks_joined;
+            if manifest.tree.is_none() {
+                manifest.windows_containment = None;
+            }
             manifest.phase = LifecyclePhase::Closed;
             Ok(())
         })
@@ -562,6 +602,9 @@ impl ProcessStore {
             manifest.dropped_output = dropped;
             manifest.tree_quiescent = tree_quiescent;
             manifest.support_tasks_joined = support_tasks_joined;
+            if manifest.tree.is_none() {
+                manifest.windows_containment = None;
+            }
             manifest.phase = LifecyclePhase::Closed;
             Ok(())
         })

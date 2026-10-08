@@ -16,9 +16,9 @@ use nix::{
     unistd::Pid,
 };
 
-use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity};
+use crate::{ProbeObservation, ProcessError, ProcessTreeIdentity, ProcessTreeQuiescence};
 
-use super::indeterminate;
+use super::{indeterminate, indeterminate_cause};
 
 pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation, ProcessError> {
     let Some((expected_start, expected_group)) = exact_binding(identity) else {
@@ -31,7 +31,7 @@ pub(super) fn observe(identity: ProcessTreeIdentity) -> Result<ProbeObservation,
             if start_token != expected_start || process_group != expected_group {
                 Ok(ProbeObservation::Mismatched)
             } else if status == libc::SZOMB {
-                Ok(ProbeObservation::Unverifiable)
+                Ok(ProbeObservation::ExactAbsent)
             } else {
                 Ok(ProbeObservation::ExactLive)
             }
@@ -60,7 +60,25 @@ pub(super) fn terminate(identity: ProcessTreeIdentity) -> Result<(), ProcessErro
         .ok_or_else(|| indeterminate("macOS process-group identity is not representable"))?;
     match killpg(Pid::from_raw(group), Signal::SIGKILL) {
         Ok(()) | Err(Errno::ESRCH) => Ok(()),
-        Err(_) => Err(indeterminate("macOS exact process-group termination failed")),
+        Err(error) => Err(indeterminate_cause("macOS exact process-group termination failed", error)),
+    }
+}
+
+pub(super) fn observe_quiescence(
+    identity: ProcessTreeIdentity,
+) -> Result<ProcessTreeQuiescence, ProcessError> {
+    let Some((_, group)) = exact_binding(identity) else {
+        return Ok(ProcessTreeQuiescence::Unverifiable);
+    };
+    let group = i32::try_from(group)
+        .map_err(|_| indeterminate("macOS process-group identity is not representable"))?;
+    match killpg(Pid::from_raw(group), None) {
+        Err(Errno::ESRCH) => Ok(ProcessTreeQuiescence::Quiescent),
+        Ok(()) | Err(Errno::EPERM) => Ok(ProcessTreeQuiescence::Unverifiable),
+        Err(error) => Err(indeterminate_cause(
+            "macOS process-group quiescence cannot be observed",
+            error,
+        )),
     }
 }
 
@@ -93,10 +111,11 @@ fn snapshot(pid: u32) -> Result<Snapshot, ProcessError> {
         )
     };
     if observed == 0 {
-        return match std::io::Error::last_os_error().raw_os_error() {
+        let error = std::io::Error::last_os_error();
+        return match error.raw_os_error() {
             Some(libc::ESRCH) => Ok(Snapshot::Absent),
-            Some(libc::EPERM | libc::EACCES | 0) => Ok(Snapshot::Unverifiable),
-            _ => Err(indeterminate("macOS process status cannot be observed")),
+            Some(0) => Ok(Snapshot::Unverifiable),
+            _ => Err(indeterminate_cause("macOS process status cannot be observed", error)),
         };
     }
     if observed != size {

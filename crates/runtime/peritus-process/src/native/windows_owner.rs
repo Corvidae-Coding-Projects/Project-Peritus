@@ -39,9 +39,9 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    ErrorCode, NativeProcessProbe, NativeWindowsContainmentIdentity, ProbeObservation,
-    ProcessError, ProcessOperation, ProcessProbe, ProcessTreeIdentity, ProcessTreeQuiescence,
-    RecoveryClass,
+    ErrorCode, NativeProcessProbe, NativeWindowsContainmentBinding,
+    NativeWindowsContainmentIdentity, ProbeObservation, ProcessError, ProcessOperation,
+    ProcessProbe, ProcessTreeIdentity, ProcessTreeQuiescence, RecoveryClass,
 };
 
 const JOB_OBJECT_QUERY: u32 = 0x0004;
@@ -155,6 +155,29 @@ impl NativeWindowsProcessOwner {
         Ok(observed)
     }
 
+    /// Observes a pre-effect Job binding for which no target birth identity was committed.
+    ///
+    /// A missing or empty Job proves that this intended containment is quiescent. A live member
+    /// remains unverifiable because the object name alone cannot reject Job-name reuse.
+    ///
+    /// # Errors
+    /// Returns an indeterminate recovery error when Job observation itself fails.
+    pub fn observe_durable_binding(
+        binding: &NativeWindowsContainmentBinding,
+    ) -> Result<ProbeObservation, ProcessError> {
+        let Some(job) = open_job(
+            binding.object_name(),
+            JOB_OBJECT_QUERY | SYNCHRONIZE_ACCESS,
+        )? else {
+            return Ok(ProbeObservation::ExactAbsent);
+        };
+        Ok(if active_processes(job.as_raw_handle().cast())? == 0 {
+            ProbeObservation::ExactAbsent
+        } else {
+            ProbeObservation::Unverifiable
+        })
+    }
+
     /// Establishes complete Job quiescence for one persisted exact owner.
     ///
     /// # Errors
@@ -179,6 +202,20 @@ impl NativeWindowsProcessOwner {
         Ok(if target == ProbeObservation::ExactAbsent
             && active_processes(job.as_raw_handle().cast())? == 0
         {
+            ProcessTreeQuiescence::Quiescent
+        } else {
+            ProcessTreeQuiescence::Unverifiable
+        })
+    }
+
+    /// Establishes quiescence for a pre-effect binding without attributing live name reuse.
+    ///
+    /// # Errors
+    /// Returns an indeterminate recovery error when Job observation itself fails.
+    pub fn observe_durable_binding_quiescence(
+        binding: &NativeWindowsContainmentBinding,
+    ) -> Result<ProcessTreeQuiescence, ProcessError> {
+        Ok(if Self::observe_durable_binding(binding)? == ProbeObservation::ExactAbsent {
             ProcessTreeQuiescence::Quiescent
         } else {
             ProcessTreeQuiescence::Unverifiable
@@ -304,7 +341,7 @@ fn inspect_target(
     }
     // SAFETY: the retained process handle has SYNCHRONIZE access.
     match unsafe { WaitForSingleObject(process.as_raw_handle().cast(), 0) } {
-        WAIT_OBJECT_0 => return Ok(ProbeObservation::Unverifiable),
+        WAIT_OBJECT_0 => return Ok(ProbeObservation::ExactAbsent),
         WAIT_TIMEOUT => {}
         _ => {
             return Err(owner_cause(

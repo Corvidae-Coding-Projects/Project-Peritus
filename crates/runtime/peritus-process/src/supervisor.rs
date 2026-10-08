@@ -243,6 +243,11 @@ fn start_with_native(
     session: Option<Box<dyn NativeSandboxSession>>,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
 ) -> Result<OwnedProcess, ProcessError> {
+    let windows_containment = session
+        .as_deref()
+        .map(|session| session.launch_description().windows_containment_binding())
+        .transpose()?
+        .flatten();
     let native_recovery = session
         .as_deref()
         .map(NativeSandboxSession::recovery_snapshot)
@@ -251,7 +256,7 @@ fn start_with_native(
     let (execution_plan, _action_digest) = launch.into_parts();
     let process_id = execution_plan.identity().process_id();
     let plan = SupervisorPlan::from_execution(&execution_plan);
-    store.record_phase(process_id, LifecyclePhase::Starting)?;
+    store.record_starting(process_id, windows_containment)?;
     let spool_directory = store.spool_directory(process_id)?;
     let (control_tx, control_rx) = mpsc::sync_channel(CONTROL_QUEUE);
     let (cancellation, cancellation_owner) = cancellation_lane();

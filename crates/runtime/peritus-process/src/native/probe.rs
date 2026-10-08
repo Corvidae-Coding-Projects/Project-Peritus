@@ -19,6 +19,8 @@ use crate::{
     ProcessTreeQuiescence, RecoveryClass,
     platform::current_start_token,
 };
+#[cfg(windows)]
+use crate::NativeWindowsContainmentRecovery;
 
 /// Native exact-birth-identity probe used by durable process-store reconciliation.
 ///
@@ -29,8 +31,8 @@ use crate::{
 ///
 /// Linux tokens are `/proc/<pid>/stat` start ticks, macOS tokens are process-start microseconds,
 /// and Windows tokens are creation-time `FILETIME` ticks. Unix recovery terminates only a complete
-/// root-led process group. Windows can re-observe the exact root, but exact tree termination
-/// remains indeterminate unless C2 later persists a reopenable job-object identity.
+/// root-led process group. Windows root-only recovery remains observational; persisted named Job
+/// containment is reopened through the containment-specific probe hooks.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NativeProcessProbe;
 
@@ -89,6 +91,51 @@ impl ProcessProbe for NativeProcessProbe {
 
     fn terminate(&mut self, identity: ProcessTreeIdentity) -> Result<(), ProcessError> {
         platform::terminate(identity)
+    }
+
+    #[cfg(windows)]
+    fn observe_windows_containment(
+        &mut self,
+        containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<ProbeObservation, ProcessError> {
+        match containment {
+            NativeWindowsContainmentRecovery::Intended(binding) => {
+                crate::NativeWindowsProcessOwner::observe_durable_binding(binding)
+            }
+            NativeWindowsContainmentRecovery::Observed(identity) => {
+                crate::NativeWindowsProcessOwner::observe_durable(identity)
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    fn observe_windows_containment_quiescence(
+        &mut self,
+        containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<ProcessTreeQuiescence, ProcessError> {
+        match containment {
+            NativeWindowsContainmentRecovery::Intended(binding) => {
+                crate::NativeWindowsProcessOwner::observe_durable_binding_quiescence(binding)
+            }
+            NativeWindowsContainmentRecovery::Observed(identity) => {
+                crate::NativeWindowsProcessOwner::observe_durable_quiescence(identity)
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    fn terminate_windows_containment(
+        &mut self,
+        containment: &NativeWindowsContainmentRecovery,
+    ) -> Result<(), ProcessError> {
+        match containment {
+            NativeWindowsContainmentRecovery::Observed(identity) => {
+                crate::NativeWindowsProcessOwner::terminate_durable(identity)
+            }
+            NativeWindowsContainmentRecovery::Intended(_) => Err(indeterminate(
+                "Windows Job termination requires an adopted target birth identity",
+            )),
+        }
     }
 }
 

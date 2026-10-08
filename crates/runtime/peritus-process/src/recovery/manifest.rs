@@ -8,7 +8,7 @@ use peritus_types::{
 
 use crate::{
     ExecutionIdentity, ExecutionPlan, LifecyclePhase, OsExitObservation, ProcessError, StopTrigger,
-    TerminalResult, WorkspaceAccess,
+    NativeWindowsContainmentRecovery, TerminalResult, WorkspaceAccess,
     native::observation::NativeObservationState,
     platform::ProcessTreeIdentity,
 };
@@ -80,6 +80,7 @@ pub(crate) struct ExecutionManifest {
     pub(crate) lease: Option<LeaseOwnership>,
     pub(crate) phase: LifecyclePhase,
     pub(crate) tree: Option<ProcessTreeIdentity>,
+    pub(crate) windows_containment: Option<NativeWindowsContainmentRecovery>,
     pub(crate) trigger: Option<StopTrigger>,
     pub(crate) exit: Option<OsExitObservation>,
     pub(crate) observed_output: u64,
@@ -111,6 +112,7 @@ impl ExecutionManifest {
             lease: lease.map(LeaseOwnership::from_claim),
             phase: LifecyclePhase::Authorized,
             tree: None,
+            windows_containment: None,
             trigger: None,
             exit: None,
             observed_output: 0,

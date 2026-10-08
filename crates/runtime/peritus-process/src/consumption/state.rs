@@ -301,6 +301,9 @@ impl ProcessStore {
                 return Ok(());
             }
             manifest.tree_quiescent = true;
+            if manifest.tree.is_none() {
+                manifest.windows_containment = None;
+            }
             if !matches!(manifest.phase, LifecyclePhase::Closed | LifecyclePhase::Terminal) {
                 manifest.support_tasks_joined = true;
                 if manifest.exit.is_none() {

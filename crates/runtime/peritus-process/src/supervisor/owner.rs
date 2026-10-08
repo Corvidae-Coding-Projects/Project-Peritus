@@ -192,7 +192,42 @@ impl SpawnedOwner {
 
     fn startup(&mut self) -> Result<(), ProcessError> {
         self.lifecycle.advance(LifecyclePhase::Starting)?;
-        self.store.record_started(self.plan.process_id(), self.tree)?;
+        let native_recovery = self
+            .native
+            .as_deref()
+            .map(crate::NativeSandboxSession::recovery_snapshot)
+            .transpose()?
+            .flatten();
+        if native_recovery.as_ref().is_some_and(|recovery| {
+            recovery.platform() == crate::NativePlatform::Windows
+                && (recovery.process_id() != self.plan.process_id()
+                    || recovery.phase() != crate::NativeRecoveryPhase::Active
+                    || recovery.tree_identity() != Some(self.tree))
+        }) {
+            return Err(supervisor_error(
+                "Windows native recovery identity differs at process start",
+            ));
+        }
+        let windows_containment = native_recovery
+            .as_ref()
+            .and_then(|recovery| recovery.windows_containment().cloned());
+        #[cfg(windows)]
+        if let Some(containment) = windows_containment.as_ref() {
+            let observed = crate::NativeWindowsProcessOwner::observe_durable(containment)?;
+            if matches!(
+                observed,
+                crate::ProbeObservation::Mismatched | crate::ProbeObservation::Unverifiable
+            ) {
+                return Err(supervisor_error(
+                    "Windows target Job membership differs at process start",
+                ));
+            }
+        }
+        self.store.record_started(
+            self.plan.process_id(),
+            self.tree,
+            windows_containment,
+        )?;
         self.lifecycle.advance(LifecyclePhase::Running)?;
         self.started_at = Some(ProcessInstant::from_millis(elapsed_millis(self.began)));
         emit(
