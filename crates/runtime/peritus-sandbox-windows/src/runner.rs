@@ -71,9 +71,47 @@ impl WindowsLaunchDescription {
     /// Adds the protected C2 status and `ConPTY` resize channels to a native launch.
     #[cfg(target_os = "windows")]
     pub(crate) fn attach_helper_channels(
+        &self,
         native: NativeLaunchDescription,
         channels: peritus_process::NativeWindowsHelperChannels,
     ) -> Result<NativeLaunchDescription, WindowsError> {
+        let mut bindings = Vec::new();
+        bindings
+            .try_reserve_exact(
+                self.manifest
+                    .secret_handles()
+                    .iter()
+                    .filter(|descriptor| {
+                        matches!(
+                            descriptor.destination(),
+                            crate::SecretHandleDestination::File(_)
+                        )
+                    })
+                    .count(),
+            )
+            .map_err(|_| helper_error("private secret-file binding allocation is unavailable"))?;
+        for descriptor in self.manifest.secret_handles() {
+            let crate::SecretHandleDestination::File(path) = descriptor.destination() else {
+                continue;
+            };
+            let native_path = crate::WindowsPath::from_sandbox(
+                self.manifest.working_directory(),
+                path,
+            )?;
+            let payload_len = descriptor.payload_len().ok_or_else(|| {
+                helper_error("private secret file lacks an exact payload-length binding")
+            })?;
+            bindings.push(
+                peritus_process::NativeWindowsSecretFileBinding::new(
+                    native_path.digest(),
+                    payload_len,
+                )
+                .map_err(|_| helper_error("private secret file custody binding is invalid"))?,
+            );
+        }
+        let channels = channels
+            .with_secret_file_bindings(bindings)
+            .map_err(|_| helper_error("C2 rejected Windows secret-file custody bindings"))?;
         native
             .with_windows_helper_channels(channels)
             .map_err(|_| helper_error("C2 rejected Windows helper status/control channels"))
@@ -243,6 +281,16 @@ pub(crate) fn execute_manifest_with_channels(
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
 ) -> Result<i32, WindowsError> {
     crate::native::execute_with_channels(manifest, &mut activation.inner, channels)
+}
+
+#[cfg(target_os = "windows")]
+impl WindowsActivation {
+    pub(crate) fn secret_file_identities(
+        &self,
+    ) -> Result<Vec<peritus_process::NativeWindowsSecretFileIdentity>, WindowsError> {
+        crate::native::secret_file_identities(&self.inner)
+    }
+
 }
 
 /// Returns strict unsupported behavior outside Windows.

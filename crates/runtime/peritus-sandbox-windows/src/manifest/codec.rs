@@ -29,7 +29,8 @@ const FAMILY: u16 = 0xC307;
 const LEGACY_SCHEMA: u16 = 1;
 const NATIVE_SCHEMA: u16 = 2;
 const PREVIOUS_SCHEMA: u16 = 3;
-pub(super) const SCHEMA: u16 = 4;
+const PAGED_SCHEMA: u16 = 4;
+pub(super) const SCHEMA: u16 = 5;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const COMPLETE_FRAME_BYTES: usize = peritus_process::NATIVE_MANIFEST_FRAME_BYTES;
 const CODEC_FRAME_BYTES: usize = COMPLETE_FRAME_BYTES - CHECKSUM_BYTES;
@@ -56,9 +57,9 @@ pub(super) fn encode(manifest: &HelperManifest) -> Result<Vec<u8>, WindowsError>
             let payload = encode_native_payload(manifest)?;
             encode_single(manifest.encoding_version, &payload)
         }
-        SCHEMA => {
+        PAGED_SCHEMA | SCHEMA => {
             let payload = encode_native_payload(manifest)?;
-            encode_paged(&payload)
+            encode_paged(&payload, manifest.encoding_version)
         }
         _ => Err(protocol("manifest schema is unsupported")),
     }
@@ -87,7 +88,7 @@ fn encode_native_payload(manifest: &HelperManifest) -> Result<Vec<u8>, WindowsEr
     encode_terminal(&mut writer, manifest.terminal)?;
     encode_resources(&mut writer, manifest.resources)?;
     encode_network(&mut writer, manifest.network)?;
-    encode_secrets(&mut writer, &manifest.secret_handles)?;
+    encode_secrets(&mut writer, &manifest.secret_handles, manifest.encoding_version)?;
     collection(&mut writer, manifest.inherited_handles.handles().len())?;
     for handle in manifest.inherited_handles.handles() {
         u64_value(&mut writer, *handle)?;
@@ -145,7 +146,7 @@ fn encode_legacy_payload(manifest: &HelperManifest) -> Result<Vec<u8>, WindowsEr
     encode_terminal(&mut writer, manifest.terminal)?;
     encode_resources(&mut writer, manifest.resources)?;
     encode_network(&mut writer, manifest.network)?;
-    encode_secrets(&mut writer, &manifest.secret_handles)?;
+    encode_secrets(&mut writer, &manifest.secret_handles, LEGACY_SCHEMA)?;
     collection(&mut writer, manifest.inherited_handles.handles().len())?;
     for handle in manifest.inherited_handles.handles() {
         u64_value(&mut writer, *handle)?;
@@ -161,7 +162,7 @@ fn encode_single(schema: u16, payload: &[u8]) -> Result<Vec<u8>, WindowsError> {
     Ok(frame)
 }
 
-fn encode_paged(payload: &[u8]) -> Result<Vec<u8>, WindowsError> {
+fn encode_paged(payload: &[u8], schema: u16) -> Result<Vec<u8>, WindowsError> {
     if payload.is_empty() {
         return Err(protocol("manifest logical payload is empty"));
     }
@@ -194,7 +195,7 @@ fn encode_paged(payload: &[u8]) -> Result<Vec<u8>, WindowsError> {
         page_payload.extend_from_slice(payload_digest.as_bytes());
         page_payload.extend_from_slice(chunk);
         let mut frame =
-            encode_frame(FAMILY, SCHEMA, &page_payload, FRAME_LIMITS).map_err(encode_error)?;
+            encode_frame(FAMILY, schema, &page_payload, FRAME_LIMITS).map_err(encode_error)?;
         let checksum = peritus_codec::sha256(&frame);
         frame.extend_from_slice(checksum.as_bytes());
         encoded.try_reserve(frame.len()).map_err(|_| {
@@ -216,8 +217,8 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let first = decode_frame_header(&bytes[..peritus_codec::HEADER_LEN], FRAME_LIMITS)
         .map_err(codec_error)?;
     let schema = first.schema_version();
-    let payload = if schema == SCHEMA {
-        Cow::Owned(decode_paged(bytes)?)
+    let payload = if matches!(schema, PAGED_SCHEMA | SCHEMA) {
+        Cow::Owned(decode_paged(bytes, schema)?)
     } else {
         if bytes.len() > COMPLETE_FRAME_BYTES {
             return Err(protocol("manifest complete frame exceeds physical capacity"));
@@ -235,7 +236,11 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
         }
         Cow::Borrowed(frame.payload())
     };
-    let limits = if schema == SCHEMA { LOGICAL_LIMITS } else { FRAME_LIMITS };
+    let limits = if matches!(schema, PAGED_SCHEMA | SCHEMA) {
+        LOGICAL_LIMITS
+    } else {
+        FRAME_LIMITS
+    };
     let mut reader = CanonicalReader::new(&payload, limits);
     let process_id = ProcessId::new(reader.read_fixed().map_err(codec_error)?)
         .map_err(|_| protocol("manifest process identity is zero"))?;
@@ -292,7 +297,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let terminal = decode_terminal(&mut reader)?;
     let resources = decode_resources(&mut reader)?;
     let network = decode_network(&mut reader)?;
-    let secret_handles = decode_secrets(&mut reader)?;
+    let secret_handles = decode_secrets(&mut reader, schema)?;
     let handle_count = reader.read_collection_len(8).map_err(codec_error)?;
     let mut handles = reader.reserve_collection(handle_count).map_err(codec_error)?;
     for _ in 0..handle_count {
@@ -346,7 +351,7 @@ pub(super) fn page_ends(bytes: &[u8]) -> Result<Vec<usize>, WindowsError> {
     }
     let first = decode_frame_header(&bytes[..peritus_codec::HEADER_LEN], FRAME_LIMITS)
         .map_err(codec_error)?;
-    if first.schema_version() != SCHEMA {
+    if !matches!(first.schema_version(), PAGED_SCHEMA | SCHEMA) {
         if bytes.len() > COMPLETE_FRAME_BYTES {
             return Err(protocol("manifest complete frame exceeds physical capacity"));
         }
@@ -368,7 +373,7 @@ pub(super) fn page_ends(bytes: &[u8]) -> Result<Vec<usize>, WindowsError> {
     Ok(ends)
 }
 
-fn decode_paged(bytes: &[u8]) -> Result<Vec<u8>, WindowsError> {
+fn decode_paged(bytes: &[u8], schema: u16) -> Result<Vec<u8>, WindowsError> {
     let mut offset = 0_usize;
     let mut expected_ordinal = 0_u64;
     let mut declared_length = None;
@@ -387,7 +392,7 @@ fn decode_paged(bytes: &[u8]) -> Result<Vec<u8>, WindowsError> {
             return Err(protocol("manifest page checksum does not match"));
         }
         let frame = decode_frame(frame_bytes, FRAME_LIMITS).map_err(codec_error)?;
-        if frame.header().family() != FAMILY || frame.header().schema_version() != SCHEMA {
+        if frame.header().family() != FAMILY || frame.header().schema_version() != schema {
             return Err(protocol("manifest page family or schema is unsupported"));
         }
         let page = frame.payload();
@@ -728,6 +733,7 @@ fn decode_network(reader: &mut CanonicalReader<'_>) -> Result<NetworkIsolation, 
 fn encode_secrets(
     writer: &mut CanonicalWriter,
     values: &[ProtectedSecretHandle],
+    schema: u16,
 ) -> Result<(), WindowsError> {
     collection(writer, values.len())?;
     for value in values {
@@ -747,12 +753,19 @@ fn encode_secrets(
                 string(writer, label.as_str())?;
             }
         }
+        if schema >= SCHEMA {
+            boolean(writer, value.payload_len().is_some())?;
+            if let Some(payload_len) = value.payload_len() {
+                u64_value(writer, payload_len)?;
+            }
+        }
     }
     Ok(())
 }
 
 fn decode_secrets(
     reader: &mut CanonicalReader<'_>,
+    schema: u16,
 ) -> Result<Vec<ProtectedSecretHandle>, WindowsError> {
     let count = reader.read_collection_len(8 + 32 + 1 + 4).map_err(codec_error)?;
     let mut values = reader.reserve_collection(count).map_err(codec_error)?;
@@ -774,7 +787,17 @@ fn decode_secrets(
             ),
             _ => return Err(protocol("manifest has unknown secret destination")),
         };
-        values.push(ProtectedSecretHandle::new(handle, reference, destination)?);
+        let payload_len = if schema >= SCHEMA && reader.read_bool().map_err(codec_error)? {
+            Some(reader.read_u64().map_err(codec_error)?)
+        } else {
+            None
+        };
+        values.push(match payload_len {
+            Some(payload_len) => {
+                ProtectedSecretHandle::new_bound(handle, reference, destination, payload_len)?
+            }
+            None => ProtectedSecretHandle::new(handle, reference, destination)?,
+        });
     }
     crate::canonical_handles(values)
 }

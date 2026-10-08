@@ -16,8 +16,6 @@ use crate::{
     secret_reference_digest,
 };
 
-const MAX_SECRET_BYTES: u64 = 1_048_576;
-
 /// Effect-free representation of the exact selected protected channels.
 pub(crate) struct PreparedChannelPlan {
     network: NetworkIsolation,
@@ -390,15 +388,16 @@ fn stage_secret_handles(
             ));
         }
         validate_artifact(requirement.delivery(), artifact)?;
-        let protected = stage_artifact(
+        let (protected, payload_len) = stage_artifact(
             format!("windows-secret-{index}"),
             artifact,
             should_continue,
         )?;
-        descriptors.push(ProtectedSecretHandle::new(
+        descriptors.push(ProtectedSecretHandle::new_bound(
             protected.raw_handle(),
             secret_reference_digest(requirement.reference()),
             SecretHandleDestination::from(requirement.delivery()),
+            payload_len,
         )?);
         handles.push(protected);
     }
@@ -409,14 +408,54 @@ fn stage_artifact(
     label: String,
     artifact: &DeliveryArtifact,
     should_continue: &dyn Fn() -> bool,
-) -> Result<NativeProtectedHandle, WindowsError> {
-    if let Some(handle) = artifact.expose_environment(|_, bytes| {
-        stage_reader(label.clone(), Cursor::new(bytes), bytes.len(), should_continue)
+) -> Result<(NativeProtectedHandle, u64), WindowsError> {
+    if let Some(handle) = artifact.expose_environment(|name, bytes| {
+        let text = core::str::from_utf8(bytes).map_err(|_| {
+            channel_error(
+                WindowsErrorKind::Secret,
+                "environment secret is not valid UTF-8",
+            )
+        })?;
+        if text.contains('\0') {
+            return Err(channel_error(
+                WindowsErrorKind::Secret,
+                "environment secret contains NUL",
+            ));
+        }
+        let native_units = name
+            .as_str()
+            .encode_utf16()
+            .count()
+            .checked_add(text.encode_utf16().count())
+            .and_then(|value| value.checked_add(3))
+            .ok_or_else(|| {
+                channel_error(
+                    WindowsErrorKind::Secret,
+                    "environment secret native size overflowed",
+                )
+            })?;
+        if native_units > 32_767 {
+            return Err(channel_error(
+                WindowsErrorKind::Secret,
+                "environment secret exceeds native Windows capacity",
+            ));
+        }
+        stage_reader(
+            label.clone(),
+            Cursor::new(bytes),
+            u64::try_from(bytes.len()).unwrap_or(u64::MAX),
+            should_continue,
+        )
     }) {
         return handle;
     }
     if let Some(handle) = artifact.expose_brokered(|_, bytes| {
-        stage_reader(label.clone(), Cursor::new(bytes), bytes.len(), should_continue)
+        stage_reader(
+            label.clone(),
+            Cursor::new(bytes),
+            u64::try_from(bytes.len()).unwrap_or(u64::MAX),
+            should_continue,
+        )
     }) {
         return handle;
     }
@@ -424,9 +463,7 @@ fn stage_artifact(
         channel_error(WindowsErrorKind::Secret, "secret artifact has no representable destination")
     })?;
     let (mut file, opened) = open_staged_secret(path)?;
-    let total = usize::try_from(opened.len()).map_err(|_| {
-        channel_error(WindowsErrorKind::Secret, "staged secret length is not representable")
-    })?;
+    let total = opened.len();
     let handle = stage_reader(label, &mut file, total, should_continue)?;
     let after = file.metadata().map_err(|source| {
         io_channel_error("staged secret identity cannot be rechecked", &source)
@@ -466,14 +503,13 @@ fn open_staged_secret(path: &std::path::Path) -> Result<(File, std::fs::Metadata
 fn stage_reader(
     label: String,
     reader: impl std::io::Read,
-    total: usize,
+    total: u64,
     should_continue: &dyn Fn() -> bool,
-) -> Result<NativeProtectedHandle, WindowsError> {
-    let total = u64::try_from(total).unwrap_or(u64::MAX);
-    if total == 0 || total > MAX_SECRET_BYTES {
+) -> Result<(NativeProtectedHandle, u64), WindowsError> {
+    if total == 0 {
         return Err(channel_error(
             WindowsErrorKind::Secret,
-            "secret exceeds the protected delivery bound",
+            "secret payload is empty",
         ));
     }
     let handle = NativeProtectedHandle::from_reader(
@@ -483,13 +519,17 @@ fn stage_reader(
         |_| {},
     )
     .map_err(protected_handle_error)?;
-    if u64::try_from(handle.payload_len().unwrap_or(0)).unwrap_or(u64::MAX) != total {
+    if handle
+        .payload_len()
+        .and_then(|length| u64::try_from(length).ok())
+        != Some(total)
+    {
         return Err(channel_error(
             WindowsErrorKind::PreparationMismatch,
             "secret artifact changed while it was streamed",
         ));
     }
-    Ok(handle)
+    Ok((handle, total))
 }
 
 #[cfg(unix)]

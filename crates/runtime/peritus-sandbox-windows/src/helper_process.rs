@@ -49,6 +49,13 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .and_then(|()| output.flush())
         .map_err(|_| ReservedHelperExit::Protocol)?;
     drop(output);
+    let secret_files = activation
+        .secret_file_identities()
+        .map_err(|_| ReservedHelperExit::Secret)?;
+    helper_channels
+        .signal_secret_files(activation_record.into_bytes(), &secret_files)
+        .and_then(|()| helper_channels.await_secret_file_adoption())
+        .map_err(|_| ReservedHelperExit::Secret)?;
     let result = crate::runner::execute_manifest_with_channels(
         &manifest,
         &mut activation,

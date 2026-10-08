@@ -26,6 +26,7 @@ pub use windows_channel::{
     NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
     NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
     NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
+    NativeWindowsSecretFileBinding, NativeWindowsSecretFileIdentity,
 };
 
 use peritus_sandbox::{
@@ -713,6 +714,21 @@ impl NativeLaunchDescription {
         self.windows_helper_channels
             .as_ref()
             .is_some_and(|channels| channels.retains_containment_job(expected))
+    }
+
+    /// Returns exact private-file identities retained during the helper handshake.
+    ///
+    /// # Errors
+    /// Returns a typed failure if the retained custody state was poisoned.
+    #[cfg(windows)]
+    pub fn windows_secret_files(
+        &self,
+    ) -> Result<Option<Vec<NativeWindowsSecretFileIdentity>>, ProcessError> {
+        self.windows_helper_channels
+            .as_ref()
+            .map(NativeWindowsHelperChannels::secret_file_identities)
+            .transpose()
+            .map(Option::flatten)
     }
 
     /// Returns the fixed record the helper writes after opening its protected channels.

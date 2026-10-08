@@ -165,16 +165,29 @@ pub(super) fn launch(
         if matches!(handshake_status, NativeHandshakeStatus::Complete)
             && let Some(status_reader) = status_reader
         {
-            let verification = if let Some(adoption) = handshake.adoption {
-                let channels = windows_channels.as_ref().ok_or_else(|| {
+            let verification = windows_channels
+                .as_ref()
+                .ok_or_else(|| {
                     HandshakeError::Failed(spawn_error(
-                        "Windows containment channels disappeared before adoption",
+                        "Windows helper channels disappeared before custody transfer",
                     ))
-                });
-                channels.and_then(|channels| {
+                })
+                .and_then(|channels| {
+                    let reader = channels.verify_secret_files(
+                        Box::new(status_reader),
+                        handshake.activated,
+                        should_continue,
+                    )?;
+                    if !should_continue() {
+                        return Err(HandshakeError::Cancelled);
+                    }
                     channels
+                        .acknowledge_secret_files()
+                        .map_err(HandshakeError::Failed)?;
+                    if let Some(adoption) = handshake.adoption {
+                        channels
                         .verify_target_adoption(
-                            Box::new(status_reader),
+                            reader,
                             adoption,
                             identity,
                             should_continue,
@@ -188,14 +201,10 @@ pub(super) fn launch(
                                 .map_err(HandshakeError::Failed)?;
                             super::verify_helper_record(reader, handshake.started, should_continue)
                         })
-                })
-            } else {
-                super::verify_helper_record(
-                    Box::new(status_reader),
-                    handshake.started,
-                    should_continue,
-                )
-            };
+                    } else {
+                        super::verify_helper_record(reader, handshake.started, should_continue)
+                    }
+                });
             if let Err(error) = verification {
                 handshake_status = error.status();
             }

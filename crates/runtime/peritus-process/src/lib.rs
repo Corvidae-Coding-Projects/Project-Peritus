@@ -24,6 +24,7 @@ mod public_api;
 mod quiescence;
 mod recovery;
 mod refinement;
+mod retained_owner;
 mod registry_storage;
 mod resource;
 mod result_api;
@@ -33,3 +34,5 @@ mod verified;
 mod working_directory;
 
 pub use public_api::*;
+#[cfg(windows)]
+pub use native::{NativeWindowsSecretFileBinding, NativeWindowsSecretFileIdentity};

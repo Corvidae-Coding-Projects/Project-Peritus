@@ -378,7 +378,7 @@ impl WindowsBackend {
         .map_err(|error| staged.cleanup(error))?;
         #[cfg(target_os = "windows")]
         let native_launch = if let Some(helper_channels) = native_helper_channels {
-            WindowsLaunchDescription::attach_helper_channels(native_launch, helper_channels)
+            windows_launch.attach_helper_channels(native_launch, helper_channels)
                 .map_err(|error| staged.cleanup(error))?
         } else {
             native_launch

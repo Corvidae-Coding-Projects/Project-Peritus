@@ -56,7 +56,7 @@ fn launch_and_wait_inner(
     let mut command_line = command_line(manifest.executable(), manifest.arguments());
     let directory = wide_nul(manifest.working_directory().as_os_str());
     let mut environment =
-        environment_block(manifest.environment(), activation.secrets.environment());
+        environment_block(manifest.environment(), activation.secrets.environment())?;
     let mut startup = STARTUPINFOEXW::default();
     startup.StartupInfo.cb = u32::try_from(size_of::<STARTUPINFOEXW>())
         .map_err(|_| launch_error("extended startup record size overflowed"))?;
@@ -118,6 +118,7 @@ fn launch_and_wait_inner(
         .signal_target_adoption(adoption.into_bytes(), target)
         .and_then(|()| channels.await_target_adoption())
         .map_err(|_| launch_error("C2 could not adopt the suspended Windows target"))?;
+    activation.secrets.commit_files()?;
     let control = channels
         .take_control_reader()
         .ok_or_else(|| launch_error("Windows terminal control ownership is unavailable"))?;
@@ -157,10 +158,11 @@ fn launch_and_wait_inner(
         unsafe { TerminateProcess(process_handle.raw(), 127) };
     }
     let workers = activation.terminal.finish_io();
+    let secret_files = activation.secrets.cleanup_files();
     drop(attributes);
-    match (execution, workers) {
-        (Err(error), _) | (Ok(_), Err(error)) => Err(error),
-        (Ok(code), Ok(())) => Ok(code),
+    match (execution, workers, secret_files) {
+        (Err(error), _, _) | (Ok(_), Err(error), _) | (Ok(_), Ok(()), Err(error)) => Err(error),
+        (Ok(code), Ok(()), Ok(())) => Ok(code),
     }
 }
 
@@ -225,7 +227,10 @@ fn target_identity(pid: u32, process: HANDLE) -> Result<ProcessTreeIdentity, Win
     Ok(ProcessTreeIdentity::new(pid, Some(start), None, true))
 }
 
-fn environment_block(ordinary: &[EnvironmentEntry], secrets: &[EnvironmentEntry]) -> Vec<u16> {
+fn environment_block(
+    ordinary: &[EnvironmentEntry],
+    secrets: &[EnvironmentEntry],
+) -> Result<Vec<u16>, WindowsError> {
     let mut values = ordinary.iter().chain(secrets).collect::<Vec<_>>();
     values.sort_by(|left, right| crate::manifest::windows_name_cmp(left.name(), right.name()));
     let mut block = Vec::new();
@@ -239,7 +244,12 @@ fn environment_block(ordinary: &[EnvironmentEntry], secrets: &[EnvironmentEntry]
         block.push(0);
     }
     block.push(0);
-    block
+    if block.len() > 32_767 {
+        return Err(launch_error(
+            "target environment exceeds native Windows capacity",
+        ));
+    }
+    Ok(block)
 }
 
 fn command_line(executable: &OsStr, arguments: &[std::ffi::OsString]) -> Vec<u16> {

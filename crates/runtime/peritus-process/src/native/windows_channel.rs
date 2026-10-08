@@ -38,6 +38,84 @@ pub const NATIVE_WINDOWS_JOB_HANDLE_LABEL: &str = "windows-containment-job-v1";
 
 const TARGET_ADOPTION_BYTES: usize = Sha256Digest::LENGTH + 4 + 8;
 const TARGET_ADOPTION_ACK: u8 = 5;
+const SECRET_FILES_ACK: u8 = 6;
+const SECRET_FILE_HEADER_BYTES: usize = Sha256Digest::LENGTH + 4;
+const SECRET_FILE_ENTRY_BYTES: usize = Sha256Digest::LENGTH + 8 + 8 + 16;
+
+/// Manifest-bound nonsensitive identity expected for one private secret file.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct NativeWindowsSecretFileBinding {
+    path_digest: Sha256Digest,
+    payload_len: u64,
+}
+
+impl NativeWindowsSecretFileBinding {
+    /// Creates one exact path and finite-length binding.
+    ///
+    /// # Errors
+    /// Rejects an empty payload or zero path identity.
+    pub fn new(path_digest: Sha256Digest, payload_len: u64) -> Result<Self, ProcessError> {
+        if path_digest == Sha256Digest::new([0; 32]) || payload_len == 0 {
+            return Err(channel_error("Windows secret-file binding is incomplete"));
+        }
+        Ok(Self { path_digest, payload_len })
+    }
+
+    /// Returns the canonical native-path digest.
+    #[must_use]
+    pub const fn path_digest(self) -> Sha256Digest {
+        self.path_digest
+    }
+
+    /// Returns the exact delivered byte length.
+    #[must_use]
+    pub const fn payload_len(self) -> u64 {
+        self.payload_len
+    }
+}
+
+/// Exact native identity of one helper-created private secret file.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct NativeWindowsSecretFileIdentity {
+    binding: NativeWindowsSecretFileBinding,
+    volume_serial: u64,
+    file_id: [u8; 16],
+}
+
+impl NativeWindowsSecretFileIdentity {
+    /// Creates one exact native file identity.
+    ///
+    /// # Errors
+    /// Rejects zero volume or file identity.
+    pub fn new(
+        binding: NativeWindowsSecretFileBinding,
+        volume_serial: u64,
+        file_id: [u8; 16],
+    ) -> Result<Self, ProcessError> {
+        if volume_serial == 0 || file_id == [0; 16] {
+            return Err(channel_error("Windows secret-file native identity is incomplete"));
+        }
+        Ok(Self { binding, volume_serial, file_id })
+    }
+
+    /// Returns the manifest path and payload binding.
+    #[must_use]
+    pub const fn binding(self) -> NativeWindowsSecretFileBinding {
+        self.binding
+    }
+
+    /// Returns the native volume serial number.
+    #[must_use]
+    pub const fn volume_serial(self) -> u64 {
+        self.volume_serial
+    }
+
+    /// Returns the 128-bit native file identifier.
+    #[must_use]
+    pub const fn file_id(self) -> [u8; 16] {
+        self.file_id
+    }
+}
 
 /// C2-owned parent endpoints and their exact protected helper endpoints.
 #[derive(Clone, Debug)]
@@ -51,6 +129,8 @@ pub struct NativeWindowsHelperChannels {
     containment_job_identity: Option<Sha256Digest>,
     containment_job_name: Option<String>,
     adoption: Arc<Mutex<Option<ContainmentAdoption>>>,
+    expected_secret_files: Arc<Vec<NativeWindowsSecretFileBinding>>,
+    secret_files: Arc<Mutex<Option<Vec<NativeWindowsSecretFileIdentity>>>>,
 }
 
 #[derive(Debug)]
@@ -84,6 +164,8 @@ impl NativeWindowsHelperChannels {
             containment_job_identity: None,
             containment_job_name: None,
             adoption: Arc::new(Mutex::new(None)),
+            expected_secret_files: Arc::new(Vec::new()),
+            secret_files: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -136,6 +218,123 @@ impl NativeWindowsHelperChannels {
         self.status_reader
             .try_clone()
             .map_err(|_| channel_error("Windows helper status reader cannot be cloned"))
+    }
+
+    /// Binds the exact private-file set expected before target creation.
+    ///
+    /// # Errors
+    /// Rejects duplicate native paths.
+    pub fn with_secret_file_bindings(
+        mut self,
+        mut bindings: Vec<NativeWindowsSecretFileBinding>,
+    ) -> Result<Self, ProcessError> {
+        bindings.sort_by(|left, right| {
+            left.path_digest.as_bytes().cmp(right.path_digest.as_bytes())
+        });
+        if bindings
+            .windows(2)
+            .any(|pair| pair[0].path_digest == pair[1].path_digest)
+        {
+            return Err(channel_error("Windows secret-file bindings contain a duplicate path"));
+        }
+        self.expected_secret_files = Arc::new(bindings);
+        Ok(self)
+    }
+
+    pub(crate) fn verify_secret_files(
+        &self,
+        mut reader: Box<dyn Read + Send>,
+        expected_record: Sha256Digest,
+        should_continue: &mut dyn FnMut() -> bool,
+    ) -> Result<Box<dyn Read + Send>, crate::platform::HandshakeError> {
+        let mut header = [0_u8; SECRET_FILE_HEADER_BYTES];
+        read_exact_while(&mut *reader, &mut header, should_continue)?;
+        if &header[..Sha256Digest::LENGTH] != expected_record.as_bytes() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows secret-file custody record mismatched",
+            )));
+        }
+        let count = usize::try_from(u32::from_le_bytes(
+            header[Sha256Digest::LENGTH..]
+                .try_into()
+                .map_err(|_| crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows secret-file custody count is malformed",
+                )))?,
+        ))
+        .map_err(|_| crate::platform::HandshakeError::Failed(channel_error(
+            "Windows secret-file custody count is not representable",
+        )))?;
+        if count != self.expected_secret_files.len() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows secret-file custody count differs from the manifest",
+            )));
+        }
+        let mut identities = Vec::new();
+        identities.try_reserve_exact(count).map_err(|_| {
+            crate::platform::HandshakeError::Failed(channel_error(
+                "Windows secret-file custody allocation is unavailable",
+            ))
+        })?;
+        for expected in self.expected_secret_files.iter().copied() {
+            let mut entry = [0_u8; SECRET_FILE_ENTRY_BYTES];
+            read_exact_while(&mut *reader, &mut entry, should_continue)?;
+            let path_digest = Sha256Digest::new(
+                entry[..Sha256Digest::LENGTH]
+                    .try_into()
+                    .expect("fixed secret-file path digest"),
+            );
+            let payload_len = u64::from_le_bytes(
+                entry[Sha256Digest::LENGTH..Sha256Digest::LENGTH + 8]
+                    .try_into()
+                    .expect("fixed secret-file payload length"),
+            );
+            let volume_at = Sha256Digest::LENGTH + 8;
+            let volume_serial = u64::from_le_bytes(
+                entry[volume_at..volume_at + 8]
+                    .try_into()
+                    .expect("fixed secret-file volume identity"),
+            );
+            let file_id = entry[volume_at + 8..]
+                .try_into()
+                .expect("fixed secret-file identifier");
+            let binding = NativeWindowsSecretFileBinding::new(path_digest, payload_len)
+                .map_err(crate::platform::HandshakeError::Failed)?;
+            if binding != expected {
+                return Err(crate::platform::HandshakeError::Failed(channel_error(
+                    "Windows secret-file custody identity differs from the manifest",
+                )));
+            }
+            identities.push(
+                NativeWindowsSecretFileIdentity::new(binding, volume_serial, file_id)
+                    .map_err(crate::platform::HandshakeError::Failed)?,
+            );
+        }
+        let mut retained = self.secret_files.lock().map_err(|_| {
+            crate::platform::HandshakeError::Failed(channel_error(
+                "Windows secret-file custody state was poisoned",
+            ))
+        })?;
+        if retained.is_some() {
+            return Err(crate::platform::HandshakeError::Failed(channel_error(
+                "Windows secret-file custody was already published",
+            )));
+        }
+        *retained = Some(identities);
+        drop(retained);
+        Ok(reader)
+    }
+
+    pub(crate) fn acknowledge_secret_files(&self) -> Result<(), ProcessError> {
+        self.write_control(&[SECRET_FILES_ACK])
+    }
+
+    pub(crate) fn secret_file_identities(
+        &self,
+    ) -> Result<Option<Vec<NativeWindowsSecretFileIdentity>>, ProcessError> {
+        self.secret_files
+            .lock()
+            .map(|files| files.clone())
+            .map_err(|_| channel_error("Windows secret-file custody state was poisoned"))
     }
 
     pub(crate) fn verify_target_adoption(
@@ -357,6 +556,58 @@ impl NativeWindowsHelperAttachment {
         self.status
             .write_all(&record)
             .map_err(|_| channel_error("Windows helper quiescence record cannot be written"))
+    }
+
+    /// Publishes exact private-file identities while delete-on-close remains armed.
+    ///
+    /// # Errors
+    /// Returns a protocol failure if the complete custody record cannot be written and flushed.
+    pub fn signal_secret_files(
+        &mut self,
+        record: [u8; Sha256Digest::LENGTH],
+        identities: &[NativeWindowsSecretFileIdentity],
+    ) -> Result<(), ProcessError> {
+        let count = u32::try_from(identities.len())
+            .map_err(|_| channel_error("Windows secret-file custody count is not representable"))?;
+        self.status
+            .write_all(&record)
+            .and_then(|()| self.status.write_all(&count.to_le_bytes()))
+            .map_err(|_| channel_error("Windows secret-file custody header cannot be written"))?;
+        for identity in identities {
+            self.status
+                .write_all(identity.binding.path_digest.as_bytes())
+                .and_then(|()| {
+                    self.status.write_all(&identity.binding.payload_len.to_le_bytes())
+                })
+                .and_then(|()| self.status.write_all(&identity.volume_serial.to_le_bytes()))
+                .and_then(|()| self.status.write_all(&identity.file_id))
+                .map_err(|_| {
+                    channel_error("Windows secret-file custody identity cannot be written")
+                })?;
+        }
+        self.status
+            .flush()
+            .map_err(|_| channel_error("Windows secret-file custody record cannot be flushed"))
+    }
+
+    /// Waits until C2 has retained every exact private-file identity.
+    ///
+    /// # Errors
+    /// Returns a protocol failure if C2 disconnects or acknowledges a different transition.
+    pub fn await_secret_file_adoption(&mut self) -> Result<(), ProcessError> {
+        let control = self.control.as_mut().ok_or_else(|| {
+            channel_error("Windows secret-file custody control channel is unavailable")
+        })?;
+        let mut acknowledgement = [0_u8; 1];
+        control
+            .read_exact(&mut acknowledgement)
+            .map_err(|_| channel_error("Windows secret-file custody owner disconnected"))?;
+        if acknowledgement != [SECRET_FILES_ACK] {
+            return Err(channel_error(
+                "Windows secret-file custody acknowledgement mismatched",
+            ));
+        }
+        Ok(())
     }
 
     /// Publishes one suspended target birth identity before C2 permits it to resume.

@@ -4,14 +4,75 @@ use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits, decode_frame,
 use peritus_process::{NativeWindowsContainmentIdentity, ProcessTreeIdentity};
 use peritus_types::{ProcessId, Sha256Digest};
 
-use crate::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsPhase, WindowsRecovery};
+use crate::{
+    WindowsError, WindowsErrorKind, WindowsOperation, WindowsPath, WindowsPhase, WindowsRecovery,
+};
 
 const FAMILY: u16 = 0xC317;
 const SCHEMA_V1: u16 = 1;
 const SCHEMA_V2: u16 = 2;
 const SCHEMA_V3: u16 = 3;
+const SCHEMA_V4: u16 = 4;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
-const LIMITS: CodecLimits = CodecLimits::new(4_096, 4_080, 32, 512, 512, 4);
+const LIMITS: CodecLimits = CodecLimits::PRODUCTION;
+
+/// Durable exact identity of one helper-created private secret file.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct SecretFileRecovery {
+    path: WindowsPath,
+    payload_len: u64,
+    volume_serial: u64,
+    file_id: [u8; 16],
+}
+
+impl SecretFileRecovery {
+    #[cfg(target_os = "windows")]
+    pub(crate) fn new(
+        path: WindowsPath,
+        identity: peritus_process::NativeWindowsSecretFileIdentity,
+    ) -> Result<Self, WindowsError> {
+        let binding = identity.binding();
+        if path.digest() != binding.path_digest() {
+            return Err(recovery_error(
+                "private secret recovery path differs from helper custody",
+            ));
+        }
+        Self::from_parts(
+            path,
+            binding.payload_len(),
+            identity.volume_serial(),
+            identity.file_id(),
+        )
+    }
+
+    fn from_parts(
+        path: WindowsPath,
+        payload_len: u64,
+        volume_serial: u64,
+        file_id: [u8; 16],
+    ) -> Result<Self, WindowsError> {
+        if payload_len == 0 || volume_serial == 0 || file_id == [0; 16] {
+            return Err(recovery_error("private secret recovery identity is incomplete"));
+        }
+        Ok(Self { path, payload_len, volume_serial, file_id })
+    }
+
+    pub(crate) const fn path(&self) -> &WindowsPath {
+        &self.path
+    }
+
+    pub(crate) const fn payload_len(&self) -> u64 {
+        self.payload_len
+    }
+
+    pub(crate) const fn volume_serial(&self) -> u64 {
+        self.volume_serial
+    }
+
+    pub(crate) const fn file_id(&self) -> [u8; 16] {
+        self.file_id
+    }
+}
 
 /// Nonsensitive identities for resources owned by one native session.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -88,6 +149,7 @@ pub struct WindowsRecoveryRecord {
     helper_reaped: bool,
     tree: Option<ProcessTreeIdentity>,
     containment: Option<NativeWindowsContainmentIdentity>,
+    secret_files: Vec<SecretFileRecovery>,
     acl_transaction_digest: Option<Sha256Digest>,
     acl_receipt: Option<Sha256Digest>,
     owner_operation_digest: Option<Sha256Digest>,
@@ -108,6 +170,7 @@ impl WindowsRecoveryRecord {
             helper_reaped: false,
             tree: None,
             containment: None,
+            secret_files: Vec::new(),
             acl_transaction_digest: None,
             acl_receipt: None,
             owner_operation_digest: None,
@@ -129,7 +192,7 @@ impl WindowsRecoveryRecord {
         let complete_transaction = transaction_digest.is_some() == receipt.is_some();
         let complete_owner = owner_operation_digest.is_some() == service_owner_digest.is_some();
         let mut value = Self {
-            schema: if containment_required { SCHEMA_V3 } else { SCHEMA_V2 },
+            schema: if containment_required { SCHEMA_V4 } else { SCHEMA_V2 },
             identity,
             phase: WindowsPhase::Prepared,
             acl_restored: false,
@@ -137,6 +200,7 @@ impl WindowsRecoveryRecord {
             helper_reaped: false,
             tree: None,
             containment: None,
+            secret_files: Vec::new(),
             acl_transaction_digest: complete_transaction.then_some(transaction_digest).flatten(),
             acl_receipt: complete_transaction.then_some(receipt).flatten(),
             owner_operation_digest: complete_owner.then_some(owner_operation_digest).flatten(),
@@ -170,7 +234,7 @@ impl WindowsRecoveryRecord {
         &mut self,
         containment: NativeWindowsContainmentIdentity,
     ) -> Result<(), WindowsError> {
-        if self.schema != SCHEMA_V3 {
+        if !matches!(self.schema, SCHEMA_V3 | SCHEMA_V4) {
             return Err(recovery_error(
                 "legacy Windows recovery record cannot claim live Job Object adoption",
             ));
@@ -194,6 +258,37 @@ impl WindowsRecoveryRecord {
             return Err(recovery_error("Windows containment adoption identity changed"));
         }
         self.containment = Some(containment);
+        self.canonical = self.encode()?;
+        Ok(())
+    }
+
+    pub(crate) fn retain_secret_files(
+        &mut self,
+        mut files: Vec<SecretFileRecovery>,
+    ) -> Result<(), WindowsError> {
+        if self.schema != SCHEMA_V4 || self.phase != WindowsPhase::Prepared {
+            return Err(recovery_error(
+                "private secret custody cannot be attached to this recovery phase",
+            ));
+        }
+        files.sort_by(|left, right| {
+            left.path.digest().as_bytes().cmp(right.path.digest().as_bytes())
+        });
+        if files
+            .windows(2)
+            .any(|pair| pair[0].path.digest() == pair[1].path.digest())
+        {
+            return Err(recovery_error(
+                "private secret recovery paths contain a duplicate identity",
+            ));
+        }
+        if self.secret_files == files {
+            return Ok(());
+        }
+        if !self.secret_files.is_empty() {
+            return Err(recovery_error("private secret recovery custody changed"));
+        }
+        self.secret_files = files;
         self.canonical = self.encode()?;
         Ok(())
     }
@@ -263,7 +358,7 @@ impl WindowsRecoveryRecord {
             .map_err(|_| recovery_error("native recovery frame is invalid"))?;
         let schema = frame.header().schema_version();
         if frame.header().family() != FAMILY
-            || !matches!(schema, SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3)
+            || !matches!(schema, SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4)
         {
             return Err(recovery_error("native recovery schema is unsupported"));
         }
@@ -288,7 +383,7 @@ impl WindowsRecoveryRecord {
             acl_receipt,
             owner_operation_digest,
             service_owner_digest,
-        ) = if matches!(schema, SCHEMA_V2 | SCHEMA_V3) {
+        ) = if matches!(schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4) {
             let tree = if reader.read_option_tag().map_err(codec_failure)? {
                 let root = reader.read_u32().map_err(codec_failure)?;
                 let start = if reader.read_option_tag().map_err(codec_failure)? {
@@ -324,7 +419,7 @@ impl WindowsRecoveryRecord {
         } else {
             (None, None, None, None, None)
         };
-        let containment = if schema == SCHEMA_V3
+        let containment = if matches!(schema, SCHEMA_V3 | SCHEMA_V4)
             && reader.read_option_tag().map_err(codec_failure)?
         {
             let job_identity = read_digest(&mut reader)?;
@@ -361,13 +456,41 @@ impl WindowsRecoveryRecord {
         } else {
             None
         };
+        let secret_files = if schema == SCHEMA_V4 {
+            let count = reader
+                .read_collection_len(4 + 8 + 8 + 16)
+                .map_err(codec_failure)?;
+            let mut files = reader.reserve_collection(count).map_err(codec_failure)?;
+            for _ in 0..count {
+                let path = read_windows_path(&mut reader)?;
+                let payload_len = reader.read_u64().map_err(codec_failure)?;
+                let volume_serial = reader.read_u64().map_err(codec_failure)?;
+                let file_id = reader.read_fixed().map_err(codec_failure)?;
+                files.push(SecretFileRecovery::from_parts(
+                    path,
+                    payload_len,
+                    volume_serial,
+                    file_id,
+                )?);
+            }
+            if files.windows(2).any(|pair| {
+                pair[0].path.digest().as_bytes() >= pair[1].path.digest().as_bytes()
+            }) {
+                return Err(recovery_error(
+                    "private secret recovery paths are duplicated or noncanonical",
+                ));
+            }
+            files
+        } else {
+            Vec::new()
+        };
         reader.finish().map_err(codec_failure)?;
         let any_cleanup = acl_restored || secret_files_removed || helper_reaped;
         let complete_cleanup = acl_restored && secret_files_removed && helper_reaped;
         if (phase == WindowsPhase::Released || any_cleanup) && !complete_cleanup {
             return Err(recovery_error("native recovery record has inconsistent cleanup facts"));
         }
-        if schema == SCHEMA_V3
+        if matches!(schema, SCHEMA_V3 | SCHEMA_V4)
             && matches!(
                 phase,
                 WindowsPhase::Activated | WindowsPhase::CancelRequested | WindowsPhase::Terminated
@@ -387,6 +510,7 @@ impl WindowsRecoveryRecord {
             helper_reaped,
             tree,
             containment,
+            secret_files,
             acl_transaction_digest,
             acl_receipt,
             owner_operation_digest,
@@ -418,6 +542,11 @@ impl WindowsRecoveryRecord {
     #[must_use]
     pub const fn containment_identity(&self) -> Option<&NativeWindowsContainmentIdentity> {
         self.containment.as_ref()
+    }
+    /// Returns exact private secret-file cleanup obligations.
+    #[must_use]
+    pub(crate) fn secret_files(&self) -> &[SecretFileRecovery] {
+        &self.secret_files
     }
     /// Returns the authorization-bound ACL transaction identity, when recorded.
     #[must_use]
@@ -478,7 +607,7 @@ impl WindowsRecoveryRecord {
         writer.write_bool(self.acl_restored).map_err(codec_failure)?;
         writer.write_bool(self.secret_files_removed).map_err(codec_failure)?;
         writer.write_bool(self.helper_reaped).map_err(codec_failure)?;
-        if matches!(self.schema, SCHEMA_V2 | SCHEMA_V3) {
+        if matches!(self.schema, SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4) {
             writer.write_option_tag(self.tree.is_some()).map_err(codec_failure)?;
             if let Some(tree) = self.tree {
                 writer.write_u32(tree.root_pid()).map_err(codec_failure)?;
@@ -513,7 +642,7 @@ impl WindowsRecoveryRecord {
                     .write_fixed(self.service_owner_digest.expect("checked").as_bytes())
                     .map_err(codec_failure)?;
             }
-            if self.schema == SCHEMA_V3 {
+            if matches!(self.schema, SCHEMA_V3 | SCHEMA_V4) {
                 writer.write_option_tag(self.containment.is_some()).map_err(codec_failure)?;
                 if let Some(containment) = &self.containment {
                     writer
@@ -537,6 +666,17 @@ impl WindowsRecoveryRecord {
                     writer
                         .write_bool(target.complete_containment())
                         .map_err(codec_failure)?;
+                }
+            }
+            if self.schema == SCHEMA_V4 {
+                writer
+                    .write_collection_len(self.secret_files.len())
+                    .map_err(codec_failure)?;
+                for file in &self.secret_files {
+                    write_windows_path(&mut writer, &file.path)?;
+                    writer.write_u64(file.payload_len).map_err(codec_failure)?;
+                    writer.write_u64(file.volume_serial).map_err(codec_failure)?;
+                    writer.write_fixed(&file.file_id).map_err(codec_failure)?;
                 }
             }
         }
@@ -596,6 +736,55 @@ pub fn classify(
 
 fn read_digest(reader: &mut CanonicalReader<'_>) -> Result<Sha256Digest, WindowsError> {
     Ok(Sha256Digest::new(reader.read_fixed().map_err(codec_failure)?))
+}
+
+fn write_windows_path(
+    writer: &mut CanonicalWriter,
+    path: &WindowsPath,
+) -> Result<(), WindowsError> {
+    #[cfg(target_os = "windows")]
+    use std::os::windows::ffi::OsStrExt as _;
+
+    #[cfg(target_os = "windows")]
+    let units = path.as_os_str().encode_wide().collect::<Vec<_>>();
+    #[cfg(not(target_os = "windows"))]
+    let units = path.as_os_str().to_string_lossy().encode_utf16().collect::<Vec<_>>();
+    let byte_count = units
+        .len()
+        .checked_mul(2)
+        .ok_or_else(|| recovery_error("private secret recovery path length overflowed"))?;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(byte_count)
+        .map_err(|_| recovery_error("private secret recovery path allocation is unavailable"))?;
+    for unit in units {
+        bytes.extend_from_slice(&unit.to_be_bytes());
+    }
+    writer.write_bytes(&bytes).map_err(codec_failure)
+}
+
+fn read_windows_path(reader: &mut CanonicalReader<'_>) -> Result<WindowsPath, WindowsError> {
+    let bytes = reader.read_bytes().map_err(codec_failure)?;
+    let chunks = bytes.chunks_exact(2);
+    if !chunks.remainder().is_empty() {
+        return Err(recovery_error("private secret recovery path has an odd byte length"));
+    }
+    let mut units = Vec::new();
+    units
+        .try_reserve_exact(bytes.len() / 2)
+        .map_err(|_| recovery_error("private secret recovery path allocation is unavailable"))?;
+    units.extend(chunks.map(|pair| u16::from_be_bytes([pair[0], pair[1]])));
+    #[cfg(target_os = "windows")]
+    let native = {
+        use std::os::windows::ffi::OsStringExt as _;
+        std::ffi::OsString::from_wide(&units)
+    };
+    #[cfg(not(target_os = "windows"))]
+    let native: std::ffi::OsString = String::from_utf16(&units)
+        .map_err(|_| recovery_error("private secret recovery path is not representable"))?
+        .into();
+    WindowsPath::from_os_str(&native)
+        .map_err(|_| recovery_error("private secret recovery path is invalid"))
 }
 
 fn codec_failure(_error: peritus_codec::CodecError) -> WindowsError {

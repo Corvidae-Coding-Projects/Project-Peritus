@@ -400,6 +400,21 @@ impl NativeSandboxSession for WindowsSession {
         }
         #[cfg(target_os = "windows")]
         {
+            let secret_files = self
+                .native_launch
+                .windows_secret_files()?
+                .ok_or_else(|| {
+                    process_error(&WindowsError::new(
+                        WindowsErrorKind::Secret,
+                        WindowsOperation::Activate,
+                        WindowsRecovery::CancelAndReap,
+                        "C2 retained no exact private secret-file custody record",
+                    ))
+                })?;
+            let secret_files = secret_file_recovery(&self.windows_launch, secret_files)?;
+            self.recovery
+                .retain_secret_files(secret_files)
+                .map_err(|error| process_error(&error))?;
             let containment = self
                 .native_launch
                 .windows_containment_identity()?
@@ -473,6 +488,57 @@ impl WindowsSession {
     fn record_abort_cleanup(&mut self) {
         self.push_rich(self.phase, ObservationStatus::Verified);
     }
+}
+
+#[cfg(target_os = "windows")]
+pub(super) fn secret_file_recovery(
+    launch: &WindowsLaunchDescription,
+    mut identities: Vec<peritus_process::NativeWindowsSecretFileIdentity>,
+) -> Result<Vec<crate::recovery::SecretFileRecovery>, ProcessError> {
+    let mut files = Vec::new();
+    for descriptor in launch.manifest().secret_handles() {
+        let crate::SecretHandleDestination::File(path) = descriptor.destination() else {
+            continue;
+        };
+        let native = crate::WindowsPath::from_sandbox(
+            launch.manifest().working_directory(),
+            path,
+        )
+        .map_err(|error| process_error(&error))?;
+        let position = identities
+            .iter()
+            .position(|identity| identity.binding().path_digest() == native.digest())
+            .ok_or_else(|| {
+                process_error(&WindowsError::new(
+                    WindowsErrorKind::RecoveryIndeterminate,
+                    WindowsOperation::Recover,
+                    WindowsRecovery::Quarantine,
+                    "helper secret-file custody omitted a manifest path",
+                ))
+            })?;
+        let identity = identities.remove(position);
+        if descriptor.payload_len() != Some(identity.binding().payload_len()) {
+            return Err(process_error(&WindowsError::new(
+                WindowsErrorKind::RecoveryIndeterminate,
+                WindowsOperation::Recover,
+                WindowsRecovery::Quarantine,
+                "helper secret-file custody changed a manifest payload length",
+            )));
+        }
+        files.push(
+            crate::recovery::SecretFileRecovery::new(native, identity)
+                .map_err(|error| process_error(&error))?,
+        );
+    }
+    if !identities.is_empty() {
+        return Err(process_error(&WindowsError::new(
+            WindowsErrorKind::RecoveryIndeterminate,
+            WindowsOperation::Recover,
+            WindowsRecovery::Quarantine,
+            "helper secret-file custody contains an unknown path",
+        )));
+    }
+    Ok(files)
 }
 
 pub(crate) fn process_error(error: &WindowsError) -> ProcessError {

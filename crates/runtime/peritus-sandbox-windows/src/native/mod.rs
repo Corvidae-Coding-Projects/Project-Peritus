@@ -42,7 +42,7 @@ pub(crate) fn activate(
     };
     let job = job::OwnedJob::adopt(inherited_job, manifest.job())?;
     let terminal = handle::TerminalAttachment::create(manifest.terminal())?;
-    let secrets = secret::stage(manifest)?;
+    let secrets = secret::stage(manifest, should_continue)?;
     Ok(Activation { token, job, app_container, terminal, secrets })
 }
 
@@ -79,6 +79,12 @@ pub(crate) fn execute_with_channels(
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
 ) -> Result<i32, WindowsError> {
     launch::launch_and_wait_with_channels(manifest, activation, channels)
+}
+
+pub(crate) fn secret_file_identities(
+    activation: &Activation,
+) -> Result<Vec<peritus_process::NativeWindowsSecretFileIdentity>, WindowsError> {
+    activation.secrets.file_identities()
 }
 
 fn verify_helper_identity(
