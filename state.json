@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4111,
-        "tip_oid": "1499291cd3ba770da2c79a56f85122554c58efd1",
-        "prefix_sha256": "05c714095d8128b9221ff9f43879923b082b86edbc6d88e0fd18913654aa98af"
+        "sequence": 4112,
+        "tip_oid": "8156bc06d28eceed8fe29c3d5deff0b6952a3da6",
+        "prefix_sha256": "a66a07567c8f5c56af09e996aa9a5f36dabfae5742f52c0f1ee53aaf65429be0"
       },
       "NWAR": {
         "sequence": 39,
@@ -14683,12 +14683,13 @@
       "display_id": 156,
       "title": "[L057] Local context archive, record, and artifact storage capacities",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L057.\n\n- `local_context/storage.rs:30,86-90,133-175` configures **64 MiB per artifact** and a **1 GiB total artifact-store quota**; store/read reject larger objects. `peritus-artifact-store/src/store.rs:75-91,229-239` and `quota.rs:74-85` now verify quota enforcement: a new digest reserves its expected bytes and rejects used-plus-reserved growth beyond the configured total. Existing digests reserve zero. Reclamation/reference catalog and database option interactions remain pending full reads.\n- `local_context/record.rs:169-186` independently rejects canonical serialized host records above **32 MiB**. Growing transcript/source-index/checkpoint values use this serializer; local event frames use the production codec (**16 MiB**, L009) at `storage.rs:110-123`. `local_context/storage/append.rs:22-26` now verifies **each host event payload is framed directly with the 16 MiB production codec**, lower than its 32 MiB serializer admission. Checkpoint publication also inherits the 16 MiB StateInstall ceiling and its atomic artifact dependency list inherits 4,096 (L020). Growing index/state artifact layouts remain pending.\n- `record.rs:69-80` limits archived tool call IDs to **256 bytes** and tool names to **128 bytes**. Missing or mismatched source locators stop recovery rather than inventing evidence.\n- Potential persistent-session blocker: archiving indefinitely into a quota-backed store and whole growing serialized indexes can hit lifetime limits without a session timeout. This audit has established declarations; actual quota/reclamation/recovery callers are pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.071691854Z",
-      "updated_at": "2026-10-08T06:15:42.899526846Z",
+      "updated_at": "2026-10-08T06:17:02.625760751Z",
+      "closed_at": "2026-10-08T06:17:02.622886341Z",
       "labels": [
         "daily-driving-limiter"
       ],
