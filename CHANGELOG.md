@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L033] Optional run horizon and provider-circuit lifetime (#132)
 - [L437] E3 recovery can request analysis from ReportReady and treats terminal publication as complete without owner checks (#517)
 - [L032] Goal text/count representation and checked counter exhaustion (#131)
 - [L607] Windows path and ACL projection imposes workspace-shape and finite-root gates (#663)
