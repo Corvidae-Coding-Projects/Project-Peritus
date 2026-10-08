@@ -161,18 +161,15 @@ impl LocalMemory {
         };
         memory.recover()?;
         let trace_path = memory.trace_path.clone();
-        let torn = crate::trace::local_memory::observations(
+        let recovery_root = memory.store.root().to_path_buf();
+        crate::trace::local_memory::observations(
             &trace_path,
+            &recovery_root,
             memory.store.scope_digest(),
             |invocation, tool_sequence, call, observation| {
                 memory.observe_tool_in(invocation, tool_sequence, &call, &observation).map(|_| ())
             },
         )?;
-        if torn {
-            return Err(error(
-                "torn trace tail: valid observations recovered; trace repair required before new work",
-            ));
-        }
         Ok(memory)
     }
 
