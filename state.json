@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4025,
-        "tip_oid": "ccf75d42a094293cee9d1dc77f6c23355765b381",
-        "prefix_sha256": "6924a0f0fbaf36c4aa193f88c12f00fec04b1cfb17c13e038c7281ccb3bc022c"
+        "sequence": 4026,
+        "tip_oid": "8f21a450e6b9b19aa3a2d6052690b7999bf615e4",
+        "prefix_sha256": "a70791dfcc2a43f11f8626c974e3577ae1d08964d72f8264484145e13452e0c0"
       },
       "NWAR": {
         "sequence": 39,
@@ -25436,12 +25436,13 @@
       "display_id": 533,
       "title": "[L454] F0 wraps complete growing checkpoints in a fixed eight-MiB opaque payload",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L454.\n\n- Evidence: `crates/analysis/peritus-evolution/src/wire/campaign.rs:279-281,318-330`, `src/wire/pointer.rs:299-301,338-350`, `src/wire/semantic/campaign.rs:9-10,75-77`, `src/wire/semantic/state/campaign.rs:13-62`, `src/wire/semantic/state/pointer.rs:14-42`, `src/durability/campaign.rs:34-48`, `src/durability/pointer.rs:33-47` in the same crate; production codec limits in L009.\n- Behavior: Inner semantic codecs hard-code CodecLimits::PRODUCTION. Checkpoints serialize all retained manifests, diagnoses, evaluation metrics, attributions, assessments or pointer history into one byte vector; the outer frame writes that vector as a single bytes field. Its eight-MiB opaque-field limit applies even though the whole-message ceiling is sixteen MiB. F0 has no independent state-size configuration or incremental checkpoint representation.\n- Consequence: Individually valid additions within every F0 collection/text bound can still make the next complete checkpoint uncommittable. Cancel/fail also serializes retained state, so it does not provide a general size-reduction path. Expanding an outer caller codec cannot lift the hard-coded inner contract. This is a source-derived scaling ceiling, not evidence that an evolution checkpoint reached it in the live run.\n- Repair direction: Persist immutable evidence once by verified reference and checkpoint a paged projection. Reserve reliable control/settlement operations independently of aggregate evidence volume while preserving exact provenance and replay integrity. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.626218129Z",
-      "updated_at": "2026-10-08T03:43:08.613932868Z",
+      "updated_at": "2026-10-08T03:44:44.787421785Z",
+      "closed_at": "2026-10-08T03:44:44.784733248Z",
       "labels": [
         "daily-driving-limiter"
       ],
