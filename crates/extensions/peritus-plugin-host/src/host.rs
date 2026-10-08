@@ -212,7 +212,7 @@ impl PluginHost {
                 Ok(())
             }
             Ok(_) => {
-                instance.connection.terminate().await;
+                instance.connection.terminate().await?;
                 Err(HostError::new(
                     HostFailureClass::Protocol,
                     RecoveryDisposition::CorrectRequest,
@@ -221,7 +221,7 @@ impl PluginHost {
                 ))
             }
             Err(error) => {
-                instance.connection.terminate().await;
+                instance.connection.terminate().await?;
                 Err(error)
             }
         }
@@ -306,7 +306,7 @@ impl PluginHost {
                     + rendering.as_ref().map_or(0, |text| text.len() as u64);
                 if output_size > instance.quotas.limits().output_bytes {
                     *instance.lifecycle.lock().await = PluginLifecycle::Failed;
-                    instance.connection.terminate().await;
+                    instance.connection.terminate().await?;
                     return Err(HostError::new(
                         HostFailureClass::Quota,
                         RecoveryDisposition::RestartPlugin,
@@ -362,7 +362,10 @@ impl PluginHost {
                 &HostCancellation::new(),
             )
             .await;
-        instance.connection.terminate().await;
+        if let Err(error) = instance.connection.terminate().await {
+            *instance.lifecycle.lock().await = PluginLifecycle::Failed;
+            return Err(error);
+        }
         self.instances.lock().await.remove(id);
         match result {
             Ok(response)
