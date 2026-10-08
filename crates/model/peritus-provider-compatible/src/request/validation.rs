@@ -1,11 +1,11 @@
 use peritus_model_protocol::{
     CachePolicy, Capability, ContentBlock, MediaKind, MediaReferenceKind, ModelRequest,
-    ParallelToolPolicy, ReasoningPolicy, SchemaDialect, StateMode, StructuredOutput,
+    ParallelToolPolicy, ReasoningPolicy, SchemaDialect, StructuredOutput, ToolChoice,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
 
-use crate::{error, profile::CompatibleProfile};
+use crate::{error, profile::{CompatibleProfile, RequestField}};
 
 pub(super) fn validate(
     profile: &CompatibleProfile,
@@ -15,17 +15,17 @@ pub(super) fn validate(
     if !request.negotiated().includes(Capability::Streaming) {
         return Err(error::invalid("compatible streaming must be explicitly negotiated"));
     }
-    if profile.provider_profile().state_mode() != StateMode::StatelessReplay
-        || request.options().persistence().store()
-        || request.options().persistence().background()
-        || request.options().continuation().is_some()
-    {
-        return Err(error::invalid("compatible profiles do not map persistence or continuation"));
+    validate_operations(profile, request)?;
+    if request.options().persistence().background() {
+        return Err(error::invalid("compatible profiles do not map background execution"));
     }
     if !matches!(request.options().cache(), CachePolicy::Disabled)
         || !matches!(request.options().reasoning(), ReasoningPolicy::Disabled)
+        || !request.options().extensions().is_empty()
     {
-        return Err(error::invalid("compatible profiles do not map cache or reasoning controls"));
+        return Err(error::invalid(
+            "compatible profiles do not map cache, reasoning controls, or provider extensions",
+        ));
     }
     for tool in request.tools() {
         if !valid_name(tool.name().as_str()) {
@@ -59,15 +59,139 @@ pub(super) fn validate(
     for message in request.messages() {
         for block in message.content() {
             if let ContentBlock::Reasoning(replay) = block
-                && service.is_some()
-                && profile.provider_profile().dialect()
-                    == peritus_model_protocol::WireDialect::CompatibleChatCompletions
+                && profile.contract().supports(RequestField::ReasoningReplay)
             {
                 super::hosted::replay(replay, service)?;
             } else {
                 validate_block(block)?;
             }
         }
+    }
+    Ok(())
+}
+
+fn validate_operations(
+    profile: &CompatibleProfile,
+    request: &ModelRequest,
+) -> Result<(), ProviderCoreError> {
+    let blocks = || request.messages().iter().flat_map(peritus_model_protocol::Message::content);
+    let uses_tools = !request.tools().is_empty()
+        || !matches!(request.tool_choice(), ToolChoice::Auto)
+        || blocks().any(|block| {
+            matches!(block, ContentBlock::ToolCall(_) | ContentBlock::ToolResult(_))
+        });
+    require_capability_mapping(
+        profile,
+        request,
+        uses_tools,
+        Capability::ToolCalls,
+        RequestField::Tools,
+        "compatible request uses tools without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        matches!(request.parallel_tool_policy(), ParallelToolPolicy::Allowed(_)),
+        Capability::ParallelToolCalls,
+        RequestField::ParallelTools,
+        "compatible request uses parallel tools without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        matches!(request.options().output(), StructuredOutput::JsonSchema { strict: true, .. }),
+        Capability::StrictStructuredOutput,
+        RequestField::StrictStructuredOutput,
+        "compatible request uses strict structured output without an implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        blocks().any(|block| matches!(block, ContentBlock::Image(_))),
+        Capability::ImageInput,
+        RequestField::ImageInput,
+        "compatible request uses image input without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        blocks().any(|block| matches!(block, ContentBlock::Reasoning(_))),
+        Capability::ReasoningReplay,
+        RequestField::ReasoningReplay,
+        "compatible request uses reasoning replay without a reviewed hosted mapping",
+    )?;
+
+    let generation = request.options().generation();
+    require_capability_mapping(
+        profile,
+        request,
+        generation.temperature_millionths().is_some(),
+        Capability::SamplingControls,
+        RequestField::Temperature,
+        "compatible request uses temperature without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        generation.top_p_millionths().is_some(),
+        Capability::SamplingControls,
+        RequestField::TopP,
+        "compatible request uses top-p without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        generation.seed().is_some(),
+        Capability::SamplingControls,
+        RequestField::Seed,
+        "compatible request uses seed without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        !generation.stop_sequences().is_empty(),
+        Capability::SamplingControls,
+        RequestField::StopSequences,
+        "compatible request uses stop sequences without a negotiated implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        request.negotiated().includes(Capability::UsageDetail),
+        Capability::UsageDetail,
+        RequestField::Usage,
+        "compatible request selects usage detail without an implemented mapping",
+    )?;
+    require_capability_mapping(
+        profile,
+        request,
+        request.options().persistence().store(),
+        Capability::StoredState,
+        RequestField::StoredState,
+        "compatible request selects provider storage without an implemented mapping",
+    )?;
+    if request.options().continuation().is_some()
+        && !profile.contract().supports(RequestField::Continuation)
+    {
+        return Err(error::invalid(
+            "compatible request continuation has no reviewed provider-side mapping",
+        ));
+    }
+    Ok(())
+}
+
+fn require_capability_mapping(
+    profile: &CompatibleProfile,
+    request: &ModelRequest,
+    used: bool,
+    capability: Capability,
+    field: RequestField,
+    detail: &'static str,
+) -> Result<(), ProviderCoreError> {
+    if used
+        && (!request.negotiated().includes(capability) || !profile.contract().supports(field))
+    {
+        return Err(error::invalid(detail));
     }
     Ok(())
 }

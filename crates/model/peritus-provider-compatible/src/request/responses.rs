@@ -19,8 +19,14 @@ pub(super) fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreErro
     wire.insert("model".to_owned(), string(request.model().as_str()));
     wire.insert("input".to_owned(), Value::Array(messages(request)?));
     wire.insert("stream".to_owned(), Value::Bool(true));
-    wire.insert("store".to_owned(), Value::Bool(false));
+    wire.insert("store".to_owned(), Value::Bool(request.options().persistence().store()));
     wire.insert("background".to_owned(), Value::Bool(false));
+    if let Some(continuation) = request.options().continuation() {
+        wire.insert(
+            "previous_response_id".to_owned(),
+            string(continuation.response_id().expose_for_wire()),
+        );
+    }
     wire.insert("max_output_tokens".to_owned(), Value::from(generation.max_output_tokens()));
     add_tools(&mut wire, request)?;
     wire.insert("parallel_tool_calls".to_owned(), Value::Bool(parallel(request)));

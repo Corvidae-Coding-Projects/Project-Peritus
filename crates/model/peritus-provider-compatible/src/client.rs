@@ -39,16 +39,6 @@ impl CompatibleClient {
         profile: CompatibleProfile,
         credentials: Arc<dyn CredentialSource>,
     ) -> Result<Self, ProviderCoreError> {
-        if profile
-            .provider_profile()
-            .capabilities()
-            .supports(peritus_model_protocol::Capability::ReasoningReplay)
-            && config.hosted_service().is_none()
-        {
-            return Err(crate::error::configuration(
-                "reasoning replay requires a named hosted contract",
-            ));
-        }
         let transport = ReqwestTransport::new(config.http_limits())?;
         Ok(Self::compose(config, profile, credentials, Arc::new(transport)))
     }

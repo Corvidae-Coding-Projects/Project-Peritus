@@ -1,8 +1,8 @@
 //! Separately validated Responses and Chat Completions compatibility contracts.
 
 use peritus_model_protocol::{
-    CancellationKind, Capability, CapabilityProvenance, CapabilityState, OutputLimitEnforcement,
-    ProviderProfile, ResumeKind, StateMode, WireDialect,
+    CancellationKind, Capability, CapabilityProvenance, OutputLimitEnforcement, ProviderProfile,
+    ResumeKind, StateMode, WireDialect,
 };
 use peritus_provider_core::ProviderCoreError;
 
@@ -31,6 +31,12 @@ pub enum RequestField {
     StopSequences,
     /// Final token-usage details.
     Usage,
+    /// Provider-side response storage.
+    StoredState,
+    /// Semantic continuation through a prior response identity.
+    Continuation,
+    /// Reviewed hosted reasoning-state replay.
+    ReasoningReplay,
 }
 
 impl RequestField {
@@ -46,6 +52,9 @@ impl RequestField {
             Self::Seed => 1 << 7,
             Self::StopSequences => 1 << 8,
             Self::Usage => 1 << 9,
+            Self::StoredState => 1 << 10,
+            Self::Continuation => 1 << 11,
+            Self::ReasoningReplay => 1 << 12,
         }
     }
 }
@@ -97,17 +106,17 @@ impl CompatibleContract {
             framing: StreamFraming::Sse,
             response_ids: ResponseIdSemantics::RequiredStable,
             create_replay: CreateReplayGuarantee::None,
-            fields: request_fields(profile, false),
+            fields: request_fields(profile, false, false),
         }
     }
 
-    const fn chat(profile: &ProviderProfile) -> Self {
+    const fn chat(profile: &ProviderProfile, hosted: bool) -> Self {
         Self {
             mapping: EventMapping::ChatCompletionsV1,
             framing: StreamFraming::Sse,
             response_ids: ResponseIdSemantics::RequiredStable,
             create_replay: CreateReplayGuarantee::None,
-            fields: request_fields(profile, true),
+            fields: request_fields(profile, true, hosted),
         }
     }
 
@@ -154,10 +163,10 @@ impl CompatibleProfile {
     ///
     /// # Errors
     ///
-    /// Rejects wrong dialects, discovery-only claims, unknown capabilities, unsupported features,
-    /// or provider-side retention/resume/cancellation guarantees.
+    /// Rejects wrong dialects, discovery-only claims, or lifecycle guarantees this contract cannot
+    /// implement. Capability-specific mappings are checked only when an invocation uses them.
     pub fn responses(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
-        validate(&provider, WireDialect::CompatibleResponses, false)?;
+        validate(&provider, WireDialect::CompatibleResponses)?;
         let contract = CompatibleContract::responses(&provider);
         Ok(Self { provider, contract })
     }
@@ -166,11 +175,11 @@ impl CompatibleProfile {
     ///
     /// # Errors
     ///
-    /// Rejects wrong dialects, discovery-only claims, unknown capabilities, unsupported features,
-    /// or provider-side retention/resume/cancellation guarantees.
+    /// Rejects wrong dialects, discovery-only claims, or lifecycle guarantees this contract cannot
+    /// implement. Capability-specific mappings are checked only when an invocation uses them.
     pub fn chat_completions(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
-        validate(&provider, WireDialect::CompatibleChatCompletions, false)?;
-        let contract = CompatibleContract::chat(&provider);
+        validate(&provider, WireDialect::CompatibleChatCompletions)?;
+        let contract = CompatibleContract::chat(&provider, false);
         Ok(Self { provider, contract })
     }
 
@@ -179,8 +188,8 @@ impl CompatibleProfile {
     /// # Errors
     /// Rejects unsupported features; effort controls are not implied by replay support.
     pub fn hosted_chat_completions(provider: ProviderProfile) -> Result<Self, ProviderCoreError> {
-        validate(&provider, WireDialect::CompatibleChatCompletions, true)?;
-        let contract = CompatibleContract::chat(&provider);
+        validate(&provider, WireDialect::CompatibleChatCompletions)?;
+        let contract = CompatibleContract::chat(&provider, true);
         Ok(Self { provider, contract })
     }
 
@@ -224,54 +233,34 @@ impl CompatibleProfile {
 fn validate(
     profile: &ProviderProfile,
     dialect: WireDialect,
-    allow_replay: bool,
 ) -> Result<(), ProviderCoreError> {
+    let lifecycle = match dialect {
+        WireDialect::CompatibleResponses => matches!(
+            (profile.state_mode(), profile.resume_kind()),
+            (StateMode::StatelessReplay, ResumeKind::Unsupported)
+                | (StateMode::ProviderStored, ResumeKind::SemanticContinuation)
+        ),
+        WireDialect::CompatibleChatCompletions => {
+            profile.state_mode() == StateMode::StatelessReplay
+                && profile.resume_kind() == ResumeKind::Unsupported
+        }
+        _ => false,
+    };
     if profile.dialect() != dialect
         || profile.provenance() == CapabilityProvenance::Discovered
         || profile.output_limit_enforcement() != OutputLimitEnforcement::ProviderEnforced
         || !profile.capabilities().supports(Capability::Streaming)
-        || profile.state_mode() != StateMode::StatelessReplay
-        || profile.resume_kind() != ResumeKind::Unsupported
+        || !lifecycle
         || profile.cancellation_kind() != CancellationKind::BestEffortLocalAbort
     {
         return Err(error::configuration(
             "compatible profile dialect, provenance, streaming, or lifecycle is not exact",
         ));
     }
-    for (capability, state) in profile.capabilities().iter() {
-        if state == CapabilityState::Unknown
-            || state == CapabilityState::Supported
-                && !supported_capability(capability)
-                && !(allow_replay && capability == Capability::ReasoningReplay)
-        {
-            return Err(error::configuration(
-                "compatible profile contains an unknown or unmapped capability",
-            ));
-        }
-    }
-    if profile.capabilities().supports(Capability::ParallelToolCalls)
-        && !profile.capabilities().supports(Capability::ToolCalls)
-    {
-        return Err(error::configuration("parallel compatible tools require mapped tool calls"));
-    }
     Ok(())
 }
 
-const fn supported_capability(capability: Capability) -> bool {
-    matches!(
-        capability,
-        Capability::Streaming
-            | Capability::ToolCalls
-            | Capability::ParallelToolCalls
-            | Capability::StrictStructuredOutput
-            | Capability::ImageInput
-            | Capability::UsageDetail
-            | Capability::RateLimitDetail
-            | Capability::SamplingControls
-    )
-}
-
-const fn request_fields(profile: &ProviderProfile, chat: bool) -> u32 {
+const fn request_fields(profile: &ProviderProfile, chat: bool, hosted: bool) -> u32 {
     let mut fields = RequestField::Messages.bit();
     let capabilities = profile.capabilities();
     if capabilities.supports(Capability::ToolCalls) {
@@ -294,6 +283,15 @@ const fn request_fields(profile: &ProviderProfile, chat: bool) -> u32 {
     }
     if capabilities.supports(Capability::UsageDetail) {
         fields |= RequestField::Usage.bit();
+    }
+    if !chat
+        && profile.state_mode() == StateMode::ProviderStored
+        && profile.resume_kind() == ResumeKind::SemanticContinuation
+    {
+        fields |= RequestField::StoredState.bit() | RequestField::Continuation.bit();
+    }
+    if hosted && capabilities.supports(Capability::ReasoningReplay) {
+        fields |= RequestField::ReasoningReplay.bit();
     }
     fields
 }
