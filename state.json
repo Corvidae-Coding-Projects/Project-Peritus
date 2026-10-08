@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4073,
-        "tip_oid": "858eeb38893ed6a928e802e3ccac120afb2b5db3",
-        "prefix_sha256": "43cfa87f14adda40108af9c5aa59621c69c6b5eee3b1acc4937a93cbb2ebbced"
+        "sequence": 4074,
+        "tip_oid": "d3252a83245230937a13d526220bc545a1ca510f",
+        "prefix_sha256": "3bd1df9f113fbb76f322f54c1d8d87a02ff7c7b7fdaa9adbf00633e1c2ca19bd"
       },
       "NWAR": {
         "sequence": 39,
@@ -4515,12 +4515,13 @@
       "display_id": 543,
       "title": "[L465] C5 exponential retry backoff can wrap to zero despite a positive minimum",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L465.\n\n- Evidence: `crates/model/peritus-model-protocol/src/retry.rs:192-197,208-217`.\n- Behavior: the exponential delay uses checked_shl with a shift already clamped to 63. checked_shl rejects an out-of-range shift count, but does not detect discarded high bits. Thus its unwrap_or(u64::MAX) does not protect arithmetic overflow in these allowed shifts. With base_delay_millis 100, attempt 63 or greater, no Retry-After and zero jitter, the shifted value is zero and the calculated delay is zero despite validation requiring a positive base.\n- Consequence: a caller permitting enough safe retries can lose all backoff and repeatedly resubmit immediately. This is a reachable source-level planner defect; currently audited production layers with smaller retry counts do not establish that the live session reached this case. Removing those count limits without fixing the arithmetic would expose it more broadly.\n- Repair direction: calculate exponential growth with saturating multiplication or an explicit overflow predicate, then apply the intended delay policy. Preserve nonzero scheduled waits and cancellation across long recovery sequences. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.672691105Z",
-      "updated_at": "2026-10-08T05:07:58.672218479Z",
+      "updated_at": "2026-10-08T05:09:44.873507442Z",
+      "closed_at": "2026-10-08T05:09:44.870689114Z",
       "labels": [
         "daily-driving-limiter"
       ],
