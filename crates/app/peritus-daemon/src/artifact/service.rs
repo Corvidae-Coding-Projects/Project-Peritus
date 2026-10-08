@@ -8,7 +8,7 @@ mod tests;
 use std::{
     collections::{BTreeMap, VecDeque},
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use peritus_app_protocol::{
@@ -17,7 +17,8 @@ use peritus_app_protocol::{
 };
 use peritus_artifact_store::{
     ArtifactCatalogCancellation, ArtifactDigest, ArtifactReadHandle, ArtifactStore,
-    ArtifactWriteHandle, EncryptionMetadata, FinalizedArtifact, MediaType, WriteRequest,
+    ArtifactWriteHandle, EncryptionMetadata, ErrorCode as ArtifactErrorCode, FinalizedArtifact,
+    MediaType, WriteRequest,
 };
 use peritus_journal::{ApplicationArtifactState, NewApplicationArtifact, SqliteJournal};
 use peritus_types::{ActorId, SessionId};
@@ -34,6 +35,8 @@ use error::{
 /// This is independent of application-command idempotency capacity. Completed and abandoned
 /// transfers release their slots.
 const PRODUCTION_ACTIVE_TRANSFERS: usize = 4_096;
+const ARTIFACT_CONTENTION_RETRY: Duration = Duration::from_millis(1);
+const ARTIFACT_STORAGE_PRESSURE_RETRY: Duration = Duration::from_millis(100);
 
 pub struct ArtifactPoll {
     pub(crate) payload: AppEventPayload,
@@ -173,11 +176,74 @@ impl ArtifactStoreOwnerQueue {
                 .owner
                 .lock()
                 .map_err(|_| corrupt("artifact store owner lock is poisoned"))?;
-            owner
-                .try_complete_write(&mut pending.writer, &pending.cancellation)
-                .map_err(store_error)
+            loop {
+                match owner.try_complete_write(&mut pending.writer, &pending.cancellation) {
+                    Ok(finalized) => break Ok(finalized),
+                    Err(failure)
+                        if matches!(
+                            failure.code(),
+                            ArtifactErrorCode::CatalogBusy | ArtifactErrorCode::CatalogLocked
+                        ) =>
+                    {
+                        wait_for_artifact_retry(
+                            &pending.cancellation,
+                            ARTIFACT_CONTENTION_RETRY,
+                            "artifact catalog contention wait was cancelled",
+                        )?;
+                    }
+                    Err(failure) if failure.code() == ArtifactErrorCode::StoragePressure => {
+                        match pending
+                            .cancellation
+                            .run(|| owner.collect_released_for_pressure())
+                        {
+                            Ok(()) => {}
+                            Err(collection)
+                                if collection.code() == ArtifactErrorCode::StoragePressure => {}
+                            Err(collection)
+                                if matches!(
+                                    collection.code(),
+                                    ArtifactErrorCode::CatalogBusy
+                                        | ArtifactErrorCode::CatalogLocked
+                                ) =>
+                            {
+                                wait_for_artifact_retry(
+                                    &pending.cancellation,
+                                    ARTIFACT_CONTENTION_RETRY,
+                                    "artifact catalog contention wait was cancelled",
+                                )?;
+                                continue;
+                            }
+                            Err(collection) => break Err(store_error(collection)),
+                        }
+                        wait_for_artifact_retry(
+                            &pending.cancellation,
+                            ARTIFACT_STORAGE_PRESSURE_RETRY,
+                            "artifact storage pressure wait was cancelled",
+                        )?;
+                    }
+                    Err(failure) => break Err(store_error(failure)),
+                }
+            }
         });
         CompletedArtifactFinalization { pending, result }
+    }
+}
+
+fn wait_for_artifact_retry(
+    cancellation: &ArtifactCatalogCancellation,
+    duration: Duration,
+    cancellation_detail: &'static str,
+) -> Result<(), DaemonError> {
+    let started = Instant::now();
+    loop {
+        if cancellation.is_cancelled() {
+            return Err(resource_limit(cancellation_detail));
+        }
+        let elapsed = started.elapsed();
+        if elapsed >= duration {
+            return Ok(());
+        }
+        std::thread::sleep((duration - elapsed).min(ARTIFACT_CONTENTION_RETRY));
     }
 }
 

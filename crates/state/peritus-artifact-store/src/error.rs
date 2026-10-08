@@ -38,6 +38,14 @@ pub enum ErrorCode {
     CatalogLocked,
     /// The owner explicitly cancelled its catalog contention wait.
     CatalogWaitCancelled,
+    /// `SQLite` denied access to the artifact catalog.
+    CatalogPermissionDenied,
+    /// The artifact catalog is read-only for the requested operation.
+    CatalogReadOnly,
+    /// The artifact catalog schema changed during the requested operation.
+    CatalogSchemaChanged,
+    /// `SQLite` reported malformed or non-database artifact catalog bytes.
+    CatalogIntegrity,
     /// A filesystem operation failed.
     Io,
 }
@@ -63,6 +71,10 @@ impl ErrorCode {
             Self::CatalogBusy => "artifact.catalog_busy",
             Self::CatalogLocked => "artifact.catalog_locked",
             Self::CatalogWaitCancelled => "artifact.catalog_wait_cancelled",
+            Self::CatalogPermissionDenied => "artifact.catalog_permission_denied",
+            Self::CatalogReadOnly => "artifact.catalog_read_only",
+            Self::CatalogSchemaChanged => "artifact.catalog_schema_changed",
+            Self::CatalogIntegrity => "artifact.catalog_integrity",
             Self::Io => "artifact.io",
         }
     }
@@ -204,6 +216,14 @@ pub enum CatalogFailure {
     Locked,
     /// `SQLite` reported `SQLITE_FULL`.
     StorageFull,
+    /// `SQLite` reported `SQLITE_PERM` or statement authorization denial.
+    PermissionDenied,
+    /// `SQLite` reported `SQLITE_READONLY`.
+    ReadOnly,
+    /// `SQLite` reported `SQLITE_SCHEMA`.
+    SchemaChanged,
+    /// `SQLite` reported a malformed database image or a non-database file.
+    Integrity,
     /// `SQLite` reported another catalog failure.
     Other,
 }

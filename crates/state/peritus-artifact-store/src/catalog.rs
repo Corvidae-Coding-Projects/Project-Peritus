@@ -1270,6 +1270,15 @@ pub(super) fn catalog_error(error: rusqlite::Error) -> ArtifactStoreError {
         Some(SqliteErrorCode::DatabaseBusy) => CatalogFailure::Busy,
         Some(SqliteErrorCode::DatabaseLocked) => CatalogFailure::Locked,
         Some(SqliteErrorCode::DiskFull) => CatalogFailure::StorageFull,
+        Some(
+            SqliteErrorCode::PermissionDenied
+            | SqliteErrorCode::AuthorizationForStatementDenied,
+        ) => CatalogFailure::PermissionDenied,
+        Some(SqliteErrorCode::ReadOnly) => CatalogFailure::ReadOnly,
+        Some(SqliteErrorCode::SchemaChanged) => CatalogFailure::SchemaChanged,
+        Some(SqliteErrorCode::DatabaseCorrupt | SqliteErrorCode::NotADatabase) => {
+            CatalogFailure::Integrity
+        }
         _ => CatalogFailure::Other,
     };
     let cancelled = crate::contention::active_wait_cancelled()
@@ -1281,6 +1290,18 @@ pub(super) fn catalog_error(error: rusqlite::Error) -> ArtifactStoreError {
             CatalogFailure::Busy => (ErrorCode::CatalogBusy, RecoveryClass::Retry),
             CatalogFailure::Locked => (ErrorCode::CatalogLocked, RecoveryClass::Retry),
             CatalogFailure::StorageFull => (ErrorCode::StoragePressure, RecoveryClass::Retry),
+            CatalogFailure::PermissionDenied => {
+                (ErrorCode::CatalogPermissionDenied, RecoveryClass::RecoverStore)
+            }
+            CatalogFailure::ReadOnly => {
+                (ErrorCode::CatalogReadOnly, RecoveryClass::RecoverStore)
+            }
+            CatalogFailure::SchemaChanged => {
+                (ErrorCode::CatalogSchemaChanged, RecoveryClass::RecoverStore)
+            }
+            CatalogFailure::Integrity => {
+                (ErrorCode::CatalogIntegrity, RecoveryClass::TerminalIntegrity)
+            }
             CatalogFailure::Other => (ErrorCode::Io, RecoveryClass::RecoverStore),
         }
     };
