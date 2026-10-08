@@ -177,6 +177,7 @@ fn parse_command_family(parser: &mut Parser) -> Result<Command, CliError> {
     let mut envelope = None;
     let mut payload = None;
     let mut key = None;
+    let mut receipt = None;
     let mut bind_expected_revision = true;
     while let Some(option) = parser.peek_utf8()? {
         match option {
@@ -198,6 +199,10 @@ fn parse_command_family(parser: &mut Parser) -> Result<Command, CliError> {
                 let value = parser.value_utf8("--idempotency-key")?.into_bytes();
                 set_once(&mut key, value, "--idempotency-key")?;
             }
+            "--receipt" => {
+                parser.pop();
+                set_once(&mut receipt, parser.value_path("--receipt")?, "--receipt")?;
+            }
             "--no-expected-revision" => {
                 parser.pop();
                 if !bind_expected_revision {
@@ -214,6 +219,7 @@ fn parse_command_family(parser: &mut Parser) -> Result<Command, CliError> {
         payload: required(payload, "--payload")?,
         idempotency_key: required(key, "--idempotency-key")?,
         bind_expected_revision,
+        receipt,
     }))
 }
 
@@ -224,6 +230,7 @@ fn parse_events(parser: &mut Parser) -> Result<Command, CliError> {
     let mut window = 64;
     let mut count = None;
     let mut snapshot_acceptable = false;
+    let mut receipt = None;
     while let Some(option) = parser.peek_utf8()? {
         match option {
             "--topic" => {
@@ -249,6 +256,10 @@ fn parse_events(parser: &mut Parser) -> Result<Command, CliError> {
                 }
                 snapshot_acceptable = true;
             }
+            "--receipt" => {
+                parser.pop();
+                set_once(&mut receipt, parser.value_path("--receipt")?, "--receipt")?;
+            }
             _ => return Err(CliError::usage(format!("unknown events watch option: {option}"))),
         }
     }
@@ -259,7 +270,14 @@ fn parse_events(parser: &mut Parser) -> Result<Command, CliError> {
     if topics.windows(2).any(|pair| pair[0] == pair[1]) {
         return Err(CliError::usage("--topic values must be unique"));
     }
-    Ok(Command::Events(EventArgs { topics, after, window, count, snapshot_acceptable }))
+    Ok(Command::Events(EventArgs {
+        topics,
+        after,
+        window,
+        count,
+        snapshot_acceptable,
+        receipt,
+    }))
 }
 
 fn parse_prompt(parser: &mut Parser) -> Result<Command, CliError> {

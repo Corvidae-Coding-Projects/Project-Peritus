@@ -32,9 +32,9 @@ COMMANDS:
   status
   shutdown [--wait]
   command submit --actor <ID> --envelope <FILE> --payload <FILE>
-                 --idempotency-key <KEY> [--no-expected-revision]
+                 --idempotency-key <KEY> [--no-expected-revision] [--receipt <FILE>]
   events watch --topic <TOPIC>... [--after <CURSOR>] [--window <N>]
-               [--count <N>] [--snapshot-acceptable]
+               [--count <N>] [--snapshot-acceptable] [--receipt <FILE>]
   artifact get --artifact <ID> --output <FILE> [--force]
   artifact put --artifact <ID> --input <FILE> --media-type <TYPE>
                [--chunk-size <BYTES>]
@@ -119,6 +119,7 @@ pub struct SubmitArgs {
     pub(crate) payload: PathBuf,
     pub(crate) idempotency_key: Vec<u8>,
     pub(crate) bind_expected_revision: bool,
+    pub(crate) receipt: Option<PathBuf>,
 }
 
 pub struct EventArgs {
@@ -127,6 +128,7 @@ pub struct EventArgs {
     pub(crate) window: u32,
     pub(crate) count: Option<u64>,
     pub(crate) snapshot_acceptable: bool,
+    pub(crate) receipt: Option<PathBuf>,
 }
 
 pub struct ArtifactGetArgs {

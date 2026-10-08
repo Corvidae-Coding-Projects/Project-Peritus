@@ -49,6 +49,14 @@ pub struct CliError {
     operation: &'static str,
     detail: String,
     source: Option<Box<dyn std::error::Error + Send + Sync>>,
+    remote: Option<RemoteError>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct RemoteError {
+    pub(crate) code: peritus_app_protocol::AppErrorCode,
+    pub(crate) retry: peritus_app_protocol::RetryDisposition,
+    pub(crate) subsystem: peritus_app_protocol::ResponsibleSubsystem,
 }
 
 impl CliError {
@@ -62,6 +70,7 @@ impl CliError {
 
     pub(crate) fn rejected(error: &AppProtocolError) -> Self {
         Self::new(ExitCategory::Rejected, "execute daemon request", error.actionable_message())
+            .with_remote(error)
     }
 
     pub(crate) fn remote_failure(operation: &'static str, detail: impl Into<String>) -> Self {
@@ -98,8 +107,12 @@ impl CliError {
         self.category
     }
 
+    pub(crate) const fn remote(&self) -> Option<RemoteError> {
+        self.remote
+    }
+
     fn new(category: ExitCategory, operation: &'static str, detail: impl Into<String>) -> Self {
-        Self { category, operation, detail: detail.into(), source: None }
+        Self { category, operation, detail: detail.into(), source: None, remote: None }
     }
 
     fn with_source(
@@ -108,7 +121,22 @@ impl CliError {
         detail: impl Into<String>,
         source: impl std::error::Error + Send + Sync + 'static,
     ) -> Self {
-        Self { category, operation, detail: detail.into(), source: Some(Box::new(source)) }
+        Self {
+            category,
+            operation,
+            detail: detail.into(),
+            source: Some(Box::new(source)),
+            remote: None,
+        }
+    }
+
+    fn with_remote(mut self, error: &AppProtocolError) -> Self {
+        self.remote = Some(RemoteError {
+            code: error.code(),
+            retry: error.retry(),
+            subsystem: error.subsystem(),
+        });
+        self
     }
 }
 

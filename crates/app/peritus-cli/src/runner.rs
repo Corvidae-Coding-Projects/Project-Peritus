@@ -318,11 +318,20 @@ async fn execute(cli: Cli) -> Result<(), CliError> {
 
 fn report_error(error: &CliError, json: bool) -> ExitCode {
     let payload = if json {
+        let remote = error.remote().map(|remote| {
+            serde_json::json!({
+                "code": remote.code.as_str(),
+                "code_tag": remote.code.tag(),
+                "retry": remote.retry.as_str(),
+                "subsystem": remote.subsystem.as_str(),
+            })
+        });
         serde_json::json!({
             "ok": false,
             "error": {
                 "category": error.category().as_str(),
                 "message": error.to_string(),
+                "remote": remote,
             }
         })
         .to_string()

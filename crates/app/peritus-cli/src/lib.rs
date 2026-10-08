@@ -12,6 +12,7 @@ pub(crate) mod operation;
 pub(crate) mod output;
 pub(crate) mod product_run;
 pub(crate) mod prompt;
+pub(crate) mod recovery;
 mod runner;
 pub(crate) mod terminal;
 

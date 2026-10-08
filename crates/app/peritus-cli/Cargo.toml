@@ -15,6 +15,7 @@ system-package = ["peritus-launcher/system-package"]
 
 [dependencies]
 base64.workspace = true
+fs4.workspace = true
 peritus-app-client = { version = "=0.0.5", path = "../peritus-app-client" }
 peritus-app-protocol = { version = "=0.0.5", path = "../peritus-app-protocol" }
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
@@ -24,11 +25,13 @@ peritus-run-settlement = { version = "=0.0.5", path = "../../orchestration/perit
 peritus-tools-shell = { version = "=0.0.5", path = "../../tools/peritus-tools-shell" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
+serde.workspace = true
 sha2.workspace = true
 tokio.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 peritus-provider-onboarding = { version = "=0.0.5", path = "../peritus-provider-onboarding" }
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
 
 [[bin]]
 name = "peritus"
