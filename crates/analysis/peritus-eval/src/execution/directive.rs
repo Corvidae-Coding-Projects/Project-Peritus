@@ -132,6 +132,11 @@ impl CandidateExecutionDirective {
     pub const fn execution(&self) -> &ExecutionBinding {
         &self.execution
     }
+    /// Optional caller-selected wall deadline for the candidate stage.
+    #[must_use]
+    pub const fn deadline_micros(&self) -> Option<u64> {
+        self.execution.deadline_micros()
+    }
 }
 
 /// Separately authorized evaluator-only directive.
@@ -217,6 +222,11 @@ impl EvaluatorExecutionDirective {
     #[must_use]
     pub const fn execution(&self) -> &ExecutionBinding {
         &self.execution
+    }
+    /// Optional caller-selected wall deadline for the evaluator stage.
+    #[must_use]
+    pub const fn deadline_micros(&self) -> Option<u64> {
+        self.execution.deadline_micros()
     }
 }
 

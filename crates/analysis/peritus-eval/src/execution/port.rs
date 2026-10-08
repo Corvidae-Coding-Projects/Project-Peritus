@@ -10,6 +10,10 @@ use crate::{
 };
 
 /// External owner for candidate and separately authorized evaluator execution.
+///
+/// Each directive carries the same explicit optional deadline. The port enforces `Some` using its
+/// owned process/watchdog mechanism; `None` means untimed operation. Deadline handling does not
+/// replace durable cancellation, process-tree ownership, teardown, or measured elapsed usage.
 pub trait RolloutExecutionPort {
     /// Runs only the candidate-visible stage.
     ///
@@ -49,7 +53,8 @@ impl CancellationProbe for NeverCancelled {
 /// Runs candidate then evaluator under the frozen isolation boundary.
 ///
 /// Adapter failures become explicit infrastructure outcomes; only a valid evaluator observation
-/// can become a task verdict. Cancellation is checked before each effect.
+/// can become a task verdict. Cancellation is checked before each effect. This runtime-neutral
+/// wrapper does not invent a watchdog or a finite deadline when the frozen binding is untimed.
 ///
 /// # Errors
 /// Rejects adapter observations that drift from the exact directive/profile bindings.

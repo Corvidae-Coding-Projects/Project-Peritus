@@ -103,7 +103,7 @@ pub struct ExecutionBinding {
     environment_digest: Sha256Digest,
     image_digest: Sha256Digest,
     resource_request: ResourceVector,
-    deadline_micros: u64,
+    deadline_micros: Option<u64>,
     concurrency: u16,
     require_restricted_isolation: bool,
     require_complete_teardown: bool,
@@ -114,7 +114,8 @@ impl ExecutionBinding {
     /// Creates complete checked execution requirements.
     ///
     /// # Errors
-    /// Rejects zero deadline/concurrency.
+    /// Rejects zero deadline/concurrency. Existing positive-deadline bindings retain their exact
+    /// canonical identity.
     #[allow(
         clippy::too_many_arguments,
         reason = "the immutable C2/C3 binding is intentionally complete"
@@ -130,11 +131,46 @@ impl ExecutionBinding {
         require_restricted_isolation: bool,
         require_complete_teardown: bool,
     ) -> Result<Self, EvaluationError> {
-        if deadline_micros == 0 || concurrency == 0 {
+        Self::new_with_optional_deadline(
+            sandbox_plan_digest,
+            backend_admission_digest,
+            environment_digest,
+            image_digest,
+            resource_request,
+            Some(deadline_micros),
+            concurrency,
+            require_restricted_isolation,
+            require_complete_teardown,
+        )
+    }
+
+    /// Creates checked execution requirements with an explicit optional wall deadline.
+    ///
+    /// `None` selects untimed operation. It is canonically distinct from every positive deadline
+    /// and does not install an implicit timeout in the execution wrapper.
+    ///
+    /// # Errors
+    /// Rejects an explicit zero deadline or zero concurrency.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the immutable C2/C3 binding is intentionally complete"
+    )]
+    pub fn new_with_optional_deadline(
+        sandbox_plan_digest: Sha256Digest,
+        backend_admission_digest: Sha256Digest,
+        environment_digest: Sha256Digest,
+        image_digest: Sha256Digest,
+        resource_request: ResourceVector,
+        deadline_micros: Option<u64>,
+        concurrency: u16,
+        require_restricted_isolation: bool,
+        require_complete_teardown: bool,
+    ) -> Result<Self, EvaluationError> {
+        if deadline_micros == Some(0) || concurrency == 0 {
             return Err(crate::invalid(
                 EvaluationErrorKind::Profile,
                 EvaluationOperation::FreezeProfile,
-                "execution deadline or concurrency is zero",
+                "execution deadline is explicitly zero or concurrency is zero",
             ));
         }
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
@@ -149,7 +185,7 @@ impl ExecutionBinding {
             writer.write_u16(entry.kind().tag()).map_err(codec)?;
             writer.write_u64(entry.quantity().get()).map_err(codec)?;
         }
-        writer.write_u64(deadline_micros).map_err(codec)?;
+        writer.write_u64(deadline_micros.unwrap_or(0)).map_err(codec)?;
         writer.write_u16(concurrency).map_err(codec)?;
         writer.write_bool(require_restricted_isolation).map_err(codec)?;
         writer.write_bool(require_complete_teardown).map_err(codec)?;
@@ -192,9 +228,11 @@ impl ExecutionBinding {
     pub const fn resource_request(&self) -> &ResourceVector {
         &self.resource_request
     }
-    /// Wall deadline in microseconds.
+    /// Optional caller-selected wall deadline in microseconds.
+    ///
+    /// `None` means the runtime operates without a synthetic wall stopping point.
     #[must_use]
-    pub const fn deadline_micros(&self) -> u64 {
+    pub const fn deadline_micros(&self) -> Option<u64> {
         self.deadline_micros
     }
     /// Maximum simultaneous rollouts.
