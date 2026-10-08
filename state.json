@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4017,
-        "tip_oid": "21d4df0b4bcd3862676d18e4c49e58c1f6fb06ab",
-        "prefix_sha256": "c9e0a7f21db753e5bf383d86b1d644a53ce28ed0b75d9484394d053218487679"
+        "sequence": 4018,
+        "tip_oid": "a6b8875dd0291df393f42ba37bf2117d4267a800",
+        "prefix_sha256": "616a6420f0116c49875ed11d09126e8975972e5b2fccff8b0bc573b3e381d49f"
       },
       "NWAR": {
         "sequence": 39,
@@ -22765,12 +22765,13 @@
       "display_id": 143,
       "title": "[L044] Any leave-alone path disables all unconfined commands",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L044.\n\n- `developer_tools/access_policy.rs:175-180` refuses run_command, command_start, and command_stdin whenever the live hard-constraint path set is nonempty, because the configured backend cannot confine process writes away from those paths. File writes to unrelated paths remain permitted.\n- `access_policy.rs:36-48,61-78` refreshes those constraints from ConversationView each tool call. Combined with L026's whole-workspace protection fallback on a control read failure, infrastructure failure can reach process refusal through this mechanism.\n- This preserves explicit authority but exposes a capability gap: an unrelated protected file prevents even a potentially observational command. Actual process sandbox enforcement and permission/review callers remain pending; removing authority safeguards is not proposed by this audit.\n- Lines 82-119 additionally infer opaque-file/hidden-identifier restrictions by lexical matching of transcript phrases; lines 122-211 enforce those restrictions. These inferred restrictions are separate from explicit durable constraints and may misclassify ordinary prose; no live false-positive reproduction has been run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.015780147Z",
-      "updated_at": "2026-10-08T03:30:00.079598114Z",
+      "updated_at": "2026-10-08T03:31:39.261981967Z",
+      "closed_at": "2026-10-08T03:31:39.259127812Z",
       "labels": [
         "daily-driving-limiter"
       ],
