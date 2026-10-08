@@ -4,6 +4,7 @@ use crate::{
     CancellationToken, ModelProvider, ProviderCanaryError, ProviderCoreError, ProviderRequirement,
     verify_live_provider,
 };
+use crate::qualification::{accepted_terminal, reduce_response, terminal_error};
 use core::fmt;
 use peritus_model_protocol::{
     BoundedText, CachePolicy, CanonicalJson, Capability, ContentBlock, GenerationConfig,
@@ -165,24 +166,12 @@ async fn drive(
     request: ModelRequest,
     cancellation: CancellationToken,
 ) -> Result<ResponseReducer, ProviderCanaryError> {
-    let mut reducer =
-        ResponseReducer::new(provider.profile().provider().clone(), ProtocolLimits::PRODUCTION);
-    let mut stream = provider.start(request, cancellation).await?;
-    while let Some(event) = stream.pull().await? {
-        reducer.push(event)?;
-        if let Some(terminal) = reducer.terminal() {
-            match terminal {
-                TerminalOutcome::Failed(failure) => {
-                    return Err(ProviderCanaryError::Failure(Box::new(failure.clone())));
-                }
-                TerminalOutcome::Succeeded { .. } | TerminalOutcome::RequiresAction { .. } => {
-                    return Ok(reducer);
-                }
-                _ => return Err(invalid("connection test ended without a usable completion")),
-            }
-        }
+    let reducer = reduce_response(provider, request, cancellation).await?;
+    if accepted_terminal(reducer.terminal()) {
+        Ok(reducer)
+    } else {
+        Err(terminal_error(reducer.terminal()))
     }
-    Err(invalid("connection test stream ended without a terminal response"))
 }
 
 fn assistant(reducer: &ResponseReducer) -> Result<Vec<ContentBlock>, ProviderCanaryError> {

@@ -7,10 +7,10 @@ use std::{collections::VecDeque, sync::Arc};
 
 use peritus_model_protocol::{
     CancellationKind, Capability, CapabilityMatrix, CapabilityProvenance, EventEnvelope,
-    FailureCategory, ItemId, ModelEvent, ModelFailure, ModelLimits, ModelName, ModelRequest,
-    OutcomeCertainty, OutputLimitEnforcement, ProtocolLimits, ProviderName, ProviderProfile,
-    RedactedDiagnostic, ResumeKind, Retryability, StateMode, StreamFragment, TransportPhase,
-    WireDialect,
+    FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelFailure, ModelLimits,
+    ModelName, ModelRequest, OutcomeCertainty, OutputLimitEnforcement, ProtocolLimits, ProviderName,
+    ProviderProfile, RedactedDiagnostic, ResumeKind, Retryability, StateMode, StreamFragment,
+    TransportPhase, WireDialect,
 };
 use peritus_provider_core::{
     BoxFuture, CancellationToken, ModelProvider, ModelStream, OwnedModelStream,
@@ -184,17 +184,35 @@ impl ModelProvider for CanaryProvider {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         let mut events = VecDeque::new();
+        events.push_back(envelope(
+            1,
+            ModelEvent::ResponseStarted { response_id: None, model: None },
+        ));
         if self.text {
+            let item_id = ItemId::new("canary-item".to_owned()).expect("item");
             events.push_back(envelope(
-                1,
+                2,
+                ModelEvent::ItemStarted {
+                    item_id: item_id.clone(),
+                    index: 0,
+                    kind: ItemKind::Message,
+                },
+            ));
+            events.push_back(envelope(
+                3,
                 ModelEvent::TextDelta {
-                    item_id: ItemId::new("canary-item".to_owned()).expect("item"),
+                    item_id: item_id.clone(),
                     fragment: StreamFragment::new(b"ok".to_vec(), ProtocolLimits::PRODUCTION)
                         .expect("fragment"),
                 },
             ));
+            events.push_back(envelope(4, ModelEvent::ItemCompleted(item_id)));
+            events.push_back(envelope(5, ModelEvent::Finish(FinishReason::Stop)));
+            events.push_back(envelope(6, ModelEvent::ResponseCompleted));
+        } else {
+            events.push_back(envelope(2, ModelEvent::Finish(FinishReason::Stop)));
+            events.push_back(envelope(3, ModelEvent::ResponseCompleted));
         }
-        events.push_back(envelope(2, ModelEvent::ResponseCompleted));
         Box::pin(async move { Ok(OwnedModelStream::new(CanaryEvents(events), cancellation)) })
     }
 }

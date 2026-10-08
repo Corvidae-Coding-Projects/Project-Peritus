@@ -1,6 +1,8 @@
 //! Stable provider terminal causes and phase-local recovery dispositions.
 
-use peritus_model_protocol::{FailureCategory, ModelFailure, OutcomeCertainty};
+use peritus_model_protocol::{
+    FailureCategory, FinishReason, ModelFailure, OutcomeCertainty, TerminalOutcome,
+};
 
 use crate::{ProviderCoreError, ProviderCoreErrorKind};
 
@@ -11,6 +13,8 @@ pub enum ProviderTerminalCause {
     EmptyResponse,
     /// Provider terminal payload or framing was malformed.
     MalformedResponse,
+    /// Provider explicitly ended before producing a complete response.
+    IncompleteResponse,
     /// Request remained above the provider context envelope after bounded compaction.
     ContextOverflow,
     /// Submission may have been accepted but no safe terminal truth is available.
@@ -64,6 +68,48 @@ impl ProviderTerminal {
     #[must_use]
     pub const fn empty_response() -> Self {
         Self::new(ProviderTerminalCause::EmptyResponse, ProviderRecoveryDisposition::RetrySameRoute)
+    }
+
+    /// Classifies malformed normalized response framing.
+    #[must_use]
+    pub const fn malformed_response() -> Self {
+        Self::new(
+            ProviderTerminalCause::MalformedResponse,
+            ProviderRecoveryDisposition::RetrySameRoute,
+        )
+    }
+
+    /// Classifies an explicit incomplete response without a more specific cause.
+    #[must_use]
+    pub const fn incomplete_response() -> Self {
+        Self::new(
+            ProviderTerminalCause::IncompleteResponse,
+            ProviderRecoveryDisposition::RetrySameRoute,
+        )
+    }
+
+    /// Classifies one normalized reducer terminal without discarding its finish cause.
+    #[must_use]
+    pub fn from_terminal_outcome(outcome: &TerminalOutcome) -> Self {
+        match outcome {
+            TerminalOutcome::Succeeded { .. } | TerminalOutcome::RequiresAction { .. } => {
+                Self::empty_response()
+            }
+            TerminalOutcome::Refused { .. } => Self::new(
+                ProviderTerminalCause::Refusal,
+                ProviderRecoveryDisposition::Stop,
+            ),
+            TerminalOutcome::Incomplete { reason: FinishReason::ContextLimit } => Self::new(
+                ProviderTerminalCause::ContextOverflow,
+                ProviderRecoveryDisposition::CompactThenRetry,
+            ),
+            TerminalOutcome::Incomplete { .. } => Self::incomplete_response(),
+            TerminalOutcome::Cancelled => Self::new(
+                ProviderTerminalCause::Cancelled,
+                ProviderRecoveryDisposition::Stop,
+            ),
+            TerminalOutcome::Failed(failure) => Self::from_model_failure(failure),
+        }
     }
 
     /// Classifies a provider-core setup or transport error.

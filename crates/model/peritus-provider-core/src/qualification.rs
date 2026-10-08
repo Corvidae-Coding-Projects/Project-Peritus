@@ -2,7 +2,10 @@
 
 use core::fmt;
 
-use peritus_model_protocol::{Capability, ModelEvent, ProviderProfile, WireDialect};
+use peritus_model_protocol::{
+    Capability, ModelRequest, ProtocolErrorKind, ProtocolLimits, ProviderProfile, ReducedItem,
+    ResponseReducer, TerminalOutcome, WireDialect,
+};
 mod canary;
 
 use crate::{CancellationToken, ModelProvider, ProviderCoreError, ProviderTerminal};
@@ -132,7 +135,11 @@ impl ProviderCanaryError {
     #[must_use]
     pub fn terminal(&self) -> Option<ProviderTerminal> {
         match self {
-            Self::Protocol(_) => None,
+            Self::Protocol(error) => Some(if error.kind() == ProtocolErrorKind::IncompleteStream {
+                ProviderTerminal::incomplete_response()
+            } else {
+                ProviderTerminal::malformed_response()
+            }),
             Self::Core(error) => Some(ProviderTerminal::from_core_error(error)),
             Self::Terminal(terminal) => Some(*terminal),
             Self::Failure(failure) => Some(ProviderTerminal::from_model_failure(failure)),
@@ -317,39 +324,62 @@ pub async fn verify_live_provider(
 ) -> Result<ProviderQualification, ProviderCanaryError> {
     validate_capabilities(provider.profile(), requirement)?;
     let request = canary::request(provider.profile())?;
-    let mut stream =
-        provider.start(request, cancellation).await.map_err(ProviderCanaryError::Core)?;
-    let mut text_observed = false;
-    loop {
-        let Some(envelope) = stream.pull().await.map_err(ProviderCanaryError::Core)? else {
-            return Err(ProviderCanaryError::Terminal(ProviderTerminal::empty_response()));
-        };
-        match envelope.event() {
-            ModelEvent::TextDelta { fragment, .. } => {
-                text_observed |= fragment.expose().iter().any(|byte| !byte.is_ascii_whitespace());
-            }
-            ModelEvent::ResponseCompleted if text_observed => {
-                return ProviderQualification::evaluate(
-                    provider.profile(),
-                    ProviderAvailability::LiveCanary,
-                    requirement,
-                )
-                .map_err(ProviderCanaryError::Core);
-            }
-            ModelEvent::ResponseCompleted => {
-                return Err(ProviderCanaryError::Terminal(ProviderTerminal::empty_response()));
-            }
-            ModelEvent::ResponseFailed(failure) => {
-                return Err(ProviderCanaryError::Failure(Box::new(failure.clone())));
-            }
-            ModelEvent::ResponseCancelled => {
-                return Err(ProviderCanaryError::Terminal(ProviderTerminal::from_core_error(
-                    &ProviderCoreError::cancelled("provider_canary"),
-                )));
-            }
-            _ => {}
+    let reducer = reduce_response(provider, request, cancellation).await?;
+    if !accepted_terminal(reducer.terminal()) {
+        return Err(terminal_error(reducer.terminal()));
+    }
+    if !usable_text(&reducer) {
+        return Err(ProviderCanaryError::Terminal(ProviderTerminal::empty_response()));
+    }
+    ProviderQualification::evaluate(
+        provider.profile(),
+        ProviderAvailability::LiveCanary,
+        requirement,
+    )
+    .map_err(ProviderCanaryError::Core)
+}
+
+pub(crate) async fn reduce_response(
+    provider: &dyn ModelProvider,
+    request: ModelRequest,
+    cancellation: CancellationToken,
+) -> Result<ResponseReducer, ProviderCanaryError> {
+    let provider_name = request.provider().clone();
+    let mut stream = provider.start(request, cancellation).await?;
+    let mut reducer = ResponseReducer::new(provider_name, ProtocolLimits::PRODUCTION);
+    while let Some(envelope) = stream.pull().await? {
+        reducer.push(envelope)?;
+        if reducer.terminal().is_some() {
+            return Ok(reducer);
         }
     }
+    reducer.finish_eof()?;
+    Ok(reducer)
+}
+
+pub(crate) const fn accepted_terminal(terminal: Option<&TerminalOutcome>) -> bool {
+    matches!(
+        terminal,
+        Some(TerminalOutcome::Succeeded { .. } | TerminalOutcome::RequiresAction { .. })
+    )
+}
+
+pub(crate) fn terminal_error(terminal: Option<&TerminalOutcome>) -> ProviderCanaryError {
+    match terminal {
+        Some(TerminalOutcome::Failed(failure)) => {
+            ProviderCanaryError::Failure(Box::new(failure.clone()))
+        }
+        Some(terminal) => {
+            ProviderCanaryError::Terminal(ProviderTerminal::from_terminal_outcome(terminal))
+        }
+        None => ProviderCanaryError::Terminal(ProviderTerminal::empty_response()),
+    }
+}
+
+fn usable_text(reducer: &ResponseReducer) -> bool {
+    reducer.completed_items().iter().any(
+        |item| matches!(item, ReducedItem::Text { text, .. } if !text.expose_for_wire().trim().is_empty()),
+    )
 }
 
 fn validate_capabilities(
