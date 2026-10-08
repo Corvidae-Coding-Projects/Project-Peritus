@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L051] Same-provider recovery has a three-invocation cap without material progress (#150)
 - [L467] Optional hosted metadata enrichment blocks return of an already fetched model catalog (#545)
 - [L630] Global projection replay rejects a changed revision or unsupported historic family before an unrelated fold can proceed (#684)
 - [L050] Retry attempts remain finite while elapsed retry horizon is absent (#149)
