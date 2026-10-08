@@ -26,6 +26,28 @@ pub fn native_target_started_record(
     protocol_digest(b"peritus-native-target-started-v1", manifest_digest, preparation_digest)
 }
 
+/// Computes the protected record proving the helper joined its workers after target completion.
+#[must_use]
+pub fn native_helper_quiesced_record(
+    manifest_digest: Sha256Digest,
+    preparation_digest: Sha256Digest,
+) -> Sha256Digest {
+    protocol_digest(b"peritus-native-helper-quiesced-v1", manifest_digest, preparation_digest)
+}
+
+/// Computes the protected record proving a helper worker failed and the worker set was joined.
+#[must_use]
+pub fn native_helper_worker_failed_record(
+    manifest_digest: Sha256Digest,
+    preparation_digest: Sha256Digest,
+) -> Sha256Digest {
+    protocol_digest(
+        b"peritus-native-helper-worker-failed-v1",
+        manifest_digest,
+        preparation_digest,
+    )
+}
+
 /// Computes the authority-bound record that introduces one suspended target for adoption.
 #[must_use]
 pub fn native_target_adoption_record(

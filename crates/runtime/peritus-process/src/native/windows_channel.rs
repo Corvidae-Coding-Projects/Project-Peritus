@@ -252,6 +252,11 @@ impl NativeWindowsHelperChannels {
     }
 
     pub(crate) fn resize(&self, size: TerminalSize) -> Result<(), ProcessError> {
+        if i16::try_from(size.columns()).is_err() || i16::try_from(size.rows()).is_err() {
+            return Err(terminal_control_error(
+                "Windows terminal resize exceeds native signed coordinates",
+            ));
+        }
         let mut frame = [0_u8; 5];
         frame[0] = 1;
         frame[1..3].copy_from_slice(&size.columns().to_le_bytes());
@@ -279,6 +284,25 @@ impl NativeWindowsHelperChannels {
                 Err(channel_error("Windows terminal control frame cannot be delivered"))
             }
         }
+    }
+
+    pub(crate) fn verify_helper_quiescence(
+        &self,
+        quiesced: Sha256Digest,
+        worker_failed: Sha256Digest,
+    ) -> Result<(), ProcessError> {
+        let mut record = [0_u8; Sha256Digest::LENGTH];
+        let mut reader = &*self.status_reader;
+        reader
+            .read_exact(&mut record)
+            .map_err(|_| worker_error("Windows helper quiescence record is missing"))?;
+        if record == quiesced.into_bytes() {
+            return Ok(());
+        }
+        if record == worker_failed.into_bytes() {
+            return Err(worker_error("Windows helper worker failed after target activation"));
+        }
+        Err(worker_error("Windows helper quiescence record is malformed"))
     }
 
     fn raw_containment_job(&self) -> Result<HANDLE, ProcessError> {
@@ -326,6 +350,13 @@ impl NativeWindowsHelperAttachment {
             .write_all(&record)
             .and_then(|()| self.status.flush())
             .map_err(|_| channel_error("Windows target-started record cannot be written"))
+    }
+
+    /// Publishes the digest-bound final worker/quiescence result before helper exit.
+    pub fn signal_quiescence(&mut self, record: [u8; 32]) -> Result<(), ProcessError> {
+        self.status
+            .write_all(&record)
+            .map_err(|_| channel_error("Windows helper quiescence record cannot be written"))
     }
 
     /// Publishes one suspended target birth identity before C2 permits it to resume.
@@ -513,6 +544,24 @@ const fn channel_error(detail: &'static str) -> ProcessError {
     ProcessError::new(
         ErrorCode::Spawn,
         ProcessOperation::Spawn,
+        RecoveryClass::CancelAndReap,
+        detail,
+    )
+}
+
+const fn terminal_control_error(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::InvalidInput,
+        ProcessOperation::Control,
+        RecoveryClass::CorrectRequest,
+        detail,
+    )
+}
+
+const fn worker_error(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::Supervisor,
+        ProcessOperation::Wait,
         RecoveryClass::CancelAndReap,
         detail,
     )

@@ -31,6 +31,7 @@ pub(crate) fn activate(
     inherited_job: std::fs::File,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Activation, WindowsError> {
+    handle::TerminalAttachment::validate(manifest.terminal())?;
     verify_helper_identity(manifest, should_continue)?;
     handle::verify_protected_handles(manifest)?;
     verify_network(manifest)?;
@@ -67,14 +68,14 @@ pub(crate) fn prepare_containment_job(
 
 pub(crate) fn execute(
     manifest: &HelperManifest,
-    activation: &Activation,
+    activation: &mut Activation,
 ) -> Result<i32, WindowsError> {
     launch::launch_and_wait(manifest, activation)
 }
 
 pub(crate) fn execute_with_channels(
     manifest: &HelperManifest,
-    activation: &Activation,
+    activation: &mut Activation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
 ) -> Result<i32, WindowsError> {
     launch::launch_and_wait_with_channels(manifest, activation, channels)

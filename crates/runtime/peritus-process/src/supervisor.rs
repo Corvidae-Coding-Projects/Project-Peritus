@@ -439,6 +439,16 @@ fn run_owner(
             value.preparation_digest(),
         ),
         #[cfg(windows)]
+        quiesced: crate::native_helper_quiesced_record(
+            value.manifest_digest(),
+            value.preparation_digest(),
+        ),
+        #[cfg(windows)]
+        worker_failed: crate::native_helper_worker_failed_record(
+            value.manifest_digest(),
+            value.preparation_digest(),
+        ),
+        #[cfg(windows)]
         adoption: value.windows_target_adoption_record(),
         protected_handles: value.protected_handles().to_vec(),
         #[cfg(windows)]

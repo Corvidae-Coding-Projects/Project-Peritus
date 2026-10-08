@@ -30,7 +30,7 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .and_then(|()| output.flush())
         .map_err(|_| ReservedHelperExit::Protocol)?;
     let manifest = read_manifest_while_owned(&helper_channels)?;
-    let activation = {
+    let mut activation = {
         let inherited_job = helper_channels
             .take_containment_job()
             .ok_or(ReservedHelperExit::JobOrResource)?;
@@ -49,8 +49,26 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .and_then(|()| output.flush())
         .map_err(|_| ReservedHelperExit::Protocol)?;
     drop(output);
-    crate::runner::execute_manifest_with_channels(&manifest, &activation, &mut helper_channels)
-        .map_err(|_| ReservedHelperExit::TargetCreate)
+    let result = crate::runner::execute_manifest_with_channels(
+        &manifest,
+        &mut activation,
+        &mut helper_channels,
+    );
+    let record = if result.is_ok() {
+        peritus_process::native_helper_quiesced_record(
+            manifest.digest(),
+            manifest.preparation_digest(),
+        )
+    } else {
+        peritus_process::native_helper_worker_failed_record(
+            manifest.digest(),
+            manifest.preparation_digest(),
+        )
+    };
+    helper_channels
+        .signal_quiescence(record.into_bytes())
+        .map_err(|_| ReservedHelperExit::TargetCreate)?;
+    result.map_err(|_| ReservedHelperExit::TargetCreate)
 }
 
 #[cfg(target_os = "windows")]

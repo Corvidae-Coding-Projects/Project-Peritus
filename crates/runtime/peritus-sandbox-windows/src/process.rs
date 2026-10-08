@@ -252,10 +252,14 @@ impl TerminalMapping {
         signals: bool,
         input: bool,
     ) -> Result<Self, WindowsError> {
-        if columns == 0 || rows == 0 {
+        if columns == 0
+            || rows == 0
+            || i16::try_from(columns).is_err()
+            || i16::try_from(rows).is_err()
+        {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
-                "ConPTY dimensions must be nonzero",
+                "ConPTY dimensions must be nonzero native signed coordinates",
             ));
         }
         Ok(Self::ConPty { columns, rows, resize, signals, input })
@@ -277,13 +281,13 @@ impl TerminalMapping {
                         "checked ConPTY requirements lack initial dimensions",
                     )
                 })?;
-                Ok(Self::ConPty {
-                    columns: size.columns(),
-                    rows: size.rows(),
-                    resize: terminal.resize() == ResizePermission::Allowed,
-                    signals: terminal.signals() == TerminalSignalPermission::Allowed,
+                Self::conpty(
+                    size.columns(),
+                    size.rows(),
+                    terminal.resize() == ResizePermission::Allowed,
+                    terminal.signals() == TerminalSignalPermission::Allowed,
                     input,
-                })
+                )
             }
         }
     }

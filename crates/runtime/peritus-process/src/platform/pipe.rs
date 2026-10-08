@@ -85,6 +85,10 @@ pub(super) fn launch(
         .as_ref()
         .and_then(|value| value.windows_channels.clone());
     #[cfg(windows)]
+    let windows_completion = handshake
+        .as_ref()
+        .map(|value| (value.quiesced, value.worker_failed));
+    #[cfg(windows)]
     let status_reader = windows_channels
         .as_ref()
         .map(crate::NativeWindowsHelperChannels::status_reader)
@@ -243,6 +247,12 @@ pub(super) fn launch(
         #[cfg(windows)]
         windows_channels,
         #[cfg(windows)]
+        windows_completion: if matches!(handshake_status, NativeHandshakeStatus::Complete) {
+            windows_completion
+        } else {
+            None
+        },
+        #[cfg(windows)]
         windows_terminal: matches!(plan.io_mode(), crate::IoMode::Pty(_)),
     });
     Ok(PlatformLaunch::new(process, handshake_status))
@@ -264,6 +274,8 @@ struct PipeProcess {
     job_reaped: bool,
     #[cfg(windows)]
     windows_channels: Option<crate::NativeWindowsHelperChannels>,
+    #[cfg(windows)]
+    windows_completion: Option<(peritus_types::Sha256Digest, peritus_types::Sha256Digest)>,
     #[cfg(windows)]
     windows_terminal: bool,
 }
@@ -289,6 +301,18 @@ impl PlatformProcess for PipeProcess {
             .ok_or_else(|| tree_error("pipe process is already being reaped"))?;
         #[cfg(windows)]
         let status = try_wait_windows_root(&mut **child)?;
+        #[cfg(windows)]
+        if status.is_some()
+            && let Some((quiesced, worker_failed)) = self.windows_completion
+        {
+            if !self.termination_requested {
+                self.windows_channels
+                    .as_ref()
+                    .ok_or_else(|| tree_error("Windows helper quiescence channel is unavailable"))?
+                    .verify_helper_quiescence(quiesced, worker_failed)?;
+            }
+            self.windows_completion = None;
+        }
         Ok(status.map(convert_status))
     }
 

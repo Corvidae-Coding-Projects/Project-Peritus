@@ -33,7 +33,8 @@ pub use crate::native::{
     NativePoll, NativeProcessProbe, NativeProtectedHandle, NativeRecoveryPhase,
     NativeSandboxBackend, NativeSandboxSession, NativeSessionRecovery,
     NativeWindowsContainmentIdentity, NATIVE_MANIFEST_FRAME_BYTES, NATIVE_MANIFEST_STREAM_MARKER,
-    native_activation_record, native_ready_record,
+    native_activation_record, native_helper_quiesced_record,
+    native_helper_worker_failed_record, native_ready_record,
     native_observation_prefix_digest, native_observation_producer_binding,
     native_target_adoption_record, native_target_exec_failed_record, native_target_started_record,
 };

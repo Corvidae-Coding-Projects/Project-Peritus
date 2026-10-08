@@ -12,7 +12,8 @@ mod windows_channel;
 pub use probe::NativeProcessProbe;
 pub use protected_handle::NativeProtectedHandle;
 pub use protocol::{
-    native_activation_record, native_ready_record, native_target_adoption_record,
+    native_activation_record, native_helper_quiesced_record,
+    native_helper_worker_failed_record, native_ready_record, native_target_adoption_record,
     native_target_exec_failed_record, native_target_started_record,
 };
 pub use observation::{

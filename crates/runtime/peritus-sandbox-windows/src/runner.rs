@@ -231,18 +231,18 @@ pub(crate) fn activate_manifest_while(
 #[cfg(target_os = "windows")]
 pub fn execute_manifest(
     manifest: &HelperManifest,
-    activation: &WindowsActivation,
+    activation: &mut WindowsActivation,
 ) -> Result<i32, WindowsError> {
-    crate::native::execute(manifest, &activation.inner)
+    crate::native::execute(manifest, &mut activation.inner)
 }
 
 #[cfg(target_os = "windows")]
 pub(crate) fn execute_manifest_with_channels(
     manifest: &HelperManifest,
-    activation: &WindowsActivation,
+    activation: &mut WindowsActivation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
 ) -> Result<i32, WindowsError> {
-    crate::native::execute_with_channels(manifest, &activation.inner, channels)
+    crate::native::execute_with_channels(manifest, &mut activation.inner, channels)
 }
 
 /// Returns strict unsupported behavior outside Windows.
@@ -264,7 +264,7 @@ pub fn activate_manifest(_manifest: &HelperManifest) -> Result<WindowsActivation
 #[cfg(not(target_os = "windows"))]
 pub fn execute_manifest(
     _manifest: &HelperManifest,
-    _activation: &WindowsActivation,
+    _activation: &mut WindowsActivation,
 ) -> Result<i32, WindowsError> {
     Err(crate::error::unsupported(
         WindowsOperation::Activate,

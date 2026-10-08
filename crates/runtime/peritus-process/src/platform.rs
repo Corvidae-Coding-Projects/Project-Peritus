@@ -107,6 +107,10 @@ pub(crate) struct NativeHandshake {
     #[cfg(windows)]
     pub(crate) started: Sha256Digest,
     #[cfg(windows)]
+    pub(crate) quiesced: Sha256Digest,
+    #[cfg(windows)]
+    pub(crate) worker_failed: Sha256Digest,
+    #[cfg(windows)]
     pub(crate) adoption: Option<Sha256Digest>,
     pub(crate) protected_handles: Vec<NativeProtectedHandle>,
     #[cfg(windows)]

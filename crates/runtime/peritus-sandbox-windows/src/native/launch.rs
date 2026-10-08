@@ -5,13 +5,13 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 
 use windows_sys::Win32::{
-    Foundation::{CloseHandle, FILETIME, HANDLE, WAIT_OBJECT_0},
+    Foundation::{CloseHandle, FILETIME, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT},
     System::{
         Console::{GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE},
         JobObjects::AssignProcessToJobObject,
         Threading::{
             CREATE_NO_WINDOW, CREATE_SUSPENDED, CREATE_UNICODE_ENVIRONMENT, CreateProcessAsUserW,
-            EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, GetProcessTimes, INFINITE,
+            EXTENDED_STARTUPINFO_PRESENT, GetExitCodeProcess, GetProcessTimes,
             PROCESS_INFORMATION, ResumeThread, STARTF_USESTDHANDLES, STARTUPINFOEXW, TerminateProcess,
             WaitForSingleObject,
         },
@@ -28,14 +28,14 @@ use super::{Activation, handle::AttributeList};
 
 pub(super) fn launch_and_wait(
     manifest: &HelperManifest,
-    activation: &Activation,
+    activation: &mut Activation,
 ) -> Result<i32, WindowsError> {
     launch_and_wait_inner(manifest, activation, None)
 }
 
 pub(super) fn launch_and_wait_with_channels(
     manifest: &HelperManifest,
-    activation: &Activation,
+    activation: &mut Activation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
 ) -> Result<i32, WindowsError> {
     launch_and_wait_inner(manifest, activation, Some(channels))
@@ -43,7 +43,7 @@ pub(super) fn launch_and_wait_with_channels(
 
 fn launch_and_wait_inner(
     manifest: &HelperManifest,
-    activation: &Activation,
+    activation: &mut Activation,
     mut channels: Option<&mut peritus_process::NativeWindowsHelperAttachment>,
 ) -> Result<i32, WindowsError> {
     validate_native_admission(manifest, activation.secrets.environment())?;
@@ -118,34 +118,50 @@ fn launch_and_wait_inner(
         .signal_target_adoption(adoption.into_bytes(), target)
         .and_then(|()| channels.await_target_adoption())
         .map_err(|_| launch_error("C2 could not adopt the suspended Windows target"))?;
-    if let Some(control) = channels.take_control_reader() {
-        activation.terminal.start_io(control)?;
-    }
-    // SAFETY: the primary thread handle is live and has not been resumed.
-    if unsafe { ResumeThread(thread_handle.raw()) } == u32::MAX {
-        // SAFETY: termination is confined to the owned target.
+    let control = channels
+        .take_control_reader()
+        .ok_or_else(|| launch_error("Windows terminal control ownership is unavailable"))?;
+    activation.terminal.start_io(control)?;
+    let execution = (|| {
+        // SAFETY: the primary thread handle is live and has not been resumed.
+        if unsafe { ResumeThread(thread_handle.raw()) } == u32::MAX {
+            return Err(launch_error("assigned target primary thread cannot be resumed"));
+        }
+        let record = peritus_process::native_target_started_record(
+            manifest.digest(),
+            manifest.preparation_digest(),
+        );
+        channels
+            .signal_started(record.into_bytes())
+            .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
+        loop {
+            // This is a completion poll, not a lifetime deadline. It keeps worker failure visible
+            // while retaining the target process handle as the sole completion authority.
+            match unsafe { WaitForSingleObject(process_handle.raw(), 10) } {
+                WAIT_OBJECT_0 => break,
+                WAIT_TIMEOUT => activation.terminal.poll_io()?,
+                _ => return Err(launch_error("owned target completion cannot be observed")),
+            }
+        }
+        activation.terminal.poll_io()?;
+        let mut code = 0_u32;
+        // SAFETY: the completed process handle and exit-code storage are valid.
+        if unsafe { GetExitCodeProcess(process_handle.raw(), &raw mut code) } == 0 {
+            return Err(launch_error("owned target exit status cannot be read"));
+        }
+        process_handle.disarm();
+        Ok(i32::try_from(code).unwrap_or(i32::MAX))
+    })();
+    if execution.is_err() {
+        // SAFETY: termination is confined to the exact retained target before worker joins.
         unsafe { TerminateProcess(process_handle.raw(), 127) };
-        return Err(launch_error("assigned target primary thread cannot be resumed"));
     }
-    let record = peritus_process::native_target_started_record(
-        manifest.digest(),
-        manifest.preparation_digest(),
-    );
-    channels
-        .signal_started(record.into_bytes())
-        .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
-    // SAFETY: the process handle remains live until the wait finishes.
-    if unsafe { WaitForSingleObject(process_handle.raw(), INFINITE) } != WAIT_OBJECT_0 {
-        return Err(launch_error("owned target completion cannot be observed"));
-    }
-    let mut code = 0_u32;
-    // SAFETY: the completed process handle and exit-code storage are valid.
-    if unsafe { GetExitCodeProcess(process_handle.raw(), &raw mut code) } == 0 {
-        return Err(launch_error("owned target exit status cannot be read"));
-    }
-    process_handle.disarm();
+    let workers = activation.terminal.finish_io();
     drop(attributes);
-    Ok(i32::try_from(code).unwrap_or(i32::MAX))
+    match (execution, workers) {
+        (Err(error), _) | (Ok(_), Err(error)) => Err(error),
+        (Ok(code), Ok(())) => Ok(code),
+    }
 }
 
 struct OwnedHandle {
