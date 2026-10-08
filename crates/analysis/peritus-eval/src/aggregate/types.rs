@@ -6,9 +6,9 @@ use peritus_scheduler::WorkId;
 use peritus_types::{ActorId, EvidenceId, Sha256Digest};
 
 use crate::{
-    EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
+    DatasetDigest, EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
     EvaluationRecovery, EvaluationReportId, EvaluationRetryPolicy, PlanDigest, ProfileDigest,
-    RolloutId, RolloutOutcome, RolloutRecord,
+    ResultDigest, RolloutId, RolloutOutcome, RolloutRecord,
 };
 
 const RETRY_INTENT_DOMAIN: &[u8] = b"peritus.evaluation.retry-intent.v1\0";
@@ -686,6 +686,92 @@ pub struct ReportRecord {
     payload_digest: Sha256Digest,
     artifact: ArtifactDigest,
     size: u64,
+}
+
+/// Complete semantic and artifact contract accepted for one report completion.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AnalysisReportBinding {
+    report: ReportRecord,
+    dataset_digest: DatasetDigest,
+    profile_digest: ProfileDigest,
+    plan_id: EvaluationPlanId,
+    plan_digest: PlanDigest,
+    analysis_digest: ResultDigest,
+    analysis_artifact: ArtifactDigest,
+    analysis_artifact_bytes: u64,
+}
+
+impl AnalysisReportBinding {
+    /// Creates one complete nonempty analysis-to-report contract.
+    ///
+    /// # Errors
+    /// Rejects a zero-length analysis artifact.
+    #[allow(clippy::too_many_arguments, reason = "every immutable report binding stays explicit")]
+    pub const fn new(
+        report: ReportRecord,
+        dataset_digest: DatasetDigest,
+        profile_digest: ProfileDigest,
+        plan_id: EvaluationPlanId,
+        plan_digest: PlanDigest,
+        analysis_digest: ResultDigest,
+        analysis_artifact: ArtifactDigest,
+        analysis_artifact_bytes: u64,
+    ) -> Result<Self, EvaluationError> {
+        if analysis_artifact_bytes == 0 {
+            Err(invalid("analysis-to-report artifact size is zero"))
+        } else {
+            Ok(Self {
+                report,
+                dataset_digest,
+                profile_digest,
+                plan_id,
+                plan_digest,
+                analysis_digest,
+                analysis_artifact,
+                analysis_artifact_bytes,
+            })
+        }
+    }
+    /// Canonical report artifact record.
+    #[must_use]
+    pub const fn report(self) -> ReportRecord {
+        self.report
+    }
+    /// Frozen dataset used by the analysis and report.
+    #[must_use]
+    pub const fn dataset_digest(self) -> DatasetDigest {
+        self.dataset_digest
+    }
+    /// Frozen profile used by the analysis and report.
+    #[must_use]
+    pub const fn profile_digest(self) -> ProfileDigest {
+        self.profile_digest
+    }
+    /// Complete plan used by the analysis and report.
+    #[must_use]
+    pub const fn plan_id(self) -> EvaluationPlanId {
+        self.plan_id
+    }
+    /// Complete plan digest used by the analysis and report.
+    #[must_use]
+    pub const fn plan_digest(self) -> PlanDigest {
+        self.plan_digest
+    }
+    /// Semantic digest of the complete analysis.
+    #[must_use]
+    pub const fn analysis_digest(self) -> ResultDigest {
+        self.analysis_digest
+    }
+    /// Finalized canonical analysis artifact.
+    #[must_use]
+    pub const fn analysis_artifact(self) -> ArtifactDigest {
+        self.analysis_artifact
+    }
+    /// Exact canonical analysis artifact length.
+    #[must_use]
+    pub const fn analysis_artifact_bytes(self) -> u64 {
+        self.analysis_artifact_bytes
+    }
 }
 
 impl ReportRecord {

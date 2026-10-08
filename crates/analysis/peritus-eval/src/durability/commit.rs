@@ -267,6 +267,10 @@ fn transition_outbox(
             let directive = PublicationDirective::new(command.campaign_id(), *report);
             Ok(vec![directive.outbox_draft()?])
         }
+        EvaluationCommandKind::CompleteReportWithBinding { binding } => {
+            let directive = PublicationDirective::new(command.campaign_id(), binding.report());
+            Ok(vec![directive.outbox_draft()?])
+        }
         _ => {
             // Cancellation reuses the rollout's one outstanding schedule/execution claim. Emitting
             // a second directive would leave that original claim unaccounted.
@@ -308,6 +312,10 @@ fn artifact_dependencies(kind: &EvaluationEventKind) -> Vec<ArtifactDependency> 
         EvaluationCommandKind::CompleteReport { report } => {
             vec![ArtifactDependency::new(report.artifact().sha256())]
         }
+        EvaluationCommandKind::CompleteReportWithBinding { binding } => vec![
+            ArtifactDependency::new(binding.analysis_artifact().sha256()),
+            ArtifactDependency::new(binding.report().artifact().sha256()),
+        ],
         EvaluationCommandKind::RecordAnalysisSafePoint { safe_point }
         | EvaluationCommandKind::SettleAnalysisCancellation { safe_point } => {
             vec![ArtifactDependency::new(safe_point.artifact().sha256())]

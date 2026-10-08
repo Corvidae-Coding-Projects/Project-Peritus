@@ -29,6 +29,7 @@ pub fn decide(
         sequence,
         command.event_id(),
         command.kind(),
+        false,
     )?;
     state.refresh_digest()?;
     let event = EvaluationEvent::new(
@@ -76,6 +77,7 @@ pub fn apply_event(
         event.sequence(),
         event.id(),
         kind,
+        true,
     )?;
     state.refresh_digest()?;
     if state.state_digest() != event.successor_state_digest() {
@@ -142,6 +144,7 @@ fn apply_kind(
     sequence: u64,
     event_id: peritus_types::EventId,
     kind: &EvaluationCommandKind,
+    replaying_legacy: bool,
 ) -> Result<EvaluationState, EvaluationError> {
     let creation = match kind {
         EvaluationCommandKind::CreateCampaign {
@@ -471,19 +474,52 @@ fn apply_kind(
         }
         EvaluationCommandKind::CompleteAnalysis { analysis_digest, artifact, artifact_bytes } => {
             require_phase(&state, &[EvaluationPhase::Analyzing])?;
-            if state.analysis_digest.is_some() || *artifact_bytes == 0 {
-                return Err(binding("analysis result already exists or has zero bytes"));
+            if state.analysis_digest.is_some()
+                || *artifact_bytes == 0
+                || (!replaying_legacy && artifact.sha256() != analysis_digest.digest())
+            {
+                return Err(binding(
+                    "analysis result already exists or its semantic artifact binding differs",
+                ));
             }
             state.analysis_digest = Some(*analysis_digest);
             state.analysis_artifact = Some(*artifact);
             state.analysis_artifact_bytes = Some(*artifact_bytes);
         }
         EvaluationCommandKind::CompleteReport { report } => {
+            if !replaying_legacy {
+                return Err(binding(
+                    "new report completion requires the complete analysis/report binding",
+                ));
+            }
             require_phase(&state, &[EvaluationPhase::Analyzing])?;
             if state.analysis_digest.is_none() || state.report.is_some() {
                 return Err(binding("report completion requires exactly one completed analysis"));
             }
             state.report = Some(*report);
+            state.phase = EvaluationPhase::ReportReady;
+        }
+        EvaluationCommandKind::CompleteReportWithBinding { binding: contract } => {
+            require_phase(&state, &[EvaluationPhase::Analyzing])?;
+            let plan = state
+                .plan
+                .ok_or_else(|| binding("report completion has no complete plan"))?;
+            if state.report.is_some()
+                || state.dataset_digest != contract.dataset_digest()
+                || state.profile_digest != contract.profile_digest()
+                || plan.id() != contract.plan_id()
+                || plan.digest() != contract.plan_digest()
+                || state.analysis_digest != Some(contract.analysis_digest())
+                || state.analysis_artifact != Some(contract.analysis_artifact())
+                || state.analysis_artifact_bytes != Some(contract.analysis_artifact_bytes())
+                || contract.analysis_artifact().sha256()
+                    != contract.analysis_digest().digest()
+            {
+                return Err(binding(
+                    "report completion differs from its dataset, profile, plan, or analysis",
+                ));
+            }
+            state.report = Some(contract.report());
             state.phase = EvaluationPhase::ReportReady;
         }
         EvaluationCommandKind::RecordPublication { publication } => {
@@ -750,6 +786,17 @@ pub(crate) fn encode_kind(
         EvaluationCommandKind::CompleteReport { report } => {
             writer.write_u8(13).map_err(codec)?;
             encode_report(writer, *report)?;
+        }
+        EvaluationCommandKind::CompleteReportWithBinding { binding } => {
+            writer.write_u8(25).map_err(codec)?;
+            encode_report(writer, binding.report())?;
+            writer.write_fixed(binding.dataset_digest().as_bytes()).map_err(codec)?;
+            writer.write_fixed(binding.profile_digest().as_bytes()).map_err(codec)?;
+            writer.write_fixed(binding.plan_id().as_bytes()).map_err(codec)?;
+            writer.write_fixed(binding.plan_digest().as_bytes()).map_err(codec)?;
+            writer.write_fixed(binding.analysis_digest().as_bytes()).map_err(codec)?;
+            writer.write_fixed(binding.analysis_artifact().as_bytes()).map_err(codec)?;
+            writer.write_u64(binding.analysis_artifact_bytes()).map_err(codec)?;
         }
         EvaluationCommandKind::RecordPublication { publication } => {
             writer.write_u8(14).map_err(codec)?;

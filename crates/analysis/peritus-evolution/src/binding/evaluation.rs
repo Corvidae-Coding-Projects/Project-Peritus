@@ -5,4 +5,4 @@ mod evidence;
 
 pub(crate) use analysis::reason_tag;
 pub use analysis::{EvaluationAnalysisSnapshot, EvaluationMetric, TaskPassAtKSnapshot};
-pub use evidence::PublishedEvaluationEvidence;
+pub use evidence::{PublishedEvaluationEvidence, ReconciledEvaluationSuccessor};

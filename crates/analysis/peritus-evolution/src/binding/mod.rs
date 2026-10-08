@@ -9,7 +9,8 @@ mod review;
 pub use diagnosis::{DiagnosisCitation, PublishedDebuggerEvidence};
 pub(crate) use evaluation::reason_tag;
 pub use evaluation::{
-    EvaluationAnalysisSnapshot, EvaluationMetric, PublishedEvaluationEvidence, TaskPassAtKSnapshot,
+    EvaluationAnalysisSnapshot, EvaluationMetric, PublishedEvaluationEvidence,
+    ReconciledEvaluationSuccessor, TaskPassAtKSnapshot,
 };
 pub use policy::{Objective, PromotionPolicy, PromotionPolicyBinding, PromotionThresholds};
 pub use production::{InstalledSnapshotBinding, ProductionHarnessBinding};

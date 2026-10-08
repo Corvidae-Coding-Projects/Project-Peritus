@@ -7,9 +7,10 @@ use peritus_journal::SqliteJournal;
 use peritus_types::{EventId, Sha256Digest};
 
 use crate::{
-    EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationErrorKind,
-    EvaluationOperation, EvaluationPhase, EvaluationRecovery, EvaluationState, ReportRecord,
-    ValidatedEvaluationReport, commit_evaluation_transition, decide,
+    AnalysisReportBinding, EvaluationCommand, EvaluationCommandKind, EvaluationError,
+    EvaluationErrorKind, EvaluationOperation, EvaluationPhase, EvaluationRecovery,
+    EvaluationState, ReportRecord, ValidatedEvaluationReport, commit_evaluation_transition,
+    decide,
 };
 
 use super::{CommittedEvaluationTransition, TransitionIds, recover_ordinary_operation};
@@ -122,10 +123,8 @@ pub fn commit_report_ready(
     staged: FinalizedEvaluationArtifact,
     ids: TransitionIds,
 ) -> Result<CommittedEvaluationTransition, EvaluationError> {
-    if report.report().campaign_id() != state.campaign_id()
-        || report.report().profile_digest() != state.profile_digest()
-        || state.analysis_digest() != Some(report.report().analysis().digest())
-        || staged.report_id() != report.id()
+    validate_analysis_report_contract(artifact_store, state, report)?;
+    if staged.report_id() != report.id()
         || staged.payload_digest() != report.digest()
         || staged.artifact_digest().sha256() != peritus_codec::sha256(report.bytes())
         || staged.size()
@@ -137,7 +136,24 @@ pub fn commit_report_ready(
     artifact_store.verify(staged.artifact_digest()).map_err(artifact_owner)?;
     let record =
         ReportRecord::new(report.id(), report.digest(), staged.artifact_digest(), staged.size())?;
-    let kind = EvaluationCommandKind::CompleteReport { report: record };
+    let plan = state
+        .plan()
+        .ok_or_else(|| binding("report commit state has no complete plan"))?;
+    let contract = AnalysisReportBinding::new(
+        record,
+        report.report().dataset_digest(),
+        report.report().profile_digest(),
+        plan.id(),
+        plan.digest(),
+        report.report().analysis().digest(),
+        state
+            .analysis_artifact()
+            .ok_or_else(|| binding("report commit state has no analysis artifact"))?,
+        state
+            .analysis_artifact_bytes()
+            .ok_or_else(|| binding("report commit state has no analysis artifact size"))?,
+    )?;
+    let kind = EvaluationCommandKind::CompleteReportWithBinding { binding: contract };
     if let Some(operation) =
         recover_ordinary_operation(journal, state.campaign_id(), ids, &kind)?
     {
@@ -166,6 +182,44 @@ pub fn commit_report_ready(
     let transition = decide(Some(state), &command)?;
     let operation = commit_evaluation_transition(journal, &command, &transition)?;
     Ok(CommittedEvaluationTransition::new(operation))
+}
+
+pub(crate) fn validate_analysis_report_contract(
+    artifact_store: &ArtifactStore,
+    state: &EvaluationState,
+    report: &ValidatedEvaluationReport,
+) -> Result<(), EvaluationError> {
+    let semantic = report.report();
+    let plan = state
+        .plan()
+        .ok_or_else(|| binding("evaluation report has no complete durable plan"))?;
+    let analysis_digest = state
+        .analysis_digest()
+        .ok_or_else(|| binding("evaluation report has no complete durable analysis"))?;
+    let analysis_artifact = state
+        .analysis_artifact()
+        .ok_or_else(|| binding("evaluation report has no durable analysis artifact"))?;
+    let analysis_artifact_bytes = state
+        .analysis_artifact_bytes()
+        .ok_or_else(|| binding("evaluation report has no durable analysis artifact size"))?;
+    if semantic.campaign_id() != state.campaign_id()
+        || semantic.dataset_digest() != state.dataset_digest()
+        || semantic.profile_digest() != state.profile_digest()
+        || semantic.plan_id() != plan.id()
+        || semantic.plan_digest() != plan.digest()
+        || semantic.analysis().digest() != analysis_digest
+        || analysis_artifact.sha256() != analysis_digest.digest()
+        || analysis_artifact_bytes == 0
+    {
+        return Err(binding(
+            "evaluation report differs from its campaign, dataset, profile, plan, or analysis artifact",
+        ));
+    }
+    let metadata = artifact_store.verify(analysis_artifact).map_err(artifact_owner)?;
+    if metadata.size() != analysis_artifact_bytes {
+        return Err(artifact("analysis artifact size differs from durable report state"));
+    }
+    Ok(())
 }
 
 fn artifact_owner(_: impl core::fmt::Display) -> EvaluationError {

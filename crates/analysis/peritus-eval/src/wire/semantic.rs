@@ -12,11 +12,12 @@ use peritus_types::{
 };
 
 use crate::{
-    AnalysisSafePoint, CampaignFailure, CampaignFailureCode, DatasetDigest, EvaluationCommandKind,
-    EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlanId,
-    EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanBatch, PlanDigest, PlanRecord,
-    PlannedRolloutBinding, PublicationCancellationRecord, PublicationRecord, ReportRecord,
-    ResultDigest, RetryIntent, RolloutId, RolloutTerminalClass, TerminalRecordRef,
+    AnalysisReportBinding, AnalysisSafePoint, CampaignFailure, CampaignFailureCode, DatasetDigest,
+    EvaluationCommandKind, EvaluationError, EvaluationErrorKind, EvaluationOperation,
+    EvaluationPlanId, EvaluationRecovery, EvaluationReportId, LedgerCounts, PlanBatch, PlanDigest,
+    PlanRecord, PlannedRolloutBinding, ProfileDigest, PublicationCancellationRecord,
+    PublicationRecord, ReportRecord, ResultDigest, RetryIntent, RolloutId, RolloutTerminalClass,
+    TerminalRecordRef,
 };
 
 pub(super) fn encode(kind: &EvaluationCommandKind) -> Result<Vec<u8>, EvaluationError> {
@@ -139,6 +140,18 @@ pub(super) fn decode(bytes: &[u8]) -> Result<EvaluationCommandKind, EvaluationEr
             rollout_id: rollout(&mut reader)?,
             retry: RetryIntent::decode_canonical(&reader.read_bytes_owned().map_err(codec)?)?,
             started_at_tick: reader.read_u64().map_err(codec)?,
+        },
+        25 => EvaluationCommandKind::CompleteReportWithBinding {
+            binding: AnalysisReportBinding::new(
+                report(&mut reader)?,
+                DatasetDigest::new(digest(&mut reader)?),
+                ProfileDigest::new(digest(&mut reader)?),
+                EvaluationPlanId::new(reader.read_fixed().map_err(codec)?)?,
+                PlanDigest::new(digest(&mut reader)?),
+                ResultDigest::new(digest(&mut reader)?),
+                ArtifactDigest::from_sha256(digest(&mut reader)?),
+                reader.read_u64().map_err(codec)?,
+            )?,
         },
         _ => return Err(protocol("unknown evaluation semantic tag")),
     };

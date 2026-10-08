@@ -13,7 +13,7 @@ use peritus_journal::{
 use peritus_types::{EvidenceId, Sha256Digest};
 
 use crate::{
-    CommittedEvaluationOperation, EvaluationCommand, EvaluationCommandKind,
+    AnalysisReportBinding, CommittedEvaluationOperation, EvaluationCommand, EvaluationCommandKind,
     EvaluationCommitMode, EvaluationError, EvaluationErrorKind, EvaluationEventKind,
     EvaluationOperation, EvaluationOperationReceipt, EvaluationPhase, EvaluationRecovery,
     EvaluationState, PublicationCancellationRecord, PublicationDirective,
@@ -26,6 +26,7 @@ use super::{
     CommittedEvaluationTransition, FinalizedEvaluationArtifact, TransitionIds,
     PublicationDependencyStatus, PublicationDirectiveObservation,
     PublicationRecoveryObservation, recover_claimed_operation,
+    artifact::validate_analysis_report_contract,
 };
 
 /// Admitted evidence plus exact atomic C0 publication settlement.
@@ -48,6 +49,21 @@ pub struct PublicationOwnershipReceipt {
 }
 
 impl PublicationOwnershipReceipt {
+    /// Owning published evaluation campaign.
+    #[must_use]
+    pub const fn campaign_id(self) -> crate::EvaluationCampaignId {
+        self.campaign_id
+    }
+    /// Exact report artifact record accepted before publication.
+    #[must_use]
+    pub const fn report(self) -> ReportRecord {
+        self.report
+    }
+    /// Exact evidence-backed terminal publication record.
+    #[must_use]
+    pub const fn publication(self) -> PublicationRecord {
+        self.publication
+    }
     /// Original report-completion operation receipt.
     #[must_use]
     pub const fn report_operation(self) -> EvaluationOperationReceipt {
@@ -68,7 +84,9 @@ impl PublicationOwnershipReceipt {
     pub const fn fence(self) -> u64 {
         self.fence
     }
-    pub(crate) fn matches_state(self, state: &EvaluationState) -> bool {
+    /// Returns whether this receipt still identifies the supplied terminal state exactly.
+    #[must_use]
+    pub fn matches_state(self, state: &EvaluationState) -> bool {
         self.campaign_id == state.campaign_id()
             && state.report() == Some(self.report)
             && state.publication() == Some(self.publication)
@@ -138,7 +156,7 @@ pub fn publish_claimed_report(
     ids: TransitionIds,
 ) -> Result<PublicationExecution, EvaluationError> {
     let (durable_report, draft, publication) =
-        publication_plan(state, report, report_commit_position)?;
+        publication_plan(artifact_store, state, report, report_commit_position)?;
     let _report_operation = load_report_operation(
         journal,
         state,
@@ -233,7 +251,7 @@ pub fn reconcile_interrupted_publication(
     ids: TransitionIds,
 ) -> Result<PublicationExecution, EvaluationError> {
     let (durable_report, draft, publication) =
-        publication_plan(state, report, report_commit_position)?;
+        publication_plan(artifact_store, state, report, report_commit_position)?;
     let _report_operation = load_report_operation(
         journal,
         state,
@@ -381,7 +399,7 @@ pub fn observe_publication_recovery(
     let _report_operation =
         load_report_operation(journal, state, durable_report, report_position)?;
     let (planned_report, draft, publication) =
-        publication_plan(state, report, report_position)?;
+        publication_plan(artifact_store, state, report, report_position)?;
     if planned_report != durable_report {
         return Err(recovery(
             "publication observation report differs from immutable state",
@@ -626,6 +644,7 @@ pub fn cancel_claimed_publication(
 }
 
 fn publication_plan(
+    artifact_store: &ArtifactStore,
     state: &EvaluationState,
     report: &ValidatedEvaluationReport,
     report_commit_position: u64,
@@ -635,6 +654,7 @@ fn publication_plan(
             "publication dependency operation requires report-ready or published state",
         ));
     }
+    validate_analysis_report_contract(artifact_store, state, report)?;
     let durable_report = state
         .report()
         .ok_or_else(|| binding("publication state has no durable report"))?;
@@ -720,13 +740,31 @@ fn load_report_operation(
     let operation = load_evaluation_operation(journal, state.campaign_id(), record.command_id())?
         .ok_or_else(|| recovery("report operation receipt is absent"))?;
     let EvaluationEventKind::Accepted(kind) = operation.event().kind();
+    let (kind_matches, expected_dependencies) = match kind {
+        EvaluationCommandKind::CompleteReport { report: observed } => (
+            *observed == report,
+            vec![peritus_journal::ArtifactDependency::new(report.artifact().sha256())],
+        ),
+        EvaluationCommandKind::CompleteReportWithBinding { binding: contract } => (
+            contract.report() == report && report_binding_matches_state(*contract, state),
+            vec![
+                peritus_journal::ArtifactDependency::new(
+                    contract.analysis_artifact().sha256(),
+                ),
+                peritus_journal::ArtifactDependency::new(report.artifact().sha256()),
+            ],
+        ),
+        _ => (false, Vec::new()),
+    };
+    let mut expected_dependencies = expected_dependencies;
+    expected_dependencies.sort_unstable();
+    expected_dependencies.dedup();
     if operation.batch().last_position() != report_commit_position
         || operation.event().id() != record.event_id()
-        || kind != &(EvaluationCommandKind::CompleteReport { report })
+        || !kind_matches
         || operation.historical_state().phase() != EvaluationPhase::ReportReady
         || operation.historical_state().report() != Some(report)
-        || operation.batch().artifact_dependencies()
-            != [peritus_journal::ArtifactDependency::new(report.artifact().sha256())]
+        || operation.batch().artifact_dependencies() != expected_dependencies.as_slice()
         || !matches!(
             operation.receipt().mode(),
             EvaluationCommitMode::Ordinary | EvaluationCommitMode::Legacy
@@ -737,6 +775,22 @@ fn load_report_operation(
         ));
     }
     Ok(operation)
+}
+
+fn report_binding_matches_state(
+    binding: AnalysisReportBinding,
+    state: &EvaluationState,
+) -> bool {
+    state.plan().is_some_and(|plan| {
+        state.dataset_digest() == binding.dataset_digest()
+            && state.profile_digest() == binding.profile_digest()
+            && plan.id() == binding.plan_id()
+            && plan.digest() == binding.plan_digest()
+            && state.analysis_digest() == Some(binding.analysis_digest())
+            && state.analysis_artifact() == Some(binding.analysis_artifact())
+            && state.analysis_artifact_bytes() == Some(binding.analysis_artifact_bytes())
+            && binding.analysis_artifact().sha256() == binding.analysis_digest().digest()
+    })
 }
 
 fn validate_recovered_evidence(

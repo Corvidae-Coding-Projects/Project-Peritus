@@ -4,10 +4,11 @@ use peritus_codec::{CanonicalWriter, CodecLimits};
 use peritus_types::{CommandId, EventId, RevisionTuple, Sha256Digest};
 
 use crate::{
-    AnalysisSafePoint, CampaignFailure, DatasetDigest, EvaluationCampaignId, EvaluationError,
-    EvaluationErrorKind, EvaluationOperation, EvaluationRecovery, FrozenEvaluationProfile,
-    LedgerCounts, PlanBatch, PlanRecord, ProfileDigest, PublicationCancellationRecord,
-    PublicationRecord, ReportRecord, ResultDigest, RetryIntent, RolloutId, TerminalRecordRef,
+    AnalysisReportBinding, AnalysisSafePoint, CampaignFailure, DatasetDigest,
+    EvaluationCampaignId, EvaluationError, EvaluationErrorKind, EvaluationOperation,
+    EvaluationRecovery, FrozenEvaluationProfile, LedgerCounts, PlanBatch, PlanRecord,
+    ProfileDigest, PublicationCancellationRecord, PublicationRecord, ReportRecord, ResultDigest,
+    RetryIntent, RolloutId, TerminalRecordRef,
 };
 
 const COMMAND_DOMAIN: &[u8] = b"peritus.evaluation.command.v1\0";
@@ -140,6 +141,11 @@ pub enum EvaluationCommandKind {
     CompleteReport {
         /// Exact report artifact record.
         report: ReportRecord,
+    },
+    /// Commits a report only with its complete dataset/profile/plan/analysis artifact contract.
+    CompleteReportWithBinding {
+        /// Exact semantic and artifact binding validated by the report writer.
+        binding: AnalysisReportBinding,
     },
     /// Records admitted evidence and completes publication.
     RecordPublication {
