@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4065,
-        "tip_oid": "2bd5c814bee3bfa3f45e958067b6dbcbd8367618",
-        "prefix_sha256": "197896da3c03cf0628f09cfd7dee6ee475051259e4e063ba535bd52129b09402"
+        "sequence": 4066,
+        "tip_oid": "5ad5d2a0bcd7bcb87163841bf5e074b2dccdb9a1",
+        "prefix_sha256": "a7f80914b7bb97cefa7f0013555f9ad6163bb867da183719c707f97db12ead06"
       },
       "NWAR": {
         "sequence": 39,
@@ -22309,12 +22309,13 @@
       "display_id": 682,
       "title": "[L628] Projection installation compares generation ownership but does not check that its candidate still represents the current journal",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L628.\n\n- Evidence: `crates/state/peritus-projection/src/sqlite/swap.rs:22-91,147-191`; `src/sqlite/schema.rs:3-28`; `tests/rebuild.rs:27-88` in the same crate.\n- Behavior: Atomic install validates the candidate's own payload digest/count and compares only the caller's expected active generation. It checks no authoritative current journal position/head in the install transaction. A journal advance without a competing projection install leaves that CAS unchanged, so an older candidate can still become active; a later startup then asks for another genesis rebuild. All old generation payloads remain in SQLite, with no garbage-collection operation in this crate. Identical valid bindings are reused and a stale generation CAS rolls back atomically.\n- Consequence: Busy active journals can repeatedly obsolete expensive rebuilds without a suffix catch-up plan. Repeated changed bindings retain complete duplicate derived payloads and grow disk usage. This is a consistency/work-amplification gap; no installed recurrence is claimed.\n- Repair direction: Compare the candidate's authoritative journal binding at activation or atomically catch up to a verified suffix; retain the old active generation until success and reclaim only unreferenced derived generations under an explicit retention owner. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.338878734Z",
-      "updated_at": "2026-10-08T04:53:56.791197669Z",
+      "updated_at": "2026-10-08T04:55:42.137514789Z",
+      "closed_at": "2026-10-08T04:55:42.134715264Z",
       "labels": [
         "daily-driving-limiter"
       ],
