@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3959,
-        "tip_oid": "2485df8a1332bfa66158cdf11869a1349b74b2a7",
-        "prefix_sha256": "a522c88b661cdbe0e0b3957d776da79af2cb3fd3140ed5d2ce7946effe91f42e"
+        "sequence": 3960,
+        "tip_oid": "6299d5e7b5174d1bc69c71acab2953cfa26bf288",
+        "prefix_sha256": "a681c36d652ed912903f0d35269034187f2c7f0a499552711ac6faafaf764271"
       },
       "NWAR": {
         "sequence": 39,
@@ -21543,12 +21543,13 @@
       "display_id": 518,
       "title": "[L438] E3 repeatedly copies and replays the complete campaign instead of resuming bounded work",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L438.\n\n- Evidence: `crates/analysis/peritus-eval/src/aggregate/reducer.rs:22-30,69-93,172`, `src/aggregate/state.rs:115-117,185-195,346-418`, `src/durability/replay.rs:36-48,76-101`, `src/wire/event.rs:52-70`, `src/wire/state.rs:15-18,55-66`, `src/durability/commit.rs:82-94`, `src/runtime/publication.rs:87-88` in the same crate.\n- Behavior: Every transition clones and canonically hashes the complete rollout map and retained batch artifacts. C0 loading activates each frame through apply_event and then applies it again; rebuild replays the entire history again. State frames clone and nest the entire canonical checkpoint under production byte bounds. rollouts() creates a complete Vec even when recovery only needs an any() probe. Publication exports the complete journal for evidence admission. These synchronous paths expose no cancellation/progress probe.\n- Consequence: At R retained rollouts and E events, transition/recovery work includes O(E*R) full-state copying/hashing after the plan is populated, with repeated replay passes and full-history allocation. Larger profiles can spend increasing time rereading/rebuilding rather than executing new work. Nested codec limits can reject a full checkpoint even if individual components fit. This is source-level cost analysis, not a benchmark or attribution of the live session's loop.\n- Repair direction: Preserve immutable history while making validated checkpoints and effect receipts support incremental recovery, streaming projections and bounded resumable analysis. Keep cancellation/status independent of full-campaign serialization. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.555355735Z",
-      "updated_at": "2026-10-08T01:53:34.687347891Z",
+      "updated_at": "2026-10-08T01:55:07.915066082Z",
+      "closed_at": "2026-10-08T01:55:07.912117822Z",
       "labels": [
         "daily-driving-limiter"
       ],
