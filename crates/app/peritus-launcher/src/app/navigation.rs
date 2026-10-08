@@ -48,12 +48,9 @@ fn configured_context(
     let workspace = prepared
         .state()
         .workspaces()
-        .registered()
-        .into_iter()
-        .chain(prepared.state().workspaces().active())
-        .find(|workspace| workspace.workspace_id() == workspace_id)
+        .find(&workspace_id)
         .ok_or_else(|| LauncherError::WorkspaceSetup(format!(
-            "workspace {workspace_id} is not in this launcher's registered configuration. Reopen Peritus after configuring this workspace."
+            "workspace {workspace_id} is not in this launcher's durable registry. Reopen Peritus after configuring this workspace."
         )))?;
     workspace_context(prepared, workspace)
 }

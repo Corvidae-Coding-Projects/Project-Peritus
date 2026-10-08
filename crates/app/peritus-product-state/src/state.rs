@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Product-state schema understood by this executable.
-pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 1;
+pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 2;
 
 /// Canonical durable state needed to resume local bootstrap.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -27,6 +27,8 @@ pub struct ProductState {
     workspaces: WorkspaceSelection,
     #[serde(default)]
     workspace_setup_complete: bool,
+    #[serde(skip)]
+    legacy_storage: bool,
 }
 
 impl ProductState {
@@ -42,6 +44,7 @@ impl ProductState {
             provider_setup_complete: false,
             workspaces: <WorkspaceSelection as Default>::default(),
             workspace_setup_complete: false,
+            legacy_storage: false,
         }
     }
 
@@ -51,8 +54,16 @@ impl ProductState {
     ///
     /// Returns a typed schema, identity, or JSON failure.
     pub fn parse_json(bytes: &[u8]) -> Result<Self, ProductStateError> {
-        let state: Self = serde_json::from_slice(bytes)
+        let mut state: Self = serde_json::from_slice(bytes)
             .map_err(|error| ProductStateError::InvalidPayload(error.to_string()))?;
+        match state.schema_version {
+            PRODUCT_STATE_SCHEMA_VERSION => {}
+            1 => {
+                state.schema_version = PRODUCT_STATE_SCHEMA_VERSION;
+                state.legacy_storage = true;
+            }
+            unsupported => return Err(ProductStateError::UnsupportedSchema(unsupported)),
+        }
         state.validate()?;
         Ok(state)
     }
@@ -116,6 +127,27 @@ impl ProductState {
     #[must_use]
     pub const fn workspace_setup_complete(&self) -> bool {
         self.workspace_setup_complete
+    }
+
+    /// Converts a decoded legacy workspace inventory into the indexed registry storage shape.
+    ///
+    /// The legacy generation remains valid and immutable; callers must publish this successor.
+    ///
+    /// # Errors
+    /// Returns a typed failure when the durable generation cannot advance.
+    pub fn migrate_legacy_workspace_storage(&mut self) -> Result<bool, ProductStateError> {
+        if !self.legacy_storage && !self.workspaces.storage_migration_required() {
+            return Ok(false);
+        }
+        let generation = self.generation.checked_add(1).ok_or_else(|| {
+            ProductStateError::InvalidPayload(
+                "product-state generation cannot advance for workspace migration".to_owned(),
+            )
+        })?;
+        self.workspaces.finish_storage_migration();
+        self.legacy_storage = false;
+        self.generation = generation;
+        Ok(true)
     }
 
     /// Replaces durable provider choices and advances the immutable generation when changed.

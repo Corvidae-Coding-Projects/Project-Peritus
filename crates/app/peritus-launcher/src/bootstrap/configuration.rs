@@ -1,6 +1,7 @@
 //! Strict immutable daemon configuration generated from durable product state.
 
 use std::{
+    collections::BTreeMap,
     fmt::Write as _,
     path::{Path, PathBuf},
 };
@@ -126,14 +127,25 @@ fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<Stri
 }
 
 fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), LauncherError> {
-    for profile in state.workspaces().registered() {
+    let registered = state.workspaces().registered();
+    let mut projects = BTreeMap::<&str, Vec<&str>>::new();
+    for profile in &registered {
+        projects.entry(profile.project_id()).or_default().push(profile.workspace_id());
+    }
+    for (project, workspaces) in projects {
+        let workspace_ids = workspaces
+            .into_iter()
+            .map(toml_string)
+            .collect::<Vec<_>>()
+            .join(", ");
         writeln!(
             text,
-            "\n[[projects]]\nproject_id = {}\nworkspace_ids = [{}]\n",
-            toml_string(profile.project_id()),
-            toml_string(profile.workspace_id()),
+            "\n[[projects]]\nproject_id = {}\nworkspace_ids = [{workspace_ids}]\n",
+            toml_string(project),
         )
         .expect("writing to String cannot fail");
+    }
+    for profile in registered {
         let registration = profile
             .registration_file()
             .ok_or_else(|| invalid("trusted workspace is missing its C1 registration file"))?;

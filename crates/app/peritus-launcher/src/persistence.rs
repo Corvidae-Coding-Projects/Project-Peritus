@@ -24,7 +24,10 @@ impl ProductStateStore {
     }
 
     pub fn load_or_initialize(&self) -> Result<ProductState, LauncherError> {
-        if let Some(state) = self.load_latest()? {
+        if let Some(mut state) = self.load_latest()? {
+            if state.migrate_legacy_workspace_storage()? {
+                self.commit(&state)?;
+            }
             return Ok(state);
         }
         let state = ProductState::new(crate::identity::generate()?);

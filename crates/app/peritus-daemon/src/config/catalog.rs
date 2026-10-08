@@ -11,8 +11,6 @@ use serde::Deserializer;
 use super::decode_identifier;
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
-const MAX_PROJECTS: usize = 1_024;
-const MAX_WORKSPACES: usize = 4_096;
 const MAX_TOOLS: usize = 256;
 
 /// One configured project and its exact workspace lineages.
@@ -119,10 +117,7 @@ pub(super) fn validate(
     workspaces: &[WorkspaceDeclaration],
     tools: &ToolPolicy,
 ) -> Result<(), DaemonError> {
-    if projects.len() > MAX_PROJECTS
-        || workspaces.len() > MAX_WORKSPACES
-        || tools.allow.len() > MAX_TOOLS
-    {
+    if tools.allow.len() > MAX_TOOLS {
         return Err(invalid("configured component inventory exceeds its production bound"));
     }
     let mut project_ids = BTreeSet::new();

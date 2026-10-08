@@ -196,7 +196,7 @@ fn show_recent(
     prepared: &PreparedProduct,
 ) -> Result<(), LauncherError> {
     let active = prepared.state().workspaces().active().map(WorkspaceProfile::workspace_id);
-    for (index, profile) in prepared.state().workspaces().recent().iter().enumerate() {
+    for (index, profile) in prepared.state().workspaces().recent().into_iter().enumerate() {
         let marker = if active == Some(profile.workspace_id()) { "active, " } else { "" };
         terminal.line(&format!(
             "  {}. {} — {marker}{}",
@@ -250,8 +250,7 @@ fn recent(prepared: &PreparedProduct, index: usize) -> Result<&WorkspaceProfile,
     prepared
         .state()
         .workspaces()
-        .recent()
-        .get(index)
+        .recent_at(index)
         .ok_or_else(|| LauncherError::Interaction("that workspace number is not listed".to_owned()))
 }
 
