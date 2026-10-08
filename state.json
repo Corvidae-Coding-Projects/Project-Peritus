@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4130,
-        "tip_oid": "4de6d616ccaeb35ab4f84d42b578fc861227cb58",
-        "prefix_sha256": "194172b2ce12b74ba87f5f05b3a199668b21f91ba749343b843f3434d09c9cd3"
+        "sequence": 4131,
+        "tip_oid": "b648f6a910899aeecc510dd6add3904d93cac41b",
+        "prefix_sha256": "fa3f46eda6aeeb1907889c6b46021ee122f46ed2583211202ccb4cec6d01eb28"
       },
       "NWAR": {
         "sequence": 39,
@@ -31613,12 +31613,13 @@
       "display_id": 689,
       "title": "[L643] Git observation and rendering ceilings have no continuation protocol",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L643.\n\n- Evidence: `crates/tools/peritus-tools-git/src/schemas.rs:9-24`; `src/input.rs:8-60,125-137`; `src/render.rs:14-16,30-140,146-200`; `crates/tools/peritus-tool-protocol/src/result.rs:327-351` and the production JSON limits recorded in L636.\n- Behavior: Git diff accepts at most 100,000 entries and 8 MiB of patch; history accepts at most 1,024 commits. The renderer then keeps the first 500 items, at most 32 parents per commit, and only the first 48 KiB of patch, with truncation flags but no next cursor or patch byte-range request. Rendering also has to fit the independent production JSON and prepared-call output bounds. Model/human renderings are summaries; fuller detail is in structured output.\n- Consequence: A caller cannot page through a selected large result using this API. Long paths, subjects, or many-parent history can fail shared JSON construction rather than yielding a retrievable partial result. This is a source-derived composition gap, not a measured installed-session timeout or proof about downstream context delivery.\n- Repair direction: Make complete immutable observations retrievable by cursor or artifact, with bounded individual pages and consistent envelope accounting. Preserve truthful completeness metadata without requiring callers to repeat the same prefix.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.372618615Z",
-      "updated_at": "2026-10-08T10:00:03.795497450Z",
+      "updated_at": "2026-10-08T10:01:29.779880389Z",
+      "closed_at": "2026-10-08T10:01:29.777443351Z",
       "labels": [
         "daily-driving-limiter"
       ],
