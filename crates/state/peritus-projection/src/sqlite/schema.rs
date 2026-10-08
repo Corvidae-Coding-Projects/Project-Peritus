@@ -39,6 +39,19 @@ CREATE TABLE IF NOT EXISTS peritus_projection_frontiers (
         ) ON DELETE CASCADE
 ) STRICT, WITHOUT ROWID;
 
+CREATE TABLE IF NOT EXISTS peritus_projection_checkpoint_bindings (
+    projection_name TEXT NOT NULL,
+    projection_version INTEGER NOT NULL CHECK (projection_version > 0),
+    generation INTEGER NOT NULL CHECK (generation > 0),
+    encoding_version INTEGER NOT NULL CHECK (encoding_version = 1),
+    metadata_digest BLOB NOT NULL CHECK (length(metadata_digest) = 32),
+    PRIMARY KEY (projection_name, projection_version, generation),
+    FOREIGN KEY (projection_name, projection_version, generation)
+        REFERENCES peritus_projection_generations (
+            projection_name, projection_version, generation
+        ) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS peritus_projection_work (
     projection_name TEXT NOT NULL,
     projection_version INTEGER NOT NULL CHECK (projection_version > 0),
@@ -90,4 +103,23 @@ CREATE TABLE IF NOT EXISTS peritus_projection_receipts (
     record_count INTEGER NOT NULL CHECK (record_count >= 0),
     PRIMARY KEY (projection_name, projection_version, generation)
 ) STRICT, WITHOUT ROWID;
+
+CREATE TABLE IF NOT EXISTS peritus_projection_containments (
+    projection_name TEXT NOT NULL,
+    projection_version INTEGER NOT NULL CHECK (projection_version > 0),
+    diagnostic_digest BLOB NOT NULL CHECK (length(diagnostic_digest) = 32),
+    encoding_version INTEGER NOT NULL CHECK (encoding_version = 1),
+    reason INTEGER NOT NULL CHECK (reason BETWEEN 1 AND 3),
+    raw_diagnostic BLOB NOT NULL,
+    retained_generation INTEGER CHECK (retained_generation > 0),
+    PRIMARY KEY (projection_name, projection_version, diagnostic_digest),
+    FOREIGN KEY (projection_name, projection_version, retained_generation)
+        REFERENCES peritus_projection_generations (
+            projection_name, projection_version, generation
+        ) ON DELETE RESTRICT
+) STRICT, WITHOUT ROWID;
+
+CREATE UNIQUE INDEX IF NOT EXISTS peritus_projection_containment_root
+    ON peritus_projection_containments(projection_name, projection_version)
+    WHERE retained_generation IS NOT NULL;
 ";

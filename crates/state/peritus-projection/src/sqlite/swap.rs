@@ -2,10 +2,14 @@
 
 use super::ProjectionStore;
 use super::contention;
-use super::store::{stored_positive_u64, u64_to_i64};
+use super::store::{
+    CatalogCorruption, nonnegative_u64, read_raw_catalog, stored_positive_u64, u64_to_i64,
+};
+use crate::catalog::generation_metadata_digest;
+use crate::replay::ReplayCheckpoint;
 use crate::{
-    CatalogGeneration, ProjectionError, ProjectionErrorKind, ProjectionSchema, RebuildCandidate,
-    RecoveryClass,
+    ActiveGeneration, CatalogGeneration, ProjectionError, ProjectionErrorKind, ProjectionSchema,
+    ProjectionState, RebuildCandidate, RecoveryClass,
 };
 use peritus_codec::sha256;
 use peritus_journal::StoreId;
@@ -15,14 +19,16 @@ use rusqlite::{OptionalExtension, Transaction, TransactionBehavior, params};
 const JOURNAL_HEAD_DOMAIN: &[u8] = b"peritus.journal.head.v1\0";
 
 impl ProjectionStore {
-    pub(crate) fn confirm_current(
+    pub(crate) fn confirm_current<S: ProjectionState>(
         &mut self,
         schema: &ProjectionSchema,
-        expected_active: CatalogGeneration,
+        active: &ActiveGeneration,
         owner_store_id: StoreId,
         last_position: u64,
         journal_head_digest: Sha256Digest,
     ) -> Result<CatalogGeneration, ProjectionError> {
+        validate_active_checkpoint::<S>(active)?;
+        let expected_active = active.generation();
         let cancellation = self.cancellation.clone();
         contention::run(cancellation.as_ref(), || {
             let transaction = self
@@ -101,7 +107,7 @@ impl ProjectionStore {
     ///
     /// Returns conflict, deterministic checksum, bound, or `SQLite` failures. A failure leaves both
     /// the generation catalog and active pointer unchanged.
-    pub fn install_shadow<S>(
+    pub fn install_shadow<S: ProjectionState>(
         &mut self,
         candidate: &RebuildCandidate<S>,
         expected_active: Option<CatalogGeneration>,
@@ -139,6 +145,12 @@ impl ProjectionStore {
                     version,
                     current,
                     candidate,
+                )?;
+                ensure_checkpoint_binding(
+                    &transaction,
+                    current,
+                    candidate,
+                    encoded,
                 )?;
                 ensure_receipt_owner(
                     &transaction,
@@ -185,6 +197,7 @@ impl ProjectionStore {
             })?;
             let next_sql = u64_to_i64(next, "generation")?;
             insert_generation(&transaction, next_sql, candidate, encoded)?;
+            insert_checkpoint_binding(&transaction, next, candidate, encoded)?;
             insert_receipt(&transaction, next_sql, candidate, encoded)?;
             transaction
                 .execute(
@@ -214,6 +227,97 @@ impl ProjectionStore {
             CatalogGeneration::from_u64(next)
         })
     }
+
+    pub(crate) fn contain_corrupt(
+        &mut self,
+        schema: &ProjectionSchema,
+        corruption: &CatalogCorruption,
+    ) -> Result<(), ProjectionError> {
+        let cancellation = self.cancellation.clone();
+        contention::run(cancellation.as_ref(), || {
+            let transaction = self
+                .connection
+                .transaction_with_behavior(TransactionBehavior::Immediate)
+                .map_err(|error| ProjectionError::sqlite("begin projection containment", error))?;
+            let current = read_raw_catalog(&transaction, schema)?;
+            if current.as_ref().map(|entry| entry.diagnostic()) != Some(corruption.diagnostic()) {
+                return Err(ProjectionError::new(
+                    ProjectionErrorKind::Conflict,
+                    RecoveryClass::Retry,
+                    "contain corrupt projection",
+                    "active catalog bytes changed before containment",
+                ));
+            }
+            let identity = schema.identity();
+            let version = u64_to_i64(identity.version().get(), "projection version")?;
+            transaction
+                .execute(
+                    "INSERT OR IGNORE INTO peritus_projection_containments(projection_name, projection_version, diagnostic_digest, encoding_version, reason, raw_diagnostic, retained_generation) VALUES (?1, ?2, ?3, 1, ?4, ?5, NULL)",
+                    params![
+                        identity.name().as_str(),
+                        version,
+                        corruption.diagnostic_digest().as_bytes().as_slice(),
+                        corruption.reason().tag(),
+                        corruption.diagnostic(),
+                    ],
+                )
+                .map_err(|error| ProjectionError::sqlite("record corrupt projection metadata", error))?;
+            transaction
+                .execute(
+                    "UPDATE peritus_projection_containments SET retained_generation = NULL WHERE projection_name = ?1 AND projection_version = ?2 AND retained_generation IS NOT NULL",
+                    params![identity.name().as_str(), version],
+                )
+                .map_err(|error| ProjectionError::sqlite("release prior projection containment root", error))?;
+            if let Some(generation) = corruption.expected_generation() {
+                transaction
+                    .execute(
+                        "DELETE FROM peritus_projection_recovery_roots WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
+                        params![identity.name().as_str(), version, u64_to_i64(generation.get(), "contained generation")?],
+                    )
+                    .map_err(|error| ProjectionError::sqlite("exclude corrupt projection recovery root", error))?;
+            }
+            let recovery: Option<i64> = transaction
+                .query_row(
+                    "SELECT generation FROM peritus_projection_recovery_roots WHERE projection_name = ?1 AND projection_version = ?2",
+                    params![identity.name().as_str(), version],
+                    |row| row.get(0),
+                )
+                .optional()
+                .map_err(|error| ProjectionError::sqlite("select usable projection recovery root", error))?;
+            if let Some(recovery) = recovery {
+                transaction
+                    .execute(
+                        "UPDATE peritus_projection_catalog SET active_generation = ?3 WHERE projection_name = ?1 AND projection_version = ?2",
+                        params![identity.name().as_str(), version, recovery],
+                    )
+                    .map_err(|error| ProjectionError::sqlite("restore usable projection root", error))?;
+            } else {
+                transaction
+                    .execute(
+                        "DELETE FROM peritus_projection_catalog WHERE projection_name = ?1 AND projection_version = ?2",
+                        params![identity.name().as_str(), version],
+                    )
+                    .map_err(|error| ProjectionError::sqlite("unpublish corrupt projection root", error))?;
+                if let Some(generation) = corruption.expected_generation() {
+                    transaction
+                        .execute(
+                            "UPDATE peritus_projection_containments SET retained_generation = ?4 WHERE projection_name = ?1 AND projection_version = ?2 AND diagnostic_digest = ?3 AND EXISTS (SELECT 1 FROM peritus_projection_generations AS g WHERE g.projection_name = ?1 AND g.projection_version = ?2 AND g.generation = ?4)",
+                            params![
+                                identity.name().as_str(),
+                                version,
+                                corruption.diagnostic_digest().as_bytes().as_slice(),
+                                u64_to_i64(generation.get(), "contained generation")?,
+                            ],
+                        )
+                        .map_err(|error| ProjectionError::sqlite("retain contained projection root", error))?;
+                }
+            }
+            delete_progress(&transaction, identity.name().as_str(), version)?;
+            transaction
+                .commit()
+                .map_err(|error| ProjectionError::sqlite("commit projection containment", error))
+        })
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -223,7 +327,7 @@ struct EncodedCandidate {
     record_count: i64,
 }
 
-fn validate_candidate<S>(
+fn validate_candidate<S: ProjectionState>(
     candidate: &RebuildCandidate<S>,
 ) -> Result<EncodedCandidate, ProjectionError> {
     let identity = candidate.checkpoint().schema().identity();
@@ -243,6 +347,13 @@ fn validate_candidate<S>(
             "candidate payload or record count does not match checkpoint",
         ));
     }
+    ReplayCheckpoint::<S>::restore(
+        candidate.payload(),
+        candidate.invariant_digest(),
+        candidate.frontier_payload(),
+        candidate.checkpoint().last_position(),
+        candidate.record_count(),
+    )?;
     Ok(encoded)
 }
 
@@ -271,7 +382,7 @@ fn highest_generation(
 ) -> Result<Option<u64>, ProjectionError> {
     let value: Option<i64> = transaction
         .query_row(
-            "SELECT MAX(generation) FROM (SELECT generation FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 UNION ALL SELECT generation FROM peritus_projection_receipts WHERE projection_name = ?1 AND projection_version = ?2)",
+            "SELECT MAX(generation) FROM (SELECT generation FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND typeof(generation) = 'integer' AND generation > 0 UNION ALL SELECT generation FROM peritus_projection_receipts WHERE projection_name = ?1 AND projection_version = ?2 AND generation > 0)",
             params![name, version],
             |row| row.get(0),
         )
@@ -290,17 +401,69 @@ fn generation_is_current(
     last_position: u64,
     journal_head_digest: Sha256Digest,
 ) -> Result<bool, ProjectionError> {
-    let stored: (i64, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>) = transaction
+    let stored: (
+        i64,
+        Vec<u8>,
+        Vec<u8>,
+        Vec<u8>,
+        Vec<u8>,
+        i64,
+        Vec<u8>,
+        Option<Vec<u8>>,
+        Option<Vec<u8>>,
+        Option<Vec<u8>>,
+    ) = transaction
         .query_row(
-            "SELECT last_position, journal_head_digest, schema_digest, payload_digest, payload FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
+            "SELECT g.last_position, g.journal_head_digest, g.schema_digest, g.payload_digest, g.invariant_digest, g.record_count, g.payload, f.frontier_digest, f.frontier, b.metadata_digest FROM peritus_projection_generations AS g LEFT JOIN peritus_projection_frontiers AS f ON f.projection_name = g.projection_name AND f.projection_version = g.projection_version AND f.generation = g.generation LEFT JOIN peritus_projection_checkpoint_bindings AS b ON b.projection_name = g.projection_name AND b.projection_version = g.projection_version AND b.generation = g.generation WHERE g.projection_name = ?1 AND g.projection_version = ?2 AND g.generation = ?3",
             params![name, version, u64_to_i64(generation, "generation")?],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+            |row| {
+                Ok((
+                    row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?,
+                    row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?,
+                ))
+            },
         )
         .map_err(|error| ProjectionError::sqlite("confirm active projection payload", error))?;
-    Ok(stored.0 == u64_to_i64(last_position, "last position")?
+    let Some(frontier_digest) = stored.7.as_deref().and_then(|bytes| super::store::digest(bytes, "frontier digest").ok()) else {
+        return Ok(false);
+    };
+    let Some(frontier) = stored.8.as_deref() else {
+        return Ok(false);
+    };
+    let Some(metadata_digest) = stored.9.as_deref().and_then(|bytes| super::store::digest(bytes, "checkpoint metadata digest").ok()) else {
+        return Ok(false);
+    };
+    let Some(payload_digest) = super::store::digest(&stored.3, "payload digest").ok() else {
+        return Ok(false);
+    };
+    let Some(invariant_digest) = super::store::digest(&stored.4, "invariant digest").ok() else {
+        return Ok(false);
+    };
+    let Ok(stored_position) = nonnegative_u64(stored.0, "last position") else {
+        return Ok(false);
+    };
+    let Ok(record_count) = nonnegative_u64(stored.5, "record count") else {
+        return Ok(false);
+    };
+    let generation = CatalogGeneration::from_u64(generation)?;
+    let expected_metadata = generation_metadata_digest(
+        schema.identity(),
+        generation,
+        stored_position,
+        journal_head_digest,
+        payload_digest,
+        schema.digest(),
+        invariant_digest,
+        record_count,
+        Some(frontier_digest),
+    );
+    Ok(stored_position == last_position
         && stored.1.as_slice() == journal_head_digest.as_bytes()
         && stored.2.as_slice() == schema.digest().as_bytes()
-        && stored.3.as_slice() == sha256(&stored.4).as_bytes())
+        && stored.3.as_slice() == sha256(&stored.6).as_bytes()
+        && sha256(frontier) == frontier_digest
+        && record_count == stored_position
+        && metadata_digest == expected_metadata)
 }
 
 fn existing_is_same_binding<S>(
@@ -400,6 +563,120 @@ fn insert_generation<S>(
         )
         .map_err(|error| ProjectionError::sqlite("insert projection frontier", error))?;
     Ok(())
+}
+
+fn insert_checkpoint_binding<S>(
+    transaction: &Transaction<'_>,
+    generation: u64,
+    candidate: &RebuildCandidate<S>,
+    encoded: EncodedCandidate,
+) -> Result<(), ProjectionError> {
+    let checkpoint = candidate.checkpoint();
+    let identity = checkpoint.schema().identity();
+    let generation = CatalogGeneration::from_u64(generation)?;
+    let metadata_digest = candidate_metadata_digest(generation, candidate);
+    transaction
+        .execute(
+            "INSERT INTO peritus_projection_checkpoint_bindings(projection_name, projection_version, generation, encoding_version, metadata_digest) VALUES (?1, ?2, ?3, 1, ?4)",
+            params![
+                identity.name().as_str(),
+                encoded.projection_version,
+                u64_to_i64(generation.get(), "generation")?,
+                metadata_digest.as_bytes().as_slice(),
+            ],
+        )
+        .map(|_| ())
+        .map_err(|error| ProjectionError::sqlite("bind projection checkpoint metadata", error))
+}
+
+fn ensure_checkpoint_binding<S>(
+    transaction: &Transaction<'_>,
+    generation: u64,
+    candidate: &RebuildCandidate<S>,
+    encoded: EncodedCandidate,
+) -> Result<(), ProjectionError> {
+    let generation = CatalogGeneration::from_u64(generation)?;
+    let expected = candidate_metadata_digest(generation, candidate);
+    let identity = candidate.checkpoint().schema().identity();
+    transaction
+        .execute(
+            "INSERT OR IGNORE INTO peritus_projection_checkpoint_bindings(projection_name, projection_version, generation, encoding_version, metadata_digest) VALUES (?1, ?2, ?3, 1, ?4)",
+            params![
+                identity.name().as_str(),
+                encoded.projection_version,
+                u64_to_i64(generation.get(), "generation")?,
+                expected.as_bytes().as_slice(),
+            ],
+        )
+        .map_err(|error| ProjectionError::sqlite("migrate projection checkpoint binding", error))?;
+    let stored: Vec<u8> = transaction
+        .query_row(
+            "SELECT metadata_digest FROM peritus_projection_checkpoint_bindings WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
+            params![
+                identity.name().as_str(),
+                encoded.projection_version,
+                u64_to_i64(generation.get(), "generation")?,
+            ],
+            |row| row.get(0),
+        )
+        .map_err(|error| ProjectionError::sqlite("read projection checkpoint binding", error))?;
+    if stored.as_slice() == expected.as_bytes() {
+        Ok(())
+    } else {
+        Err(ProjectionError::new(
+            ProjectionErrorKind::CorruptCatalog,
+            RecoveryClass::Rebuild,
+            "migrate projection checkpoint binding",
+            "existing checkpoint metadata binding differs from verified replay",
+        ))
+    }
+}
+
+fn candidate_metadata_digest<S>(
+    generation: CatalogGeneration,
+    candidate: &RebuildCandidate<S>,
+) -> Sha256Digest {
+    let checkpoint = candidate.checkpoint();
+    generation_metadata_digest(
+        checkpoint.schema().identity(),
+        generation,
+        checkpoint.last_position(),
+        checkpoint.journal_head_digest(),
+        checkpoint.payload_digest(),
+        checkpoint.schema().digest(),
+        candidate.invariant_digest(),
+        candidate.record_count(),
+        Some(candidate.frontier_digest()),
+    )
+}
+
+fn validate_active_checkpoint<S: ProjectionState>(
+    active: &ActiveGeneration,
+) -> Result<(), ProjectionError> {
+    if !active.metadata_is_valid() {
+        return Err(ProjectionError::new(
+            ProjectionErrorKind::CorruptCatalog,
+            RecoveryClass::Rebuild,
+            "validate active projection checkpoint",
+            "complete checkpoint metadata does not match its durable binding",
+        ));
+    }
+    let frontier = active.frontier_payload().ok_or_else(|| {
+        ProjectionError::new(
+            ProjectionErrorKind::CorruptCatalog,
+            RecoveryClass::Rebuild,
+            "validate active projection checkpoint",
+            "checkpoint has no aggregate frontier",
+        )
+    })?;
+    ReplayCheckpoint::<S>::restore(
+        active.payload(),
+        active.invariant_digest(),
+        frontier,
+        active.checkpoint().last_position(),
+        active.record_count(),
+    )
+    .map(|_| ())
 }
 
 fn insert_receipt<S>(
@@ -637,7 +914,7 @@ fn backfill_receipts(
 ) -> Result<(), ProjectionError> {
     transaction
         .execute(
-            "INSERT OR IGNORE INTO peritus_projection_receipts(projection_name, projection_version, generation, owner_store_id, last_position, journal_head_digest, payload_digest, schema_digest, invariant_digest, frontier_digest, record_count) SELECT g.projection_name, g.projection_version, g.generation, ?1, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, f.frontier_digest, g.record_count FROM peritus_projection_generations AS g LEFT JOIN peritus_projection_frontiers AS f ON f.projection_name = g.projection_name AND f.projection_version = g.projection_version AND f.generation = g.generation",
+            "INSERT OR IGNORE INTO peritus_projection_receipts(projection_name, projection_version, generation, owner_store_id, last_position, journal_head_digest, payload_digest, schema_digest, invariant_digest, frontier_digest, record_count) SELECT g.projection_name, g.projection_version, g.generation, ?1, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, f.frontier_digest, g.record_count FROM peritus_projection_generations AS g LEFT JOIN peritus_projection_frontiers AS f ON f.projection_name = g.projection_name AND f.projection_version = g.projection_version AND f.generation = g.generation WHERE typeof(g.projection_name) = 'text' AND typeof(g.projection_version) = 'integer' AND g.projection_version > 0 AND typeof(g.generation) = 'integer' AND g.generation > 0 AND typeof(g.last_position) = 'integer' AND g.last_position >= 0 AND typeof(g.journal_head_digest) = 'blob' AND length(g.journal_head_digest) = 32 AND typeof(g.payload_digest) = 'blob' AND length(g.payload_digest) = 32 AND typeof(g.schema_digest) = 'blob' AND length(g.schema_digest) = 32 AND typeof(g.invariant_digest) = 'blob' AND length(g.invariant_digest) = 32 AND typeof(g.record_count) = 'integer' AND g.record_count >= 0 AND (f.frontier_digest IS NULL OR (typeof(f.frontier_digest) = 'blob' AND length(f.frontier_digest) = 32))",
             [owner.as_bytes().as_slice()],
         )
         .map(|_| ())
@@ -731,7 +1008,7 @@ fn reclaim_unreferenced(
 ) -> Result<(), ProjectionError> {
     transaction
         .execute(
-            "DELETE FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND EXISTS (SELECT 1 FROM peritus_projection_receipts AS r WHERE r.projection_name = peritus_projection_generations.projection_name AND r.projection_version = peritus_projection_generations.projection_version AND r.generation = peritus_projection_generations.generation AND r.owner_store_id = ?3) AND NOT EXISTS (SELECT 1 FROM peritus_projection_catalog AS c WHERE c.projection_name = peritus_projection_generations.projection_name AND c.projection_version = peritus_projection_generations.projection_version AND c.active_generation = peritus_projection_generations.generation) AND NOT EXISTS (SELECT 1 FROM peritus_projection_work AS w WHERE w.projection_name = peritus_projection_generations.projection_name AND w.projection_version = peritus_projection_generations.projection_version AND w.source_generation = peritus_projection_generations.generation) AND NOT EXISTS (SELECT 1 FROM peritus_projection_recovery_roots AS rr WHERE rr.projection_name = peritus_projection_generations.projection_name AND rr.projection_version = peritus_projection_generations.projection_version AND rr.generation = peritus_projection_generations.generation)",
+            "DELETE FROM peritus_projection_generations WHERE projection_name = ?1 AND projection_version = ?2 AND EXISTS (SELECT 1 FROM peritus_projection_receipts AS r WHERE r.projection_name = peritus_projection_generations.projection_name AND r.projection_version = peritus_projection_generations.projection_version AND r.generation = peritus_projection_generations.generation AND r.owner_store_id = ?3) AND NOT EXISTS (SELECT 1 FROM peritus_projection_catalog AS c WHERE c.projection_name = peritus_projection_generations.projection_name AND c.projection_version = peritus_projection_generations.projection_version AND c.active_generation = peritus_projection_generations.generation) AND NOT EXISTS (SELECT 1 FROM peritus_projection_work AS w WHERE w.projection_name = peritus_projection_generations.projection_name AND w.projection_version = peritus_projection_generations.projection_version AND w.source_generation = peritus_projection_generations.generation) AND NOT EXISTS (SELECT 1 FROM peritus_projection_recovery_roots AS rr WHERE rr.projection_name = peritus_projection_generations.projection_name AND rr.projection_version = peritus_projection_generations.projection_version AND rr.generation = peritus_projection_generations.generation) AND NOT EXISTS (SELECT 1 FROM peritus_projection_containments AS ct WHERE ct.projection_name = peritus_projection_generations.projection_name AND ct.projection_version = peritus_projection_generations.projection_version AND ct.retained_generation = peritus_projection_generations.generation)",
             params![name, version, owner.as_bytes().as_slice()],
         )
         .map(|_| ())

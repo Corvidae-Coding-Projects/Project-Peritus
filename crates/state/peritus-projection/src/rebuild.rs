@@ -2,7 +2,9 @@
 
 use crate::catalog::plan_repair;
 use crate::replay::ReplayCheckpoint;
-use crate::sqlite::{StoredProgress, WorkPhase};
+use crate::sqlite::{
+    CatalogCorruption, CatalogObservation, ContainmentReason, StoredProgress, WorkPhase,
+};
 use crate::{
     ActiveGeneration, CatalogGeneration, Checkpoint, Projection, ProjectionError,
     ProjectionErrorKind, ProjectionState, RecoveryClass, RepairAction, ReplayOutput,
@@ -106,7 +108,30 @@ pub fn resume_or_rebuild<P: Projection>(
     let owner = journal.store_id();
     let initial_tip = tip_export(journal)?;
     verify_owner(owner, &initial_tip)?;
-    let active = store.load_active(projection.schema())?;
+    let active = loop {
+        match store.observe_active(projection.schema())? {
+            CatalogObservation::Missing => break None,
+            CatalogObservation::Corrupt(corruption) => {
+                store.contain_corrupt(projection.schema(), &corruption)?;
+            }
+            CatalogObservation::Active { generation, diagnostic } => {
+                if !generation.metadata_binding_is_present() {
+                    break Some(generation);
+                }
+                if generation.metadata_is_valid() && restore_active::<P>(&generation).is_some() {
+                    break Some(generation);
+                }
+                let reason = if generation.metadata_is_valid() {
+                    ContainmentReason::TypedCheckpoint
+                } else {
+                    ContainmentReason::Metadata
+                };
+                let corruption =
+                    CatalogCorruption::from_active(diagnostic, generation.generation(), reason);
+                store.contain_corrupt(projection.schema(), &corruption)?;
+            }
+        }
+    };
     let mut action = plan_repair(
         active.as_ref(),
         projection.schema(),
@@ -114,9 +139,17 @@ pub fn resume_or_rebuild<P: Projection>(
         initial_tip.report().journal_head_digest(),
     );
     if let RepairAction::Reuse(generation) = action {
-        match store.confirm_current(
+        let active_generation = active.as_ref().ok_or_else(|| {
+            ProjectionError::new(
+                ProjectionErrorKind::Conflict,
+                RecoveryClass::Retry,
+                "confirm active projection",
+                "active projection disappeared before currentness confirmation",
+            )
+        })?;
+        match store.confirm_current::<P::State>(
             projection.schema(),
-            generation,
+            active_generation,
             owner,
             initial_tip.report().last_position(),
             initial_tip.report().journal_head_digest(),

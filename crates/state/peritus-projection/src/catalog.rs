@@ -5,7 +5,10 @@
     reason = "the private module exposes its planner to the sibling SQLite adapter"
 )]
 
-use crate::{Checkpoint, ProjectionError, ProjectionErrorKind, ProjectionSchema, RecoveryClass};
+use crate::{
+    Checkpoint, ProjectionError, ProjectionErrorKind, ProjectionIdentity, ProjectionSchema,
+    RecoveryClass,
+};
 use peritus_codec::sha256;
 use peritus_types::Sha256Digest;
 use std::num::NonZeroU64;
@@ -49,6 +52,7 @@ pub struct ActiveGeneration {
     payload: Vec<u8>,
     frontier_digest: Option<Sha256Digest>,
     frontier_payload: Option<Vec<u8>>,
+    metadata_digest: Option<Sha256Digest>,
 }
 
 impl ActiveGeneration {
@@ -59,6 +63,7 @@ impl ActiveGeneration {
         record_count: u64,
         payload: Vec<u8>,
         frontier: Option<(Sha256Digest, Vec<u8>)>,
+        metadata_digest: Option<Sha256Digest>,
     ) -> Self {
         let (frontier_digest, frontier_payload) = frontier
             .map_or((None, None), |(digest, payload)| (Some(digest), Some(payload)));
@@ -70,6 +75,7 @@ impl ActiveGeneration {
             payload,
             frontier_digest,
             frontier_payload,
+            metadata_digest,
         }
     }
 
@@ -123,6 +129,33 @@ impl ActiveGeneration {
             _ => false,
         }
     }
+
+    pub(crate) const fn metadata_binding_is_present(&self) -> bool {
+        self.metadata_digest.is_some()
+    }
+
+    pub(crate) fn metadata_is_valid(&self) -> bool {
+        let Some(stored) = self.metadata_digest else {
+            return false;
+        };
+        if !self.payload_is_valid()
+            || self.record_count != self.checkpoint.last_position()
+            || !self.frontier_is_valid()
+        {
+            return false;
+        }
+        generation_metadata_digest(
+            self.checkpoint.schema().identity(),
+            self.generation,
+            self.checkpoint.last_position(),
+            self.checkpoint.journal_head_digest(),
+            self.checkpoint.payload_digest(),
+            self.checkpoint.schema().digest(),
+            self.invariant_digest,
+            self.record_count,
+            self.frontier_digest,
+        ) == stored
+    }
 }
 
 /// Why startup cannot safely reuse an active generation.
@@ -138,6 +171,12 @@ pub enum RepairReason {
     JournalHeadChanged,
     /// Durable payload bytes no longer match their digest.
     PayloadCorrupt,
+    /// The active catalog row has malformed derived metadata.
+    CatalogCorrupt,
+    /// A pre-binding catalog generation requires checked migration.
+    LegacyCheckpoint,
+    /// Complete checkpoint metadata does not match its durable binding.
+    CheckpointMetadataCorrupt,
 }
 
 /// Deterministic startup repair decision.
@@ -165,16 +204,19 @@ pub(super) fn plan_repair(
     let position_matches = checkpoint.last_position() == journal_position;
     let head_matches = checkpoint.journal_head_digest() == journal_head;
     let payload_matches = checkpoint.payload_digest() == sha256(active.payload());
+    let metadata_matches = active.metadata_is_valid();
     if crate::verified::checkpoint_current(
         checkpoint.last_position(),
         journal_position,
         head_matches,
         payload_matches,
         schema_matches,
-    ) {
+    ) && metadata_matches
+    {
         RepairAction::Reuse(active.generation())
     } else if schema_matches
         && payload_matches
+        && metadata_matches
         && journal_position > checkpoint.last_position()
         && active.frontier_is_valid()
     {
@@ -183,9 +225,47 @@ pub(super) fn plan_repair(
         RepairAction::RebuildFromGenesis(RepairReason::SchemaChanged)
     } else if !payload_matches {
         RepairAction::RebuildFromGenesis(RepairReason::PayloadCorrupt)
+    } else if !active.metadata_binding_is_present() {
+        RepairAction::RebuildFromGenesis(RepairReason::LegacyCheckpoint)
+    } else if !metadata_matches {
+        RepairAction::RebuildFromGenesis(RepairReason::CheckpointMetadataCorrupt)
     } else if !position_matches {
         RepairAction::RebuildFromGenesis(RepairReason::PositionChanged)
     } else {
         RepairAction::RebuildFromGenesis(RepairReason::JournalHeadChanged)
     }
+}
+
+pub(crate) fn generation_metadata_digest(
+    identity: &ProjectionIdentity,
+    generation: CatalogGeneration,
+    last_position: u64,
+    journal_head_digest: Sha256Digest,
+    payload_digest: Sha256Digest,
+    schema_digest: Sha256Digest,
+    invariant_digest: Sha256Digest,
+    record_count: u64,
+    frontier_digest: Option<Sha256Digest>,
+) -> Sha256Digest {
+    let mut bytes = b"peritus-projection-checkpoint-metadata-v1\0".to_vec();
+    bytes.extend_from_slice(
+        &u64::try_from(identity.name().as_str().len()).unwrap_or(u64::MAX).to_be_bytes(),
+    );
+    bytes.extend_from_slice(identity.name().as_str().as_bytes());
+    bytes.extend_from_slice(&identity.version().get().to_be_bytes());
+    bytes.extend_from_slice(&generation.get().to_be_bytes());
+    bytes.extend_from_slice(&last_position.to_be_bytes());
+    bytes.extend_from_slice(journal_head_digest.as_bytes());
+    bytes.extend_from_slice(payload_digest.as_bytes());
+    bytes.extend_from_slice(schema_digest.as_bytes());
+    bytes.extend_from_slice(invariant_digest.as_bytes());
+    bytes.extend_from_slice(&record_count.to_be_bytes());
+    match frontier_digest {
+        Some(digest) => {
+            bytes.push(1);
+            bytes.extend_from_slice(digest.as_bytes());
+        }
+        None => bytes.push(0),
+    }
+    sha256(&bytes)
 }
