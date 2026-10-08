@@ -101,8 +101,16 @@ impl MacosSession {
             ObservationDisposition::Completed,
             ObservationStatus::Completed,
         )?;
-        if !self.launch.release_protected_handle(crate::EXEC_STATUS_LABEL) {
+        let handoff_recovery = if self.exec_status.launch_writer_handoff_required() {
+            self.recovery.stage_execution_status_handoff()?
+        } else {
+            None
+        };
+        if !self.exec_status.handoff_launch_writer(&mut self.launch) {
             return Err(lifecycle_error("helper exec status ownership was absent at activation"));
+        }
+        if let Some(recovery) = handoff_recovery {
+            self.recovery = recovery;
         }
         self.exec_status.observe_while(
             self.manifest.digest(),

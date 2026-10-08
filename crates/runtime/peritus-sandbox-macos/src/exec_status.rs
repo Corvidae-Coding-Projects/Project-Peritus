@@ -1,6 +1,6 @@
 //! Framed execution acknowledgement under the process owner's native custody.
 
-use peritus_process::{NativeProtectedHandle, ProcessTreeIdentity};
+use peritus_process::{NativeLaunchDescription, NativeProtectedHandle, ProcessTreeIdentity};
 use peritus_types::Sha256Digest;
 
 use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction};
@@ -17,7 +17,12 @@ const EXEC_FAILED_TAG: u8 = 2;
 #[derive(Debug)]
 pub(crate) struct ExecStatusOwner {
     #[cfg(unix)]
-    reader: std::os::unix::net::UnixStream,
+    reader: Option<std::os::unix::net::UnixStream>,
+    launch_writer: LaunchWriterHandoff,
+    frame: [u8; FRAME_BYTES],
+    frame_offset: usize,
+    frame_validation: FrameValidation,
+    cancelled: bool,
     #[cfg(target_os = "macos")]
     monitor_writer: Option<std::os::unix::net::UnixStream>,
     #[cfg(target_os = "macos")]
@@ -46,9 +51,15 @@ pub(crate) fn prepare() -> Result<(ExecStatusOwner, NativeProtectedHandle), Maco
         let handle = NativeProtectedHandle::from_file(EXEC_STATUS_LABEL, writer).map_err(|_| {
             status_error("helper execution acknowledgement handle could not be protected")
         })?;
+        let launch_writer = LaunchWriterHandoff::LaunchOwned(handle.raw_handle());
         Ok((
             ExecStatusOwner {
-                reader,
+                reader: Some(reader),
+                launch_writer,
+                frame: [0; FRAME_BYTES],
+                frame_offset: 0,
+                frame_validation: FrameValidation::Pending,
+                cancelled: false,
                 #[cfg(target_os = "macos")]
                 monitor_writer: Some(monitor_writer),
                 #[cfg(target_os = "macos")]
@@ -69,6 +80,42 @@ pub(crate) fn prepare() -> Result<(ExecStatusOwner, NativeProtectedHandle), Maco
 }
 
 impl ExecStatusOwner {
+    /// Transfers the exact launch writer into retained execution-status custody once.
+    ///
+    /// The physical writer must close before observation so helper disappearance remains
+    /// observable as EOF. The retained handoff identity makes that irreversible close resumable:
+    /// a repeated activation continues with the existing reader instead of requiring another
+    /// launch handle or dispatch.
+    pub(crate) fn handoff_launch_writer(
+        &mut self,
+        launch: &mut NativeLaunchDescription,
+    ) -> bool {
+        let expected_handle = match self.launch_writer {
+            LaunchWriterHandoff::LaunchOwned(handle) => handle,
+            LaunchWriterHandoff::ObservationOwned(handle) => {
+                return !launch.protected_handles().iter().any(|candidate| {
+                    candidate.label() == EXEC_STATUS_LABEL
+                        || candidate.raw_handle() == handle
+                });
+            }
+        };
+        let exact_writer_present = launch.protected_handles().iter().any(|handle| {
+            handle.label() == EXEC_STATUS_LABEL
+                && handle.raw_handle() == expected_handle
+                && handle.payload_len().is_none()
+        });
+        if !exact_writer_present || !launch.release_protected_handle(EXEC_STATUS_LABEL) {
+            return false;
+        }
+        self.launch_writer = LaunchWriterHandoff::ObservationOwned(expected_handle);
+        true
+    }
+
+    /// Reports whether the launch still owns the exact status writer.
+    pub(crate) const fn launch_writer_handoff_required(&self) -> bool {
+        matches!(self.launch_writer, LaunchWriterHandoff::LaunchOwned(_))
+    }
+
     /// Starts the one-use kernel observer before any manifest bytes can release the helper.
     #[cfg(all(target_os = "macos", not(test)))]
     #[allow(
@@ -182,22 +229,33 @@ impl ExecStatusOwner {
     ) -> Result<(), MacosError> {
         use std::io::{ErrorKind, Read as _};
 
-        let mut frame = [0_u8; FRAME_BYTES];
-        let mut offset = 0;
-        while offset < frame.len() {
+        if self.cancelled || !should_continue() {
+            self.cancelled = true;
+            return Err(status_cancelled());
+        }
+        match self.frame_validation {
+            FrameValidation::Pending => {}
+            FrameValidation::Executed => return Ok(()),
+            FrameValidation::Rejected(detail) => return Err(status_error(detail)),
+        }
+        while self.frame_offset < self.frame.len() {
             if !should_continue() {
+                self.cancelled = true;
                 return Err(status_cancelled());
             }
-            match self.reader.read(&mut frame[offset..]) {
+            let reader = self.reader.as_mut().ok_or_else(|| {
+                status_error("helper execution acknowledgement owner was already released")
+            })?;
+            match reader.read(&mut self.frame[self.frame_offset..]) {
                 Ok(0) => {
-                    let detail = if offset == 0 {
+                    let detail = if self.frame_offset == 0 {
                         "helper disappeared before target execution was acknowledged"
                     } else {
                         "helper execution acknowledgement frame is truncated"
                     };
                     return Err(status_error(detail));
                 }
-                Ok(count) => offset += count,
+                Ok(count) => self.frame_offset += count,
                 Err(error) if error.kind() == ErrorKind::Interrupted => {}
                 Err(error) if error.kind() == ErrorKind::WouldBlock => {
                     std::thread::yield_now();
@@ -209,7 +267,14 @@ impl ExecStatusOwner {
                 }
             }
         }
-        decode_frame(frame, manifest, preparation)
+        self.frame_validation = decode_frame(self.frame, manifest, preparation);
+        match self.frame_validation {
+            FrameValidation::Pending => Err(status_error(
+                "helper execution acknowledgement could not be validated",
+            )),
+            FrameValidation::Executed => Ok(()),
+            FrameValidation::Rejected(detail) => Err(status_error(detail)),
+        }
     }
 
     /// Rejects observation when the macOS backend is compiled for a non-Unix host.
@@ -235,13 +300,33 @@ impl ExecStatusOwner {
         #[cfg(target_os = "macos")]
         drop(self.monitor_writer.take());
         #[cfg(target_os = "macos")]
-        if let Some(monitor) = self.monitor.take() {
-            monitor
-                .join()
-                .map_err(|_| status_error("execution monitor thread panicked"))??;
-        }
-        Ok(())
+        let monitor_result = if let Some(monitor) = self.monitor.take() {
+            match monitor.join() {
+                Ok(result) => result,
+                Err(_) => Err(status_error("execution monitor thread panicked")),
+            }
+        } else {
+            Ok(())
+        };
+        #[cfg(not(target_os = "macos"))]
+        let monitor_result = Ok(());
+        #[cfg(unix)]
+        drop(self.reader.take());
+        monitor_result
     }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum LaunchWriterHandoff {
+    LaunchOwned(u64),
+    ObservationOwned(u64),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum FrameValidation {
+    Pending,
+    Executed,
+    Rejected(&'static str),
 }
 
 #[cfg(target_os = "macos")]
@@ -358,34 +443,34 @@ fn decode_frame(
     frame: [u8; FRAME_BYTES],
     manifest: Sha256Digest,
     preparation: Sha256Digest,
-) -> Result<(), MacosError> {
-    let length = u32::from_le_bytes(
-        frame[..4]
-            .try_into()
-            .map_err(|_| {
-                status_error("helper execution acknowledgement length is malformed")
-            })?,
-    );
-    let digest = Sha256Digest::new(
-        frame[5..]
-            .try_into()
-            .map_err(|_| {
-                status_error("helper execution acknowledgement digest is malformed")
-            })?,
-    );
+) -> FrameValidation {
+    let Ok(length_bytes) = frame[..4].try_into() else {
+        return FrameValidation::Rejected(
+            "helper execution acknowledgement length is malformed",
+        );
+    };
+    let Ok(digest_bytes) = frame[5..].try_into() else {
+        return FrameValidation::Rejected(
+            "helper execution acknowledgement digest is malformed",
+        );
+    };
+    let length = u32::from_le_bytes(length_bytes);
+    let digest = Sha256Digest::new(digest_bytes);
     if usize::try_from(length).ok() != Some(FRAME_PAYLOAD_BYTES) {
-        return Err(status_error(
+        return FrameValidation::Rejected(
             "helper execution acknowledgement length is invalid",
-        ));
+        );
     }
     match frame[4] {
-        EXECUTED_TAG if digest == success_record(manifest, preparation) => Ok(()),
-        EXEC_FAILED_TAG if digest == failure_record(manifest, preparation) => Err(status_error(
-            "native helper could not exec the literal target",
-        )),
-        _ => Err(status_error(
+        EXECUTED_TAG if digest == success_record(manifest, preparation) => {
+            FrameValidation::Executed
+        }
+        EXEC_FAILED_TAG if digest == failure_record(manifest, preparation) => {
+            FrameValidation::Rejected("native helper could not exec the literal target")
+        }
+        _ => FrameValidation::Rejected(
             "helper execution acknowledgement is malformed",
-        )),
+        ),
     }
 }
 

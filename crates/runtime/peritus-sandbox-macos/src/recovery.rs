@@ -257,7 +257,12 @@ impl SessionCustody {
             return false;
         }
         let launch_exact = match phase {
-            SessionPhase::Prepared => matches!(self.launch, RecoveryResourceState::Live),
+            SessionPhase::Prepared => {
+                matches!(self.launch, RecoveryResourceState::Live)
+                    || matches!(self.launch, RecoveryResourceState::Released)
+                        && matches!(self.proxy, RecoveryResourceState::NotRequired)
+                        && matches!(self.secrets, RecoveryResourceState::NotRequired)
+            }
             SessionPhase::Active | SessionPhase::Cancelling | SessionPhase::Terminated => {
                 if matches!(self.proxy, RecoveryResourceState::NotRequired)
                     && matches!(self.secrets, RecoveryResourceState::NotRequired)
@@ -300,12 +305,15 @@ impl SessionCustody {
         self.execution_status = RecoveryResourceState::Released;
     }
 
-    const fn activated(&mut self) {
+    const fn execution_status_handed_off(&mut self) -> bool {
         if matches!(self.proxy, RecoveryResourceState::NotRequired)
             && matches!(self.secrets, RecoveryResourceState::NotRequired)
+            && !matches!(self.launch, RecoveryResourceState::Released)
         {
             self.launch = RecoveryResourceState::Released;
+            return true;
         }
+        false
     }
 
     const fn lose_execution_status(&mut self) {
@@ -518,7 +526,7 @@ impl MacosRecoveryRecord {
             identity.secret_binding_digest().is_some(),
         );
         if phase == SessionPhase::Active {
-            custody.activated();
+            custody.execution_status_handed_off();
         } else if phase == SessionPhase::Released {
             custody.release_execution_status();
             custody.release_secrets();
@@ -683,10 +691,19 @@ impl MacosRecoveryRecord {
         let mut next = self.clone();
         next.activated = true;
         next.phase = SessionPhase::Active;
-        next.custody.activated();
+        next.custody.execution_status_handed_off();
         next.refresh()?;
         *self = next;
         Ok(())
+    }
+
+    pub(crate) fn stage_execution_status_handoff(&self) -> Result<Option<Self>, MacosError> {
+        let mut next = self.clone();
+        if !next.custody.execution_status_handed_off() {
+            return Ok(None);
+        }
+        next.refresh()?;
+        Ok(Some(next))
     }
 
     pub(crate) fn record_cancellation(
