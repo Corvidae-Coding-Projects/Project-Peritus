@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3937,
-        "tip_oid": "19bb5e45c42f0fc35ed87cbe3079940bd701dd3e",
-        "prefix_sha256": "5ee80640ef9e958395b5a31ef3ec237f02272668addb9ccecd4d61899d1c567c"
+        "sequence": 3938,
+        "tip_oid": "a5fe663bb227c48a83e38b811759039fa9e9b89f",
+        "prefix_sha256": "bef6c3c7c4916861ef37a5ed6d1f110b1a3d76ed98eb9ab8b43705a43da8b59c"
       },
       "NWAR": {
         "sequence": 39,
@@ -13270,12 +13270,13 @@
       "display_id": 515,
       "title": "[L435] E3 hard-codes sixteen deliveries for every effect lane",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L435.\n\n- Evidence: `crates/analysis/peritus-eval/src/durability/commit.rs:24,170-205,402-408`, `src/durability/directive.rs:12-17`, `src/profile/policy.rs:12-69` in the same crate; C0 delivery exhaustion is documented in L251/L265.\n- Behavior: Schedule, execution and publication OutboxDrafts all use OUTBOX_MAX_DELIVERY_ATTEMPTS=16. This is separate from the frozen evaluation retry maximum and is not configurable by EvaluationLimits or EvaluationRetryPolicy. No E3 command replenishes an exhausted delivery row.\n- Consequence: A finite transport-delivery budget can prevent otherwise recoverable rollout or publication work, independent of the logical attempt policy. C0 exhaustion behavior is already recorded; this entry identifies another producer of that blocker. Installed E3 routing and administrative recovery are not claimed from this constant alone.\n- Repair direction: Separate transport redelivery from logical attempt admission and keep recoverable intent durable until acknowledged, explicitly cancelled or reconciled. Replace silent exhaustion with an actionable state that can resume without losing context. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.540990696Z",
-      "updated_at": "2026-10-08T01:17:51.654337817Z",
+      "updated_at": "2026-10-08T01:19:21.520387164Z",
+      "closed_at": "2026-10-08T01:19:21.517402408Z",
       "labels": [
         "daily-driving-limiter"
       ],
