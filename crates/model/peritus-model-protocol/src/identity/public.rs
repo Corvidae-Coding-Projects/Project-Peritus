@@ -14,9 +14,9 @@ impl ProviderName {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing protocols own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 128, "provider_name").map(Self)
+        CheckedIdentity::new(value, "provider_name").map(Self)
     }
 
     /// Borrows the checked value.
@@ -41,9 +41,9 @@ impl ModelName {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing protocols own physical frame limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "model_name").map(Self)
+        CheckedIdentity::new(value, "model_name").map(Self)
     }
 
     /// Borrows the checked value.
@@ -68,9 +68,9 @@ impl ExtensionName {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing protocols own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 128, "extension_name").map(Self)
+        CheckedIdentity::new(value, "extension_name").map(Self)
     }
 
     /// Borrows the checked value.
@@ -95,9 +95,9 @@ impl ToolName {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Provider adapters validate their wire grammar.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 128, "tool_name").map(Self)
+        CheckedIdentity::new(value, "tool_name").map(Self)
     }
 
     /// Borrows the checked value.
@@ -122,9 +122,9 @@ impl OutputName {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Provider adapters validate their wire grammar.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 128, "output_name").map(Self)
+        CheckedIdentity::new(value, "output_name").map(Self)
     }
 
     /// Borrows the checked value.

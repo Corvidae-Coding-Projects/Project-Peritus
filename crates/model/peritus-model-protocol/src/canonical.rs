@@ -34,9 +34,9 @@ pub fn request_bytes_bounded(
     let mut writer = CanonicalWriter::new(CodecLimits::new(
         maximum_bytes,
         maximum_bytes,
-        1_100_000,
-        32 * 1024 * 1024,
-        256 * 1024 * 1024,
+        maximum_bytes / 4,
+        maximum_bytes,
+        maximum_bytes,
         128,
     ));
     write_fixed(&mut writer, CANONICAL_MAGIC)?;
@@ -171,7 +171,11 @@ fn media_value(
         },
     )?;
     text(writer, media.media_type().as_str())?;
-    if let Some(value) = media.inline_bytes_for_wire() {
+    if let Some((artifact_id, digest)) = media.artifact_reference() {
+        u8_value(writer, 3)?;
+        write_fixed(writer, artifact_id.as_bytes())?;
+        write_fixed(writer, digest.as_bytes())?;
+    } else if let Some(value) = media.inline_bytes_for_wire() {
         u8_value(writer, 1)?;
         bytes(writer, value)?;
     } else if let Some((kind, value)) = media.reference_for_wire() {
@@ -185,10 +189,6 @@ fn media_value(
         )?;
         text(writer, value)?;
         optional_digest(writer, media.digest())?;
-    } else if let Some((artifact_id, digest)) = media.artifact_reference() {
-        u8_value(writer, 3)?;
-        write_fixed(writer, artifact_id.as_bytes())?;
-        write_fixed(writer, digest.as_bytes())?;
     } else {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidRequest,

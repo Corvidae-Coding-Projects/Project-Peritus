@@ -61,9 +61,6 @@ fn validate_counts(
     if tools.iter().any(|tool| !names.insert(tool.name().as_str())) {
         return Err(invalid("tools", "tool names must be unique"));
     }
-    if options.extensions().len() > 128 {
-        return Err(invalid("extensions", "provider extension count exceeds its bound"));
-    }
     Ok(())
 }
 

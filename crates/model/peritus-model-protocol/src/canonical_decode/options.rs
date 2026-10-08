@@ -4,8 +4,8 @@ use peritus_codec::CanonicalReader;
 
 use super::content::extension;
 use super::primitive::{
-    bounded_text, codec, optional_i64, optional_u32, optional_u64, read_collection_len, schema,
-    unknown_tag,
+    bounded_text, codec, optional_i64, optional_u32, optional_u64, physical_collection_max,
+    read_collection_len, schema, unknown_tag,
 };
 use crate::{
     CacheKey, CachePolicy, Continuation, EventId, GenerationConfig, OutputName, PersistencePolicy,
@@ -26,7 +26,7 @@ pub(super) fn request_options(
         reader.read_bool().map_err(codec)?,
     )?;
     let continuation = continuation(reader)?;
-    let count = read_collection_len(reader, 128, 4 + 4, "extensions")?;
+    let count = read_collection_len(reader, physical_collection_max(4 + 4), 4 + 4, "extensions")?;
     let mut extensions = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         extensions.push(extension(reader, limits)?);
@@ -98,7 +98,12 @@ fn generation(
     limits: ProtocolLimits,
 ) -> Result<GenerationConfig, ProtocolError> {
     let max_output_tokens = reader.read_u64().map_err(codec)?;
-    let count = read_collection_len(reader, 64, 4, "generation.stop_sequences")?;
+    let count = read_collection_len(
+        reader,
+        physical_collection_max(4),
+        4,
+        "generation.stop_sequences",
+    )?;
     let mut stop_sequences = reader.reserve_collection(count).map_err(codec)?;
     for _ in 0..count {
         stop_sequences.push(bounded_text(reader, limits)?);

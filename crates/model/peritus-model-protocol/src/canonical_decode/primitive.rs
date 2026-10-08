@@ -10,25 +10,19 @@ use crate::{
 
 const MAX_CANONICAL_REQUEST_BYTES: usize = 512 * 1024 * 1024;
 
-pub(super) const fn reader_limits(limits: ProtocolLimits) -> CodecLimits {
+pub(super) const fn reader_limits(_limits: ProtocolLimits) -> CodecLimits {
     CodecLimits::new(
         MAX_CANONICAL_REQUEST_BYTES,
         MAX_CANONICAL_REQUEST_BYTES,
-        max_usize(
-            max_usize(limits.max_messages(), limits.max_content_blocks()),
-            max_usize(limits.max_tools(), 128),
-        ),
-        max_usize(limits.max_text_bytes(), 8 * 1024),
-        max_usize(
-            max_usize(limits.max_inline_media_bytes(), limits.max_schema_bytes()),
-            max_usize(limits.max_tool_argument_bytes(), limits.max_extension_bytes()),
-        ),
+        MAX_CANONICAL_REQUEST_BYTES / 4,
+        MAX_CANONICAL_REQUEST_BYTES,
+        MAX_CANONICAL_REQUEST_BYTES,
         128,
     )
 }
 
-const fn max_usize(left: usize, right: usize) -> usize {
-    if left > right { left } else { right }
+pub(super) const fn physical_collection_max(minimum_item_bytes: usize) -> usize {
+    MAX_CANONICAL_REQUEST_BYTES / minimum_item_bytes
 }
 
 pub(super) fn read_collection_len(

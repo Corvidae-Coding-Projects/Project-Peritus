@@ -19,7 +19,7 @@ impl ResponseMetadata {
     }
 
     pub fn parse(headers: &HttpHeaders) -> Result<Self, ProviderCoreError> {
-        let request_id = text_header(headers, "x-request-id", 512)?;
+        let request_id = text_header(headers, "x-request-id", headers.byte_count())?;
         let mut windows = Vec::new();
         add_window(headers, "requests", RateLimitDimension::Requests, &mut windows)?;
         add_window(headers, "tokens", RateLimitDimension::TotalTokens, &mut windows)?;
@@ -59,8 +59,8 @@ pub fn http_failure(
     let status_number = status.as_u16();
     let (category, certainty, retryability, diagnostic) = classify(status_number, code);
     let retry_after = retry_after(headers)?;
-    let response_id =
-        text_header(headers, "x-request-id", 512)?.and_then(|value| ResponseId::new(value).ok());
+    let response_id = text_header(headers, "x-request-id", headers.byte_count())?
+        .and_then(|value| ResponseId::new(value).ok());
     let failure = error::failure(
         provider,
         category,

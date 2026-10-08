@@ -5,7 +5,7 @@ mod generate;
 mod interactions;
 mod value;
 
-use peritus_model_protocol::{Capability, ModelRequest, WireDialect};
+use peritus_model_protocol::{Capability, ContentBlock, ModelRequest, WireDialect};
 use peritus_provider_core::{Endpoint, ProviderCoreError};
 
 pub struct EncodedRequest {
@@ -52,6 +52,20 @@ fn validate(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     if !request.options().extensions().is_empty() {
         return Err(invalid("Google provider extensions are not profile-authorized"));
     }
+    if request.dialect() == WireDialect::GeminiGenerateContentV1
+        && request.options().generation().stop_sequences().len() > 5
+    {
+        return Err(invalid("Google Generate Content accepts at most five stop sequences"));
+    }
+    if request.tools().iter().any(|tool| !valid_function_name(tool.name().as_str()))
+        || request.messages().iter().flat_map(|message| message.content()).any(|block| {
+            matches!(block, ContentBlock::ToolCall(call) if !valid_function_name(call.name().as_str()))
+        })
+    {
+        return Err(invalid(
+            "Google function names exceed the stable-v1 128-character grammar",
+        ));
+    }
     let model = request.model().as_str();
     if model.is_empty()
         || model.len() > 256
@@ -62,6 +76,14 @@ fn validate(request: &ModelRequest) -> Result<(), ProviderCoreError> {
         return Err(invalid("Google model name is not safe for a stable-v1 request path"));
     }
     Ok(())
+}
+
+fn valid_function_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 128
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b':' | b'.' | b'-')
+        })
 }
 
 fn endpoint(request: &ModelRequest, base: &Endpoint) -> Result<Endpoint, ProviderCoreError> {

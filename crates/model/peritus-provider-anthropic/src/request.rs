@@ -87,6 +87,18 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     if generation.seed().is_some() {
         return Err(invalid("Anthropic Messages does not support deterministic seed control"));
     }
+    if generation.temperature_millionths().is_some_and(|value| value > 1_000_000) {
+        return Err(invalid("Anthropic Messages temperature must be between zero and one"));
+    }
+    if request.tools().iter().any(|tool| !valid_tool_name(tool.name().as_str()))
+        || request.messages().iter().flat_map(|message| message.content()).any(|block| {
+            matches!(block, ContentBlock::ToolCall(call) if !valid_tool_name(call.name().as_str()))
+        })
+    {
+        return Err(invalid(
+            "Anthropic tool names must use at most 64 ASCII letters, digits, underscores, or dashes",
+        ));
+    }
     if !matches!(request.options().reasoning(), ReasoningPolicy::Disabled)
         && (generation.temperature_millionths().is_some()
             || generation.top_p_millionths().is_some())
@@ -103,6 +115,14 @@ fn validate_controls(request: &ModelRequest) -> Result<(), ProviderCoreError> {
         ));
     }
     Ok(())
+}
+
+fn valid_tool_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 fn system_block(block: &ContentBlock) -> Result<Value, ProviderCoreError> {

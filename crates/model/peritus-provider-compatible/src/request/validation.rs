@@ -28,14 +28,26 @@ pub(super) fn validate(
         return Err(error::invalid("compatible profiles do not map cache or reasoning controls"));
     }
     for tool in request.tools() {
+        if !valid_name(tool.name().as_str()) {
+            return Err(error::invalid(
+                "compatible function names must use at most 64 ASCII letters, digits, underscores, or dashes",
+            ));
+        }
         if tool.parameters().dialect() != SchemaDialect::Draft202012 {
             return Err(error::invalid("compatible tools require JSON Schema 2020-12"));
         }
     }
-    if let StructuredOutput::JsonSchema { schema, .. } = request.options().output()
-        && schema.dialect() != SchemaDialect::Draft202012
-    {
-        return Err(error::invalid("compatible structured output requires JSON Schema 2020-12"));
+    if let StructuredOutput::JsonSchema { name, schema, .. } = request.options().output() {
+        if !valid_name(name.as_str()) {
+            return Err(error::invalid(
+                "compatible output names must use at most 64 ASCII letters, digits, underscores, or dashes",
+            ));
+        }
+        if schema.dialect() != SchemaDialect::Draft202012 {
+            return Err(error::invalid(
+                "compatible structured output requires JSON Schema 2020-12",
+            ));
+        }
     }
     if let ParallelToolPolicy::Allowed(maximum) = request.parallel_tool_policy()
         && maximum != request.negotiated().limits().max_parallel_tool_calls()
@@ -62,6 +74,9 @@ pub(super) fn validate(
 
 fn validate_block(block: &ContentBlock) -> Result<(), ProviderCoreError> {
     match block {
+        ContentBlock::ToolCall(call) if !valid_name(call.name().as_str()) => Err(error::invalid(
+            "compatible replayed function name violates the selected wire contract",
+        )),
         ContentBlock::Image(media) if media.kind() != MediaKind::Image => {
             Err(error::invalid("compatible image block has another media kind"))
         }
@@ -93,6 +108,14 @@ fn validate_block(block: &ContentBlock) -> Result<(), ProviderCoreError> {
         | ContentBlock::ToolResult(_)
         | ContentBlock::Refusal(_) => Ok(()),
     }
+}
+
+fn valid_name(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
 
 pub(super) fn canonical(bytes: &[u8]) -> Result<Value, ProviderCoreError> {

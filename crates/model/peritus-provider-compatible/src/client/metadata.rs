@@ -17,7 +17,7 @@ pub(super) fn success(
     let mut events = Vec::new();
     let mappings = config.response_headers();
     if let Some(name) = mappings.request_id()
-        && let Some(value) = text_header(headers, name.as_str(), 512)?
+        && let Some(value) = text_header(headers, name.as_str(), headers.byte_count())?
     {
         events.push(provider_text_event("compatible.request_id", &value)?);
     }
@@ -155,7 +155,7 @@ fn mapped_request_id(
     headers: &HttpHeaders,
 ) -> Result<Option<ResponseId>, ProviderCoreError> {
     let Some(name) = mappings.request_id() else { return Ok(None) };
-    text_header(headers, name.as_str(), 512)?
+    text_header(headers, name.as_str(), headers.byte_count())?
         .map(|value| {
             ResponseId::new(value)
                 .map_err(|_| error::malformed("mapped compatible request identity was invalid"))

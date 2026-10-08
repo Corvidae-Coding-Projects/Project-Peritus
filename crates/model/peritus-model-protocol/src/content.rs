@@ -83,8 +83,7 @@ impl MediaType {
         let mut parts = canonical.split('/');
         let major = parts.next().unwrap_or_default();
         let minor = parts.next().unwrap_or_default();
-        if canonical.len() > 128
-            || major.is_empty()
+        if major.is_empty()
             || minor.is_empty()
             || parts.next().is_some()
             || !major.bytes().all(mime_token)
@@ -93,7 +92,7 @@ impl MediaType {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidContent,
                 "media_type",
-                "media type must be a bounded MIME type without parameters",
+                "media type must be a canonical MIME type without parameters",
             ));
         }
         Ok(Self(canonical))
@@ -120,6 +119,11 @@ enum MediaSource {
     Inline { bytes: Vec<u8>, digest: Sha256Digest },
     Reference { kind: MediaReferenceKind, value: String, digest: Option<Sha256Digest> },
     Artifact { artifact_id: ArtifactId, digest: Sha256Digest },
+    ResolvedArtifact {
+        artifact_id: ArtifactId,
+        digest: Sha256Digest,
+        bytes: Vec<u8>,
+    },
 }
 
 /// One bounded multimodal input with no ambient read authority.
@@ -142,7 +146,37 @@ impl MediaInput {
         bytes: Vec<u8>,
         limits: ProtocolLimits,
     ) -> Result<Self, ProtocolError> {
-        if bytes.is_empty() || bytes.len() > limits.max_inline_media_bytes() {
+        let maximum = u64::try_from(limits.max_inline_media_bytes()).map_err(|_| {
+            ProtocolError::at(
+                ProtocolErrorKind::InvalidLimit,
+                "inline_media",
+                "inline media protocol limit is not representable",
+            )
+        })?;
+        Self::inline_with_maximum(kind, media_type, bytes, maximum)
+    }
+
+    /// Creates inline media under an explicit provider-owned per-object byte limit.
+    ///
+    /// A later ModelRequest still applies its protocol representation bounds. Durable large media
+    /// should use artifact references instead of this in-memory compatibility constructor.
+    ///
+    /// # Errors
+    /// Rejects empty bytes, an unrepresentable length, or the explicit provider limit.
+    pub fn inline_with_maximum(
+        kind: MediaKind,
+        media_type: MediaType,
+        bytes: Vec<u8>,
+        maximum_bytes: u64,
+    ) -> Result<Self, ProtocolError> {
+        let length = u64::try_from(bytes.len()).map_err(|_| {
+            ProtocolError::at(
+                ProtocolErrorKind::InvalidContent,
+                "inline_media",
+                "inline media length is not representable",
+            )
+        })?;
+        if bytes.is_empty() || length > maximum_bytes {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidContent,
                 "inline_media",
@@ -153,11 +187,11 @@ impl MediaInput {
         Ok(Self { kind, media_type, source: MediaSource::Inline { bytes, digest } })
     }
 
-    /// Creates a bounded HTTPS or provider-file reference.
+    /// Creates an HTTPS or provider-file reference.
     ///
     /// # Errors
     ///
-    /// Rejects malformed, control-containing, or oversized references.
+    /// Rejects malformed or control-containing references. Enclosing transports own byte limits.
     pub fn referenced(
         kind: MediaKind,
         media_type: MediaType,
@@ -170,7 +204,6 @@ impl MediaInput {
             MediaReferenceKind::ProviderFile => !value.contains("//"),
         };
         if value.is_empty()
-            || value.len() > 8 * 1024
             || value.contains('\0')
             || value.chars().any(char::is_control)
             || !structurally_valid
@@ -178,7 +211,7 @@ impl MediaInput {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidContent,
                 "media_reference",
-                "media reference is malformed or exceeds its byte bound",
+                "media reference is malformed or contains control characters",
             ));
         }
         Ok(Self {
@@ -199,6 +232,47 @@ impl MediaInput {
         Self { kind, media_type, source: MediaSource::Artifact { artifact_id, digest } }
     }
 
+    /// Attaches exact transient provider bytes to an authenticated artifact reference.
+    ///
+    /// Canonical identity remains the artifact identity and digest. The resolved bytes exist only
+    /// for the immediate provider projection and are never copied into request archives.
+    ///
+    /// # Errors
+    /// Rejects a non-artifact source, empty bytes, a digest mismatch, or the selected provider's
+    /// actual per-image byte limit.
+    pub fn with_resolved_artifact(
+        mut self,
+        bytes: Vec<u8>,
+        maximum_bytes: u64,
+    ) -> Result<Self, ProtocolError> {
+        let (artifact_id, digest) = self.artifact_reference().ok_or_else(|| {
+            ProtocolError::at(
+                ProtocolErrorKind::InvalidContent,
+                "artifact_media",
+                "only an authenticated artifact reference can be resolved",
+            )
+        })?;
+        let length = u64::try_from(bytes.len()).map_err(|_| {
+            ProtocolError::at(
+                ProtocolErrorKind::InvalidContent,
+                "artifact_media",
+                "resolved artifact length is not representable",
+            )
+        })?;
+        if bytes.is_empty()
+            || length > maximum_bytes
+            || peritus_codec::sha256(&bytes) != digest
+        {
+            return Err(ProtocolError::at(
+                ProtocolErrorKind::InvalidContent,
+                "artifact_media",
+                "resolved artifact bytes do not match the exact provider-bound reference",
+            ));
+        }
+        self.source = MediaSource::ResolvedArtifact { artifact_id, digest, bytes };
+        Ok(self)
+    }
+
     /// Returns the semantic media kind.
     #[must_use]
     pub const fn kind(&self) -> MediaKind {
@@ -211,11 +285,13 @@ impl MediaInput {
         &self.media_type
     }
 
-    /// Returns inline bytes for authorized wire projection.
+    /// Returns bytes for an authorized immediate provider projection.
     #[must_use]
     pub fn inline_bytes_for_wire(&self) -> Option<&[u8]> {
         match &self.source {
-            MediaSource::Inline { bytes, .. } => Some(bytes),
+            MediaSource::Inline { bytes, .. } | MediaSource::ResolvedArtifact { bytes, .. } => {
+                Some(bytes)
+            }
             MediaSource::Reference { .. } | MediaSource::Artifact { .. } => None,
         }
     }
@@ -225,7 +301,9 @@ impl MediaInput {
     pub fn reference_for_wire(&self) -> Option<(MediaReferenceKind, &str)> {
         match &self.source {
             MediaSource::Reference { kind, value, .. } => Some((*kind, value)),
-            MediaSource::Inline { .. } | MediaSource::Artifact { .. } => None,
+            MediaSource::Inline { .. }
+            | MediaSource::Artifact { .. }
+            | MediaSource::ResolvedArtifact { .. } => None,
         }
     }
 
@@ -235,20 +313,29 @@ impl MediaInput {
         match &self.source {
             MediaSource::Inline { digest, .. }
             | MediaSource::Artifact { digest, .. }
+            | MediaSource::ResolvedArtifact { digest, .. }
             | MediaSource::Reference { digest: Some(digest), .. } => Some(*digest),
             MediaSource::Reference { digest: None, .. } => None,
         }
     }
 
-    /// Returns inline byte consumption.
+    /// Returns bytes stored inline in the semantic request.
     #[must_use]
     pub fn inline_len(&self) -> usize {
-        self.inline_bytes_for_wire().map_or(0, <[u8]>::len)
+        match &self.source {
+            MediaSource::Inline { bytes, .. } => bytes.len(),
+            MediaSource::Reference { .. }
+            | MediaSource::Artifact { .. }
+            | MediaSource::ResolvedArtifact { .. } => 0,
+        }
     }
 
-    pub(crate) const fn artifact_reference(&self) -> Option<(ArtifactId, Sha256Digest)> {
-        match self.source {
-            MediaSource::Artifact { artifact_id, digest } => Some((artifact_id, digest)),
+    pub(crate) fn artifact_reference(&self) -> Option<(ArtifactId, Sha256Digest)> {
+        match &self.source {
+            MediaSource::Artifact { artifact_id, digest }
+            | MediaSource::ResolvedArtifact { artifact_id, digest, .. } => {
+                Some((*artifact_id, *digest))
+            }
             MediaSource::Inline { .. } | MediaSource::Reference { .. } => None,
         }
     }

@@ -36,7 +36,13 @@ pub fn validate_for_service(
                 ));
             }
         }
-        WireDialect::CompatibleChatCompletions => {}
+        WireDialect::CompatibleChatCompletions => {
+            if request.options().generation().stop_sequences().len() > 4 {
+                return Err(error::invalid(
+                    "Chat Completions compatibility accepts at most four stop sequences",
+                ));
+            }
+        }
         _ => return Err(error::configuration("compatible profile dialect changed")),
     }
     Ok(())

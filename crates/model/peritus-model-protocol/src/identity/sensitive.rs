@@ -14,9 +14,9 @@ impl RequestId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing transports own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "request_id").map(Self)
+        CheckedIdentity::new(value, "request_id").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -41,9 +41,9 @@ impl ResponseId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing transports own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "response_id").map(Self)
+        CheckedIdentity::new(value, "response_id").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -68,9 +68,9 @@ impl ItemId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing transports own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "item_id").map(Self)
+        CheckedIdentity::new(value, "item_id").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -95,9 +95,9 @@ impl ToolCallId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing transports own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "tool_call_id").map(Self)
+        CheckedIdentity::new(value, "tool_call_id").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -122,9 +122,9 @@ impl EventId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Enclosing transports own physical byte limits.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 512, "event_id").map(Self)
+        CheckedIdentity::new(value, "event_id").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -149,9 +149,9 @@ impl CacheKey {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Provider adapters validate mapped cache fields.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 1_024, "cache_key").map(Self)
+        CheckedIdentity::new(value, "cache_key").map(Self)
     }
 
     /// Borrows the checked value for wire projection.
@@ -176,9 +176,9 @@ impl IdempotencyKey {
     ///
     /// # Errors
     ///
-    /// Rejects empty, control-containing, or oversized input.
+    /// Rejects empty or control-containing input. Provider adapters validate mapped wire fields.
     pub fn new(value: String) -> Result<Self, ProtocolError> {
-        CheckedIdentity::new(value, 128, "idempotency_key").map(Self)
+        CheckedIdentity::new(value, "idempotency_key").map(Self)
     }
 
     /// Borrows the checked value for wire projection.

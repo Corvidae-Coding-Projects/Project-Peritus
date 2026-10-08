@@ -119,7 +119,8 @@ impl GenerationConfig {
     ///
     /// # Errors
     ///
-    /// Rejects zero output, too many stop strings, temperature above two, or top-p above one.
+    /// Rejects zero output, temperature above two, or top-p above one. Provider adapters validate
+    /// stop-sequence counts against the selected versioned wire contract.
     pub fn new(
         max_output_tokens: u64,
         stop_sequences: Vec<BoundedText>,
@@ -128,7 +129,6 @@ impl GenerationConfig {
         top_p_millionths: Option<u32>,
     ) -> Result<Self, ProtocolError> {
         if max_output_tokens == 0
-            || stop_sequences.len() > 64
             || temperature_millionths.is_some_and(|value| value > 2_000_000)
             || top_p_millionths.is_some_and(|value| value > 1_000_000)
         {

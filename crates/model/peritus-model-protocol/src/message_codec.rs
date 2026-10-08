@@ -61,8 +61,8 @@ fn codec_limits(limits: ProtocolLimits) -> CodecLimits {
     CodecLimits::new(
         MAX_BYTES,
         MAX_BYTES,
-        limits.max_messages().max(limits.max_content_blocks()).max(128),
-        limits.max_text_bytes().max(8 * 1024),
+        limits.max_messages().max(limits.max_content_blocks()),
+        MAX_BYTES,
         limits
             .max_inline_media_bytes()
             .max(limits.max_tool_argument_bytes())

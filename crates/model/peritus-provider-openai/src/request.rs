@@ -113,10 +113,16 @@ fn validate_common(request: &ModelRequest) -> Result<(), ProviderCoreError> {
             "OpenAI Responses streaming was not negotiated for this request",
         ));
     }
-    if !request.request_id().expose_for_wire().is_ascii() {
-        return Err(error::invalid("OpenAI client request identity must be ASCII"));
+    let request_id = request.request_id().expose_for_wire();
+    if !request_id.is_ascii() || request_id.len() > 512 {
+        return Err(error::invalid(
+            "OpenAI client request identity must be at most 512 ASCII characters",
+        ));
     }
     let generation = request.options().generation();
+    if generation.max_output_tokens() < 16 {
+        return Err(error::invalid("OpenAI Responses requires at least 16 output tokens"));
+    }
     if generation.seed().is_some() || !generation.stop_sequences().is_empty() {
         return Err(error::invalid(
             "OpenAI Responses does not document seed or stop-sequence request fields",

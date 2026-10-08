@@ -10,7 +10,7 @@ pub(super) const fn codec_limits(limits: ProtocolLimits) -> CodecLimits {
         MAX_CANONICAL_EVENT_BYTES,
         MAX_CANONICAL_EVENT_BYTES,
         1_024,
-        max_usize(limits.max_text_bytes(), 8 * 1024),
+        MAX_CANONICAL_EVENT_BYTES,
         max_usize(
             limits.max_event_bytes(),
             max_usize(limits.max_tool_argument_bytes(), limits.max_extension_bytes()),
