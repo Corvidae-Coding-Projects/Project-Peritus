@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4087,
-        "tip_oid": "250a8f9d0b5becc87235856a34395a0d0450a26e",
-        "prefix_sha256": "a3f1d390f2f770e61fd09314a5cdd148fb5fce59516c9bb5368677033850ebf8"
+        "sequence": 4088,
+        "tip_oid": "0cf703dee6b7a1855a67264ebda0d72b448f8a4d",
+        "prefix_sha256": "4816a45a04662533ec5758ed45a21259a010081c26c755f37769e763487b9cc3"
       },
       "NWAR": {
         "sequence": 39,
@@ -28430,12 +28430,13 @@
       "display_id": 546,
       "title": "[L468] Live provider qualification bypasses normalized response legality",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L468.\n\n- Evidence: `crates/model/peritus-provider-core/src/qualification.rs:313-352`, `src/connection.rs:79,163-185`, `tests/qualification_recovery.rs:181-198,202-225` in the same crate.\n- Behavior: verify_live_provider tracks whether any TextDelta contains a nonwhitespace byte, then accepts ResponseCompleted as LiveCanary. It does not drive ResponseReducer or interpret Finish reasons. Its fake provider test explicitly expects success for TextDelta followed by ResponseCompleted without ResponseStarted, ItemStarted, ItemCompleted or Finish. By contrast, later connection-test tool stages do use ResponseReducer.\n- Consequence: malformed, unclosed or provider-incomplete output can qualify the route even when an ordinary model turn would fail its C5 contract. Readiness then overstates what was actually established and can send daily-driving work into recovery loops. This is a source/test-contract finding, not evidence that your currently selected provider emitted that grammar.\n- Repair direction: qualify through the same normalized reducer and accepted terminal policy used by ordinary work, retaining context/capacity/refusal causes. Readiness should certify a completed usable response rather than the presence of two event shapes. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.686524988Z",
-      "updated_at": "2026-10-08T05:32:52.354838825Z",
+      "updated_at": "2026-10-08T05:34:40.470973014Z",
+      "closed_at": "2026-10-08T05:34:40.468778989Z",
       "labels": [
         "daily-driving-limiter"
       ],
