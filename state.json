@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4134,
-        "tip_oid": "d07fe2ed3e4131b449d513ac4457e255309293c7",
-        "prefix_sha256": "47edb73fb6441248536e000271c1786b7e99d898dfc37931a442a4c82ba3a496"
+        "sequence": 4135,
+        "tip_oid": "ba3d2eedf380b779f0c1b3704997f64786404e8e",
+        "prefix_sha256": "696e19ce7394d453060670689016748c8de72b923d85fe31db863455fb17f533"
       },
       "NWAR": {
         "sequence": 39,
@@ -24650,12 +24650,13 @@
       "display_id": 554,
       "title": "[L476] Compatible wire and terminal formats narrow otherwise accepted content capacities",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L476.\n\n- Evidence: `crates/model/peritus-provider-compatible/src/request.rs:63-85`, `src/request/chat.rs:57-58,144-156`, `src/request/responses.rs:34-35,120-132`, `src/stream/responses.rs:55-58,243-280`, `src/stream/responses/tools.rs:30-51` in the same crate; protocol production ceilings are listed in L017 and HTTP ceilings in L209.\n- Behavior: full JSON/base64 wire bodies are materialized before the fixed 32-MiB HTTP request ceiling is applied. A protocol-valid 32-MiB inline media value alone expands past that ceiling in Base64. Streaming Responses allows each assembled part up to the output maximum and tool arguments up to their argument maximum, but the required done event repeats the entire raw text/arguments in one JSON frame subject to the smaller eight-MiB event bound. Escaping/framing overhead further reduces the effective payload that fits.\n- Consequence: a domain-valid request can fail after expensive wire construction; a progressively accepted output/tool can fail only at close because its required repeated terminal value cannot fit. These are source-derived cross-format capacity mismatches, not measured live oversized requests.\n- Repair direction: use a consistent pre-effect wire-size contract, streaming encoding and provider-aware media handling; align terminal verification capacity with admitted assembled content. Preserve exact raw-terminal comparison rather than truncate accepted content. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.721643336Z",
-      "updated_at": "2026-10-08T10:07:44.627250133Z",
+      "updated_at": "2026-10-08T10:09:13.228567347Z",
+      "closed_at": "2026-10-08T10:09:13.225607149Z",
       "labels": [
         "daily-driving-limiter"
       ],
