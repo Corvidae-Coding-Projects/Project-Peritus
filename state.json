@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4173,
-        "tip_oid": "ed26897f19f0c9edde4166dbdb5e2a1a80347e1d",
-        "prefix_sha256": "8fe4345275c5ec0cf425754da36e1798e837312669e09fba9bb8b8866c525ac4"
+        "sequence": 4174,
+        "tip_oid": "6668cb569763ace27690f0a4c94995380d55edbf",
+        "prefix_sha256": "4bd1ba13a7bbfbd30bf4b09ab0c7d7abea1befb1d7812d567c95e54ea697dd74"
       },
       "NWAR": {
         "sequence": 39,
@@ -2128,12 +2128,13 @@
       "display_id": 177,
       "title": "[L078] Memory retrieval has small pages, scan caps, and conservative byte packing",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L078.\n\n- `tools/read.rs:19-43,265-285` limits a raw request to **8 KiB**, explicit handles to **32**, query text to **256 bytes**, cursors to **100 bytes**, and response requests to **256..configured max_read_bytes** (default 16 KiB, configurable up to 64 KiB). Source handle numbers are limited to 20 digits (`tools.rs:133-148`), a u64 representation constraint.\n- Search scans at most **32 sources** per page (`read.rs:87-91`) and stops before exceeding **64 MiB scanned bytes** after its first artifact (`111-121`); it materializes complete artifacts. Only the first literal occurrence in each artifact determines the preview (`122-124`). Pagination/explicit offsets allow further reads but do not enumerate all matching occurrences.\n- Packing reserves worst-case escaped expansion at **six output bytes per source byte**, plus metadata/cursor overhead (`167-185`). A nominal 16 KiB page therefore returns substantially less source text. If even metadata or the next full entry cannot fit, it returns a rejection requiring a larger page (`128-141,240-244`). These policies can amplify repeated reads; exact archived evidence remains retained.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.163787760Z",
-      "updated_at": "2026-10-08T15:54:08.934472172Z",
+      "updated_at": "2026-10-08T15:55:43.356341246Z",
+      "closed_at": "2026-10-08T15:55:43.352981538Z",
       "labels": [
         "daily-driving-limiter"
       ],
