@@ -1,7 +1,7 @@
 //! One C0 transaction binds exact events, finalized artifact roots, and checkpoint CAS.
 
 use super::super::error;
-use super::{FRAME_FAMILY, LocalStore, STATE_KEY, STATE_NAMESPACE};
+use super::{FRAME_FAMILY, LocalAppendReceipt, LocalStore, STATE_KEY, STATE_NAMESPACE};
 use peritus_agent::DeveloperLoopError;
 use peritus_codec::{CodecLimits, encode_frame, sha256};
 use peritus_journal::{
@@ -15,7 +15,8 @@ impl LocalStore {
         payload: &[u8],
         references: &[Sha256Digest],
         checkpoint: Option<(u64, Vec<u8>)>,
-    ) -> Result<(), DeveloperLoopError> {
+    ) -> Result<LocalAppendReceipt, DeveloperLoopError> {
+        self.check_cancelled()?;
         let sequence =
             self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?;
         let event = self.identity.event(sequence)?;
@@ -75,12 +76,14 @@ impl LocalStore {
         )
         .plan()
         .map_err(|_| error("validate journal transaction"))?;
-        self.journal.append(plan).map_err(|_| error("commit local journal transaction"))?;
-        self.head = self
+        let cancellation = self.journal_cancellation.clone();
+        let committed = cancellation.run(|| self.journal.append(plan))
+            .map_err(|failure| self.journal_failure("commit local journal transaction", failure))?;
+        self.head = cancellation.run(|| self
             .journal
             .head(self.identity.aggregate)
-            .map_err(|_| error("observe committed journal head"))?;
+        ).map_err(|failure| self.journal_failure("observe committed journal head", failure))?;
         self.generation = next_generation;
-        Ok(())
+        Ok(LocalAppendReceipt { owner: committed.batch_hash() })
     }
 }

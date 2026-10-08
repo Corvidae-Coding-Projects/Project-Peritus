@@ -15,12 +15,12 @@ use super::error;
 use identity::StorageIdentity;
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{
-    ArtifactCatalogCancellation, ArtifactDigest, ArtifactReadHandle, ArtifactStore, EncryptionMetadata, MediaType,
-    ReferenceOwner, StoreConfig, WriteRequest,
+    ArtifactCatalogCancellation, ArtifactDigest, ArtifactReadHandle, ArtifactStore, ArtifactStoreError,
+    EncryptionMetadata, ErrorCode as ArtifactErrorCode, MediaType, ReferenceOwner, StoreConfig, WriteRequest,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_context::working::WorkingBinding;
-use peritus_journal::{AggregateHead, JournalCancellation, SqliteJournal};
+use peritus_journal::{AggregateHead, JournalCancellation, JournalError, JournalErrorKind, SqliteJournal};
 use peritus_provider_core::CancellationToken;
 use peritus_types::Sha256Digest;
 use std::{
@@ -101,7 +101,7 @@ impl LocalStore {
             .read(true)
             .write(true)
             .open(root.join("owner.lock"))
-            .map_err(|failure| storage_failure(cancellation, "open lineage ownership lock", failure))?;
+            .map_err(|failure| context_failure("open lineage ownership lock", failure))?;
         let identity = StorageIdentity::new(binding)?;
         ownership::acquire(&owner, &root, identity.scope, cancellation)?;
         let journal_signal = cancellation.clone();
@@ -115,16 +115,16 @@ impl LocalStore {
             peritus_journal::SqliteJournalOptions::native(),
             &journal_cancellation,
         )
-        .map_err(|failure| storage_failure(cancellation, "open C0 journal", failure))?;
+        .map_err(|failure| map_journal_failure(&journal_cancellation, "open C0 journal", failure))?;
         let config = StoreConfig::for_available_space(root.join("artifacts"), MAX_ARTIFACT_BYTES)
             .and_then(|config| config.with_database_path(&database))
             .map_err(|_| error("configure C0 artifact store"))?;
         let artifacts = catalog_cancellation.run(|| ArtifactStore::open(config))
-            .map_err(|failure| storage_failure(cancellation, "open C0 artifact store", failure))?;
+            .map_err(|failure| map_artifact_failure("open C0 artifact store", failure))?;
         let head = journal_cancellation.run(|| journal.head(identity.aggregate))
-            .map_err(|failure| storage_failure(cancellation, "read lineage head", failure))?;
+            .map_err(|failure| map_journal_failure(&journal_cancellation, "read lineage head", failure))?;
         let checkpoint = journal_cancellation.run(|| journal.state_record(STATE_NAMESPACE, STATE_KEY))
-            .map_err(|failure| storage_failure(cancellation, "read checkpoint root", failure))?;
+            .map_err(|failure| map_journal_failure(&journal_cancellation, "read checkpoint root", failure))?;
         let generation =
             checkpoint.as_ref().map_or(0, peritus_journal::DurableStateRecord::revision);
         Ok(Self { root, journal, artifacts, identity, head, generation, journal_cancellation, catalog_cancellation, _owner: owner })
@@ -149,7 +149,7 @@ impl LocalStore {
         self.journal_cancellation.run(|| self.journal
             .records_for_aggregate(self.identity.aggregate)
         )
-            .map_err(|failure| self.failure("verify journal chain", failure))?
+            .map_err(|failure| self.journal_failure("verify journal chain", failure))?
             .into_iter()
             .map(|record| {
                 let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
@@ -174,7 +174,7 @@ impl LocalStore {
                 peritus_journal::MAX_GLOBAL_WINDOW_RECORDS,
             )
         )
-            .map_err(|failure| self.failure("verify journal suffix page", failure))?
+            .map_err(|failure| self.journal_failure("verify journal suffix page", failure))?
             .into_iter()
             .map(|record| {
                 let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION)
@@ -193,7 +193,7 @@ impl LocalStore {
             .state_record(STATE_NAMESPACE, STATE_KEY)
         )
             .map(|record| record.map(|record| record.bytes().to_vec()))
-            .map_err(|failure| self.failure("read committed checkpoint", failure))
+            .map_err(|failure| self.journal_failure("read committed checkpoint", failure))
     }
 
     pub(super) fn store(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
@@ -216,9 +216,9 @@ impl LocalStore {
         );
         self.catalog_cancellation.run(|| {
         let mut writer =
-            self.artifacts.begin_write(request).map_err(|failure| self.failure("begin artifact write", failure))?;
-        writer.write_chunk(bytes).map_err(|failure| self.failure("write artifact bytes", failure))?;
-        let finalized = writer.finalize().map_err(|failure| self.failure("finalize artifact", failure))?;
+            self.artifacts.begin_write(request).map_err(|failure| self.artifact_failure("begin artifact write", failure))?;
+        writer.write_chunk(bytes).map_err(|failure| self.artifact_failure("write artifact bytes", failure))?;
+        let finalized = writer.finalize().map_err(|failure| self.artifact_failure("finalize artifact", failure))?;
         Ok(StoredArtifact { digest, bytes: finalized.size() })
         })
     }
@@ -238,7 +238,7 @@ impl LocalStore {
                 }),
             )
         })
-            .map_err(|failure| self.failure("bind artifact dependency bundle", failure))?;
+            .map_err(|failure| self.artifact_failure("bind artifact dependency bundle", failure))?;
         Ok(parent)
     }
 
@@ -251,7 +251,7 @@ impl LocalStore {
             .artifacts
             .read(ArtifactDigest::from_sha256(artifact.digest), artifact.bytes)
         )
-            .map_err(|failure| self.failure("artifact unavailable or digest mismatch", failure))?;
+            .map_err(|failure| self.artifact_failure("artifact unavailable or digest mismatch", failure))?;
         if bytes.len() as u64 != artifact.bytes {
             return Err(error("artifact length mismatch"));
         }
@@ -271,7 +271,7 @@ impl LocalStore {
             .artifacts
             .open_read(digest)
         )
-            .map_err(|failure| self.failure("open verified artifact reader", failure))?;
+            .map_err(|failure| self.artifact_failure("open verified artifact reader", failure))?;
         if handle.metadata().digest() != digest {
             return Err(error("artifact reader digest mismatch"));
         }
@@ -286,7 +286,7 @@ impl LocalStore {
         self.catalog_cancellation.run(|| self.artifacts
             .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_BYTES)
         )
-            .map_err(|failure| self.failure("artifact unavailable or digest mismatch", failure))
+            .map_err(|failure| self.artifact_failure("artifact unavailable or digest mismatch", failure))
     }
 
     pub(super) fn checkpoint_owner(
@@ -300,7 +300,7 @@ impl LocalStore {
             .journal
             .resolve_command(command, sha256(payload))
         )
-            .map_err(|failure| self.failure("resolve checkpoint publication", failure))?
+            .map_err(|failure| self.journal_failure("resolve checkpoint publication", failure))?
         {
             peritus_journal::CommandResolution::Committed(batch)
                 if batch.records().len() == 1
@@ -322,7 +322,7 @@ impl LocalStore {
             .retire_reference_owner(ReferenceOwner::journal(owner))
         )
             .map(|_| ())
-            .map_err(|failure| self.failure("retire obsolete checkpoint artifact roots", failure))
+            .map_err(|failure| self.artifact_failure("retire obsolete checkpoint artifact roots", failure))
     }
 
     fn check_cancelled(&self) -> Result<(), DeveloperLoopError> {
@@ -331,19 +331,35 @@ impl LocalStore {
         } else { Ok(()) }
     }
 
-    fn failure(&self, operation: &str, failure: impl std::fmt::Display) -> DeveloperLoopError {
-        if self.journal_cancellation.is_cancelled() || self.catalog_cancellation.is_cancelled() {
-            DeveloperLoopError::Cancelled
-        } else {
-            DeveloperLoopError::Context(format!("local working memory: {operation}: {failure}"))
-        }
+    fn journal_failure(&self, operation: &str, failure: JournalError) -> DeveloperLoopError {
+        map_journal_failure(&self.journal_cancellation, operation, failure)
+    }
+
+    fn artifact_failure(&self, operation: &str, failure: ArtifactStoreError) -> DeveloperLoopError {
+        map_artifact_failure(operation, failure)
     }
 }
 
-fn storage_failure(cancellation: &CancellationToken, operation: &str, failure: impl std::fmt::Display) -> DeveloperLoopError {
-    if cancellation.is_cancelled() {
+fn map_journal_failure(
+    cancellation: &JournalCancellation,
+    operation: &str,
+    failure: JournalError,
+) -> DeveloperLoopError {
+    if cancellation.is_cancelled() && failure.kind() == JournalErrorKind::Busy {
         DeveloperLoopError::Cancelled
     } else {
-        DeveloperLoopError::Context(format!("local working memory: {operation}: {failure}"))
+        context_failure(operation, failure)
     }
+}
+
+fn map_artifact_failure(operation: &str, failure: ArtifactStoreError) -> DeveloperLoopError {
+    if failure.code() == ArtifactErrorCode::CatalogWaitCancelled {
+        DeveloperLoopError::Cancelled
+    } else {
+        context_failure(operation, failure)
+    }
+}
+
+fn context_failure(operation: &str, failure: impl std::fmt::Display) -> DeveloperLoopError {
+    DeveloperLoopError::Context(format!("local working memory: {operation}: {failure}"))
 }
