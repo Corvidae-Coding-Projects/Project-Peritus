@@ -100,7 +100,7 @@ pub fn render_working_state(state: &WorkingState, binding: WorkingBinding, max_t
 /// `available_tokens` produces compact indexed references and typed reconciliation state. Hosts
 /// must reserve complete request framing before calling.
 pub fn render_working_state_with_headroom(state: &WorkingState, binding: WorkingBinding, preferred_tokens: u64, available_tokens: u64) -> Result<WorkingRenderView, WorkingError> {
-    let entries = active_projection(state.entries(binding)?);
+    let entries = state.active_entries(binding)?;
     if entries.is_empty() {
         return Ok(WorkingRenderView {
             plan: None,
@@ -303,26 +303,6 @@ fn is_required_root(entry: &WorkingEntry) -> bool {
             || (entry.kind() == WorkingEntryKind::Plan
                 && entry.status() != WorkingEntryStatus::Resolved)
     )
-}
-
-fn active_projection(entries: &[WorkingEntry]) -> Vec<&WorkingEntry> {
-    let mut included = entries.iter()
-        .filter(|entry| !entry.status().is_retired())
-        .map(WorkingEntry::id)
-        .collect::<BTreeSet<_>>();
-    let mut frontier = included.iter().copied().collect::<Vec<_>>();
-    let mut cursor = 0;
-    while cursor < frontier.len() {
-        let id = frontier[cursor];
-        cursor += 1;
-        let Ok(index) = entries.binary_search_by_key(&id, WorkingEntry::id) else {
-            continue;
-        };
-        for dependency in entries[index].links().depends_on() {
-            if included.insert(*dependency) { frontier.push(*dependency); }
-        }
-    }
-    entries.iter().filter(|entry| included.contains(&entry.id())).collect()
 }
 
 fn required_closure(entries: &[&WorkingEntry]) -> Vec<ContextNodeId> {

@@ -80,7 +80,7 @@ pub(super) fn append(
 fn candidates(memory: &LocalMemory) -> Result<Vec<u64>, DeveloperLoopError> {
     let mut candidates: Vec<_> = memory
         .state
-        .entries(memory.state.binding())
+        .active_entries(memory.state.binding())
         .map_err(|_| super::super::error("evidence scope mismatch"))?
         .iter()
         .flat_map(|entry| entry.links().supports().iter().chain(entry.links().contradicts()))

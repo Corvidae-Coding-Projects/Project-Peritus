@@ -136,7 +136,7 @@ impl LocalMemory {
             .map_err(|_| error("invalid local update schema"))?;
         let entries = self
             .state
-            .entries(self.state.binding())
+            .active_entries(self.state.binding())
             .map_err(|_| error("local compactor scope mismatch"))?;
         let entry_count = u64::try_from(entries.len()).map_err(|_| error("local entry cursor overflow"))?;
         if let Some(id) = cursor.entry_id {

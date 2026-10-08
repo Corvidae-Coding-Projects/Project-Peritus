@@ -5,15 +5,13 @@ use peritus_agent::DeveloperLoopError;
 use peritus_codec::sha256;
 use peritus_context::{
     ContextNodeId,
-    working::{WorkingBinding, WorkingEnvironment, WorkingFileDigest, WorkingLimits},
+    working::{WorkingBinding, WorkingEnvironment, WorkingFileDigest, WorkingLimits, WorkingState},
 };
+use peritus_patch::WorkspacePath;
+use peritus_provider_core::CancellationToken;
 use peritus_types::Sha256Digest;
-use sha2::{Digest as _, Sha256};
-use std::{
-    fs::File,
-    io::Read as _,
-    path::{Path, PathBuf},
-};
+use peritus_workspace::{ErrorCode as WorkspaceErrorCode, FolderIdentity, FolderInspection};
+use std::path::{Path, PathBuf};
 
 /// Direct folders have no whole-tree candidate identity. Only explicit file dependencies,
 /// conversation and task validity are supported; the digest is a directory namespace only.
@@ -38,6 +36,7 @@ pub(in crate::local_context) fn capture(
     contract: &str,
     limits: WorkingLimits,
     scope: &WorkspaceScope,
+    cancellation: &CancellationToken,
 ) -> Result<WorkingEnvironment, DeveloperLoopError> {
     let candidate = if scope.direct {
         sha256(&binding.workspace().into_bytes())
@@ -48,20 +47,19 @@ pub(in crate::local_context) fn capture(
     };
     let mut files = Vec::new();
     for path in paths {
-        let Ok(full) = crate::developer_tools::checked_protected_file_for_developer(
+        if crate::developer_tools::checked_context_file_for_developer(
             root,
             path,
             contract,
             &scope.protected,
-        ) else {
+        )?
+        .is_none()
+        {
             continue;
-        };
-        match File::open(full) {
-            Ok(file) => {
-                files.push(WorkingFileDigest::new(key(path.as_bytes())?, digest_file(file)?));
-            }
-            Err(failure) if failure.kind() == std::io::ErrorKind::NotFound => {}
-            Err(_) => return Err(error("inspect file dependency")),
+        }
+        if let Some(receipt) = digest_file(root, path, cancellation)? {
+            let FileDigestReceipt { digest, bytes: _ } = receipt;
+            files.push(WorkingFileDigest::new(key(path.as_bytes())?, digest));
         }
     }
     files.sort_by_key(|file| file.key());
@@ -70,19 +68,105 @@ pub(in crate::local_context) fn capture(
         .map_err(|_| error("invalid working environment"))
 }
 
-fn digest_file(mut file: File) -> Result<Sha256Digest, DeveloperLoopError> {
-    let mut hasher = Sha256::new();
-    let mut buffer = [0; 8192];
-    let mut total = 0_u64;
-    loop {
-        let count = file.read(&mut buffer).map_err(|_| error("hash file dependency"))?;
-        if count == 0 {
-            return Ok(Sha256Digest::new(hasher.finalize().into()));
-        }
-        total = total.checked_add(count as u64).ok_or_else(|| error("file size overflow"))?;
-        if total > 64 * 1024 * 1024 {
-            return Err(error("file dependency exceeds inspection bound"));
-        }
-        hasher.update(&buffer[..count]);
+pub(in crate::local_context) fn projected_paths(
+    state: &WorkingState,
+    archive: &[String],
+    additions: &[String],
+) -> Result<Vec<String>, DeveloperLoopError> {
+    let entries = state
+        .active_entries(state.binding())
+        .map_err(|_| error("working-state file projection binding mismatch"))?;
+    let mut keys = entries
+        .iter()
+        .flat_map(|entry| entry.validity().files().iter().map(|file| file.key()))
+        .collect::<Vec<_>>();
+    for path in additions {
+        keys.push(key(path.as_bytes())?);
     }
+    keys.sort();
+    keys.dedup();
+    archive
+        .iter()
+        .filter_map(|path| match key(path.as_bytes()) {
+            Ok(path_key) if keys.binary_search(&path_key).is_ok() => Some(Ok(path.clone())),
+            Ok(_) => None,
+            Err(reason) => Some(Err(reason)),
+        })
+        .collect()
+}
+
+struct FileDigestReceipt {
+    digest: Sha256Digest,
+    bytes: u64,
+}
+
+struct InspectionProgress<'a> {
+    cancellation: &'a CancellationToken,
+    bytes: u64,
+}
+
+impl std::io::Write for InspectionProgress<'_> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        if self.cancellation.is_cancelled() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "file dependency inspection cancelled",
+            ));
+        }
+        let count = u64::try_from(bytes.len())
+            .map_err(|_| std::io::Error::other("file dependency byte count overflowed"))?;
+        self.bytes = self
+            .bytes
+            .checked_add(count)
+            .ok_or_else(|| std::io::Error::other("file dependency byte count overflowed"))?;
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        if self.cancellation.is_cancelled() {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Interrupted,
+                "file dependency inspection cancelled",
+            ))
+        } else {
+            Ok(())
+        }
+    }
+}
+
+fn digest_file(
+    root: &Path,
+    path: &str,
+    cancellation: &CancellationToken,
+) -> Result<Option<FileDigestReceipt>, DeveloperLoopError> {
+    if cancellation.is_cancelled() {
+        return Err(error("hash file dependency cancelled"));
+    }
+    let selected = WorkspacePath::new(path).map_err(|_| error("invalid file dependency path"))?;
+    let identity = FolderIdentity::observe(root).map_err(|_| error("observe workspace identity"))?;
+    let inspection =
+        FolderInspection::open(&identity).map_err(|_| error("open file dependency inspection"))?;
+    let mut progress = InspectionProgress { cancellation, bytes: 0 };
+    match inspection.copy_snapshot(&selected, &mut progress) {
+        Ok((digest, bytes)) if !cancellation.is_cancelled() && progress.bytes == bytes => {
+            Ok(Some(FileDigestReceipt { digest, bytes }))
+        }
+        Ok(_) if cancellation.is_cancelled() => Err(error("hash file dependency cancelled")),
+        Ok(_) => Err(error("file dependency progress receipt mismatch")),
+        Err(_) if cancellation.is_cancelled() => Err(error("hash file dependency cancelled")),
+        Err(failure) if missing_file(&failure) => Ok(None),
+        Err(failure)
+            if failure.code() == WorkspaceErrorCode::Indeterminate
+                && failure.detail() == "source identity or content changed during inspection" =>
+        {
+            Err(error("file dependency changed during inspection"))
+        }
+        Err(_) => Err(error("inspect file dependency")),
+    }
+}
+
+fn missing_file(failure: &peritus_workspace::WorkspaceError) -> bool {
+    std::error::Error::source(failure)
+        .and_then(|source| source.downcast_ref::<std::io::Error>())
+        .is_some_and(|source| source.kind() == std::io::ErrorKind::NotFound)
 }

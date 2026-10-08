@@ -1178,26 +1178,13 @@ fn encode_entry_pages(
 }
 
 fn partition_entries(entries: &[WorkingEntry]) -> (Vec<&WorkingEntry>, Vec<&WorkingEntry>) {
-    let mut active = entries
+    let active = super::super::state_access::active_projection(entries);
+    let active_ids = active.iter().map(|entry| entry.id()).collect::<BTreeSet<_>>();
+    let retired = entries
         .iter()
-        .filter(|entry| !entry.status().is_retired())
-        .map(WorkingEntry::id)
-        .collect::<BTreeSet<_>>();
-    let mut frontier = active.iter().copied().collect::<Vec<_>>();
-    let mut cursor = 0;
-    while cursor < frontier.len() {
-        let id = frontier[cursor];
-        cursor += 1;
-        let Ok(index) = entries.binary_search_by_key(&id, WorkingEntry::id) else {
-            continue;
-        };
-        for dependency in entries[index].links().depends_on() {
-            if active.insert(*dependency) {
-                frontier.push(*dependency);
-            }
-        }
-    }
-    entries.iter().partition(|entry| active.contains(&entry.id()))
+        .filter(|entry| !active_ids.contains(&entry.id()))
+        .collect();
+    (active, retired)
 }
 
 fn encode_requirement_pages(

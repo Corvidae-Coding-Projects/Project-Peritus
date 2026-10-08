@@ -40,13 +40,16 @@ impl WorkingState {
         },
     {
         self.check_binding(binding)?;
-        let mut index = 0;
-        while index < self.observations.len()
-            invariant index <= self.observations.len(),
-            decreases self.observations.len() - index,
-        {
-            if self.observations[index].id() == id { return Ok(self.observations[index]); }
-            index += 1;
+        // Ingestion and recovery require a contiguous one-based archive. Check
+        // the returned identity as well, so this index never accepts a gap or
+        // conflicting locator even if an invalid state reaches the accessor.
+        let sequence = id.get();
+        if sequence == 0 || sequence - 1 > usize::MAX as u64 {
+            return Err(WorkingError::MissingSource);
+        }
+        let index = (sequence - 1) as usize;
+        if index < self.observations.len() && self.observations[index].id() == id {
+            return Ok(self.observations[index]);
         }
         Err(WorkingError::MissingSource)
     }
@@ -64,4 +67,47 @@ impl WorkingState {
         }
     }
 }
+}
+
+#[cfg(not(verus_only))]
+pub(super) fn active_projection(entries: &[WorkingEntry]) -> Vec<&WorkingEntry> {
+    let mut included = entries
+        .iter()
+        .filter(|entry| !entry.status().is_retired())
+        .map(WorkingEntry::id)
+        .collect::<std::collections::BTreeSet<_>>();
+    let mut frontier = included.iter().copied().collect::<Vec<_>>();
+    let mut cursor = 0;
+    while cursor < frontier.len() {
+        let id = frontier[cursor];
+        cursor += 1;
+        let Ok(index) = entries.binary_search_by_key(&id, WorkingEntry::id) else {
+            continue;
+        };
+        for dependency in entries[index].links().depends_on() {
+            if included.insert(*dependency) {
+                frontier.push(*dependency);
+            }
+        }
+    }
+    entries.iter().filter(|entry| included.contains(&entry.id())).collect()
+}
+
+#[cfg(not(verus_only))]
+impl WorkingState {
+    /// Returns the current prompt and update projection with complete dependency closure.
+    ///
+    /// Stale and superseded records retire from this projection unless a current entry still
+    /// depends on them. [`WorkingState::entry`] continues to resolve every retained historical
+    /// identifier exactly.
+    ///
+    /// # Errors
+    /// Rejects another lineage or stale conversation before exposing the projection.
+    pub fn active_entries(
+        &self,
+        binding: WorkingBinding,
+    ) -> Result<Vec<&WorkingEntry>, WorkingError> {
+        self.check_binding(binding)?;
+        Ok(active_projection(&self.entries))
+    }
 }
