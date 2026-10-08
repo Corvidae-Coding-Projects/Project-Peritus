@@ -488,7 +488,7 @@ impl ProcessStore {
         support_tasks_joined: bool,
     ) -> Result<(), ProcessError> {
         self.update(process_id, |manifest| {
-            if manifest.phase != LifecyclePhase::Starting {
+            if manifest.phase != LifecyclePhase::Starting || !support_tasks_joined {
                 return Err(store_error("spawn failure is out of sequence"));
             }
             manifest.exit = Some(OsExitObservation::Unavailable);
@@ -512,6 +512,8 @@ impl ProcessStore {
             if manifest.phase != LifecyclePhase::Exited
                 || retained > observed
                 || dropped != observed - retained
+                || !tree_quiescent
+                || !support_tasks_joined
             {
                 return Err(store_error("closed process accounting is inconsistent"));
             }
@@ -545,6 +547,8 @@ impl ProcessStore {
                     | LifecyclePhase::Exited
             ) || retained > observed
                 || dropped != observed - retained
+                || !tree_quiescent
+                || !support_tasks_joined
             {
                 return Err(store_error(
                     "failed process closure is out of sequence or inconsistent",

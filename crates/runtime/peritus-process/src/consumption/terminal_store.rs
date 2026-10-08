@@ -4,7 +4,7 @@ use peritus_types::ProcessId;
 
 use crate::{
     ErrorCode, LifecyclePhase, OutputArtifact, ProcessError, ProcessOperation, RecoveryClass,
-    TerminalResult, registry_storage::write_manifest, terminal::terminal_digest,
+    TerminalResult, terminal::terminal_digest,
 };
 
 use super::{ProcessStore, store_error};
@@ -18,6 +18,7 @@ impl ProcessStore {
         let digest = terminal_digest(result)?;
         self.update(process_id, |manifest| {
             if manifest.phase != LifecyclePhase::Closed
+                || !manifest.ownership_settled()
                 || result.process_id() != process_id
                 || result.plan_digest() != manifest.plan_digest
                 || !manifest.matches_terminal_at_publication(result)
@@ -40,10 +41,9 @@ impl ProcessStore {
     /// Returns a typed recovery error when the process is missing or has no complete terminal
     /// record.
     pub fn terminal_result(&self, process_id: ProcessId) -> Result<TerminalResult, ProcessError> {
-        self.lock_state()
-            .manifests
-            .get(&process_id)
-            .and_then(|manifest| manifest.terminal.clone())
+        self.authoritative_record(process_id)?
+            .and_then(|record| record.manifest)
+            .and_then(|manifest| manifest.terminal)
             .ok_or_else(|| terminal_unavailable("complete terminal result is not persisted"))
     }
 
@@ -63,11 +63,8 @@ impl ProcessStore {
         artifact: OutputArtifact,
         complete: bool,
     ) -> Result<TerminalResult, ProcessError> {
-        let mut state = self.lock_state();
-        let manifest = state
-            .manifests
-            .get_mut(&process_id)
-            .ok_or_else(|| terminal_unavailable("process manifest is missing"))?;
+        let mut published = None;
+        self.update(process_id, |manifest| {
         let mut result = manifest
             .terminal
             .clone()
@@ -89,24 +86,20 @@ impl ProcessStore {
             result.mark_artifact_failure();
         }
         let digest = terminal_digest(&result)?;
-        let mut next = manifest.clone();
-        next.terminal_digest = Some(digest);
-        next.terminal = Some(result.clone());
-        write_manifest(&self.inner.manifests, &next)?;
-        *manifest = next;
-        drop(state);
-        Ok(result)
+        manifest.terminal_digest = Some(digest);
+        manifest.terminal = Some(result.clone());
+        published = Some(result);
+        Ok(())
+        })?;
+        published.ok_or_else(|| terminal_unavailable("artifact publication produced no terminal result"))
     }
 
     pub(crate) fn complete_artifact_publication(
         &self,
         process_id: ProcessId,
     ) -> Result<TerminalResult, ProcessError> {
-        let mut state = self.lock_state();
-        let manifest = state
-            .manifests
-            .get_mut(&process_id)
-            .ok_or_else(|| terminal_unavailable("process manifest is missing"))?;
+        let mut published = None;
+        self.update(process_id, |manifest| {
         let mut result = manifest
             .terminal
             .clone()
@@ -115,17 +108,17 @@ impl ProcessStore {
             return Err(artifact_error("artifact completion omits a retained output stream"));
         }
         if result.artifact_publication_complete() {
-            return Ok(result);
+            published = Some(result);
+            return Ok(());
         }
         result.mark_artifacts_complete();
         let digest = terminal_digest(&result)?;
-        let mut next = manifest.clone();
-        next.terminal_digest = Some(digest);
-        next.terminal = Some(result.clone());
-        write_manifest(&self.inner.manifests, &next)?;
-        *manifest = next;
-        drop(state);
-        Ok(result)
+        manifest.terminal_digest = Some(digest);
+        manifest.terminal = Some(result.clone());
+        published = Some(result);
+        Ok(())
+        })?;
+        published.ok_or_else(|| terminal_unavailable("artifact completion produced no terminal result"))
     }
 }
 

@@ -267,10 +267,12 @@ impl ProcessStore {
             let page = self.registry_page(after)?;
             if page.is_empty() { break; }
             for record in page {
-                after = Some(record.process_id);
-                if let Some(record) = self.authoritative_record(record.process_id)? {
-                    visit(record)?;
-                }
+                let process_id = record.process_id;
+                after = Some(process_id);
+                let record = self
+                    .authoritative_record(process_id)?
+                    .ok_or_else(|| store_error("indexed process record disappeared during traversal"))?;
+                visit(record)?;
             }
         }
         Ok(())
@@ -280,8 +282,8 @@ impl ProcessStore {
         &self,
         expected: &ExecutionManifest,
         tree_quiescent: bool,
-    ) -> Result<bool, ProcessError> {
-        let mut applied = false;
+    ) -> Result<Option<bool>, ProcessError> {
+        let mut settled = None;
         let process_id = expected.identity.process_id();
         self.update(process_id, |manifest| {
             // A concurrent owner may have advanced or supplied a previously missing native tree
@@ -289,19 +291,26 @@ impl ProcessStore {
             if manifest != expected {
                 return Ok(());
             }
-            applied = true;
             if manifest.ownership_settled() {
+                settled = Some(true);
                 return Ok(());
             }
-            manifest.tree_quiescent = tree_quiescent;
-            manifest.support_tasks_joined = true;
-            if manifest.phase != LifecyclePhase::Terminal {
-                manifest.exit = Some(OsExitObservation::Unavailable);
+            if !tree_quiescent {
+                settled = Some(false);
+                return Ok(());
+            }
+            manifest.tree_quiescent = true;
+            if !matches!(manifest.phase, LifecyclePhase::Closed | LifecyclePhase::Terminal) {
+                manifest.support_tasks_joined = true;
+                if manifest.exit.is_none() {
+                    manifest.exit = Some(OsExitObservation::Unavailable);
+                }
                 manifest.phase = LifecyclePhase::Closed;
             }
+            settled = Some(manifest.ownership_settled());
             Ok(())
         })?;
-        Ok(applied)
+        Ok(settled)
     }
 
     pub(super) fn update(

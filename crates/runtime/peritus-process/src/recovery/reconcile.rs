@@ -237,9 +237,11 @@ impl ProcessStore {
             for record in page {
                 let process_id = record.process_id;
                 after = Some(process_id);
-                let Some(record) = self.authoritative_record(process_id)? else {
-                    continue;
-                };
+                let record = self
+                    .authoritative_record(process_id)?
+                    .ok_or_else(|| retained_recovery_error(
+                        "indexed process record disappeared during reconciliation",
+                    ))?;
                 let Some(manifest) = record.manifest else {
                     observe(RecoveryObservation::completed(RecoveryEntry::new(
                         process_id, RecoveryDisposition::Indeterminate, false,
@@ -295,8 +297,8 @@ impl ProcessStore {
                                 }
                             };
                             let tree_quiescent = quiescence == ProcessTreeQuiescence::Quiescent;
-                            let applied = self.reconcile_ownership(&manifest, tree_quiescent)?;
-                            if !applied || !tree_quiescent {
+                            let settled = self.reconcile_ownership(&manifest, tree_quiescent)?;
+                            if settled != Some(true) || !tree_quiescent {
                                 (RecoveryDisposition::Indeterminate, false)
                             } else if manifest.phase == LifecyclePhase::Terminal {
                                 (RecoveryDisposition::Terminal, false)
@@ -314,8 +316,8 @@ impl ProcessStore {
                     // tree. A missing durable identity cannot prove that such an effect is absent.
                     let tree_quiescent = manifest.tree_quiescent
                         || manifest.phase == LifecyclePhase::Authorized;
-                    let applied = self.reconcile_ownership(&manifest, tree_quiescent)?;
-                    if !applied || !tree_quiescent {
+                    let settled = self.reconcile_ownership(&manifest, tree_quiescent)?;
+                    if settled != Some(true) || !tree_quiescent {
                         (RecoveryDisposition::Indeterminate, false)
                     } else if manifest.phase == LifecyclePhase::Terminal {
                         (RecoveryDisposition::Terminal, false)
