@@ -1,12 +1,13 @@
 //! Durable automatic before-images and exact owned-postimage checkpoint settlement.
 
 use super::{
-    AUTOMATIC_CHECKPOINT_NAME, ActorId, CheckpointFileMode, CheckpointFileVersion, CheckpointPath,
+    AUTOMATIC_CHECKPOINT_NAME, ActorId, CapturedPath, CheckpointFileMode, CheckpointFileVersion,
     ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord, Error,
     OperationId, Path, ProductRunService, RunId, UserCheckpoint, WorkspaceId,
-    WorkspaceMutationKind, automatic_checkpoint_id, check_automatic_record, check_protected,
-    checkpoint_references, external_effects, observe_empty_directory, observe_path, public_query,
-    validate_automatic_checkpoint, validate_run_binding,
+    WorkspaceMutationBaseline, WorkspaceMutationKind, automatic_checkpoint_id, capture_baseline,
+    check_automatic_record, check_protected, checkpoint_references, external_effects,
+    observe_empty_directory, observe_path, public_query, validate_automatic_checkpoint,
+    validate_run_binding,
 };
 use crate::product_run::ProductRunServiceError;
 use std::sync::{Arc, atomic::AtomicBool};
@@ -44,6 +45,43 @@ impl ProductRunService {
             path,
             kind,
             None,
+            None,
+            &cancellation,
+        )
+        .map(|_| ())
+    }
+
+    pub(crate) fn capture_automatic_checkpoint_from_baseline(
+        &self,
+        start: &ControlOperation,
+        run: RunId,
+        relative: &Path,
+        kind: WorkspaceMutationKind,
+        baseline: &WorkspaceMutationBaseline,
+    ) -> Result<(), Error> {
+        let path = relative.to_str().ok_or(ControlError::InvalidInput)?;
+        validate_run_binding(start, run)?;
+        let actor = ActorId::new(*start.actor_bytes()).map_err(|_| ControlError::InvalidInput)?;
+        let workspace =
+            WorkspaceId::new(*start.workspace_bytes()).map_err(|_| ControlError::InvalidInput)?;
+        let cancellation = self
+            .inner
+            .records
+            .read()
+            .map_err(|_| Error::Corrupt("product run registry lock poisoned"))?
+            .get(&run)
+            .ok_or(ControlError::NotFound)?
+            .control_cancellation
+            .clone();
+        self.capture_automatic_checkpoint_for_operation_cancellable(
+            actor,
+            start.conversation(),
+            workspace,
+            run,
+            path,
+            kind,
+            None,
+            Some(baseline),
             &cancellation,
         )
         .map(|_| ())
@@ -71,6 +109,7 @@ impl ProductRunService {
             path,
             kind,
             expected_revision,
+            None,
             &self.inner.control_shutdown,
         )
     }
@@ -88,6 +127,7 @@ impl ProductRunService {
         path: &str,
         kind: WorkspaceMutationKind,
         expected_revision: Option<u64>,
+        baseline: Option<&WorkspaceMutationBaseline>,
         cancellation: &peritus_journal::JournalCancellation,
     ) -> Result<u64, Error> {
         let query = public_query(conversation, workspace)?;
@@ -114,17 +154,22 @@ impl ProductRunService {
         let protected = self.protected_paths(query)?;
         let contract = record.inputs().capture()?.conversation().to_owned();
         check_protected(root, path, &contract, &protected)?;
-        let (paths, exclusions, bodies) = match kind {
-            WorkspaceMutationKind::File => {
-                let captured = observe_path(&identity, path)?;
-                let checkpoint_path = CheckpointPath::new(path.to_owned(), captured.version)?;
-                (vec![checkpoint_path], Vec::new(), vec![captured.body])
-            }
-            WorkspaceMutationKind::EmptyDirectory => {
-                let version = observe_empty_directory(&identity, path)?;
-                (vec![CheckpointPath::new(path.to_owned(), version)?], Vec::new(), vec![None])
+        let captured = if let Some(baseline) = baseline {
+            capture_baseline(path, kind, baseline)?
+        } else {
+            match kind {
+                WorkspaceMutationKind::File => observe_path(&identity, path)?,
+                WorkspaceMutationKind::EmptyDirectory => CapturedPath {
+                    path: path.to_owned(),
+                    version: observe_empty_directory(&identity, path)?,
+                    body: None,
+                    ranges: Vec::new(),
+                },
             }
         };
+        let paths = vec![captured.manifest()?];
+        let exclusions = Vec::new();
+        let bodies = vec![captured.body];
         let value = UserCheckpoint::automatic(
             checkpoint,
             AUTOMATIC_CHECKPOINT_NAME.to_owned(),

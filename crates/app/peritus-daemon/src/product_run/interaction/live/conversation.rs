@@ -5,7 +5,7 @@ use super::LiveConversation;
 use peritus_agent::DeveloperInteraction;
 use peritus_product_runner::{
     ContextSourcePage, ContextSourceSlice, ConversationView, WorkspaceMutationKind,
-    control::HostPermissions,
+    control::{HostPermissions, WorkspaceMutationBaseline},
 };
 use peritus_review::{
     ProductFinding, ProductFindingBodyPublisher, ProductFindingBodyReference,
@@ -112,6 +112,25 @@ impl ConversationView for LiveConversation {
         kind: WorkspaceMutationKind,
     ) -> peritus_product_runner::WorkspaceCheckpointFuture<'a> {
         Box::pin(self.capture_checkpoint_when_available(relative_path, kind))
+    }
+    fn checkpoint_workspace_mutation_from_baseline(
+        &self,
+        relative_path: &std::path::Path,
+        kind: WorkspaceMutationKind,
+        baseline: &WorkspaceMutationBaseline,
+    ) -> Result<(), String> {
+        let start = self
+            .workbench_start_record()
+            .map_err(|error| format!("automatic workspace checkpoint is unavailable: {error}. Peritus stopped because the completed command mutation has no durable before-image"))?;
+        self.service
+            .capture_automatic_checkpoint_from_baseline(
+                &start,
+                self.run_id,
+                relative_path,
+                kind,
+                baseline,
+            )
+            .map_err(|error| format!("automatic workspace checkpoint could not publish the retained command baseline: {error}. Peritus stopped because the completed command mutation could not be recorded durably"))
     }
     fn seal_workspace_mutation_checkpoint(
         &self,

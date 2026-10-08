@@ -22,6 +22,7 @@ pub(super) fn exact_file_receipt(
                 path: path.to_owned(),
                 kind: WorkspaceMutationKind::File,
                 owned_postchange: CheckpointFileVersion::Absent,
+                baseline: None,
             });
         }
         Err(error) => return Err(tool(error.to_string())),
@@ -49,6 +50,7 @@ pub(super) fn exact_file_receipt(
         path: path.to_owned(),
         kind: WorkspaceMutationKind::File,
         owned_postchange: CheckpointFileVersion::present(digest, bytes, file_mode(&after)),
+        baseline: None,
     })
 }
 

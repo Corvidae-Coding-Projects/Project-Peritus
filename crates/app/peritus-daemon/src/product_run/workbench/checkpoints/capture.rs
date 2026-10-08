@@ -1,14 +1,16 @@
 //! Streaming selected-path capture and no-follow folder observations.
 
 use super::{
-    CapturedCoverage, CapturedPath, CheckpointFileMode, CheckpointFileVersion, CheckpointId,
-    CheckpointPath, ControlError, ControlIntent, ControlOperation, ConversationId,
-    ConversationRecord, Error, FolderIdentity, FolderInspection, OperationId, Path,
-    ProductRunService, UserCheckpoint, WorkspacePath, checkpoint_references, external_effects, fs,
-    io, patch_input,
+    CapturedCoverage, CapturedPath, CheckpointExclusion, CheckpointExclusionReason,
+    CheckpointFileMode, CheckpointFileVersion, CheckpointId, CheckpointPath, ControlError,
+    ControlIntent, ControlOperation, ConversationId, ConversationRecord, Error, FolderIdentity,
+    FolderInspection, OperationId, Path, ProductRunService, UserCheckpoint, WorkspacePath,
+    checkpoint_references, external_effects, fs, io, patch_input,
 };
-use peritus_product_runner::WorkspaceMutationKind;
-use peritus_product_runner::control::{CheckpointRange, FileRange};
+use peritus_product_runner::{
+    WorkspaceMutationKind,
+    control::{CheckpointRange, FileRange, WorkspaceMutationBaseline},
+};
 use peritus_types::{ActorId, RunId, WorkspaceId};
 use std::collections::BTreeMap;
 
@@ -17,7 +19,7 @@ const EMPTY_DIRECTORY_EXCLUSION: &str = "empty directory removal cannot restore 
 
 mod automatic;
 mod observation;
-use observation::{observe_empty_directory, observe_file};
+use observation::{capture_baseline, observe_empty_directory, observe_file};
 pub(super) use observation::{observe_path, observe_version};
 
 impl ProductRunService {
@@ -35,16 +37,16 @@ impl ProductRunService {
         for entry in record.files().entries() {
             let source = entry.file().source();
             let reason = if !entry.selected() {
-                Some("deselected")
+                Some(CheckpointExclusionReason::Deselected)
             } else if source.path().is_none() {
-                Some("external import has no workspace target")
+                Some(CheckpointExclusionReason::ExternalImport)
             } else if source.folder() != Some(identity.digest()) {
-                Some("folder identity differs from the current workspace")
+                Some(CheckpointExclusionReason::FolderMismatch)
             } else {
                 None
             };
             if let Some(reason) = reason {
-                push_exclusion(&mut exclusions, source.label(), reason)?;
+                push_exclusion(&mut exclusions, source.label(), source.path(), reason)?;
                 continue;
             }
             let path = source.path().ok_or(ControlError::InvalidInput)?.to_owned();
@@ -268,10 +270,11 @@ pub(super) fn check_protected(
 }
 
 pub(super) fn push_exclusion(
-    values: &mut Vec<String>,
+    values: &mut Vec<CheckpointExclusion>,
     label: &str,
-    reason: &str,
+    path: Option<&str>,
+    reason: CheckpointExclusionReason,
 ) -> Result<(), Error> {
-    values.push(format!("{label}: {reason}"));
+    values.push(CheckpointExclusion::new(label.to_owned(), path.map(str::to_owned), reason)?);
     Ok(())
 }

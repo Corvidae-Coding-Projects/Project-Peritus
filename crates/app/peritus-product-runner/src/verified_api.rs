@@ -26,7 +26,10 @@ pub use effect_stubs::{
     uncertain_effects,
 };
 
-pub use crate::accounting::ProductRunProgress;
+pub use crate::accounting::{
+    ProductRunProgress, ResourceIoErrorKind, ResourceMeasurement, ResourceMeasurementStatus,
+    ResourceObservationCause, ResourceObservationCoverage, ResourceObservationOperation,
+};
 
 /// Concrete product-run phase emitted to the daemon.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -114,6 +117,67 @@ pub trait ConversationView: Send + Sync {
     fn reference_authority_context(&self) -> String {
         self.render()
     }
+    /// Returns one bounded page of daemon-owned immutable source descriptors after an ordinal.
+    /// Source bodies remain outside the prompt and target workspace until explicitly range-read.
+    fn context_sources(
+        &self,
+        _after: Option<u64>,
+    ) -> Result<crate::ContextSourcePage, String> {
+        Err("no external context sources are bound to this run".to_owned())
+    }
+    /// Reads one exact bounded UTF-8 slice from a descriptor returned by `context_sources`.
+    /// Hosts must revalidate run scope, source digest, total length, ordinal, and chunk boundary.
+    fn read_context_source(
+        &self,
+        _source: u64,
+        _offset: u64,
+    ) -> Result<crate::ContextSourceSlice, String> {
+        Err("no external context sources are bound to this run".to_owned())
+    }
+    #[cfg(not(verus_only))]
+    /// Optional host publication port for immutable product-finding bodies.
+    fn finding_body_publisher(
+        &self,
+    ) -> Option<&dyn peritus_review::ProductFindingBodyPublisher> {
+        None
+    }
+    /// Atomically adopts a compact ledger after all of its body references are durable.
+    fn adopt_finding_state(&self, _finding_state: &str) -> Result<(), String> {
+        Ok(())
+    }
+    /// Returns one bounded page of immutable typed governing-conversation bodies.
+    fn request_sources(
+        &self,
+        _after: Option<u64>,
+    ) -> Result<crate::ContextSourcePage, String> {
+        Err("no authoritative request sources are bound to this run".to_owned())
+    }
+    /// Whether out-of-line user-authority bodies must be read before any workspace tool.
+    fn request_sources_required(&self) -> Result<bool, String> {
+        Ok(false)
+    }
+    /// Exact conversation revision represented by the immutable request-source catalog.
+    fn request_source_revision(&self) -> Result<u64, String> {
+        Ok(self.revision())
+    }
+    /// Exact stable identity of the governing user-source set.
+    fn request_source_binding(&self) -> [u8; 32] {
+        let mut binding = [0_u8; 32];
+        binding[24..].copy_from_slice(&self.revision().to_be_bytes());
+        binding
+    }
+    /// Exact identity of the complete typed source catalog.
+    fn request_source_catalog_binding(&self) -> [u8; 32] {
+        self.request_source_binding()
+    }
+    /// Reads one exact bounded UTF-8 slice from a descriptor returned by `request_sources`.
+    fn read_request_source(
+        &self,
+        _source: u64,
+        _offset: u64,
+    ) -> Result<crate::ContextSourceSlice, String> {
+        Err("no authoritative request sources are bound to this run".to_owned())
+    }
     /// Current hard relative paths narrowed by explicit leave-alone review constraints.
     fn protected_paths(&self) -> Vec<PathBuf> {
         Vec::new()
@@ -148,6 +212,18 @@ pub trait ConversationView: Send + Sync {
         kind: WorkspaceMutationKind,
     ) -> WorkspaceCheckpointFuture<'a> {
         Box::pin(async move { self.checkpoint_before_workspace_mutation(relative_path, kind) })
+    }
+    /// Publishes an exact before-image retained before a command after its changed path is known.
+    ///
+    /// # Errors
+    /// Returns a redaction-safe reason when the retained baseline cannot be published durably.
+    fn checkpoint_workspace_mutation_from_baseline(
+        &self,
+        _relative_path: &Path,
+        _kind: WorkspaceMutationKind,
+        _baseline: &crate::control::WorkspaceMutationBaseline,
+    ) -> Result<(), String> {
+        Ok(())
     }
     /// Durably seals a checkpoint with the exact postimage produced by the owned tool.
     /// Hosts without rewind support retain the same optional callback as ordinary builds.
@@ -270,6 +346,12 @@ impl ProductRunResume {
     #[must_use]
     pub const fn next_phase(&self) -> ProductRunPhase {
         self.next_phase
+    }
+
+    /// Verification-only state never claims reusable production gate evidence.
+    #[must_use]
+    pub const fn retains_current_gate_state(&self) -> bool {
+        false
     }
 }
 

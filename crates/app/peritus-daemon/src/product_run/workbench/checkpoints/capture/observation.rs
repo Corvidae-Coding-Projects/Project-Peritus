@@ -2,8 +2,41 @@
 
 use super::{
     CapturedPath, CheckpointFileMode, CheckpointFileVersion, ControlError, Error, FolderIdentity,
-    FolderInspection, Path, WorkspacePath, fs, io, patch_input,
+    FolderInspection, Path, WorkspaceMutationBaseline, WorkspaceMutationKind, WorkspacePath, fs,
+    io, patch_input, patch_preimage,
 };
+
+pub(super) fn capture_baseline(
+    path: &str,
+    kind: WorkspaceMutationKind,
+    baseline: &WorkspaceMutationBaseline,
+) -> Result<CapturedPath, Error> {
+    patch_input(WorkspacePath::new(path))?;
+    let version = baseline.version();
+    let body = match (kind, version, baseline.snapshot()) {
+        (WorkspaceMutationKind::File, CheckpointFileVersion::Absent, None)
+        | (
+            WorkspaceMutationKind::EmptyDirectory,
+            CheckpointFileVersion::EmptyDirectory { .. },
+            None,
+        ) => None,
+        (
+            WorkspaceMutationKind::File,
+            version @ CheckpointFileVersion::Present { .. },
+            Some(snapshot),
+        ) => {
+            if snapshot.identity() != patch_preimage(version)? {
+                return Err(ControlError::InvalidInput.into());
+            }
+            let mut staged = tempfile::NamedTempFile::new()?;
+            patch_input(snapshot.write_to(&mut staged))?;
+            staged.as_file().sync_all()?;
+            Some(staged.into_temp_path())
+        }
+        _ => return Err(ControlError::InvalidInput.into()),
+    };
+    Ok(CapturedPath { path: path.to_owned(), version, body, ranges: Vec::new() })
+}
 
 pub(super) fn observe_empty_directory(
     identity: &FolderIdentity,

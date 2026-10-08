@@ -102,13 +102,25 @@ fn preview_values(
 }
 
 #[allow(dead_code)]
-fn conversation(view: &dyn ConversationView) {
+fn conversation(
+    view: &dyn ConversationView,
+    baseline: &crate::control::WorkspaceMutationBaseline,
+) {
     let _: bool = view.uses_explicit_media();
     let _: u64 = view.revision();
     let _: u64 = view.incorporated_revision();
     let _: String = view.render();
     let _: String = view.stable_request_context();
     let _: String = view.reference_authority_context();
+    let _: Result<crate::ContextSourcePage, String> = view.context_sources(None);
+    let _: Result<crate::ContextSourceSlice, String> = view.read_context_source(1, 0);
+    #[cfg(not(verus_only))]
+    let _: Option<&dyn peritus_review::ProductFindingBodyPublisher> =
+        view.finding_body_publisher();
+    let _: Result<(), String> = view.adopt_finding_state("");
+    let _: Result<crate::ContextSourcePage, String> = view.request_sources(None);
+    let _: Result<bool, String> = view.request_sources_required();
+    let _: Result<crate::ContextSourceSlice, String> = view.read_request_source(1, 0);
     let _: Vec<PathBuf> = view.protected_paths();
     let _: crate::control::HostPermissions = view.effective_permissions();
     let _: bool = view.permits_pipeline_handoff();
@@ -122,6 +134,11 @@ fn conversation(view: &dyn ConversationView) {
             WorkspaceMutationKind::File,
         );
     drop(pending);
+    let _: Result<(), String> = view.checkpoint_workspace_mutation_from_baseline(
+        std::path::Path::new("candidate.txt"),
+        WorkspaceMutationKind::File,
+        baseline,
+    );
     let _: Result<(), String> = view.seal_workspace_mutation_checkpoint(
         std::path::Path::new("candidate.txt"),
         WorkspaceMutationKind::File,
@@ -156,6 +173,7 @@ fn retained_resume(
         ProductRunResume::decode_durable(bytes, transcript);
     let _: Result<ProductRunResume, ProductRunnerError> =
         ProductRunResume::decode_durable_retained(bytes, transcript);
+    let _: bool = resume.retains_current_gate_state();
     let _: Result<ProductRunResume, ProductRunnerError> = resume.reconcile_candidate(*checkpoint);
 }
 

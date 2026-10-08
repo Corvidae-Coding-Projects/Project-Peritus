@@ -41,7 +41,7 @@ pub use checkpoint::{
     CheckpointCoverage, CheckpointExclusion, CheckpointExclusionDetails, CheckpointExclusionReason,
     CheckpointExclusions, CheckpointFileMode, CheckpointFileVersion, CheckpointPath,
     CheckpointRange, CheckpointReferences, CheckpointText, CheckpointTextIter, CheckpointVersion,
-    RestoreOperation, RestoreStatus, UserCheckpoint,
+    RestoreOperation, RestoreStatus, UserCheckpoint, WorkspaceMutationBaseline,
 };
 pub use compaction::{CompactedReply, PromptView};
 pub use context::{ContextPreference, ContextSelection, ContextSelections, ContextTarget};

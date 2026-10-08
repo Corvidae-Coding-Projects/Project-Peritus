@@ -1,7 +1,7 @@
 //! Exact checkpoint workspace-object states and legacy regular-file API compatibility.
 
 use super::ControlError;
-use peritus_patch::DirectoryMode;
+use peritus_patch::{DirectoryMode, FileMode, Preimage, SnapshotFile};
 use peritus_types::Sha256Digest;
 use serde::{Deserialize, Serialize};
 
@@ -39,6 +39,60 @@ pub enum CheckpointVersion {
 }
 /// Compatibility name retained for existing file checkpoint callers and stored records.
 pub type CheckpointFileVersion = CheckpointVersion;
+
+/// Complete retained before-image used after a command reveals its actual mutation footprint.
+///
+/// This capability is process-local and deliberately has no serialized representation. The
+/// durable scope journal owns the declared identity and retained bytes; hosts must stream and
+/// verify the snapshot before publishing the corresponding checkpoint.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WorkspaceMutationBaseline {
+    version: CheckpointFileVersion,
+    snapshot: Option<SnapshotFile>,
+}
+
+impl WorkspaceMutationBaseline {
+    pub(crate) fn new(
+        version: CheckpointFileVersion,
+        snapshot: Option<SnapshotFile>,
+    ) -> Result<Self, ControlError> {
+        version.validate()?;
+        let exact = match (version, snapshot.as_ref()) {
+            (CheckpointVersion::Absent | CheckpointVersion::EmptyDirectory { .. }, None) => true,
+            (
+                CheckpointVersion::Present { digest, bytes, mode },
+                Some(snapshot),
+            ) => {
+                snapshot.identity()
+                    == Preimage::present(
+                        Sha256Digest::new(digest),
+                        bytes,
+                        match mode {
+                            CheckpointFileMode::Regular => FileMode::Regular,
+                            CheckpointFileMode::Executable => FileMode::Executable,
+                        },
+                    )
+            }
+            _ => false,
+        };
+        if !exact {
+            return Err(ControlError::InvalidInput);
+        }
+        Ok(Self { version, snapshot })
+    }
+
+    /// Returns the exact workspace state captured before the command.
+    #[must_use]
+    pub const fn version(&self) -> CheckpointFileVersion {
+        self.version
+    }
+
+    /// Returns the verified streaming body for a present regular file.
+    #[must_use]
+    pub fn snapshot(&self) -> Option<&SnapshotFile> {
+        self.snapshot.as_ref()
+    }
+}
 
 impl CheckpointVersion {
     /// Constructs an exact empty-directory state from checked permission intent.

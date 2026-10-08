@@ -15,7 +15,7 @@ use crate::developer_tools::{
 };
 use crate::{
     WorkspaceMutationKind,
-    control::{CheckpointFileMode, CheckpointFileVersion},
+    control::{CheckpointFileMode, CheckpointFileVersion, WorkspaceMutationBaseline},
 };
 
 /// Material tool boundary that requires an exact candidate checkpoint.
@@ -37,6 +37,17 @@ pub enum ToolCheckpointBoundary {
         /// Exact state produced by the admitted effect or completed command receipt.
         owned_postchange: CheckpointFileVersion,
     },
+    /// One command-mutated path with its durable pre-command baseline and exact postimage.
+    BaselineMutation {
+        /// Canonical workspace-relative path.
+        path: String,
+        /// Exact supported target kind.
+        kind: WorkspaceMutationKind,
+        /// Durable streamed state retained before command execution.
+        baseline: WorkspaceMutationBaseline,
+        /// Exact state produced by the completed command receipt.
+        owned_postchange: CheckpointFileVersion,
+    },
     /// A declared verification command completed successfully.
     Verification,
     /// A caller-authorized external effect completed successfully.
@@ -55,6 +66,7 @@ pub(super) struct PreparedMutation {
     path: String,
     kind: WorkspaceMutationKind,
     owned_postchange: CheckpointFileVersion,
+    baseline: Option<WorkspaceMutationBaseline>,
 }
 
 impl WorkspaceDeveloperTools {
@@ -109,6 +121,7 @@ impl WorkspaceDeveloperTools {
                     path: path.to_owned(),
                     kind,
                     owned_postchange: CheckpointFileVersion::Absent,
+                    baseline: None,
                 });
             }
             _ => {}
@@ -183,6 +196,7 @@ impl WorkspaceDeveloperTools {
             path: relative.to_owned(),
             kind: WorkspaceMutationKind::File,
             owned_postchange: prepared.version(),
+            baseline: None,
         });
         Ok(())
     }
@@ -210,6 +224,7 @@ impl WorkspaceDeveloperTools {
                 path: relative.to_owned(),
                 kind: WorkspaceMutationKind::EmptyDirectory,
                 owned_postchange: CheckpointFileVersion::Absent,
+                baseline: None,
             });
             return Ok(());
         }
@@ -223,6 +238,7 @@ impl WorkspaceDeveloperTools {
             path: relative.to_owned(),
             kind: WorkspaceMutationKind::File,
             owned_postchange: CheckpointFileVersion::Absent,
+            baseline: None,
         });
         Ok(())
     }
@@ -239,7 +255,9 @@ impl WorkspaceDeveloperTools {
             if target.is_dir() {
                 return Err(tool("command scope paths must be regular files or absent"));
             }
-            self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
+            scope
+                .mutation_baseline(relative)
+                .map_err(|error| tool(error.to_string()))?;
         }
         if self
             .in_place_scope
@@ -249,7 +267,7 @@ impl WorkspaceDeveloperTools {
             .map_err(|error| tool(error.to_string()))?
             != paths
         {
-            return Err(tool("in-place command scope changed during checkpoint capture"));
+            return Err(tool("in-place command scope changed during baseline validation"));
         }
         Ok(())
     }
@@ -270,9 +288,9 @@ impl WorkspaceDeveloperTools {
             _ => false,
         };
         let completed_command = matches!(name, "run_command" | "command_poll" | "command_recover")
-            && result.get("success").and_then(Value::as_bool) == Some(true)
-            && (name == "run_command"
-                || result.get("state").and_then(Value::as_str) == Some("completed"));
+            && result.get("state").and_then(Value::as_str) == Some("completed");
+        let successful_command =
+            completed_command && result.get("success").and_then(Value::as_bool) == Some(true);
         let mutations = if completed_direct_mutation {
             if name == "workspace_remove" {
                 std::mem::take(&mut self.prepared_mutations)
@@ -288,16 +306,24 @@ impl WorkspaceDeveloperTools {
         let observer = self.checkpoint_observer.clone();
         for mutation in mutations {
             if let Some(observer) = &observer {
-                observer(ToolCheckpointBoundary::Mutation {
-                    path: mutation.path,
-                    kind: mutation.kind,
-                    owned_postchange: mutation.owned_postchange,
-                })
-                .map_err(tool)?;
+                let boundary = match mutation.baseline {
+                    Some(baseline) => ToolCheckpointBoundary::BaselineMutation {
+                        path: mutation.path,
+                        kind: mutation.kind,
+                        baseline,
+                        owned_postchange: mutation.owned_postchange,
+                    },
+                    None => ToolCheckpointBoundary::Mutation {
+                        path: mutation.path,
+                        kind: mutation.kind,
+                        owned_postchange: mutation.owned_postchange,
+                    },
+                };
+                observer(boundary).map_err(tool)?;
             }
         }
         let boundary = match name {
-            "run_command" | "command_poll" | "command_recover" if completed_command => {
+            "run_command" | "command_poll" | "command_recover" if successful_command => {
                 match string(arguments, "purpose")
                     .or_else(|| result.get("purpose").and_then(Value::as_str))
                 {
@@ -344,15 +370,20 @@ impl WorkspaceDeveloperTools {
 
     fn command_mutations(&self) -> Result<Vec<PreparedMutation>, DeveloperLoopError> {
         let Some(scope) = &self.in_place_scope else { return Ok(Vec::new()) };
-        scope
+        let paths = scope
             .changed_paths(&self.root)
-            .map_err(|error| tool(error.to_string()))?
-            .into_iter()
-            .map(|path| {
-                let relative = path.to_str().ok_or_else(|| tool("scope path must be UTF-8"))?;
-                exact_file_receipt(&self.root, relative)
-            })
-            .collect()
+            .map_err(|error| tool(error.to_string()))?;
+        let mut mutations = Vec::with_capacity(paths.len());
+        for path in paths {
+            let relative = path.to_str().ok_or_else(|| tool("scope path must be UTF-8"))?;
+            let (kind, baseline) =
+                scope.mutation_baseline(relative).map_err(|error| tool(error.to_string()))?;
+            let mut mutation = exact_file_receipt(&self.root, relative)?;
+            mutation.kind = kind;
+            mutation.baseline = Some(baseline);
+            mutations.push(mutation);
+        }
+        Ok(mutations)
     }
 }
 
@@ -365,6 +396,7 @@ fn prepared_file(path: &str, content: &[u8], mode: CheckpointFileMode) -> Prepar
             content.len() as u64,
             mode,
         ),
+        baseline: None,
     }
 }
 

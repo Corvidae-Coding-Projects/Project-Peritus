@@ -1,14 +1,24 @@
-//! Bounded checkpoint lineage and restore-journal records without retained file bodies.
+//! Exact checkpoint lineage and restore-journal records without retained file bodies.
 
-use super::{CheckpointId, ControlError, ControlText, RestoreId};
+use super::{CheckpointId, ControlError, RestoreId};
 use peritus_types::Sha256Digest;
 use serde::Deserialize;
 use serde::Serialize;
 
+mod decoding;
+mod exclusion;
 mod path;
+mod text;
 mod version;
+pub use exclusion::{
+    CheckpointExclusion, CheckpointExclusionDetails, CheckpointExclusionReason,
+    CheckpointExclusions,
+};
 pub use path::{CheckpointCoverage, CheckpointPath, CheckpointRange};
-pub use version::{CheckpointFileMode, CheckpointFileVersion, CheckpointVersion};
+pub use text::{CheckpointText, CheckpointTextIter};
+pub use version::{
+    CheckpointFileMode, CheckpointFileVersion, CheckpointVersion, WorkspaceMutationBaseline,
+};
 
 /// Stable historical references consumed by later conversation branching.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -53,24 +63,24 @@ impl CheckpointReferences {
 }
 
 /// A user checkpoint manifest. File bodies are content-addressed journal artifacts, not fields.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct UserCheckpoint {
     id: CheckpointId,
-    name: ControlText<256>,
+    name: CheckpointText,
     references: CheckpointReferences,
     paths: Vec<CheckpointPath>,
-    exclusions: Vec<ControlText<512>>,
-    external_effects: Vec<ControlText<512>>,
+    exclusions: Vec<CheckpointExclusion>,
+    external_effects: Vec<CheckpointText>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     automatic_run: Option<[u8; 16]>,
     sealed_by_run: Option<[u8; 16]>,
 }
 impl UserCheckpoint {
-    /// Constructs bounded visible coverage without credentials, authority, or process handles.
+    /// Constructs exact visible coverage without credentials, authority, or process handles.
     ///
     /// # Errors
-    /// Rejects empty names, invalid/duplicate paths, or manifest count bounds.
+    /// Rejects empty names, malformed metadata, or invalid/duplicate paths.
     pub fn new(
         id: CheckpointId,
         name: String,
@@ -79,25 +89,22 @@ impl UserCheckpoint {
         exclusions: Vec<String>,
         external_effects: Vec<String>,
     ) -> Result<Self, ControlError> {
-        if u16::try_from(paths.len()).is_err()
-            || u16::try_from(exclusions.len()).is_err()
-            || u16::try_from(external_effects.len()).is_err()
-        {
-            return Err(ControlError::Capacity);
-        }
         paths.sort_by(|left, right| left.path().cmp(right.path()));
         if paths.windows(2).any(|pair| pair[0].path() == pair[1].path()) {
             return Err(ControlError::InvalidInput);
         }
         let value = Self {
             id,
-            name: ControlText::new(name)?,
+            name: CheckpointText::new(name)?,
             references,
             paths,
-            exclusions: exclusions.into_iter().map(ControlText::new).collect::<Result<_, _>>()?,
+            exclusions: exclusions
+                .into_iter()
+                .map(CheckpointExclusion::legacy)
+                .collect::<Result<_, _>>()?,
             external_effects: external_effects
                 .into_iter()
-                .map(ControlText::new)
+                .map(CheckpointText::new)
                 .collect::<Result<_, _>>()?,
             automatic_run: None,
             sealed_by_run: None,
@@ -108,7 +115,7 @@ impl UserCheckpoint {
     /// Constructs a host-origin automatic checkpoint for one owned run.
     ///
     /// # Errors
-    /// Applies the ordinary checkpoint bounds and rejects the reserved zero run identity.
+    /// Applies the ordinary checkpoint invariants and rejects the reserved zero run identity.
     pub fn automatic(
         id: CheckpointId,
         name: String,
@@ -146,12 +153,23 @@ impl UserCheckpoint {
         &self.paths
     }
     /// Borrows visible exclusions.
-    pub fn exclusions(&self) -> super::ControlTextIter<'_, 512> {
-        self.exclusions.iter().map(ControlText::as_str)
+    pub fn exclusions(&self) -> CheckpointExclusions<'_> {
+        self.exclusions.iter().map(CheckpointExclusion::as_str)
+    }
+    /// Borrows legacy or structured exclusion records without recovering paths from display text.
+    #[must_use]
+    pub fn exclusion_records(&self) -> &[CheckpointExclusion] {
+        &self.exclusions
+    }
+    /// Installs already checked structured observations without changing covered-path authority.
+    #[must_use]
+    pub fn with_exclusions(mut self, exclusions: Vec<CheckpointExclusion>) -> Self {
+        self.exclusions = exclusions;
+        self
     }
     /// Borrows external effects that rewind cannot undo.
-    pub fn external_effects(&self) -> super::ControlTextIter<'_, 512> {
-        self.external_effects.iter().map(ControlText::as_str)
+    pub fn external_effects(&self) -> CheckpointTextIter<'_> {
+        self.external_effects.iter().map(CheckpointText::as_str)
     }
     /// Returns the completed owned execution boundary that sealed expected post-change bytes.
     #[must_use]
@@ -215,12 +233,8 @@ impl UserCheckpoint {
         Ok(())
     }
     fn validate(&self) -> Result<(), ControlError> {
-        if u16::try_from(self.paths.len()).is_err()
-            || u16::try_from(self.exclusions.len()).is_err()
-            || u16::try_from(self.external_effects.len()).is_err()
-            || self.paths.windows(2).any(|pair| pair[0].path() >= pair[1].path())
-        {
-            return Err(ControlError::Capacity);
+        if self.paths.windows(2).any(|pair| pair[0].path() >= pair[1].path()) {
+            return Err(ControlError::InvalidInput);
         }
         if self.automatic_run == Some([0; 16]) {
             return Err(ControlError::InvalidInput);
@@ -234,6 +248,9 @@ impl UserCheckpoint {
 
 mod restore;
 pub use restore::{RestoreOperation, RestoreStatus};
+
+#[cfg(test)]
+mod manifest_limits;
 
 #[cfg(test)]
 mod tests {
