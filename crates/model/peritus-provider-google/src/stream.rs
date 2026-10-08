@@ -10,7 +10,7 @@ use core::fmt;
 use std::collections::VecDeque;
 
 use peritus_model_protocol::{
-    EventEnvelope, FailureCategory, ModelEvent, ProviderName, WireDialect,
+    EventEnvelope, FailureCategory, ModelEvent, ProtocolLimits, ProviderName, WireDialect,
 };
 use peritus_provider_core::{
     BoxFuture, ByteStream, CancellationToken, FramingLimits, HttpResponse, ModelStream,
@@ -37,6 +37,7 @@ impl GoogleStream {
         structured: bool,
         tool_controls: crate::request::ToolControls,
         framing_limits: FramingLimits,
+        protocol_limits: ProtocolLimits,
     ) -> Result<Self, ProviderCoreError> {
         let (_status, headers, body) = response.into_parts();
         Ok(Self {
@@ -48,6 +49,7 @@ impl GoogleStream {
                 structured,
                 tool_controls,
                 &headers,
+                protocol_limits,
             )?,
             pending: VecDeque::new(),
             provider,
@@ -68,6 +70,7 @@ impl GoogleStream {
             false,
             crate::request::ToolControls::terminal(),
             &peritus_provider_core::HttpHeaders::empty(),
+            ProtocolLimits::PRODUCTION,
         )?;
         state.push_synthetic(event)?;
         Ok(Self {
@@ -82,9 +85,6 @@ impl GoogleStream {
 
     fn drain_state(&mut self) {
         self.pending.extend(self.state.take_pending());
-        if self.state.is_terminal() {
-            self.ended = true;
-        }
     }
 
     fn fail(
@@ -92,15 +92,13 @@ impl GoogleStream {
         category: FailureCategory,
         code: &'static str,
     ) -> Result<(), ProviderCoreError> {
-        if !self.state.is_terminal() {
-            let failure = stream_failure(
-                self.provider.clone(),
-                category,
-                self.state.has_observed_semantics(),
-                code,
-            )?;
-            self.state.push_synthetic(ModelEvent::ResponseFailed(failure))?;
-        }
+        let failure = stream_failure(
+            self.provider.clone(),
+            category,
+            self.state.has_observed_semantics(),
+            code,
+        )?;
+        self.state.push_synthetic(ModelEvent::ResponseFailed(failure))?;
         self.drain_state();
         Ok(())
     }
@@ -123,21 +121,29 @@ impl ModelStream for GoogleStream {
         cancellation: &'a CancellationToken,
     ) -> BoxFuture<'a, Result<Option<EventEnvelope>, ProviderCoreError>> {
         Box::pin(async move {
-            if cancellation.is_cancelled() && !self.state.is_terminal() {
-                self.pending.clear();
-                self.state.push_synthetic(ModelEvent::ResponseCancelled)?;
-                self.drain_state();
-            }
-            if let Some(event) = self.pending.pop_front() {
-                return Ok(Some(event));
-            }
-            if self.ended {
-                return Ok(None);
-            }
             loop {
-                let Some(body) = self.body.as_mut() else {
+                if self.ended {
+                    return Ok(None);
+                }
+                if cancellation.is_cancelled() && self.state.cancel_unpublished()? {
+                    self.pending.clear();
+                    self.body = None;
                     self.drain_state();
-                    return Ok(self.pending.pop_front());
+                }
+                if let Some(event) = self.pending.pop_front() {
+                    return Ok(Some(event));
+                }
+                if let Some(event) = self.state.take_staged_terminal() {
+                    self.ended = true;
+                    self.body = None;
+                    return Ok(Some(event));
+                }
+                let Some(body) = self.body.as_mut() else {
+                    self.fail(
+                        FailureCategory::IncompleteStream,
+                        "google.stream.incomplete",
+                    )?;
+                    continue;
                 };
                 match body.next(cancellation).await {
                     Ok(Some(chunk)) => match self.parser.push(&chunk) {
@@ -163,19 +169,14 @@ impl ModelStream for GoogleStream {
                         self.body = None;
                     }
                     Err(error) if error.kind() == ProviderCoreErrorKind::Cancelled => {
-                        self.state.push_synthetic(ModelEvent::ResponseCancelled)?;
+                        let _ = self.state.cancel_unpublished()?;
                         self.drain_state();
+                        self.body = None;
                     }
                     Err(_error) => {
                         self.fail(FailureCategory::Transport, "google.stream.interrupted")?;
                         self.body = None;
                     }
-                }
-                if let Some(event) = self.pending.pop_front() {
-                    return Ok(Some(event));
-                }
-                if self.ended {
-                    return Ok(None);
                 }
             }
         })
@@ -188,6 +189,7 @@ impl fmt::Debug for GoogleStream {
             .debug_struct("GoogleStream")
             .field("body", &self.body.as_ref().map(|_| "[private byte stream]"))
             .field("pending_events", &self.pending.len())
+            .field("staged_terminal", &self.state.has_staged_terminal())
             .field("ended", &self.ended)
             .finish_non_exhaustive()
     }

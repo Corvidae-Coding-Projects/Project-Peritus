@@ -226,6 +226,7 @@ impl GoogleClient {
                         encoded.structured,
                         encoded.tool_controls.clone(),
                         self.config.framing_limits(),
+                        protocol_limits,
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }

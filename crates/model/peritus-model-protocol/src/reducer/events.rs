@@ -50,7 +50,9 @@ impl ResponseReducer {
                 self.rate_limits.push(observation);
             }
             ModelEvent::Cache(observation) => {
-                self.cache.push(observation);
+                if self.cache.last() != Some(&observation) {
+                    self.cache.push(observation);
+                }
             }
             ModelEvent::Finish(reason) => {
                 if self.finish.replace(reason).is_some() {
