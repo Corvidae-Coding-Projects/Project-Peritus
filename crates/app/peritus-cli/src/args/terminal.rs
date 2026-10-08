@@ -4,7 +4,7 @@ use std::ffi::OsString;
 
 use super::{
     Command, Parser, TerminalAttachArgs, TerminalBindingArgs, TerminalInputArgs,
-    TerminalResizeArgs, positive_u16, required, set_once,
+    TerminalInterruptAction, TerminalResizeArgs, positive_u16, required, set_once,
 };
 use crate::{error::CliError, id::parse_hex_id};
 
@@ -22,6 +22,8 @@ pub(super) fn parse_terminal(parser: &mut Parser) -> Result<Command, CliError> {
 fn parse_attach(parser: &mut Parser) -> Result<Command, CliError> {
     let mut process = None;
     let mut follow = true;
+    let mut interrupt = None;
+    let mut receipt = None;
     while let Some(option) = parser.peek_utf8()? {
         match option {
             "--process" => {
@@ -36,12 +38,34 @@ fn parse_attach(parser: &mut Parser) -> Result<Command, CliError> {
                 }
                 follow = false;
             }
+            "--interrupt" => {
+                parser.pop();
+                let action = match parser.value_utf8("--interrupt")?.as_str() {
+                    "detach" => TerminalInterruptAction::Detach,
+                    "cancel" => TerminalInterruptAction::Cancel,
+                    value => {
+                        return Err(CliError::usage(format!(
+                            "invalid --interrupt action: {value}; expected detach or cancel",
+                        )));
+                    }
+                };
+                set_once(&mut interrupt, action, "--interrupt")?;
+            }
+            "--receipt" => {
+                parser.pop();
+                set_once(&mut receipt, parser.value_path("--receipt")?, "--receipt")?;
+            }
             _ => return Err(CliError::usage(format!("unknown terminal attach option: {option}"))),
         }
+    }
+    if !follow && interrupt.is_some() {
+        return Err(CliError::usage("--interrupt requires terminal output following"));
     }
     Ok(Command::TerminalAttach(TerminalAttachArgs {
         process: required(process, "--process")?,
         follow,
+        interrupt: interrupt.unwrap_or(TerminalInterruptAction::Detach),
+        receipt,
     }))
 }
 

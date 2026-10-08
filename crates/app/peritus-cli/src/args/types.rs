@@ -43,7 +43,8 @@ COMMANDS:
                 --selection <ID> | --confirm <true|false> | --secret-reference <REF>)
                 [--rationale <TEXT>]
   prompt cancel --binding <FILE>
-  terminal attach --process <ID> [--no-follow]
+  terminal attach --process <ID> [--no-follow] [--interrupt <detach|cancel>]
+                  [--receipt <FILE>]
   terminal input --attachment <ID> --process <ID> --originating-request <ID>
                  --input <FILE|->
   terminal resize --attachment <ID> --process <ID> --originating-request <ID>
@@ -172,6 +173,14 @@ pub struct PromptCancelArgs {
 pub struct TerminalAttachArgs {
     pub(crate) process: [u8; 16],
     pub(crate) follow: bool,
+    pub(crate) interrupt: TerminalInterruptAction,
+    pub(crate) receipt: Option<PathBuf>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TerminalInterruptAction {
+    Detach,
+    Cancel,
 }
 
 pub struct TerminalBindingArgs {

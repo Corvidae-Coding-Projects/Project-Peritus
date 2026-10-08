@@ -1,5 +1,6 @@
 use std::io::Write as _;
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::CliError;
@@ -137,12 +138,14 @@ impl StreamOutput {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct TerminalSanitizer {
     escape: EscapeState,
+    utf8_tail: Vec<u8>,
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 enum EscapeState {
     #[default]
     Text,
@@ -152,19 +155,56 @@ enum EscapeState {
     OperatingSystemEscape,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub(crate) struct TerminalSanitizerSnapshot {
+    escape: EscapeState,
+    utf8_tail: Vec<u8>,
+}
+
 impl TerminalSanitizer {
     pub(crate) fn discontinuity(&mut self) {
         self.escape = EscapeState::Text;
+        self.utf8_tail.clear();
+    }
+
+    pub(crate) fn snapshot(&self) -> TerminalSanitizerSnapshot {
+        TerminalSanitizerSnapshot {
+            escape: self.escape,
+            utf8_tail: self.utf8_tail.clone(),
+        }
+    }
+
+    pub(crate) fn restore(
+        snapshot: &TerminalSanitizerSnapshot,
+    ) -> Option<Self> {
+        let valid_tail = snapshot.utf8_tail.is_empty()
+            || std::str::from_utf8(&snapshot.utf8_tail).is_err_and(|error| {
+                error.valid_up_to() == 0 && error.error_len().is_none()
+            });
+        (snapshot.utf8_tail.len() <= 3 && valid_tail).then(|| Self {
+            escape: snapshot.escape,
+            utf8_tail: snapshot.utf8_tail.clone(),
+        })
     }
 
     pub(crate) fn sanitize(&mut self, bytes: &[u8]) -> String {
-        let mut safe = Vec::with_capacity(bytes.len());
+        let mut safe = String::with_capacity(bytes.len());
         for &byte in bytes {
             match self.escape {
                 EscapeState::Text => match byte {
-                    0x1b => self.escape = EscapeState::Escape,
-                    b'\n' | b'\r' | b'\t' | 0x20..=0x7e | 0x80..=0xff => safe.push(byte),
-                    _ => safe.extend_from_slice(b"?"),
+                    0x1b => {
+                        self.finish_incomplete_utf8(&mut safe);
+                        self.escape = EscapeState::Escape;
+                    }
+                    b'\n' | b'\r' | b'\t' => {
+                        self.finish_incomplete_utf8(&mut safe);
+                        safe.push(char::from(byte));
+                    }
+                    0x20..=0x7e | 0x80..=0xff => self.push_utf8(byte, &mut safe),
+                    _ => {
+                        self.finish_incomplete_utf8(&mut safe);
+                        safe.push('?');
+                    }
                 },
                 EscapeState::Escape => match byte {
                     b'[' => self.escape = EscapeState::ControlSequence,
@@ -192,6 +232,44 @@ impl TerminalSanitizer {
                 }
             }
         }
-        String::from_utf8_lossy(&safe).into_owned()
+        safe
+    }
+
+    fn push_utf8(&mut self, byte: u8, safe: &mut String) {
+        if self.utf8_tail.is_empty() && byte.is_ascii() {
+            safe.push(char::from(byte));
+            return;
+        }
+        self.utf8_tail.push(byte);
+        loop {
+            match std::str::from_utf8(&self.utf8_tail) {
+                Ok(text) => {
+                    safe.push_str(text);
+                    self.utf8_tail.clear();
+                    return;
+                }
+                Err(error) if error.valid_up_to() > 0 => {
+                    let valid = error.valid_up_to();
+                    let text = std::str::from_utf8(&self.utf8_tail[..valid])
+                        .expect("valid_up_to identifies valid UTF-8");
+                    safe.push_str(text);
+                    self.utf8_tail.drain(..valid);
+                }
+                Err(error) => {
+                    let Some(invalid) = error.error_len() else {
+                        return;
+                    };
+                    safe.push('\u{fffd}');
+                    self.utf8_tail.drain(..invalid);
+                }
+            }
+        }
+    }
+
+    fn finish_incomplete_utf8(&mut self, safe: &mut String) {
+        if !self.utf8_tail.is_empty() {
+            safe.push('\u{fffd}');
+            self.utf8_tail.clear();
+        }
     }
 }

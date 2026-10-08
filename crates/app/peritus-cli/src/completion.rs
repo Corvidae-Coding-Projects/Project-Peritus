@@ -41,7 +41,7 @@ const BASH: &str = r#"_peritus() {
     terminal) COMPREPLY=( $(compgen -W "attach input resize detach cancel" -- "$cur") ) ;;
     runs) COMPREPLY=( $(compgen -W "list show execute accept commit export discard retry cancel acknowledge" -- "$cur") ) ;;
     completions) COMPREPLY=( $(compgen -W "bash zsh fish powershell" -- "$cur") ) ;;
-    *) COMPREPLY=( $(compgen -W "--endpoint --session --timeout-seconds --json --help --version --enable-checks --disable-checks --wait --actor --envelope --payload --idempotency-key --no-expected-revision --receipt --topic --after --window --count --snapshot-acceptable --artifact --transfer --output --force --input --media-type --chunk-size --binding --signed-decision --text --selection --confirm --secret-reference --rationale --attachment --process --originating-request --columns --rows --no-follow --run --confirm-unqualified" -- "$cur") ) ;;
+    *) COMPREPLY=( $(compgen -W "--endpoint --session --timeout-seconds --json --help --version --enable-checks --disable-checks --wait --actor --envelope --payload --idempotency-key --no-expected-revision --receipt --topic --after --window --count --snapshot-acceptable --artifact --transfer --output --force --input --media-type --chunk-size --binding --signed-decision --text --selection --confirm --secret-reference --rationale --attachment --process --originating-request --columns --rows --no-follow --interrupt --run --confirm-unqualified" -- "$cur") ) ;;
   esac
 }
 complete -F _peritus peritus
