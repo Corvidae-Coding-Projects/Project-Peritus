@@ -6,7 +6,7 @@ use crate::manifest::{
 };
 use crate::{
     EvidenceError, EvidenceErrorKind, EvidenceId, EvidenceRecord, EvidenceStore, Freshness,
-    RecoveryAction,
+    FreshnessRequirement, RecoveryAction,
 };
 use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
 use peritus_journal::IntegrityExport;
@@ -154,6 +154,8 @@ impl BundlePlan {
 
     pub(crate) fn build(
         mut records: Vec<EvidenceRecord>,
+        authority_revision: RevisionTuple,
+        authority_records: Vec<EvidenceId>,
         export: &IntegrityExport,
         artifact_sizes: BTreeMap<ArtifactDigest, u64>,
         limits: BundleLimits,
@@ -162,14 +164,35 @@ impl BundlePlan {
         if records.is_empty() || records.windows(2).any(|pair| pair[0].id() >= pair[1].id()) {
             return Err(invalid("bundle evidence identities are empty, duplicate, or reordered"));
         }
-        let revision = *records[0].revision();
+        if authority_records.is_empty()
+            || authority_records.windows(2).any(|pair| pair[0] >= pair[1])
+            || authority_records.iter().any(|id| {
+                records.binary_search_by_key(id, EvidenceRecord::id).is_err()
+            })
+        {
+            return Err(invalid("bundle authority identities are empty, absent, or reordered"));
+        }
         if records
             .iter()
-            .any(|record| !crate::verified::revisions_equal(record.revision(), &revision))
+            .any(|record| {
+                record.provenance().revision_digest()
+                    != crate::freshness::revision_digest(record.revision())
+            })
         {
-            return Err(invalid("bundle records do not share one exact revision"));
+            return Err(invalid("bundle record revision disagrees with original provenance"));
         }
-        super::format::validate_ancestry(&records)?;
+        for id in &authority_records {
+            let index = records
+                .binary_search_by_key(id, EvidenceRecord::id)
+                .map_err(|_| invalid("bundle authority record is absent"))?;
+            if !crate::verified::revisions_equal(
+                records[index].revision(),
+                &authority_revision,
+            ) {
+                return Err(invalid("bundle authority record has a different revision"));
+            }
+        }
+        super::format::validate_ancestry(&records, &authority_records)?;
         let mut positions = BTreeSet::new();
         let mut expected_artifacts = BTreeSet::new();
         for record in &records {
@@ -238,7 +261,8 @@ impl BundlePlan {
             }
         }
         let manifest = EvidenceManifest::build(
-            revision,
+            authority_revision,
+            authority_records,
             export.report().journal_head_digest(),
             record_entries,
             journal_entries,
@@ -319,12 +343,15 @@ fn export_identity(root: Sha256Digest, byte_count: u64) -> Sha256Digest {
 }
 
 impl EvidenceStore {
-    /// Plans a canonical current bundle without opening output files.
+    /// Plans a canonical bundle for present authority and its complete causal history.
+    ///
+    /// `ids` names the records asserted as current authority. Their transitive parents are loaded
+    /// automatically as historical provenance with their original revision bindings.
     ///
     /// # Errors
     ///
-    /// Rejects empty/noncanonical identities, missing or stale records, journal mismatch, artifact
-    /// corruption, and configured bundle limits.
+    /// Rejects empty/noncanonical authority identities, missing closure records, stale authority,
+    /// any durable invalidation, journal mismatch, artifact corruption, and configured limits.
     pub fn plan_bundle(
         &self,
         ids: &[EvidenceId],
@@ -336,17 +363,38 @@ impl EvidenceStore {
         if ids.is_empty() || ids.windows(2).any(|pair| pair[0] >= pair[1]) {
             return Err(invalid("bundle identities must be nonempty and strictly ordered"));
         }
-        let mut records = Vec::with_capacity(ids.len());
+        let authority_records = ids.to_vec();
+        let authority: BTreeSet<_> = ids.iter().copied().collect();
+        let mut pending = authority.clone();
+        let mut indexed_records = BTreeMap::new();
         let mut artifact_sizes = BTreeMap::new();
-        for id in ids {
+        while let Some(id) = pending.pop_first() {
+            if indexed_records.contains_key(&id) {
+                continue;
+            }
             let record =
-                self.load(*id)?.ok_or_else(|| invalid("bundle evidence record is missing"))?;
-            if !matches!(self.freshness(*id, current_revision)?, Freshness::Current) {
+                self.load(id)?.ok_or_else(|| invalid("bundle evidence record is missing"))?;
+            let requirement = if authority.contains(&id) {
+                FreshnessRequirement::PresentAuthority
+            } else {
+                FreshnessRequirement::HistoricalProvenance
+            };
+            let freshness = self.freshness(id, current_revision)?;
+            if !freshness.satisfies(requirement) {
+                let detail = match freshness {
+                    Freshness::RevisionStale(_) => {
+                        "present authority evidence is stale for the selected revision"
+                    }
+                    Freshness::Invalidated(_) => {
+                        "bundle evidence was explicitly and durably invalidated"
+                    }
+                    Freshness::Current => "bundle evidence does not satisfy its required role",
+                };
                 return Err(EvidenceError::new(
                     EvidenceErrorKind::StaleEvidence,
                     RecoveryAction::ObtainFreshEvidence,
                     "plan portable evidence bundle",
-                    "bundle evidence is stale or invalidated",
+                    detail,
                 ));
             }
             for digest in record.artifacts() {
@@ -355,8 +403,21 @@ impl EvidenceStore {
                     .map_err(|error| EvidenceError::artifact("verify bundle artifact", error))?;
                 artifact_sizes.insert(*digest, metadata.size());
             }
-            records.push(record);
+            for cause in record.causes() {
+                if !indexed_records.contains_key(cause) {
+                    pending.insert(*cause);
+                }
+            }
+            indexed_records.insert(id, record);
         }
-        BundlePlan::build(records, export, artifact_sizes, limits)
+        let records = indexed_records.into_values().collect();
+        BundlePlan::build(
+            records,
+            *current_revision,
+            authority_records,
+            export,
+            artifact_sizes,
+            limits,
+        )
     }
 }

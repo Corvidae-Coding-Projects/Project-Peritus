@@ -92,15 +92,19 @@ fn read_records<R: Read>(
         let record = EvidenceRecord::verify_portable(&bytes)?;
         if record.id() != expected.id()
             || record.record_digest() != expected.record_digest()
-            || !crate::verified::revisions_equal(record.revision(), manifest.revision())
             || record.provenance().revision_digest()
-                != crate::freshness::revision_digest(manifest.revision())
+                != crate::freshness::revision_digest(record.revision())
+            || (manifest.is_authority(record.id())
+                && !crate::verified::revisions_equal(
+                    record.revision(),
+                    manifest.authority_revision(),
+                ))
         {
             return Err(invalid("record disagrees with its manifest binding"));
         }
         records.push(record);
     }
-    super::format::validate_ancestry(&records)?;
+    super::format::validate_ancestry(&records, manifest.authority_records())?;
     Ok(records)
 }
 

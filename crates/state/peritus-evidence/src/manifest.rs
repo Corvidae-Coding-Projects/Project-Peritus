@@ -10,7 +10,15 @@ use std::convert::Infallible;
 
 const PREFIX_V1: &[u8] = b"peritus-evidence-manifest-v1\0";
 const PREFIX_V2: &[u8] = b"peritus-evidence-manifest-v2\0";
+const PREFIX_V3: &[u8] = b"peritus-evidence-manifest-v3\0";
 const LEGACY_MAX_MANIFEST_ENTRIES: usize = 4_096;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum ManifestEncoding {
+    V1,
+    V2,
+    V3,
+}
 
 /// Manifest binding for one canonical evidence record.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -120,6 +128,7 @@ pub struct EvidenceManifest {
     records: Vec<RecordManifestEntry>,
     journal: Vec<JournalManifestEntry>,
     artifacts: Vec<ArtifactManifestEntry>,
+    authority_records: Vec<EvidenceId>,
     manifest_digest: Sha256Digest,
     root_digest: Sha256Digest,
 }
@@ -127,18 +136,20 @@ pub struct EvidenceManifest {
 impl EvidenceManifest {
     pub(crate) fn build(
         revision: RevisionTuple,
+        authority_records: Vec<EvidenceId>,
         journal_head_digest: Sha256Digest,
         records: Vec<RecordManifestEntry>,
         journal: Vec<JournalManifestEntry>,
         artifacts: Vec<ArtifactManifestEntry>,
     ) -> Result<Self, EvidenceError> {
-        validate_entries(&records, &journal, &artifacts)?;
+        validate_entries(&records, &journal, &artifacts, &authority_records)?;
         let mut manifest = Self {
             revision,
             journal_head_digest,
             records,
             journal,
             artifacts,
+            authority_records,
             manifest_digest: Sha256Digest::new([0; 32]),
             root_digest: Sha256Digest::new([0; 32]),
         };
@@ -147,9 +158,14 @@ impl EvidenceManifest {
         Ok(manifest)
     }
 
-    /// Returns the exact common revision tuple.
+    /// Returns the exact revision required of present authority records.
     #[must_use]
     pub const fn revision(&self) -> &RevisionTuple {
+        &self.revision
+    }
+    /// Returns the exact revision required of present authority records.
+    #[must_use]
+    pub const fn authority_revision(&self) -> &RevisionTuple {
         &self.revision
     }
     /// Returns the integrity-checked journal-head digest.
@@ -171,6 +187,16 @@ impl EvidenceManifest {
     #[must_use]
     pub fn artifacts(&self) -> &[ArtifactManifestEntry] {
         &self.artifacts
+    }
+    /// Borrows the canonical identities asserted as present authority.
+    #[must_use]
+    pub fn authority_records(&self) -> &[EvidenceId] {
+        &self.authority_records
+    }
+    /// Returns whether one bundled identity is asserted as present authority.
+    #[must_use]
+    pub fn is_authority(&self, id: EvidenceId) -> bool {
+        self.authority_records.binary_search(&id).is_ok()
     }
     /// Returns the digest over the canonical manifest body.
     #[must_use]
@@ -211,30 +237,39 @@ impl EvidenceManifest {
         }
         let mut reader = Reader::new(body);
         let prefix = reader.take(PREFIX_V1.len())?;
-        let legacy = if prefix == PREFIX_V1 {
-            true
+        let encoding = if prefix == PREFIX_V1 {
+            ManifestEncoding::V1
         } else if prefix == PREFIX_V2 {
-            false
+            ManifestEncoding::V2
+        } else if prefix == PREFIX_V3 {
+            ManifestEncoding::V3
         } else {
             return Err(invalid("manifest prefix mismatch"));
         };
+        let legacy = encoding == ManifestEncoding::V1;
         let revision = reader.revision()?;
         let journal_head_digest = reader.digest()?;
         let records = decode_records(&mut reader, legacy)?;
         let journal = decode_journal(&mut reader, legacy)?;
         let artifacts = decode_artifacts(&mut reader, legacy)?;
+        let authority_records = if encoding == ManifestEncoding::V3 {
+            decode_authority(&mut reader)?
+        } else {
+            records.iter().map(|entry| entry.id).collect()
+        };
         reader.finish()?;
-        validate_entries(&records, &journal, &artifacts)?;
+        validate_entries(&records, &journal, &artifacts, &authority_records)?;
         let manifest = Self {
             revision,
             journal_head_digest,
             records,
             journal,
             artifacts,
+            authority_records,
             manifest_digest,
             root_digest: advertised_root,
         };
-        if manifest.uses_legacy_encoding() != legacy {
+        if manifest.encoding() != encoding {
             return Err(invalid("manifest encoding version is not canonical"));
         }
         Ok(manifest)
@@ -255,20 +290,47 @@ impl EvidenceManifest {
         write(self.root_digest.as_bytes())
     }
 
-    fn uses_legacy_encoding(&self) -> bool {
-        self.records.len() <= LEGACY_MAX_MANIFEST_ENTRIES
+    fn encoding(&self) -> ManifestEncoding {
+        if !self.all_records_are_authority() {
+            ManifestEncoding::V3
+        } else if self.records.len() <= LEGACY_MAX_MANIFEST_ENTRIES
             && self.journal.len() <= LEGACY_MAX_MANIFEST_ENTRIES
             && self.artifacts.len() <= LEGACY_MAX_MANIFEST_ENTRIES
+        {
+            ManifestEncoding::V1
+        } else {
+            ManifestEncoding::V2
+        }
+    }
+
+    fn all_records_are_authority(&self) -> bool {
+        self.authority_records.len() == self.records.len()
+            && self
+                .authority_records
+                .iter()
+                .zip(&self.records)
+                .all(|(id, entry)| *id == entry.id)
     }
 
     fn prefix(&self) -> &'static [u8] {
-        if self.uses_legacy_encoding() { PREFIX_V1 } else { PREFIX_V2 }
+        match self.encoding() {
+            ManifestEncoding::V1 => PREFIX_V1,
+            ManifestEncoding::V2 => PREFIX_V2,
+            ManifestEncoding::V3 => PREFIX_V3,
+        }
     }
 
     fn canonical_body_size(&self) -> Result<u64, EvidenceError> {
         let records = represented_bytes(self.records.len(), 48)?;
         let journal = represented_bytes(self.journal.len(), 128)?;
         let artifacts = represented_bytes(self.artifacts.len(), 40)?;
+        let authority = if self.encoding() == ManifestEncoding::V3 {
+            represented_bytes(self.authority_records.len(), 16)?
+                .checked_add(8)
+                .ok_or_else(|| overflow("manifest authority length overflowed"))?
+        } else {
+            0
+        };
         [
             u64::try_from(self.prefix().len()).map_err(|_| overflow("manifest prefix"))?,
             96,
@@ -279,6 +341,7 @@ impl EvidenceManifest {
             journal,
             8,
             artifacts,
+            authority,
         ]
         .into_iter()
         .try_fold(0_u64, |total, length| {
@@ -314,6 +377,12 @@ impl EvidenceManifest {
             write(entry.digest.as_bytes())?;
             write(&entry.size.to_be_bytes())?;
         }
+        if self.encoding() == ManifestEncoding::V3 {
+            write(&(self.authority_records.len() as u64).to_be_bytes())?;
+            for id in &self.authority_records {
+                write(id.as_bytes())?;
+            }
+        }
         Ok(())
     }
 
@@ -334,12 +403,18 @@ fn validate_entries(
     records: &[RecordManifestEntry],
     journal: &[JournalManifestEntry],
     artifacts: &[ArtifactManifestEntry],
+    authority_records: &[EvidenceId],
 ) -> Result<(), EvidenceError> {
     if records.is_empty()
         || records.windows(2).any(|pair| pair[0].id >= pair[1].id)
         || journal.windows(2).any(|pair| pair[0].global_position >= pair[1].global_position)
         || artifacts.windows(2).any(|pair| pair[0].digest >= pair[1].digest)
         || journal.iter().any(|entry| entry.global_position == 0 || entry.frame_size == 0)
+        || authority_records.is_empty()
+        || authority_records.windows(2).any(|pair| pair[0] >= pair[1])
+        || authority_records
+            .iter()
+            .any(|id| records.binary_search_by_key(id, |entry| entry.id).is_err())
     {
         Err(invalid("manifest entries violate bounds or canonical order"))
     } else {
@@ -399,6 +474,18 @@ fn decode_artifacts(
             ArtifactDigest::from_sha256(reader.digest()?),
             reader.u64()?,
         ));
+    }
+    Ok(values)
+}
+fn decode_authority(reader: &mut Reader<'_>) -> Result<Vec<EvidenceId>, EvidenceError> {
+    let value = reader.u64()?;
+    let count = count(reader, value, 16, false)?;
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("manifest authority allocation failed"))?;
+    for _ in 0..count {
+        values.push(reader.evidence_id()?);
     }
     Ok(values)
 }

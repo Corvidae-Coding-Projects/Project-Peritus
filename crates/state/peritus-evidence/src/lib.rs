@@ -24,7 +24,9 @@ pub use bundle::{
 };
 pub use causality::CausalLink;
 pub use error::{EvidenceError, EvidenceErrorKind, RecoveryAction};
-pub use freshness::{Freshness, RevisionDrift, evaluate_freshness, revision_digest};
+pub use freshness::{
+    Freshness, FreshnessRequirement, RevisionDrift, evaluate_freshness, revision_digest,
+};
 pub use invalidation::EvidenceInvalidation;
 pub use manifest::{
     ArtifactManifestEntry, EvidenceManifest, JournalManifestEntry, RecordManifestEntry,
