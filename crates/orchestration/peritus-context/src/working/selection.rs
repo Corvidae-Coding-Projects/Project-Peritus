@@ -73,6 +73,12 @@ impl WorkingSelectionReconciliation {
             .filter(|id| self.referenced.binary_search(id).is_err())
             .collect()
     }
+    /// First deferred record to retrieve when the complete reference index cannot fit.
+    #[must_use]
+    pub fn focus(&self) -> Option<ContextNodeId> {
+        self.required.iter().copied()
+            .find(|id| self.referenced.binary_search(id).is_err())
+    }
 }
 
 /// Renders current structured records, never a recursively summarized previous prompt.
@@ -116,7 +122,7 @@ pub fn render_working_state_with_headroom(state: &WorkingState, binding: Working
             reconciliation: None,
         });
     }
-    let limits = ContextLimits::new(entries.len().max(1), 32_768, state.limits().links(), 5)
+    let limits = ContextLimits::new(entries.len().max(1), usize::MAX, state.limits().links(), 1)
         .map_err(|_| WorkingError::InvalidLimit)?;
     let mut identity = b"peritus-working-render-v1".to_vec();
     identity.extend_from_slice(binding.run().as_bytes());
@@ -125,6 +131,17 @@ pub fn render_working_state_with_headroom(state: &WorkingState, binding: Working
     identity.extend_from_slice(format!("{:?}", binding.role()).as_bytes());
     identity.extend_from_slice(&binding.conversation_revision().to_be_bytes());
     identity.extend_from_slice(&state.revision().to_be_bytes());
+    if available_tokens == 0 {
+        return build_reference_view(
+            state,
+            &entries,
+            limits,
+            profile,
+            available_tokens,
+            identity,
+            None,
+        );
+    }
     let mut nodes = Vec::with_capacity(entries.len());
     for entry in &entries {
         match node(entry, binding, limits) {
@@ -148,7 +165,7 @@ pub fn render_working_state_with_headroom(state: &WorkingState, binding: Working
     let mut required_overflow = None;
     let plan = loop {
         let budget = TokenBudget::new(allocation, 0, 0).map_err(|_| WorkingError::Capacity)?;
-        let bytes = usize::try_from(allocation.saturating_mul(3)).map_err(|_| WorkingError::Capacity)?;
+        let bytes = usize::try_from(allocation.saturating_mul(3)).unwrap_or(usize::MAX);
         let policy = SelectionPolicy::new(profile.clone(), budget, entries.len(), bytes)
             .map_err(|_| WorkingError::Capacity)?;
         let mut plan_identity = identity.clone();
@@ -205,6 +222,27 @@ fn build_reference_view(
 ) -> Result<WorkingRenderView, WorkingError> {
     let required = required_closure(entries);
     let required_digest = required_digest(&identity, &required);
+    if required.is_empty() {
+        return Ok(WorkingRenderView {
+            plan: None,
+            omitted: entries.iter().map(|entry| entry.id()).collect(),
+            reconciliation: None,
+        });
+    }
+    if available_tokens == 0 {
+        return Ok(WorkingRenderView {
+            plan: None,
+            omitted: entries.iter().map(|entry| entry.id()).collect(),
+            reconciliation: Some(WorkingSelectionReconciliation {
+                state_revision: state.revision(),
+                available_tokens,
+                minimum_required_tokens,
+                required_digest,
+                required,
+                referenced: Vec::new(),
+            }),
+        });
+    }
     let mut reference_nodes = Vec::with_capacity(required.len());
     for entry in entries.iter().filter(|entry| required.binary_search(&entry.id()).is_ok()) {
         reference_nodes.push(reference_node(entry, state.binding(), limits)?);
@@ -212,8 +250,7 @@ fn build_reference_view(
     let reference_graph = ContextGraph::new(reference_nodes, limits)
         .map_err(|_| WorkingError::DependencyCycle)?;
     let budget = TokenBudget::new(available_tokens, 0, 0).map_err(|_| WorkingError::Capacity)?;
-    let bytes = usize::try_from(available_tokens.saturating_mul(3))
-        .map_err(|_| WorkingError::Capacity)?;
+    let bytes = usize::try_from(available_tokens.saturating_mul(3)).unwrap_or(usize::MAX);
     let policy = SelectionPolicy::new(profile, budget, required.len().max(1), bytes)
         .map_err(|_| WorkingError::Capacity)?;
     let mut reference_identity = identity;
@@ -288,7 +325,7 @@ fn reference_node(
         RequirementMode::Optional,
         u16::from(is_required_root(entry)),
         visibility,
-        entry.links().depends_on().to_vec(),
+        Vec::new(),
         limits,
     ).map_err(|_| WorkingError::Capacity)?;
     Ok(ContextNode::new(metadata, content))

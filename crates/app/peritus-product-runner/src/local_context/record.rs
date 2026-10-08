@@ -24,6 +24,7 @@ pub(super) const CONTEXT_UPDATE_ENTRY_PAGE_SCHEMA_VERSION: u16 = 1;
 pub(super) const PAGED_GENESIS_SCHEMA_VERSION: u16 = 2;
 pub(super) const LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 1;
 pub(super) const SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 2;
+pub(super) const WORKING_SELECTION_FRONTIER_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -398,9 +399,26 @@ pub(super) struct ViewValidation {
     pub(super) local_compactor_failures: u64,
     pub(super) retrieval_calls: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) working_selection_frontier: Option<WorkingSelectionFrontier>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) tool_policy: Option<[u8; 32]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) segment_continuation: Option<SegmentContinuation>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct WorkingSelectionFrontier {
+    pub(super) schema_version: u16,
+    pub(super) state_revision: u64,
+    pub(super) available_tokens: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) minimum_required_tokens: Option<u64>,
+    pub(super) required_digest: [u8; 32],
+    pub(super) required_entries: usize,
+    pub(super) referenced_entries: Vec<[u8; 16]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(super) focus_entry: Option<[u8; 16]>,
 }
 
 pub(super) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, DeveloperLoopError> {

@@ -1,8 +1,15 @@
 //! Exact-view accounting; savings compare with this invocation's unreduced complete exchanges.
 
-use super::super::{error, memory::LocalMemory, record::ViewValidation, view_binding};
+use super::super::{
+    error,
+    memory::LocalMemory,
+    record::{
+        ViewValidation, WORKING_SELECTION_FRONTIER_SCHEMA_VERSION, WorkingSelectionFrontier,
+    },
+    view_binding,
+};
 use peritus_agent::DeveloperLoopError;
-use peritus_context::working::WorkingEntryStatus;
+use peritus_context::working::{WorkingEntryStatus, WorkingSelectionReconciliation};
 use peritus_model_protocol::ProviderProfile;
 
 impl LocalMemory {
@@ -13,6 +20,7 @@ impl LocalMemory {
         uncompacted: u64,
         selected: Vec<u64>,
         omitted_entries: usize,
+        reconciliation: Option<&WorkingSelectionReconciliation>,
     ) -> Result<ViewValidation, DeveloperLoopError> {
         let archive_bytes = self.sources.iter().try_fold(0_u64, |total, source| {
             total
@@ -43,6 +51,20 @@ impl LocalMemory {
             pending_operations: self.transcript.pending.len(),
             local_compactor_failures: self.local_compactor_failures,
             retrieval_calls: self.retrieval_calls,
+            working_selection_frontier: reconciliation.map(|reconciliation| {
+                WorkingSelectionFrontier {
+                    schema_version: WORKING_SELECTION_FRONTIER_SCHEMA_VERSION,
+                    state_revision: reconciliation.state_revision(),
+                    available_tokens: reconciliation.available_tokens(),
+                    minimum_required_tokens: reconciliation.minimum_required_tokens(),
+                    required_digest: reconciliation.required_digest(),
+                    required_entries: reconciliation.required().len(),
+                    referenced_entries: reconciliation.referenced().iter()
+                        .map(|id| id.into_bytes())
+                        .collect(),
+                    focus_entry: reconciliation.focus().map(|id| id.into_bytes()),
+                }
+            }),
             tool_policy: Some(view_binding::tool_policy(&self.tools)?),
             segment_continuation: self.segment_continuation.clone(),
         })

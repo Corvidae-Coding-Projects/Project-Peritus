@@ -8,7 +8,7 @@ use super::{
         INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
         PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
-        TranscriptManifest, ViewValidation, decode,
+        TranscriptManifest, ViewValidation, WORKING_SELECTION_FRONTIER_SCHEMA_VERSION, decode,
     },
 };
 use peritus_agent::DeveloperLoopError;
@@ -71,6 +71,48 @@ pub(super) fn validate_checkpoint(
             *sequence > 0
                 && u64::try_from(sources.len()).is_ok_and(|count| *sequence <= count)
         });
+    let active_entries = state
+        .active_entries(state.binding())
+        .map_err(|_| error("checkpoint active-state binding mismatch"))?;
+    let working_frontier_valid = validation.working_selection_frontier.as_ref().is_none_or(
+        |frontier| {
+            let referenced_are_canonical = frontier
+                .referenced_entries
+                .windows(2)
+                .all(|pair| pair[0] < pair[1]);
+            let entry_exists = |id: &[u8; 16]| {
+                active_entries
+                    .binary_search_by_key(id, |entry| entry.id().into_bytes())
+                    .is_ok()
+            };
+            let focus_valid = match (
+                frontier.focus_entry.as_ref(),
+                frontier.referenced_entries.len() < frontier.required_entries,
+            ) {
+                (Some(focus), true) => {
+                    entry_exists(focus)
+                        && frontier.referenced_entries.binary_search(focus).is_err()
+                }
+                (None, false) => true,
+                _ => false,
+            };
+            frontier.schema_version == WORKING_SELECTION_FRONTIER_SCHEMA_VERSION
+                && frontier.state_revision == state.revision()
+                && frontier.available_tokens <= validation.max_input_tokens
+                && frontier.required_digest != [0; 32]
+                && frontier.required_entries > 0
+                && frontier.required_entries <= active_entries.len()
+                && frontier.referenced_entries.len() <= frontier.required_entries
+                && frontier
+                    .referenced_entries
+                    .len()
+                    .checked_add(validation.omitted_entries)
+                    == Some(active_entries.len())
+                && referenced_are_canonical
+                && frontier.referenced_entries.iter().all(entry_exists)
+                && focus_valid
+        },
+    );
     let segment_valid = validation.segment_continuation.as_ref().is_none_or(|segment| {
         let common = matches!(
             schema_version,
@@ -125,6 +167,7 @@ pub(super) fn validate_checkpoint(
         || validation.pending_operations != transcript.pending.len()
         || !selected_are_canonical
         || !selected_exist
+        || !working_frontier_valid
         || !segment_valid
         || match schema_version {
             LEGACY_CHECKPOINT_SCHEMA_VERSION => validation.tool_policy.is_some(),

@@ -118,6 +118,7 @@ impl LocalMemory {
             uncompacted,
             selected,
             working.omitted().len(),
+            working.reconciliation(),
         )?;
         let policy = sha256(&encode(&self.config)?);
         self.prepared = Some(PreparedView {
