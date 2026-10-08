@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4181,
-        "tip_oid": "3770610997aa0fdf9b4a5e5ed5db164bfd9bd89e",
-        "prefix_sha256": "79999bf7be472b4075c3c86ea9d33402c52f7e838d6085eb32072783f49db366"
+        "sequence": 4182,
+        "tip_oid": "679eb808807748e28d14efa94b4f56dbb7320a73",
+        "prefix_sha256": "bfce4d4c0e79b086f9859fb073683620d1760775fa6be4d3cda483246dbca256"
       },
       "NWAR": {
         "sequence": 39,
@@ -1378,12 +1378,13 @@
       "display_id": 308,
       "title": "[L173] JSON and YAML structural validation reject files above 16 MiB",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L173.\n\n- Source: `crates/app/peritus-product-runner/src/gates/json_structure.rs:7,19-48,57-72`; `gates/yaml_structure.rs:8,20-52,61-75`.\n- Each selected changed JSON/YAML file above **16 MiB** fails its gate regardless of valid syntax. Both implementations load and parse complete files synchronously, without cancellation or streamed validation. Neither exposes a policy knob or a retrieval/large-file alternative.\n- JSON builds a complete serde_json Value. YAML requires UTF-8 text and rejects an empty/whitespace-only file or a parser result with no documents. Those empty-file checks are fixed acceptance policy; appropriateness depends on the requested configuration contract. Any selected missing path is a failure, with deleted-file selection still to be traced.\n- A selected failure sets exit 1, but inspection continues for the remaining files. Syntax correctness is a real delivery requirement; the arbitrary size ceiling should be separated from it. **Full implementations and inline tests read, not run; gate selection pending.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.693766405Z",
-      "updated_at": "2026-10-08T16:06:34.955583903Z",
+      "updated_at": "2026-10-08T16:08:07.491526760Z",
+      "closed_at": "2026-10-08T16:08:07.488308966Z",
       "labels": [
         "daily-driving-limiter"
       ],
