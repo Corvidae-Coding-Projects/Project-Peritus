@@ -1,7 +1,7 @@
 //! Hosted accounting, provider errors, and exact reasoning replay completion.
 use super::{ChatDecoder, FrameEvents, integer};
 use crate::error;
-use peritus_model_protocol::{ItemId, ItemKind, ModelEvent, StreamFragment};
+use peritus_model_protocol::{ItemKind, ModelEvent, StreamFragment};
 use peritus_provider_core::{ProviderCoreError, SseFrame, hosted::HostedService};
 use serde_json::Value;
 
@@ -133,8 +133,8 @@ impl ChatDecoder {
                 .response_id
                 .as_ref()
                 .ok_or_else(|| error::malformed("reasoning has no response identity"))?;
-            let item_id = ItemId::new(format!("{}-reasoning", response.expose_for_wire()))
-                .map_err(|_| error::malformed("reasoning item identity is invalid"))?;
+            let item_id =
+                super::super::identity::item_id(response.expose_for_wire(), "-reasoning")?;
             let bytes = serde_json::to_vec(
                 &serde_json::json!({"service":service.name(),"fields":self.reasoning}),
             )

@@ -2,6 +2,7 @@
 
 mod ancillary;
 mod chat;
+mod identity;
 mod responses;
 mod responses_state;
 

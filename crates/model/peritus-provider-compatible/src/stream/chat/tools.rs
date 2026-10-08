@@ -36,8 +36,9 @@ impl ChatDecoder {
             let response = self.response_id.as_ref().ok_or_else(|| {
                 error::malformed("Chat-compatible response identity was unavailable")
             })?;
-            let item_id = ItemId::new(format!("{}-tool-{tool_index}", response.expose_for_wire()))
-                .map_err(|_| error::malformed("Chat-compatible tool item identity was invalid"))?;
+            let suffix = format!("-tool-{tool_index}");
+            let item_id =
+                super::super::identity::item_id(response.expose_for_wire(), &suffix)?;
             events.push(ModelEvent::ItemStarted {
                 item_id: item_id.clone(),
                 index: tool_index.checked_add(65_536).ok_or_else(|| {

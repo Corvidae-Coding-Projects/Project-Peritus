@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use peritus_model_protocol::{ItemId, ItemKind, ResponseId, ToolCallId};
 use peritus_types::Sha256Digest;
@@ -10,6 +10,11 @@ pub(super) struct ResponsesState {
     seen: BTreeMap<u64, Sha256Digest>,
     items: BTreeMap<String, ItemState>,
     parts: BTreeMap<(String, u32), PartState>,
+    output_indexes: BTreeSet<u32>,
+    normalized_ids: BTreeSet<ItemId>,
+    normalized_coordinates: BTreeMap<NormalizedCoordinate, u32>,
+    normalized_indexes: BTreeMap<u32, NormalizedCoordinate>,
+    next_derived_index: Option<u32>,
 }
 
 pub(super) struct ItemState {
@@ -31,6 +36,26 @@ pub(super) struct PartState {
     pub completed: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+pub(super) enum NormalizedCoordinate {
+    Output(u32),
+    Content { output: u32, content: u32 },
+}
+
+impl NormalizedCoordinate {
+    const fn legacy_index(self) -> Option<u32> {
+        match self {
+            Self::Output(output) => Some(output),
+            Self::Content { output, content }
+                if output <= u16::MAX as u32 && content <= u16::MAX as u32 =>
+            {
+                Some((output << 16) | content)
+            }
+            Self::Content { .. } => None,
+        }
+    }
+}
+
 impl ResponsesState {
     pub const fn new() -> Self {
         Self {
@@ -40,6 +65,11 @@ impl ResponsesState {
             seen: BTreeMap::new(),
             items: BTreeMap::new(),
             parts: BTreeMap::new(),
+            output_indexes: BTreeSet::new(),
+            normalized_ids: BTreeSet::new(),
+            normalized_coordinates: BTreeMap::new(),
+            normalized_indexes: BTreeMap::new(),
+            next_derived_index: Some(u32::MAX),
         }
     }
 
@@ -81,7 +111,13 @@ impl ResponsesState {
     }
 
     pub fn insert_item(&mut self, id: String, item: ItemState) -> bool {
-        self.items.insert(id, item).is_none()
+        if self.items.contains_key(&id) || self.output_indexes.contains(&item.index) {
+            return false;
+        }
+        self.output_indexes.insert(item.index);
+        let previous = self.items.insert(id, item);
+        debug_assert!(previous.is_none());
+        true
     }
 
     pub fn item(&self, id: &str) -> Option<&ItemState> {
@@ -94,6 +130,33 @@ impl ResponsesState {
 
     pub fn insert_part(&mut self, item: String, content: u32, part: PartState) -> bool {
         self.parts.insert((item, content), part).is_none()
+    }
+
+    pub fn claim_normalized_id(&mut self, id: ItemId) -> bool {
+        self.normalized_ids.insert(id)
+    }
+
+    pub fn normalized_index(&mut self, coordinate: NormalizedCoordinate) -> Option<u32> {
+        if let Some(index) = self.normalized_coordinates.get(&coordinate) {
+            return Some(*index);
+        }
+        let index = match coordinate
+            .legacy_index()
+            .filter(|index| !self.normalized_indexes.contains_key(index))
+        {
+            Some(index) => index,
+            None => loop {
+                let candidate = self.next_derived_index?;
+                self.next_derived_index = candidate.checked_sub(1);
+                if !self.normalized_indexes.contains_key(&candidate) {
+                    break candidate;
+                }
+            },
+        };
+        let previous_coordinate = self.normalized_coordinates.insert(coordinate, index);
+        let previous_index = self.normalized_indexes.insert(index, coordinate);
+        debug_assert!(previous_coordinate.is_none() && previous_index.is_none());
+        Some(index)
     }
 
     pub fn part_mut(&mut self, item: &str, content: u32) -> Option<&mut PartState> {

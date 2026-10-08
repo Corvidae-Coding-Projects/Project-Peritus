@@ -352,10 +352,7 @@ impl ChatDecoder {
             .response_id
             .as_ref()
             .ok_or_else(|| error::malformed("Chat-compatible response identity was unavailable"))?;
-        let item =
-            ItemId::new(format!("{}-message", response.expose_for_wire())).map_err(|_| {
-                error::malformed("Chat-compatible normalized item identity was invalid")
-            })?;
+        let item = super::identity::item_id(response.expose_for_wire(), "-message")?;
         events.push(ModelEvent::ItemStarted {
             item_id: item.clone(),
             index: 0,
@@ -381,8 +378,7 @@ impl ChatDecoder {
             .response_id
             .as_ref()
             .ok_or_else(|| error::malformed("Chat-compatible response identity was unavailable"))?;
-        let item = ItemId::new(format!("{}-refusal", response.expose_for_wire()))
-            .map_err(|_| error::malformed("Chat-compatible refusal identity was invalid"))?;
+        let item = super::identity::item_id(response.expose_for_wire(), "-refusal")?;
         events.push(ModelEvent::ItemStarted {
             item_id: item.clone(),
             index: 1,

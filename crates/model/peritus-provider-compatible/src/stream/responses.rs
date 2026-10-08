@@ -11,7 +11,9 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use super::ancillary;
-use super::responses_state::{ItemState, PartState, ResponsesState, SequenceDisposition};
+use super::responses_state::{
+    ItemState, NormalizedCoordinate, PartState, ResponsesState, SequenceDisposition,
+};
 use crate::error;
 
 pub(super) struct ResponsesDecoder {
@@ -163,28 +165,38 @@ impl ResponsesDecoder {
         let index = index(value, "output_index")?;
         let item = object(value, "item")?;
         let wire_id = string(item, "id")?;
-        let normalized = ItemId::new(wire_id.to_owned())
-            .map_err(|_| error::malformed("Responses-compatible item identity was invalid"))?;
+        let normalized = super::identity::item_id(wire_id, "")?;
         let kind = match string(item, "type")? {
             "message" => ItemKind::Message,
             "function_call" if self.allow_tools => ItemKind::ToolCall,
             _ => return Err(error::malformed("unmapped Responses-compatible output item")),
         };
         let mut events = Vec::new();
-        let call_id = if kind == ItemKind::ToolCall {
+        let (normalized, call_id) = if kind == ItemKind::ToolCall {
             let call_id = ToolCallId::new(string(item, "call_id")?.to_owned())
                 .map_err(|_| error::malformed("compatible tool-call identity was invalid"))?;
             let name = ToolName::new(string(item, "name")?.to_owned())
                 .map_err(|_| error::malformed("compatible tool name was invalid"))?;
-            events.push(ModelEvent::ItemStarted { item_id: normalized.clone(), index, kind });
+            let normalized = self.claim_item_id(wire_id, "", normalized)?;
+            let normalized_index = self
+                .state
+                .normalized_index(NormalizedCoordinate::Output(index))
+                .ok_or_else(|| {
+                    error::limit("Responses-compatible normalized item indexes were exhausted")
+                })?;
+            events.push(ModelEvent::ItemStarted {
+                item_id: normalized.clone(),
+                index: normalized_index,
+                kind,
+            });
             events.push(ModelEvent::ToolCallStarted {
                 item_id: normalized.clone(),
                 call_id: call_id.clone(),
                 name,
             });
-            Some(call_id)
+            (normalized, Some(call_id))
         } else {
-            None
+            (normalized, None)
         };
         if !self.state.insert_item(
             wire_id.to_owned(),
@@ -217,7 +229,15 @@ impl ResponsesDecoder {
             "refusal" => ItemKind::Refusal,
             _ => return Err(error::malformed("unmapped Responses-compatible content part")),
         };
-        let normalized = part_id(id, content)?;
+        let suffix = part_suffix(content);
+        let preferred = part_id(id, &suffix)?;
+        let normalized = self.claim_item_id(id, &suffix, preferred)?;
+        let normalized_index = self
+            .state
+            .normalized_index(NormalizedCoordinate::Content { output, content })
+            .ok_or_else(|| {
+                error::limit("Responses-compatible normalized item indexes were exhausted")
+            })?;
         if !self.state.insert_part(
             id.to_owned(),
             content,
@@ -234,7 +254,7 @@ impl ResponsesDecoder {
         }
         Ok(vec![ModelEvent::ItemStarted {
             item_id: normalized,
-            index: normalized_index(output, content)?,
+            index: normalized_index,
             kind,
         }])
     }
@@ -331,6 +351,24 @@ impl ResponsesDecoder {
             Vec::new()
         })
     }
+
+    fn claim_item_id(
+        &mut self,
+        wire_id: &str,
+        suffix: &str,
+        preferred: ItemId,
+    ) -> Result<ItemId, ProviderCoreError> {
+        if self.state.claim_normalized_id(preferred.clone()) {
+            return Ok(preferred);
+        }
+        let derived = super::identity::derived_item_id(wire_id, suffix)?;
+        if derived == preferred || !self.state.claim_normalized_id(derived.clone()) {
+            return Err(error::malformed(
+                "Responses-compatible normalized item identity collided",
+            ));
+        }
+        Ok(derived)
+    }
 }
 
 fn repeated_terminal(kind: &str) -> bool {
@@ -378,16 +416,12 @@ fn coordinates(value: &Value) -> Result<(&str, u32, u32), ProviderCoreError> {
     Ok((string(value, "item_id")?, index(value, "output_index")?, index(value, "content_index")?))
 }
 
-fn part_id(item: &str, content: u32) -> Result<ItemId, ProviderCoreError> {
-    ItemId::new(if content == 0 { item.to_owned() } else { format!("{item}-part-{content}") })
-        .map_err(|_| error::malformed("compatible normalized item identity was invalid"))
+fn part_suffix(content: u32) -> String {
+    if content == 0 { String::new() } else { format!("-part-{content}") }
 }
 
-fn normalized_index(output: u32, content: u32) -> Result<u32, ProviderCoreError> {
-    output
-        .checked_mul(65_536)
-        .and_then(|value| value.checked_add(content))
-        .ok_or_else(|| error::limit("Responses-compatible item/content index overflowed"))
+fn part_id(item: &str, suffix: &str) -> Result<ItemId, ProviderCoreError> {
+    super::identity::item_id(item, suffix)
 }
 
 fn append(target: &mut Vec<u8>, value: &[u8], maximum: usize) -> Result<(), ProviderCoreError> {
