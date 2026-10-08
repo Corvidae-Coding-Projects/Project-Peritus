@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4161,
-        "tip_oid": "efa11d7fcb49853342e9a8999169f795dd1cdaa1",
-        "prefix_sha256": "1831849d0a83cfe4fc62913bc95f57d7eed065e668be16e9ccb1a103f38590de"
+        "sequence": 4162,
+        "tip_oid": "f8ca2e18c827a397d4f25135b9e8a3bcdf32e738",
+        "prefix_sha256": "27e98bb548fd1a9c2ed4a0967a3041b1cc88177fa6889d7a66faa0403fa45406"
       },
       "NWAR": {
         "sequence": 39,
@@ -18058,12 +18058,13 @@
       "display_id": 113,
       "title": "[L013] Checkpoint coverage and restore capabilities disagree",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L013.\n\n- `checkpoints/rewind/plan.rs:29-73` creates one PatchOperation per changed Restore path and constructs bounded `FinalFile`/`PatchSet` values. Checkpoint admission allows 65,535 paths (L010), while patch admission accepts only 1,024 operations and 8 MiB of final bytes (L006).\n- A manual checkpoint of more than 1,024 small files can fit its capture limits, but restoring all those files in one rewind exceeds patch operation admission. This conclusion follows from the fully read implementations; executable reproduction is pending.\n- `checkpoints/projection.rs:152-154` collapses every PatchError into `InvalidInput`, discarding the actual byte/count/recovery classification. Preview and apply also re-read current files through L003's capped capture path.\n- Required structural repair must align capture, durable representation, restore execution, and recovery capability; changing the capture ceiling alone would leave an unrestorable checkpoint path.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.883275721Z",
-      "updated_at": "2026-10-08T15:35:36.598269309Z",
+      "updated_at": "2026-10-08T15:37:08.575037297Z",
+      "closed_at": "2026-10-08T15:37:08.571979299Z",
       "labels": [
         "daily-driving-limiter"
       ],
