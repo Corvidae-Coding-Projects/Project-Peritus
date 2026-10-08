@@ -330,6 +330,7 @@ pub(super) fn write_metric_value(
     writer: &mut CanonicalWriter,
     value: MetricValue,
 ) -> Result<(), EvolutionError> {
+    let value = value.validate()?;
     match value {
         MetricValue::SignedMillionths(item) => {
             writer.write_u8(1).map_err(scalar::codec)?;

@@ -82,20 +82,25 @@ impl MetricValue {
     /// # Errors
     /// Rejects values above one million.
     pub const fn probability(value: u32) -> Result<Self, EvolutionError> {
-        if value > 1_000_000 {
+        Self::ProbabilityMillionths(value).validate()
+    }
+
+    pub(crate) const fn validate(self) -> Result<Self, EvolutionError> {
+        if self.within_numeric_domain() {
+            Ok(self)
+        } else {
             Err(EvolutionError::new(
                 EvolutionErrorKind::InvalidInput,
                 EvolutionOperation::AdmitManifest,
                 EvolutionRecovery::CorrectInput,
                 "prediction probability exceeds one million",
             ))
-        } else {
-            Ok(Self::ProbabilityMillionths(value))
         }
     }
 
     pub(crate) const fn compatible(self, metric: PredictionMetric) -> bool {
-        matches!(
+        self.within_numeric_domain()
+            && matches!(
             (metric, self),
             (PredictionMetric::PairedEffectLower, Self::SignedMillionths(_))
                 | (
@@ -114,7 +119,14 @@ impl MetricValue {
                         | PredictionMetric::OutputTokensMean,
                     Self::Quantity(_)
                 )
-        )
+            )
+    }
+
+    const fn within_numeric_domain(self) -> bool {
+        match self {
+            Self::ProbabilityMillionths(value) => value <= 1_000_000,
+            Self::SignedMillionths(_) | Self::Count(_) | Self::Quantity(_) => true,
+        }
     }
 }
 
@@ -146,9 +158,9 @@ impl Prediction {
     /// Constructs one typed prediction.
     ///
     /// # Errors
-    /// Rejects a threshold whose numeric representation is incompatible with the metric or a
-    /// task-scoped metric without an exact task identity. Mandatory failure-class predictions are
-    /// rejected because retained E3 evidence has no class-specific observation for them.
+    /// Rejects a threshold whose numeric representation or value is outside the metric domain, or
+    /// a task-scoped metric without an exact task identity. Mandatory failure-class predictions
+    /// are rejected because retained E3 evidence has no class-specific observation for them.
     pub fn new(
         subject: PredictionSubject,
         metric: PredictionMetric,
