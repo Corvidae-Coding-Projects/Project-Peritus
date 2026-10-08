@@ -2,11 +2,9 @@
 
 use core::fmt;
 
-use serde_json::Value;
-
 use crate::{ProtocolError, ProtocolErrorKind, ProtocolLimits};
 
-/// Independent recursive JSON parsing ceilings.
+/// Independent JSON parsing ceilings.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[allow(
     clippy::struct_field_names,
@@ -14,8 +12,8 @@ use crate::{ProtocolError, ProtocolErrorKind, ProtocolLimits};
 )]
 pub struct JsonBounds {
     max_bytes: usize,
-    max_depth: usize,
-    max_members: usize,
+    max_depth: Option<usize>,
+    max_members: Option<usize>,
     max_string_bytes: usize,
 }
 
@@ -25,8 +23,8 @@ impl JsonBounds {
     pub const fn schema(limits: ProtocolLimits) -> Self {
         Self {
             max_bytes: limits.max_schema_bytes(),
-            max_depth: 64,
-            max_members: 65_536,
+            max_depth: None,
+            max_members: None,
             max_string_bytes: limits.max_text_bytes(),
         }
     }
@@ -36,17 +34,17 @@ impl JsonBounds {
     pub const fn value(limits: ProtocolLimits) -> Self {
         Self {
             max_bytes: limits.max_tool_argument_bytes(),
-            max_depth: 64,
-            max_members: 65_536,
+            max_depth: None,
+            max_members: None,
             max_string_bytes: limits.max_text_bytes(),
         }
     }
 
-    /// Creates nonzero ceilings no wider than the production protocol.
+    /// Creates nonzero byte ceilings and explicit structural policy limits.
     ///
     /// # Errors
     ///
-    /// Rejects zero fields and bounds wider than the corresponding production limit.
+    /// Rejects zero fields and byte bounds wider than the production protocol.
     pub fn new(
         max_bytes: usize,
         max_depth: usize,
@@ -59,17 +57,20 @@ impl JsonBounds {
             || max_members == 0
             || max_string_bytes == 0
             || max_bytes > production.max_bytes
-            || max_depth > production.max_depth
-            || max_members > production.max_members
             || max_string_bytes > production.max_string_bytes
         {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidLimit,
                 "json_bounds",
-                "JSON bounds must be nonzero and within production ceilings",
+                "JSON bounds must be nonzero and byte bounds must be within production ceilings",
             ));
         }
-        Ok(Self { max_bytes, max_depth, max_members, max_string_bytes })
+        Ok(Self {
+            max_bytes,
+            max_depth: Some(max_depth),
+            max_members: Some(max_members),
+            max_string_bytes,
+        })
     }
 
     /// Maximum canonical bytes.
@@ -79,35 +80,36 @@ impl JsonBounds {
     }
 }
 
-/// A recursively bounded JSON value with deterministic object-key order.
+/// A bounded canonical JSON value with deterministic object-key order.
 #[derive(Clone, Eq, PartialEq)]
 pub struct CanonicalJson {
-    value: Value,
     canonical: Vec<u8>,
+    root_is_object: bool,
+    remote_reference: Option<String>,
 }
 
 impl CanonicalJson {
-    /// Parses JSON, rejects duplicate keys, validates recursive bounds, and canonicalizes it.
+    /// Parses JSON, rejects duplicate keys, enforces selected bounds, and canonicalizes it.
     ///
     /// # Errors
     ///
     /// Rejects malformed JSON, duplicate keys, exceeded bounds, and noncanonical oversized output.
     pub fn parse(input: &str, bounds: JsonBounds) -> Result<Self, ProtocolError> {
-        if input.len() > bounds.max_bytes {
-            return Err(invalid("$", "JSON input exceeds its byte bound"));
-        }
-        let value: Value =
-            serde_json::from_str(input).map_err(|_| invalid("$", "JSON syntax is malformed"))?;
-        if crate::json_duplicates::contains(input) {
-            return Err(invalid("$", "JSON object contains a duplicate key"));
-        }
-        validate(&value, bounds, 1, &mut 0, "$")?;
-        let mut canonical = Vec::with_capacity(input.len());
-        write_value(&value, &mut canonical);
-        if canonical.len() > bounds.max_bytes {
-            return Err(invalid("$", "canonical JSON exceeds its byte bound"));
-        }
-        Ok(Self { value, canonical })
+        let parsed = crate::json_duplicates::parse(
+            input,
+            crate::json_duplicates::ParseLimits {
+                max_bytes: bounds.max_bytes,
+                max_depth: bounds.max_depth,
+                max_members: bounds.max_members,
+                max_string_bytes: bounds.max_string_bytes,
+            },
+        )
+        .map_err(|error| invalid(error.path(), error.detail()))?;
+        Ok(Self {
+            canonical: parsed.canonical,
+            root_is_object: parsed.root_is_object,
+            remote_reference: parsed.remote_reference,
+        })
     }
 
     /// Borrows compact canonical JSON bytes.
@@ -124,8 +126,8 @@ impl CanonicalJson {
 
     /// Returns whether the root value is an object.
     #[must_use]
-    pub fn is_object(&self) -> bool {
-        self.value.is_object()
+    pub const fn is_object(&self) -> bool {
+        self.root_is_object
     }
 
     /// Computes a digest of the canonical representation.
@@ -184,7 +186,9 @@ impl JsonSchema {
         if !document.is_object() {
             return Err(invalid("$", "JSON Schema root must be an object"));
         }
-        reject_remote_references(&document.value, "$")?;
+        if let Some(path) = document.remote_reference.as_deref() {
+            return Err(invalid(path, "remote JSON Schema references are not supported"));
+        }
         Ok(Self { dialect, document })
     }
 
@@ -205,132 +209,6 @@ impl JsonSchema {
     pub fn digest(&self) -> peritus_types::Sha256Digest {
         self.document.digest()
     }
-}
-
-fn validate(
-    value: &Value,
-    bounds: JsonBounds,
-    depth: usize,
-    members: &mut usize,
-    path: &str,
-) -> Result<(), ProtocolError> {
-    if depth > bounds.max_depth {
-        return Err(invalid(path, "JSON depth exceeds its bound"));
-    }
-    match value {
-        Value::String(text) => check_string(text, bounds, path),
-        Value::Array(values) => {
-            account(members, values.len(), bounds, path)?;
-            for (index, child) in values.iter().enumerate() {
-                validate(child, bounds, depth + 1, members, &format!("{path}/{index}"))?;
-            }
-            Ok(())
-        }
-        Value::Object(values) => {
-            account(members, values.len(), bounds, path)?;
-            for (key, child) in values {
-                check_string(key, bounds, path)?;
-                validate(
-                    child,
-                    bounds,
-                    depth + 1,
-                    members,
-                    &format!("{path}/{}", escape_pointer(key)),
-                )?;
-            }
-            Ok(())
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) => Ok(()),
-    }
-}
-
-fn reject_remote_references(value: &Value, path: &str) -> Result<(), ProtocolError> {
-    match value {
-        Value::Object(values) => {
-            if values
-                .get("$ref")
-                .and_then(Value::as_str)
-                .is_some_and(|reference| !reference.starts_with('#'))
-            {
-                return Err(invalid(path, "remote JSON Schema references are not supported"));
-            }
-            for (key, child) in values {
-                reject_remote_references(child, &format!("{path}/{}", escape_pointer(key)))?;
-            }
-            Ok(())
-        }
-        Value::Array(values) => {
-            for (index, child) in values.iter().enumerate() {
-                reject_remote_references(child, &format!("{path}/{index}"))?;
-            }
-            Ok(())
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => Ok(()),
-    }
-}
-
-fn account(
-    total: &mut usize,
-    additional: usize,
-    bounds: JsonBounds,
-    path: &str,
-) -> Result<(), ProtocolError> {
-    *total = total.checked_add(additional).ok_or_else(|| invalid(path, "JSON member overflow"))?;
-    if *total > bounds.max_members {
-        return Err(invalid(path, "JSON member count exceeds its bound"));
-    }
-    Ok(())
-}
-
-fn check_string(value: &str, bounds: JsonBounds, path: &str) -> Result<(), ProtocolError> {
-    if value.len() > bounds.max_string_bytes {
-        return Err(invalid(path, "JSON string exceeds its byte bound"));
-    }
-    Ok(())
-}
-
-fn write_value(value: &Value, output: &mut Vec<u8>) {
-    match value {
-        Value::Null => output.extend_from_slice(b"null"),
-        Value::Bool(false) => output.extend_from_slice(b"false"),
-        Value::Bool(true) => output.extend_from_slice(b"true"),
-        Value::Number(value) => output.extend_from_slice(value.to_string().as_bytes()),
-        Value::String(value) => {
-            output.extend_from_slice(
-                serde_json::to_string(value).unwrap_or_else(|_| "\"\"".to_owned()).as_bytes(),
-            );
-        }
-        Value::Array(values) => {
-            output.push(b'[');
-            for (index, child) in values.iter().enumerate() {
-                if index != 0 {
-                    output.push(b',');
-                }
-                write_value(child, output);
-            }
-            output.push(b']');
-        }
-        Value::Object(values) => {
-            output.push(b'{');
-            let mut entries: Vec<_> = values.iter().collect();
-            entries.sort_unstable_by_key(|(key, _)| *key);
-            for (index, (key, child)) in entries.into_iter().enumerate() {
-                if index != 0 {
-                    output.push(b',');
-                }
-                output.extend_from_slice(
-                    serde_json::to_string(key).unwrap_or_else(|_| "\"\"".to_owned()).as_bytes(),
-                );
-                output.push(b':');
-                write_value(child, output);
-            }
-            output.push(b'}');
-        }
-    }
-}
-
-fn escape_pointer(value: &str) -> String {
-    value.replace('~', "~0").replace('/', "~1")
 }
 
 fn invalid(path: &str, detail: &'static str) -> ProtocolError {
