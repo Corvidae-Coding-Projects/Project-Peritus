@@ -8,13 +8,16 @@ use peritus_journal::SqliteJournal;
 use peritus_types::{EvidenceId, Sha256Digest};
 
 use crate::{
-    EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationErrorKind,
-    EvaluationOperation, EvaluationPhase, EvaluationRecovery, EvaluationState,
-    PublicationCancellationRecord, PublicationDirectiveClaim, PublicationRecord,
-    ValidatedEvaluationReport, commit_evaluation_settlement, decide,
+    EvaluationCommand, EvaluationCommandKind, EvaluationCommitMode, EvaluationError,
+    EvaluationErrorKind, EvaluationOperation, EvaluationPhase, EvaluationRecovery,
+    EvaluationState, PublicationCancellationRecord, PublicationDirectiveClaim,
+    PublicationRecord, ValidatedEvaluationReport, commit_evaluation_settlement, decide,
 };
 
-use super::{CommittedEvaluationTransition, FinalizedEvaluationArtifact, TransitionIds};
+use super::{
+    CommittedEvaluationTransition, FinalizedEvaluationArtifact, TransitionIds,
+    recover_claimed_operation,
+};
 
 /// Admitted evidence plus exact atomic C0 publication settlement.
 #[derive(Debug)]
@@ -60,8 +63,7 @@ pub fn publish_claimed_report(
     let durable_report =
         state.report().ok_or_else(|| binding("report-ready state has no report"))?;
     let directive = *claim.directive();
-    if state.phase() != EvaluationPhase::ReportReady
-        || durable_report.id() != report.id()
+    if durable_report.id() != report.id()
         || durable_report.artifact() != artifact.artifact_digest()
         || durable_report.size() != artifact.size()
         || artifact.payload_digest() != report.digest()
@@ -84,9 +86,43 @@ pub fn publish_claimed_report(
         Vec::new(),
     )
     .map_err(evidence_error)?;
+    let publication = PublicationRecord::new(report.id(), evidence_id, report_commit_position)?;
+    let kind = EvaluationCommandKind::RecordPublication { publication };
+    if let Some(operation) = recover_claimed_operation(
+        journal,
+        state.campaign_id(),
+        ids,
+        &kind,
+        EvaluationCommitMode::Settlement,
+        claim.outbox_id()?,
+        claim.fence(),
+    )? {
+        if operation.historical_state().report() != Some(durable_report)
+            || operation.historical_state().publication() != Some(publication)
+            || operation.historical_state().phase() != EvaluationPhase::Published
+        {
+            return Err(recovery(
+                "recovered publication differs from its historical outcome",
+            ));
+        }
+        let evidence = evidence_store
+            .load(evidence_id)
+            .map_err(evidence_error)?
+            .ok_or_else(|| recovery("recovered publication evidence is absent"))?;
+        validate_recovered_evidence(&evidence, &draft)?;
+        return Ok(PublicationExecution {
+            evidence,
+            committed: CommittedEvaluationTransition::new(operation),
+        });
+    }
+    if state.phase() != EvaluationPhase::ReportReady {
+        return Err(binding("publication state is not report-ready"));
+    }
     let export = journal.integrity_export().map_err(journal_error)?;
     let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
-    let publication = PublicationRecord::new(report.id(), evidence.id(), report_commit_position)?;
+    if evidence.id() != publication.evidence_id() {
+        return Err(recovery("admitted evidence identity differs from publication"));
+    }
     let command = EvaluationCommand::new(
         ids.command_id(),
         ids.event_id(),
@@ -95,13 +131,13 @@ pub fn publish_claimed_report(
         Some(state.last_event_id()),
         state.state_digest(),
         state.profile_digest(),
-        EvaluationCommandKind::RecordPublication { publication },
+        kind,
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_evaluation_settlement(journal, &command, &transition, claim)?;
+    let operation = commit_evaluation_settlement(journal, &command, &transition, claim)?;
     Ok(PublicationExecution {
         evidence,
-        committed: CommittedEvaluationTransition::new(batch, transition.state().clone()),
+        committed: CommittedEvaluationTransition::new(operation),
     })
 }
 
@@ -122,16 +158,35 @@ pub fn cancel_claimed_publication(
 ) -> Result<CommittedEvaluationTransition, EvaluationError> {
     let report = state.report().ok_or_else(|| binding("cancelled publication has no report"))?;
     let directive = *claim.directive();
-    if state.phase() != EvaluationPhase::Cancelling
-        || state.cancellation_origin() != Some(EvaluationPhase::ReportReady)
-        || state.publication_cancellation().is_some()
-        || directive.campaign_id() != state.campaign_id()
-        || directive.report() != report
+    if directive.campaign_id() != state.campaign_id() || directive.report() != report
     {
         return Err(binding("publication cancellation state, report, or claim differs"));
     }
     let cancellation =
         PublicationCancellationRecord::new(report, observation_digest, admitted_evidence);
+    let kind = EvaluationCommandKind::SettlePublicationCancellation { cancellation };
+    if let Some(operation) = recover_claimed_operation(
+        journal,
+        state.campaign_id(),
+        ids,
+        &kind,
+        EvaluationCommitMode::Settlement,
+        claim.outbox_id()?,
+        claim.fence(),
+    )? {
+        if operation.historical_state().publication_cancellation() != Some(cancellation) {
+            return Err(recovery(
+                "recovered publication cancellation differs from its historical outcome",
+            ));
+        }
+        return Ok(CommittedEvaluationTransition::new(operation));
+    }
+    if state.phase() != EvaluationPhase::Cancelling
+        || state.cancellation_origin() != Some(EvaluationPhase::ReportReady)
+        || state.publication_cancellation().is_some()
+    {
+        return Err(binding("publication cancellation state is not unsettled"));
+    }
     let command = EvaluationCommand::new(
         ids.command_id(),
         ids.event_id(),
@@ -140,11 +195,31 @@ pub fn cancel_claimed_publication(
         Some(state.last_event_id()),
         state.state_digest(),
         state.profile_digest(),
-        EvaluationCommandKind::SettlePublicationCancellation { cancellation },
+        kind,
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_evaluation_settlement(journal, &command, &transition, claim)?;
-    Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    let operation = commit_evaluation_settlement(journal, &command, &transition, claim)?;
+    Ok(CommittedEvaluationTransition::new(operation))
+}
+
+fn validate_recovered_evidence(
+    evidence: &EvidenceRecord,
+    draft: &EvidenceDraft,
+) -> Result<(), EvaluationError> {
+    if evidence.id() != draft.id()
+        || evidence.kind() != draft.kind()
+        || evidence.source() != draft.source()
+        || evidence.revision() != draft.revision()
+        || evidence.provenance().global_position() != draft.journal_position()
+        || evidence.payload_digest() != draft.payload_digest()
+        || evidence.artifacts() != draft.artifacts()
+        || evidence.causes() != draft.causes()
+    {
+        return Err(recovery(
+            "recovered publication evidence differs from the original admission",
+        ));
+    }
+    Ok(())
 }
 
 fn report_evidence_id(report: &ValidatedEvaluationReport) -> Result<EvidenceId, EvaluationError> {
@@ -187,5 +262,14 @@ fn journal_error(_: impl core::fmt::Display) -> EvaluationError {
         EvaluationOperation::Publish,
         EvaluationRecovery::Replay,
         "journal integrity export failed",
+    )
+}
+
+const fn recovery(detail: &'static str) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Recovery,
+        EvaluationOperation::Recover,
+        EvaluationRecovery::Quarantine,
+        detail,
     )
 }

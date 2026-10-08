@@ -42,7 +42,7 @@ pub(super) fn dispatch(
         Err(_) => return semantic_rejection(),
     };
     peritus_eval::commit_evaluation_transition(journal, &command, &transition)
-        .map(DomainOutcome::Committed)
+        .map(|operation| DomainOutcome::Committed(operation.into_parts().0))
         .map_err(|error| domain_failure("commit evaluation transition", error))
 }
 

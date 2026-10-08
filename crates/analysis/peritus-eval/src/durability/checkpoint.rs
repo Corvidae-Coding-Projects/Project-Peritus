@@ -147,6 +147,66 @@ pub(super) fn decode(
     Ok(frame)
 }
 
+/// Validates one reconstructed historical state against its exact retained checkpoint root.
+///
+/// Historical page rows need not remain current: the immutable root carries the complete frame
+/// digest, byte length, page count, sequence, and semantic state digest.
+pub(super) fn validate_historical(
+    record: &DurableStateRecord,
+    campaign_id: EvaluationCampaignId,
+    state: &EvaluationState,
+) -> Result<(), EvaluationError> {
+    if record.revision() != state.sequence() || state.campaign_id() != campaign_id {
+        return Err(recovery("historical evaluation checkpoint identity differs"));
+    }
+    if !record.bytes().starts_with(ROOT_DOMAIN) {
+        let frame =
+            decode_message::<EvaluationStateFrame>(record.bytes(), CodecLimits::PRODUCTION)
+                .map_err(codec)?;
+        return if frame.matches_state(state) {
+            Ok(())
+        } else {
+            Err(recovery("historical evaluation checkpoint differs from replay"))
+        };
+    }
+    let mut reader =
+        CanonicalReader::new(&record.bytes()[ROOT_DOMAIN.len()..], CodecLimits::PRODUCTION);
+    let encoded_campaign = EvaluationCampaignId::new(reader.read_fixed().map_err(codec)?)?;
+    let sequence = reader.read_u64().map_err(codec)?;
+    let state_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+    let total_bytes = reader.read_u64().map_err(codec)?;
+    let page_count = reader.read_u64().map_err(codec)?;
+    let complete_digest = Sha256Digest::new(reader.read_fixed().map_err(codec)?);
+    reader.finish().map_err(codec)?;
+    let bytes = encode_message(
+        &EvaluationStateFrame::from_state(state),
+        CodecLimits::PRODUCTION,
+    )
+    .map_err(codec)?;
+    let page_bytes = usize::try_from(state.state_page_bytes()).map_err(|_| paging())?;
+    if page_bytes == 0 || page_bytes > peritus_journal::MAX_STATE_BYTES {
+        return Err(recovery(
+            "historical paged evaluation checkpoint has an invalid page size",
+        ));
+    }
+    let encoded_bytes = u64::try_from(bytes.len()).map_err(|_| paging())?;
+    let encoded_pages =
+        u64::try_from(bytes.len().div_ceil(page_bytes)).map_err(|_| paging())?;
+    if encoded_campaign != campaign_id
+        || sequence != state.sequence()
+        || state_digest != state.state_digest()
+        || total_bytes != encoded_bytes
+        || page_count == 0
+        || page_count != encoded_pages
+        || complete_digest != peritus_codec::sha256(&bytes)
+    {
+        return Err(recovery(
+            "historical paged evaluation checkpoint differs from replay",
+        ));
+    }
+    Ok(())
+}
+
 fn page_key(campaign_id: EvaluationCampaignId, ordinal: u64) -> Vec<u8> {
     let mut key = Vec::with_capacity(PAGE_KEY_DOMAIN.len() + campaign_id.as_bytes().len() + 8);
     key.extend_from_slice(PAGE_KEY_DOMAIN);

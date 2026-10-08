@@ -4,7 +4,7 @@ mod artifact;
 mod publication;
 mod recovery;
 
-use peritus_journal::{CommittedBatch, SqliteJournal};
+use peritus_journal::{CommittedBatch, OutboxId, SqliteJournal};
 use peritus_types::{CommandId, EventId, Sha256Digest};
 
 pub use artifact::{
@@ -20,12 +20,14 @@ pub use recovery::{
 };
 
 use crate::{
-    AnalysisSafePoint, EvaluationCommand, EvaluationCommandKind, EvaluationError,
-    EvaluationErrorKind, EvaluationOperation, EvaluationRecovery, EvaluationState,
-    EvaluationTransition, ExecutionDirectiveClaim, ExecutionDirectiveKind,
-    FrozenEvaluationProfile, RetryAttemptRecord, RetryIntent, RolloutStatus,
-    commit_evaluation_claimed_transition, commit_evaluation_settlement,
-    commit_evaluation_transition, decide,
+    AnalysisSafePoint, CommittedEvaluationOperation, EvaluationCampaignId, EvaluationCommand,
+    EvaluationCommandKind, EvaluationCommitMode, EvaluationError, EvaluationErrorKind,
+    EvaluationEvent, EvaluationEventKind, EvaluationOperation, EvaluationOperationReceipt,
+    EvaluationRecovery, EvaluationState, EvaluationTransition, ExecutionDirective,
+    ExecutionDirectiveClaim, ExecutionDirectiveKind, FrozenEvaluationProfile, RetryAttemptRecord,
+    RetryIntent, RolloutStatus, commit_evaluation_claimed_transition,
+    commit_evaluation_settlement, commit_evaluation_transition, decide,
+    load_evaluation_operation,
 };
 
 /// Caller-reserved command/event identities for one exact transition.
@@ -53,31 +55,56 @@ impl TransitionIds {
     }
 }
 
-/// One committed C0 batch paired with its exact successor state.
+/// One accepted E3 operation with its historical outcome and separately loaded current state.
 #[derive(Debug)]
 pub struct CommittedEvaluationTransition {
-    batch: CommittedBatch,
-    state: EvaluationState,
+    operation: CommittedEvaluationOperation,
 }
 
 impl CommittedEvaluationTransition {
-    pub(crate) const fn new(batch: CommittedBatch, state: EvaluationState) -> Self {
-        Self { batch, state }
+    pub(crate) const fn new(operation: CommittedEvaluationOperation) -> Self {
+        Self { operation }
     }
     /// Opaque C0 commit observation.
     #[must_use]
     pub const fn batch(&self) -> &CommittedBatch {
-        &self.batch
+        self.operation.batch()
     }
-    /// Exact successor state.
+    /// Current state reconstructed independently after observing the accepted operation.
     #[must_use]
     pub const fn state(&self) -> &EvaluationState {
-        &self.state
+        self.operation.current_state()
     }
-    /// Consumes the complete result.
+    /// Exact historical successor produced by this operation.
+    #[must_use]
+    pub const fn historical_state(&self) -> &EvaluationState {
+        self.operation.historical_state()
+    }
+    /// Original request and claim receipt accepted for this operation.
+    #[must_use]
+    pub const fn receipt(&self) -> EvaluationOperationReceipt {
+        self.operation.receipt()
+    }
+    /// Exact immutable event accepted for this operation.
+    #[must_use]
+    pub const fn event(&self) -> &EvaluationEvent {
+        self.operation.event()
+    }
+    /// Whether this operation still produces the current campaign checkpoint.
+    #[must_use]
+    pub fn is_current(&self) -> bool {
+        self.operation.is_current()
+    }
+    /// Consumes the result into its original batch and current state.
     #[must_use]
     pub fn into_parts(self) -> (CommittedBatch, EvaluationState) {
-        (self.batch, self.state)
+        let (batch, _, _, _, current) = self.operation.into_parts();
+        (batch, current)
+    }
+    /// Consumes the result without discarding its historical outcome or original receipt.
+    #[must_use]
+    pub fn into_operation(self) -> CommittedEvaluationOperation {
+        self.operation
     }
 }
 
@@ -102,8 +129,8 @@ impl<'a> EvaluationRuntime<'a> {
         command: &EvaluationCommand,
         transition: &EvaluationTransition,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
-        let batch = commit_evaluation_transition(self.journal, command, transition)?;
-        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+        let operation = commit_evaluation_transition(self.journal, command, transition)?;
+        Ok(CommittedEvaluationTransition::new(operation))
     }
 
     /// Commits the exact claimed initial or retained-retry attempt before external execution.
@@ -117,6 +144,15 @@ impl<'a> EvaluationRuntime<'a> {
         started_at_tick: u64,
         ids: TransitionIds,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        if let Some(operation) = recover_claimed_start(
+            self.journal,
+            state.campaign_id(),
+            &claim,
+            started_at_tick,
+            ids,
+        )? {
+            return Ok(CommittedEvaluationTransition::new(operation));
+        }
         let directive = *claim.directive();
         let progress = state
             .rollout(directive.rollout_id())
@@ -177,9 +213,9 @@ impl<'a> EvaluationRuntime<'a> {
         };
         let command = command(state, ids, kind)?;
         let transition = decide(Some(state), &command)?;
-        let batch =
+        let operation =
             commit_evaluation_claimed_transition(self.journal, &command, &transition, claim)?;
-        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+        Ok(CommittedEvaluationTransition::new(operation))
     }
 
     /// Retains one retryable attempt and atomically replaces its claim with the frozen retry.
@@ -203,14 +239,53 @@ impl<'a> EvaluationRuntime<'a> {
         if retry.retained().rollout_id() != rollout_id {
             return Err(runtime_binding("retry evidence belongs to another logical rollout"));
         }
-        let command = command(
-            state,
+        let kind = EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry };
+        if let Some(operation) = recover_claimed_operation(
+            self.journal,
+            state.campaign_id(),
             ids,
-            EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry },
-        )?;
+            &kind,
+            EvaluationCommitMode::Settlement,
+            claim.outbox_id()?,
+            claim.fence(),
+        )? {
+            let directive = *claim.directive();
+            let Some(progress) = operation.historical_state().rollout(rollout_id) else {
+                return Err(runtime_recovery(
+                    "recovered retry retention has no historical rollout",
+                ));
+            };
+            let claim_matches = match directive.kind() {
+                ExecutionDirectiveKind::Execute { request_digest } => {
+                    request_digest == progress.binding().request_digest()
+                        && retry.retained().attempt() == 1
+                }
+                ExecutionDirectiveKind::ExecuteAttempt {
+                    request_digest,
+                    attempt,
+                    retry: None,
+                } => {
+                    request_digest == progress.binding().request_digest()
+                        && attempt == retry.retained().attempt()
+                }
+                ExecutionDirectiveKind::ExecuteAttempt { retry: Some(_), .. }
+                | ExecutionDirectiveKind::Cancel => false,
+            };
+            if directive.campaign_id() != operation.historical_state().campaign_id()
+                || directive.rollout_id() != rollout_id
+                || progress.status() != (RolloutStatus::RetryPending { retry })
+                || !claim_matches
+            {
+                return Err(runtime_recovery(
+                    "recovered retry retention differs from its historical rollout",
+                ));
+            }
+            return Ok(CommittedEvaluationTransition::new(operation));
+        }
+        let command = command(state, ids, kind)?;
         let transition = decide(Some(state), &command)?;
-        let batch = commit_evaluation_settlement(self.journal, &command, &transition, claim)?;
-        Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+        let operation = commit_evaluation_settlement(self.journal, &command, &transition, claim)?;
+        Ok(CommittedEvaluationTransition::new(operation))
     }
 
     /// Retains a resumable owner-bound analysis checkpoint.
@@ -317,6 +392,11 @@ impl<'a> EvaluationRuntime<'a> {
         ids: TransitionIds,
         kind: EvaluationCommandKind,
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        if let Some(operation) =
+            recover_ordinary_operation(self.journal, state.campaign_id(), ids, &kind)?
+        {
+            return Ok(CommittedEvaluationTransition::new(operation));
+        }
         let command = command(state, ids, kind)?;
         let transition = decide(Some(state), &command)?;
         self.commit(&command, &transition)
@@ -327,6 +407,196 @@ impl<'a> EvaluationRuntime<'a> {
     pub const fn journal(&mut self) -> &mut SqliteJournal {
         self.journal
     }
+}
+
+pub(super) fn recover_ordinary_operation(
+    journal: &SqliteJournal,
+    campaign_id: EvaluationCampaignId,
+    ids: TransitionIds,
+    kind: &EvaluationCommandKind,
+) -> Result<Option<CommittedEvaluationOperation>, EvaluationError> {
+    let Some(operation) = load_evaluation_operation(journal, campaign_id, ids.command_id())? else {
+        return Ok(None);
+    };
+    if !matches!(
+        operation.receipt().mode(),
+        EvaluationCommitMode::Ordinary | EvaluationCommitMode::Legacy
+    ) || !operation_matches(&operation, campaign_id, ids, kind)
+    {
+        return Err(runtime_recovery(
+            "recovered ordinary evaluation operation differs from the retry",
+        ));
+    }
+    Ok(Some(operation))
+}
+
+pub(super) fn recover_claimed_operation(
+    journal: &SqliteJournal,
+    campaign_id: EvaluationCampaignId,
+    ids: TransitionIds,
+    kind: &EvaluationCommandKind,
+    required_mode: EvaluationCommitMode,
+    outbox_id: OutboxId,
+    fence: u64,
+) -> Result<Option<CommittedEvaluationOperation>, EvaluationError> {
+    let Some(operation) = load_evaluation_operation(journal, campaign_id, ids.command_id())? else {
+        return Ok(None);
+    };
+    validate_recovered_claim(
+        operation.receipt(),
+        required_mode,
+        outbox_id,
+        fence,
+    )?;
+    if !operation_matches(&operation, campaign_id, ids, kind) {
+        return Err(runtime_recovery(
+            "recovered claim-bound evaluation operation differs from the retry",
+        ));
+    }
+    Ok(Some(operation))
+}
+
+fn recover_claimed_start(
+    journal: &SqliteJournal,
+    campaign_id: EvaluationCampaignId,
+    claim: &ExecutionDirectiveClaim,
+    started_at_tick: u64,
+    ids: TransitionIds,
+) -> Result<Option<CommittedEvaluationOperation>, EvaluationError> {
+    let Some(operation) = load_evaluation_operation(journal, campaign_id, ids.command_id())? else {
+        return Ok(None);
+    };
+    validate_recovered_claim(
+        operation.receipt(),
+        EvaluationCommitMode::Claimed,
+        claim.outbox_id()?,
+        claim.fence(),
+    )?;
+    if operation.event().id() != ids.event_id()
+        || operation.event().command_id() != ids.command_id()
+        || operation.event().campaign_id() != campaign_id
+        || !recovered_start_matches(
+            operation.event().kind(),
+            operation.historical_state(),
+            *claim.directive(),
+            started_at_tick,
+        )
+    {
+        return Err(runtime_recovery(
+            "recovered rollout start differs from the exact retry request",
+        ));
+    }
+    Ok(Some(operation))
+}
+
+fn recovered_start_matches(
+    event: &EvaluationEventKind,
+    state: &EvaluationState,
+    directive: ExecutionDirective,
+    started_at_tick: u64,
+) -> bool {
+    if directive.campaign_id() != state.campaign_id() {
+        return false;
+    }
+    let Some(progress) = state.rollout(directive.rollout_id()) else {
+        return false;
+    };
+    let EvaluationEventKind::Accepted(kind) = event;
+    match (directive.kind(), kind) {
+        (
+            ExecutionDirectiveKind::Execute { request_digest },
+            EvaluationCommandKind::StartRollout {
+                rollout_id,
+                attempt,
+                started_at_tick: observed_tick,
+            },
+        )
+        | (
+            ExecutionDirectiveKind::ExecuteAttempt {
+                request_digest,
+                attempt: _,
+                retry: None,
+            },
+            EvaluationCommandKind::StartRollout {
+                rollout_id,
+                attempt,
+                started_at_tick: observed_tick,
+            },
+        ) => {
+            *rollout_id == directive.rollout_id()
+                && *observed_tick == started_at_tick
+                && request_digest == progress.binding().request_digest()
+                && progress.status() == (RolloutStatus::Running { attempt: *attempt })
+                && match directive.kind() {
+                    ExecutionDirectiveKind::ExecuteAttempt {
+                        attempt: directive_attempt,
+                        ..
+                    } => directive_attempt == *attempt,
+                    ExecutionDirectiveKind::Execute { .. } => true,
+                    ExecutionDirectiveKind::Cancel => false,
+                }
+        }
+        (
+            ExecutionDirectiveKind::ExecuteAttempt {
+                request_digest,
+                attempt,
+                retry: Some(retry),
+            },
+            EvaluationCommandKind::StartRetryRollout {
+                rollout_id,
+                retry: observed_retry,
+                started_at_tick: observed_tick,
+            },
+        ) => {
+            *rollout_id == directive.rollout_id()
+                && *observed_tick == started_at_tick
+                && request_digest == progress.binding().request_digest()
+                && attempt == retry.next_attempt()
+                && retry == *observed_retry
+                && progress.status() == (RolloutStatus::RetryRunning { retry })
+        }
+        _ => false,
+    }
+}
+
+fn operation_matches(
+    operation: &CommittedEvaluationOperation,
+    campaign_id: EvaluationCampaignId,
+    ids: TransitionIds,
+    kind: &EvaluationCommandKind,
+) -> bool {
+    operation.event().id() == ids.event_id()
+        && operation.event().command_id() == ids.command_id()
+        && operation.event().campaign_id() == campaign_id
+        && matches!(
+            operation.event().kind(),
+            EvaluationEventKind::Accepted(observed) if observed == kind
+        )
+}
+
+fn validate_recovered_claim(
+    receipt: EvaluationOperationReceipt,
+    required_mode: EvaluationCommitMode,
+    outbox_id: OutboxId,
+    fence: u64,
+) -> Result<(), EvaluationError> {
+    if receipt.mode() == EvaluationCommitMode::Legacy {
+        return Ok(());
+    }
+    let Some(original) = receipt.original_claim() else {
+        return Err(runtime_recovery(
+            "recovered evaluation effect has no retained original claim",
+        ));
+    };
+    if receipt.mode() != required_mode
+        || original.outbox_id() != outbox_id
+        || fence < original.fence()
+    {
+        return Err(runtime_recovery(
+            "recovered evaluation effect differs from the supplied claim authority",
+        ));
+    }
+    Ok(())
 }
 
 fn command(
@@ -350,6 +620,15 @@ const fn runtime_binding(detail: &'static str) -> EvaluationError {
     EvaluationError::new(
         EvaluationErrorKind::Binding,
         EvaluationOperation::Commit,
+        EvaluationRecovery::Quarantine,
+        detail,
+    )
+}
+
+const fn runtime_recovery(detail: &'static str) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Recovery,
+        EvaluationOperation::Recover,
         EvaluationRecovery::Quarantine,
         detail,
     )

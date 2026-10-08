@@ -12,7 +12,7 @@ use crate::{
     ValidatedEvaluationReport, commit_evaluation_transition, decide,
 };
 
-use super::{CommittedEvaluationTransition, TransitionIds};
+use super::{CommittedEvaluationTransition, TransitionIds, recover_ordinary_operation};
 
 /// Exact verified report artifact and distinct semantic payload digest.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -122,9 +122,7 @@ pub fn commit_report_ready(
     staged: FinalizedEvaluationArtifact,
     ids: TransitionIds,
 ) -> Result<CommittedEvaluationTransition, EvaluationError> {
-    if state.phase() != EvaluationPhase::Analyzing
-        || state.analysis_digest().is_none()
-        || report.report().campaign_id() != state.campaign_id()
+    if report.report().campaign_id() != state.campaign_id()
         || report.report().profile_digest() != state.profile_digest()
         || staged.report_id() != report.id()
         || staged.payload_digest() != report.digest()
@@ -138,6 +136,22 @@ pub fn commit_report_ready(
     artifact_store.verify(staged.artifact_digest()).map_err(artifact_owner)?;
     let record =
         ReportRecord::new(report.id(), report.digest(), staged.artifact_digest(), staged.size())?;
+    let kind = EvaluationCommandKind::CompleteReport { report: record };
+    if let Some(operation) =
+        recover_ordinary_operation(journal, state.campaign_id(), ids, &kind)?
+    {
+        if operation.historical_state().phase() != EvaluationPhase::ReportReady
+            || operation.historical_state().report() != Some(record)
+        {
+            return Err(binding(
+                "recovered report operation differs from its historical outcome",
+            ));
+        }
+        return Ok(CommittedEvaluationTransition::new(operation));
+    }
+    if state.phase() != EvaluationPhase::Analyzing || state.analysis_digest().is_none() {
+        return Err(binding("report commit state is not analyzing"));
+    }
     let command = EvaluationCommand::new(
         ids.command_id(),
         ids.event_id(),
@@ -146,11 +160,11 @@ pub fn commit_report_ready(
         Some(state.last_event_id()),
         state.state_digest(),
         state.profile_digest(),
-        EvaluationCommandKind::CompleteReport { report: record },
+        kind,
     )?;
     let transition = decide(Some(state), &command)?;
-    let batch = commit_evaluation_transition(journal, &command, &transition)?;
-    Ok(CommittedEvaluationTransition::new(batch, transition.state().clone()))
+    let operation = commit_evaluation_transition(journal, &command, &transition)?;
+    Ok(CommittedEvaluationTransition::new(operation))
 }
 
 fn artifact_owner(_: impl core::fmt::Display) -> EvaluationError {

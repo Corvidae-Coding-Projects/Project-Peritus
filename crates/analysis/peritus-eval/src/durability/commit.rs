@@ -3,22 +3,24 @@
 use peritus_codec::{CodecLimits, encode_message};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
-    HeadExpectation, OutboxAcknowledgement, OutboxDraft, SqliteJournal,
+    HeadExpectation, OutboxAcknowledgement, OutboxDraft, SqliteJournal, StateInstall,
 };
-use peritus_types::EventSequence;
+use peritus_types::{CommandId, EventSequence};
 
 use crate::{
     EvaluationCommand, EvaluationCommandKind, EvaluationDirectiveClaim, EvaluationError,
-    EvaluationErrorKind, EvaluationEventKind, EvaluationOperation, EvaluationRecovery,
-    EvaluationState, EvaluationTransition, ExecutionDirective, ExecutionDirectiveKind,
-    PUBLICATION_DESTINATION, PublicationDirective, RolloutStatus, SCHEDULE_DESTINATION,
-    ScheduleDirective, ScheduleDirectiveKind,
+    EvaluationErrorKind, EvaluationEvent, EvaluationEventKind, EvaluationOperation,
+    EvaluationRecovery, EvaluationState, EvaluationTransition, ExecutionDirective,
+    ExecutionDirectiveKind, PUBLICATION_DESTINATION, PublicationDirective, RolloutStatus,
+    SCHEDULE_DESTINATION, ScheduleDirective, ScheduleDirectiveKind,
     wire::{EvaluationCommandFrame, EvaluationEventFrame},
 };
 
 use super::{
-    EVALUATION_STATE_NAMESPACE, EXECUTION_DESTINATION, binding, evaluation_aggregate_key,
-    evaluation_state_key,
+    CommittedEvaluationOperation, EVALUATION_RECEIPT_NAMESPACE, EVALUATION_STATE_NAMESPACE,
+    EXECUTION_DESTINATION, EvaluationCommitMode, EvaluationOperationReceipt, binding,
+    evaluation_aggregate_key, evaluation_state_key, load_evaluation_replay,
+    receipt::{claim_receipt, receipt_key},
 };
 
 /// Atomically appends an ordinary transition and its complete checkpoint.
@@ -29,7 +31,7 @@ pub fn commit_evaluation_transition(
     journal: &mut SqliteJournal,
     command: &EvaluationCommand,
     transition: &EvaluationTransition,
-) -> Result<CommittedBatch, EvaluationError> {
+) -> Result<CommittedEvaluationOperation, EvaluationError> {
     commit(journal, command, transition, CommitMode::Ordinary)
 }
 
@@ -42,7 +44,7 @@ pub fn commit_evaluation_claimed_transition(
     command: &EvaluationCommand,
     transition: &EvaluationTransition,
     claim: impl Into<EvaluationDirectiveClaim>,
-) -> Result<CommittedBatch, EvaluationError> {
+) -> Result<CommittedEvaluationOperation, EvaluationError> {
     commit(journal, command, transition, CommitMode::Claimed(claim.into()))
 }
 
@@ -55,7 +57,7 @@ pub fn commit_evaluation_settlement(
     command: &EvaluationCommand,
     transition: &EvaluationTransition,
     claim: impl Into<EvaluationDirectiveClaim>,
-) -> Result<CommittedBatch, EvaluationError> {
+) -> Result<CommittedEvaluationOperation, EvaluationError> {
     commit(journal, command, transition, CommitMode::Settlement(claim.into()))
 }
 
@@ -65,12 +67,33 @@ enum CommitMode {
     Settlement(EvaluationDirectiveClaim),
 }
 
+impl CommitMode {
+    const fn receipt_mode(&self) -> EvaluationCommitMode {
+        match self {
+            Self::Ordinary => EvaluationCommitMode::Ordinary,
+            Self::Claimed(_) => EvaluationCommitMode::Claimed,
+            Self::Settlement(_) => EvaluationCommitMode::Settlement,
+        }
+    }
+
+    const fn claim(&self) -> Option<&EvaluationDirectiveClaim> {
+        match self {
+            Self::Ordinary => None,
+            Self::Claimed(claim) | Self::Settlement(claim) => Some(claim),
+        }
+    }
+
+    const fn is_claim_bound(&self) -> bool {
+        !matches!(self, Self::Ordinary)
+    }
+}
+
 fn commit(
     journal: &mut SqliteJournal,
     command: &EvaluationCommand,
     transition: &EvaluationTransition,
     mode: CommitMode,
-) -> Result<CommittedBatch, EvaluationError> {
+) -> Result<CommittedEvaluationOperation, EvaluationError> {
     binding::validate(command, transition)?;
     validate_mode(command, transition.state(), &mode)?;
     let event = transition.event();
@@ -97,16 +120,26 @@ fn commit(
             bound_digest(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0", base_digest, claim)?
         }
     };
-    if let Some(batch) = resolve_existing(
+    let receipt = operation_receipt(
+        command,
+        event,
+        peritus_codec::sha256(&event_bytes),
+        base_digest,
+        request_digest,
+        &mode,
+    )?;
+    if let Some(operation) = resolve_existing(
         journal,
         command,
         aggregate,
-        &state_key,
+        event,
         &event_bytes,
         state,
         request_digest,
+        receipt,
+        &mode,
     )? {
-        return Ok(batch);
+        return Ok(operation);
     }
     let head = journal.head(aggregate).map_err(journal_error)?;
     let current =
@@ -123,16 +156,26 @@ fn commit(
         Vec::new(),
     )
     .map_err(journal_error)?;
-    let installs = super::checkpoint::installs(
+    let mut installs = super::checkpoint::installs(
         journal,
         &state_key,
         current.as_ref().map(peritus_journal::DurableStateRecord::revision),
         state,
     )?;
+    installs.push(
+        StateInstall::new(
+            EVALUATION_RECEIPT_NAMESPACE,
+            receipt_key(command.command_id()),
+            None,
+            1,
+            receipt.canonical_bytes()?,
+        )
+        .map_err(journal_error)?,
+    );
     let expectation = head.map_or(HeadExpectation::Absent(aggregate), HeadExpectation::Present);
     let dependencies = artifact_dependencies(event.kind());
     let outbox = transition_outbox(command, state)?;
-    let request_base_digest = match mode {
+    let request_base_digest = match &mode {
         CommitMode::Claimed(_) => request_digest,
         CommitMode::Ordinary | CommitMode::Settlement(_) => base_digest,
     };
@@ -148,16 +191,20 @@ fn commit(
         None,
         outbox,
     );
-    let request = if let CommitMode::Settlement(claim) = mode {
+    let request = if let CommitMode::Settlement(claim) = &mode {
         request
             .with_outbox_acknowledgements(vec![
-                OutboxAcknowledgement::new(claim.id()?, claim.fence()).map_err(journal_error)?,
+                OutboxAcknowledgement::new(claim.outbox_id()?, claim.fence())
+                    .map_err(journal_error)?,
             ])
             .map_err(journal_error)?
     } else {
         request
     };
-    journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)
+    let _accepted =
+        journal.append(request.plan().map_err(journal_error)?).map_err(journal_error)?;
+    load_evaluation_operation(journal, command.campaign_id(), command.command_id())?
+        .ok_or_else(|| recovery("accepted evaluation operation has no durable receipt"))
 }
 
 fn transition_outbox(
@@ -493,36 +540,277 @@ fn resolve_existing(
     journal: &SqliteJournal,
     command: &EvaluationCommand,
     aggregate: peritus_journal::AggregateKey,
-    state_key: &[u8],
+    event: &EvaluationEvent,
     event_bytes: &[u8],
     state: &EvaluationState,
     request_digest: peritus_types::Sha256Digest,
-) -> Result<Option<CommittedBatch>, EvaluationError> {
-    let batch = match journal
+    expected_receipt: EvaluationOperationReceipt,
+    mode: &CommitMode,
+) -> Result<Option<CommittedEvaluationOperation>, EvaluationError> {
+    let exact_request = match journal
         .resolve_command(command.command_id(), request_digest)
         .map_err(journal_error)?
     {
-        CommandResolution::Committed(batch) => batch,
+        CommandResolution::Committed(_) => true,
         CommandResolution::Conflict { .. } => {
-            return Err(binding::binding("command identity was committed with another request"));
+            if !mode.is_claim_bound() {
+                return Err(binding::binding(
+                    "command identity was committed with another exact request",
+                ));
+            }
+            false
         }
         CommandResolution::DefinitelyAbsent => return Ok(None),
     };
-    let checkpoint = journal
-        .state_record(EVALUATION_STATE_NAMESPACE, state_key)
-        .map_err(journal_error)?
-        .ok_or_else(|| recovery("resolved command has no evaluation checkpoint"))?;
-    if batch.records().len() != 1
-        || batch.records()[0].frame_bytes() != event_bytes
-        || batch.records()[0].aggregate() != aggregate
+    let operation =
+        load_evaluation_operation(journal, command.campaign_id(), command.command_id())?
+            .ok_or_else(|| recovery("resolved evaluation command has no retained operation"))?;
+    if operation.batch().records().len() != 1
+        || operation.batch().records()[0].frame_bytes() != event_bytes
+        || operation.batch().records()[0].aggregate() != aggregate
+        || operation.event() != event
+        || operation.historical_state() != state
     {
-        return Err(recovery("resolved command differs from its exact evaluation event"));
+        return Err(binding::binding(
+            "resolved command identity belongs to another evaluation transition",
+        ));
     }
-    let observed = super::checkpoint::decode(journal, &checkpoint, command.campaign_id())?;
-    if checkpoint.revision() == state.sequence() && observed.matches_state(state) {
-        return Ok(Some(batch));
+    validate_expected_receipt(operation.receipt(), expected_receipt, mode, exact_request)?;
+    Ok(Some(operation))
+}
+
+/// Loads one exact accepted evaluation operation independently of the current aggregate frontier.
+///
+/// Historical event/state are reconstructed from immutable records and checked against the exact
+/// historical checkpoint root. Current state is rebuilt separately from the complete aggregate.
+///
+/// # Errors
+/// Returns a typed integrity failure for detached command evidence, malformed history, an invalid
+/// retained claim receipt, or divergent current state.
+pub fn load_evaluation_operation(
+    journal: &SqliteJournal,
+    campaign_id: crate::EvaluationCampaignId,
+    command_id: CommandId,
+) -> Result<Option<CommittedEvaluationOperation>, EvaluationError> {
+    let Some(batch) = journal.command_batch(command_id).map_err(journal_error)? else {
+        return Ok(None);
+    };
+    operation_from_batch(journal, campaign_id, batch).map(Some)
+}
+
+fn operation_from_batch(
+    journal: &SqliteJournal,
+    campaign_id: crate::EvaluationCampaignId,
+    batch: CommittedBatch,
+) -> Result<CommittedEvaluationOperation, EvaluationError> {
+    let aggregate = evaluation_aggregate_key(campaign_id)?;
+    let [record] = batch.records() else {
+        return Err(recovery(
+            "evaluation operation command batch is not exactly one event",
+        ));
+    };
+    if record.aggregate() != aggregate || record.command_id() != batch.command_id() {
+        return Err(recovery(
+            "evaluation operation event belongs to another aggregate or command",
+        ));
     }
-    Err(recovery("resolved evaluation checkpoint differs from exact successor"))
+    let sequence = record.sequence().get();
+    let event_index = usize::try_from(
+        sequence
+            .checked_sub(1)
+            .ok_or_else(|| recovery("evaluation operation sequence is zero"))?,
+    )
+    .map_err(|_| recovery("evaluation operation sequence overflows memory indexing"))?;
+    let replay_observation = load_evaluation_replay(journal, campaign_id)?;
+    let event = replay_observation
+        .events()
+        .get(event_index)
+        .cloned()
+        .ok_or_else(|| recovery("evaluation operation event is absent from aggregate replay"))?;
+    let historical_state = crate::replay(&replay_observation.events()[..=event_index])?;
+    let current_state = replay_observation
+        .rebuild()?
+        .ok_or_else(|| recovery("accepted evaluation operation has no current aggregate"))?;
+    let state_key = evaluation_state_key(campaign_id);
+    let stored_historical = journal
+        .state_record_revision(EVALUATION_STATE_NAMESPACE, &state_key, sequence)
+        .map_err(journal_error)?
+        .ok_or_else(|| recovery("evaluation operation has no historical successor checkpoint"))?;
+    super::checkpoint::validate_historical(
+        &stored_historical,
+        campaign_id,
+        &historical_state,
+    )?;
+    if event.campaign_id() != campaign_id
+        || event.sequence() != sequence
+        || event.id() != record.event_id()
+        || event.command_id() != record.command_id()
+        || event.previous_event() != record.previous_event_id()
+        || peritus_evidence::revision_digest(historical_state.revision())
+            != record.revision_digest()
+        || stored_historical.producing_position() != batch.last_position()
+        || stored_historical.revision() != sequence
+    {
+        return Err(recovery(
+            "evaluation operation event and historical successor checkpoint differ",
+        ));
+    }
+    let receipt_record = journal
+        .state_record(EVALUATION_RECEIPT_NAMESPACE, &receipt_key(batch.command_id()))
+        .map_err(journal_error)?;
+    let receipt = match receipt_record {
+        Some(record) => {
+            if record.revision() != 1 || record.producing_position() != batch.last_position() {
+                return Err(recovery(
+                    "evaluation operation receipt was not installed with its command batch",
+                ));
+            }
+            let receipt = EvaluationOperationReceipt::decode(record.bytes())?;
+            validate_retained_receipt(
+                &receipt,
+                &batch,
+                record.digest(),
+                &event,
+                &historical_state,
+            )?;
+            receipt
+        }
+        None => EvaluationOperationReceipt::legacy(
+            batch.command_id(),
+            event.id(),
+            campaign_id,
+            sequence,
+            event.command_digest(),
+            batch.request_digest(),
+            record.frame_digest(),
+            historical_state.state_digest(),
+        ),
+    };
+    if current_state.sequence() < historical_state.sequence()
+        || (current_state.sequence() == historical_state.sequence()
+            && current_state != historical_state)
+    {
+        return Err(recovery(
+            "current evaluation state is behind or differs from the historical operation",
+        ));
+    }
+    Ok(CommittedEvaluationOperation::new(
+        batch,
+        receipt,
+        event,
+        historical_state,
+        current_state,
+    ))
+}
+
+fn validate_retained_receipt(
+    receipt: &EvaluationOperationReceipt,
+    batch: &CommittedBatch,
+    stored_digest: peritus_types::Sha256Digest,
+    event: &EvaluationEvent,
+    state: &EvaluationState,
+) -> Result<(), EvaluationError> {
+    if peritus_codec::sha256(&receipt.canonical_bytes()?) != stored_digest
+        || receipt.command_id() != batch.command_id()
+        || receipt.event_id() != event.id()
+        || receipt.campaign_id() != event.campaign_id()
+        || receipt.sequence() != event.sequence()
+        || receipt.command_digest() != event.command_digest()
+        || receipt.request_digest() != batch.request_digest()
+        || receipt.event_frame_digest() != batch.records()[0].frame_digest()
+        || receipt.successor_state_digest() != state.state_digest()
+    {
+        return Err(recovery(
+            "retained evaluation operation receipt differs from immutable history",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_expected_receipt(
+    observed: EvaluationOperationReceipt,
+    expected: EvaluationOperationReceipt,
+    mode: &CommitMode,
+    exact_request: bool,
+) -> Result<(), EvaluationError> {
+    if observed.mode() == EvaluationCommitMode::Legacy {
+        return if exact_request || mode.is_claim_bound() {
+            Ok(())
+        } else {
+            Err(binding::binding(
+                "legacy evaluation operation request digest differs",
+            ))
+        };
+    }
+    if observed.command_id() != expected.command_id()
+        || observed.event_id() != expected.event_id()
+        || observed.campaign_id() != expected.campaign_id()
+        || observed.sequence() != expected.sequence()
+        || observed.command_digest() != expected.command_digest()
+        || observed.base_request_digest() != expected.base_request_digest()
+        || observed.event_frame_digest() != expected.event_frame_digest()
+        || observed.successor_state_digest() != expected.successor_state_digest()
+        || observed.mode() != mode.receipt_mode()
+    {
+        return Err(binding::binding(
+            "resolved evaluation operation receipt differs from the retry",
+        ));
+    }
+    if exact_request {
+        if observed != expected {
+            return Err(binding::binding(
+                "exact evaluation request has a different retained receipt",
+            ));
+        }
+        return Ok(());
+    }
+    let (Some(original), Some(replacement)) =
+        (observed.original_claim(), expected.original_claim())
+    else {
+        return Err(binding::binding(
+            "claim-bound evaluation retry has no retained claim identity",
+        ));
+    };
+    if original.outbox_id() != replacement.outbox_id()
+        || replacement.fence() <= original.fence()
+        || observed.request_digest() == expected.request_digest()
+    {
+        return Err(binding::binding(
+            "replacement evaluation claim does not advance the original retained fence",
+        ));
+    }
+    Ok(())
+}
+
+fn operation_receipt(
+    command: &EvaluationCommand,
+    event: &EvaluationEvent,
+    event_frame_digest: peritus_types::Sha256Digest,
+    base_request_digest: peritus_types::Sha256Digest,
+    request_digest: peritus_types::Sha256Digest,
+    mode: &CommitMode,
+) -> Result<EvaluationOperationReceipt, EvaluationError> {
+    let original_claim = mode
+        .claim()
+        .map(|claim| {
+            claim
+                .outbox_id()
+                .map(|id| claim_receipt(id, claim.fence()))
+        })
+        .transpose()?;
+    EvaluationOperationReceipt::retained(
+        command.command_id(),
+        event.id(),
+        command.campaign_id(),
+        event.sequence(),
+        command.digest(),
+        base_request_digest,
+        request_digest,
+        event_frame_digest,
+        event.successor_state_digest(),
+        mode.receipt_mode(),
+        original_claim,
+    )
 }
 
 fn outbox(
@@ -540,7 +828,7 @@ fn bound_digest(
     let mut bytes = Vec::with_capacity(domain.len() + 32 + 16 + 8);
     bytes.extend_from_slice(domain);
     bytes.extend_from_slice(base.as_bytes());
-    bytes.extend_from_slice(claim.id()?.as_bytes());
+    bytes.extend_from_slice(claim.outbox_id()?.as_bytes());
     bytes.extend_from_slice(&claim.fence().to_be_bytes());
     Ok(peritus_codec::sha256(&bytes))
 }

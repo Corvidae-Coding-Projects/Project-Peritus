@@ -448,6 +448,14 @@ impl ScheduleDirectiveClaim {
         &self.directive
     }
 
+    /// Stable logical directive identity, independent of its delivery fence.
+    ///
+    /// # Errors
+    /// Returns a binding failure if the validated directive identity is not representable.
+    pub fn outbox_id(&self) -> Result<OutboxId, EvaluationError> {
+        self.directive.outbox_id()
+    }
+
     /// Exact positive claim fence.
     #[must_use]
     pub const fn fence(&self) -> u64 {
@@ -523,6 +531,14 @@ impl ExecutionDirectiveClaim {
     #[must_use]
     pub const fn directive(&self) -> &ExecutionDirective {
         &self.directive
+    }
+
+    /// Stable logical directive identity, independent of its delivery fence.
+    ///
+    /// # Errors
+    /// Returns a binding failure if the validated directive identity is not representable.
+    pub fn outbox_id(&self) -> Result<OutboxId, EvaluationError> {
+        self.directive.outbox_id()
     }
 
     /// Exact positive claim fence.
@@ -643,6 +659,14 @@ impl PublicationDirectiveClaim {
         &self.directive
     }
 
+    /// Stable logical directive identity, independent of its delivery fence.
+    ///
+    /// # Errors
+    /// Returns a binding failure if the validated directive identity is not representable.
+    pub fn outbox_id(&self) -> Result<OutboxId, EvaluationError> {
+        self.directive.outbox_id()
+    }
+
     /// Exact positive claim fence.
     #[must_use]
     pub const fn fence(&self) -> u64 {
@@ -662,14 +686,21 @@ pub enum EvaluationDirectiveClaim {
 }
 
 impl EvaluationDirectiveClaim {
-    pub(crate) fn id(&self) -> Result<OutboxId, EvaluationError> {
+    /// Stable logical directive identity, independent of delivery ownership.
+    ///
+    /// # Errors
+    /// Returns a binding failure if the validated directive identity is not representable.
+    pub fn outbox_id(&self) -> Result<OutboxId, EvaluationError> {
         match self {
-            Self::Schedule(value) => value.directive.outbox_id(),
-            Self::Execution(value) => value.directive.outbox_id(),
-            Self::Publication(value) => value.directive.outbox_id(),
+            Self::Schedule(value) => value.outbox_id(),
+            Self::Execution(value) => value.outbox_id(),
+            Self::Publication(value) => value.outbox_id(),
         }
     }
-    pub(crate) const fn fence(&self) -> u64 {
+
+    /// Current positive delivery-ownership fence.
+    #[must_use]
+    pub const fn fence(&self) -> u64 {
         match self {
             Self::Schedule(value) => value.fence,
             Self::Execution(value) => value.fence,
