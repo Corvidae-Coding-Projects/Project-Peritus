@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L624] Evidence startup holds a write transaction for a full catalog scan and has no quarantine reconciliation operation (#679)
 - [L460] C5 canonical request identity has a separate mandatory 512-MiB total ceiling (#538)
 - [L459] C5's complete request constructor admits unsatisfiable tool selection and unsupported semantic continuation (#537)
 - [L046] In-place scope journal has a lifetime byte ceiling and strict torn-record barrier (#145)
