@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4109,
-        "tip_oid": "48f7a53b81e7a8be6e5c158f5087fbd3926da18a",
-        "prefix_sha256": "506c0e37b00dedc3da70873d9e2c8b39e3180833d00c25fc0c138249f5c90579"
+        "sequence": 4110,
+        "tip_oid": "645d6a745252d4f3e14c8a728ef72b4dca084d58",
+        "prefix_sha256": "3a6371078f3d388e1c746adea0e201d32a25f553b867838c141328daf4b12b09"
       },
       "NWAR": {
         "sequence": 39,
@@ -42589,12 +42589,13 @@
       "display_id": 155,
       "title": "[L056] Local-memory ownership has a separate 250 ms acquisition deadline",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L056.\n\n- `peritus-product-runner/src/local_context/storage.rs:178-190` retries the lineage owner file lock only while elapsed time is below **250 ms**, sleeping **5 ms** between attempts. It then returns “lineage already has an owner or cannot be locked,” without preserving the original lock error class.\n- The comment accounts for brief inherited descriptors during process fork. A still-live owner is an exclusive-writer constraint; the fixed 250 ms patience limit is an added deadline and can turn temporary fork/owner handoff contention into context admission failure.\n- Local memory also sets its SQLite busy timeout to **250 ms** at lines 80-85, separately from the control-store instance in L019. Caller failure propagates as a context error rather than silently choosing a fresh memory store (`local_context/driver.rs`, L043/L049).\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.067749262Z",
-      "updated_at": "2026-10-08T06:13:06.822594598Z",
+      "updated_at": "2026-10-08T06:14:25.768439200Z",
+      "closed_at": "2026-10-08T06:14:25.766287180Z",
       "labels": [
         "daily-driving-limiter"
       ],
