@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L449] F0 publication is permanently bounded to sixteen delivery claims (#528)
 - [L615] Windows proxy cleanup has a permanent retry-required dead end (#671)
 - [L042] Tool argument schema, scope, and stdin capacities (#141)
 - [L448] F0 promotion always requires resource measurements, even with unconstrained thresholds and unrelated objectives (#527)
