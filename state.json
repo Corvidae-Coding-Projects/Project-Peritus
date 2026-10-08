@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4175,
-        "tip_oid": "bbedba384c537dadee25823e94ba6bd4d3bded96",
-        "prefix_sha256": "ecac58678328c4409245ae8f8f791ea0f82d5bb481641223f931c4f76fa74fc5"
+        "sequence": 4176,
+        "tip_oid": "fda0aa0ba80f5b0b220cb9e05b201c97f5bf8eac",
+        "prefix_sha256": "300e4e26983ccd451b96b524f9e453b8ae1ade93214de43420c75dd07f9a1285"
       },
       "NWAR": {
         "sequence": 39,
@@ -19588,12 +19588,13 @@
       "display_id": 223,
       "title": "[L124] Artifact navigation samples 2,000 entries after collecting entire directories",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L124.\n\n- `peritus-product-runner/src/design/artifact.rs:10,48-52,122-127` limits the deterministic artifact navigation sample to **2,000 entries** and explicitly tells the model when the sample is truncated. It excludes Git/build/dependency cache names rather than claiming exhaustive workspace coverage.\n- Each visited directory is collected and sorted in full before the sample bound is applied. A very large flat directory can therefore consume unbounded inventory time and allocation relative to the 2,000-entry sample. Directory enumeration or metadata failures abort design rather than returning a partial inventory with an error entry.\n- This artifact path includes the full stable conversation in its generated document and bypasses the provider-design 1 MiB normalization check (L123). This file has no elapsed deadline; cancellation/revision checks occur around inventory, not inside each synchronous directory operation. No performance reproduction has been run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.669770620Z",
-      "updated_at": "2026-10-08T15:57:13.796582444Z",
+      "updated_at": "2026-10-08T15:58:47.299001125Z",
+      "closed_at": "2026-10-08T15:58:47.295980426Z",
       "labels": [
         "daily-driving-limiter"
       ],
