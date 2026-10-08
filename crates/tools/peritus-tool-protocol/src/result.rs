@@ -5,7 +5,7 @@ mod wire;
 
 use crate::{
     ArtifactReference, BoundedJson, BoundedText, PreparedToolCall, ProtocolError,
-    ProtocolErrorKind, ReplayIdentity, SchemaDigest,
+    ProgressContract, ProtocolErrorKind, ReplayIdentity, SchemaDigest, SideEffectClass,
 };
 use peritus_policy::AuthorityInstant;
 use peritus_types::{ActionId, Sha256Digest};
@@ -238,7 +238,8 @@ pub struct ToolResult {
     artifacts: Vec<ArtifactReference>,
     timing: ToolTiming,
     truncation: TruncationMetadata,
-    progress_count: u32,
+    encoding_version: u16,
+    progress_frontier: u64,
 }
 
 impl ToolResult {
@@ -256,7 +257,7 @@ impl ToolResult {
         artifacts: Vec<ArtifactReference>,
         timing: ToolTiming,
         truncation: TruncationMetadata,
-        progress_count: u32,
+        progress_count: impl TryInto<u64>,
     ) -> Result<Self, ProtocolError> {
         Self::build(
             prepared,
@@ -268,7 +269,13 @@ impl ToolResult {
             artifacts,
             timing,
             truncation,
-            progress_count,
+            progress_count.try_into().map_err(|_| {
+                ProtocolError::at(
+                    ProtocolErrorKind::InvalidEnvelope,
+                    "result.progress",
+                    "terminal progress frontier is not representable as an unsigned integer",
+                )
+            })?,
         )
     }
 
@@ -288,7 +295,7 @@ impl ToolResult {
         artifacts: Vec<ArtifactReference>,
         timing: ToolTiming,
         truncation: TruncationMetadata,
-        progress_count: u32,
+        progress_count: impl TryInto<u64>,
     ) -> Result<Self, ProtocolError> {
         if status == ResultStatus::Succeeded {
             return Err(ProtocolError::at(
@@ -307,7 +314,13 @@ impl ToolResult {
             artifacts,
             timing,
             truncation,
-            progress_count,
+            progress_count.try_into().map_err(|_| {
+                ProtocolError::at(
+                    ProtocolErrorKind::InvalidEnvelope,
+                    "result.progress",
+                    "terminal progress frontier is not representable as an unsigned integer",
+                )
+            })?,
         )
     }
 
@@ -322,27 +335,15 @@ impl ToolResult {
         artifacts: Vec<ArtifactReference>,
         timing: ToolTiming,
         truncation: TruncationMetadata,
-        progress_count: u32,
+        progress_count: u64,
     ) -> Result<Self, ProtocolError> {
         let limits = prepared.call().limits();
-        let artifact_bytes = artifacts.iter().try_fold(0_u64, |total, artifact| {
-            total.checked_add(artifact.size()).ok_or_else(|| {
-                ProtocolError::at(
-                    ProtocolErrorKind::InvalidEnvelope,
-                    "result.artifacts",
-                    "artifact byte total overflowed",
-                )
-            })
-        })?;
-        let structured_bytes = structured
-            .as_ref()
-            .map_or(0, |value| u64::try_from(value.canonical_bytes().len()).unwrap_or(u64::MAX));
-        let total_output_bytes = artifact_bytes.saturating_add(structured_bytes);
         if artifacts.len() > limits.artifacts() as usize
-            || progress_count > limits.progress_events()
+            || (limits.progress_contract() == ProgressContract::LifetimeV1
+                && progress_count > u64::from(limits.progress_events()))
             || human_rendering.as_str().len() > limits.human_bytes() as usize
             || model_rendering.as_str().len() > limits.model_bytes() as usize
-            || total_output_bytes > limits.output_bytes()
+            || !output_fits(prepared, structured.as_ref(), &artifacts)
         {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidEnvelope,
@@ -374,7 +375,36 @@ impl ToolResult {
             artifacts,
             timing,
             truncation,
-            progress_count,
+            encoding_version: limits.progress_contract().version(),
+            progress_frontier: progress_count,
         })
     }
+}
+
+fn output_fits(
+    prepared: &PreparedToolCall,
+    structured: Option<&BoundedJson>,
+    artifacts: &[ArtifactReference],
+) -> bool {
+    let Some(mut remaining) = prepared.call().limits().output_limit() else {
+        // The envelope carries individual artifact sizes, not a cumulative total. An absent
+        // output policy must not acquire a new aggregate-counter exhaustion barrier here.
+        return true;
+    };
+    if prepared.descriptor().side_effect() == SideEffectClass::Process {
+        // C2 owns the exact archived-stream accounting selected by the process plan. Artifact
+        // references and settlement metadata are independently bounded envelope fields; charging
+        // either representation to the stream allowance can make an already-applied process
+        // impossible to report, especially when more than one bounded stream was retained.
+        return true;
+    }
+    for artifact in artifacts {
+        let Some(next) = remaining.checked_sub(artifact.size()) else { return false };
+        remaining = next;
+    }
+    // Inspection/workspace tools can return their actual output inline. Preserve that selected
+    // allowance rather than treating their payload as process settlement metadata.
+    structured.is_none_or(|value| {
+        u64::try_from(value.canonical_bytes().len()).is_ok_and(|bytes| bytes <= remaining)
+    })
 }

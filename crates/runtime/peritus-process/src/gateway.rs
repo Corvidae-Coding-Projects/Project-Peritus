@@ -2,6 +2,8 @@
 
 mod native;
 
+use std::sync::Arc;
+
 use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind};
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_kernel::{ActionPhase, KernelEventKind};
@@ -14,20 +16,37 @@ use crate::{
     ErrorCode, ExecutionAuthorizationRequest, ExecutionIntentPayload, ExecutionPlan, OwnedProcess,
     ProcessError, ProcessOperation, ProcessStore, RecoveryClass, WorkspaceAccess,
     error::mismatch,
+    retained_owner::RetainedProcessTransport,
     supervisor,
     verified::{ExecutionAuthorityFacts, execution_authority_complete},
 };
 
 /// Sole public owner of the protected process registry and execution effect.
+#[derive(Clone)]
 pub struct ExecutionGateway {
     store: ProcessStore,
+    retained_owner: Option<Arc<dyn RetainedProcessTransport>>,
 }
 
 impl ExecutionGateway {
     /// Creates a gateway around one protected durable process store.
     #[must_use]
-    pub const fn new(store: ProcessStore) -> Self {
-        Self { store }
+    pub fn new(store: ProcessStore) -> Self {
+        let retained_owner = store.retained_owner_transport();
+        Self { store, retained_owner }
+    }
+
+    /// Routes restricted native execution through an independently retained service owner.
+    ///
+    /// Raw explicit-effect execution remains local. The supplied transport authenticates one
+    /// supervisor generation and may reattach the same exact owner request after daemon restart.
+    #[must_use]
+    pub fn with_retained_owner(
+        mut self,
+        retained_owner: Arc<dyn RetainedProcessTransport>,
+    ) -> Self {
+        self.retained_owner = Some(retained_owner);
+        self
     }
 
     /// Returns the protected process store for recovery and quiescence inspection.

@@ -210,22 +210,45 @@ where
         let artifacts = self.artifacts.take().ok_or_else(|| {
             adapter_failure("quality-run-consumed", "quality artifact store was already consumed")
         })?;
-        let process_store = self.gateway.store().clone();
-        let owner = self
+        let gateway = self.gateway.clone();
+        let launch = self
             .gateway
             .launch_with_backend(self.authorization, plan, &self.sandbox, &self.admission, backend)
-            .map_err(|error| failure::process(&error))?;
-        Ok(ToolStart::Active(Box::new(QualityExecution::new(
-            prepared,
-            definition,
-            owner,
-            process_store,
-            process_id,
-            artifacts,
-            creating_event,
-            started_at,
-            checkpoint,
-        ))))
+            .map_err(|error| failure::process(&error));
+        match launch {
+            Ok(owner) => Ok(ToolStart::Active(Box::new(QualityExecution::new(
+                prepared,
+                definition,
+                owner,
+                gateway,
+                process_id,
+                artifacts,
+                creating_event,
+                started_at,
+                checkpoint,
+            )))),
+            Err(launch_failure) => {
+                let accepted = gateway
+                    .store()
+                    .process_identity_recorded(process_id)
+                    .unwrap_or(true);
+                if !accepted {
+                    return Err(launch_failure);
+                }
+                Ok(ToolStart::Active(Box::new(
+                    QualityExecution::detached_after_accepted_launch(
+                        prepared,
+                        definition,
+                        gateway,
+                        process_id,
+                        artifacts,
+                        creating_event,
+                        started_at,
+                        checkpoint,
+                    ),
+                )))
+            }
+        }
     }
 }
 

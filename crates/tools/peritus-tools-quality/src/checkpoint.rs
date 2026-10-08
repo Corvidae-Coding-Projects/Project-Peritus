@@ -13,7 +13,7 @@ use peritus_codec::{
 };
 use peritus_patch::WorkspacePath;
 use peritus_policy::AuthorityInstant;
-use peritus_process::{ProcessCursor, ProcessStore};
+use peritus_process::{ProcessCursor, ProcessStore, TerminalResult};
 use peritus_tool_protocol::{
     FailureCategory, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem, ResultStatus,
     Retryability,
@@ -45,6 +45,7 @@ pub(crate) struct Settlement {
     pub(crate) progress_truncated: bool,
     pub(crate) parser_complete: bool,
     pub(crate) predicate_satisfied: bool,
+    pub(crate) result_digest: Option<Sha256Digest>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -52,6 +53,8 @@ pub(crate) struct State {
     pub(crate) last_observed_at: AuthorityInstant,
     pub(crate) committed: CursorState,
     pub(crate) pending: Option<CursorState>,
+    pub(crate) launch_accepted: bool,
+    pub(crate) terminal: Option<TerminalResult>,
     pub(crate) settlement: Option<Settlement>,
 }
 
@@ -65,6 +68,8 @@ impl State {
                 progress_truncated: false,
             },
             pending: None,
+            launch_accepted: false,
+            terminal: None,
             settlement: None,
         }
     }
@@ -132,8 +137,19 @@ impl Owner {
         if peritus_codec::sha256(&bytes) != candidate.digest {
             return Err(checkpoint_failure("quality checkpoint content digest is invalid"));
         }
-        let frame = decode_message::<CheckpointFrame>(&bytes, CODEC_LIMITS)
-            .map_err(|error| checkpoint_codec("decode quality checkpoint", error))?;
+        let frame = match decode_message::<CheckpointFrame>(&bytes, CODEC_LIMITS) {
+            Ok(frame) => frame,
+            Err(current_error) => match decode_message::<LegacyCheckpointFrame>(&bytes, CODEC_LIMITS)
+            {
+                Ok(legacy) => legacy.upgrade(),
+                Err(_) => {
+                    return Err(checkpoint_codec(
+                        "decode quality checkpoint",
+                        current_error,
+                    ));
+                }
+            },
+        };
         if frame.generation != candidate.generation
             || frame.action_id != prepared.call().action_id()
             || frame.prepared_bytes != prepared.canonical_bytes()
@@ -270,7 +286,7 @@ impl CheckpointFrame {
 
 impl CanonicalEncode for CheckpointFrame {
     const FAMILY: u16 = 0xc451;
-    const SCHEMA_VERSION: u16 = 1;
+    const SCHEMA_VERSION: u16 = 2;
 
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
         writer.write_u64(self.generation)?;
@@ -289,6 +305,108 @@ impl CanonicalEncode for CheckpointFrame {
 }
 
 impl CanonicalDecode for CheckpointFrame {
+    const FAMILY: u16 = 0xc451;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        let generation = reader.read_u64()?;
+        if generation == 0 {
+            return Err(domain(reader));
+        }
+        let action_id = ActionId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let prepared_bytes = reader.read_bytes_owned()?;
+        if prepared_bytes.is_empty() {
+            return Err(domain(reader));
+        }
+        let prepared_digest = Sha256Digest::new(reader.read_fixed()?);
+        let replay_identity = Sha256Digest::new(reader.read_fixed()?);
+        let definition = DefinitionFrame::decode(reader)?;
+        let plan_digest = Sha256Digest::new(reader.read_fixed()?);
+        let process_id = ProcessId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let artifact_root_digest = Sha256Digest::new(reader.read_fixed()?);
+        let creating_event = EventId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
+        let started_at = decode_instant(reader)?;
+        let state = decode_state(reader)?;
+        if state.last_observed_at.epoch() != started_at.epoch()
+            || state.last_observed_at.tick_millis() < started_at.tick_millis()
+            || state.pending.is_some_and(|pending| {
+                pending.next_progress < state.committed.next_progress
+            })
+            || state.terminal.is_some() && !state.launch_accepted
+            || state.settlement.is_some_and(|settlement| {
+                settlement.finished_at.epoch() != started_at.epoch()
+                    || settlement.finished_at.tick_millis() < started_at.tick_millis()
+                    || settlement.progress_frontier < state.committed.next_progress
+                    || state.terminal.is_none()
+                    || state.pending.is_some_and(|pending| {
+                        pending.next_progress > settlement.progress_frontier
+                    })
+            })
+        {
+            return Err(domain(reader));
+        }
+        Ok(Self {
+            generation,
+            action_id,
+            prepared_bytes,
+            prepared_digest,
+            replay_identity,
+            definition,
+            plan_digest,
+            process_id,
+            artifact_root_digest,
+            creating_event,
+            started_at,
+            state,
+        })
+    }
+}
+
+struct LegacyCheckpointFrame {
+    generation: u64,
+    action_id: ActionId,
+    prepared_bytes: Vec<u8>,
+    prepared_digest: Sha256Digest,
+    replay_identity: Sha256Digest,
+    definition: DefinitionFrame,
+    plan_digest: Sha256Digest,
+    process_id: ProcessId,
+    artifact_root_digest: Sha256Digest,
+    creating_event: EventId,
+    started_at: AuthorityInstant,
+    state: LegacyState,
+}
+
+impl LegacyCheckpointFrame {
+    fn upgrade(self) -> CheckpointFrame {
+        let launch_accepted = self.state.committed.next_progress != 0
+            || self.state.pending.is_some()
+            || self.state.settlement.is_some();
+        CheckpointFrame {
+            generation: self.generation,
+            action_id: self.action_id,
+            prepared_bytes: self.prepared_bytes,
+            prepared_digest: self.prepared_digest,
+            replay_identity: self.replay_identity,
+            definition: self.definition,
+            plan_digest: self.plan_digest,
+            process_id: self.process_id,
+            artifact_root_digest: self.artifact_root_digest,
+            creating_event: self.creating_event,
+            started_at: self.started_at,
+            state: State {
+                last_observed_at: self.state.last_observed_at,
+                committed: self.state.committed,
+                pending: self.state.pending,
+                launch_accepted,
+                terminal: None,
+                settlement: self.state.settlement,
+            },
+        }
+    }
+}
+
+impl CanonicalDecode for LegacyCheckpointFrame {
     const FAMILY: u16 = 0xc451;
     const SCHEMA_VERSION: u16 = 1;
 
@@ -310,7 +428,7 @@ impl CanonicalDecode for CheckpointFrame {
         let artifact_root_digest = Sha256Digest::new(reader.read_fixed()?);
         let creating_event = EventId::new(reader.read_fixed()?).map_err(|_| domain(reader))?;
         let started_at = decode_instant(reader)?;
-        let state = decode_state(reader)?;
+        let state = decode_legacy_state(reader)?;
         if state.last_observed_at.epoch() != started_at.epoch()
             || state.last_observed_at.tick_millis() < started_at.tick_millis()
             || state.pending.is_some_and(|pending| {
@@ -342,6 +460,13 @@ impl CanonicalDecode for CheckpointFrame {
             state,
         })
     }
+}
+
+struct LegacyState {
+    last_observed_at: AuthorityInstant,
+    committed: CursorState,
+    pending: Option<CursorState>,
+    settlement: Option<Settlement>,
 }
 
 struct DefinitionFrame {
@@ -503,6 +628,14 @@ fn encode_state(writer: &mut CanonicalWriter, state: &State) -> Result<(), Codec
     if let Some(pending) = state.pending {
         encode_cursor_state(writer, pending)?;
     }
+    writer.write_bool(state.launch_accepted)?;
+    writer.write_option_tag(state.terminal.is_some())?;
+    if let Some(terminal) = &state.terminal {
+        let bytes = terminal
+            .encode_retained_owner()
+            .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len()))?;
+        writer.write_bytes(&bytes)?;
+    }
     writer.write_option_tag(state.settlement.is_some())?;
     if let Some(settlement) = state.settlement {
         encode_instant(writer, settlement.finished_at)?;
@@ -510,11 +643,58 @@ fn encode_state(writer: &mut CanonicalWriter, state: &State) -> Result<(), Codec
         writer.write_bool(settlement.progress_truncated)?;
         writer.write_bool(settlement.parser_complete)?;
         writer.write_bool(settlement.predicate_satisfied)?;
+        writer.write_option_tag(settlement.result_digest.is_some())?;
+        if let Some(digest) = settlement.result_digest {
+            writer.write_fixed(digest.as_bytes())?;
+        }
     }
     Ok(())
 }
 
 fn decode_state(reader: &mut CanonicalReader<'_>) -> Result<State, CodecError> {
+    let last_observed_at = decode_instant(reader)?;
+    let committed = decode_cursor_state(reader)?;
+    let pending = if reader.read_option_tag()? {
+        Some(decode_cursor_state(reader)?)
+    } else {
+        None
+    };
+    let launch_accepted = reader.read_bool()?;
+    let terminal = if reader.read_option_tag()? {
+        Some(
+            TerminalResult::decode_retained_owner(reader.read_bytes()?)
+                .map_err(|_| domain(reader))?,
+        )
+    } else {
+        None
+    };
+    let settlement = if reader.read_option_tag()? {
+        Some(Settlement {
+            finished_at: decode_instant(reader)?,
+            progress_frontier: reader.read_u64()?,
+            progress_truncated: reader.read_bool()?,
+            parser_complete: reader.read_bool()?,
+            predicate_satisfied: reader.read_bool()?,
+            result_digest: if reader.read_option_tag()? {
+                Some(Sha256Digest::new(reader.read_fixed()?))
+            } else {
+                None
+            },
+        })
+    } else {
+        None
+    };
+    Ok(State {
+        last_observed_at,
+        committed,
+        pending,
+        launch_accepted,
+        terminal,
+        settlement,
+    })
+}
+
+fn decode_legacy_state(reader: &mut CanonicalReader<'_>) -> Result<LegacyState, CodecError> {
     let last_observed_at = decode_instant(reader)?;
     let committed = decode_cursor_state(reader)?;
     let pending = if reader.read_option_tag()? {
@@ -529,11 +709,12 @@ fn decode_state(reader: &mut CanonicalReader<'_>) -> Result<State, CodecError> {
             progress_truncated: reader.read_bool()?,
             parser_complete: reader.read_bool()?,
             predicate_satisfied: reader.read_bool()?,
+            result_digest: None,
         })
     } else {
         None
     };
-    Ok(State { last_observed_at, committed, pending, settlement })
+    Ok(LegacyState { last_observed_at, committed, pending, settlement })
 }
 
 fn encode_cursor_state(

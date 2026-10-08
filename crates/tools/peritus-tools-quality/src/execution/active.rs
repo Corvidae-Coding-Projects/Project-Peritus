@@ -4,8 +4,7 @@ use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
 use peritus_policy::AuthorityInstant;
 use peritus_process::{
     CancellationReason as ProcessCancellation, OutputCompleteness, OutputStream, OwnedProcess,
-    ExecutionGateway, ProcessControl, ProcessCursor, ProcessStore, RetainedOwnerRequest,
-    TerminalResult,
+    ExecutionGateway, ProcessControl, ProcessCursor, ProcessStore, RetainedOwnerRequest, TerminalResult,
 };
 use peritus_tool_protocol::{
     CancellationReason, PreparedToolCall, ToolControl, ToolResult,
@@ -24,7 +23,7 @@ pub struct QualityExecution {
     definition: CheckDefinition,
     owner: Option<OwnedProcess>,
     control: Option<ProcessControl>,
-    process_store: ProcessStore,
+    gateway: ExecutionGateway,
     process_id: ProcessId,
     artifacts: ArtifactStore,
     creating_event: EventId,
@@ -36,6 +35,7 @@ pub struct QualityExecution {
     completed: Option<CompletedProcessEvidence>,
     result: Option<ToolResult>,
     pending_progress: Option<PendingProgress>,
+    launch_accepted: bool,
     settlement: Option<checkpoint::Settlement>,
     checkpoint: checkpoint::Owner,
 }
@@ -64,7 +64,7 @@ impl QualityExecution {
         prepared: PreparedToolCall,
         definition: CheckDefinition,
         owner: OwnedProcess,
-        process_store: ProcessStore,
+        gateway: ExecutionGateway,
         process_id: ProcessId,
         artifacts: ArtifactStore,
         creating_event: EventId,
@@ -77,7 +77,7 @@ impl QualityExecution {
             definition,
             owner: Some(owner),
             control: Some(control),
-            process_store,
+            gateway,
             process_id,
             artifacts,
             creating_event,
@@ -89,6 +89,41 @@ impl QualityExecution {
             completed: None,
             result: None,
             pending_progress: None,
+            launch_accepted: true,
+            settlement: None,
+            checkpoint,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn detached_after_accepted_launch(
+        prepared: PreparedToolCall,
+        definition: CheckDefinition,
+        gateway: ExecutionGateway,
+        process_id: ProcessId,
+        artifacts: ArtifactStore,
+        creating_event: EventId,
+        started_at: AuthorityInstant,
+        checkpoint: checkpoint::Owner,
+    ) -> Self {
+        Self {
+            prepared,
+            definition,
+            owner: None,
+            control: None,
+            gateway,
+            process_id,
+            artifacts,
+            creating_event,
+            cursor: ProcessCursor::after(0),
+            next_progress: 0,
+            started_at,
+            last_observed_at: started_at,
+            progress_truncated: false,
+            completed: None,
+            result: None,
+            pending_progress: None,
+            launch_accepted: true,
             settlement: None,
             checkpoint,
         }
@@ -120,6 +155,7 @@ impl QualityExecution {
                 "quality adoption time regressed or crossed the checkpoint authority epoch",
             ));
         }
+        let mut checkpoint_dirty = false;
         let selected = if state.committed.next_progress == accepted_progress {
             state.committed
         } else if state
@@ -129,7 +165,7 @@ impl QualityExecution {
             let accepted = state.pending.expect("checked pending progress");
             state.committed = accepted;
             state.pending = None;
-            checkpoint.save(&state)?;
+            checkpoint_dirty = true;
             accepted
         } else {
             return Err(adapter_failure(
@@ -138,7 +174,35 @@ impl QualityExecution {
             ));
         };
         let process_id = checkpoint.process_id();
-        let terminal = process_store.terminal_result(process_id).ok();
+        if !state.launch_accepted {
+            let accepted = process_store
+                .process_identity_recorded(process_id)
+                .map_err(|error| failure::process(&error))?;
+            if !accepted {
+                return Err(adapter_failure(
+                    "quality-adoption-launch",
+                    "quality checkpoint has no durable accepted C2 process identity",
+                ));
+            }
+            state.launch_accepted = true;
+            checkpoint_dirty = true;
+        }
+        let checkpoint_terminal = state.terminal.clone();
+        let terminal = match process_store.terminal_result(process_id) {
+            Ok(terminal) => {
+                validate_terminal_binding(&checkpoint, &terminal)?;
+                if let Some(previous) = checkpoint_terminal.as_ref() {
+                    validate_terminal_progress(previous, &terminal)?;
+                }
+                if checkpoint_terminal.as_ref() != Some(&terminal) {
+                    state.terminal = Some(terminal.clone());
+                    checkpoint_dirty = true;
+                }
+                Some(terminal)
+            }
+            Err(_) => checkpoint_terminal,
+        };
+        let mut terminal_available = terminal.is_some();
         let (owner, control, completed) = match terminal {
             Some(terminal) => {
                 validate_terminal_binding(&checkpoint, &terminal)?;
@@ -153,9 +217,24 @@ impl QualityExecution {
                 let completed = control
                     .terminal_result()
                     .map(|terminal| CompletedProcessEvidence { terminal });
+                if let Some(completed) = &completed {
+                    validate_terminal_binding(&checkpoint, &completed.terminal)?;
+                    state.terminal = Some(completed.terminal.clone());
+                    checkpoint_dirty = true;
+                    terminal_available = true;
+                }
                 (Some(owner), Some(control), completed)
             }
         };
+        if state.settlement.is_some() && !terminal_available {
+            return Err(adapter_failure(
+                "quality-adoption-settlement",
+                "quality settlement has no exact terminal process receipt",
+            ));
+        }
+        if checkpoint_dirty {
+            checkpoint.save(&state)?;
+        }
         let definition = checkpoint.definition().clone();
         let creating_event = checkpoint.creating_event();
         let started_at = checkpoint.started_at();
@@ -164,7 +243,7 @@ impl QualityExecution {
             definition,
             owner,
             control,
-            process_store,
+            gateway: gateway.clone(),
             process_id,
             artifacts,
             creating_event,
@@ -176,6 +255,7 @@ impl QualityExecution {
             completed,
             result: None,
             pending_progress: None,
+            launch_accepted: state.launch_accepted,
             settlement: state.settlement,
             checkpoint,
         };
@@ -210,6 +290,9 @@ impl QualityExecution {
             self.persist_checkpoint()?;
             return ExecutionUpdate::new(&self.prepared, Vec::new(), Some(result))
                 .map_err(|error| adapter_failure("quality-terminal-repeat", &error.to_string()));
+        }
+        if self.owner.is_none() && self.control.is_none() && self.completed.is_none() {
+            self.attach_or_restore()?;
         }
         let mut cursor = self.cursor;
         let mut next_progress = self.next_progress;
@@ -339,7 +422,7 @@ impl QualityExecution {
         let predicate_satisfied =
             parsed.as_ref().is_ok_and(parser::ParsedOutput::predicate_satisfied);
         let parser_complete = parsed.is_ok();
-        let settlement = match self.settlement {
+        let mut settlement = match self.settlement {
             Some(settlement) if settlement.progress_frontier == progress_frontier => {
                 if settlement.parser_complete != parser_complete
                     || settlement.predicate_satisfied != predicate_satisfied
@@ -358,8 +441,11 @@ impl QualityExecution {
                 progress_truncated,
                 parser_complete,
                 predicate_satisfied,
+                result_digest: None,
             },
         };
+        self.settlement = Some(settlement);
+        self.persist_checkpoint()?;
         let terminal = terminal::build(
             &self.prepared,
             &self.definition,
@@ -372,8 +458,17 @@ impl QualityExecution {
             progress_frontier,
             progress_truncated,
         )?;
+        let result_digest = peritus_codec::sha256(&terminal.canonical_bytes());
+        if settlement.result_digest.is_some_and(|expected| expected != result_digest) {
+            return Err(adapter_failure(
+                "quality-result-checkpoint",
+                "rebuilt quality result differs from its durable terminal receipt",
+            ));
+        }
+        settlement.result_digest = Some(result_digest);
         self.settlement = Some(settlement);
         self.result = Some(terminal.clone());
+        self.persist_checkpoint()?;
         Ok(terminal)
     }
 
@@ -381,7 +476,7 @@ impl QualityExecution {
         &mut self,
         accepted_progress: u64,
     ) -> Result<(), DispatchFailure> {
-        let Some(settlement) = self
+        let Some(mut settlement) = self
             .settlement
             .filter(|settlement| settlement.progress_frontier == accepted_progress)
         else {
@@ -410,7 +505,7 @@ impl QualityExecution {
         let completed = self.completed.as_ref().ok_or_else(|| {
             adapter_failure("quality-settlement-missing", "adopted terminal evidence disappeared")
         })?;
-        self.result = Some(terminal::build(
+        let result = terminal::build(
             &self.prepared,
             &self.definition,
             &completed.terminal,
@@ -421,7 +516,18 @@ impl QualityExecution {
             settlement.finished_at,
             settlement.progress_frontier,
             settlement.progress_truncated,
-        )?);
+        )?;
+        let result_digest = peritus_codec::sha256(&result.canonical_bytes());
+        if settlement.result_digest.is_some_and(|expected| expected != result_digest) {
+            return Err(adapter_failure(
+                "quality-result-checkpoint",
+                "adopted quality result differs from its durable terminal receipt",
+            ));
+        }
+        settlement.result_digest = Some(result_digest);
+        self.settlement = Some(settlement);
+        self.result = Some(result);
+        self.persist_checkpoint()?;
         Ok(())
     }
 
@@ -438,6 +544,8 @@ impl QualityExecution {
                 next_progress: pending.next_progress,
                 progress_truncated: pending.progress_truncated,
             }),
+            launch_accepted: self.launch_accepted,
+            terminal: self.completed.as_ref().map(|completed| completed.terminal.clone()),
             settlement: self.settlement,
         })
     }
@@ -537,50 +645,62 @@ impl QualityExecution {
     }
 
     fn capture_terminal(&mut self) -> Result<(), DispatchFailure> {
-        if self.completed.is_some() {
+        if self.owner.is_none() && self.completed.is_some() {
             return Ok(());
+        }
+        if self.owner.is_none() && self.control.is_none() {
+            self.attach_or_restore()?;
+            if self.completed.is_some() {
+                return Ok(());
+            }
+        }
+        if let Some(terminal) = self.control.as_ref().and_then(ProcessControl::terminal_result) {
+            self.retain_and_checkpoint(terminal)?;
         }
         if let Some(owner) = self.owner.take() {
             return match owner.wait_and_publish(&self.artifacts, self.creating_event) {
-                Ok(terminal) => self.retain_completed(terminal),
+                Ok(terminal) => self.retain_and_checkpoint(terminal),
                 Err(error) => {
                     let failure = failure::process(error.process_error());
                     let terminal = error
                         .terminal_result()
                         .cloned()
                         .or_else(|| self.control.as_ref().and_then(ProcessControl::terminal_result))
-                        .or_else(|| self.process_store.terminal_result(self.process_id).ok());
+                        .or_else(|| self.gateway.store().terminal_result(self.process_id).ok());
                     if let Some(terminal) = terminal {
-                        self.retain_completed(terminal)?;
-                        if self.publication_complete() {
-                            return Ok(());
-                        }
+                        self.retain_and_checkpoint(terminal)?;
+                    }
+                    if self.completed.is_some() {
+                        return Ok(());
                     }
                     Err(failure)
                 }
             };
+        }
+        if self.completed.is_some() {
+            return Ok(());
         }
         let terminal = self
             .control
             .as_ref()
             .and_then(ProcessControl::terminal_result)
             .map(Ok)
-            .unwrap_or_else(|| self.process_store.terminal_result(self.process_id))
+            .unwrap_or_else(|| self.gateway.store().terminal_result(self.process_id))
             .map_err(|error| failure::process(&error))?;
-        self.retain_completed(terminal)
+        self.retain_and_checkpoint(terminal)
     }
 
     fn complete_artifact_publication(&mut self) -> Result<(), DispatchFailure> {
         if self.publication_complete() {
             return Ok(());
         }
-        match self.process_store.retry_artifact_publication(
+        match self.gateway.store().retry_artifact_publication(
             self.process_id,
             &self.artifacts,
             self.creating_event,
         ) {
             Ok(terminal) => {
-                self.retain_completed(terminal)?;
+                self.retain_and_checkpoint(terminal)?;
                 if self.publication_complete() {
                     Ok(())
                 } else {
@@ -596,9 +716,9 @@ impl QualityExecution {
                     .terminal_result()
                     .cloned()
                     .or_else(|| self.control.as_ref().and_then(ProcessControl::terminal_result))
-                    .or_else(|| self.process_store.terminal_result(self.process_id).ok());
+                    .or_else(|| self.gateway.store().terminal_result(self.process_id).ok());
                 if let Some(terminal) = terminal {
-                    self.retain_completed(terminal)?;
+                    self.retain_and_checkpoint(terminal)?;
                     if self.publication_complete() {
                         return Ok(());
                     }
@@ -615,17 +735,40 @@ impl QualityExecution {
     }
 
     fn retain_completed(&mut self, terminal: TerminalResult) -> Result<(), DispatchFailure> {
-        if terminal.process_id() != self.process_id {
-            return Err(adapter_failure(
-                "quality-settlement-identity",
-                "terminal evidence belongs to another process",
-            ));
+        validate_terminal_binding(&self.checkpoint, &terminal)?;
+        if let Some(previous) = self.completed.as_ref() {
+            validate_terminal_progress(&previous.terminal, &terminal)?;
         }
+        self.launch_accepted = true;
         self.completed = Some(CompletedProcessEvidence { terminal });
         Ok(())
     }
 
-    fn request_cancellation(&self, reason: CancellationReason) -> Result<(), DispatchFailure> {
+    fn retain_and_checkpoint(&mut self, terminal: TerminalResult) -> Result<(), DispatchFailure> {
+        self.retain_completed(terminal)?;
+        self.persist_checkpoint()
+    }
+
+    fn attach_or_restore(&mut self) -> Result<(), DispatchFailure> {
+        if let Ok(terminal) = self.gateway.store().terminal_result(self.process_id) {
+            return self.retain_and_checkpoint(terminal);
+        }
+        validate_retained_binding(self.gateway.store(), &self.checkpoint, &self.prepared)?;
+        let owner = self
+            .gateway
+            .reattach_retained(self.process_id)
+            .map_err(|error| failure::process(&error))?;
+        let control = owner.control();
+        self.owner = Some(owner);
+        self.control = Some(control);
+        self.launch_accepted = true;
+        self.persist_checkpoint()
+    }
+
+    fn request_cancellation(&mut self, reason: CancellationReason) -> Result<(), DispatchFailure> {
+        if self.control.is_none() && self.completed.is_none() {
+            self.attach_or_restore()?;
+        }
         let Some(control) = &self.control else {
             return if self.completed.is_some() {
                 Ok(())
@@ -722,6 +865,8 @@ impl ToolExecution for QualityExecution {
                 progress_truncated: pending.progress_truncated,
             },
             pending: None,
+            launch_accepted: self.launch_accepted,
+            terminal: self.completed.as_ref().map(|completed| completed.terminal.clone()),
             settlement: self.settlement,
         })?;
         let pending = self.pending_progress.take().expect("checked pending progress");
@@ -742,6 +887,40 @@ fn validate_terminal_binding(
         return Err(adapter_failure(
             "quality-adoption-process",
             "durable terminal evidence differs from the checkpointed process owner",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_terminal_progress(
+    previous: &TerminalResult,
+    current: &TerminalResult,
+) -> Result<(), DispatchFailure> {
+    if previous == current {
+        return Ok(());
+    }
+    let fixed_facts_match = previous.process_id() == current.process_id()
+        && previous.plan_digest() == current.plan_digest()
+        && previous.disposition() == current.disposition()
+        && previous.os_exit() == current.os_exit()
+        && previous.first_trigger() == current.first_trigger()
+        && previous.escalation() == current.escalation()
+        && previous.started_at() == current.started_at()
+        && previous.ended_at() == current.ended_at()
+        && previous.output() == current.output()
+        && previous.resources() == current.resources()
+        && previous.tree_cleanup_complete() == current.tree_cleanup_complete()
+        && previous.support_tasks_joined() == current.support_tasks_joined()
+        && previous.recovery() == current.recovery();
+    let publication_advanced = !previous.artifact_publication_complete()
+        && previous
+            .artifacts()
+            .iter()
+            .all(|artifact| current.artifacts().contains(artifact));
+    if !fixed_facts_match || !publication_advanced {
+        return Err(adapter_failure(
+            "quality-settlement-terminal",
+            "C2 terminal evidence regressed or changed outside artifact publication",
         ));
     }
     Ok(())
