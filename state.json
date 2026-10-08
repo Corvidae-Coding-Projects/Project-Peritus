@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4159,
-        "tip_oid": "4f5145ff59e69077a6a82695642389751922e371",
-        "prefix_sha256": "2947fc64d9f686ec1efe234da471bbd7ae1c2282ef91cdbbbdf5a4b8caa463a7"
+        "sequence": 4160,
+        "tip_oid": "81ec9209f678b2117a78909d03cb6f95daca4bbd",
+        "prefix_sha256": "8c176ef9cb8e77a794064ff6c459587ed8181ce47b8df230023600f478f883d4"
       },
       "NWAR": {
         "sequence": 39,
@@ -24148,12 +24148,13 @@
       "display_id": 112,
       "title": "[L012] Derived text can exceed otherwise valid field capacity",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L012.\n\n- `crates/app/peritus-product-runner/src/control/text.rs:20-25` rejects a string above its const byte ceiling. There is no truncation or overflow accommodation.\n- Automatic empty-directory checkpoint exclusions concatenate an otherwise accepted path and explanatory text before storing it in `ControlText<512>` (L010). A sufficiently long valid path therefore fails automatic checkpoint admission.\n- `peritus-daemon/src/product_run/workbench/checkpoints/logical.rs:34-37` prefixes an existing conversation title with `Rewind of `, then applies `ConversationTitle::new`; its failure becomes `ControlError::Capacity`. Exact title ceiling and public callers are pending.\n- Structural issue: transformations enlarge already-admitted values while reusing the original destination ceiling. This can block recovery/branching because of incidental label length.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.878590704Z",
-      "updated_at": "2026-10-08T15:32:35.811849674Z",
+      "updated_at": "2026-10-08T15:34:07.477074598Z",
+      "closed_at": "2026-10-08T15:34:07.474138096Z",
       "labels": [
         "daily-driving-limiter"
       ],
