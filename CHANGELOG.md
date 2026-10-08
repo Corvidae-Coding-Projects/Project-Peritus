@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L052] Candidate freshness capture retries exactly three times (#151)
 - [L468] Live provider qualification bypasses normalized response legality (#546)
 - [L051] Same-provider recovery has a three-invocation cap without material progress (#150)
 - [L467] Optional hosted metadata enrichment blocks return of an already fetched model catalog (#545)
