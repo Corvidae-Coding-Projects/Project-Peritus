@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3900,
-        "tip_oid": "e02736cbfffcc86b045571d5bd93967e55a8bbb0",
-        "prefix_sha256": "20c9d311a03b5d8935c851c3186b38d0297b7b2349412f6a252e1e427fc0ed24"
+        "sequence": 3901,
+        "tip_oid": "1ffdd6f26430adbd600454664679ec5d1c48c94d",
+        "prefix_sha256": "7c9930b2139b959d2cb2e32cf0447f0ef2c5d5d15c99978ce4660f9826621c17"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3153,
+  "next_comment_id": 3154,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32708,7 +32708,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.495344939Z",
-      "updated_at": "2026-10-06T13:27:50.497603399Z",
+      "updated_at": "2026-10-08T00:24:43.836139962Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32719,6 +32719,15 @@
           "content": "Systemic repair plan for L425: E2 analysis and validation repeatedly scan complete evidence before checking most output caps.\n\nOwning contract and implementation boundary: crates/analysis/peritus-debugger/src/timeline/builder.rs:172-270; src/causal/analyzer.rs:112-138,223-345; src/causal/candidate.rs:116-164,255-311; src/clustering/fingerprint.rs:12-43,65-87; src/clustering/engine.rs:146-242; src/component/mapping.rs:120-228; src/report/validation.rs:159-325; src/report/canonical.rs:7-35; src/durability/replay.rs:73-126; src/wire/event.rs:55-71. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse verified indexes and incremental validation/canonical hashing, admit output capacity before allocation, and expose resumable work/progress/cancellation without discarding the analysis or model context. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "4a94a487-d199-4b87-8d34-9542aead67ba": {
+          "display_id": 3153,
+          "author": "6ME5",
+          "content": "Code complete in commit 8392edb41. Added verified evidence indexes, shared citation inventories, keyed clustering, indexed component/report validation, incremental canonical encoding/hashing with bounded pages, cooperative progress/suspend/cancel APIs and verified-successor reuse in replay. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:24:43.827072223Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAETWT+18mDUEspg+rXytvrvHkP5pn6ThCAY7vAmfBcW4cYqfkwN5f/3KzNn+DhhD2Rb0CW7jXfVe1HoIstLWlBg=="
         }
       }
     },
