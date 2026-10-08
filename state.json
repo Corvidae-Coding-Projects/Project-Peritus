@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3912,
-        "tip_oid": "6a548d1f86d1203678810e4adc29812a42900112",
-        "prefix_sha256": "9c66ecfc78e3f91cb34524793d8e5ee52a13bd92f8e76e13c6b46fa121758974"
+        "sequence": 3913,
+        "tip_oid": "07b2fbdf9654da2f0bdbd797a1a54ba51e07b031",
+        "prefix_sha256": "b60f5d06cb3efdd039a39b392eb71f4200a37cef26bd35e6dbf663c82981f997"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3159,
+  "next_comment_id": 3160,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -27280,7 +27280,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.222576932Z",
-      "updated_at": "2026-10-06T13:27:51.224744209Z",
+      "updated_at": "2026-10-08T00:41:30.656319816Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -27291,6 +27291,15 @@
           "content": "Systemic repair plan for L601: macOS observation limits describe different collections.\n\nOwning contract and implementation boundary: crates/runtime/peritus-sandbox-macos/src/session.rs:27,136-141,174-232; src/session/lifecycle.rs:95-131; src/session/observation_mapping.rs:42-70. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nDefine separate truthful retention contracts for lifecycle and rich control evidence, or use durable paged observations; validate reported capacities without a silent clamp.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "feddcf79-4c4f-4313-a077-e13b46b06e02": {
+          "display_id": 3159,
+          "author": "6ME5",
+          "content": "Code complete in commit e32fabe84. Removed silent4096 clamp and terminal event-count misuse. Retained exact common lifecycle deltas separately from complete manifest-derived rich evidence; staged lifecycle evidence before transactional phase updates and eliminated eviction/overflow omission. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:41:30.647744290Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAQvslrBUuA1HxZyMxObdgBOv9Teic8OcpL0Cy6/pst7eUCsxN6WKDjX5QdCU6i1Q4xL+mqgJzEtXRq08omch2CA=="
         }
       }
     },
