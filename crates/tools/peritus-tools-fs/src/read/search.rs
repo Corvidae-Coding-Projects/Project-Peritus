@@ -142,15 +142,25 @@ impl FsReadService<'_> {
         cancelled: &dyn Fn() -> bool,
     ) -> Result<Option<SearchObservation>, FsToolError> {
         let mut scan = SearchTraversal::new(input)?;
+        let mut diagnostics = Vec::new();
         let completed = self.walk_visit(
             input.root.as_ref(),
             input.maximum_depth,
             FsToolOperation::Search,
             cancelled,
+            &mut diagnostics,
             |metadata, _depth, traversal_omission| {
                 scan.visit_entry(self.workspace, input, metadata, traversal_omission, cancelled)
             },
         )?;
+        diagnostics.sort_unstable_by(|left, right| {
+            left.native_path_bytes().cmp(right.native_path_bytes())
+        });
+        for diagnostic in diagnostics {
+            if !scan.record_omission(diagnostic) {
+                return scan.finish(false, cancelled());
+            }
+        }
         scan.finish(completed, cancelled())
     }
 }
@@ -224,10 +234,10 @@ impl SearchTraversal {
             return true;
         }
         if metadata.size > input.maximum_file_bytes {
-            return self.record_omission(ScopeOmission {
-                path: metadata.path,
-                reason: OmissionReason::FileByteLimit,
-            });
+            return self.record_omission(ScopeOmission::at_path(
+                metadata.path,
+                OmissionReason::FileByteLimit,
+            ));
         }
         self.scan_file(workspace, input, &metadata, cancelled)
     }
@@ -267,10 +277,10 @@ impl SearchTraversal {
             return self.fail(error);
         }
         if file.binary {
-            return self.record_omission(ScopeOmission {
-                path: metadata.path.clone(),
-                reason: OmissionReason::BinaryContent,
-            });
+            return self.record_omission(ScopeOmission::at_path(
+                metadata.path.clone(),
+                OmissionReason::BinaryContent,
+            ));
         }
         self.digest.match_group(
             &metadata.path,

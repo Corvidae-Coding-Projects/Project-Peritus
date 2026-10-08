@@ -1,7 +1,7 @@
 //! Canonical bounded launch, capture, result and artifact-feedback codecs.
 
 mod output;
-pub(super) use output::{read_preview, write_preview};
+pub(super) use output::{read_output_range, read_preview, write_output_range, write_preview};
 mod profile;
 #[cfg(test)]
 mod tests;
@@ -29,6 +29,48 @@ pub(super) fn write_query(
 
 pub(super) fn read_query(r: &mut CanonicalReader<'_>) -> Result<WorkbenchResultQuery, CodecError> {
     Ok(WorkbenchResultQuery::new(super::workbench::read_query(r)?, read_id(r, RunId::new)?))
+}
+
+pub(super) fn write_output_query(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchPreviewOutputQuery,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    write_id(w, value.launch().as_bytes())?;
+    w.write_u16(match value.stream() {
+        crate::WorkbenchPreviewOutputStream::Stdout => 1,
+        crate::WorkbenchPreviewOutputStream::Stderr => 2,
+        crate::WorkbenchPreviewOutputStream::Terminal => 3,
+    })?;
+    w.write_u64(value.offset())?;
+    w.write_u32(
+        u32::try_from(value.maximum_bytes())
+            .map_err(|_| CodecError::at(CodecErrorKind::LengthOverflow, w.len()))?,
+    )
+}
+
+pub(super) fn read_output_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchPreviewOutputQuery, CodecError> {
+    let start = r.offset();
+    let query = super::workbench::read_query(r)?;
+    let run = read_id(r, RunId::new)?;
+    let launch = read_id(r, ControlOperationId::new)?;
+    let stream_offset = r.offset();
+    let stream = match r.read_u16()? {
+        1 => crate::WorkbenchPreviewOutputStream::Stdout,
+        2 => crate::WorkbenchPreviewOutputStream::Stderr,
+        3 => crate::WorkbenchPreviewOutputStream::Terminal,
+        _ => return Err(CodecError::at(CodecErrorKind::UnknownTag, stream_offset)),
+    };
+    let offset = r.read_u64()?;
+    let maximum_bytes = usize::try_from(r.read_u32()?)
+        .map_err(|_| CodecError::at(CodecErrorKind::LengthOverflow, start))?;
+    invalid(
+        start,
+        crate::WorkbenchPreviewOutputQuery::new(query, run, launch, stream, offset, maximum_bytes),
+    )
 }
 
 pub(super) fn write_capture_request(

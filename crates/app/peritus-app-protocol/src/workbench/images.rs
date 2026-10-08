@@ -14,11 +14,6 @@ pub use page::{
 #[cfg(test)]
 mod tests;
 
-/// Maximum original encoded image size accepted by this protocol surface.
-pub const MAX_WORKBENCH_IMAGE_BYTES: u64 = 4 * 1024 * 1024;
-/// Maximum UTF-8 source label bytes. The label is not a filesystem capability.
-pub const MAX_WORKBENCH_IMAGE_LABEL_BYTES: usize = 1024;
-
 const fn invalid() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
@@ -32,10 +27,7 @@ impl WorkbenchImageLabel {
     /// # Errors
     /// Rejects empty, oversized, or terminal-control-containing labels.
     pub fn new(value: String) -> Result<Self, AppProtocolError> {
-        if value.trim().is_empty()
-            || value.len() > MAX_WORKBENCH_IMAGE_LABEL_BYTES
-            || value.chars().any(char::is_control)
-        {
+        if value.trim().is_empty() || value.chars().any(char::is_control) {
             return Err(invalid());
         }
         Ok(Self(value))
@@ -60,19 +52,16 @@ pub struct WorkbenchImageUpload {
     metadata: ArtifactMetadata,
 }
 impl WorkbenchImageUpload {
-    /// Bounds original bytes before transfer. MIME and byte decoding are checked by preview.
+    /// Describes original bytes before transfer. MIME and byte decoding are checked by preview.
     ///
     /// # Errors
-    /// Rejects an absent conversation revision or zero/excessive image size.
+    /// Rejects an absent conversation revision or empty image.
     pub fn new(
         query: WorkbenchQuery,
         revision: u64,
         metadata: ArtifactMetadata,
     ) -> Result<Self, AppProtocolError> {
-        if revision == 0
-            || metadata.byte_size() == 0
-            || metadata.byte_size() > MAX_WORKBENCH_IMAGE_BYTES
-        {
+        if revision == 0 || metadata.byte_size() == 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, metadata })

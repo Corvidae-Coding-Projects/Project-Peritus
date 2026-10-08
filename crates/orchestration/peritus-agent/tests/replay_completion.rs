@@ -184,3 +184,75 @@ fn protocol_records_recover_pure_retry_events_and_replay_exactly() {
     let replayed = replay(&recovered).expect("replay recovered events");
     assert_eq!(replayed, state);
 }
+
+#[test]
+#[cfg(feature = "protocol-bridge")]
+fn protocol_recovery_preserves_mixed_tool_lifetimes_and_authority_epoch() {
+    use peritus_agent::{ToolProposal, ToolSideEffect};
+    use peritus_tool_protocol::CallLifetime;
+    use peritus_types::Generation;
+
+    let configured_limits = limits(64);
+    let genesis = start(
+        binding(),
+        configured_limits,
+        id16(111, peritus_types::CommandId::new),
+        id16(112, peritus_types::EventId::new),
+    )
+    .expect("start");
+    let (_, record, _) =
+        genesis.to_protocol_records(None, CodecLimits::PRODUCTION).expect("genesis records");
+    let mut records = vec![record];
+    let (_, mut state) = genesis.into_parts();
+    let finite = tool(0, ToolSideEffect::None);
+    let source = tool(1, ToolSideEffect::Process);
+    let epoch = Generation::new(7).expect("epoch");
+    let untimed = ToolProposal::new_with_lifetime(
+        source.ordinal(),
+        source.model_call_id(),
+        source.action_id(),
+        source.capability().clone(),
+        source.version(),
+        source.argument_digest(),
+        source.prepared_digest(),
+        source.replay_identity(),
+        source.revision(),
+        CallLifetime::UntilCancelled { epoch },
+        source.side_effect(),
+        source.idempotency(),
+    );
+    for kind in [
+        AgentCommandKind::ContextPrepared(context()),
+        AgentCommandKind::ModelRequestStarted {
+            call_id: ModelCallId::new(digest(91)).expect("call"),
+            request_digest: digest(92),
+        },
+        AgentCommandKind::ToolCallsProposed {
+            terminal: terminal(),
+            proposals: vec![finite, untimed],
+        },
+    ] {
+        let offset = u8::try_from(state.sequence().get()).expect("sequence");
+        let command = AgentCommand::new(
+            id16(120 + offset, peritus_types::CommandId::new),
+            id16(130 + offset, peritus_types::EventId::new),
+            state.logical_revision(),
+            state.state_digest(),
+            kind,
+        );
+        let transition = reduce(&state, &command).expect("reduce");
+        let (_, event, _) = transition
+            .to_protocol_records(Some(&command), CodecLimits::PRODUCTION)
+            .expect("records");
+        records.push(event);
+        state = transition.into_parts().1;
+    }
+    let recovered = AgentEvent::recover_protocol_events(&records, binding(), configured_limits)
+        .expect("recover records");
+    let replayed = replay(&recovered).expect("replay recovered events");
+    assert_eq!(replayed, state);
+    let tools = replayed.tools().expect("tool batch").slots();
+    assert!(tools[0].proposal().deadline().is_some());
+    assert_eq!(tools[1].proposal().deadline(), None);
+    assert_eq!(tools[1].proposal().authority_epoch(), epoch);
+}

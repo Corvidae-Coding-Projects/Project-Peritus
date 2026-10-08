@@ -145,8 +145,8 @@ root.mainloop()
                     .expect("candidate digest"),
             ),
             Some(WorkbenchBuildIdentity::new(text("preview.py"), preview_digest)),
-            2_000,
-            20_000,
+            Some(2_000),
+            Some(20_000),
             true,
         )
         .expect("launch profile");

@@ -95,8 +95,14 @@ pub enum AppResponsePayload {
     WorkbenchResult(crate::WorkbenchResultPage),
     /// Launch evidence with bounded live output.
     WorkbenchPreview(crate::WorkbenchPreviewSnapshot),
+    /// One exact bounded range from an authorized preview output stream.
+    WorkbenchPreviewOutput(crate::WorkbenchPreviewOutputRange),
     /// Structured candidate diff, anchored feedback, and mapped qualification evidence.
     WorkbenchReview(crate::WorkbenchReviewPage),
+    /// Bounded digest-bound page of structured review diff content.
+    WorkbenchReviewDiff(crate::WorkbenchReviewDiffPage),
+    /// Exact bounded byte range from the retained raw review diff.
+    WorkbenchReviewDiffBytes(crate::WorkbenchReviewDiffBytes),
     /// Revision-fenced retained image metadata and selection; no image bytes or inference.
     WorkbenchImages(crate::WorkbenchImagePage),
     /// Exact provider-bound image preview, without import acceptance or provider delivery.

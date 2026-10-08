@@ -17,26 +17,26 @@ use values::{
 const CANONICAL_MAGIC: &[u8; 4] = b"P5MR";
 
 pub fn request_bytes(request: &ModelRequest) -> Result<Vec<u8>, ProtocolError> {
-    request_bytes_bounded(request, 512 * 1024 * 1024)
+    request_bytes_bounded(request, usize::MAX)
 }
 
 pub fn request_bytes_bounded(
     request: &ModelRequest,
     maximum_bytes: usize,
 ) -> Result<Vec<u8>, ProtocolError> {
-    if maximum_bytes == 0 || maximum_bytes > 512 * 1024 * 1024 {
+    if maximum_bytes == 0 {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidLimit,
             "canonical_request",
-            "canonical byte ceiling must be positive and within the protocol maximum",
+            "canonical byte ceiling must be positive",
         ));
     }
     let mut writer = CanonicalWriter::new(CodecLimits::new(
         maximum_bytes,
         maximum_bytes,
-        1_100_000,
-        32 * 1024 * 1024,
-        256 * 1024 * 1024,
+        u32::MAX as usize,
+        u32::MAX as usize,
+        u32::MAX as usize,
         128,
     ));
     write_fixed(&mut writer, CANONICAL_MAGIC)?;

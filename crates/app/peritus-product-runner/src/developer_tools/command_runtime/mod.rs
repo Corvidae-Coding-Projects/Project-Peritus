@@ -101,7 +101,7 @@ pub(super) struct StartCommand<'a> {
     pub(super) program: &'a str,
     pub(super) arguments: &'a [String],
     pub(super) cwd: &'a Path,
-    pub(super) timeout: Duration,
+    pub(super) timeout: Option<Duration>,
     pub(super) interactive: bool,
     pub(super) rows: u16,
     pub(super) columns: u16,
@@ -211,7 +211,10 @@ impl CommandRuntime {
         mut request: StartCommand<'_>,
     ) -> Result<StartedCommand, DeveloperLoopError> {
         let cwd = canonical_command_cwd(&self.inner.workspace_root, request.cwd)?;
-        let timeout_millis = u64::try_from(request.timeout.as_millis())
+        let timeout_millis = request
+            .timeout
+            .map(|timeout| u64::try_from(timeout.as_millis()))
+            .transpose()
             .map_err(|_| tool("command timeout is not representable in milliseconds"))?;
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         let ordinal =
@@ -243,7 +246,7 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.prepared,
-            timeout_millis,
+            timeout_millis.unwrap_or(0),
         )
         .map_err(tool)?;
         let process_authority = authority::commit_process(
@@ -251,7 +254,7 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.execution,
-            timeout_millis,
+            timeout_millis.unwrap_or(0),
         )
         .map_err(tool)?;
         let process_request = process_authority.request(&ids, &command.execution);

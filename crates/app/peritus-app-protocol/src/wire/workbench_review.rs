@@ -31,6 +31,154 @@ pub(super) fn read_query(r: &mut CanonicalReader<'_>) -> Result<WorkbenchReviewQ
     ))
 }
 
+pub(super) fn write_diff_query(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchReviewDiffQuery,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_u64(value.revision())?;
+    w.write_u32(value.file_offset())?;
+    w.write_u32(value.hunk_offset())?;
+    w.write_u32(value.line_offset())
+}
+
+pub(super) fn read_diff_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffQuery, CodecError> {
+    Ok(crate::WorkbenchReviewDiffQuery::new(
+        super::workbench::read_query(r)?,
+        read_id(r, RunId::new)?,
+        r.read_u64()?,
+        r.read_u32()?,
+        r.read_u32()?,
+        r.read_u32()?,
+    ))
+}
+
+pub(super) fn write_diff_bytes_query(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchReviewDiffBytesQuery,
+) -> Result<(), CodecError> {
+    super::workbench::write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_u64(value.revision())?;
+    write_digest(w, value.candidate_digest())?;
+    write_digest(w, value.diff_digest())?;
+    w.write_u32(value.offset())?;
+    w.write_u32(value.maximum_bytes())
+}
+
+pub(super) fn read_diff_bytes_query(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffBytesQuery, CodecError> {
+    Ok(crate::WorkbenchReviewDiffBytesQuery::new(
+        super::workbench::read_query(r)?,
+        read_id(r, RunId::new)?,
+        r.read_u64()?,
+        read_digest(r)?,
+        read_digest(r)?,
+        r.read_u32()?,
+        r.read_u32()?,
+    ))
+}
+
+pub(super) fn write_diff_bytes(
+    w: &mut CanonicalWriter,
+    value: &crate::WorkbenchReviewDiffBytes,
+) -> Result<(), CodecError> {
+    write_diff_bytes_query(w, value.query())?;
+    w.write_u32(value.total_bytes())?;
+    w.write_bytes(value.bytes())
+}
+
+pub(super) fn read_diff_bytes(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffBytes, CodecError> {
+    let offset = r.offset();
+    let query = read_diff_bytes_query(r)?;
+    let total = r.read_u32()?;
+    let bytes = r.read_bytes()?.to_vec();
+    invalid(offset, crate::WorkbenchReviewDiffBytes::new(query, total, bytes))
+}
+
+pub(super) fn write_diff_page(
+    w: &mut CanonicalWriter,
+    value: &crate::WorkbenchReviewDiffPage,
+) -> Result<(), CodecError> {
+    write_diff_query(w, value.query())?;
+    write_digest(w, value.candidate_digest())?;
+    write_digest(w, value.diff_digest())?;
+    write_anchor(w, value.file_anchor())?;
+    w.write_bool(value.hunk().is_some())?;
+    if let Some(hunk) = value.hunk() {
+        write_diff_page_hunk(w, hunk)?;
+    }
+    write_count(w, value.lines().len())?;
+    for line in value.lines() {
+        w.write_u16(line.kind().tag())?;
+        w.write_str(line.preview())?;
+        w.write_u32(line.raw_offset())?;
+        w.write_u32(line.raw_length())?;
+        w.write_bool(line.is_truncated())?;
+    }
+    w.write_u32(value.total_files())?;
+    w.write_u64(value.total_hunks())?;
+    w.write_u64(value.total_lines())?;
+    w.write_bool(value.next().is_some())?;
+    if let Some(next) = value.next() {
+        write_diff_query(w, next)?;
+    }
+    Ok(())
+}
+
+pub(super) fn read_diff_page(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchReviewDiffPage, CodecError> {
+    let offset = r.offset();
+    let query = read_diff_query(r)?;
+    let candidate = read_digest(r)?;
+    let diff = read_digest(r)?;
+    let file = read_anchor(r)?;
+    let hunk = if r.read_bool()? { Some(read_diff_page_hunk(r)?) } else { None };
+    let count = read_count(r, crate::MAX_WORKBENCH_DIFF_PAGE_LINES)?;
+    let mut lines = Vec::with_capacity(count);
+    for _ in 0..count {
+        let item_offset = r.offset();
+        let kind = WorkbenchDiffLineKind::from_tag(r.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, item_offset))?;
+        let preview = r.read_str()?.to_owned();
+        let raw_offset = r.read_u32()?;
+        let raw_length = r.read_u32()?;
+        let truncated = r.read_bool()?;
+        lines.push(invalid(
+            item_offset,
+            crate::WorkbenchReviewDiffLine::from_wire(
+                kind, preview, raw_offset, raw_length, truncated,
+            ),
+        )?);
+    }
+    let total_files = r.read_u32()?;
+    let total_hunks = r.read_u64()?;
+    let total_lines = r.read_u64()?;
+    let next = if r.read_bool()? { Some(read_diff_query(r)?) } else { None };
+    invalid(
+        offset,
+        crate::WorkbenchReviewDiffPage::from_wire_parts(
+            query,
+            candidate,
+            diff,
+            file,
+            hunk,
+            lines,
+            total_files,
+            total_hunks,
+            total_lines,
+            next,
+        ),
+    )
+}
+
 pub(super) fn write_anchor(
     w: &mut CanonicalWriter,
     value: &WorkbenchReviewAnchor,
@@ -196,7 +344,46 @@ fn read_hunk(r: &mut CanonicalReader<'_>) -> Result<WorkbenchDiffHunk, CodecErro
         let tag_offset = r.offset();
         let kind = WorkbenchDiffLineKind::from_tag(r.read_u16()?)
             .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, tag_offset))?;
-        lines.push(invalid(tag_offset, WorkbenchDiffLine::new(kind, r.read_str()?.to_owned()))?);
+        lines.push(invalid(tag_offset, WorkbenchDiffLine::new(kind, r.read_str()?))?);
+    }
+    invalid(offset, WorkbenchDiffHunk::new(anchor, header, lines))
+}
+
+fn write_diff_page_hunk(
+    w: &mut CanonicalWriter,
+    value: &WorkbenchDiffHunk,
+) -> Result<(), CodecError> {
+    write_anchor(w, value.anchor())?;
+    w.write_str(value.header())?;
+    write_count(w, value.lines().len())?;
+    for line in value.lines() {
+        w.write_u16(line.kind().tag())?;
+        w.write_str(line.text())?;
+        w.write_u32(line.raw_offset())?;
+        w.write_u32(line.raw_length())?;
+        w.write_bool(line.is_truncated())?;
+    }
+    Ok(())
+}
+
+fn read_diff_page_hunk(r: &mut CanonicalReader<'_>) -> Result<WorkbenchDiffHunk, CodecError> {
+    let offset = r.offset();
+    let anchor = read_anchor(r)?;
+    let header = r.read_str()?.to_owned();
+    let count = read_count(r, crate::MAX_WORKBENCH_DIFF_PAGE_LINES)?;
+    let mut lines = Vec::with_capacity(count);
+    for _ in 0..count {
+        let item_offset = r.offset();
+        let kind = WorkbenchDiffLineKind::from_tag(r.read_u16()?)
+            .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, item_offset))?;
+        let text = r.read_str()?.to_owned();
+        let raw_offset = r.read_u32()?;
+        let raw_length = r.read_u32()?;
+        let truncated = r.read_bool()?;
+        lines.push(invalid(
+            item_offset,
+            WorkbenchDiffLine::from_wire(kind, text, raw_offset, raw_length, truncated),
+        )?);
     }
     invalid(offset, WorkbenchDiffHunk::new(anchor, header, lines))
 }

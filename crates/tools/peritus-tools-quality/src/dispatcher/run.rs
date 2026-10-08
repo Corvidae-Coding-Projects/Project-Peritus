@@ -141,9 +141,15 @@ where
         if &command != plan.command()
             || plan.deadline_policy().wall_timeout_millis() != Some(definition.timeout_millis())
             || plan.deadline_policy().wall_timeout_millis()
-                != Some(prepared.call().limits().timeout_millis())
-            || plan.output_policy().spool_bytes() < definition.output_bytes()
-            || plan.output_policy().spool_bytes() > prepared.call().limits().output_bytes()
+                != prepared.call().limits().timeout_millis()
+            || plan
+                .output_policy()
+                .spool_bytes()
+                .is_some_and(|limit| limit < definition.output_bytes())
+            || plan
+                .output_policy()
+                .spool_bytes()
+                .is_some_and(|limit| limit > prepared.call().limits().output_bytes())
         {
             return Err(adapter_failure(
                 "quality-plan-mismatch",

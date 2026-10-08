@@ -7,34 +7,70 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use peritus_artifact_store::ArtifactDigest;
+use peritus_git::CommitId;
 use peritus_types::{
-    ActionId, EnvironmentId, Generation, ResourceId, RevisionNumber, Sha256Digest, WorkspaceId,
+    ActionId, EnvironmentId, EventId, Generation, ResourceId, RevisionNumber, Sha256Digest,
+    SnapshotId, WorkspaceId,
 };
 
 use crate::{
     ErrorCode, RecoveryClass, WorkspaceError, WorkspaceOperation, WorkspaceState, WritableWorkspace,
 };
 
-const MAGIC_V1: &[u8] = b"PERITUS-WORKSPACE-ACTION-V1\0";
-const MAGIC_V2: &[u8] = b"PERITUS-WORKSPACE-ACTION-V2\0";
-const HEADER_BYTES_V1: usize = MAGIC_V1.len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
-const HEADER_BYTES_V2: usize = MAGIC_V2.len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
 const MAX_ACTIONS_PER_REVISION: usize = 1_024;
+
+mod codec;
+use codec::{decode_record, encode_header, encode_plan, encode_terminal, read_action_bytes};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ActionTerminalRecord {
-    Applied { patch_identity: peritus_patch::PatchIdentity, installed_manifest: Vec<u8> },
+    Applied {
+        patch_identity: peritus_patch::PatchIdentity,
+        installed_manifest: Vec<u8>,
+    },
     RolledBack,
+    Candidate {
+        patch_identity: peritus_patch::PatchIdentity,
+        detail_digest: Sha256Digest,
+        artifact_digest: ArtifactDigest,
+        artifact_size: u64,
+        snapshot_manifest: Vec<u8>,
+        workspace_manifest: Vec<u8>,
+    },
+    WorkspaceRollback {
+        restored_from: CommitId,
+        detail_digest: Sha256Digest,
+        artifact_digest: ArtifactDigest,
+        artifact_size: u64,
+        snapshot_manifest: Vec<u8>,
+        workspace_manifest: Vec<u8>,
+    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ActionRecord {
     pub(crate) action_digest: Sha256Digest,
+    /// Exact planned Git successor identity and payload digest, persisted before Git effects.
+    pub(crate) plan: Option<ActionPlan>,
     pub(crate) terminal: Option<ActionTerminalRecord>,
     pub(crate) legacy: bool,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ActionPlan {
+    pub operation: u8,
+    pub snapshot_id: SnapshotId,
+    pub payload_digest: Sha256Digest,
+    pub installed_revision: RevisionNumber,
+    pub dispatch_event: EventId,
+    pub patch_identity: Option<peritus_patch::PatchIdentity>,
+    pub patch_manifest_digest: Option<Sha256Digest>,
+    pub target_snapshot_id: Option<SnapshotId>,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+/// Exact prior-revision key for one durable workspace action marker.
 pub struct ActionConsumptionBinding {
     workspace_id: WorkspaceId,
     resource_id: ResourceId,
@@ -44,6 +80,8 @@ pub struct ActionConsumptionBinding {
 }
 
 impl ActionConsumptionBinding {
+    /// Creates a binding from the exact workspace lineage and logical revision.
+    #[must_use]
     pub const fn new(
         workspace_id: WorkspaceId,
         resource_id: ResourceId,
@@ -52,6 +90,32 @@ impl ActionConsumptionBinding {
         revision: RevisionNumber,
     ) -> Self {
         Self { workspace_id, resource_id, environment_id, generation, revision }
+    }
+
+    /// Workspace lineage selected by this marker.
+    #[must_use]
+    pub const fn workspace_id(self) -> WorkspaceId {
+        self.workspace_id
+    }
+    /// Resource identity selected by this marker.
+    #[must_use]
+    pub const fn resource_id(self) -> ResourceId {
+        self.resource_id
+    }
+    /// Environment identity selected by this marker.
+    #[must_use]
+    pub const fn environment_id(self) -> EnvironmentId {
+        self.environment_id
+    }
+    /// Workspace generation selected by this marker.
+    #[must_use]
+    pub const fn generation(self) -> Generation {
+        self.generation
+    }
+    /// Prior logical revision selected by this marker.
+    #[must_use]
+    pub const fn revision(self) -> RevisionNumber {
+        self.revision
     }
 
     pub(crate) const fn from_state(state: &WorkspaceState) -> Self {
@@ -88,6 +152,21 @@ impl WritableWorkspace {
         commit(self.transaction_root(), binding, count, action_id, action_digest)?;
         self.state_mut().record_consumed_action(action_id, action_digest);
         Ok(())
+    }
+
+    pub(crate) fn prepare_action_consumption(
+        &self,
+        action_id: ActionId,
+        action_digest: Sha256Digest,
+        plan: &ActionPlan,
+    ) -> Result<(), WorkspaceError> {
+        prepare_action(
+            self.transaction_root(),
+            ActionConsumptionBinding::from_state(self.state()),
+            action_id,
+            action_digest,
+            plan,
+        )
     }
 }
 
@@ -224,6 +303,45 @@ pub fn complete_action(
         .map_err(|_| consumption_error("action ledger directory cannot be synchronized"))
 }
 
+/// Persists the exact intended Git successor before creating or restoring Git objects.
+pub fn prepare_action(
+    transaction_root: &Path,
+    binding: ActionConsumptionBinding,
+    action_id: ActionId,
+    action_digest: Sha256Digest,
+    plan: &ActionPlan,
+) -> Result<(), WorkspaceError> {
+    let path = revision_directory(transaction_root, binding).join(marker_name(action_id));
+    let bytes = read_action_bytes(&path)?;
+    let (actual_id, record, offset) = decode_record(binding, &bytes)?;
+    if actual_id != action_id || record.action_digest != action_digest {
+        return Err(consumption_error("action plan differs from its consumed authorization"));
+    }
+    if let Some(existing) = record.plan.as_ref() {
+        return if existing == plan {
+            Ok(())
+        } else {
+            Err(consumption_error("action already has a conflicting plan"))
+        };
+    }
+    if record.terminal.is_some() {
+        return Err(consumption_error("completed action cannot receive a new plan"));
+    }
+    let frame = encode_plan(plan);
+    let mut marker = OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .map_err(|_| consumption_error("action marker cannot be opened for planning"))?;
+    marker
+        .set_len(offset)
+        .and_then(|()| marker.seek(SeekFrom::Start(offset)))
+        .and_then(|_| marker.write_all(&frame))
+        .and_then(|()| marker.sync_all())
+        .map_err(|_| consumption_error("action plan cannot be synchronized"))?;
+    crate::filesystem::sync_directory(path.parent().expect("marker has parent"))
+        .map_err(|_| consumption_error("action ledger directory cannot be synchronized"))
+}
+
 pub fn contains_action(
     actions: &BTreeMap<ActionId, Sha256Digest>,
     action_id: ActionId,
@@ -271,171 +389,6 @@ fn marker_name(action_id: ActionId) -> String {
     result
 }
 
-fn encode_header(
-    binding: ActionConsumptionBinding,
-    action_id: ActionId,
-    action_digest: Sha256Digest,
-) -> Vec<u8> {
-    let mut bytes = Vec::with_capacity(HEADER_BYTES_V2);
-    bytes.extend_from_slice(MAGIC_V2);
-    bytes.extend_from_slice(binding.workspace_id.as_bytes());
-    bytes.extend_from_slice(binding.resource_id.as_bytes());
-    bytes.extend_from_slice(binding.environment_id.as_bytes());
-    bytes.extend_from_slice(&binding.generation.get().to_be_bytes());
-    bytes.extend_from_slice(&binding.revision.get().to_be_bytes());
-    bytes.extend_from_slice(action_id.as_bytes());
-    bytes.extend_from_slice(action_digest.as_bytes());
-    bytes
-}
-
-fn decode_record(
-    binding: ActionConsumptionBinding,
-    bytes: &[u8],
-) -> Result<(ActionId, ActionRecord, u64), WorkspaceError> {
-    let (magic, legacy, header_bytes) = if bytes.starts_with(MAGIC_V2) {
-        (MAGIC_V2, false, HEADER_BYTES_V2)
-    } else if bytes.starts_with(MAGIC_V1) {
-        (MAGIC_V1, true, HEADER_BYTES_V1)
-    } else {
-        return Err(consumption_error("action marker has an unsupported format"));
-    };
-    if bytes.len() < header_bytes {
-        return Err(consumption_error("action marker header is incomplete"));
-    }
-    let mut offset = magic.len();
-    let workspace = take_array::<16>(bytes, &mut offset);
-    let resource = take_array::<16>(bytes, &mut offset);
-    let environment = take_array::<16>(bytes, &mut offset);
-    let generation = u64::from_be_bytes(take_array::<8>(bytes, &mut offset));
-    let revision = u64::from_be_bytes(take_array::<8>(bytes, &mut offset));
-    let action = take_array::<16>(bytes, &mut offset);
-    let digest = take_array::<32>(bytes, &mut offset);
-    if workspace != binding.workspace_id.into_bytes()
-        || resource != binding.resource_id.into_bytes()
-        || environment != binding.environment_id.into_bytes()
-        || generation != binding.generation.get()
-        || revision != binding.revision.get()
-    {
-        return Err(consumption_error("action marker differs from current workspace state"));
-    }
-    let action_id = ActionId::new(action)
-        .map_err(|_| consumption_error("action marker contains an invalid action identity"))?;
-    let mut record =
-        ActionRecord { action_digest: Sha256Digest::new(digest), terminal: None, legacy };
-    let mut consumed = header_bytes;
-    if let Some((terminal, frame_bytes)) = decode_terminal(&bytes[header_bytes..])? {
-        record.terminal = Some(terminal);
-        consumed = consumed
-            .checked_add(frame_bytes)
-            .ok_or_else(|| consumption_error("action marker length overflowed"))?;
-        if decode_terminal(&bytes[consumed..])?.is_some() {
-            return Err(consumption_error("action marker contains multiple terminal results"));
-        }
-    }
-    let consumed = u64::try_from(consumed)
-        .map_err(|_| consumption_error("action marker exceeds this platform"))?;
-    Ok((action_id, record, consumed))
-}
-
-fn read_action_bytes(path: &Path) -> Result<Vec<u8>, WorkspaceError> {
-    let metadata = fs::symlink_metadata(path)
-        .map_err(|_| consumption_error("action marker cannot be inspected"))?;
-    if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
-        return Err(consumption_error("action marker is not a regular file"));
-    }
-    fs::read(path).map_err(|_| consumption_error("action marker cannot be read"))
-}
-
-fn encode_terminal(terminal: &ActionTerminalRecord) -> Result<Vec<u8>, WorkspaceError> {
-    let mut payload = Vec::new();
-    match terminal {
-        ActionTerminalRecord::Applied { patch_identity, installed_manifest } => {
-            payload.push(1);
-            payload.extend_from_slice(patch_identity.as_bytes());
-            let digest = peritus_codec::sha256(installed_manifest);
-            payload.extend_from_slice(digest.as_bytes());
-            let length = u64::try_from(installed_manifest.len())
-                .map_err(|_| consumption_error("installed patch manifest exceeds this platform"))?;
-            payload.extend_from_slice(&length.to_le_bytes());
-            payload.extend_from_slice(installed_manifest);
-        }
-        ActionTerminalRecord::RolledBack => payload.push(2),
-    }
-    let length = u64::try_from(payload.len())
-        .map_err(|_| consumption_error("action result exceeds this platform"))?;
-    let mut frame = Vec::with_capacity(payload.len().saturating_add(40));
-    frame.extend_from_slice(&length.to_le_bytes());
-    frame.extend_from_slice(&payload);
-    frame.extend_from_slice(peritus_codec::sha256(&payload).as_bytes());
-    Ok(frame)
-}
-
-fn decode_terminal(bytes: &[u8]) -> Result<Option<(ActionTerminalRecord, usize)>, WorkspaceError> {
-    if bytes.len() < 8 {
-        return Ok(None);
-    }
-    let length = u64::from_le_bytes(
-        bytes[..8]
-            .try_into()
-            .map_err(|_| consumption_error("action result length is malformed"))?,
-    );
-    let length = usize::try_from(length)
-        .map_err(|_| consumption_error("action result exceeds this platform"))?;
-    let payload_end = 8_usize
-        .checked_add(length)
-        .ok_or_else(|| consumption_error("action result length overflowed"))?;
-    let frame_end = payload_end
-        .checked_add(32)
-        .ok_or_else(|| consumption_error("action result length overflowed"))?;
-    if frame_end > bytes.len() {
-        return Ok(None);
-    }
-    let payload = &bytes[8..payload_end];
-    if peritus_codec::sha256(payload).as_bytes() != &bytes[payload_end..frame_end] {
-        return Err(consumption_error("action result checksum does not match"));
-    }
-    let terminal = match payload.first().copied() {
-        Some(1) if payload.len() >= 73 => {
-            let identity = peritus_patch::PatchIdentity::from_digest(Sha256Digest::new(
-                payload[1..33]
-                    .try_into()
-                    .map_err(|_| consumption_error("patch identity is malformed"))?,
-            ));
-            let manifest_digest = &payload[33..65];
-            let manifest_length = u64::from_le_bytes(
-                payload[65..73]
-                    .try_into()
-                    .map_err(|_| consumption_error("patch manifest length is malformed"))?,
-            );
-            let manifest_length = usize::try_from(manifest_length)
-                .map_err(|_| consumption_error("patch manifest exceeds this platform"))?;
-            let end = 73_usize
-                .checked_add(manifest_length)
-                .ok_or_else(|| consumption_error("patch manifest length overflowed"))?;
-            if end != payload.len()
-                || peritus_codec::sha256(&payload[73..end]).as_bytes() != manifest_digest
-            {
-                return Err(consumption_error("installed patch manifest is malformed"));
-            }
-            ActionTerminalRecord::Applied {
-                patch_identity: identity,
-                installed_manifest: payload[73..end].to_vec(),
-            }
-        }
-        Some(2) if payload.len() == 1 => ActionTerminalRecord::RolledBack,
-        _ => return Err(consumption_error("action result state is unsupported")),
-    };
-    Ok(Some((terminal, frame_end)))
-}
-
-fn take_array<const N: usize>(bytes: &[u8], offset: &mut usize) -> [u8; N] {
-    let end = *offset + N;
-    let mut result = [0_u8; N];
-    result.copy_from_slice(&bytes[*offset..end]);
-    *offset = end;
-    result
-}
-
 const fn reused_error() -> WorkspaceError {
     WorkspaceError::new(
         ErrorCode::ReceiptReused,
@@ -452,4 +405,44 @@ const fn consumption_error(detail: &'static str) -> WorkspaceError {
         RecoveryClass::Quarantine,
         detail,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn action_plan_round_trips_with_expected_revision_before_terminal() {
+        let binding = ActionConsumptionBinding::new(
+            WorkspaceId::new([1; 16]).expect("workspace"),
+            ResourceId::new([2; 16]).expect("resource"),
+            EnvironmentId::new([3; 16]).expect("environment"),
+            Generation::first(),
+            RevisionNumber::first(),
+        );
+        let action = ActionId::new([4; 16]).expect("action");
+        let digest = Sha256Digest::new([5; 32]);
+        let plan = ActionPlan {
+            operation: 3,
+            snapshot_id: SnapshotId::new([6; 16]).expect("snapshot"),
+            payload_digest: Sha256Digest::new([7; 32]),
+            installed_revision: RevisionNumber::new(2).expect("installed revision"),
+            dispatch_event: EventId::new([8; 16]).expect("event"),
+            patch_identity: Some(peritus_patch::PatchIdentity::from_digest(Sha256Digest::new(
+                [9; 32],
+            ))),
+            patch_manifest_digest: Some(Sha256Digest::new([10; 32])),
+            target_snapshot_id: None,
+        };
+        let mut bytes = encode_header(binding, action, digest);
+        bytes.extend_from_slice(&encode_plan(&plan));
+
+        let (actual_action, record, offset) = decode_record(binding, &bytes).expect("decode plan");
+
+        assert_eq!(actual_action, action);
+        assert_eq!(record.action_digest, digest);
+        assert_eq!(record.plan, Some(plan));
+        assert_eq!(record.terminal, None);
+        assert_eq!(usize::try_from(offset).expect("marker offset"), bytes.len());
+    }
 }

@@ -7,7 +7,10 @@ use peritus_patch::WorkspacePath;
 
 use crate::{ErrorCode, FolderIdentity, ReadOnlyWorkspace, RecoveryClass, WorkspaceError};
 
-use super::{DirectoryEntry, inspect_io, invalid, metadata_from_cap};
+use super::{
+    DirectoryDiagnostic, DirectoryDiagnosticKind, DirectoryEntry, inspect_io, invalid,
+    metadata_from_cap,
+};
 
 /// Exact opaque continuation for one sorted direct-directory page.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -49,6 +52,7 @@ struct DirectoryVersion {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DirectoryPage {
     entries: Vec<DirectoryEntry>,
+    diagnostics: Vec<DirectoryDiagnostic>,
     next: Option<DirectoryCursor>,
 }
 
@@ -59,6 +63,12 @@ impl DirectoryPage {
         &self.entries
     }
 
+    /// Unsupported children encountered while scanning this page's directory.
+    #[must_use]
+    pub fn diagnostics(&self) -> &[DirectoryDiagnostic] {
+        &self.diagnostics
+    }
+
     /// Returns a cursor for the next page, or `None` when the directory is exhausted.
     #[must_use]
     pub const fn next_cursor(&self) -> Option<&DirectoryCursor> {
@@ -67,8 +77,10 @@ impl DirectoryPage {
 
     /// Consumes the page and returns its bounded children and continuation.
     #[must_use]
-    pub fn into_parts(self) -> (Vec<DirectoryEntry>, Option<DirectoryCursor>) {
-        (self.entries, self.next)
+    pub fn into_parts(
+        self,
+    ) -> (Vec<DirectoryEntry>, Vec<DirectoryDiagnostic>, Option<DirectoryCursor>) {
+        (self.entries, self.diagnostics, self.next)
     }
 }
 
@@ -83,6 +95,10 @@ impl ReadOnlyWorkspace {
     ///
     /// # Errors
     /// Returns a typed failure for invalid cursors, unsafe entries, or directory/workspace drift.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "bounded directory paging validates identity, child diagnostics, and cursor together"
+    )]
     pub fn list_directory_page_cancellable(
         &self,
         path: Option<&WorkspacePath>,
@@ -109,26 +125,46 @@ impl ReadOnlyWorkspace {
 
         let after = cursor.map(|cursor| cursor.after.as_str());
         let mut selected = BTreeMap::<String, DirectoryEntry>::new();
+        let mut diagnostics = Vec::new();
         let retained_limit = DIRECTORY_PAGE_SIZE + 1;
         for entry in directory.entries().map_err(|_| inspect_io())? {
             if cancelled() {
                 return Ok(None);
             }
             let entry = entry.map_err(|_| inspect_io())?;
-            let name = entry
-                .file_name()
-                .into_string()
-                .map_err(|_| invalid("workspace contains a non-UTF-8 entry name"))?;
+            let raw_name = entry.file_name();
+            let Ok(name) = raw_name.clone().into_string() else {
+                diagnostics.push(DirectoryDiagnostic {
+                    directory: path.cloned(),
+                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
+                    kind: DirectoryDiagnosticKind::UnsupportedName,
+                });
+                continue;
+            };
             if super::protected_component(&name) {
                 continue;
             }
             let text = path.map_or_else(|| name.clone(), |parent| format!("{parent}/{name}"));
-            let child_path = WorkspacePath::new(text)
-                .map_err(|_| invalid("workspace child path is not representable"))?;
+            let Ok(child_path) = WorkspacePath::new(text) else {
+                diagnostics.push(DirectoryDiagnostic {
+                    directory: path.cloned(),
+                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
+                    kind: DirectoryDiagnosticKind::UnsupportedName,
+                });
+                continue;
+            };
             if after.is_some_and(|after| child_path.as_str() <= after) {
                 continue;
             }
             let metadata = entry.metadata().map_err(|_| inspect_io())?;
+            if !metadata.is_file() && !metadata.is_dir() {
+                diagnostics.push(DirectoryDiagnostic {
+                    directory: path.cloned(),
+                    name_bytes: raw_name.as_encoded_bytes().to_vec(),
+                    kind: DirectoryDiagnosticKind::UnsupportedType,
+                });
+                continue;
+            }
             let child = DirectoryEntry(metadata_from_cap(child_path.clone(), &metadata));
             selected.insert(child_path.as_str().to_owned(), child);
             if selected.len() > retained_limit
@@ -155,6 +191,9 @@ impl ReadOnlyWorkspace {
             selected.remove(&last);
         }
         let entries = selected.into_values().collect::<Vec<_>>();
+        diagnostics.sort_unstable_by(|left, right| {
+            left.name_bytes.cmp(&right.name_bytes).then(left.kind.cmp(&right.kind))
+        });
         let next = if has_more {
             let after = entries
                 .last()
@@ -164,7 +203,7 @@ impl ReadOnlyWorkspace {
         } else {
             None
         };
-        Ok(Some(DirectoryPage { entries, next }))
+        Ok(Some(DirectoryPage { entries, diagnostics, next }))
     }
 }
 

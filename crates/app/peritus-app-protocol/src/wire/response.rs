@@ -84,11 +84,20 @@ fn write_payload(
         AppResponsePayload::WorkbenchPreview(value) => {
             super::workbench_launch::write_preview(writer, value)
         }
+        AppResponsePayload::WorkbenchPreviewOutput(value) => {
+            super::workbench_launch::write_output_range(writer, value)
+        }
         AppResponsePayload::WorkbenchResult(value) => {
             super::workbench_launch::write_page(writer, value)
         }
         AppResponsePayload::WorkbenchReview(value) => {
             super::workbench_review::write_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiff(value) => {
+            super::workbench_review::write_diff_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchReviewDiffBytes(value) => {
+            super::workbench_review::write_diff_bytes(writer, value)
         }
         AppResponsePayload::WorkbenchFileImportPreview(value) => {
             super::workbench_files::write_import_preview(writer, value)
@@ -162,7 +171,10 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchCompactionPreview(_) => 29,
         AppResponsePayload::WorkbenchResult(_) => 100,
         AppResponsePayload::WorkbenchPreview(_) => 101,
+        AppResponsePayload::WorkbenchPreviewOutput(_) => 104,
         AppResponsePayload::WorkbenchReview(_) => 80,
+        AppResponsePayload::WorkbenchReviewDiff(_) => 106,
+        AppResponsePayload::WorkbenchReviewDiffBytes(_) => 108,
         AppResponsePayload::ConversationLibrary(_) => 140,
         AppResponsePayload::CommandResult(_) => 1,
         AppResponsePayload::SubscriptionStarted(_) => 2,
@@ -222,8 +234,17 @@ pub(super) fn read_response(
     let tag_offset = reader.offset();
     let payload = match reader.read_u16()? {
         101 => AppResponsePayload::WorkbenchPreview(super::workbench_launch::read_preview(reader)?),
+        104 => AppResponsePayload::WorkbenchPreviewOutput(
+            super::workbench_launch::read_output_range(reader)?,
+        ),
         100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
         80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
+        106 => AppResponsePayload::WorkbenchReviewDiff(super::workbench_review::read_diff_page(
+            reader,
+        )?),
+        108 => AppResponsePayload::WorkbenchReviewDiffBytes(
+            super::workbench_review::read_diff_bytes(reader)?,
+        ),
         120 => AppResponsePayload::WorkbenchCheckpoint(
             super::workbench_checkpoints::read_checkpoint_receipt(reader)?,
         ),

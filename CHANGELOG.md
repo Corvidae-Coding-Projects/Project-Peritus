@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Retain large original attachments, stream selected file ranges, and expose exact version-bound attachment reads without independent host size or history-count ceilings. Bind previews and confirmation to the active conversation's writer provider and model (L126, L128, L142, L162, L261, L707–L710, L736, L798).
+- Preserve full process output and native command/environment representations; carry absent preview deadlines and resource quotas through execution, recovery records, and exact output-range reads (L090, L095, L096, L169, L193, L206).
+- Retain request archives and capture retry bytes above the former serialization limits; budget reviewer context against provider capacity and make all original review evidence available through digest-bound byte pages (L127, L170, L180, L192).
+- Page complete Git history and structured/raw diffs, preserve native paths and long lines, and bind TUI navigation and comment anchors to the displayed page (L008, L249, L254, L255, L528, L643).
+- Recover exact candidate and rollback outcomes after interrupted reference publication; remove unsupported merge advertisement and the configured-tool count gate (L644, L645, L734).
+- Synchronize cancellation tests with the actual stalled reviewer start and separately verify prompt cancellation settlement on native runners.
 - Remove workspace source/range ceilings and continue exact ranged reads and filesystem discovery/search through encoded-byte-sized pages (L007, L634, L635, L636).
 - Remove local-context archive limits and support absent aggregate artifact quotas while retaining referenced history and checked storage accounting (L057, L062, L065, L067).
 - Remove the discard-state size policy and recognize interrupted owned preparation without deleting foreign files (L148, L149).

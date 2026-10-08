@@ -168,6 +168,18 @@ impl ArtifactStore {
         Ok(metadata)
     }
 
+    /// Reconstructs an exact successful finalization receipt for a verified existing object.
+    ///
+    /// # Errors
+    /// Returns missing-artifact, catalog, I/O, or integrity errors.
+    pub fn reopen_finalized(
+        &self,
+        digest: ArtifactDigest,
+    ) -> Result<FinalizedArtifact, ArtifactStoreError> {
+        let metadata = self.verify(digest)?;
+        Ok(FinalizedArtifact::new(digest, metadata.size(), crate::Publication::Existing))
+    }
+
     /// Reads one finalized active artifact into a bounded owned buffer and verifies the exact
     /// durable size and digest against the bytes returned to the caller.
     ///

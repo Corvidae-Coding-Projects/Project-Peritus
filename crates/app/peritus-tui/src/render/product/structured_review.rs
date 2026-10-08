@@ -28,6 +28,8 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     render_hunk(
         frame,
         hunk,
+        review.diff_page.as_ref(),
+        review.raw_line.as_ref(),
         review.selected_file(),
         review.hunk,
         review.focus,
@@ -94,7 +96,7 @@ fn render_header(frame: &mut Frame<'_>, area: Rect, page: &WorkbenchReviewPage, 
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title(" Review · Tab focus · ↑↓ select · PgUp/PgDn scroll · t raw · r refresh "),
+                .title(" Review · Tab focus · ↑↓ select · PgUp/PgDn scroll · n/p diff page · [/ ] raw bytes · t raw · r refresh "),
         ),
         area,
     );
@@ -140,18 +142,51 @@ fn render_files(
     );
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the bounded diff renderer receives one snapshot of its focused layout state"
+)]
 fn render_hunk(
     frame: &mut Frame<'_>,
     area: Rect,
+    page: Option<&peritus_app_protocol::WorkbenchReviewDiffPage>,
+    raw_line: Option<&(u32, Vec<u8>)>,
     file: Option<&WorkbenchDiffFile>,
     selected_hunk: usize,
     focus: ReviewFocus,
     scroll: u16,
 ) {
-    let lines = crate::render::chat::wrapped_lines(
-        selected_hunk_lines(file, selected_hunk),
-        usize::from(area.width.saturating_sub(2)),
+    let source_lines = page.map_or_else(
+        || selected_hunk_lines(file, selected_hunk),
+        |page| {
+            let mut lines = page.hunk().map_or_else(Vec::new, |hunk| {
+                vec![Line::styled(safe(hunk.header()), Style::default().fg(ACCENT))]
+            });
+            lines.extend(page.lines().iter().map(|line| {
+                let (prefix, color) = match line.kind() {
+                    WorkbenchDiffLineKind::Context => (" ", Color::White),
+                    WorkbenchDiffLineKind::Removed => ("-", BAD),
+                    WorkbenchDiffLineKind::Added => ("+", GOOD),
+                    WorkbenchDiffLineKind::Metadata => ("\\", MUTED),
+                };
+                let content = raw_line
+                    .filter(|(offset, _)| {
+                        *offset >= line.raw_offset()
+                            && offset.saturating_sub(line.raw_offset()) < line.raw_length()
+                    })
+                    .map_or_else(
+                        || line.preview().to_owned(),
+                        |(offset, bytes)| {
+                            format!("[raw {offset}..] {}", String::from_utf8_lossy(bytes))
+                        },
+                    );
+                Line::styled(format!("{prefix}{}", safe(&content)), Style::default().fg(color))
+            }));
+            lines
+        },
     );
+    let lines =
+        crate::render::chat::wrapped_lines(source_lines, usize::from(area.width.saturating_sub(2)));
     let maximum = super::content_scroll_limit(lines.len(), area);
     let target = if focus == ReviewFocus::File { "file" } else { "hunk" };
     frame.render_widget(

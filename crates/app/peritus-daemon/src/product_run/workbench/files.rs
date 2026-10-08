@@ -120,9 +120,7 @@ impl ProductRunService {
         }
         .map_err(|_| app_error(Code::MalformedFrame))?;
         let inspected = FolderInspection::open(&identity)
-            .and_then(|reader| {
-                reader.read_file(&path, selection, peritus_app_protocol::MAX_WORKBENCH_FILE_BYTES)
-            })
+            .and_then(|reader| reader.read_file(&path, selection, u64::MAX))
             .map_err(|_| app_error(Code::InvalidIdentifier))?;
         let text = ValidatedFileText::new(inspected.bytes().to_vec())
             .map_err(|_| app_error(Code::MalformedFrame))?;

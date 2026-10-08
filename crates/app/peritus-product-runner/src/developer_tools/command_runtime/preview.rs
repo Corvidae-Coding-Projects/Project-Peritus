@@ -3,15 +3,132 @@
 #[cfg(test)]
 use std::time::Duration;
 
+use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
+use peritus_process::OutputStream;
 use serde_json::Value;
 
 use super::{CommandRuntime, StartCommand};
 use crate::{
-    PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState, ProductRunnerError,
-    ProductRunnerErrorKind,
+    PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputRange, PreviewProcessState,
+    ProductRunnerError, ProductRunnerErrorKind,
 };
 
 impl CommandRuntime {
+    /// Reads one bounded range from an exact live spool or finalized output artifact.
+    ///
+    /// # Errors
+    /// Returns an error when the process or its durable stream cannot be verified.
+    pub fn preview_output_range(
+        &self,
+        process_id: peritus_types::ProcessId,
+        stream: OutputStream,
+        offset: u64,
+        maximum_bytes: usize,
+    ) -> Result<PreviewOutputRange, ProductRunnerError> {
+        if maximum_bytes == 0 {
+            return Err(preview_error("preview output range size must be positive"));
+        }
+        let active = self
+            .inner
+            .state
+            .lock()
+            .map_err(|_| preview_error("command runtime is poisoned"))?
+            .active
+            .values()
+            .find(|command| command.plan.identity().process_id() == process_id)
+            .and_then(|command| command.control.clone());
+        if let Some(control) = active {
+            let (total_bytes, bytes) = control
+                .spooled_stream_range(stream, offset, maximum_bytes)
+                .map_err(|error| preview_error(error.to_string()))?;
+            return Ok(PreviewOutputRange { total_bytes, digest: None, bytes });
+        }
+        let terminal = self
+            .inner
+            .process_store
+            .terminal_result(process_id)
+            .map_err(|error| preview_error(error.to_string()))?;
+        let artifact = terminal
+            .artifacts()
+            .iter()
+            .find(|artifact| artifact.stream() == stream)
+            .ok_or_else(|| preview_error("finalized output stream artifact is unavailable"))?;
+        if offset > artifact.size() {
+            return Err(preview_error("preview output range begins past the finalized stream"));
+        }
+        let store = ArtifactStore::open(self.inner.artifacts.clone())
+            .map_err(|error| preview_error(format!("reopen output artifact store: {error}")))?;
+        let mut reader = store
+            .open_read(ArtifactDigest::from_sha256(artifact.digest()))
+            .map_err(|error| preview_error(format!("open output artifact: {error}")))?;
+        let mut bytes = Vec::new();
+        while let Some(chunk) = reader
+            .read_chunk(64 * 1024)
+            .map_err(|error| preview_error(format!("read output artifact: {error}")))?
+        {
+            let end = chunk
+                .offset()
+                .saturating_add(u64::try_from(chunk.bytes().len()).unwrap_or(u64::MAX));
+            if end > offset {
+                let skip =
+                    usize::try_from(offset.saturating_sub(chunk.offset())).unwrap_or(usize::MAX);
+                let available = &chunk.bytes()[skip.min(chunk.bytes().len())..];
+                let remaining = maximum_bytes.saturating_sub(bytes.len());
+                bytes.extend_from_slice(&available[..available.len().min(remaining)]);
+                if bytes.len() == maximum_bytes {
+                    break;
+                }
+            }
+            if end >= artifact.size() {
+                break;
+            }
+        }
+        Ok(PreviewOutputRange {
+            total_bytes: artifact.size(),
+            digest: Some(*artifact.digest().as_bytes()),
+            bytes,
+        })
+    }
+
+    /// Checks the exact process's complete spool or published output artifacts for a string.
+    ///
+    /// # Errors
+    /// Returns an error when the process output evidence cannot be reopened or read.
+    pub fn preview_output_contains(
+        &self,
+        process_id: peritus_types::ProcessId,
+        needle: &str,
+    ) -> Result<bool, ProductRunnerError> {
+        use peritus_process::OutputStream;
+        let active = self
+            .inner
+            .state
+            .lock()
+            .map_err(|_| preview_error("command runtime is poisoned"))?
+            .active
+            .values()
+            .find(|command| command.plan.identity().process_id() == process_id)
+            .and_then(|command| command.control.clone());
+        if let Some(control) = active {
+            for stream in [OutputStream::Stdout, OutputStream::Stderr, OutputStream::Terminal] {
+                let bytes = control
+                    .full_spooled_stream_output(stream)
+                    .map_err(|error| preview_error(error.to_string()))?;
+                if String::from_utf8_lossy(&bytes).contains(needle) {
+                    return Ok(true);
+                }
+            }
+            return Ok(false);
+        }
+        let terminal = self
+            .inner
+            .process_store
+            .terminal_result(process_id)
+            .map_err(|error| preview_error(error.to_string()))?;
+        super::result::durable_output_contains(&terminal, &self.inner.artifacts, needle)
+            .map_err(preview_error)
+    }
+
     /// Starts one daemon-owned preview through the same C4/C2 authority, sandbox and process path
     /// used by ordinary developer commands.
     ///
@@ -207,18 +324,24 @@ mod tests {
         let launch = runtime.launch_preview(&command).expect("launch");
         assert_ne!(launch.process_id().as_bytes(), &[0; 16]);
         let began = Instant::now();
-        loop {
+        let readiness_offset = loop {
             let observation = runtime.observe_preview(&launch).expect("live output");
             assert_eq!(observation.state(), PreviewProcessState::Running);
-            if observation.stdout().contains("READY state=0") {
-                break;
+            if let Some(offset) = observation.stdout().find("READY state=0") {
+                break u64::try_from(offset).expect("readiness offset");
             }
             assert!(
                 began.elapsed() < Duration::from_secs(5),
                 "readiness must be visible before exit or input"
             );
             thread::sleep(Duration::from_millis(10));
-        }
+        };
+        let live_range = runtime
+            .preview_output_range(launch.process_id(), OutputStream::Terminal, readiness_offset, 9)
+            .expect("live range");
+        assert_eq!(live_range.bytes(), b"READY sta");
+        assert!(live_range.total_bytes() >= 9);
+        assert_eq!(live_range.digest(), None);
         let observation =
             runtime.interact_preview(&launch, b"MOVE_RIGHT\n".to_vec()).expect("interaction");
         assert_eq!(observation.state(), PreviewProcessState::Running);
@@ -230,6 +353,11 @@ mod tests {
         assert_eq!(terminal.state(), PreviewProcessState::Cancelled);
         assert!(terminal.stdout().contains("READY state=0"));
         assert!(terminal.stdout().contains("OBSERVED MOVE_RIGHT state=1"));
+        let retained_range = runtime
+            .preview_output_range(launch.process_id(), OutputStream::Terminal, readiness_offset, 9)
+            .expect("finalized range");
+        assert_eq!(retained_range.bytes(), b"READY sta");
+        assert_eq!(retained_range.digest().map(|value| value.len()), Some(32));
     }
 
     fn wait_for_output(runtime: &CommandRuntime, launch: &PreviewLaunch, expected: &str) {

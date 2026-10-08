@@ -67,14 +67,11 @@ fn attach(
 }
 
 #[test]
-fn count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit() {
+fn attachment_count_does_not_block_releasing_a_held_input() {
     let mut record = create();
     for index in 2..=17 {
         record = attach(&record, index, 1).expect("within count limit");
     }
-    let unchanged = record.clone();
-    assert_eq!(attach(&record, 18, 1), Err(ControlError::Capacity));
-    assert_eq!(record, unchanged);
     let first = record.inputs().capture().expect("capture").included()[0];
     record = ConversationRecord::apply(
         Some(&record),
@@ -86,22 +83,24 @@ fn count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit() {
     )
     .expect("hold")
     .0;
-    record = attach(&record, 18, 1).expect("held images do not count");
+    record = attach(&record, 18, 1).expect("held image archive remains attachable");
     assert_eq!(record.images().entries().len(), 17);
     assert_eq!(
         record.images().eligible(record.inputs().capture().expect("capture").included()).len(),
-        MAX_IMAGE_COUNT
+        16
     );
-    assert_eq!(
-        ConversationRecord::apply(
-            Some(&record),
-            &operation(
-                20,
-                record.revision(),
-                ControlIntent::Queue(QueueIntent::Hold { selected: first, held: false })
-            )
+    let (unheld, _) = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            20,
+            record.revision(),
+            ControlIntent::Queue(QueueIntent::Hold { selected: first, held: false }),
         ),
-        Err(ControlError::Capacity)
+    )
+    .expect("releasing a held caption is independent of attachment count");
+    assert_eq!(
+        unheld.images().eligible(unheld.inputs().capture().expect("capture").included()).len(),
+        17
     );
     assert_eq!(
         ConversationRecord::parse(&record.canonical_bytes().expect("encode")).expect("decode"),
@@ -110,25 +109,73 @@ fn count_limit_is_exact_and_held_input_cannot_be_released_past_the_limit() {
 }
 
 #[test]
-fn aggregate_limit_and_invalid_metadata_reject_without_dropping_any_selection() {
+fn aggregate_size_does_not_reject_and_invalid_metadata_still_rejects() {
     let mut record = create();
     for index in 2..=4 {
-        record = attach(&record, index, MAX_IMAGE_BYTES).expect("aggregate boundary");
+        record = attach(&record, index, 4 * 1024 * 1024).expect("large media remains selectable");
     }
-    assert_eq!(attach(&record, 5, 1), Err(ControlError::Capacity));
+    let _ = attach(&record, 5, 1).expect("aggregate size is not a host admission limit");
     let valid = reference(5, 1);
     let mut invalid = valid.clone();
-    invalid.width = MAX_IMAGE_SIDE + 1;
+    invalid.width = 0;
     assert_eq!(invalid.validate(), Err(ControlError::InvalidInput));
     invalid = valid.clone();
-    invalid.frames = MAX_IMAGE_FRAMES + 1;
+    invalid.frames = 0;
     assert_eq!(invalid.validate(), Err(ControlError::InvalidInput));
     invalid = valid.clone();
     invalid.input = InputId::new([99; 16]).expect("wrong source");
     assert_eq!(invalid.validate(), Err(ControlError::InvalidInput));
     invalid = valid;
-    invalid.bytes = MAX_IMAGE_BYTES + 1;
+    invalid.bytes = 0;
     assert_eq!(invalid.validate(), Err(ControlError::InvalidInput));
+}
+
+#[test]
+fn pinned_and_excluded_image_preference_use_the_same_effective_projection() {
+    let mut record = attach(&create(), 2, 1).expect("image");
+    let image_operation = OperationId::new([2; 16]).expect("image operation");
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            3,
+            record.revision(),
+            ControlIntent::SelectImage { attachment: image_operation, selected: false },
+        ),
+    )
+    .expect("deselect")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert!(record.eligible_images(&included).is_empty());
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            4,
+            record.revision(),
+            ControlIntent::SetContext {
+                target: crate::control::ContextTarget::Image(image_operation),
+                preference: Some(crate::control::ContextPreference::Pinned),
+            },
+        ),
+    )
+    .expect("pin")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert_eq!(record.eligible_images(&included).len(), 1);
+    record = ConversationRecord::apply(
+        Some(&record),
+        &operation(
+            5,
+            record.revision(),
+            ControlIntent::SetContext {
+                target: crate::control::ContextTarget::Image(image_operation),
+                preference: Some(crate::control::ContextPreference::Excluded),
+            },
+        ),
+    )
+    .expect("exclude")
+    .0;
+    let included = record.inputs().capture().expect("capture").included().to_vec();
+    assert!(record.eligible_images(&included).is_empty());
 }
 
 #[test]

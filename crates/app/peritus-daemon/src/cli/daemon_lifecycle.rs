@@ -32,7 +32,7 @@ pub(super) fn stage(configuration: OsString, phase: LifecyclePhase) -> ExitCode 
     if let Err(error) = write_output(&line) {
         return output_failure(error);
     }
-    std::thread::park_timeout(QUALIFICATION_KILL_BOUND);
+    std::thread::sleep(QUALIFICATION_KILL_BOUND);
     write_error("daemon lifecycle qualifier was not killed at its durable phase checkpoint");
     ExitCode::FAILURE
 }

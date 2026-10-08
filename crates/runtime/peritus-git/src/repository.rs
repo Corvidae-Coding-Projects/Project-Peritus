@@ -95,6 +95,11 @@ pub struct GitRepository {
 }
 
 impl GitRepository {
+    /// Binds subsequent Git commands to one explicit owned execution lifetime.
+    /// Existing clones keep their previous lifetime; this cannot grant repository authority.
+    pub fn set_cancellation(&mut self, cancellation: crate::GitCancellation) {
+        self.runner.cancellation = cancellation;
+    }
     /// Opens and validates an existing repository.
     ///
     /// # Errors

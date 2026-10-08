@@ -2,16 +2,18 @@
 
 use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
-use std::io::{self, Read, Write};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
-use std::thread;
 
-use crate::{ErrorKind, GitError, Operation, RecoveryClass};
+use crate::{ErrorKind, GitCancellation, GitError, Operation, RecoveryClass};
+
+mod execution;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CommandAccess {
     Read,
+    /// Read-only Git command whose parser rejects Git's global literal-pathspec option.
+    ReadWithoutLiteralPathspecs,
     Write,
 }
 
@@ -31,11 +33,12 @@ pub struct CommandOutput {
 #[derive(Clone, Debug)]
 pub struct GitRunner {
     program: OsString,
+    pub(crate) cancellation: GitCancellation,
 }
 
 impl GitRunner {
-    pub(crate) const fn new(program: OsString) -> Self {
-        Self { program }
+    pub(crate) fn new(program: OsString) -> Self {
+        Self { program, cancellation: GitCancellation::new() }
     }
 
     pub(crate) fn checked(
@@ -66,8 +69,11 @@ impl GitRunner {
     ) -> Result<CommandOutput, GitError> {
         let mut command = Command::new(&self.program);
         command.current_dir(cwd);
-        command.arg("--no-pager").arg("--literal-pathspecs");
-        if access == CommandAccess::Read {
+        command.arg("--no-pager");
+        if access != CommandAccess::ReadWithoutLiteralPathspecs {
+            command.arg("--literal-pathspecs");
+        }
+        if matches!(access, CommandAccess::Read | CommandAccess::ReadWithoutLiteralPathspecs) {
             command.arg("--no-optional-locks");
         }
         command
@@ -101,31 +107,7 @@ impl GitRunner {
         } else {
             command.stdin(Stdio::null());
         }
-        let mut child =
-            command.spawn().map_err(|source| GitError::unavailable(operation, source))?;
-        let stdout =
-            child.stdout.take().ok_or_else(|| protocol(operation, "Git stdout pipe missing"))?;
-        let stderr =
-            child.stderr.take().ok_or_else(|| protocol(operation, "Git stderr pipe missing"))?;
-        let stdout_reader = thread::spawn(move || read_all(stdout));
-        let stderr_reader = thread::spawn(move || read_all(stderr));
-        let stdin_writer = match (stdin, child.stdin.take()) {
-            (Some(bytes), Some(mut pipe)) => {
-                let bytes = bytes.to_vec();
-                Some(thread::spawn(move || pipe.write_all(&bytes)))
-            }
-            (Some(_), None) => return Err(protocol(operation, "Git stdin pipe missing")),
-            (None, _) => None,
-        };
-        let status = child.wait().map_err(|source| {
-            GitError::io(operation, RecoveryClass::Retry, "wait for Git", source)
-        })?;
-        if let Some(writer) = stdin_writer {
-            join_io(writer, operation, "write Git stdin")?;
-        }
-        let stdout = join_reader(stdout_reader, operation, "read Git stdout")?;
-        let stderr = join_reader(stderr_reader, operation, "read Git stderr")?;
-        Ok(CommandOutput { status, stdout, stderr })
+        execution::run(command, stdin, &self.cancellation, access, operation)
     }
 }
 
@@ -199,41 +181,6 @@ const fn null_device() -> &'static str {
 #[cfg(windows)]
 const fn null_device() -> &'static str {
     "NUL"
-}
-
-fn read_all(mut reader: impl Read) -> io::Result<Vec<u8>> {
-    let mut output = Vec::new();
-    let mut buffer = [0_u8; 8_192];
-    loop {
-        let count = reader.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        output.extend_from_slice(&buffer[..count]);
-    }
-    Ok(output)
-}
-
-fn join_reader(
-    handle: thread::JoinHandle<io::Result<Vec<u8>>>,
-    operation: Operation,
-    detail: &'static str,
-) -> Result<Vec<u8>, GitError> {
-    handle
-        .join()
-        .map_err(|_| protocol(operation, "Git pipe reader panicked"))?
-        .map_err(|source| GitError::io(operation, RecoveryClass::Retry, detail, source))
-}
-
-fn join_io(
-    handle: thread::JoinHandle<io::Result<()>>,
-    operation: Operation,
-    detail: &'static str,
-) -> Result<(), GitError> {
-    handle
-        .join()
-        .map_err(|_| protocol(operation, "Git stdin writer panicked"))?
-        .map_err(|source| GitError::io(operation, RecoveryClass::Retry, detail, source))
 }
 
 pub fn one_line(output: &[u8], operation: Operation) -> Result<&str, GitError> {

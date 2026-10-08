@@ -97,7 +97,15 @@ fn project_setup(
         (
             AppResponsePayload::WorkbenchReview(page),
             Some(PendingRequest::WorkbenchReview(query)),
-        ) => model.accept_review_page(query, page.clone()),
+        ) => return model.accept_review_page(query, page.clone()),
+        (
+            AppResponsePayload::WorkbenchReviewDiff(page),
+            Some(PendingRequest::WorkbenchReviewDiff(query)),
+        ) => return model.accept_review_diff_page(query, page.clone()),
+        (
+            AppResponsePayload::WorkbenchReviewDiffBytes(bytes),
+            Some(PendingRequest::WorkbenchReviewDiffBytes(query)),
+        ) => model.accept_review_diff_bytes(query, bytes),
         _ => {}
     }
     Vec::new()
@@ -208,5 +216,7 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
     )
 }

@@ -31,9 +31,9 @@ pub fn exercise(
         return surplus_lease_rejection(root, ids, execution, &original, &mut journal);
     }
     let reserve = if drift == ProcessAuthorizationDrift::Budget {
-        execution.resource_policy().wall_millis() - 1
+        execution.resource_policy().wall_millis().expect("finite wall limit") - 1
     } else {
-        execution.resource_policy().wall_millis()
+        execution.resource_policy().wall_millis().expect("finite wall limit")
     };
     let receipts = if drift == ProcessAuthorizationDrift::Dispatch {
         commit_authority_without_dispatch(&mut journal, ids, &original, reserve)
@@ -147,7 +147,7 @@ fn surplus_lease_rejection(
         journal,
         ids,
         original,
-        execution.resource_policy().wall_millis(),
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
     );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).map_err(|_| infrastructure())?,

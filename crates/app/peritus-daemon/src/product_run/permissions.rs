@@ -222,6 +222,7 @@ const fn request_permissions(
         AppRequestPayload::PreviewWorkbenchFile(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchFiles(value) => (value.query(), &[Read]),
         AppRequestPayload::QueryWorkbenchImages(value) => (value.query(), &[Read]),
+        AppRequestPayload::QueryWorkbenchPreviewOutput(value) => (value.query(), &[Read]),
         AppRequestPayload::PreviewWorkbenchImage(value) => (value.query(), &[Read]),
         AppRequestPayload::InspectWorkbenchCheckpoint(value)
         | AppRequestPayload::PreviewWorkbenchRewind(value) => (value.query(), &[Read]),

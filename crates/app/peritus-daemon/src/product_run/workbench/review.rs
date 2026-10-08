@@ -36,6 +36,34 @@ impl ProductRunService {
         current_page(self, actor, query)
             .map_or_else(error_response, AppResponsePayload::WorkbenchReview)
     }
+
+    pub(crate) fn workbench_review_diff(
+        &self,
+        actor: ActorId,
+        query: peritus_app_protocol::WorkbenchReviewDiffQuery,
+    ) -> AppResponsePayload {
+        let base = WorkbenchReviewQuery::new(query.query(), query.run(), query.revision(), 0);
+        current_page(self, actor, base)
+            .and_then(|page| {
+                peritus_app_protocol::WorkbenchReviewDiffPage::project(
+                    query,
+                    page.candidate_digest(),
+                    page.diff_digest(),
+                    page.files(),
+                )
+                .map_err(|_| ControlError::InvalidInput.into())
+            })
+            .map_or_else(error_response, AppResponsePayload::WorkbenchReviewDiff)
+    }
+
+    pub(crate) fn workbench_review_diff_bytes(
+        &self,
+        actor: ActorId,
+        query: peritus_app_protocol::WorkbenchReviewDiffBytesQuery,
+    ) -> AppResponsePayload {
+        current_raw_diff(self, actor, query)
+            .map_or_else(error_response, AppResponsePayload::WorkbenchReviewDiffBytes)
+    }
 }
 
 pub(super) fn validate_command(
@@ -256,6 +284,7 @@ struct CurrentReview {
     diff: Sha256Digest,
     files: Vec<WorkbenchDiffFile>,
     evidence: Vec<WorkbenchReviewEvidence>,
+    raw_diff: String,
 }
 
 fn current_targets(
@@ -293,8 +322,9 @@ fn current_targets(
     if candidate != live_candidate {
         return Err(ControlError::StaleRevision.into());
     }
+    let raw_diff = record.snapshot.diff().to_owned();
     let (diff, files) =
-        parse_workbench_diff(run, record.request.workspace_id(), candidate, record.snapshot.diff())
+        parse_workbench_diff(run, record.request.workspace_id(), candidate, &raw_diff)
             .map_err(|_| ControlError::InvalidInput)?;
     let evidence = record
         .checkpoint
@@ -318,7 +348,38 @@ fn current_targets(
         )
         .into_iter()
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(CurrentReview { candidate, diff, files, evidence })
+    Ok(CurrentReview { candidate, diff, files, evidence, raw_diff })
+}
+
+fn current_raw_diff(
+    service: &ProductRunService,
+    actor: ActorId,
+    requested: peritus_app_protocol::WorkbenchReviewDiffBytesQuery,
+) -> Result<peritus_app_protocol::WorkbenchReviewDiffBytes, Error> {
+    let record = load_control(service, actor, requested.query())?;
+    if requested.revision() != record.revision() {
+        return Err(ControlError::StaleRevision.into());
+    }
+    let current = current_targets(service, &record, requested.run())?;
+    if current.candidate != requested.candidate_digest() || current.diff != requested.diff_digest()
+    {
+        return Err(ControlError::StaleRevision.into());
+    }
+    let total = u32::try_from(current.raw_diff.len()).map_err(|_| ControlError::Capacity)?;
+    let start = usize::try_from(requested.offset()).map_err(|_| ControlError::InvalidInput)?;
+    let length = usize::try_from(requested.maximum_bytes())
+        .map_err(|_| ControlError::InvalidInput)?
+        .min(peritus_app_protocol::MAX_WORKBENCH_REVIEW_DIFF_BYTES);
+    if start > current.raw_diff.len() {
+        return Err(ControlError::InvalidInput.into());
+    }
+    let end = start.saturating_add(length).min(current.raw_diff.len());
+    peritus_app_protocol::WorkbenchReviewDiffBytes::new(
+        requested,
+        total,
+        current.raw_diff.as_bytes()[start..end].to_vec(),
+    )
+    .map_err(|_| ControlError::InvalidInput.into())
 }
 
 fn contains(files: &[WorkbenchDiffFile], anchor: &WorkbenchReviewAnchor) -> bool {

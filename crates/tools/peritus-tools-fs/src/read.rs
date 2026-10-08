@@ -82,6 +82,8 @@ pub struct DiscoverObservation {
     page_start: u64,
     next_offset: Option<u64>,
     observed_count: u64,
+    omission_page_start: u64,
+    next_omission_offset: Option<u64>,
     omission_count: u64,
     digest: Sha256Digest,
 }
@@ -97,7 +99,7 @@ impl DiscoverObservation {
     pub fn entries(&self) -> &[DiscoverEntry] {
         &self.entries
     }
-    /// Returns page-local paths intentionally outside the reported traversal scope.
+    /// Returns page-local traversal omissions and exact diagnostics for unsupported native paths.
     #[must_use]
     pub fn omissions(&self) -> &[ScopeOmission] {
         &self.omissions
@@ -118,6 +120,16 @@ impl DiscoverObservation {
         self.observed_count
     }
     /// Returns the exact omission count for the complete traversal.
+    #[must_use]
+    pub const fn omission_page_start(&self) -> u64 {
+        self.omission_page_start
+    }
+    /// Returns the next global omission index when more diagnostics remain.
+    #[must_use]
+    pub const fn next_omission_offset(&self) -> Option<u64> {
+        self.next_omission_offset
+    }
+    /// Returns the exact count of traversal omissions and filesystem diagnostics.
     #[must_use]
     pub const fn omission_count(&self) -> u64 {
         self.omission_count
@@ -140,20 +152,51 @@ pub enum OmissionReason {
     FileByteLimit,
     /// File does not contain valid UTF-8 search text.
     BinaryContent,
+    /// Child name is not representable as a canonical UTF-8 workspace path.
+    UnsupportedName,
+    /// Child is a symlink or special filesystem object.
+    UnsupportedType,
 }
 
 /// Explicit path and reason for a scope omission.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ScopeOmission {
-    path: WorkspacePath,
+    path: Option<WorkspacePath>,
+    native_path: Vec<u8>,
     reason: OmissionReason,
 }
 
 impl ScopeOmission {
-    /// Returns the exact path that was skipped.
+    pub(crate) fn at_path(path: WorkspacePath, reason: OmissionReason) -> Self {
+        Self { native_path: path.as_str().as_bytes().to_vec(), path: Some(path), reason }
+    }
+
+    pub(crate) const fn native_path(native_path: Vec<u8>, reason: OmissionReason) -> Self {
+        Self { path: None, native_path, reason }
+    }
+
+    /// Returns the exact UTF-8 path when the omitted child is representable.
     #[must_use]
-    pub const fn path(&self) -> &WorkspacePath {
-        &self.path
+    pub const fn path(&self) -> Option<&WorkspacePath> {
+        self.path.as_ref()
+    }
+
+    /// Exact platform-encoded relative path bytes for this omission.
+    #[must_use]
+    pub fn native_path_bytes(&self) -> &[u8] {
+        &self.native_path
+    }
+
+    /// Stable printable path field for a bounded continuation page.
+    #[must_use]
+    pub fn path_value(&self) -> String {
+        self.path().map_or_else(|| STANDARD.encode(self.native_path_bytes()), ToString::to_string)
+    }
+
+    /// Field name that identifies whether the path is UTF-8 or platform-native encoded.
+    #[must_use]
+    pub const fn path_field(&self) -> &'static str {
+        if self.path.is_some() { "path" } else { "native_path_base64" }
     }
     /// Returns the stable omission reason.
     #[must_use]
@@ -315,15 +358,21 @@ impl<'a> FsReadService<'a> {
         let mut observed_count = 0_u64;
         let mut omission_count = 0_u64;
         let mut overflowed = false;
+        let mut diagnostics = Vec::new();
         let page_end =
             input.continuation_offset.checked_add(u64::from(input.maximum_entries)).ok_or_else(
                 || bound_error(FsToolOperation::Discover, "discovery continuation overflowed"),
+            )?;
+        let omission_end =
+            input.omission_offset.checked_add(u64::from(input.maximum_entries)).ok_or_else(
+                || bound_error(FsToolOperation::Discover, "omission continuation overflowed"),
             )?;
         let completed = self.walk_visit(
             input.root.as_ref(),
             input.maximum_depth,
             FsToolOperation::Discover,
             cancelled,
+            &mut diagnostics,
             |metadata, depth, omission| {
                 let index = observed_count;
                 let omission_reason = omission.as_ref().map(ScopeOmission::reason);
@@ -335,12 +384,13 @@ impl<'a> FsReadService<'a> {
                 observed_count = next_count;
                 if let Some(omission) = omission {
                     digest.omission(&omission);
+                    let omission_index = omission_count;
                     let Some(next_omission_count) = omission_count.checked_add(1) else {
                         overflowed = true;
                         return false;
                     };
                     omission_count = next_omission_count;
-                    if index >= input.continuation_offset && index < page_end {
+                    if omission_index >= input.omission_offset && omission_index < omission_end {
                         omissions.push(omission);
                     }
                 }
@@ -350,6 +400,21 @@ impl<'a> FsReadService<'a> {
                 true
             },
         )?;
+        diagnostics.sort_unstable_by(|left, right| {
+            left.native_path_bytes().cmp(right.native_path_bytes())
+        });
+        for omission in diagnostics {
+            digest.omission(&omission);
+            let index = omission_count;
+            let Some(next_count) = omission_count.checked_add(1) else {
+                overflowed = true;
+                break;
+            };
+            omission_count = next_count;
+            if index >= input.omission_offset && index < omission_end {
+                omissions.push(omission);
+            }
+        }
         if !completed {
             if overflowed {
                 return Err(bound_error(FsToolOperation::Discover, "discovery count overflowed"));
@@ -357,6 +422,7 @@ impl<'a> FsReadService<'a> {
             return Ok(None);
         }
         let next_offset = (observed_count > page_end).then_some(page_end);
+        let next_omission_offset = (omission_count > omission_end).then_some(omission_end);
         let digest = digest.finish(observed_count, omission_count);
         Ok(Some(DiscoverObservation {
             root: input.root.clone(),
@@ -365,6 +431,8 @@ impl<'a> FsReadService<'a> {
             page_start: input.continuation_offset,
             next_offset,
             observed_count,
+            omission_page_start: input.omission_offset,
+            next_omission_offset,
             omission_count,
             digest,
         }))

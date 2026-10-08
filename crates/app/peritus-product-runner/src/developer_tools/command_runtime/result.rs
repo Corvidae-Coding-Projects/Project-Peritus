@@ -10,9 +10,6 @@ use serde_json::Value;
 
 use crate::developer_tools::wire::object;
 
-const MODEL_STREAM_BYTES: usize = 512 * 1_024;
-const HALF_STREAM_BYTES: usize = MODEL_STREAM_BYTES / 2;
-
 pub(super) fn active(handle: &str, progress: &[ToolProgress]) -> Value {
     object(vec![
         ("handle", Value::String(handle.to_owned())),
@@ -36,8 +33,7 @@ pub(super) fn terminal(
         let bytes = store
             .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
             .map_err(|error| format!("read command output artifact: {error}"))?;
-        let output =
-            bounded_stream(&bytes, artifact.completeness() != ArtifactCompleteness::Complete);
+        let output = output_text(&bytes, artifact.completeness() != ArtifactCompleteness::Complete);
         match artifact.label().as_str() {
             "stdout" | "terminal" => stdout = output,
             "stderr" => stderr = output,
@@ -146,14 +142,31 @@ fn durable_output(
         let bytes = store
             .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
             .map_err(|error| format!("read command output artifact: {error}"))?;
-        let output =
-            bounded_stream(&bytes, artifact.completeness() != OutputCompleteness::Complete);
+        let output = output_text(&bytes, artifact.completeness() != OutputCompleteness::Complete);
         match artifact.stream() {
             OutputStream::Stdout | OutputStream::Terminal => stdout = output,
             OutputStream::Stderr => stderr = output,
         }
     }
     Ok((stdout, stderr))
+}
+
+pub(super) fn durable_output_contains(
+    terminal: &TerminalResult,
+    artifact_config: &StoreConfig,
+    needle: &str,
+) -> Result<bool, String> {
+    let store = ArtifactStore::open(artifact_config.clone())
+        .map_err(|error| format!("reopen command artifact store: {error}"))?;
+    for artifact in terminal.artifacts() {
+        let bytes = store
+            .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
+            .map_err(|error| format!("read command output artifact: {error}"))?;
+        if String::from_utf8_lossy(&bytes).contains(needle) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn durable_status(terminal: &TerminalResult) -> &'static str {
@@ -286,17 +299,15 @@ const fn status_name(status: ResultStatus) -> &'static str {
     }
 }
 
-fn bounded_stream(bytes: &[u8], externally_truncated: bool) -> String {
+fn output_text(bytes: &[u8], incomplete: bool) -> String {
     let text = String::from_utf8_lossy(bytes);
-    if bytes.len() <= MODEL_STREAM_BYTES && !externally_truncated {
-        return text.into_owned();
+    if incomplete {
+        format!(
+            "{text}\n[retained output artifact is incomplete; see structured stream accounting]\n"
+        )
+    } else {
+        text.into_owned()
     }
-    if bytes.len() <= MODEL_STREAM_BYTES {
-        return format!("{text}\n[output truncated by the C2 stream ceiling]\n");
-    }
-    let head_end = text.floor_char_boundary(HALF_STREAM_BYTES);
-    let tail_start = text.ceil_char_boundary(text.len().saturating_sub(HALF_STREAM_BYTES));
-    format!("{}\n[output truncated]\n{}", &text[..head_end], &text[tail_start..])
 }
 
 #[cfg(test)]
@@ -304,12 +315,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stream_projection_preserves_head_and_tail() {
-        let bytes =
-            [vec![b'a'; HALF_STREAM_BYTES + 10], vec![b'z'; HALF_STREAM_BYTES + 10]].concat();
-        let value = bounded_stream(&bytes, false);
-        assert!(value.starts_with('a'));
-        assert!(value.contains("output truncated"));
-        assert!(value.ends_with('z'));
+    fn complete_stream_projection_has_no_arbitrary_midstream_cap() {
+        let bytes = vec![b'x'; 2 * 1024 * 1024];
+        let value = output_text(&bytes, false);
+        assert_eq!(value.len(), bytes.len());
+        assert!(value.bytes().all(|byte| byte == b'x'));
+    }
+
+    #[test]
+    fn incomplete_artifact_remains_explicitly_marked() {
+        let value = output_text(b"retained", true);
+        assert!(value.starts_with("retained"));
+        assert!(value.contains("artifact is incomplete"));
     }
 }

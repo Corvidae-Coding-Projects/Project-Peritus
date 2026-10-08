@@ -1,10 +1,7 @@
 //! Bounded immutable version history and explicit future-request selection.
 
 use super::{ControlError, ControlText, FileAttachment, FileMode, FileVersion, OperationId};
-use crate::{
-    attachment::{MAX_FILE_COUNT, MAX_FILE_SELECTION_BYTES},
-    control::{InputLedger, InputSelection, QueueIntent},
-};
+use crate::control::{InputLedger, InputSelection, QueueIntent};
 use peritus_types::ActorId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -166,14 +163,6 @@ impl FileAttachments {
                     return Err(ControlError::InvalidInput);
                 }
             }
-        }
-        let capture = inputs.capture()?;
-        let eligible = self.eligible(capture.included());
-        let bytes = eligible.iter().try_fold(0_u64, |bytes, entry| {
-            bytes.checked_add(entry.current().observation().bytes()).ok_or(ControlError::Capacity)
-        })?;
-        if eligible.len() > MAX_FILE_COUNT || bytes > MAX_FILE_SELECTION_BYTES {
-            return Err(ControlError::Capacity);
         }
         Ok(())
     }

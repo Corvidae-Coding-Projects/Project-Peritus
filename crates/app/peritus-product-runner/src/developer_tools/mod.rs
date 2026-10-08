@@ -7,6 +7,8 @@ mod access_policy;
 #[cfg(not(verus_only))]
 mod arguments;
 #[cfg(not(verus_only))]
+mod attachment_read;
+#[cfg(not(verus_only))]
 mod catalog;
 #[cfg(not(verus_only))]
 mod command_budget;
@@ -53,12 +55,18 @@ mod resources;
 #[cfg(not(verus_only))]
 mod wire;
 
+#[cfg(all(not(verus_only), test))]
+pub use catalog::definitions;
 #[cfg(not(verus_only))]
-pub use catalog::{definitions, in_place_definition, read_only_definitions};
+pub use catalog::{
+    definitions_for_attachments, in_place_definition, read_only_definitions, reviewer_definitions,
+};
 #[cfg(not(verus_only))]
 pub use command_runtime::{
     CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
 };
+#[cfg(not(verus_only))]
+pub use evidence::ReviewerEvidenceSources;
 #[cfg(not(verus_only))]
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
 #[cfg(not(verus_only))]
@@ -67,8 +75,12 @@ pub use executor::ToolCheckpointBoundary;
 pub use executor::WorkspaceDeveloperTools;
 pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 #[cfg(not(verus_only))]
+pub const DEFAULT_INSPECTION_PAGE_BYTES: usize = 16 * 1024;
+#[cfg(not(verus_only))]
 pub use ownership::WorkspaceOwnership;
-pub use preview::{PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState};
+pub use preview::{
+    PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputRange, PreviewProcessState,
+};
 #[cfg(not(verus_only))]
 pub use receipt::{
     UncertainEffect, UncertainEffectState, acknowledge_uncertain_effect, uncertain_effects,

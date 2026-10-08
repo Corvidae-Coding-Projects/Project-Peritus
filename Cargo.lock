@@ -2633,8 +2633,10 @@ dependencies = [
 name = "peritus-git"
 version = "0.0.5"
 dependencies = [
+ "libc",
  "peritus-codec",
  "peritus-types",
+ "process-wrap",
  "tempfile",
  "vstd",
 ]
@@ -3522,6 +3524,7 @@ dependencies = [
  "peritus-tool-router",
  "peritus-types",
  "peritus-workspace",
+ "serde_json",
  "tempfile",
  "vstd",
 ]

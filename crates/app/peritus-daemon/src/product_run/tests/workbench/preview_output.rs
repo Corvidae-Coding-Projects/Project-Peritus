@@ -1,12 +1,17 @@
 //! Live prompts, input, authorization, and restart-retained output through the public projection.
 use super::*;
-use peritus_app_protocol::{WorkbenchLaunchState, WorkbenchPreviewSnapshot, WorkbenchResultQuery};
+use peritus_app_protocol::{
+    WorkbenchInputText, WorkbenchLaunchState, WorkbenchPreviewOutputQuery,
+    WorkbenchPreviewOutputStream, WorkbenchPreviewSnapshot, WorkbenchResultQuery,
+};
 mod terminal;
 
 #[test]
 #[ignore = "owned subprocess fixture"]
 fn preview_prompt_fixture() {
     use std::io::{BufRead as _, Write as _};
+    println!("EARLY_SIGNAL");
+    println!("{}", "x".repeat(200 * 1024));
     println!("NAME? ");
     std::io::stdout().flush().expect("prompt");
     let name = std::io::stdin().lock().lines().next().expect("input").expect("line");
@@ -62,8 +67,8 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
                     .expect("digest"),
             ),
             None,
-            2000,
-            20000,
+            Some(2000),
+            Some(20000),
             true,
         )
         .expect("profile");
@@ -94,6 +99,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             AppResponsePayload::Error(_)
         ));
         let live = wait_for_output(&running, result_query, "NAME?", false).await;
+        assert!(!live.outputs()[0].stdout().contains("EARLY_SIGNAL"));
         assert_eq!(live.result().launches()[0].state(), WorkbenchLaunchState::Running);
         let revision = live.result().result_revision();
         tokio::time::sleep(Duration::from_millis(30)).await;
@@ -141,6 +147,39 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         let restored = observe(&restarted, result_query);
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
+        assert!(!restored.outputs()[0].stdout().contains("EARLY_SIGNAL"));
+        let range_query = WorkbenchPreviewOutputQuery::new(
+            query(workspace),
+            run,
+            launch.operation(),
+            WorkbenchPreviewOutputStream::Terminal,
+            0,
+            64,
+        )
+        .expect("full output range query");
+        let AppResponsePayload::WorkbenchPreviewOutput(range) =
+            restarted.workbench_preview_output_range(actor(), range_query)
+        else {
+            panic!("full output range")
+        };
+        assert!(range.total_bytes() > 128 * 1024);
+        assert!(range.artifact_digest().is_some());
+        assert!(String::from_utf8_lossy(range.bytes()).contains("EARLY_SIGNAL"));
+        let check = command(
+            workspace,
+            0x79,
+            snapshot.revision(),
+            WorkbenchIntent::CheckPreviewBehavior {
+                launch: launch.operation(),
+                observed: WorkbenchLaunchText::new("EARLY_SIGNAL".to_owned()).expect("behavior"),
+                note: WorkbenchInputText::new("full output verified after restart".to_owned())
+                    .expect("note"),
+            },
+        );
+        assert!(matches!(
+            restarted.workbench_command(actor(), &check).await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
         assert_eq!(restarted.workbench_receipt(actor(), &launch), result);
         restarted.shutdown(Duration::from_secs(5)).await;
     });

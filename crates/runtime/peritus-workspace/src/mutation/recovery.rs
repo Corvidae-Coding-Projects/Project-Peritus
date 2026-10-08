@@ -142,6 +142,10 @@ impl WorkspaceGateway {
             ActionTerminalRecord::RolledBack => {
                 Ok(self.recover_recorded_rollback(patch_binding, transaction_directory))
             }
+            ActionTerminalRecord::Candidate { .. }
+            | ActionTerminalRecord::WorkspaceRollback { .. } => {
+                Err(patch_error("action receipt belongs to a Git mutation"))
+            }
         }
     }
 

@@ -25,6 +25,34 @@ fn image(padded: bool) -> ValidatedImage {
     ValidatedImage::decode(bytes, &image_profile(true)).expect("valid GIF")
 }
 
+#[test]
+fn original_image_larger_than_sixteen_mib_survives_atomic_archive_and_restart() {
+    let root = tempfile::tempdir().expect("root");
+    let mut store = open_store(root.path());
+    store.accept(&create()).expect("create");
+    // GIF readers accept legal trailing data after the trailer. It makes a compact, valid raster
+    // fixture whose exact original bytes exceed the journal's historical state-size constant.
+    let mut bytes = vec![
+        71, 73, 70, 56, 57, 97, 1, 0, 1, 0, 128, 0, 0, 0, 0, 0, 255, 255, 255, 44, 0, 0, 0, 0, 1,
+        0, 1, 0, 0, 2, 2, 68, 1, 0, 59,
+    ];
+    bytes.resize(16 * 1024 * 1024 + 1, 0);
+    let image = ValidatedImage::decode_original_with_policy(
+        bytes.clone(),
+        peritus_product_runner::attachment::ImageDecodePolicy::default(),
+    )
+    .expect("complete original image");
+    let operation = attach(&image);
+    store.accept_image(&operation, &image).expect("atomic large-image archive");
+    let captured = capture(&store);
+    assert_eq!(captured.images()[0].inline_bytes_for_wire(), Some(bytes.as_slice()));
+    drop(store);
+
+    let store = open_store(root.path());
+    let replayed = capture(&store);
+    assert_eq!(replayed.images()[0].inline_bytes_for_wire(), Some(bytes.as_slice()));
+}
+
 fn attach(image: &ValidatedImage) -> ControlOperation {
     let id = operation(2, 1, ControlIntent::PinConversation { pinned: true }).id();
     let reference = ImageAttachment::from_validated(

@@ -226,6 +226,17 @@ impl StatusObservation {
         self.entries.is_empty()
     }
 
+    /// Returns whether the worktree has no changes relative to its index.
+    ///
+    /// Staged index changes are permitted; untracked, ignored, conflicted, or unstaged paths are not.
+    #[must_use]
+    pub fn worktree_matches_index(&self) -> bool {
+        !self.has_worktree_change()
+            && !self.has_untracked()
+            && !self.has_ignored()
+            && !self.has_unmerged()
+    }
+
     pub(crate) fn has_unmerged(&self) -> bool {
         self.entries.iter().any(|entry| matches!(&entry.kind, StatusKind::Unmerged { .. }))
     }

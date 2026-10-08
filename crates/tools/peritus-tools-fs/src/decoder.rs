@@ -100,6 +100,9 @@ pub fn discover(value: &BoundedJson) -> Result<DiscoverInput, FsToolError> {
         number(value, "maximum_entries")?,
         optional_number(value, "continuation_offset")?.unwrap_or(0),
     )?
+    .with_omission_offset(
+        optional_number_for(value, "omission_offset", FsToolOperation::Discover)?.unwrap_or(0),
+    )
     .with_path_offset(optional_number_for(value, "path_offset", FsToolOperation::Discover)?))
 }
 

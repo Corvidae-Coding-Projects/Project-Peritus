@@ -12,6 +12,7 @@ pub fn discover_schema() -> Result<Schema, FsToolError> {
         property("continuation_offset", integer(0, i64::MAX)?, false)?,
         property("maximum_depth", integer(1, i64::from(u16::MAX))?, true)?,
         property("maximum_entries", integer(1, i64::from(u32::MAX))?, true)?,
+        property("omission_offset", integer(0, i64::MAX)?, false)?,
         property("path_offset", integer(0, i64::MAX)?, false)?,
         property("root", path()?, false)?,
     ])

@@ -24,6 +24,7 @@ peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspac
 vstd.workspace = true
 
 [dev-dependencies]
+serde_json.workspace = true
 peritus-budget = { version = "=0.0.5", path = "../../foundation/peritus-budget" }
 peritus-journal = { version = "=0.0.5", path = "../../state/peritus-journal" }
 peritus-kernel = { version = "=0.0.5", path = "../../foundation/peritus-kernel" }

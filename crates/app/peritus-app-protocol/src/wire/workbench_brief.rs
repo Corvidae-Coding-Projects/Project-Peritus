@@ -2,9 +2,8 @@
 
 use super::primitive::{invalid, unknown};
 use crate::{
-    MAX_WORKBENCH_BRIEF_FIELDS, MAX_WORKBENCH_BRIEF_PROPOSALS, WorkbenchBrief, WorkbenchBriefEntry,
-    WorkbenchBriefField, WorkbenchBriefObservation, WorkbenchBriefObservationKind,
-    WorkbenchBriefProposal,
+    MAX_WORKBENCH_BRIEF_FIELDS, WorkbenchBrief, WorkbenchBriefEntry, WorkbenchBriefField,
+    WorkbenchBriefObservation, WorkbenchBriefObservationKind, WorkbenchBriefProposal,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
@@ -54,7 +53,7 @@ pub(super) fn write_brief(
         super::primitive::write_id(w, proposal.operation().as_bytes())?;
         super::primitive::write_id(w, proposal.invocation().as_bytes())?;
         w.write_fixed(proposal.digest().as_bytes())?;
-        w.write_str(proposal.text().as_str())?;
+        w.write_str(proposal.text())?;
     }
     w.write_u16(
         u16::try_from(brief.observations().len())
@@ -93,15 +92,12 @@ pub(super) fn read_brief(r: &mut CanonicalReader<'_>) -> Result<WorkbenchBrief, 
         entries.push(invalid(offset, WorkbenchBriefEntry::new(field, row))?);
     }
     let proposal_count = usize::from(r.read_u16()?);
-    if proposal_count > MAX_WORKBENCH_BRIEF_PROPOSALS {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     let mut proposals = Vec::with_capacity(proposal_count);
     for _ in 0..proposal_count {
         let operation = super::primitive::read_id(r, crate::ControlOperationId::new)?;
         let invocation = super::primitive::read_id(r, crate::WorkbenchInvocationId::new)?;
         let digest = peritus_types::Sha256Digest::new(r.read_fixed()?);
-        let text = super::workbench_inputs::read_text(r)?;
+        let text = r.read_str()?.to_owned();
         proposals.push(invalid(
             offset,
             WorkbenchBriefProposal::new(operation, invocation, digest, text),

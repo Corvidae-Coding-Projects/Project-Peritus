@@ -40,6 +40,7 @@ pub(super) fn validate(name: &str, arguments: &Value) -> Result<(), DeveloperLoo
 fn load() -> Result<Catalog, String> {
     let mut definitions = catalog::definitions().map_err(|error| error.to_string())?;
     definitions.push(catalog::in_place_definition().map_err(|error| error.to_string())?);
+    definitions.extend(catalog::reviewer_definitions().map_err(|error| error.to_string())?);
     definitions
         .into_iter()
         .map(|definition| {

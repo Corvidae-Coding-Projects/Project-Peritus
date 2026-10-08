@@ -35,12 +35,13 @@ pub(super) fn validate_sandbox_projection(
     let event_count = terminal.event_count().get();
     let output_bytes = terminal.output_bytes().get();
     let output_matches = output.event_count() <= event_count
-        && output.spool_bytes() <= output_bytes
+        && output.spool_bytes().is_none_or(|limit| limit <= output_bytes)
         && match io_mode {
             IoMode::Pipes => {
-                output.stdout_bytes() <= output_bytes && output.stderr_bytes() <= output_bytes
+                output.stdout_bytes().is_none_or(|limit| limit <= output_bytes)
+                    && output.stderr_bytes().is_none_or(|limit| limit <= output_bytes)
             }
-            IoMode::Pty(_) => output.terminal_bytes() <= output_bytes,
+            IoMode::Pty(_) => output.terminal_bytes().is_none_or(|limit| limit <= output_bytes),
         };
     if !mode_matches || !input_matches || !output_matches {
         return Err(invalid("process I/O differs from checked sandbox requirements"));
@@ -76,15 +77,18 @@ fn validate_environment(
     Ok(())
 }
 
-const fn validate_resources(
+fn validate_resources(
     resources: ProcessResourcePolicy,
     expected: &peritus_sandbox::ResourceLimits,
 ) -> Result<(), ProcessError> {
-    let matches = expected.limit(SandboxResourceKind::WallTime).get() == resources.wall_millis()
-        && expected.limit(SandboxResourceKind::CpuTime).get() == resources.cpu_millis()
+    let matches = expected.wall_time_limit()
+        == resources.wall_millis().map(peritus_types::ResourceQuantity::new)
+        && expected.cpu_time_limit().map(peritus_types::ResourceQuantity::get)
+            == resources.cpu_millis()
         && expected.limit(SandboxResourceKind::Memory).get() == resources.memory_bytes()
         && expected.limit(SandboxResourceKind::Disk).get() == resources.disk_bytes()
-        && expected.limit(SandboxResourceKind::Output).get() == resources.output_bytes()
+        && expected.output_limit()
+            == resources.output_bytes().map(peritus_types::ResourceQuantity::new)
         && expected.limit(SandboxResourceKind::Processes).get() == resources.process_count()
         && expected.limit(SandboxResourceKind::OpenHandles).get() == resources.file_descriptors()
         && expected.limit(SandboxResourceKind::Concurrency).get() == resources.concurrent_slots();

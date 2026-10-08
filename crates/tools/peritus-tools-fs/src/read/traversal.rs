@@ -3,7 +3,10 @@
 use std::collections::VecDeque;
 
 use peritus_patch::WorkspacePath;
-use peritus_workspace::{DirectoryCursor, DirectoryEntry, WorkspaceEntryKind};
+use peritus_workspace::{
+    DirectoryCursor, DirectoryDiagnostic, DirectoryDiagnosticKind, DirectoryEntry,
+    WorkspaceEntryKind,
+};
 
 use super::{FsReadService, MetadataObservation, bound_error, inspection_error, project_metadata};
 use crate::{FsToolError, FsToolOperation, OmissionReason, ScopeOmission};
@@ -16,6 +19,7 @@ impl FsReadService<'_> {
         maximum_depth: u16,
         operation: FsToolOperation,
         cancelled: &dyn Fn() -> bool,
+        diagnostics: &mut Vec<ScopeOmission>,
         mut visit: impl FnMut(MetadataObservation, u16, Option<ScopeOmission>) -> bool,
     ) -> Result<bool, FsToolError> {
         struct Frame {
@@ -30,7 +34,8 @@ impl FsReadService<'_> {
             .list_directory_page_cancellable(root, None, cancelled)
             .map_err(|error| inspection_error(operation, &error))?;
         let Some(first) = first else { return Ok(false) };
-        let (children, cursor) = first.into_parts();
+        let (children, page_diagnostics, cursor) = first.into_parts();
+        diagnostics.extend(page_diagnostics.iter().map(|value| project_diagnostic(root, value)));
         let mut stack =
             vec![Frame { directory: root.cloned(), depth: 0, children: children.into(), cursor }];
         while !stack.is_empty() {
@@ -48,7 +53,12 @@ impl FsReadService<'_> {
                     .list_directory_page_cancellable(directory.as_ref(), Some(&cursor), cancelled)
                     .map_err(|error| inspection_error(operation, &error))?;
                 let Some(page) = page else { return Ok(false) };
-                let (children, cursor) = page.into_parts();
+                let (children, page_diagnostics, cursor) = page.into_parts();
+                diagnostics.extend(
+                    page_diagnostics
+                        .iter()
+                        .map(|value| project_diagnostic(directory.as_ref(), value)),
+                );
                 let Some(frame) = stack.last_mut() else {
                     return Err(bound_error(operation, "directory traversal stack was lost"));
                 };
@@ -73,7 +83,12 @@ impl FsReadService<'_> {
                         .list_directory_page_cancellable(Some(&metadata.path), None, cancelled)
                         .map_err(|error| inspection_error(operation, &error))?;
                     let Some(children) = children else { return Ok(false) };
-                    let (children, cursor) = children.into_parts();
+                    let (children, page_diagnostics, cursor) = children.into_parts();
+                    diagnostics.extend(
+                        page_diagnostics
+                            .iter()
+                            .map(|value| project_diagnostic(Some(&metadata.path), value)),
+                    );
                     stack.push(Frame {
                         directory: Some(metadata.path.clone()),
                         depth,
@@ -81,16 +96,16 @@ impl FsReadService<'_> {
                         cursor,
                     });
                 } else {
-                    omission = Some(ScopeOmission {
-                        path: metadata.path.clone(),
-                        reason: OmissionReason::DepthLimit,
-                    });
+                    omission = Some(ScopeOmission::at_path(
+                        metadata.path.clone(),
+                        OmissionReason::DepthLimit,
+                    ));
                 }
             } else if metadata.kind == WorkspaceEntryKind::Other {
-                omission = Some(ScopeOmission {
-                    path: metadata.path.clone(),
-                    reason: OmissionReason::UnsafeEntry,
-                });
+                omission = Some(ScopeOmission::at_path(
+                    metadata.path.clone(),
+                    OmissionReason::UnsafeEntry,
+                ));
             }
             if !visit(metadata, depth, omission) {
                 return Ok(false);
@@ -98,4 +113,20 @@ impl FsReadService<'_> {
         }
         Ok(true)
     }
+}
+
+fn project_diagnostic(
+    directory: Option<&WorkspacePath>,
+    diagnostic: &DirectoryDiagnostic,
+) -> ScopeOmission {
+    let mut native_path = directory.map_or_else(Vec::new, |path| path.as_str().as_bytes().to_vec());
+    if !native_path.is_empty() {
+        native_path.push(b'/');
+    }
+    native_path.extend_from_slice(diagnostic.name_bytes());
+    let reason = match diagnostic.kind() {
+        DirectoryDiagnosticKind::UnsupportedName => OmissionReason::UnsupportedName,
+        DirectoryDiagnosticKind::UnsupportedType => OmissionReason::UnsupportedType,
+    };
+    ScopeOmission::native_path(native_path, reason)
 }

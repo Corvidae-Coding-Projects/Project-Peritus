@@ -10,6 +10,8 @@ pub const MAX_WORKBENCH_DIFF_FILES: usize = 512;
 pub const MAX_WORKBENCH_DIFF_HUNKS: usize = 4096;
 /// Maximum visible lines in one bounded structured diff view.
 pub const MAX_WORKBENCH_DIFF_LINES: usize = 32768;
+/// Maximum lines returned by one structured diff page.
+pub const MAX_WORKBENCH_DIFF_PAGE_LINES: usize = 32;
 /// Maximum review comments returned in one page.
 pub const MAX_WORKBENCH_REVIEW_PAGE: usize = 256;
 const MAX_PATH_BYTES: usize = 4096;
@@ -18,6 +20,8 @@ mod anchor;
 pub use anchor::*;
 mod diff;
 pub use diff::*;
+mod diff_page;
+pub use diff_page::*;
 mod page;
 pub use page::*;
 mod parser;
@@ -39,9 +43,5 @@ fn validate_path(value: &str) -> Result<(), AppProtocolError> {
 const fn malformed() -> AppProtocolError {
     AppProtocolError::new(AppErrorCode::MalformedFrame, None)
 }
-const fn limit() -> AppProtocolError {
-    AppProtocolError::new(AppErrorCode::LimitExceeded, None)
-}
-
 #[cfg(test)]
 mod tests;

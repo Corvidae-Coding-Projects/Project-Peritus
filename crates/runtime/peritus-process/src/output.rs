@@ -81,7 +81,7 @@ impl StreamAccounting {
 
 pub(crate) struct OutputAccounting {
     stream: OutputStream,
-    ceiling: u64,
+    ceiling: Option<u64>,
     observed: u64,
     retained: u64,
     dropped: u64,
@@ -89,14 +89,17 @@ pub(crate) struct OutputAccounting {
 }
 
 impl OutputAccounting {
-    pub(crate) const fn new(stream: OutputStream, ceiling: u64) -> Self {
+    pub(crate) const fn new(stream: OutputStream, ceiling: Option<u64>) -> Self {
         Self { stream, ceiling, observed: 0, retained: 0, dropped: 0, failed: false }
     }
 
     pub(crate) fn observe(&mut self, bytes: usize, external_available: u64) -> usize {
         let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
         self.observed = self.observed.saturating_add(bytes);
-        let available = self.ceiling.saturating_sub(self.retained).min(external_available);
+        let available = self
+            .ceiling
+            .map_or(u64::MAX, |ceiling| ceiling.saturating_sub(self.retained))
+            .min(external_available);
         let accepted = available.min(bytes);
         self.retained = self.retained.saturating_add(accepted);
         self.dropped = self.dropped.saturating_add(bytes.saturating_sub(accepted));
@@ -127,5 +130,21 @@ impl OutputAccounting {
                 OutputCompleteness::Complete
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn absent_output_quota_retains_every_observed_byte() {
+        let mut accounting = OutputAccounting::new(OutputStream::Stdout, None);
+        assert_eq!(accounting.observe(32 * 1024 * 1024, u64::MAX), 32 * 1024 * 1024);
+        let result = accounting.finish();
+        assert_eq!(result.observed(), 32 * 1024 * 1024);
+        assert_eq!(result.retained(), result.observed());
+        assert_eq!(result.dropped(), 0);
+        assert_eq!(result.completeness(), OutputCompleteness::Complete);
     }
 }

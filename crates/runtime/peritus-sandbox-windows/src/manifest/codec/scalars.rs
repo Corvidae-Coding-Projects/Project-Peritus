@@ -43,6 +43,9 @@ pub(super) fn strings(writer: &mut CanonicalWriter, values: &[String]) -> Result
 
 pub(super) fn read_strings(reader: &mut CanonicalReader<'_>) -> Result<Vec<String>, WindowsError> {
     let count = reader.read_collection_len().map_err(codec_error)?;
+    if count > reader.remaining() / 4 {
+        return Err(protocol("string count exceeds the remaining manifest bytes"));
+    }
     (0..count).map(|_| reader.read_str().map(str::to_owned).map_err(codec_error)).collect()
 }
 

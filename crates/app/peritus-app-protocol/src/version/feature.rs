@@ -52,6 +52,8 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_GOALS: &'static str = "app.workbench-goals";
     /// Structured candidate review with content-bound conversational feedback.
     pub const WORKBENCH_REVIEW: &'static str = "app.workbench-review";
+    /// Bounded digest-bound structured review diff paging.
+    pub const WORKBENCH_REVIEW_PAGES: &'static str = "app.workbench-review-pages";
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     pub const WORKBENCH_PREVIEW_OUTPUT: &'static str = "app.workbench-preview-output";
     /// Daemon-owned preview launch and evidence.
@@ -153,6 +155,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchGoals,
     /// Structured candidate review and exact anchored feedback.
     WorkbenchReview,
+    /// Bounded digest-bound structured review diff paging.
+    WorkbenchReviewPages,
     /// Daemon-owned launch, selected-window capture and artifact feedback.
     WorkbenchPreview,
     /// Bounded retained live preview streams.
@@ -202,6 +206,7 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchFiles => ProtocolFeatureName::WORKBENCH_FILES,
             Self::WorkbenchGoals => ProtocolFeatureName::WORKBENCH_GOALS,
             Self::WorkbenchReview => ProtocolFeatureName::WORKBENCH_REVIEW,
+            Self::WorkbenchReviewPages => ProtocolFeatureName::WORKBENCH_REVIEW_PAGES,
             Self::WorkbenchPreviewOutput => ProtocolFeatureName::WORKBENCH_PREVIEW_OUTPUT,
             Self::WorkbenchPreview => ProtocolFeatureName::WORKBENCH_PREVIEW,
             Self::WorkbenchCheckpoints => ProtocolFeatureName::WORKBENCH_CHECKPOINTS,

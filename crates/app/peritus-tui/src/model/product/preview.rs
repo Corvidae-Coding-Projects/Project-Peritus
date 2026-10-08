@@ -167,8 +167,8 @@ impl AppModel {
                 Vec::new(),
                 source,
                 build,
-                PREVIEW_READINESS_MILLIS,
-                PREVIEW_WALL_MILLIS,
+                Some(PREVIEW_READINESS_MILLIS),
+                Some(PREVIEW_WALL_MILLIS),
                 true,
             )
         })();

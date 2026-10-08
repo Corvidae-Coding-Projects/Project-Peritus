@@ -14,7 +14,7 @@ use super::{
 };
 use crate::file_metadata;
 
-const MAX_PAGE_BYTES: usize = 512 * 1024;
+pub(super) const MAX_PAGE_BYTES: usize = 512 * 1024;
 
 pub(super) use super::inspection_list::list;
 
@@ -74,7 +74,7 @@ pub(super) fn entry_kind(kind: fs::FileType) -> &'static str {
 }
 
 pub(super) fn page_bytes(arguments: &Value) -> usize {
-    bounded_usize(arguments, "max_bytes", MAX_PAGE_BYTES, 256, MAX_PAGE_BYTES)
+    bounded_usize(arguments, "max_bytes", super::DEFAULT_INSPECTION_PAGE_BYTES, 256, MAX_PAGE_BYTES)
 }
 
 pub(super) fn ignored_from(start: &Path, candidate: &Path) -> bool {

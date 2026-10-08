@@ -10,12 +10,16 @@ use crate::{ErrorCode, OutputStream, ProcessError, ProcessOperation, RecoveryCla
 
 pub(crate) struct BoundedSpool {
     file: File,
-    limit: u64,
+    limit: Option<u64>,
     written: u64,
 }
 
 impl BoundedSpool {
-    fn create(directory: &Path, stream: OutputStream, limit: u64) -> Result<Self, ProcessError> {
+    fn create(
+        directory: &Path,
+        stream: OutputStream,
+        limit: Option<u64>,
+    ) -> Result<Self, ProcessError> {
         fs::create_dir_all(directory)
             .map_err(|_| spool_error("spool directory cannot be created"))?;
         let name = match stream {
@@ -39,7 +43,7 @@ impl BoundedSpool {
             .written
             .checked_add(length)
             .ok_or_else(|| spool_error("spool byte accounting overflowed"))?;
-        if attempted > self.limit {
+        if self.limit.is_some_and(|limit| attempted > limit) {
             return Err(spool_error("stream spool byte limit exceeded"));
         }
         self.file.write_all(bytes).map_err(|_| spool_error("stream spool write failed"))?;
@@ -62,7 +66,7 @@ pub(crate) struct SpoolSet {
 }
 
 impl SpoolSet {
-    pub(crate) fn pipes(directory: &Path, limit: u64) -> Result<Self, ProcessError> {
+    pub(crate) fn pipes(directory: &Path, limit: Option<u64>) -> Result<Self, ProcessError> {
         Ok(Self {
             stdout: Some(BoundedSpool::create(directory, OutputStream::Stdout, limit)?),
             stderr: Some(BoundedSpool::create(directory, OutputStream::Stderr, limit)?),
@@ -70,7 +74,7 @@ impl SpoolSet {
         })
     }
 
-    pub(crate) fn pty(directory: &Path, limit: u64) -> Result<Self, ProcessError> {
+    pub(crate) fn pty(directory: &Path, limit: Option<u64>) -> Result<Self, ProcessError> {
         Ok(Self {
             stdout: None,
             stderr: None,

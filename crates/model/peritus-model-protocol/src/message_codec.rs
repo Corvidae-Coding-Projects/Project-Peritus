@@ -3,7 +3,6 @@
 use crate::{Message, ProtocolError, ProtocolErrorKind, ProtocolLimits};
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 
-const MAX_BYTES: usize = 64 * 1024 * 1024;
 const MAGIC: [u8; 4] = *b"P5MS";
 const VERSION: u16 = 1;
 
@@ -40,9 +39,6 @@ pub fn decode_messages(
     bytes: &[u8],
     limits: ProtocolLimits,
 ) -> Result<Vec<Message>, ProtocolError> {
-    if bytes.len() > MAX_BYTES {
-        return Err(invalid());
-    }
     let mut reader = CanonicalReader::new(bytes, codec_limits(limits));
     if reader.read_fixed::<4>().map_err(codec)? != MAGIC
         || reader.read_u16().map_err(codec)? != VERSION
@@ -59,8 +55,8 @@ pub fn decode_messages(
 
 fn codec_limits(limits: ProtocolLimits) -> CodecLimits {
     CodecLimits::new(
-        MAX_BYTES,
-        MAX_BYTES,
+        usize::MAX,
+        usize::MAX,
         limits.max_messages().max(limits.max_content_blocks()).max(128),
         limits.max_text_bytes().max(8 * 1024),
         limits

@@ -18,8 +18,6 @@ use super::{
     selection::{checked_names, operation_registry, select},
 };
 
-const MAX_CONFIGURED_TOOLS: usize = 256;
-
 /// Immutable exact descriptor and its production dispatcher constructor route.
 #[derive(Clone, Debug)]
 pub struct ToolRegistration {
@@ -89,18 +87,11 @@ impl ToolComponents {
     /// # Errors
     ///
     /// Rejects repeated/unknown names, catalog drift, invalid exact B1 operations, malformed C4
-    /// descriptors, or an allowlist larger than the production bound.
+    /// descriptors, or an allowlist containing unknown, repeated, or unimplemented names.
     pub fn build(
         allowed: &[String],
         router_limits: RouterLimits,
     ) -> Result<Self, ToolComponentError> {
-        if allowed.len() > MAX_CONFIGURED_TOOLS {
-            return Err(ToolComponentError::new(
-                ToolComponentErrorKind::Capacity,
-                "construct configured tool inventory",
-                "configured tool count exceeds the production bound",
-            ));
-        }
         let selected_names = checked_names(allowed)?;
         let catalog = production_catalog()?;
         let registrations = select(catalog, &selected_names)?;

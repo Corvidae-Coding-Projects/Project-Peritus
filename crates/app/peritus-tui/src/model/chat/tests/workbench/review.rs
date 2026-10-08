@@ -16,6 +16,10 @@ fn review_model() -> (AppModel, WorkbenchQuery, RunId) {
         ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchReview)
             .expect("review feature"),
     );
+    model.features.push(
+        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchReviewPages)
+            .expect("review pages feature"),
+    );
     let query = WorkbenchQuery::new(
         peritus_app_protocol::ConversationId::new([71; 16]).expect("conversation"),
         model.product.as_ref().expect("product").launch.workspace_id(),
@@ -41,6 +45,163 @@ fn review_model() -> (AppModel, WorkbenchQuery, RunId) {
     model.accept_product_run(snapshot);
     model.chat.run_id = Some(run);
     (model, query, run)
+}
+
+#[test]
+fn review_page_request_is_consumed_and_render_state_uses_bounded_diff_page() {
+    let (mut model, query, run) = review_model();
+    model.chat.buffer = "/diff".to_owned();
+    let old_page_request = request(&key(&mut model, KeyCode::Enter));
+    let legacy = page(query, run, 7, 10, "old", "new", &[]);
+    let diff = legacy.diff_digest();
+    let candidate = legacy.candidate_digest();
+    let files = legacy.files().to_vec();
+    let effects =
+        respond(&mut model, &old_page_request, AppResponsePayload::WorkbenchReview(legacy));
+    let diff_request = request(&effects);
+    let AppRequestPayload::QueryWorkbenchReviewDiff(cursor) = diff_request.payload() else {
+        panic!("bounded diff page query")
+    };
+    let projection =
+        peritus_app_protocol::WorkbenchReviewDiffPage::project(*cursor, candidate, diff, &files)
+            .expect("diff projection");
+    respond(&mut model, &diff_request, AppResponsePayload::WorkbenchReviewDiff(projection));
+    let review = &model.product.as_ref().expect("product").review;
+    assert!(review.diff_page.is_some());
+    assert!(review.pending_diff.is_none());
+}
+
+#[test]
+fn legacy_review_peer_is_not_sent_the_new_diff_page_request() {
+    let (mut model, query, run) = review_model();
+    model.features.retain(|feature| {
+        feature.as_str() != WellKnownProtocolFeature::WorkbenchReviewPages.as_str()
+    });
+    let requested = WorkbenchReviewQuery::new(query, run, 7, 0);
+    let effects = model.accept_review_page(requested, page(query, run, 7, 10, "old", "new", &[]));
+    assert!(effects.is_empty());
+    let review = &model.product.as_ref().expect("product").review;
+    assert!(review.diff_page.is_none());
+    assert!(review.pending_diff.is_none());
+}
+
+#[test]
+fn truncated_review_line_requests_and_retains_the_exact_safe_raw_range() {
+    let (mut model, query, run) = review_model();
+    model.chat.buffer = "/diff".to_owned();
+    let first = request(&key(&mut model, KeyCode::Enter));
+    let long = "x".repeat(5_000);
+    let legacy = page(query, run, 8, 11, &long, &long, &[]);
+    let candidate = legacy.candidate_digest();
+    let diff = legacy.diff_digest();
+    let files = legacy.files().to_vec();
+    let effects = respond(&mut model, &first, AppResponsePayload::WorkbenchReview(legacy));
+    let page_request = request(&effects);
+    let AppRequestPayload::QueryWorkbenchReviewDiff(cursor) = page_request.payload() else {
+        panic!("diff page request")
+    };
+    let bounded =
+        peritus_app_protocol::WorkbenchReviewDiffPage::project(*cursor, candidate, diff, &files)
+            .expect("bounded page");
+    let effects =
+        respond(&mut model, &page_request, AppResponsePayload::WorkbenchReviewDiff(bounded));
+    let bytes_request = request(&effects);
+    let AppRequestPayload::QueryWorkbenchReviewDiffBytes(raw_query) = bytes_request.payload()
+    else {
+        panic!("raw range request")
+    };
+    let raw = peritus_app_protocol::WorkbenchReviewDiffBytes::new(
+        *raw_query,
+        raw_query.offset() + raw_query.maximum_bytes(),
+        b"verified source range".to_vec(),
+    )
+    .expect("raw range");
+    respond(&mut model, &bytes_request, AppResponsePayload::WorkbenchReviewDiffBytes(raw));
+    let review = &model.product.as_ref().expect("product").review;
+    assert_eq!(review.raw_line.as_ref().map(|(offset, _)| *offset), Some(raw_query.offset()));
+}
+
+#[test]
+fn raw_review_bytes_page_across_large_lines_and_navigate_back_by_line() {
+    let (mut model, query, run) = review_model();
+    model.chat.buffer = "/diff".to_owned();
+    let first = request(&key(&mut model, KeyCode::Enter));
+    let long = "x".repeat(70_000);
+    let legacy = page(query, run, 9, 12, &long, &long, &[]);
+    let candidate = legacy.candidate_digest();
+    let diff = legacy.diff_digest();
+    let files = legacy.files().to_vec();
+    let effects = respond(&mut model, &first, AppResponsePayload::WorkbenchReview(legacy));
+    let page_request = request(&effects);
+    let AppRequestPayload::QueryWorkbenchReviewDiff(cursor) = page_request.payload() else {
+        panic!("diff page request")
+    };
+    let bounded =
+        peritus_app_protocol::WorkbenchReviewDiffPage::project(*cursor, candidate, diff, &files)
+            .expect("bounded page");
+    let effects =
+        respond(&mut model, &page_request, AppResponsePayload::WorkbenchReviewDiff(bounded));
+    let mut bytes_request = request(&effects);
+    let AppRequestPayload::QueryWorkbenchReviewDiffBytes(mut raw_query) =
+        bytes_request.payload().clone()
+    else {
+        panic!("first raw range request")
+    };
+    let lines = model.product.as_ref().unwrap().review.raw_lines.clone();
+    assert!(lines.len() >= 2);
+    assert!(lines[0].1 > 32 * 1024);
+    assert!(lines[1].1 > 32 * 1024);
+
+    let first_line_start = lines[0].0;
+    let first_line_end = first_line_start + lines[0].1;
+    assert_eq!(raw_query.offset(), first_line_start);
+    assert!(key(&mut model, KeyCode::Char(']')).is_empty());
+    assert_eq!(model.product.as_ref().unwrap().review.raw_index, 0);
+    while raw_query.offset() + raw_query.maximum_bytes() < first_line_end {
+        let length = raw_query.maximum_bytes();
+        let raw = peritus_app_protocol::WorkbenchReviewDiffBytes::new(
+            raw_query,
+            first_line_end,
+            vec![b'x'; length as usize],
+        )
+        .expect("first raw chunk");
+        let _ =
+            respond(&mut model, &bytes_request, AppResponsePayload::WorkbenchReviewDiffBytes(raw));
+        bytes_request = request(&key(&mut model, KeyCode::Char(']')));
+        let AppRequestPayload::QueryWorkbenchReviewDiffBytes(next) = bytes_request.payload() else {
+            panic!("continued raw range request")
+        };
+        raw_query = *next;
+    }
+    let remaining = first_line_end - raw_query.offset();
+    let raw = peritus_app_protocol::WorkbenchReviewDiffBytes::new(
+        raw_query,
+        first_line_end,
+        vec![b'x'; remaining as usize],
+    )
+    .expect("final first-line chunk");
+    let _ = respond(&mut model, &bytes_request, AppResponsePayload::WorkbenchReviewDiffBytes(raw));
+
+    bytes_request = request(&key(&mut model, KeyCode::Char(']')));
+    let AppRequestPayload::QueryWorkbenchReviewDiffBytes(second_line) = bytes_request.payload()
+    else {
+        panic!("next truncated line request")
+    };
+    assert_eq!(second_line.offset(), lines[1].0);
+    let raw = peritus_app_protocol::WorkbenchReviewDiffBytes::new(
+        *second_line,
+        second_line.offset() + second_line.maximum_bytes(),
+        vec![b'y'; second_line.maximum_bytes() as usize],
+    )
+    .expect("second-line chunk");
+    let _ = respond(&mut model, &bytes_request, AppResponsePayload::WorkbenchReviewDiffBytes(raw));
+
+    bytes_request = request(&key(&mut model, KeyCode::Char('[')));
+    let AppRequestPayload::QueryWorkbenchReviewDiffBytes(previous_line) = bytes_request.payload()
+    else {
+        panic!("previous truncated line request")
+    };
+    assert_eq!(previous_line.offset(), first_line_end - 32 * 1024);
 }
 
 fn raw_diff(before: &str, after: &str) -> String {

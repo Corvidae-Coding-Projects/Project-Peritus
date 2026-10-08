@@ -111,7 +111,9 @@ fn immutable_inspection_omits_symlinks_without_following_external_targets() {
         .discover(&DiscoverInput::new(None, 4, 100).expect("input"))
         .expect("discovery records unsafe entries as omissions");
     assert!(discovered.omissions().iter().any(|omission| {
-        omission.path().as_str() == "linked.txt" && omission.reason() == OmissionReason::UnsafeEntry
+        omission.path().is_none()
+            && omission.native_path_bytes() == b"linked.txt"
+            && omission.reason() == OmissionReason::UnsupportedType
     }));
     assert!(
         service.read(&ReadInput::new("linked.txt", 1024).expect("read input")).is_err(),
@@ -197,4 +199,72 @@ fn descriptor_catalog_is_complete_canonical_and_deterministic() {
             .collect::<Vec<_>>()
     );
     assert_eq!(descriptor_digest().expect("digest"), descriptor_digest().expect("digest"));
+}
+
+#[cfg(unix)]
+#[test]
+fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_children() {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use std::{
+        ffi::OsStr,
+        os::unix::{ffi::OsStrExt as _, fs::symlink},
+    };
+
+    let fixture = support::read_fixture("fs-symlink-diagnostics");
+    let root = fixture.root.clone();
+    std::fs::write(root.join("searchable.txt"), b"needle\n").expect("ordinary sibling");
+    let invalid_name = b"invalid-\xff-name";
+    std::fs::write(root.join(OsStr::from_bytes(invalid_name)), b"unsupported name\n")
+        .expect("unsupported child name");
+    symlink("searchable.txt", root.join("linked.txt")).expect("unsupported symlink child");
+
+    let service = FsReadService::new(&fixture.workspace);
+    let discover_input =
+        DiscoverInput::new(None, 4, 100).expect("discover input").with_omission_offset(0);
+    let discovered = service.discover(&discover_input).expect("partial discovery");
+    let discover_json = RenderedOutput::discover_page(&discovered, 0, 100, 64 * 1024)
+        .expect("discover diagnostics render");
+    let discover_json =
+        std::str::from_utf8(discover_json.structured().canonical_bytes()).expect("JSON");
+    assert!(discover_json.contains(&STANDARD.encode(invalid_name)), "{discover_json}");
+    assert!(discover_json.contains(&STANDARD.encode(b"linked.txt")), "{discover_json}");
+    assert!(discover_json.contains("unsupported_name"), "{discover_json}");
+    assert!(discover_json.contains("unsupported_type"), "{discover_json}");
+    let discovery_page = RenderedOutput::discover_page(&discovered, 0, 1, 64 * 1024)
+        .expect("first discovery omission page");
+    let first_page =
+        std::str::from_utf8(discovery_page.structured().canonical_bytes()).expect("JSON");
+    assert!(first_page.contains("\"next_omission_offset\":1"), "{first_page}");
+    let next_discover = service
+        .discover(
+            &DiscoverInput::new(None, 4, 100).expect("next discovery").with_omission_offset(1),
+        )
+        .expect("next diagnostic page");
+    assert_eq!(next_discover.omissions().len(), 1);
+
+    let search_input =
+        SearchInput::new(None, "needle".to_owned(), true, 4, 1024, 100).expect("search");
+    let search = service.search(&search_input).expect("search with diagnostic omissions");
+    let search_json = RenderedOutput::search_page(&search, 0, 100, 0, 64 * 1024)
+        .expect("search diagnostics render");
+    let search_json =
+        std::str::from_utf8(search_json.structured().canonical_bytes()).expect("JSON");
+    assert!(search_json.contains(&STANDARD.encode(invalid_name)), "{search_json}");
+    assert!(search_json.contains(&STANDARD.encode(b"linked.txt")), "{search_json}");
+    assert!(search_json.contains("unsupported_name"), "{search_json}");
+    assert!(search_json.contains("unsupported_type"), "{search_json}");
+
+    let first_search_page = RenderedOutput::search_page(&search, 0, 1, 0, 64 * 1024)
+        .expect("first search omission page");
+    let first_search_page =
+        std::str::from_utf8(first_search_page.structured().canonical_bytes()).expect("JSON");
+    assert!(first_search_page.contains("\"next_omission_offset\":1"), "{first_search_page}");
+    let next_search = service
+        .search(
+            &SearchInput::page(None, "needle".to_owned(), true, 4, 1024, 1)
+                .expect("next search page")
+                .with_continuation_offsets(0, 1),
+        )
+        .expect("next search diagnostic page");
+    assert_eq!(next_search.omissions().len(), 1);
 }

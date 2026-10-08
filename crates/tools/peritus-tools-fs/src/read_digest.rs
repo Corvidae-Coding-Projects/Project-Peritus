@@ -14,7 +14,7 @@ impl DiscoverDigestBuilder {
     #[must_use]
     pub fn new(root: Option<&peritus_patch::WorkspacePath>) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"PERITUS-FS-DISCOVER-V2\0");
+        hasher.update(b"PERITUS-FS-DISCOVER-V3\0");
         put_bytes(&mut hasher, root.map_or("", peritus_patch::WorkspacePath::as_str));
         Self(hasher)
     }
@@ -49,7 +49,7 @@ impl SearchDigestBuilder {
     #[must_use]
     pub fn new(match_page_start: u64, omission_page_start: u64) -> Self {
         let mut hasher = Sha256::new();
-        hasher.update(b"PERITUS-FS-SEARCH-V2\0");
+        hasher.update(b"PERITUS-FS-SEARCH-V3\0");
         hasher.update(match_page_start.to_be_bytes());
         hasher.update(omission_page_start.to_be_bytes());
         Self(hasher)
@@ -114,12 +114,14 @@ fn put_metadata(hasher: &mut Sha256, value: &MetadataObservation) {
 }
 
 fn put_omission(hasher: &mut Sha256, omission: &ScopeOmission) {
-    put_bytes(hasher, omission.path().as_str());
+    put_bytes_raw(hasher, omission.native_path_bytes());
     hasher.update([match omission.reason() {
         crate::OmissionReason::DepthLimit => 1,
         crate::OmissionReason::UnsafeEntry => 2,
         crate::OmissionReason::FileByteLimit => 3,
         crate::OmissionReason::BinaryContent => 4,
+        crate::OmissionReason::UnsupportedName => 5,
+        crate::OmissionReason::UnsupportedType => 6,
     }]);
 }
 
@@ -136,4 +138,9 @@ fn put_option_u64(hasher: &mut Sha256, value: Option<u64>) {
         }
         None => hasher.update([0]),
     }
+}
+
+fn put_bytes_raw(hasher: &mut Sha256, value: &[u8]) {
+    hasher.update((value.len() as u64).to_be_bytes());
+    hasher.update(value);
 }

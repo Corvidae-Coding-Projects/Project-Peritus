@@ -801,6 +801,19 @@ Rust type: `WorkbenchResultQuery`
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
 
+### `WorkbenchPreviewOutputQuery`
+
+Rust type: `WorkbenchPreviewOutputQuery`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
+| `run` | yes | `fixed[16]` | `RunId` | `RunId` | `nonzero` |
+| `launch` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `stream` | yes | `u16-be` | `WorkbenchPreviewOutputStream` | `WorkbenchPreviewOutputStream` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `maximumBytes` | yes | `u32-be` | `u32` | `number` | `nonzero` |
+
 ### `WorkbenchLaunchSource`
 
 Rust type: `WorkbenchLaunchSource`
@@ -939,6 +952,27 @@ Rust type: `WorkbenchPreviewOutput`
 | `stdout` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
 | `stderr` | yes | `len+utf8` | `String` | `string` | `product.max-activity-bytes (8192)` |
 | `truncated` | yes | `bool/u8` | `bool` | `boolean` | — |
+
+### `WorkbenchPreviewOutputStream`
+
+Rust type: `WorkbenchPreviewOutputStream`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `tag` | yes | `u16-be` | `WorkbenchPreviewOutputStream` | `"stdout" | "stderr" | "terminal"` | — |
+
+### `WorkbenchPreviewOutputRange`
+
+Rust type: `WorkbenchPreviewOutputRange`
+
+| Field | Required | Canonical wire | Rust | TypeScript | Bounds |
+|---|:---:|---|---|---|---|
+| `launch` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
+| `stream` | yes | `ordered-fields` | `WorkbenchPreviewOutputStream` | `WorkbenchPreviewOutputStream` | — |
+| `offset` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `totalBytes` | yes | `u64-be` | `u64` | `UInt64` | — |
+| `artifactDigest` | no | `option+value` | `Option<[u8; 32]>` | `Sha256Digest` | — |
+| `bytes` | yes | `len+bytes` | `Vec<u8>` | `string` | — |
 
 ### `WorkbenchPreviewSnapshot`
 

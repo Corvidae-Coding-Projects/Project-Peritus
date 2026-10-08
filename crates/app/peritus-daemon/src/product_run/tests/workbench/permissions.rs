@@ -147,8 +147,8 @@ fn narrowing_process_blocks_a_direct_preview_before_receipt_or_launch() {
                     .expect("candidate digest"),
             ),
             None,
-            2_000,
-            10_000,
+            Some(2_000),
+            Some(10_000),
             false,
         )
         .expect("launch profile");

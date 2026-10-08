@@ -5,6 +5,8 @@ mod authority_support;
 mod caller_binding;
 #[path = "authorized_gateway/folder.rs"]
 mod folder;
+#[path = "authorized_gateway/git_recovery.rs"]
+mod git_recovery;
 #[path = "authority_support/namespace_safety.rs"]
 mod namespace_safety;
 #[path = "authorized_gateway/snapshot_publication.rs"]
@@ -21,8 +23,9 @@ use peritus_types::{
     RevisionNumber, RevisionTuple, SessionId, SnapshotId,
 };
 use peritus_workspace::{
-    RestartDisposition, RollbackRequest, WorkspaceAuthorizationRequest, WorkspaceCondition,
-    WorkspaceGateway, candidate_authorization_payload, candidate_authorization_payload_for_caller,
+    ActionConsumptionBinding, GitMutationRecoveryOutcome, RestartDisposition, RollbackRequest,
+    WorkspaceAuthorizationRequest, WorkspaceCondition, WorkspaceGateway,
+    candidate_authorization_payload, candidate_authorization_payload_for_caller,
     patch_authorization_payload, rollback_authorization_payload,
     rollback_authorization_payload_for_caller,
 };
@@ -30,8 +33,8 @@ use tempfile::TempDir;
 
 use authority_support::{
     Ids, artifact_store, authorized_patch, commit_authority, intent, mismatched_preimage_patch,
-    open_journal, receipts, reopen_fixture, try_reopen_fixture, try_reopen_fixture_with_condition,
-    workspace_fixture,
+    open_journal, receipts, reopen_fixture, reopen_fixture_with_snapshot_condition,
+    try_reopen_fixture, try_reopen_fixture_with_condition, workspace_fixture,
 };
 use tool_binding::tool_binding;
 #[path = "authorized_gateway/reconciliation.rs"]
@@ -182,47 +185,6 @@ fn gateway_runs_candidate_rollback_and_clean_reconciliation_with_real_effects() 
         .expect("clean reconciliation");
     assert_eq!(reconciled.observation().disposition(), RestartDisposition::Clean);
     artifacts.verify(reconciled.artifact_digest()).expect("reconciliation artifact");
-}
-
-#[test]
-fn rollback_stays_dirty_when_manifest_finalization_fails_after_restore() {
-    let temp = TempDir::new().expect("temporary root");
-    let ids = Ids::new();
-    let fixture = workspace_fixture(&temp, &ids, "rollback-dirty");
-    let mut gateway = fixture.gateway;
-    let artifacts = artifact_store(&temp, "candidate-artifacts", 1_048_576);
-    let mutation = authorized_patch(&temp, &ids, &mut gateway, fixture.patch);
-    let candidate_ids = ids.for_action_revision(31, RevisionNumber::first());
-    let successor = SnapshotId::new([84; 16]).expect("candidate snapshot");
-    let candidate_intent =
-        intent(&candidate_ids, candidate_authorization_payload(&mutation, successor));
-    let candidate_receipts = receipts(&temp, &candidate_ids, &candidate_intent);
-    let candidate_request = exact_request(&candidate_intent, &candidate_receipts, &candidate_ids);
-    gateway
-        .create_candidate(&candidate_request, &mutation, successor, &artifacts)
-        .expect("authorized candidate");
-
-    let rollback_ids = ids.for_action_revision(32, RevisionNumber::new(2).expect("revision two"));
-    let rollback_snapshot = SnapshotId::new([85; 16]).expect("rollback successor");
-    let rollback_request = RollbackRequest::new(&fixture.initial, rollback_snapshot);
-    let rollback_intent =
-        intent(&rollback_ids, rollback_authorization_payload(gateway.state(), &rollback_request));
-    let rollback_receipts = receipts(&temp, &rollback_ids, &rollback_intent);
-    let authorization = exact_request(&rollback_intent, &rollback_receipts, &rollback_ids);
-    let undersized = artifact_store(&temp, "undersized-artifacts", 1);
-    let error = gateway
-        .rollback(&authorization, rollback_request, &undersized)
-        .err()
-        .expect("manifest finalization must fail");
-    assert_eq!(error.code(), peritus_workspace::ErrorCode::Artifact);
-    assert_eq!(gateway.state().condition(), WorkspaceCondition::Dirty);
-    assert_eq!(gateway.state().revision(), RevisionNumber::new(2).expect("unchanged revision"));
-    assert!(!gateway.state().binding().root().join("authorized.txt").exists());
-    snapshot_publication::assert_snapshot_reference_absent(
-        &fixture.source,
-        ids.workspace,
-        rollback_snapshot,
-    );
 }
 
 #[test]
@@ -442,4 +404,29 @@ const fn exact_request<'a>(
 fn assert_no_effect(gateway: &WorkspaceGateway) {
     assert_eq!(gateway.state().condition(), WorkspaceCondition::Clean);
     assert!(!gateway.state().binding().root().join("authorized.txt").exists());
+}
+
+fn truncate_action_terminal(
+    namespace: &std::path::Path,
+    generation: Generation,
+    revision: RevisionNumber,
+    action_id: ActionId,
+) {
+    let mut action_name = String::new();
+    for byte in action_id.as_bytes() {
+        use core::fmt::Write as _;
+        write!(&mut action_name, "{byte:02x}").expect("action marker filename");
+    }
+    let marker = namespace
+        .join("workspace-actions-v1")
+        .join(format!("generation-{}-revision-{}", generation.get(), revision.get()))
+        .join(action_name);
+    let header_bytes = b"PERITUS-WORKSPACE-ACTION-V2\0".len() + 16 + 16 + 16 + 8 + 8 + 16 + 32;
+    let plan_frame_bytes = b"PLAN1\0".len() + 8 + 153 + 32;
+    let marker_file =
+        std::fs::OpenOptions::new().write(true).open(marker).expect("open action receipt");
+    marker_file
+        .set_len(u64::try_from(header_bytes + plan_frame_bytes).expect("planned marker size"))
+        .expect("simulate crash before terminal receipt");
+    marker_file.sync_all().expect("sync simulated crash marker");
 }

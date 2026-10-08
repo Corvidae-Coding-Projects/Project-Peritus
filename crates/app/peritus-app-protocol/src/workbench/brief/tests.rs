@@ -50,8 +50,8 @@ fn brief_rejects_uncommitted_duplicate_noncanonical_and_superseded_bindings() {
 
 #[test]
 fn brief_separates_agent_proposals_and_observed_facts_from_confirmed_fields() {
-    let text = WorkbenchInputText::new("Agent-proposed criterion".to_owned()).expect("text");
-    let digest = peritus_codec::sha256(text.as_str().as_bytes());
+    let text = "Agent-proposed criterion".to_owned();
+    let digest = peritus_codec::sha256(text.as_bytes());
     let proposal = WorkbenchBriefProposal::new(
         ControlOperationId::new([8; 16]).expect("operation"),
         WorkbenchInvocationId::new([7; 16]).expect("invocation"),
@@ -76,6 +76,38 @@ fn brief_separates_agent_proposals_and_observed_facts_from_confirmed_fields() {
     assert_eq!(brief.proposals()[0].digest(), digest);
     assert_eq!(brief.observations()[0].label(), "src/lib.rs");
     assert_eq!(brief.excluded_proposals(), 2);
+}
+
+#[test]
+fn proposals_have_no_eight_entry_or_eight_kibibyte_ceiling_and_empty_files_are_observable() {
+    let proposals = (0_u8..9)
+        .map(|index| {
+            let text = "x".repeat(9 * 1024);
+            WorkbenchBriefProposal::new(
+                ControlOperationId::new([index + 1; 16]).expect("operation"),
+                WorkbenchInvocationId::new([index + 1; 16]).expect("invocation"),
+                peritus_codec::sha256(text.as_bytes()),
+                text,
+            )
+            .expect("large exact proposal")
+        })
+        .collect();
+    let empty_file = WorkbenchBriefObservation::new(
+        WorkbenchBriefObservationKind::File,
+        ControlOperationId::new([20; 16]).expect("attachment"),
+        Some(ControlOperationId::new([21; 16]).expect("version")),
+        "empty.txt".to_owned(),
+        peritus_codec::sha256(b""),
+        0,
+        true,
+    )
+    .expect("empty file fact");
+    let brief =
+        WorkbenchBrief::with_sources(query(), 1, Vec::new(), proposals, vec![empty_file], 0)
+            .expect("full proposal collection");
+    assert_eq!(brief.proposals().len(), 9);
+    assert!(brief.proposals().iter().all(|proposal| proposal.text().len() == 9 * 1024));
+    assert_eq!(brief.observations()[0].bytes(), 0);
 }
 #[test]
 fn brief_fixtures_roundtrip_every_field_and_require_the_independent_feature() {

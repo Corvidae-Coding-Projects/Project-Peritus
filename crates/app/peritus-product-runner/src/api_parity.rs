@@ -8,11 +8,11 @@ use peritus_types::{ActionId, ProcessId, RevisionTuple, RunId};
 use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
-    CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
-    FolderPatchAuthorityPlanRequest, LocalContextConfig, PreviewCommand, PreviewLaunch,
-    PreviewObservation, PreviewProcessState, ProductRunResume, ProductRunnerError, UncertainEffect,
-    UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
-    checked_protected_file, uncertain_effects,
+    AttachmentReadRequest, AttachmentReadResponse, CommandRuntime, ConversationView,
+    FolderPatchAuthority, FolderPatchAuthorityPlan, FolderPatchAuthorityPlanRequest,
+    LocalContextConfig, PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState,
+    ProductRunResume, ProductRunnerError, UncertainEffect, UncertainEffectState,
+    WorkspaceMutationKind, acknowledge_uncertain_effect, checked_protected_file, uncertain_effects,
 };
 
 #[allow(dead_code, clippy::too_many_arguments)]
@@ -110,8 +110,9 @@ fn preview_values(
 }
 
 #[allow(dead_code)]
-fn conversation(view: &dyn ConversationView) {
+fn conversation(view: &dyn ConversationView, request: AttachmentReadRequest) {
     let _: bool = view.uses_explicit_media();
+    let _: Result<AttachmentReadResponse, String> = view.read_attachment_range(request);
     let _: u64 = view.revision();
     let _: u64 = view.incorporated_revision();
     let _: String = view.render();

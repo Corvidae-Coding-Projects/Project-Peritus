@@ -35,6 +35,25 @@ impl ConversationView for MutablePermissionView {
     }
 }
 
+struct ImmutableAttachmentView;
+
+impl ConversationView for ImmutableAttachmentView {
+    fn revision(&self) -> u64 {
+        0
+    }
+
+    fn render(&self) -> String {
+        String::new()
+    }
+
+    fn read_attachment_range(
+        &self,
+        request: crate::AttachmentReadRequest,
+    ) -> Result<crate::AttachmentReadResponse, String> {
+        crate::AttachmentReadResponse::new(request, "test".to_owned(), None)
+    }
+}
+
 #[test]
 fn live_permission_narrowing_precedes_reads_scope_receipts_and_process_effects() {
     let root = tempfile::tempdir().expect("workspace");
@@ -113,6 +132,35 @@ fn network_revocation_still_allows_network_denied_local_commands() {
 
     assert!(!command.is_error, "{}", wire(&command));
     assert!(wire(&command).contains(r#""success":true"#));
+}
+
+#[test]
+fn attachment_read_is_a_schema_checked_read_only_tool_through_the_conversation_port() {
+    let root = tempfile::tempdir().expect("workspace");
+    let view = Arc::new(ImmutableAttachmentView);
+    let mut tools =
+        WorkspaceDeveloperTools::read_only(root.path().to_owned()).with_protection_view(view);
+    let result = execute(
+        &mut tools,
+        "attachment_read",
+        &serde_json::json!({
+            "attachment": "01".repeat(16),
+            "version": "02".repeat(16),
+            "source_sha256": "03".repeat(32),
+            "selected_sha256": "04".repeat(32),
+            "source_bytes": 4,
+            "range_start": 0,
+            "range_end": 4,
+            "offset": 0,
+            "max_bytes": 4,
+        })
+        .to_string(),
+    );
+    assert!(!result.is_error, "{}", wire(&result));
+    let value: Value = serde_json::from_str(&wire(&result)).expect("page JSON");
+    assert_eq!(value["text"], "test");
+    assert!(value["next_offset"].is_null());
+    assert!(execute(&mut tools, "attachment_read", "{}").is_error);
 }
 
 #[test]

@@ -15,7 +15,7 @@ use super::{
     wire::{bounded_usize, object},
 };
 
-const MAX_PAGE_BYTES: usize = 512 * 1024;
+use super::inspection::MAX_PAGE_BYTES;
 
 #[derive(Clone)]
 struct Line {
@@ -37,7 +37,13 @@ pub(super) fn read(
     let requested_offset = bounded_usize(arguments, "line_byte_offset", 0, 0, usize::MAX);
     let requested_offset =
         u64::try_from(requested_offset).map_err(|_| tool("line byte offset overflow"))?;
-    let max_bytes = bounded_usize(arguments, "max_bytes", MAX_PAGE_BYTES, 256, MAX_PAGE_BYTES);
+    let max_bytes = bounded_usize(
+        arguments,
+        "max_bytes",
+        super::DEFAULT_INSPECTION_PAGE_BYTES,
+        256,
+        MAX_PAGE_BYTES,
+    );
     let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
     let mut reader = BufReader::new(file);
     let mut current = 1_usize;

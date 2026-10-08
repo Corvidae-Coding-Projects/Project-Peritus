@@ -15,24 +15,26 @@ pub use crate::developer_tools::{
 };
 pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    PreviewProcessState,
+    PreviewOutputRange, PreviewProcessState,
 };
 pub use crate::discard_recovery::DiscardTransactionState;
 pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};
 #[cfg(not(verus_only))]
 pub use crate::execution::{
-    ConversationView, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner,
-    RoleProviders, RunObserver, WorkspaceMutationKind,
+    AttachmentReadRequest, AttachmentReadResponse, ConversationView, ProductDeliveryScope,
+    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunQuestion,
+    ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders, RunObserver,
+    WorkspaceMutationKind,
 };
 #[cfg(not(verus_only))]
 pub use crate::local_context::inspect_local_context;
 #[cfg(verus_only)]
 pub use crate::verified_api::{
-    CommandRuntime, ConversationView, FolderPatchAuthority, FolderPatchAuthorityPlan,
-    PreviewTerminal, ProductDeliveryScope, ProductRunInput, ProductRunOutcome, ProductRunOutput,
-    ProductRunPhase, ProductRunProgress, ProductRunQuestion, ProductRunResume, ProductRunUpdate,
-    ProductRunner, RoleProviders, RunObserver, UncertainEffect, UncertainEffectState,
-    WorkspaceMutationKind, acknowledge_uncertain_effect, checked_protected_file, uncertain_effects,
+    AttachmentReadRequest, AttachmentReadResponse, CommandRuntime, ConversationView,
+    FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal, ProductDeliveryScope,
+    ProductRunInput, ProductRunOutcome, ProductRunOutput, ProductRunPhase, ProductRunProgress,
+    ProductRunQuestion, ProductRunResume, ProductRunUpdate, ProductRunner, RoleProviders,
+    RunObserver, UncertainEffect, UncertainEffectState, WorkspaceMutationKind,
+    acknowledge_uncertain_effect, checked_protected_file, uncertain_effects,
 };
 pub use crate::workspace_kind::ProductWorkspaceKind;

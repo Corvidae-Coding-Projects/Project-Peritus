@@ -31,8 +31,8 @@ fn complete_result_page_round_trips_as_a_persistence_value()
             Sha256Digest::new([4; 32]),
         ),
         Some(WorkbenchBuildIdentity::new(text("target/preview"), Sha256Digest::new([5; 32]))),
-        2_000,
-        20_000,
+        Some(2_000),
+        Some(20_000),
         true,
     )?;
     let target = WorkbenchCaptureTarget::x11_window(0x2a)?;
@@ -102,8 +102,8 @@ fn result_page_round_trips_beyond_the_old_launch_total() -> Result<(), Box<dyn s
             Sha256Digest::new([22; 32]),
         ),
         None,
-        1,
-        2,
+        Some(1),
+        Some(2),
         false,
     )?;
     let launches = (1_u8..=17)

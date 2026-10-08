@@ -29,8 +29,17 @@ pub(super) fn write(
         | AppRequestPayload::QueryWorkbenchPreview(value) => {
             super::super::workbench_launch::write_query(writer, *value)
         }
+        AppRequestPayload::QueryWorkbenchPreviewOutput(value) => {
+            super::super::workbench_launch::write_output_query(writer, *value)
+        }
         AppRequestPayload::QueryWorkbenchReview(value) => {
             super::super::workbench_review::write_query(writer, *value)
+        }
+        AppRequestPayload::QueryWorkbenchReviewDiff(value) => {
+            super::super::workbench_review::write_diff_query(writer, *value)
+        }
+        AppRequestPayload::QueryWorkbenchReviewDiffBytes(value) => {
+            super::super::workbench_review::write_diff_bytes_query(writer, *value)
         }
         AppRequestPayload::QueryConversationLibrary(value) => {
             super::super::workbench_library::write_query(writer, value)

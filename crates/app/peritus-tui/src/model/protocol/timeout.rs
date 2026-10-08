@@ -37,6 +37,8 @@ impl PendingRequest {
             | Self::WorkbenchFilePreview(_)
             | Self::WorkbenchFiles(_)
             | Self::WorkbenchReview(_)
+            | Self::WorkbenchReviewDiff(_)
+            | Self::WorkbenchReviewDiffBytes(_)
             | Self::WorkbenchQuery(_)
             | Self::WorkbenchExecution(_)
             | Self::ConversationLibrary(_)

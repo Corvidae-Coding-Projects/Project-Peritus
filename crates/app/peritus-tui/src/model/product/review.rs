@@ -3,8 +3,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use peritus_app_protocol::{
     AppRequestPayload, ControlOperationId, WellKnownProtocolFeature, WorkbenchCommand,
-    WorkbenchIntent, WorkbenchReviewCommentState, WorkbenchReviewFeedback, WorkbenchReviewPage,
-    WorkbenchReviewQuery,
+    WorkbenchIntent, WorkbenchReviewCommentState, WorkbenchReviewFeedback, WorkbenchReviewQuery,
 };
 
 use super::ProductUi;
@@ -13,6 +12,7 @@ use crate::{
     model::{AppModel, NoticeLevel, PendingRequest, View},
 };
 
+mod diff_pages;
 mod editor;
 mod state;
 
@@ -59,64 +59,47 @@ impl AppModel {
             }
             return Vec::new();
         }
-        let request = WorkbenchReviewQuery::new(query, run.run_id(), 0, 0);
-        self.request(
-            AppRequestPayload::QueryWorkbenchReview(request),
-            PendingRequest::WorkbenchReview(request),
-        )
-        .into_iter()
-        .collect()
-    }
-
-    pub(in crate::model) fn accept_review_page(
-        &mut self,
-        requested: WorkbenchReviewQuery,
-        page: WorkbenchReviewPage,
-    ) {
-        let selected = self
+        let offset = self
             .product
             .as_ref()
-            .and_then(ProductUi::selected_run)
-            .map(peritus_app_protocol::ProductRunSnapshot::run_id);
-        if page.query().query() != requested.query()
-            || page.query().run() != requested.run()
-            || page.query().offset() != requested.offset()
-            || selected != Some(requested.run())
-            || self.chat.workbench.selected != Some(requested.query())
-        {
-            self.notice(NoticeLevel::Error, "Mismatched structured-review response ignored.");
-            return;
+            .and_then(|product| product.review.page.as_ref())
+            .map_or(0, |page| page.query().offset());
+        self.request_review_page(query, run.run_id(), 0, offset)
+    }
+
+    fn request_review_page(
+        &mut self,
+        query: peritus_app_protocol::WorkbenchQuery,
+        run: peritus_types::RunId,
+        revision: u64,
+        offset: u32,
+    ) -> Vec<Effect> {
+        let request = WorkbenchReviewQuery::new(query, run, revision, offset);
+        if self.product.as_ref().and_then(|product| product.review.pending).is_some_and(|pending| {
+            pending.query() == query
+                && pending.run() == run
+                && pending.revision() == revision
+                && pending.offset() == offset
+        }) {
+            return Vec::new();
         }
+        let Some(effect) = self.request(
+            AppRequestPayload::QueryWorkbenchReview(request),
+            PendingRequest::WorkbenchReview(request),
+        ) else {
+            return Vec::new();
+        };
         if let Some(product) = &mut self.product {
-            let review = &mut product.review;
-            if review
-                .page
-                .as_ref()
-                .is_none_or(|prior| prior.candidate_digest() != page.candidate_digest())
-            {
-                review.scroll = 0;
-            }
-            review.file = review.file.min(page.files().len().saturating_sub(1));
-            review.hunk = review.hunk.min(
-                page.files()
-                    .get(review.file)
-                    .map_or(0, |file| file.hunks().len().saturating_sub(1)),
-            );
-            review.comment = review.comment.min(page.comments().len().saturating_sub(1));
-            review.message = format!(
-                "Revision {} · {} comments · anchors are digest-bound",
-                page.query().revision(),
-                page.total_comments(),
-            );
-            review.page = Some(page);
+            product.review.pending = Some(request);
         }
+        vec![effect]
     }
 
     pub(in crate::model) fn review_key(&mut self, key: KeyEvent) -> Option<Vec<Effect>> {
-        let structured = self
-            .product
-            .as_ref()
-            .is_some_and(|product| product.review.page.is_some() && !product.review.raw);
+        let structured = self.product.as_ref().is_some_and(|product| {
+            (product.review.diff_page.is_some() || product.review.page.is_some())
+                && !product.review.raw
+        });
         match key.code {
             KeyCode::Char('t') => {
                 if let Some(product) = &mut self.product {
@@ -126,6 +109,10 @@ impl AppModel {
                 Some(Vec::new())
             }
             KeyCode::Char('r') => Some(self.refresh_review()),
+            KeyCode::Char('n') => Some(self.next_review_diff_page()),
+            KeyCode::Char('p') => Some(self.previous_review_diff_page()),
+            KeyCode::Char(']') => Some(self.move_raw_cursor(true)),
+            KeyCode::Char('[') => Some(self.move_raw_cursor(false)),
             _ if !structured => None,
             KeyCode::Tab => {
                 if let Some(product) = &mut self.product {
@@ -138,14 +125,8 @@ impl AppModel {
                 }
                 Some(Vec::new())
             }
-            KeyCode::Up | KeyCode::Char('k') => {
-                self.move_review_selection(false);
-                Some(Vec::new())
-            }
-            KeyCode::Down | KeyCode::Char('j') => {
-                self.move_review_selection(true);
-                Some(Vec::new())
-            }
+            KeyCode::Up | KeyCode::Char('k') => Some(self.move_review_selection_page(false)),
+            KeyCode::Down | KeyCode::Char('j') => Some(self.move_review_selection_page(true)),
             KeyCode::Left => {
                 if let Some(product) = &mut self.product {
                     product.review.scroll = 0;
@@ -180,8 +161,50 @@ impl AppModel {
         }
     }
 
-    fn move_review_selection(&mut self, forward: bool) {
-        let Some(product) = &mut self.product else { return };
+    fn move_review_selection_page(&mut self, forward: bool) -> Vec<Effect> {
+        let page = self.product.as_ref().and_then(|product| product.review.page.as_ref());
+        if let Some(page) = page
+            && self
+                .product
+                .as_ref()
+                .is_some_and(|product| product.review.focus == ReviewFocus::Comment)
+        {
+            let query = page.query();
+            if forward
+                && self.product.as_ref().is_some_and(|product| {
+                    product.review.comment + 1 >= page.comments().len()
+                        && query.offset().saturating_add(
+                            u32::try_from(page.comments().len()).unwrap_or(u32::MAX),
+                        ) < page.total_comments()
+                })
+            {
+                return self.request_review_page(
+                    query.query(),
+                    query.run(),
+                    query.revision(),
+                    query
+                        .offset()
+                        .saturating_add(u32::try_from(page.comments().len()).unwrap_or(u32::MAX)),
+                );
+            }
+            if !forward
+                && self
+                    .product
+                    .as_ref()
+                    .is_some_and(|product| product.review.comment == 0 && query.offset() > 0)
+            {
+                return self.request_review_page(
+                    query.query(),
+                    query.run(),
+                    query.revision(),
+                    query.offset().saturating_sub(
+                        u32::try_from(peritus_app_protocol::MAX_WORKBENCH_REVIEW_PAGE)
+                            .unwrap_or(u32::MAX),
+                    ),
+                );
+            }
+        }
+        let Some(product) = &mut self.product else { return Vec::new() };
         let review = &mut product.review;
         review.scroll = 0;
         match review.focus {
@@ -214,6 +237,7 @@ impl AppModel {
                 };
             }
         }
+        Vec::new()
     }
 
     fn rebind_selected_comment(&mut self) -> Vec<Effect> {

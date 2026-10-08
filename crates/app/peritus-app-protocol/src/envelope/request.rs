@@ -122,8 +122,14 @@ pub enum AppRequestPayload {
     QueryWorkbenchResult(crate::WorkbenchResultQuery),
     /// Observes live retained output for an authorized preview.
     QueryWorkbenchPreview(crate::WorkbenchResultQuery),
+    /// Reads one exact bounded range from an authorized preview output stream.
+    QueryWorkbenchPreviewOutput(crate::WorkbenchPreviewOutputQuery),
     /// Inspects the exact structured candidate diff, anchored comments, and evidence freshness.
     QueryWorkbenchReview(crate::WorkbenchReviewQuery),
+    /// Reads one bounded structured-diff page bound to a review revision and exact digest.
+    QueryWorkbenchReviewDiff(crate::WorkbenchReviewDiffQuery),
+    /// Reads one exact safe byte range from the digest-bound retained raw diff.
+    QueryWorkbenchReviewDiffBytes(crate::WorkbenchReviewDiffBytesQuery),
     /// Begins explicit selected-text transfer scoped to the conversation.
     BeginWorkbenchFileUpload(crate::WorkbenchFileUpload),
     /// Validates an uploaded immutable text snapshot, without reopening its source label.
@@ -222,13 +228,16 @@ impl AppRequestPayload {
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
             }
-            Self::QueryWorkbenchPreview(_) => {
+            Self::QueryWorkbenchPreview(_) | Self::QueryWorkbenchPreviewOutput(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreviewOutput)
             }
             Self::QueryWorkbenchResult(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPreview)
             }
             Self::QueryWorkbenchReview(_) => Some(crate::WellKnownProtocolFeature::WorkbenchReview),
+            Self::QueryWorkbenchReviewDiff(_) | Self::QueryWorkbenchReviewDiffBytes(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchReviewPages)
+            }
             Self::QueryConversationLibrary(_) => {
                 Some(crate::WellKnownProtocolFeature::ConversationLibrary)
             }

@@ -37,6 +37,7 @@ pub struct DiscoverInput {
     pub(crate) maximum_depth: u16,
     pub(crate) maximum_entries: u32,
     pub(crate) continuation_offset: u64,
+    pub(crate) omission_offset: u64,
     pub(crate) path_offset: Option<u64>,
 }
 
@@ -68,7 +69,21 @@ impl DiscoverInput {
             .map(WorkspacePath::new)
             .transpose()
             .map_err(|_| FsToolError::invalid(FsToolOperation::Discover, "root path is invalid"))?;
-        Ok(Self { root, maximum_depth, maximum_entries, continuation_offset, path_offset: None })
+        Ok(Self {
+            root,
+            maximum_depth,
+            maximum_entries,
+            continuation_offset,
+            omission_offset: 0,
+            path_offset: None,
+        })
+    }
+
+    /// Sets the separate continuation offset for exact omissions and directory diagnostics.
+    #[must_use]
+    pub const fn with_omission_offset(mut self, offset: u64) -> Self {
+        self.omission_offset = offset;
+        self
     }
 
     /// Requests a byte range of the entry path at the current continuation offset.

@@ -155,6 +155,7 @@ fn start_with_native(
         Arc::clone(&shared),
         plan.stdin_policy(),
         plan.terminal_capabilities(),
+        spool_directory.clone(),
     );
     let pending_session = Arc::new(std::sync::Mutex::new(session));
     let thread_session = Arc::clone(&pending_session);

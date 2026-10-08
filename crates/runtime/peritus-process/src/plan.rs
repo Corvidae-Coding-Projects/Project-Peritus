@@ -228,11 +228,13 @@ impl ExecutionPlan {
         }
         if deadlines
             .wall_timeout_millis()
-            .is_some_and(|deadline| deadline > resources.wall_millis())
-            || output.spool_bytes() > resources.output_bytes()
-            || output.stdout_bytes() > resources.output_bytes()
-            || output.stderr_bytes() > resources.output_bytes()
-            || output.terminal_bytes() > resources.output_bytes()
+            .is_some_and(|deadline| resources.wall_millis().is_some_and(|wall| deadline > wall))
+            || resources.output_bytes().is_some_and(|ceiling| {
+                output.spool_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.stdout_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.stderr_bytes().is_some_and(|limit| limit > ceiling)
+                    || output.terminal_bytes().is_some_and(|limit| limit > ceiling)
+            })
         {
             return Err(invalid("deadline or output policy exceeds the resource policy"));
         }
@@ -353,6 +355,93 @@ impl ExecutionPlan {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+}
+
+#[cfg(all(test, unix))]
+pub(super) fn canonical_golden_fixture() -> ExecutionPlan {
+    use peritus_types::{
+        AcceptanceSpecId, ActionId, ActorId, AttemptId, EnvironmentId, Generation, HarnessId,
+        PolicyId, ProcessId, ProjectId, ProviderProfileId, ResourceId, RevisionNumber,
+        RevisionTuple, RunId, SessionId, TurnId, WorkspaceId,
+    };
+
+    let workspace = WorkspaceId::new([1; 16]).expect("workspace");
+    let resource = ResourceId::new([2; 16]).expect("resource");
+    let environment_id = EnvironmentId::new([3; 16]).expect("environment");
+    let revision = RevisionTuple::new(
+        AcceptanceSpecId::new([4; 16]).expect("acceptance spec"),
+        HarnessId::new([5; 16]).expect("harness"),
+        workspace,
+        Generation::first(),
+        RevisionNumber::first(),
+        PolicyId::new([6; 16]).expect("policy"),
+        ProviderProfileId::new([7; 16]).expect("provider profile"),
+    );
+    let identity = ExecutionIdentity::new(
+        ProjectId::new([8; 16]).expect("project"),
+        SessionId::new([9; 16]).expect("session"),
+        RunId::new([10; 16]).expect("run"),
+        AttemptId::new([11; 16]).expect("attempt"),
+        TurnId::new([12; 16]).expect("turn"),
+        ActionId::new([13; 16]).expect("action"),
+        ProcessId::new([14; 16]).expect("process"),
+        workspace,
+        resource,
+        environment_id,
+        ActorId::new([15; 16]).expect("actor"),
+        revision,
+    );
+    let working_directory = WorkingDirectory::open(
+        "/",
+        workspace,
+        resource,
+        environment_id,
+        Generation::first(),
+        RevisionNumber::first(),
+        crate::WorkspaceAccess::ReadOnly,
+    )
+    .expect("stable working directory");
+    let command = CommandSpec::new("/bin/true", ["golden-argument"]).expect("golden command");
+    let environment = EnvironmentPlan::cleared(vec![
+        crate::EnvironmentVariable::new("GOLDEN", "value").expect("environment variable"),
+    ])
+    .expect("environment");
+    let output =
+        OutputPolicy::new(1, 2, 3, 4, 5, 6, 7, crate::OutputOverflowAction::ContinueIncomplete)
+            .expect("output policy");
+    let deadlines = DeadlinePolicy::new(None, crate::GracefulAction::CloseInput, 8, 9)
+        .expect("deadline policy");
+    let resources = ProcessResourcePolicy::new(Some(11), Some(12), 13, 14, Some(15), 16, 17, 18)
+        .expect("resource policy");
+    let mut plan = ExecutionPlan {
+        identity,
+        command,
+        working_directory,
+        environment,
+        io_mode: IoMode::Pipes,
+        stdin: StdinPolicy::Closed,
+        terminal: TerminalCapabilities::new(false, false, 4, 7),
+        output,
+        deadlines,
+        resources,
+        caller_binding: None,
+        isolation: ExecutionIsolation::ExplicitRawEffect,
+        sandbox_digest: Sha256Digest::new([16; 32]),
+        backend: BackendSelection {
+            name: "golden-backend".to_owned(),
+            version: "1".to_owned(),
+            native: false,
+            resource_fidelity: BackendResourceFidelity::Reference,
+            descriptor_digest: Sha256Digest::new([17; 32]),
+            support_digest: Sha256Digest::new([18; 32]),
+            preparation_digest: Sha256Digest::new([19; 32]),
+        },
+        canonical: Vec::new(),
+        digest: Sha256Digest::new([0; 32]),
+    };
+    plan.canonical = crate::plan_canonical::encode(&plan).expect("canonical bytes");
+    plan.digest = Sha256Digest::new(Sha256::digest(&plan.canonical).into());
+    plan
 }
 
 fn valid_backend_token(value: &str) -> bool {

@@ -87,11 +87,26 @@ pub enum WorkspaceMutationKind {
     EmptyDirectory,
 }
 
+/// Exact immutable file-version slice requested by a read-only developer tool.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct AttachmentReadRequest;
+
+/// Bounded UTF-8 page read from a user-confirmed immutable file version.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AttachmentReadResponse;
+
 /// Live daemon-owned conversation supplied to model turns.
 pub trait ConversationView: Send + Sync {
     /// Whether media is supplied only through the revisioned input port.
     fn uses_explicit_media(&self) -> bool {
         false
+    }
+    /// Reads a bounded page from an exact selected immutable attachment version.
+    fn read_attachment_range(
+        &self,
+        _request: AttachmentReadRequest,
+    ) -> Result<AttachmentReadResponse, String> {
+        Err("immutable attachment reads are unavailable".to_owned())
     }
     /// Monotonic revision incremented whenever the user adds context.
     fn revision(&self) -> u64;

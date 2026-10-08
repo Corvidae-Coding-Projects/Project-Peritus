@@ -86,11 +86,20 @@ where
             AppRequestPayload::QueryWorkbenchPreview(query) => {
                 product_runs.workbench_preview(actor_id, *query)
             }
+            AppRequestPayload::QueryWorkbenchPreviewOutput(query) => {
+                product_runs.workbench_preview_output_range(actor_id, *query)
+            }
             AppRequestPayload::QueryWorkbenchResult(query) => {
                 product_runs.workbench_result(actor_id, *query)
             }
             AppRequestPayload::QueryWorkbenchReview(query) => {
                 product_runs.workbench_review(actor_id, *query)
+            }
+            AppRequestPayload::QueryWorkbenchReviewDiff(query) => {
+                product_runs.workbench_review_diff(actor_id, *query)
+            }
+            AppRequestPayload::QueryWorkbenchReviewDiffBytes(query) => {
+                product_runs.workbench_review_diff_bytes(actor_id, *query)
             }
             AppRequestPayload::QueryConversationLibrary(query) => {
                 product_runs.conversation_library(actor_id, query)

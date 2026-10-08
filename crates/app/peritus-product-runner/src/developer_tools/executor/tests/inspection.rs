@@ -179,7 +179,8 @@ fn large_text_files_support_bounded_line_ranges_and_continuations() {
     let mut tools = writable_tools(workspace.path());
 
     execute(&mut tools, "workspace_list", r#"{"path":".","depth":1}"#);
-    let whole = execute(&mut tools, "workspace_read", r#"{"path":"large.txt"}"#);
+    let whole = execute(&mut tools, "workspace_read", r#"{"path":"large.txt","max_bytes":65536}"#);
+    let default_page = execute(&mut tools, "workspace_read", r#"{"path":"large.txt"}"#);
     let ranged = execute(
         &mut tools,
         "workspace_read",
@@ -193,6 +194,10 @@ fn large_text_files_support_bounded_line_ranges_and_continuations() {
     let next_offset = whole_page["next_line_byte_offset"].as_u64().expect("line offset");
     assert_eq!(next_line, 501);
     assert_eq!(next_offset, 0);
+    assert!(!default_page.is_error, "{}", wire(&default_page));
+    let default_page: Value =
+        serde_json::from_slice(default_page.output.canonical_bytes()).unwrap();
+    assert!(default_page["next_line"].as_u64().is_some_and(|line| line < 501));
     let continuation = execute(
         &mut tools,
         "workspace_read",

@@ -243,12 +243,8 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             panic!("multiple replies must not make the brief unreadable: {brief:?}")
         };
         assert_eq!(brief.proposals().len(), 2);
-        assert!(
-            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "First answer.")
-        );
-        assert!(
-            brief.proposals().iter().any(|proposal| proposal.text().as_str() == "Revised answer.")
-        );
+        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "First answer."));
+        assert!(brief.proposals().iter().any(|proposal| proposal.text() == "Revised answer."));
         let requests = writer.requests.lock().expect("requests").clone();
         assert_eq!(
             requests.len(),

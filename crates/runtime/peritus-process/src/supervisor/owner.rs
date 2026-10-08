@@ -264,11 +264,12 @@ impl SpawnedOwner {
             .plan
             .deadline_policy()
             .wall_timeout_millis()
-            .unwrap_or_else(|| self.plan.resource_policy().wall_millis())
-            .min(self.plan.resource_policy().wall_millis());
+            .into_iter()
+            .chain(self.plan.resource_policy().wall_millis())
+            .min();
         if self.os_exit.is_none()
             && self.lifecycle.first_trigger().is_none()
-            && elapsed_millis(self.began) >= wall_limit
+            && wall_limit.is_some_and(|limit| elapsed_millis(self.began) >= limit)
         {
             accept_trigger(
                 CancellationReason::Deadline,

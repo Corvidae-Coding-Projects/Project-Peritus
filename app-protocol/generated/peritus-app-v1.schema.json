@@ -874,6 +874,20 @@
       },
       "required": ["query", "run"]
     },
+    "WorkbenchPreviewOutputQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputQuery",
+      "properties": {
+        "query": { "$ref": "#/$defs/WorkbenchQuery", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchQuery" },
+        "run": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "RunId", "x-bounds": ["nonzero"] },
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "stream": { "$ref": "#/$defs/WorkbenchPreviewOutputStream", "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewOutputStream" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "maximumBytes": { "type": "integer", "minimum": 0, "maximum": 4294967295, "x-canonical-wire": "u32-be", "x-rust-type": "u32", "x-bounds": ["nonzero"] }
+      },
+      "required": ["query", "run", "launch", "stream", "offset", "maximumBytes"]
+    },
     "WorkbenchLaunchSource": {
       "type": "object",
       "additionalProperties": false,
@@ -1025,6 +1039,29 @@
         "truncated": { "type": "boolean", "x-canonical-wire": "bool/u8", "x-rust-type": "bool" }
       },
       "required": ["launch", "stdout", "stderr", "truncated"]
+    },
+    "WorkbenchPreviewOutputStream": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputStream",
+      "properties": {
+        "tag": { "type": "string", "enum": ["stdout", "stderr", "terminal"], "x-canonical-wire": "u16-be", "x-rust-type": "WorkbenchPreviewOutputStream" }
+      },
+      "required": ["tag"]
+    },
+    "WorkbenchPreviewOutputRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "x-rust-type": "WorkbenchPreviewOutputRange",
+      "properties": {
+        "launch": { "type": "string", "pattern": "^[0-9a-f]{32}$", "x-canonical-wire": "fixed[16]", "x-rust-type": "ControlOperationId", "x-bounds": ["nonzero"] },
+        "stream": { "$ref": "#/$defs/WorkbenchPreviewOutputStream", "x-canonical-wire": "ordered-fields", "x-rust-type": "WorkbenchPreviewOutputStream" },
+        "offset": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "totalBytes": { "type": "string", "pattern": "^(0|[1-9][0-9]{0,19})$", "x-canonical-wire": "u64-be", "x-rust-type": "u64" },
+        "artifactDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$", "x-canonical-wire": "option+value", "x-rust-type": "Option<[u8; 32]>" },
+        "bytes": { "type": "string", "contentEncoding": "base64", "x-canonical-wire": "len+bytes", "x-rust-type": "Vec<u8>" }
+      },
+      "required": ["launch", "stream", "offset", "totalBytes", "bytes"]
     },
     "WorkbenchPreviewSnapshot": {
       "type": "object",

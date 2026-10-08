@@ -2,6 +2,7 @@
 
 mod fragments;
 mod json;
+mod omission;
 mod pages;
 #[cfg(test)]
 mod tests;
@@ -12,9 +13,10 @@ use peritus_tool_protocol::{BoundedJson, BoundedText};
 
 use crate::{
     DiscoverObservation, FileContent, FileObservation, FsToolError, FsToolErrorKind,
-    FsToolOperation, MetadataObservation, OmissionReason, RecoveryClass, ScopeOmission,
-    SearchObservation,
+    FsToolOperation, MetadataObservation, RecoveryClass, SearchObservation,
 };
+
+use omission::{discover_next_omission, next_omission_offset, omission_json, omission_name};
 
 const TEXT_LIMIT: usize = 16 * 1024;
 
@@ -63,6 +65,10 @@ impl RenderedOutput {
     ///
     /// # Errors
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "entry and omission pages share one exact output budget"
+    )]
     pub fn discover_page(
         value: &DiscoverObservation,
         offset: u64,
@@ -77,15 +83,39 @@ impl RenderedOutput {
             .page_start()
             .checked_add(u64::try_from(start).map_err(|_| protocol_error())?)
             .ok_or_else(protocol_error)?;
+        let omission_start = value.omission_page_start();
         let mut entries = Vec::new();
+        let mut omissions = Vec::new();
+        let initial_next_omission = discover_next_omission(value, omission_start, 0)?;
         let mut structured = discover_json_with_page(
             value,
             &entries,
             global_start,
             global_start < value.observed_count(),
+            &omissions,
+            initial_next_omission,
         )?;
         if structured.canonical_bytes().len() as u64 > output_bytes {
             return Err(protocol_error());
+        }
+        for omission in value.omissions().iter().take(maximum_items as usize) {
+            omissions.push(omission_json(omission)?);
+            let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
+            let candidate = discover_json_with_page(
+                value,
+                &entries,
+                global_start,
+                global_start < value.observed_count(),
+                &omissions,
+                next_omission,
+            );
+            match candidate {
+                Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
+                _ => {
+                    omissions.pop();
+                    break;
+                }
+            }
         }
         for entry in value.entries().get(start..end).unwrap_or_default() {
             let item = object(vec![
@@ -103,11 +133,14 @@ impl RenderedOutput {
             let retained_end = global_start
                 .checked_add(u64::try_from(entries.len()).map_err(|_| protocol_error())?)
                 .ok_or_else(protocol_error)?;
+            let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
             let candidate = discover_json_with_page(
                 value,
                 &entries,
                 retained_end,
                 retained_end < value.observed_count(),
+                &omissions,
+                next_omission,
             );
             match candidate {
                 Ok(candidate) if candidate.canonical_bytes().len() as u64 <= output_bytes => {}
@@ -120,17 +153,29 @@ impl RenderedOutput {
         let retained_end = global_start
             .checked_add(u64::try_from(entries.len()).map_err(|_| protocol_error())?)
             .ok_or_else(protocol_error)?;
-        let more = retained_end < value.observed_count();
-        if more && entries.is_empty() {
+        let more_entries = retained_end < value.observed_count();
+        let next_omission = discover_next_omission(value, omission_start, omissions.len())?;
+        let more = more_entries || next_omission.is_some();
+        if (more_entries && entries.is_empty())
+            || (next_omission == Some(omission_start) && omissions.is_empty())
+        {
             return Err(protocol_error());
         }
-        structured = discover_json_with_page(value, &entries, retained_end, more)?;
-        let text = format!(
-            "Discovered entries {} through {} of {}{}.",
-            if entries.is_empty() { 0 } else { global_start.saturating_add(1) },
+        structured = discover_json_with_page(
+            value,
+            &entries,
             retained_end,
+            more_entries,
+            &omissions,
+            next_omission,
+        )?;
+        let text = format!(
+            "Discovered {} entries of {} and {} omissions ({} total omissions){}.",
+            entries.len(),
             value.observed_count(),
-            if more { " (more entries continue)" } else { "" }
+            omissions.len(),
+            value.omission_count(),
+            if more { "; more results continue" } else { "" }
         );
         finish(structured, text.clone(), text, more)
     }
@@ -326,19 +371,26 @@ fn discover_json_with_page(
     value: &DiscoverObservation,
     entries: &[BoundedJson],
     end: u64,
-    more: bool,
+    more_entries: bool,
+    omissions: &[BoundedJson],
+    next_omission: Option<u64>,
 ) -> Result<BoundedJson, FsToolError> {
     object(vec![
         ("digest", string(digest_hex(value.digest()))),
         ("entries", array(entries.to_vec())),
+        ("next_offset", if more_entries { u64_integer(end) } else { Ok(BoundedJson::null()) }),
+        (
+            "next_omission_offset",
+            next_omission.map_or_else(|| Ok(BoundedJson::null()), u64_integer),
+        ),
         ("omission_count", u64_integer(value.omission_count())),
-        ("next_offset", if more { u64_integer(end) } else { Ok(BoundedJson::null()) }),
+        ("omissions", array(omissions.to_vec())),
         ("observed_count", u64_integer(value.observed_count())),
         (
             "root",
             value.root().map_or_else(|| Ok(BoundedJson::null()), |path| string(path.to_string())),
         ),
-        ("truncated", Ok(BoundedJson::boolean(more))),
+        ("truncated", Ok(BoundedJson::boolean(more_entries || next_omission.is_some()))),
     ])
 }
 
@@ -379,39 +431,6 @@ fn next_match_offset(
         .checked_add(u64::try_from(value.matches().len()).map_err(|_| protocol_error())?)
         .ok_or_else(protocol_error)?;
     if end < page_end { Ok(Some(end)) } else { Ok(value.next_offset()) }
-}
-
-fn next_omission_offset(
-    value: &SearchObservation,
-    start: usize,
-    rendered: usize,
-    offset: u64,
-) -> Result<Option<u64>, FsToolError> {
-    if start.saturating_add(rendered) < value.omissions().len() {
-        Ok(Some(
-            offset
-                .checked_add(u64::try_from(rendered).map_err(|_| protocol_error())?)
-                .ok_or_else(protocol_error)?,
-        ))
-    } else {
-        Ok(value.next_omission_offset())
-    }
-}
-
-fn omission_json(value: &ScopeOmission) -> Result<BoundedJson, FsToolError> {
-    object(vec![
-        ("path", string(value.path().to_string())),
-        ("reason", string(omission_name(value.reason()).to_owned())),
-    ])
-}
-
-const fn omission_name(value: OmissionReason) -> &'static str {
-    match value {
-        OmissionReason::DepthLimit => "depth_limit",
-        OmissionReason::UnsafeEntry => "unsafe_entry",
-        OmissionReason::FileByteLimit => "file_byte_limit",
-        OmissionReason::BinaryContent => "binary_content",
-    }
 }
 
 fn search_match_json(value: &crate::SearchMatch) -> Result<BoundedJson, FsToolError> {

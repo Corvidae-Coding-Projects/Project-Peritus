@@ -6,9 +6,31 @@ use peritus_types::ProcessId;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MAX_PROGRAM_BYTES: usize = 4_096;
-const MAX_ARGUMENT_BYTES: usize = 64 * 1_024;
-const MAX_ENVIRONMENT_VALUE_BYTES: usize = 64 * 1_024;
+/// One bounded range from a preview output stream.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct PreviewOutputRange {
+    pub(super) total_bytes: u64,
+    pub(super) digest: Option<[u8; 32]>,
+    pub(super) bytes: Vec<u8>,
+}
+
+impl PreviewOutputRange {
+    /// Current or finalized stream size.
+    #[must_use]
+    pub const fn total_bytes(&self) -> u64 {
+        self.total_bytes
+    }
+    /// Final artifact digest, absent while the process is live.
+    #[must_use]
+    pub const fn digest(&self) -> Option<[u8; 32]> {
+        self.digest
+    }
+    /// Exact requested byte range.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+}
 
 /// A direct executable launch admitted through the existing command and process gateways.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -16,7 +38,7 @@ pub struct PreviewCommand {
     pub(in crate::developer_tools) program: String,
     pub(in crate::developer_tools) arguments: Vec<String>,
     pub(in crate::developer_tools) cwd: PathBuf,
-    pub(in crate::developer_tools) timeout: Duration,
+    pub(in crate::developer_tools) timeout: Option<Duration>,
     pub(in crate::developer_tools) interactive: bool,
     pub(in crate::developer_tools) rows: u16,
     pub(in crate::developer_tools) columns: u16,
@@ -41,25 +63,47 @@ impl PreviewCommand {
         idempotency_key: String,
         environment: Vec<(String, String)>,
     ) -> Result<Self, ProductRunnerError> {
-        let invalid_program = program.is_empty()
-            || program.len() > MAX_PROGRAM_BYTES
-            || program.as_bytes().contains(&0);
-        let invalid_arguments = u16::try_from(arguments.len()).is_err()
-            || arguments
-                .iter()
-                .any(|value| value.len() > MAX_ARGUMENT_BYTES || value.as_bytes().contains(&0));
-        let invalid_environment = u16::try_from(environment.len()).is_err()
-            || environment.iter().any(|(name, value)| {
-                !valid_environment_name(name)
-                    || value.len() > MAX_ENVIRONMENT_VALUE_BYTES
-                    || value.as_bytes().contains(&0)
-            });
+        Self::new_optional(
+            program,
+            arguments,
+            cwd,
+            Some(timeout),
+            interactive,
+            rows,
+            columns,
+            idempotency_key,
+            environment,
+        )
+    }
+
+    /// Creates a preview command with an optional wall-clock timeout.
+    #[allow(clippy::too_many_arguments, reason = "each launch-policy input remains explicit")]
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a command field violates native launch constraints.
+    pub fn new_optional(
+        program: String,
+        arguments: Vec<String>,
+        cwd: PathBuf,
+        timeout: Option<Duration>,
+        interactive: bool,
+        rows: u16,
+        columns: u16,
+        idempotency_key: String,
+        environment: Vec<(String, String)>,
+    ) -> Result<Self, ProductRunnerError> {
+        let invalid_program = program.is_empty() || program.as_bytes().contains(&0);
+        let invalid_arguments = arguments.iter().any(|value| value.as_bytes().contains(&0));
+        let invalid_environment = environment
+            .iter()
+            .any(|(name, value)| !valid_environment_name(name) || value.as_bytes().contains(&0));
         if invalid_program
             || invalid_arguments
             || invalid_environment
             || cwd.as_os_str().is_empty()
-            || timeout.is_zero()
-            || timeout.as_millis() > u128::from(u64::MAX)
+            || timeout.is_some_and(|value| value.is_zero())
+            || timeout.is_some_and(|value| value.as_millis() > u128::from(u64::MAX))
             || rows == 0
             || columns == 0
             || idempotency_key.is_empty()

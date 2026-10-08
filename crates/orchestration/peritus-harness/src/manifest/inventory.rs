@@ -26,8 +26,8 @@ pub(super) fn component_inventory(
     let mut files = Vec::new();
     let mut observed_entries = 0_u64;
     while let Some(directory) = pending.pop() {
-        let entries = workspace.list_directory(Some(&directory)).map_err(workspace_error)?;
-        for entry in entries.into_iter().rev() {
+        let listing = workspace.list_directory(Some(&directory)).map_err(workspace_error)?;
+        for entry in listing.entries().iter().rev() {
             observed_entries = observed_entries.saturating_add(1);
             if observed_entries > max_entries {
                 return Err(ManifestError::new(

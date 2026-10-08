@@ -10,8 +10,14 @@ a workspace mutation. `peritus-workspace` owns authorization and is the only mod
 mutation surface.
 
 Git is invoked directly without a shell. Repository-selection environment variables are cleared,
-configuration that could prompt, sign, page, or run hooks is disabled, and command output is
-bounded. Object IDs retain their repository-reported SHA-1 or SHA-256 algorithm.
+configuration that could prompt, sign, page, or run hooks is disabled. Each command owns a process
+group or job plus joined pipe workers; an explicit cancellation signal terminates that owned
+process tree. Object IDs retain their repository-reported SHA-1 or SHA-256 algorithm.
+
+Diff observations expose independent native-path and patch-byte pages tied to the complete
+immutable observation digest. Page sizes do not reject larger source diffs. The current adapter
+collects complete Git command output before projecting pages, so available memory and storage
+still constrain large observations.
 
 Repositories that configure external Git clean, smudge, or process filters are intentionally
 unsupported. Those programs are outside the bounded subprocess contract, so the adapter rejects

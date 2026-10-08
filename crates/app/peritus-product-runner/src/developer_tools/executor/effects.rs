@@ -111,6 +111,10 @@ impl WorkspaceDeveloperTools {
             "workspace_read" => {
                 inspection::read(&self.root, arguments, &self.inspection_cancellation)
             }
+            "attachment_read" => {
+                super::super::attachment_read::read(self.protection_view.as_deref(), arguments)
+            }
+            "developer_evidence_read" => self.read_reviewer_evidence(arguments),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),

@@ -19,7 +19,7 @@ use super::{
 };
 use crate::file_metadata;
 
-const MAX_PAGE_BYTES: usize = 512 * 1024;
+use super::inspection::MAX_PAGE_BYTES;
 
 pub(super) fn list(
     references: &ExplicitReferences,
@@ -34,7 +34,13 @@ pub(super) fn list(
         return Err(tool("external reference path is not a directory"));
     }
     let depth = bounded_usize(arguments, "depth", 3, 1, usize::MAX);
-    let max_bytes = bounded_usize(arguments, "max_bytes", MAX_PAGE_BYTES, 256, MAX_PAGE_BYTES);
+    let max_bytes = bounded_usize(
+        arguments,
+        "max_bytes",
+        super::DEFAULT_INSPECTION_PAGE_BYTES,
+        256,
+        MAX_PAGE_BYTES,
+    );
     let scope = CursorScope::new("external-reference-list", &root, &start)
         .add_text(requested)
         .add_usize(depth);

@@ -8,8 +8,6 @@ use crate::{ErrorCode, PatchError, PatchOperationContext, RecoveryClass, Rollbac
 pub const MAX_COMPONENT_BYTES: usize = 255;
 /// Maximum UTF-8 bytes in one complete workspace-relative path.
 pub const MAX_PATH_BYTES: usize = 4_096;
-/// Maximum components in one workspace-relative path.
-pub const MAX_COMPONENTS: usize = 256;
 
 /// A bounded UTF-8 workspace-relative path in canonical slash-separated form.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -26,7 +24,7 @@ impl WorkspacePath {
     /// Returns a stable path or protected-metadata error.
     pub fn new(value: impl Into<String>) -> Result<Self, PatchError> {
         let value = value.into();
-        if !crate::verified::path_bounds_valid(value.len(), value.split('/').count())
+        if !crate::verified::path_bounds_valid(value.len())
             || value.starts_with('/')
             || value.ends_with('/')
             || value.bytes().any(forbidden_byte)
@@ -77,8 +75,17 @@ impl fmt::Display for WorkspacePath {
     }
 }
 
+#[cfg(windows)]
 const fn forbidden_byte(byte: u8) -> bool {
-    byte == 0 || byte < 0x20 || byte == 0x7f || matches!(byte, b'\\' | b':')
+    byte == 0
+        || byte < 0x20
+        || byte == 0x7f
+        || matches!(byte, b'\\' | b':' | b'<' | b'>' | b'"' | b'|' | b'?' | b'*')
+}
+
+#[cfg(not(windows))]
+const fn forbidden_byte(byte: u8) -> bool {
+    byte == 0
 }
 
 fn valid_component(component: &str) -> bool {
@@ -86,8 +93,17 @@ fn valid_component(component: &str) -> bool {
         && component != "."
         && component != ".."
         && component.len() <= MAX_COMPONENT_BYTES
-        && !component.ends_with(['.', ' '])
-        && !windows_device_name(component)
+        && !windows_alias(component)
+}
+
+#[cfg(windows)]
+fn windows_alias(component: &str) -> bool {
+    component.ends_with(['.', ' ']) || windows_device_name(component)
+}
+
+#[cfg(not(windows))]
+const fn windows_alias(_component: &str) -> bool {
+    false
 }
 
 fn protected_component(component: &str) -> bool {
@@ -96,6 +112,7 @@ fn protected_component(component: &str) -> bool {
         || component.to_ascii_lowercase().starts_with(".peritus-txn-")
 }
 
+#[cfg(windows)]
 fn windows_device_name(component: &str) -> bool {
     let stem = component.split('.').next().unwrap_or(component);
     let uppercase = stem.to_ascii_uppercase();
@@ -133,16 +150,25 @@ mod tests {
             "/etc/passwd",
             "a/../b",
             "a//b",
-            "a\\b",
-            "C:/x",
-            "name.",
-            "NUL",
             ".git/config",
             "nested/.GIT/index",
             ".peritus/state",
             "a\0b",
         ] {
             assert!(WorkspacePath::new(value).is_err(), "accepted {value:?}");
+        }
+        #[cfg(windows)]
+        for value in ["a\\b", "C:/x", "name.", "NUL"] {
+            assert!(WorkspacePath::new(value).is_err(), "accepted {value:?}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn accepts_native_unix_names_and_deep_paths() {
+        let deep = std::iter::repeat_n("segment", 300).collect::<Vec<_>>().join("/");
+        for value in ["name.", "NUL", "a\\b", "a:b", "line\nname", deep.as_str()] {
+            assert_eq!(WorkspacePath::new(value).expect("native Unix path").as_str(), value);
         }
     }
 }

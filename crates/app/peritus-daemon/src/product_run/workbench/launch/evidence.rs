@@ -15,19 +15,25 @@ impl ProductRunService {
         observed: &WorkbenchLaunchText,
     ) -> Result<WorkbenchReceipt, AppProtocolError> {
         self.refresh_previews(run)?;
-        let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
-        let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
-        let current = require_launch(&record.preview, launch)?;
-        if matches!(current.state(), WorkbenchLaunchState::Accepted | WorkbenchLaunchState::Running)
-            || !record
-                .preview
-                .outputs
-                .get(&launch)
-                .is_some_and(|value| value.contains(observed.as_str()))
-        {
+        let (current, process_id) = {
+            let records = self.inner.records.read().map_err(|_| app_error(Code::Backpressure))?;
+            let record = records.get(&run).ok_or_else(|| app_error(Code::InvalidIdentifier))?;
+            let current = require_launch(&record.preview, launch)?;
+            (current.clone(), current.process())
+        };
+        if current.state() == WorkbenchLaunchState::Accepted {
             return Err(app_error(Code::StaleRevision));
         }
-        drop(records);
+        let process_id = process_id.ok_or_else(|| app_error(Code::StaleRevision))?;
+        if !self.preview_output_contains(
+            command.query(),
+            launch,
+            &current,
+            process_id,
+            observed.as_str(),
+        )? {
+            return Err(app_error(Code::StaleRevision));
+        }
         let (receipt, _) = self.admit_preview(command, run, |preview| {
             mutate_launch(preview, launch, |current| {
                 rebuild_launch_with(
@@ -192,7 +198,9 @@ impl ProductRunService {
             || !launch.ready()
             || !matches!(
                 launch.state(),
-                WorkbenchLaunchState::Exited | WorkbenchLaunchState::Stopped
+                WorkbenchLaunchState::Running
+                    | WorkbenchLaunchState::Exited
+                    | WorkbenchLaunchState::Stopped
             )
             || launch.behavior_checks() == 0
         {
@@ -212,14 +220,8 @@ impl ProductRunService {
                 )
         });
         let Some(capture) = capture else { return Ok(()) };
-        let owned = self
-            .inner
-            .preview_processes
-            .lock()
-            .map_err(|_| app_error(Code::Backpressure))?
-            .get(&launch_id)
-            .is_some_and(|active| Some(active.launch.process_id()) == launch.process());
-        if !owned {
+        let process_id = launch.process().ok_or_else(|| app_error(Code::StaleRevision))?;
+        if !self.preview_output_contains(query, launch_id, &launch, process_id, note.as_str())? {
             return Ok(());
         }
         match self.verify_profile(query, launch.profile()) {
@@ -255,6 +257,43 @@ impl ProductRunService {
             )
         })
         .map_err(error_value)
+    }
+
+    fn preview_output_contains(
+        &self,
+        query: WorkbenchQuery,
+        launch_id: ControlOperationId,
+        launch: &WorkbenchLaunchResult,
+        process_id: peritus_types::ProcessId,
+        needle: &str,
+    ) -> Result<bool, AppProtocolError> {
+        let (workspace, direct) = self.verify_profile(query, launch.profile())?;
+        let active = self
+            .inner
+            .preview_processes
+            .lock()
+            .map_err(|_| app_error(Code::Backpressure))?
+            .get(&launch_id)
+            .cloned();
+        if let Some(active) = active
+            && active.launch.process_id() == process_id
+        {
+            return active
+                .runtime
+                .preview_output_contains(process_id, needle)
+                .map_err(|_| app_error(Code::Backpressure));
+        }
+        let run = RunId::new(launch_id.into_bytes()).map_err(|_| app_error(Code::Internal))?;
+        let state = self.preview_state_root().join("commands").join(hex(launch_id.as_bytes()));
+        let runtime = if direct {
+            CommandRuntime::open_direct(state, workspace, run, self.inner.processes.clone())
+        } else {
+            CommandRuntime::open(state, workspace, run, self.inner.processes.clone())
+        }
+        .map_err(|_| app_error(Code::Backpressure))?;
+        runtime
+            .preview_output_contains(process_id, needle)
+            .map_err(|_| app_error(Code::Backpressure))
     }
 
     pub(super) fn preview_state_root(&self) -> PathBuf {

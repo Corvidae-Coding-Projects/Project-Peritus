@@ -180,6 +180,56 @@ pub fn reopen_fixture(persistence: &ReopenFixture, ids: &Ids) -> WorkspaceGatewa
     try_reopen_fixture(persistence, ids).expect("reopen writable workspace")
 }
 
+pub fn reopen_fixture_with_snapshot_condition(
+    persistence: &ReopenFixture,
+    ids: &Ids,
+    snapshot_manifest: &[u8],
+    revision: RevisionNumber,
+    condition: WorkspaceCondition,
+) -> WorkspaceGateway {
+    let repository = GitRepository::open(RepositoryOptions::new(&persistence.source_root))
+        .expect("reopen repository");
+    let worktree_manifest = WorktreeRegistrationManifest::decode(&persistence.worktree_manifest)
+        .expect("decode worktree registration");
+    let snapshot_manifest = CandidateSnapshotManifest::decode(snapshot_manifest)
+        .expect("decode current snapshot registration");
+    let worktree = repository.reopen_worktree(&worktree_manifest).expect("reopen worktree");
+    let snapshot = repository.reopen_snapshot(&snapshot_manifest).expect("reopen snapshot");
+    let baseline = worktree.baseline();
+    let binding = WorkspaceBinding::new(
+        ids.workspace,
+        ids.resource,
+        ids.environment,
+        worktree.root().to_owned(),
+        baseline.commit(),
+        baseline.tree(),
+    )
+    .expect("workspace binding");
+    let state = WorkspaceState::new(
+        binding,
+        Generation::first(),
+        revision,
+        SnapshotIdentity::new(
+            ids.workspace,
+            Generation::first(),
+            revision,
+            snapshot.commit(),
+            snapshot.tree(),
+        ),
+        ids.holder(),
+        condition,
+    )
+    .expect("workspace state");
+    let workspace = WritableWorkspace::open(WritableOpenRequest::new(
+        repository,
+        worktree,
+        state,
+        &persistence.transaction_root,
+    ))
+    .expect("reopen writable workspace");
+    WorkspaceGateway::new(workspace)
+}
+
 pub fn try_reopen_fixture(
     persistence: &ReopenFixture,
     ids: &Ids,

@@ -1,6 +1,7 @@
 //! E0 production writer-gates-review-fixer composition.
 
 mod acceptance;
+mod attachment;
 mod cancellation;
 mod candidate_digest;
 mod checkpoint;
@@ -18,6 +19,7 @@ mod terminal_exit;
 mod turn_result;
 mod types;
 
+pub use attachment::{AttachmentReadRequest, AttachmentReadResponse};
 pub use cancellation::check_cancelled;
 pub use checkpoint::CandidateRecorder;
 pub use resume::ProductRunResume;

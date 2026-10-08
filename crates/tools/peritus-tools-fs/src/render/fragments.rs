@@ -202,8 +202,8 @@ pub(super) fn search_omission_path_page(
     offset: u64,
     output_bytes: u64,
 ) -> Result<RenderedOutput, FsToolError> {
-    let path = omission.path().as_str();
-    let start = checked_string_offset(path, offset)?;
+    let path = omission.path_value();
+    let start = checked_string_offset(&path, offset)?;
     let next_index = index.checked_add(1).ok_or_else(protocol_error)?;
     let omission_page_end = value
         .omission_page_start()
@@ -214,7 +214,7 @@ pub(super) fn search_omission_path_page(
     } else {
         value.next_omission_offset()
     };
-    let end = largest_prefix_end(path, start, |piece, end| {
+    let end = largest_prefix_end(&path, start, |piece, end| {
         let complete = end == path.len();
         let next_omission = if complete { following_omission } else { Some(index) };
         search_omission_field_json(index, omission, offset, piece, path.len())
@@ -344,7 +344,7 @@ fn search_omission_field_json(
     total: usize,
 ) -> Result<BoundedJson, FsToolError> {
     object(vec![
-        ("field", string("path".to_owned())),
+        ("field", string(omission.path_field().to_owned())),
         ("index", u64_integer(index)),
         ("offset", u64_integer(offset)),
         ("reason", string(omission_name(omission.reason()).to_owned())),

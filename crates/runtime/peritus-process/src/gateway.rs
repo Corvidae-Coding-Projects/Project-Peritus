@@ -259,8 +259,9 @@ fn validate_budget(
         && begin.action_id() == plan.identity().action_id()
         && begin.action_digest() == action_digest
         && begin.revision() == plan.identity().revision()
-        && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
-            >= plan.resource_policy().wall_millis())
+        && plan.resource_policy().wall_millis().is_none_or(|wall| {
+            begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get() >= wall
+        }))
 }
 
 fn validate_lease(

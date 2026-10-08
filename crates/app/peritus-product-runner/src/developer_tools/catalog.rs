@@ -6,13 +6,23 @@ use peritus_model_protocol::{
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"depth":{"type":"integer","minimum":1},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"path":{"type":"string"}},"type":"object"}"#;
-const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"max_results":{"type":"integer","minimum":1},"path":{"type":"string"},"query":{"type":"string","minLength":1}},"required":["query"],"type":"object"}"#;
-const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer","minimum":1},"line_byte_offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"path":{"type":"string"},"start_line":{"type":"integer","minimum":1}},"required":["path"],"type":"object"}"#;
+const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"depth":{"type":"integer","minimum":1},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"}},"type":"object"}"#;
+const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"max_results":{"type":"integer","minimum":1},"path":{"type":"string"},"query":{"type":"string","minLength":1}},"required":["query"],"type":"object"}"#;
+const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer","minimum":1},"line_byte_offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":256,"maximum":524288},"path":{"type":"string"},"start_line":{"type":"integer","minimum":1}},"required":["path"],"type":"object"}"#;
+const ATTACHMENT_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"attachment":{"type":"string","minLength":32,"maxLength":32},"version":{"type":"string","minLength":32,"maxLength":32},"source_sha256":{"type":"string","minLength":64,"maxLength":64},"selected_sha256":{"type":"string","minLength":64,"maxLength":64},"source_bytes":{"type":"integer","minimum":0},"range_start":{"type":"integer","minimum":0},"range_end":{"type":"integer","minimum":0},"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":4,"maximum":32768}},"required":["attachment","version","source_sha256","selected_sha256","source_bytes","range_start","range_end","offset","max_bytes"],"type":"object"}"#;
+const REVIEW_EVIDENCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","default":16384,"minimum":1,"maximum":524288},"section":{"type":"string","default":"developer_commands","enum":["transcript","diff","gates","developer_commands","prior","correction"]}},"required":["offset","max_bytes"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
 
 pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
-    definitions_from(&[
+    definitions_for_attachments(true)
+}
+
+/// Builds writer tools and advertises immutable attachment reads only when the current input
+/// has an authenticated selected file version.
+pub fn definitions_for_attachments(
+    has_selected_file_attachments: bool,
+) -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    let mut definitions = definitions_from(&[
         (
             "workspace_list",
             "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. Pages stay within max_bytes; pass the full next_cursor object back as cursor to continue, and inspect omissions because inaccessible entries are reported there. A cursor is bound to its path and depth. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. An exact absolute directory outside the workspace is accepted only when the user's task explicitly named it; that result is read-only reference evidence and does not ground workspace mutation or commands. Call this first with a workspace-relative path in every fresh writer or fixer turn; mutation and process tools remain locked until a successful workspace listing and a targeted workspace file read.",
@@ -27,6 +37,11 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
             "workspace_read",
             "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
             WORKSPACE_READ_SCHEMA,
+        ),
+        (
+            "attachment_read",
+            "Read a bounded UTF-8 page from one user-confirmed immutable attachment version. Use the exact attachment, version, source_sha256, selected_sha256, source_bytes and selected range shown in the governing input. offset is an absolute source byte offset; continue at next_offset until null. Pages contain at most 32 KiB and never reopen a workspace path or substitute newer bytes.",
+            ATTACHMENT_READ_SCHEMA,
         ),
         (
             "workspace_write",
@@ -45,7 +60,7 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "run_command",
-            "Run a non-destructive structured executable and argv to completion through the harness-owned C4 router and C2 process lifecycle after current-host-invocation workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. The hard output cap is a fallback, not a target. When output still exceeds that cap, the result preserves both its opening context and final diagnostics while omitting the noisy middle. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request any positive timeout representable by the millisecond process protocol for a known longer build or test. When an embedding caller explicitly selects a product deadline, each request is also clamped to that shared deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds or null when unbounded, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
+            "Run a non-destructive structured executable and argv to completion through the harness-owned C4 router and C2 process lifecycle after current-host-invocation workspace_list and workspace_read grounding; use it to build, test, lint, inspect Git, apply caller-authorized external effects, and observe failures. Keep build/test worker counts at or below workspace_list.execution_resources.recommended_parallelism. The harness supplies cross-language concurrency defaults and rejects recognized explicit build fan-out above that observed ceiling with a retryable diagnostic. If a required executable is absent, verify its path and inspect available package or runtime managers; in an authorized disposable software or system task, install the ordinary prerequisite and retry the real command instead of fabricating a stand-in deliverable. Before inspecting a large binary, log, database, or generated file, prefer purpose-built filters, bounded ranges, or summary modes so only decision-relevant output enters model context. For binary, deleted, damaged, or truncated data, search for the strongest contract-supplied stable fragment and inspect a bounded neighboring byte or record window before speculative transforms or broad parameter searches; validate the reconstructed whole value against every declared constraint. When a command queries an API or parses structured data, print only the fields needed for the current decision; if the shape is unknown, begin with keys, counts, or a bounded sample instead of dumping nested metadata. Before transferring a whole remote repository, archive, or dataset, inspect an immutable manifest, index, tree, content length, or object-size summary and prefer targeted pinned records. After a bulk transfer times out, do not retry the same collection through a different bulk wrapper without new evidence that it fits the available command budget. Prefer relevant command output: the harness retains the complete structured request/result log for independent review, while the model-visible view may show a bounded excerpt with an explicit omission marker and digest. Use developer_evidence_read with offset pages to retrieve and verify the full retained log when reviewing command claims. Label each command as external_effect when it performs the requested action or verification when it freshly inspects the completed outcome. Commands default to a 120-second deadline; request any positive timeout representable by the millisecond process protocol for a known longer build or test. When an embedding caller explicitly selects a product deadline, each request is also clamped to that shared deadline while preserving a completion reserve; results report the requested timeout, actual allowance, remaining product seconds or null when unbounded, and whether the deadline limited the command. A timeout kills the owned process tree and returns captured output plus recovery guidance so the run can choose a materially bounded strategy. Harness-owned peritus-internal gates are unavailable here and run independently after the turn. Use workspace_remove for intentional file deletion.",
             r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["external_effect","verification"],"type":"string"},"timeout_seconds":{"default":120,"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
         ),
         (
@@ -83,7 +98,11 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
             "Reconcile an active command handle with its durable C2 process state after an interrupted poll or control operation.",
             COMMAND_HANDLE_SCHEMA,
         ),
-    ])
+    ])?;
+    if !has_selected_file_attachments {
+        definitions.retain(|definition| definition.name().as_str() != "attachment_read");
+    }
+    Ok(definitions)
 }
 
 /// Returns the repository-inspection subset used by the mandatory design pass.
@@ -104,7 +123,23 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
             "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Pages report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
             WORKSPACE_READ_SCHEMA,
         ),
+        (
+            "attachment_read",
+            "Read a bounded page from the exact user-confirmed immutable attachment version and selected range listed in the governing input. Continue at next_offset; this never reopens a workspace path.",
+            ATTACHMENT_READ_SCHEMA,
+        ),
     ])
+}
+
+/// Adds the run-scoped evidence reader available only to an independent reviewer.
+pub fn reviewer_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
+    let mut definitions = read_only_definitions()?;
+    definitions.push(definition(
+        "developer_evidence_read",
+        "Read an exact UTF-8 byte page from an immutable section of the current independent-review evidence: transcript, diff, gates, developer_commands, prior, or correction. section defaults to developer_commands for compatibility. Use the section named by a prompt omission marker, begin at offset 0, and continue at next_offset until null. Each page includes the stable section name, total_bytes, and sha256 so the exact original source can be reconstructed and verified; historical transcript, diff, gates, and finding text are not recoverable from fresh workspace files.",
+        REVIEW_EVIDENCE_READ_SCHEMA,
+    )?);
+    Ok(definitions)
 }
 
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
@@ -162,6 +197,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn attachment_reader_is_advertised_only_for_authenticated_file_inputs() {
+        let without = definitions_for_attachments(false).expect("tool definitions");
+        assert!(!without.iter().any(|tool| tool.name().as_str() == "attachment_read"));
+        let with = definitions_for_attachments(true).expect("tool definitions");
+        assert!(with.iter().any(|tool| tool.name().as_str() == "attachment_read"));
+    }
+
+    #[test]
     fn mutating_catalog_declares_fresh_grounding_protocol() {
         let tools = definitions().expect("tool definitions");
         let description = |name: &str| {
@@ -198,8 +241,11 @@ mod tests {
         assert!(description("run_command").contains("nested metadata"));
         assert!(description("run_command").contains("immutable manifest, index, tree"));
         assert!(description("run_command").contains("different bulk wrapper"));
-        assert!(description("run_command").contains("hard output cap is a fallback"));
-        assert!(description("run_command").contains("final diagnostics"));
+        assert!(description("run_command").contains("complete structured request/result log"));
+        assert!(
+            description("run_command").contains("bounded excerpt with an explicit omission marker")
+        );
+        assert!(description("run_command").contains("developer_evidence_read with offset pages"));
         assert!(description("run_command").contains("recovery guidance"));
         assert!(description("run_command").contains("install the ordinary prerequisite"));
         assert!(description("run_command").contains("instead of fabricating a stand-in"));

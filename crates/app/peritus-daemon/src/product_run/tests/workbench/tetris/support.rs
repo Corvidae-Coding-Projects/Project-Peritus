@@ -271,8 +271,8 @@ pub(super) fn launch_profile(
         Vec::new(),
         source,
         Some(build),
-        2_000,
-        20_000,
+        Some(2_000),
+        Some(20_000),
         true,
     )
     .expect("launch profile")

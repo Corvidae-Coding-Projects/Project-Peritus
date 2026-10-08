@@ -32,6 +32,7 @@ impl AppModel {
             // A dismissed inspection no longer owns the current screen or its notices.
             return Vec::new();
         }
+        self.review_request_error(pending);
         if matches!(pending, Some(PendingRequest::ArtifactCancel))
             && error.code() == peritus_app_protocol::AppErrorCode::InvalidIdentifier
         {
@@ -123,6 +124,26 @@ impl AppModel {
         self.notice(NoticeLevel::Error, error.actionable_message());
         Vec::new()
     }
+
+    fn review_request_error(&mut self, pending: Option<&PendingRequest>) {
+        let Some(product) = &mut self.product else { return };
+        match pending {
+            Some(PendingRequest::WorkbenchReviewDiff(query))
+                if product.review.pending_diff == Some(*query) =>
+            {
+                product.review.pending_diff = None;
+                "Diff page failed; press r to refresh.".clone_into(&mut product.review.message);
+            }
+            Some(PendingRequest::WorkbenchReviewDiffBytes(query))
+                if product.review.pending_raw == Some(*query) =>
+            {
+                product.review.pending_raw = None;
+                "Exact raw line range failed; bounded preview remains."
+                    .clone_into(&mut product.review.message);
+            }
+            _ => {}
+        }
+    }
     pub(super) fn handle_response(&mut self, response: &AppResponseEnvelope) -> Vec<Effect> {
         if !self.context_matches(response.context()) {
             return Vec::new();
@@ -193,6 +214,9 @@ impl AppModel {
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
+            | AppResponsePayload::WorkbenchPreviewOutput(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)
@@ -381,6 +405,9 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchReview(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
+            | AppResponsePayload::WorkbenchPreviewOutput(_)
+            | AppResponsePayload::WorkbenchReviewDiff(_)
+            | AppResponsePayload::WorkbenchReviewDiffBytes(_)
             | AppResponsePayload::WorkbenchContext(_)
             | AppResponsePayload::WorkbenchQueue(_)
             | AppResponsePayload::WorkbenchReceipt(_)

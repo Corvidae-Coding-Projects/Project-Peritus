@@ -48,6 +48,14 @@ pub(super) struct ScriptedProvider {
     pub(super) responses: Mutex<VecDeque<VecDeque<EventEnvelope>>>,
     pub(super) requests: Mutex<Vec<ModelRequest>>,
     stalls: Mutex<VecDeque<bool>>,
+    attachment_read_on_first_turn: bool,
+    stalled_response_started: tokio::sync::Notify,
+}
+
+impl ScriptedProvider {
+    pub(super) async fn wait_for_stalled_response(&self) {
+        self.stalled_response_started.notified().await;
+    }
 }
 
 impl ModelProvider for ScriptedProvider {
@@ -64,21 +72,34 @@ impl ModelProvider for ScriptedProvider {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
+            let read_attachment = self.attachment_read_on_first_turn
+                && self.requests.lock().expect("request observations").is_empty();
+            let attachment_events = read_attachment.then(|| {
+                attachment_read_events(&request).expect("file reference metadata in request")
+            });
             self.requests.lock().expect("request observations").push(request);
-            let events = self
-                .responses
-                .lock()
-                .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
-                .pop_front()
-                .ok_or_else(|| {
-                    ProviderCoreError::configuration("scripted_provider", "script exhausted")
-                })?;
+            let events = if let Some(events) = attachment_events {
+                events
+            } else {
+                self.responses
+                    .lock()
+                    .map_err(|_| {
+                        ProviderCoreError::configuration("scripted_provider", "lock failed")
+                    })?
+                    .pop_front()
+                    .ok_or_else(|| {
+                        ProviderCoreError::configuration("scripted_provider", "script exhausted")
+                    })?
+            };
             let stall_on_empty = self
                 .stalls
                 .lock()
                 .map_err(|_| ProviderCoreError::configuration("scripted_provider", "lock failed"))?
                 .pop_front()
                 .unwrap_or(false);
+            if stall_on_empty {
+                self.stalled_response_started.notify_one();
+            }
             Ok(OwnedModelStream::new(ScriptedStream { events, stall_on_empty }, cancellation))
         })
     }
@@ -94,7 +115,63 @@ pub(super) fn scripted(
         responses: Mutex::new(responses.into()),
         requests: Mutex::new(Vec::new()),
         stalls: Mutex::new(VecDeque::new()),
+        attachment_read_on_first_turn: false,
+        stalled_response_started: tokio::sync::Notify::new(),
     })
+}
+
+pub(super) fn scripted_attachment_reader(
+    id: u8,
+    name: &str,
+    final_response: VecDeque<EventEnvelope>,
+) -> Arc<ScriptedProvider> {
+    Arc::new(ScriptedProvider {
+        profile: profile([id; 16], name),
+        responses: Mutex::new(VecDeque::from([final_response])),
+        requests: Mutex::new(Vec::new()),
+        stalls: Mutex::new(VecDeque::new()),
+        attachment_read_on_first_turn: true,
+        stalled_response_started: tokio::sync::Notify::new(),
+    })
+}
+
+fn attachment_read_events(request: &ModelRequest) -> Result<VecDeque<EventEnvelope>, String> {
+    let mut metadata = None;
+    for message in request.messages() {
+        for block in message.content() {
+            if let peritus_model_protocol::ContentBlock::Text(text) = block {
+                for line in text.expose_for_wire().lines() {
+                    if let Ok(value) = serde_json::from_str::<Value>(line)
+                        && value.get("attachment").is_some()
+                        && value.get("version").is_some()
+                    {
+                        metadata = Some(value);
+                    }
+                }
+            }
+        }
+    }
+    let metadata = metadata.ok_or_else(|| "attachment metadata not found".to_owned())?;
+    let range = metadata
+        .get("range")
+        .and_then(Value::as_array)
+        .filter(|range| range.len() == 2)
+        .ok_or_else(|| "attachment range is invalid".to_owned())?;
+    let arguments = serde_json::json!({
+        "attachment": metadata["attachment"],
+        "version": metadata["version"],
+        "source_sha256": metadata["source_sha256"],
+        "selected_sha256": metadata["selected_sha256"],
+        "source_bytes": metadata["source_bytes"],
+        "range_start": range[0],
+        "range_end": range[1],
+        "offset": range[0],
+        "max_bytes": 32768,
+    });
+    Ok(named_tool_response(
+        "attachment_read",
+        serde_json::to_vec(&arguments).map_err(|err| err.to_string())?,
+    ))
 }
 
 pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
@@ -106,6 +183,8 @@ pub(super) fn stalled(id: u8, name: &str) -> Arc<ScriptedProvider> {
         }])])),
         stalls: Mutex::new(VecDeque::from([true])),
         requests: Mutex::new(Vec::new()),
+        attachment_read_on_first_turn: false,
+        stalled_response_started: tokio::sync::Notify::new(),
     })
 }
 
@@ -143,6 +222,8 @@ pub(super) fn stalled_then(
         responses: Mutex::new(all),
         requests: Mutex::new(Vec::new()),
         stalls: Mutex::new(VecDeque::from([true])),
+        attachment_read_on_first_turn: false,
+        stalled_response_started: tokio::sync::Notify::new(),
     })
 }
 

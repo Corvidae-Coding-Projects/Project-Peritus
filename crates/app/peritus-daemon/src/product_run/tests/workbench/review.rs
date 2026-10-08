@@ -38,6 +38,49 @@ async fn selected_explanation_produces_a_reviewer_reply_without_writer_work() {
     else {
         panic!("review page")
     };
+    let diff_request = peritus_app_protocol::WorkbenchReviewDiffQuery::new(
+        query(workspace),
+        run,
+        page.query().revision(),
+        0,
+        0,
+        0,
+    );
+    let AppResponsePayload::WorkbenchReviewDiff(diff_page) =
+        service.workbench_review_diff(actor(), diff_request)
+    else {
+        panic!("bounded review diff page")
+    };
+    assert!(!diff_page.lines().is_empty());
+    let bytes_request = peritus_app_protocol::WorkbenchReviewDiffBytesQuery::new(
+        query(workspace),
+        run,
+        page.query().revision(),
+        page.candidate_digest(),
+        page.diff_digest(),
+        0,
+        128,
+    );
+    let AppResponsePayload::WorkbenchReviewDiffBytes(bytes) =
+        service.workbench_review_diff_bytes(actor(), bytes_request)
+    else {
+        panic!("raw diff range")
+    };
+    assert_eq!(bytes.bytes().len(), 128);
+    assert!(u32::try_from(bytes.bytes().len()).expect("range length fits") < bytes.total_bytes());
+    let stale_bytes = peritus_app_protocol::WorkbenchReviewDiffBytesQuery::new(
+        query(workspace),
+        run,
+        page.query().revision(),
+        page.candidate_digest(),
+        peritus_types::Sha256Digest::new([0x99; 32]),
+        0,
+        128,
+    );
+    assert!(matches!(
+        service.workbench_review_diff_bytes(actor(), stale_bytes),
+        AppResponsePayload::Error(_),
+    ));
     let explain = command(
         workspace,
         8,

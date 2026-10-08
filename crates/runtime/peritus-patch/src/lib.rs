@@ -22,7 +22,7 @@ pub use content::FinalFile;
 pub use error::{ErrorCode, PatchError, PatchOperationContext, RecoveryClass, RollbackStatus};
 pub use line_endings::LineEndingPolicy;
 pub use operation::{PatchOperation, PatchOperationKind};
-pub use path::{MAX_COMPONENT_BYTES, MAX_COMPONENTS, MAX_PATH_BYTES, WorkspacePath};
+pub use path::{MAX_COMPONENT_BYTES, MAX_PATH_BYTES, WorkspacePath};
 pub use plan::{PatchIdentity, PatchPlan};
 pub use preimage::{FileMode, Preimage};
 pub use set::{MAX_FILE_BYTES, MAX_PATCH_BYTES, MAX_PATCH_OPERATIONS, PatchSet};

@@ -14,8 +14,12 @@ fn exact_restricted_authority_runs_through_the_helper_and_releases_the_session()
     .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -59,8 +63,12 @@ fn restricted_pty_keeps_binary_helper_protocol_off_the_terminal_stream() {
         native_plan(&root, &ids, plan_options).expect("native PTY execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -100,8 +108,12 @@ fn restricted_helper_receives_the_exact_protected_anonymous_handle() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );
@@ -136,8 +148,12 @@ fn native_supervisor_resource_poll_uses_the_owned_resource_limit_path() {
             .expect("native execution plan");
     let action = intent(&ids, &execution);
     let mut journal = open_journal(&root);
-    let receipts =
-        commit_authority(&mut journal, &ids, &action, execution.resource_policy().wall_millis());
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().expect("finite wall limit"),
+    );
     let gateway = ExecutionGateway::new(
         ProcessStore::open(root.registry(), root.workspace()).expect("store"),
     );

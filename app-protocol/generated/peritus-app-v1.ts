@@ -689,6 +689,15 @@ export interface WorkbenchResultQuery {
   readonly run: RunId;
 }
 
+export interface WorkbenchPreviewOutputQuery {
+  readonly query: WorkbenchQuery;
+  readonly run: RunId;
+  readonly launch: ControlOperationId;
+  readonly stream: WorkbenchPreviewOutputStream;
+  readonly offset: UInt64;
+  readonly maximumBytes: number;
+}
+
 export interface WorkbenchLaunchSource {
   readonly kind: "managedCandidate" | "plainFolderFile";
   readonly path: string;
@@ -774,6 +783,19 @@ export interface WorkbenchPreviewOutput {
   readonly stdout: string;
   readonly stderr: string;
   readonly truncated: boolean;
+}
+
+export interface WorkbenchPreviewOutputStream {
+  readonly tag: "stdout" | "stderr" | "terminal";
+}
+
+export interface WorkbenchPreviewOutputRange {
+  readonly launch: ControlOperationId;
+  readonly stream: WorkbenchPreviewOutputStream;
+  readonly offset: UInt64;
+  readonly totalBytes: UInt64;
+  readonly artifactDigest?: Sha256Digest;
+  readonly bytes: string;
 }
 
 export interface WorkbenchPreviewSnapshot {
