@@ -460,19 +460,23 @@ fn accept_output(
         .transpose()?;
     let reservation = account.reserve(bytes.len(), global_available)?;
     let accepted = reservation.accepted();
-    let (retained, write_error) = if accepted == 0 {
-        (0, None)
+    let (retained, write_failed) = if accepted == 0 {
+        (0, false)
     } else {
         match spool_mut(spools, stream) {
             Ok(spool) => match spool.write(&bytes[..accepted]) {
-                Ok(written) => (written, None),
-                Err(failure) => (failure.written(), Some(failure.into_error())),
+                Ok(written) => (written, false),
+                Err(failure) => {
+                    let written = failure.written();
+                    let _original_cause = failure.into_error();
+                    (written, true)
+                }
             },
-            Err(error) => (0, Some(error)),
+            Err(_original_cause) => (0, true),
         }
     };
     account.commit(reservation, retained)?;
-    if write_error.is_some() {
+    if write_failed {
         account.fail();
     }
     if retained > 0 {
@@ -490,10 +494,9 @@ fn accept_output(
     state.retained_terminal = window.stream_bytes(OutputStream::Terminal);
     drop(state);
     emit(shared, plan, Some(offset), ProcessEventKind::Output(stream), bytes.to_vec());
-    match write_error {
-        Some(error) => Err(error),
-        None => Ok(()),
-    }
+    // Archive pressure fixes this stream as incomplete. The configured overflow action then
+    // either accepts continued live observation or records the ordinary output-limit trigger.
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
