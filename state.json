@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3889,
-        "tip_oid": "9898439f54471bf343345dc1e57a1dbae8d97520",
-        "prefix_sha256": "65fc620ee7201aa486f9b1bb564f58d04b6a04a48d5356cf778651fbc2dce1a5"
+        "sequence": 3890,
+        "tip_oid": "44869316d6678874185adf39d7b0a7e4075013ad",
+        "prefix_sha256": "0e2be7c43df278ac6b120796903f47a981b69fb1777dcd90fb78c7778f10447b"
       },
       "NWAR": {
         "sequence": 39,
@@ -38933,12 +38933,13 @@
       "display_id": 654,
       "title": "[L597] macOS helper setup silently tightens inherited limits and can lose secret cleanup evidence",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L597.\n\n- Evidence: `crates/runtime/peritus-sandbox-macos/src/runner.rs:125-164,192-229`; `src/runner/native.rs:134-186,228-265`; `src/runner/materialized.rs:20-25` in the same crate.\n- Behavior: Hard rlimits use the minimum of the requested ceiling and both inherited soft and hard limits, then set both to that value without reporting the effective reduction. Untimed CPU zero is explicitly skipped. Protected payload reads, status writes, secret-file writes, and synchronization are synchronous with no cancellation. A failed secret write removes its file best-effort before returning; only successful materialization is added to rollback ownership. Rollback `Drop` also ignores removal failures. Successful exec replaces the helper and does not run that destructor.\n- Consequence: An inherited low soft limit can constrain a request that asked for more, without a negotiation error. Failed cleanup can leave untracked protected material, and the rollback owner cannot persist cleanup evidence across helper replacement or crash. Successful-exec secret-file retirement depends on the surrounding session cleanup, which is being traced separately.\n- Repair direction: Report and validate effective inherited resource ceilings before target activation; retain exact durable cleanup obligations for partial file creation and unsuccessful removals, and make staging/status work cancellable without inventing a run timeout.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.203919699Z",
-      "updated_at": "2026-10-08T00:04:32.416202012Z",
+      "updated_at": "2026-10-08T00:05:54.293558664Z",
+      "closed_at": "2026-10-08T00:05:54.290625070Z",
       "labels": [
         "daily-driving-limiter"
       ],
