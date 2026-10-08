@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4051,
-        "tip_oid": "c5b95011f27bf6b1aabb1c1f13de7b907fc6a186",
-        "prefix_sha256": "80e6fcc84c802f18c7a6b9bf86dfa7851d2851fac3240fb70269f6203ac02ab4"
+        "sequence": 4052,
+        "tip_oid": "317cd49b150554151aa006cd0ef934edd493b339",
+        "prefix_sha256": "86532e14a345185633e1d8caaa3f5eefa8cbe38e646866a9deb5ffd082af0c29"
       },
       "NWAR": {
         "sequence": 39,
@@ -14418,12 +14418,13 @@
       "display_id": 679,
       "title": "[L624] Evidence startup holds a write transaction for a full catalog scan and has no quarantine reconciliation operation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L624.\n\n- Evidence: `crates/state/peritus-evidence/src/sqlite/quarantine.rs:49-76,84-106,159-199`; `src/sqlite/row.rs:56-104,107-155`; `src/sqlite/store.rs:57-64` in the same crate.\n- Behavior: Every open begins an immediate transaction, materializes every active identity, and fully validates each record plus normalized collections and artifact roots before commit. CorruptCatalog rows receive a digest-bound copy in quarantine and remain in the original table; load rejects any quarantined identity. This module exposes observation/count APIs but no restore or reconciliation operation. Malformed identity bytes fail the identity scan before individual containment; other scan failures abort startup.\n- Consequence: Startup work grows with the entire catalog while holding the writer lock, interacting with L620's five-second contention failure. Quarantine correctly prevents corrupt evidence from being silently reused, but a repaired dependency does not itself make that identity usable again.\n- Repair direction: Retain corruption checks and copied evidence, but make verified scan progress durable and bounded per transaction; implement explicit digest-checked reconciliation/rebuild ownership rather than a permanent unusable identity with an operator-only recovery label. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.323931599Z",
-      "updated_at": "2026-10-08T04:29:19.149371998Z",
+      "updated_at": "2026-10-08T04:31:02.168954015Z",
+      "closed_at": "2026-10-08T04:31:02.166204164Z",
       "labels": [
         "daily-driving-limiter"
       ],
