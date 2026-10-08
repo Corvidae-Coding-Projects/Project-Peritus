@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3893,
-        "tip_oid": "423ff5074c457f797a3f35df86a38fa558bcd325",
-        "prefix_sha256": "d423cea8ce6297cd5b9f4d27715d8cf17538310aae34abfdc62804c33bdb53b1"
+        "sequence": 3894,
+        "tip_oid": "a8eec5de1de1449e2eac447cb5f2431963d0f5c2",
+        "prefix_sha256": "88cecfa5e7c8bcbd25f12d577f6e4ebce543cb8fb467108cc02c495ad36b9832"
       },
       "NWAR": {
         "sequence": 39,
@@ -23217,12 +23217,13 @@
       "display_id": 505,
       "title": "[L424] E2 complete-report caps make long or recurrent evidence unanalyzable without lossless partitioning",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L424.\n\n- Evidence: `crates/analysis/peritus-debugger/src/clustering/engine.rs:146-249`, `src/causal/analyzer.rs:112-138,223-264`, `src/causal/rules.rs:141-148`, `src/report/validation.rs:159-187,210-273,299-326` in the same crate; compiled values are in L415.\n- Behavior: Clustering first builds all exact groups, then merges groups having the same pattern kind/category/analyzer/component class, regardless of environment or revision. Only afterward it checks each merged group against 4,096 members and the whole set against 8,192 patterns. Every mapped diagnostic cause retains every task-success citation in its subject as contrary evidence; complete report validation then rejects a cause with more than 256 contrary citations. Causes and report claims are separately capped at 16,384, component links at 32,768, and full report bytes at 64 MiB after encoding. Any excess returns an error for the entire result.\n- Consequence: For inputs producing 4,097 distinct findings that merge into one pattern, clustering fails even though the selection's 131,072-event ceiling permits that scale. A diagnostic within a subject having 257 successful observations can likewise make the complete report fail through contrary evidence. These are source-derived conditional examples, not constructed/executed fixtures or proof of installed daily-driver usage. Analysis failure does not erase source evidence, but there is no lossless paged report alternative in these functions.\n- Repair direction: Preserve every citation in durable indexed evidence and represent large patterns/reports with lossless partitions and continuation cursors. Distinguish a display/work-page bound from rejection of the complete diagnosis. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.490380676Z",
-      "updated_at": "2026-10-08T00:09:58.171176152Z",
+      "updated_at": "2026-10-08T00:11:21.103312711Z",
+      "closed_at": "2026-10-08T00:11:21.099701277Z",
       "labels": [
         "daily-driving-limiter"
       ],
