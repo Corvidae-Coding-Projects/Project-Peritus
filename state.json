@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4160,
-        "tip_oid": "81ec9209f678b2117a78909d03cb6f95daca4bbd",
-        "prefix_sha256": "8c176ef9cb8e77a794064ff6c459587ed8181ce47b8df230023600f478f883d4"
+        "sequence": 4161,
+        "tip_oid": "efa11d7fcb49853342e9a8999169f795dd1cdaa1",
+        "prefix_sha256": "1831849d0a83cfe4fc62913bc95f57d7eed065e668be16e9ccb1a103f38590de"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3284,
+  "next_comment_id": 3285,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -18063,7 +18063,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.883275721Z",
-      "updated_at": "2026-10-06T13:19:07.885494380Z",
+      "updated_at": "2026-10-08T15:35:36.598269309Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -18074,6 +18074,15 @@
           "content": "Systemic repair plan for L013: Checkpoint coverage and restore capabilities disagree.\n\nOwning contract and implementation boundary: checkpoints/rewind/plan.rs:29-73; checkpoints/projection.rs:152-154. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUnify capture and restore around a versioned snapshot manifest and a durable restore transaction. Snapshot admission must prove every covered path can be restored through chunked bodies and paged operations; restore progress must remain recoverable as one logical effect. Preserve exact preimage conflict checks and typed capacity/storage errors instead of converting every patch error to InvalidInput.\n\nPreserve: exact snapshot/preimage identity, protected paths, ancestor and symlink safety, writable-fork coverage, conflict detection, one logical restore transaction and exact effect receipts. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large-file and many-path capture/restore, divergent preimage rejection, interrupted staging/publication/restore, then reopen and continue the same conversation with an exact restored workspace. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "a0ac6679-80da-4e73-95ed-8a6e489f0680": {
+          "display_id": 3284,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L013 on fix/minimum-repair. Aligned checkpoint capture and restore capacity with the retained representation and preserved typed patch failures.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T15:35:36.588953006Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0Zq1b8PH87kTzOdUCv3iBhk6rSK2PdTkv3+t2j+5r48TFsue0c/ppV1jnqSOYqREOQd/hUtud7wbe/QKIwExBA=="
         }
       }
     },
