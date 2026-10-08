@@ -6,6 +6,7 @@ use peritus_types::Sha256Digest;
 use peritus_workspace::ReadOnlyWorkspace;
 
 const PAGE_MAGIC: &[u8; 8] = b"PFSCv001";
+const PAGE_MEMBERSHIP_MAGIC: &[u8; 8] = b"PFSCv002";
 const READ_MAGIC: &[u8; 8] = b"PFSRv001";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -29,6 +30,8 @@ pub(crate) struct PageCursor {
     pub(crate) request: Sha256Digest,
     pub(crate) first: u64,
     pub(crate) second: u64,
+    pub(crate) membership: Option<Sha256Digest>,
+    pub(crate) source: Option<Sha256Digest>,
 }
 
 impl PageCursor {
@@ -38,14 +41,35 @@ impl PageCursor {
         first: u64,
         second: u64,
     ) -> Self {
-        Self { snapshot, request, first, second }
+        Self { snapshot, request, first, second, membership: None, source: None }
+    }
+
+    pub(crate) const fn with_membership(
+        mut self,
+        membership: Sha256Digest,
+        source: Option<Sha256Digest>,
+    ) -> Self {
+        self.membership = Some(membership);
+        self.source = source;
+        self
     }
 
     pub(crate) fn encode(self, kind: PageKind) -> String {
-        let mut bytes = PAGE_MAGIC.to_vec();
+        let mut bytes = if self.membership.is_some() {
+            PAGE_MEMBERSHIP_MAGIC.to_vec()
+        } else {
+            PAGE_MAGIC.to_vec()
+        };
         bytes.push(kind.tag());
         bytes.extend_from_slice(self.snapshot.as_bytes());
         bytes.extend_from_slice(self.request.as_bytes());
+        if let Some(membership) = self.membership {
+            bytes.extend_from_slice(membership.as_bytes());
+            bytes.push(u8::from(self.source.is_some()));
+            bytes.extend_from_slice(
+                self.source.unwrap_or_else(|| Sha256Digest::new([0; 32])).as_bytes(),
+            );
+        }
         bytes.extend_from_slice(&self.first.to_be_bytes());
         bytes.extend_from_slice(&self.second.to_be_bytes());
         seal(&mut bytes);
@@ -54,6 +78,24 @@ impl PageCursor {
 
     pub(crate) fn decode(value: &str, kind: PageKind) -> Result<Self, ()> {
         let bytes = decode(value)?;
+        if bytes.starts_with(PAGE_MEMBERSHIP_MAGIC) {
+            let payload = checked(&bytes, PAGE_MEMBERSHIP_MAGIC)?;
+            if payload.len() != 154 || payload[8] != kind.tag() || payload[105] > 1 {
+                return Err(());
+            }
+            let source_bytes: [u8; 32] = array(&payload[106..138])?;
+            if payload[105] == 0 && source_bytes != [0; 32] {
+                return Err(());
+            }
+            return Ok(Self {
+                snapshot: Sha256Digest::new(array(&payload[9..41])?),
+                request: Sha256Digest::new(array(&payload[41..73])?),
+                membership: Some(Sha256Digest::new(array(&payload[73..105])?)),
+                source: (payload[105] == 1).then(|| Sha256Digest::new(source_bytes)),
+                first: u64::from_be_bytes(array(&payload[138..146])?),
+                second: u64::from_be_bytes(array(&payload[146..154])?),
+            });
+        }
         let payload = checked(&bytes, PAGE_MAGIC)?;
         if payload.len() != 89 || payload[8] != kind.tag() {
             return Err(());
@@ -63,6 +105,8 @@ impl PageCursor {
             request: Sha256Digest::new(array(&payload[41..73])?),
             first: u64::from_be_bytes(array(&payload[73..81])?),
             second: u64::from_be_bytes(array(&payload[81..89])?),
+            membership: None,
+            source: None,
         })
     }
 }

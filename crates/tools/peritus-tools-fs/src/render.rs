@@ -165,11 +165,17 @@ impl RenderedOutput {
                     ("column_bytes", Ok(integer(i64::from(value.column_bytes())))),
                     ("line", Ok(integer(u64_integer(value.line())))),
                     ("path", string(value.path().to_string())),
-                    ("preview", string(value.preview().to_owned())),
+                ("preview", string(value.preview().to_owned())),
+                (
+                    "preview_start_column_bytes",
+                    Ok(integer(u64_integer(value.preview_start_column_bytes()))),
+                ),
                 ])
             })
             .collect::<Result<Vec<_>, _>>()?;
         let mut fields = vec![
+            ("case_semantics", string(value.case_semantics().to_owned())),
+            ("coverage_complete", Ok(BoundedJson::boolean(value.next_cursor().is_none()))),
             ("cursor", string(value.cursor().to_owned())),
             ("digest", string(digest_hex(value.digest()))),
             ("match_count", Ok(integer(u64_integer(value.match_count())))),

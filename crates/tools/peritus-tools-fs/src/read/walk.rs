@@ -13,10 +13,11 @@ impl FsReadService<'_> {
         &self,
         root: Option<&WorkspacePath>,
         maximum_depth: u16,
+        maximum_records: usize,
         operation: FsToolOperation,
     ) -> Result<WalkObservation, FsToolError> {
         let mut pending = VecDeque::from([(root.cloned(), 0_u16)]);
-        let mut observed = WalkObservation { records: Vec::new() };
+        let mut observed = WalkObservation { records: Vec::new(), complete: false };
         while let Some((directory, parent_depth)) = pending.pop_front() {
             let children = self
                 .workspace
@@ -34,6 +35,9 @@ impl FsReadService<'_> {
                 let metadata = match child.observation() {
                     Ok(metadata) => metadata,
                     Err(reason) => {
+                        if observed.records.len() >= maximum_records {
+                            return Ok(observed);
+                        }
                         observed.records.push(WalkRecord::Exclusion(DiscoverExclusion {
                             directory: directory.clone(),
                             name: child.name().clone(),
@@ -46,11 +50,17 @@ impl FsReadService<'_> {
                 let metadata = project_metadata(metadata);
                 let descend = metadata.kind == WorkspaceEntryKind::Directory;
                 let path = metadata.path.clone();
+                if observed.records.len() >= maximum_records {
+                    return Ok(observed);
+                }
                 observed.records.push(WalkRecord::Entry(metadata, depth));
                 if descend {
                     if depth < maximum_depth {
                         pending.push_back((Some(path), depth));
                     } else {
+                        if observed.records.len() >= maximum_records {
+                            return Ok(observed);
+                        }
                         observed.records.push(WalkRecord::TraversalOmission(TraversalOmission {
                             path,
                             depth,
@@ -59,6 +69,7 @@ impl FsReadService<'_> {
                 }
             }
         }
+        observed.complete = true;
         Ok(observed)
     }
 }
