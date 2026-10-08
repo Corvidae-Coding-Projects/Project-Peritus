@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L457] C5 request controls and identifier/media fields have additional fixed acceptance ceilings (#535)
 - [L622] Admitted causal history across revisions cannot be represented by the current portable bundle policy (#677)
 - [L621] Evidence and bundle limits reject legitimate scale, sometimes after output has already been written (#676)
 - [L455] F0 repeats whole-state and whole-store work synchronously during attribution, commit and recovery (#534)
