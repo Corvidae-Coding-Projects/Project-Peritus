@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4185,
-        "tip_oid": "b66b657c5aeb10c32aebb24f6fceb1ff478dd5b9",
-        "prefix_sha256": "cd7a89ecebef5606a81fa88a267aed49b9e518f030953c53e9af2c5fabe34e88"
+        "sequence": 4186,
+        "tip_oid": "649ceda9feb5804605a026c5e7e8010295f574cd",
+        "prefix_sha256": "b2b9de6fc7c9f1063619bec853185cfb149a8d81bd238352f0402a292c21c6f9"
       },
       "NWAR": {
         "sequence": 39,
@@ -3485,12 +3485,13 @@
       "display_id": 310,
       "title": "[L175] Source-readability gates still require whole-file UTF-8 and restrict the eligible ownership set",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L175.\n\n- Source: `crates/app/peritus-product-runner/src/gates/source_layout.rs:17-43,74-88`.\n- This gate has **no source line-count or file-size ceiling**; its inline test accepts a 700-line Rust file. It synchronously reads each selected file as a complete UTF-8 string, so a source format with a valid non-UTF-8 encoding cannot pass this generic readability test.\n- Eligibility uses a fixed case-sensitive extension list for each project kind and an optional ownership filter that excludes later imported/command-generated files. Missing, unreadable-metadata, and non-regular paths are omitted by the initial metadata filter instead of becoming failures. These policies alter validation coverage rather than expiring a run.\n- Preserve language/task correctness and ownership semantics; do not confuse a removed line-count cap with universal source qualification. **Full source and all inline tests read, not run.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.703388687Z",
-      "updated_at": "2026-10-08T16:12:50.225850495Z",
+      "updated_at": "2026-10-08T16:14:31.103421491Z",
+      "closed_at": "2026-10-08T16:14:31.100401807Z",
       "labels": [
         "daily-driving-limiter"
       ],
