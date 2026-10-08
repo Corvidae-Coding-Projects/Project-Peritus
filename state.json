@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4075,
-        "tip_oid": "451087cd57f24fffe1413b3e60f20197570773bb",
-        "prefix_sha256": "1ba675e80b825d9a56a186541341de8a06d113fcf4827000e73effd66dd7be94"
+        "sequence": 4076,
+        "tip_oid": "4602efe5b35e5f52439475e085f8c2924a8e755f",
+        "prefix_sha256": "b00bd2220198464a39cc7b34e91d17bc9b00b17cf97717a90d7a802bed20c001"
       },
       "NWAR": {
         "sequence": 39,
@@ -4491,12 +4491,13 @@
       "display_id": 148,
       "title": "[L049] Developer-loop admission and generation ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L049.\n\n- `peritus-agent/src/developer/types.rs:25-41` permits only **1..128 model turns** and **1..2,048 tool calls** per loop, sets default **three attempts per model turn**, and requests **32,768 output tokens**. `with_max_attempts_per_turn` permits only **1..8** and `with_max_output_tokens` only **1..32,768** (lines 48-71).\n- `developer/execution.rs:51,258-265,392-393` enforces the selected model/tool segment and returns SegmentExhausted. A response's entire tool batch is counted before dispatch; a batch crossing the tool cap is not executed, and yielded/skipped calls count toward that segment. Writer/fixer passes 48/512 (L047); `turn/provider.rs:34-38` now confirms writer/fixer continues segments rather than terminating at that boundary. Its new segment still rebuilds the tool executor and requires grounding again (L043). Other callers remain pending.\n- `developer/model_request.rs:71-102` clips generation to the smaller profile/request ceiling, with semantic compaction additionally clipped to **8,192 output tokens**. Provider/model true limits and imposed request policy are distinct.\n- Retry/compaction outcome counters are `u16`; `execution.rs:103-104,154-156,177-182` rejects arithmetic exhaustion as LimitExceeded. These representation failures are separate from selected segment sizes. Context construction and tool-capability negotiation can also stop a turn before provider work.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.036977698Z",
-      "updated_at": "2026-10-08T05:11:31.260985514Z",
+      "updated_at": "2026-10-08T05:13:15.453147808Z",
+      "closed_at": "2026-10-08T05:13:15.450449172Z",
       "labels": [
         "daily-driving-limiter"
       ],
