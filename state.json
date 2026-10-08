@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4192,
-        "tip_oid": "f45068af16956f37eb5be6da282f379fe5d928ec",
-        "prefix_sha256": "700f6104de924c8f24a02a8fc657efc3eed9e930cb863ce970e0d0df0af04997"
+        "sequence": 4193,
+        "tip_oid": "852c902d6c3786eda140dbaaec6d88e57c57e0f6",
+        "prefix_sha256": "35782aedec70569617fefcbccf2ad7d8892da8dc4465630b8bb8993998840b57"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3301,
+  "next_comment_id": 3302,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -22367,11 +22367,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.865586747Z",
-      "updated_at": "2026-10-06T13:27:51.867810173Z",
+      "updated_at": "2026-10-08T22:56:34.069658739Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "0906d719-82cd-4e31-ae51-6f73316e9a8f": {
+          "display_id": 3301,
+          "author": "6ME5",
+          "content": "Resolved file/image preview and confirmation against the active chat writer provider/model; stale bindings invalidate previews while unchanged bindings preserve them.\n\nFinal integration: cargo test --locked --workspace --all-features --no-fail-fast passed (3912 passed, 0 failed, 19 ignored); strict workspace all-target/all-feature Clippy, Rustdoc, Windows six-package all-target crosscheck, format and source/architecture/API/reproducibility gates passed. Source remains uncommitted. This verifies the documented minimum repair, not removal of physical/provider/wire bounds. Evidence: /tmp/peritus-batch3/workspace-tests-verified.log and tranche reports.",
+          "created_at": "2026-10-08T22:56:34.054694457Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAXfCtIIQftEOmxIdKqT0SxYaag//BjwAFsnD47oEMfJp5AjOW7YduLj/H/MGgpVb8CgnwBAh47tQwbX5Bkpc/Bw=="
+        },
         "5cc1d8a6-f54a-480a-ba2a-bcc076db972f": {
           "display_id": 2870,
           "author": "6ME5",
