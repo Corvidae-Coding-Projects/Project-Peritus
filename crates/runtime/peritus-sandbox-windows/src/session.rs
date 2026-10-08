@@ -6,27 +6,30 @@ use peritus_network::ManagedProxy;
 use peritus_process::{
     CancellationReason, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
     NativeObservationPage, NativeObservationReceipt, NativeObservationTransport,
-    NativePlatform, NativeRecoveryPhase, NativeSandboxSession, NativeSessionRecovery,
+    NativePlatform, NativePoll, NativeRecoveryPhase, NativeSandboxSession, NativeSessionRecovery,
     OsExitObservation, ProcessError, ProcessTreeIdentity,
     native_observation_prefix_digest, native_observation_producer_binding,
 };
-use peritus_sandbox::{EnforcementObservation, ObservationDisposition, ObservationTail};
+use peritus_sandbox::{
+    EnforcementObservation, ObservationDisposition, ObservationTail, SandboxResourceKind,
+};
 use peritus_secrets::SecretDeliverySession;
 
 use crate::{
-    AclTransaction, CleanupFailure, CleanupState, ObservationBinding, ObservationStatus,
+    AclTransaction, CleanupFailure, CleanupState, EnforcementLevel, ObservationBinding,
+    ObservationStatus,
     RecoveryClassification, RecoveryCleanup, RecoveryProbe, ReleaseProgress, ReleaseReport,
-    ResourceControlPlan, RuntimeIdentity, WindowsError, WindowsErrorKind, WindowsLaunchDescription,
-    WindowsObservation, WindowsOperation, WindowsOwnerIdentity, WindowsPhase, WindowsRecovery,
-    WindowsRecoveryRecord,
+    ResourceControlPlan, RuntimeIdentity, TerminalMapping, WindowsError, WindowsErrorKind,
+    WindowsLaunchDescription, WindowsObservation, WindowsOperation, WindowsOwnerIdentity,
+    WindowsPhase, WindowsRecovery, WindowsRecoveryRecord,
     network_filter::NetworkFilterOwner,
     observation::{WindowsCapability, observation_error, transition_allowed},
-    recovery::RecoveryCleanupDimension,
 };
 
 mod teardown;
+#[cfg(target_os = "windows")]
+mod resource_observer;
 
-const RICH_OBSERVATION_LIMIT: usize = 64;
 const COMMON_OBSERVATION_TAIL_LIMIT: usize = 64;
 
 /// Prepared Windows session retained by C2 until release.
@@ -41,9 +44,11 @@ pub struct WindowsSession {
     pending_observations: VecDeque<EnforcementObservation>,
     acknowledged_observations: Option<NativeObservationReceipt>,
     next_observation_sequence: u64,
-    windows_observations: ObservationTail<WindowsObservation>,
+    windows_observations: Vec<WindowsObservation>,
     next_windows_observation_sequence: u64,
     resources: ResourceControlPlan,
+    #[cfg(target_os = "windows")]
+    disk_observer: resource_observer::WindowsDiskObserver,
     recovery: WindowsRecoveryRecord,
     proxy: Option<ManagedProxy>,
     proxy_cleanup: CleanupState,
@@ -55,6 +60,8 @@ pub struct WindowsSession {
     helper_cleanup: CleanupState,
     secret_file_cleanup: CleanupState,
     handle_cleanup: CleanupState,
+    process_quiescent: bool,
+    job_quiescent: bool,
     release: Option<ReleaseReport>,
 }
 
@@ -75,48 +82,19 @@ impl WindowsSession {
         let mut observations = ObservationTail::new(COMMON_OBSERVATION_TAIL_LIMIT);
         observations.push(prepared);
         let pending_observations = VecDeque::from([prepared]);
-        let mut windows_observations = ObservationTail::new(RICH_OBSERVATION_LIMIT);
-        let mut next_windows_observation_sequence = 1_u64;
-        for capability in [
-            WindowsCapability::RestrictedToken,
-            WindowsCapability::LowIntegrity,
-            WindowsCapability::AppContainer,
-            WindowsCapability::JobObject,
-            WindowsCapability::Acl,
-            WindowsCapability::PathResolution,
-            WindowsCapability::HandleList,
-            WindowsCapability::ConPty,
-            WindowsCapability::Network,
-            WindowsCapability::SecretHandles,
-        ] {
-            windows_observations.push(WindowsObservation::new(
-                next_windows_observation_sequence,
-                binding,
-                WindowsPhase::Prepared,
-                Some(capability),
-                None,
-                None,
-                ObservationStatus::Verified,
-            ));
-            next_windows_observation_sequence =
-                next_windows_observation_sequence.saturating_add(1);
-        }
-        for control in resources.controls() {
-            if !control.is_selected() {
-                continue;
-            }
-            windows_observations.push(WindowsObservation::new(
-                next_windows_observation_sequence,
-                binding,
-                WindowsPhase::Prepared,
-                None,
-                Some(control.kind()),
-                Some(control.level()),
-                ObservationStatus::Installed,
-            ));
-            next_windows_observation_sequence =
-                next_windows_observation_sequence.saturating_add(1);
-        }
+        let mut windows_observations = Vec::new();
+        windows_observations
+            .try_reserve_exact(1)
+            .map_err(|_| observation_error("Windows observation allocation is unavailable"))?;
+        windows_observations.push(WindowsObservation::new(
+            1,
+            binding,
+            WindowsPhase::Prepared,
+            None,
+            None,
+            None,
+            ObservationStatus::Verified,
+        ));
         let proxy_cleanup =
             if proxy.is_some() { CleanupState::Pending } else { CleanupState::Complete };
         let filter_cleanup =
@@ -167,6 +145,10 @@ impl WindowsSession {
             acl.service_owner_digest(),
             owner_identity,
         );
+        #[cfg(target_os = "windows")]
+        let disk_observer = resource_observer::WindowsDiskObserver::new(
+            windows_launch.manifest().working_directory().to_path_buf(),
+        );
         Ok(Self {
             native_launch,
             windows_launch,
@@ -178,8 +160,10 @@ impl WindowsSession {
             acknowledged_observations: None,
             next_observation_sequence: 2,
             windows_observations,
-            next_windows_observation_sequence,
+            next_windows_observation_sequence: 2,
             resources,
+            #[cfg(target_os = "windows")]
+            disk_observer,
             recovery,
             proxy,
             proxy_cleanup,
@@ -191,6 +175,8 @@ impl WindowsSession {
             helper_cleanup,
             secret_file_cleanup,
             handle_cleanup,
+            process_quiescent: false,
+            job_quiescent: cleanup.job_closed(),
             release: None,
         })
     }
@@ -204,12 +190,12 @@ impl WindowsSession {
     /// Returns rich Windows observations.
     #[must_use]
     pub fn windows_observations(&self) -> &[WindowsObservation] {
-        self.windows_observations.as_slice()
+        &self.windows_observations
     }
-    /// Returns rich Windows observations omitted before the retained diagnostic tail.
+    /// Returns zero because the complete rich stream has no cumulative retention limit.
     #[must_use]
     pub const fn windows_observations_dropped(&self) -> u64 {
-        self.windows_observations.dropped()
+        0
     }
 
     /// Returns dimension-specific resource enforcement.
@@ -267,7 +253,7 @@ impl WindowsSession {
             return Err(observation_error("Windows lifecycle transition is out of order"));
         }
         self.push_common(next, disposition)?;
-        self.push_rich(next, ObservationStatus::Verified);
+        self.push_rich(next, ObservationStatus::Verified)?;
         self.phase = next;
         Ok(())
     }
@@ -287,10 +273,16 @@ impl WindowsSession {
         Ok(())
     }
 
-    fn push_rich(&mut self, phase: WindowsPhase, status: ObservationStatus) {
-        let Some(next) = self.next_windows_observation_sequence.checked_add(1) else {
-            return;
-        };
+    fn push_rich(
+        &mut self,
+        phase: WindowsPhase,
+        status: ObservationStatus,
+    ) -> Result<(), WindowsError> {
+        self.reserve_rich(1)?;
+        let next = self
+            .next_windows_observation_sequence
+            .checked_add(1)
+            .ok_or_else(|| observation_error("Windows observation sequence overflowed"))?;
         self.windows_observations.push(WindowsObservation::new(
             self.next_windows_observation_sequence,
             self.binding,
@@ -301,6 +293,104 @@ impl WindowsSession {
             status,
         ));
         self.next_windows_observation_sequence = next;
+        Ok(())
+    }
+
+    fn reserve_rich(&mut self, additional: usize) -> Result<(), WindowsError> {
+        self.windows_observations.try_reserve(additional).map_err(|_| {
+            observation_error("Windows observation allocation is unavailable")
+        })
+    }
+
+    fn record_activation_observations(&mut self) -> Result<(), WindowsError> {
+        let app_container = self.windows_launch.manifest().token().is_app_container();
+        let acl = !self.acl.restored();
+        let conpty = matches!(
+            self.windows_launch.manifest().terminal(),
+            TerminalMapping::ConPty { .. }
+        );
+        let secrets = !self.windows_launch.manifest().secret_handles().is_empty();
+        let capabilities = [
+            (WindowsCapability::RestrictedToken, true),
+            (WindowsCapability::LowIntegrity, true),
+            (WindowsCapability::AppContainer, app_container),
+            (WindowsCapability::JobObject, true),
+            (WindowsCapability::Acl, acl),
+            (WindowsCapability::PathResolution, true),
+            (WindowsCapability::HandleList, true),
+            (WindowsCapability::ConPty, conpty),
+            (WindowsCapability::Network, true),
+            (WindowsCapability::SecretHandles, secrets),
+        ];
+        self.reserve_rich(capabilities.len() + self.resources.controls().len())?;
+        for (capability, selected) in capabilities {
+            if !selected {
+                continue;
+            }
+            let next = self
+                .next_windows_observation_sequence
+                .checked_add(1)
+                .ok_or_else(|| observation_error("Windows observation sequence overflowed"))?;
+            self.windows_observations.push(WindowsObservation::new(
+                self.next_windows_observation_sequence,
+                self.binding,
+                WindowsPhase::Activated,
+                Some(capability),
+                None,
+                None,
+                ObservationStatus::Verified,
+            ));
+            self.next_windows_observation_sequence = next;
+        }
+        for control in self.resources.controls() {
+            if !control.is_selected() {
+                continue;
+            }
+            let next = self
+                .next_windows_observation_sequence
+                .checked_add(1)
+                .ok_or_else(|| observation_error("Windows observation sequence overflowed"))?;
+            self.windows_observations.push(WindowsObservation::new(
+                self.next_windows_observation_sequence,
+                self.binding,
+                WindowsPhase::Activated,
+                None,
+                Some(control.kind()),
+                Some(control.level()),
+                ObservationStatus::Installed,
+            ));
+            self.next_windows_observation_sequence = next;
+        }
+        Ok(())
+    }
+
+    fn record_resource_measurement(
+        &mut self,
+        kind: SandboxResourceKind,
+        observed: u64,
+    ) -> Result<bool, WindowsError> {
+        let control = self.resources.control(kind);
+        if !control.is_selected() {
+            return Ok(false);
+        }
+        self.reserve_rich(1)?;
+        let next = self
+            .next_windows_observation_sequence
+            .checked_add(1)
+            .ok_or_else(|| observation_error("Windows observation sequence overflowed"))?;
+        let exceeded = observed > control.ceiling();
+        self.windows_observations.push(WindowsObservation::measured(
+            self.next_windows_observation_sequence,
+            self.binding,
+            self.phase,
+            kind,
+            control.level(),
+            observed,
+            control.ceiling(),
+            if exceeded { ObservationStatus::Denied } else { ObservationStatus::Verified },
+        ));
+        self.next_windows_observation_sequence = next;
+        Ok(exceeded && control.level() == EnforcementLevel::Supervisor)
     }
 }
 
@@ -454,6 +544,53 @@ impl NativeSandboxSession for WindowsSession {
         Ok(())
     }
 
+    fn poll_resources(&mut self, tree: ProcessTreeIdentity) -> Result<NativePoll, ProcessError> {
+        if self.recovery.tree_identity() != Some(tree)
+            || !matches!(self.phase, WindowsPhase::Activated | WindowsPhase::CancelRequested)
+        {
+            return Err(process_error(&observation_error(
+                "Windows resource observation is outside the exact active tree",
+            )));
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let snapshot = self
+                .native_launch
+                .windows_resource_snapshot()?
+                .ok_or_else(|| {
+                    process_error(&observation_error(
+                        "Windows resource observation lacks retained Job custody",
+                    ))
+                })?;
+            let mut exceeded = false;
+            for (kind, observed) in [
+                (SandboxResourceKind::CpuTime, snapshot.cpu_time_millis()),
+                (SandboxResourceKind::Memory, snapshot.peak_memory_bytes()),
+                (SandboxResourceKind::Processes, snapshot.active_processes()),
+                (SandboxResourceKind::OpenHandles, snapshot.open_handles()),
+            ] {
+                exceeded |= self
+                    .record_resource_measurement(kind, observed)
+                    .map_err(|error| process_error(&error))?;
+            }
+            if self.resources.control(SandboxResourceKind::Disk).is_selected()
+                && let resource_observer::DiskObservation::Complete(observed) =
+                    self.disk_observer.poll()?
+            {
+                exceeded |= self
+                    .record_resource_measurement(SandboxResourceKind::Disk, observed)
+                    .map_err(|error| process_error(&error))?;
+            }
+            return Ok(if exceeded {
+                NativePoll::ResourceLimitExceeded
+            } else {
+                NativePoll::Continue
+            });
+        }
+        #[cfg(not(target_os = "windows"))]
+        Ok(NativePoll::Continue)
+    }
+
     fn activated(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
         if !tree.complete_containment() || self.recovery.tree_identity() != Some(tree) {
             return Err(process_error(&WindowsError::new(
@@ -495,7 +632,11 @@ impl NativeSandboxSession for WindowsSession {
                 .adopted(containment)
                 .map_err(|error| process_error(&error))?;
         }
+        self.reserve_rich(19)
+            .map_err(|error| process_error(&error))?;
         self.transition(WindowsPhase::Activated, ObservationDisposition::Completed)
+            .map_err(|error| process_error(&error))?;
+        self.record_activation_observations()
             .map_err(|error| process_error(&error))?;
         self.recovery
             .advance_phase(WindowsPhase::Activated)
@@ -516,31 +657,22 @@ impl NativeSandboxSession for WindowsSession {
     fn terminated(&mut self, _exit: &OsExitObservation) -> Result<(), ProcessError> {
         self.transition(WindowsPhase::Terminated, ObservationDisposition::Completed)
             .map_err(|error| process_error(&error))?;
-        match self
-            .recovery
-            .advance_phase_with_cleanup(WindowsPhase::Terminated, RecoveryCleanupDimension::Helper)
+        self.recovery
+            .advance_phase(WindowsPhase::Terminated)
             .map_err(|error| process_error(&error))
-        {
-            Ok(()) => {
-                self.helper_cleanup = CleanupState::Complete;
-                Ok(())
-            }
-            Err(error) => {
-                self.helper_cleanup = CleanupState::ReconciliationRequired;
-                self.recovery
-                    .mark_cleanup_failure(
-                        RecoveryCleanupDimension::Helper,
-                        CleanupFailure::from_process_error(&error),
-                    )
-                    .map_err(|failure| process_error(&failure))?;
-                Err(error)
-            }
-        }
     }
 
     fn release(&mut self) -> Result<(), ProcessError> {
         if self.release.is_some() {
             return Ok(());
+        }
+        if !matches!(self.phase, WindowsPhase::Prepared | WindowsPhase::Terminated) {
+            return Err(process_error(&WindowsError::new(
+                WindowsErrorKind::RecoveryIndeterminate,
+                WindowsOperation::Release,
+                WindowsRecovery::CancelAndReap,
+                "Windows release requires an unspawned preparation or observed termination",
+            )));
         }
         let normal_release = self.phase == WindowsPhase::Terminated;
         let report = self.release_owned_resources()?;
@@ -556,7 +688,7 @@ impl NativeSandboxSession for WindowsSession {
                     .map_err(|error| process_error(&error))?;
                 self.phase = WindowsPhase::Released;
             }
-            self.record_abort_cleanup();
+            self.record_abort_cleanup()?;
             self.recovery
                 .record_cleanup(true, true, true)
                 .map_err(|error| process_error(&error))?;
@@ -567,8 +699,9 @@ impl NativeSandboxSession for WindowsSession {
 }
 
 impl WindowsSession {
-    fn record_abort_cleanup(&mut self) {
-        self.push_rich(self.phase, ObservationStatus::Verified);
+    fn record_abort_cleanup(&mut self) -> Result<(), ProcessError> {
+        self.push_rich(self.phase, ObservationStatus::Verified)
+            .map_err(|error| process_error(&error))
     }
 
     #[cfg(target_os = "windows")]
@@ -657,9 +790,14 @@ impl WindowsSession {
             }
             WindowsPhase::Released => false,
         };
-        let secret_files_exact = cleanup.secret_files_removed()
-            || self.recovery.phase() == WindowsPhase::Prepared
-            || inspect_secret_files(self.recovery.secret_files());
+        let secret_files_exact = if cleanup.secret_files_removed() {
+            true
+        } else if self.recovery.secret_files().is_empty() {
+            self.recovery.phase() == WindowsPhase::Prepared
+                && self.recovery.tree_identity().is_none()
+        } else {
+            inspect_secret_files(self.recovery.secret_files())?
+        };
         let complete = classification == RecoveryClassification::LiveOwned
             && containment_exact
             && secret_files_exact;
@@ -769,7 +907,9 @@ fn owner_inspection_error(detail: &'static str, source: ProcessError) -> Windows
 }
 
 #[cfg(target_os = "windows")]
-fn inspect_secret_files(files: &[crate::recovery::SecretFileRecovery]) -> bool {
+fn inspect_secret_files(
+    files: &[crate::recovery::SecretFileRecovery],
+) -> Result<bool, ProcessError> {
     use std::{
         fs::OpenOptions,
         os::windows::{
@@ -782,38 +922,65 @@ fn inspect_secret_files(files: &[crate::recovery::SecretFileRecovery]) -> bool {
         FILE_SHARE_READ, FILE_SHARE_WRITE, FileIdInfo, GetFileInformationByHandleEx,
     };
 
-    !files.is_empty() && files.iter().all(|expected| {
+    if files.is_empty() {
+        return Ok(false);
+    }
+    for expected in files {
         let mut options = OpenOptions::new();
         options
             .read(true)
             .access_mode(FILE_READ_ATTRIBUTES)
             .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)
             .custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
-        let Ok(file) = options.open(expected.path().to_path_buf()) else {
-            return false;
+        let file = match options.open(expected.path().to_path_buf()) {
+            Ok(file) => file,
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+            Err(_) => {
+                return Err(secret_inspection_error(
+                    "private secret file cannot be opened for custody inspection",
+                ));
+            }
         };
-        let Ok(metadata) = file.metadata() else {
-            return false;
-        };
+        let metadata = file.metadata().map_err(|_| {
+            secret_inspection_error("private secret file metadata cannot be inspected")
+        })?;
         let mut identity = FILE_ID_INFO::default();
-        let Ok(identity_size) = u32::try_from(core::mem::size_of::<FILE_ID_INFO>()) else {
-            return false;
-        };
+        let identity_size = u32::try_from(core::mem::size_of::<FILE_ID_INFO>())
+            .map_err(|_| secret_inspection_error("private secret identity size overflowed"))?;
         // SAFETY: the File remains live and identity is writable for the exact structure size.
-        unsafe {
+        if unsafe {
             GetFileInformationByHandleEx(
                 file.as_raw_handle().cast(),
                 FileIdInfo,
                 (&raw mut identity).cast(),
                 identity_size,
             )
-        } != 0
-            && metadata.is_file()
-            && metadata.number_of_links() == Some(1)
-            && metadata.len() == expected.payload_len()
-            && identity.VolumeSerialNumber == expected.volume_serial()
-            && identity.FileId.Identifier == expected.file_id()
-    })
+        } == 0
+        {
+            return Err(secret_inspection_error(
+                "private secret native identity cannot be inspected",
+            ));
+        }
+        if !metadata.is_file()
+            || metadata.number_of_links() != Some(1)
+            || metadata.len() != expected.payload_len()
+            || identity.VolumeSerialNumber != expected.volume_serial()
+            || identity.FileId.Identifier != expected.file_id()
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+#[cfg(target_os = "windows")]
+fn secret_inspection_error(detail: &'static str) -> ProcessError {
+    process_error(&WindowsError::new(
+        WindowsErrorKind::RecoveryIndeterminate,
+        WindowsOperation::Recover,
+        WindowsRecovery::Quarantine,
+        detail,
+    ))
 }
 
 const fn cleanup_state(complete: bool) -> CleanupState {

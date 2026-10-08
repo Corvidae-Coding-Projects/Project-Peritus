@@ -305,6 +305,8 @@ impl ReleaseProgress {
     reason = "independent teardown evidence remains explicit and inspectable"
 )]
 pub struct ReleaseReport {
+    pub(crate) process_quiescent: bool,
+    pub(crate) job_quiescent: bool,
     pub(crate) job_closed: bool,
     pub(crate) helper_reaped: bool,
     pub(crate) acl_restored: bool,
@@ -320,6 +322,8 @@ impl ReleaseReport {
     #[must_use]
     pub const fn complete(self) -> bool {
         crate::verified::teardown_complete(
+            self.process_quiescent,
+            self.job_quiescent,
             self.job_closed,
             self.helper_reaped,
             self.acl_restored,
@@ -329,6 +333,18 @@ impl ReleaseReport {
             self.proxy_joined,
             self.network_filter_removed,
         )
+    }
+
+    /// Reports observed helper and adopted-target process absence.
+    #[must_use]
+    pub const fn process_quiescent(self) -> bool {
+        self.process_quiescent
+    }
+
+    /// Reports that the retained Job Object was observed empty before closure.
+    #[must_use]
+    pub const fn job_quiescent(self) -> bool {
+        self.job_quiescent
     }
 
     /// Reports exact Job Object handle closure.

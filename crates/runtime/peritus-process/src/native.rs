@@ -25,7 +25,8 @@ pub use pty::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 pub use windows_channel::{
     NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
     NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
-    NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
+    NativeWindowsHelperAttachment, NativeWindowsHelperChannels, NativeWindowsQuiescence,
+    NativeWindowsResourceSnapshot,
     NativeWindowsSecretFileBinding, NativeWindowsSecretFileIdentity,
 };
 
@@ -826,6 +827,35 @@ impl NativeLaunchDescription {
         self.windows_helper_channels
             .as_ref()
             .is_some_and(|channels| channels.retains_containment_job(expected))
+    }
+
+    /// Reads exact target-process and Job quiescence through retained native handles.
+    ///
+    /// # Errors
+    /// Returns a typed failure when either retained handle cannot establish current state.
+    #[cfg(windows)]
+    pub fn windows_quiescence(
+        &self,
+    ) -> Result<Option<NativeWindowsQuiescence>, ProcessError> {
+        self.windows_helper_channels
+            .as_ref()
+            .map(NativeWindowsHelperChannels::quiescence)
+            .transpose()
+    }
+
+    /// Reads one exact resource snapshot from the retained Windows Job Object.
+    ///
+    /// # Errors
+    /// Returns a typed failure when Job accounting or any current process handle count is
+    /// unavailable or changes before a complete sample can be established.
+    #[cfg(windows)]
+    pub fn windows_resource_snapshot(
+        &self,
+    ) -> Result<Option<NativeWindowsResourceSnapshot>, ProcessError> {
+        self.windows_helper_channels
+            .as_ref()
+            .map(NativeWindowsHelperChannels::resource_snapshot)
+            .transpose()
     }
 
     /// Returns exact private-file identities retained during the helper handshake.

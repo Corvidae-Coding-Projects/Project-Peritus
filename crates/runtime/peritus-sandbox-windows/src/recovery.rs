@@ -209,6 +209,8 @@ impl RecoveryCleanup {
     #[must_use]
     pub const fn is_complete(self) -> bool {
         crate::verified::teardown_complete(
+            self.helper_reaped,
+            self.job_closed,
             self.job_closed,
             self.helper_reaped,
             self.acl_restored,

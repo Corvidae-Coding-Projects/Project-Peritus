@@ -13,11 +13,22 @@ use std::{
 };
 
 use windows_sys::Win32::{
-    Foundation::{GetHandleInformation, HANDLE},
+    Foundation::{
+        ERROR_INVALID_PARAMETER, ERROR_MORE_DATA, GetHandleInformation, GetLastError, HANDLE,
+        WAIT_OBJECT_0, WAIT_TIMEOUT,
+    },
     System::{
-        JobObjects::IsProcessInJob,
+        JobObjects::{
+            IsProcessInJob, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
+            JOBOBJECT_BASIC_PROCESS_ID_LIST, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
+            JobObjectBasicAccountingInformation, JobObjectBasicProcessIdList,
+            JobObjectExtendedLimitInformation, QueryInformationJobObject,
+        },
         Pipes::{CreatePipe, PIPE_NOWAIT, PeekNamedPipe, SetNamedPipeHandleState},
-        Threading::{GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION},
+        Threading::{
+            GetProcessHandleCount, GetProcessTimes, OpenProcess,
+            PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, WaitForSingleObject,
+        },
     },
 };
 
@@ -41,6 +52,62 @@ const TARGET_ADOPTION_ACK: u8 = 5;
 const SECRET_FILES_ACK: u8 = 6;
 const SECRET_FILE_HEADER_BYTES: usize = Sha256Digest::LENGTH + 4;
 const SECRET_FILE_ENTRY_BYTES: usize = Sha256Digest::LENGTH + 8 + 8 + 16;
+
+/// Exact live quiescence facts read through the retained target and Job Object handles.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeWindowsQuiescence {
+    target_process_quiescent: bool,
+    job_quiescent: bool,
+}
+
+impl NativeWindowsQuiescence {
+    /// Reports whether no adopted target process remains live.
+    #[must_use]
+    pub const fn target_process_quiescent(self) -> bool {
+        self.target_process_quiescent
+    }
+
+    /// Reports whether the retained Job Object has no active process.
+    #[must_use]
+    pub const fn job_quiescent(self) -> bool {
+        self.job_quiescent
+    }
+}
+
+/// One exact resource sample read from the retained Windows Job Object.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeWindowsResourceSnapshot {
+    cpu_time_millis: u64,
+    peak_memory_bytes: u64,
+    active_processes: u64,
+    open_handles: u64,
+}
+
+impl NativeWindowsResourceSnapshot {
+    /// Returns cumulative Job user-plus-kernel time in milliseconds.
+    #[must_use]
+    pub const fn cpu_time_millis(self) -> u64 {
+        self.cpu_time_millis
+    }
+
+    /// Returns peak committed memory charged to the Job.
+    #[must_use]
+    pub const fn peak_memory_bytes(self) -> u64 {
+        self.peak_memory_bytes
+    }
+
+    /// Returns the exact active process count reported by the Job.
+    #[must_use]
+    pub const fn active_processes(self) -> u64 {
+        self.active_processes
+    }
+
+    /// Returns the sum of open handles across the current Job process list.
+    #[must_use]
+    pub const fn open_handles(self) -> u64 {
+        self.open_handles
+    }
+}
 
 /// Manifest-bound nonsensitive identity expected for one private secret file.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -374,7 +441,9 @@ impl NativeWindowsHelperChannels {
             crate::platform::HandshakeError::Failed,
         )?;
         // SAFETY: access is query-only and handle inheritance is disabled for this C2 handle.
-        let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+        let process = unsafe {
+            OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE, 0, pid)
+        };
         if process.is_null() {
             return Err(crate::platform::HandshakeError::Failed(channel_error(
                 "Windows target cannot be opened for adoption",
@@ -512,6 +581,114 @@ impl NativeWindowsHelperChannels {
         self.containment_job_identity == Some(expected) && self.raw_containment_job().is_ok()
     }
 
+    pub(crate) fn quiescence(&self) -> Result<NativeWindowsQuiescence, ProcessError> {
+        let target_process_quiescent = {
+            let adoption = self
+                .adoption
+                .lock()
+                .map_err(|_| channel_error("Windows containment adoption state was poisoned"))?;
+            match adoption.as_ref() {
+                None => true,
+                Some(adoption) => {
+                    // SAFETY: adoption retains a live SYNCHRONIZE-capable process handle.
+                    match unsafe { WaitForSingleObject(adoption.target.as_raw_handle().cast(), 0) } {
+                        WAIT_OBJECT_0 => true,
+                        WAIT_TIMEOUT => false,
+                        _ => {
+                            return Err(channel_error(
+                                "Windows target quiescence cannot be observed",
+                            ));
+                        }
+                    }
+                }
+            }
+        };
+        let accounting = query_job_accounting(self.raw_containment_job()?)?;
+        Ok(NativeWindowsQuiescence {
+            target_process_quiescent,
+            job_quiescent: accounting.ActiveProcesses == 0,
+        })
+    }
+
+    pub(crate) fn resource_snapshot(
+        &self,
+    ) -> Result<NativeWindowsResourceSnapshot, ProcessError> {
+        let job = self.raw_containment_job()?;
+        let accounting = query_job_accounting(job)?;
+        let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+        let limits_size = u32::try_from(core::mem::size_of_val(&limits))
+            .map_err(|_| channel_error("Windows Job resource record size overflowed"))?;
+        let mut returned = 0_u32;
+        // SAFETY: the retained Job handle is live and the complete output record is writable.
+        if unsafe {
+            QueryInformationJobObject(
+                job,
+                JobObjectExtendedLimitInformation,
+                (&raw mut limits).cast(),
+                limits_size,
+                &raw mut returned,
+            )
+        } == 0
+            || returned != limits_size
+        {
+            return Err(channel_error("Windows Job memory accounting cannot be observed"));
+        }
+        let cpu_ticks = accounting
+            .TotalUserTime
+            .checked_add(accounting.TotalKernelTime)
+            .and_then(|value| u64::try_from(value).ok())
+            .ok_or_else(|| channel_error("Windows Job CPU accounting is invalid"))?;
+        let process_ids = query_job_process_ids(
+            job,
+            usize::try_from(accounting.ActiveProcesses)
+                .map_err(|_| channel_error("Windows Job process count is not representable"))?,
+        )?;
+        let open_handles = process_ids.into_iter().try_fold(0_u64, |total, process_id| {
+            let process_id = u32::try_from(process_id)
+                .map_err(|_| channel_error("Windows Job process identity is not representable"))?;
+            // SAFETY: access is query-only and inheritance is disabled for this temporary handle.
+            let process = unsafe {
+                OpenProcess(
+                    PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                    0,
+                    process_id,
+                )
+            };
+            if process.is_null() {
+                // SAFETY: this reads the immediately preceding OpenProcess result on this thread.
+                if unsafe { GetLastError() } == ERROR_INVALID_PARAMETER {
+                    return Ok(total);
+                }
+                return Err(channel_error(
+                    "Windows Job process handle count changed during observation",
+                ));
+            }
+            // SAFETY: the non-null query handle transfers to File and is closed after this sample.
+            let process = unsafe { File::from_raw_handle(process.cast()) };
+            let mut handles = 0_u32;
+            // SAFETY: the process handle remains live and the output count is writable.
+            if unsafe { GetProcessHandleCount(process.as_raw_handle().cast(), &raw mut handles) }
+                == 0
+            {
+                // SAFETY: the retained temporary handle includes synchronization access.
+                if unsafe { WaitForSingleObject(process.as_raw_handle().cast(), 0) }
+                    == WAIT_OBJECT_0
+                {
+                    return Ok(total);
+                }
+                return Err(channel_error("Windows process handle count cannot be observed"));
+            }
+            Ok(total.saturating_add(u64::from(handles)))
+        })?;
+        Ok(NativeWindowsResourceSnapshot {
+            cpu_time_millis: cpu_ticks / 10_000,
+            peak_memory_bytes: u64::try_from(limits.PeakJobMemoryUsed)
+                .map_err(|_| channel_error("Windows Job memory accounting is not representable"))?,
+            active_processes: u64::from(accounting.ActiveProcesses),
+            open_handles,
+        })
+    }
+
     pub(crate) fn resize(&self, size: TerminalSize) -> Result<(), ProcessError> {
         if i16::try_from(size.columns()).is_err() || i16::try_from(size.rows()).is_err() {
             return Err(terminal_control_error(
@@ -579,6 +756,97 @@ impl NativeWindowsHelperChannels {
             return Err(channel_error("Windows containment Job Object handle is no longer live"));
         }
         Ok(raw)
+    }
+}
+
+fn query_job_accounting(
+    job: HANDLE,
+) -> Result<JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, ProcessError> {
+    let mut accounting = JOBOBJECT_BASIC_ACCOUNTING_INFORMATION::default();
+    let size = u32::try_from(core::mem::size_of_val(&accounting))
+        .map_err(|_| channel_error("Windows Job accounting record size overflowed"))?;
+    let mut returned = 0_u32;
+    // SAFETY: the retained Job handle is live and the complete output record is writable.
+    if unsafe {
+        QueryInformationJobObject(
+            job,
+            JobObjectBasicAccountingInformation,
+            (&raw mut accounting).cast(),
+            size,
+            &raw mut returned,
+        )
+    } == 0
+        || returned != size
+    {
+        return Err(channel_error("Windows Job accounting cannot be observed"));
+    }
+    Ok(accounting)
+}
+
+fn query_job_process_ids(job: HANDLE, initial_capacity: usize) -> Result<Vec<usize>, ProcessError> {
+    let mut capacity = initial_capacity.max(1);
+    loop {
+        let bytes = core::mem::offset_of!(JOBOBJECT_BASIC_PROCESS_ID_LIST, ProcessIdList)
+            .checked_add(
+                capacity
+                    .checked_mul(core::mem::size_of::<usize>())
+                    .ok_or_else(|| channel_error("Windows Job process-list size overflowed"))?,
+            )
+            .ok_or_else(|| channel_error("Windows Job process-list size overflowed"))?;
+        let words = bytes
+            .checked_add(core::mem::size_of::<usize>() - 1)
+            .map(|value| value / core::mem::size_of::<usize>())
+            .ok_or_else(|| channel_error("Windows Job process-list size overflowed"))?;
+        let mut storage = Vec::new();
+        storage
+            .try_reserve_exact(words)
+            .map_err(|_| channel_error("Windows Job process-list allocation is unavailable"))?;
+        storage.resize(words, 0_usize);
+        let length = u32::try_from(words.saturating_mul(core::mem::size_of::<usize>()))
+            .map_err(|_| channel_error("Windows Job process-list exceeds native capacity"))?;
+        let list = storage.as_mut_ptr().cast::<JOBOBJECT_BASIC_PROCESS_ID_LIST>();
+        let mut returned = 0_u32;
+        // SAFETY: usize storage is suitably aligned, the byte length covers the header and the
+        // requested flexible-array capacity, and the Job handle remains live.
+        let observed = unsafe {
+            QueryInformationJobObject(
+                job,
+                JobObjectBasicProcessIdList,
+                list.cast(),
+                length,
+                &raw mut returned,
+            )
+        };
+        // SAFETY: Windows initializes the two fixed header fields for a successful or short query.
+        let (assigned, listed) = unsafe {
+            (
+                usize::try_from((*list).NumberOfAssignedProcesses).unwrap_or(usize::MAX),
+                usize::try_from((*list).NumberOfProcessIdsInList).unwrap_or(usize::MAX),
+            )
+        };
+        if observed == 0 {
+            // SAFETY: this reads the immediately preceding query result on the same thread.
+            if unsafe { GetLastError() } != ERROR_MORE_DATA {
+                return Err(channel_error("Windows Job process list cannot be observed"));
+            }
+        }
+        if observed == 0 || assigned > capacity || listed > capacity || listed != assigned {
+            let next = assigned.max(capacity.saturating_mul(2));
+            if next <= capacity {
+                return Err(channel_error("Windows Job process list cannot be observed exactly"));
+            }
+            capacity = next;
+            continue;
+        }
+        // SAFETY: the successful query reported `listed <= capacity` initialized identifiers.
+        let identifiers =
+            unsafe { core::slice::from_raw_parts((*list).ProcessIdList.as_ptr(), listed) };
+        let mut result = Vec::new();
+        result
+            .try_reserve_exact(listed)
+            .map_err(|_| channel_error("Windows Job process-list allocation is unavailable"))?;
+        result.extend_from_slice(identifiers);
+        return Ok(result);
     }
 }
 

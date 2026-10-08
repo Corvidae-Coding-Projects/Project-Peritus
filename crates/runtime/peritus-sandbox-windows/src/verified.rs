@@ -97,6 +97,8 @@ pub const fn recovery_advance_allowed(current: u8, next: u8) -> (result: bool)
 
 /// Mathematical complete native teardown predicate.
 pub open spec fn teardown_complete_spec(
+    process_quiescent: bool,
+    job_quiescent: bool,
     job_closed: bool,
     helper_reaped: bool,
     acl_restored: bool,
@@ -106,7 +108,9 @@ pub open spec fn teardown_complete_spec(
     proxy_joined: bool,
     network_filter_removed: bool,
 ) -> bool {
-    job_closed
+    process_quiescent
+        && job_quiescent
+        && job_closed
         && helper_reaped
         && acl_restored
         && secret_files_removed
@@ -123,6 +127,8 @@ pub open spec fn teardown_complete_spec(
     reason = "each cleanup dimension remains independently testable"
 )]
 pub const fn teardown_complete(
+    process_quiescent: bool,
+    job_quiescent: bool,
     job_closed: bool,
     helper_reaped: bool,
     acl_restored: bool,
@@ -133,6 +139,8 @@ pub const fn teardown_complete(
     network_filter_removed: bool,
 ) -> (result: bool)
     ensures result == teardown_complete_spec(
+        process_quiescent,
+        job_quiescent,
         job_closed,
         helper_reaped,
         acl_restored,
@@ -143,7 +151,9 @@ pub const fn teardown_complete(
         network_filter_removed,
     ),
 {
-    job_closed
+    process_quiescent
+        && job_quiescent
+        && job_closed
         && helper_reaped
         && acl_restored
         && secret_files_removed

@@ -11,9 +11,12 @@ use crate::{
 
 impl WindowsSession {
     pub(super) fn release_owned_resources(&mut self) -> Result<ReleaseReport, ProcessError> {
-        let mut helper_failure = self
-            .record_cleanup(RecoveryCleanupDimension::Helper)
-            .err();
+        let (mut helper_failure, mut job_failure) = self.prove_native_quiescence();
+        if helper_failure.is_none() {
+            helper_failure = self
+                .record_cleanup(RecoveryCleanupDimension::Helper)
+                .err();
+        }
         helper_failure = self.retain_cleanup_failure(
             RecoveryCleanupDimension::Helper,
             helper_failure,
@@ -22,10 +25,12 @@ impl WindowsSession {
             self.recovery.cleanup().helper_reaped(),
             self.recovery.cleanup_failures().helper(),
         );
-        let mut job_failure = self
-            .release_containment_job()
-            .and_then(|()| self.record_cleanup(RecoveryCleanupDimension::Job))
-            .err();
+        if job_failure.is_none() && self.process_quiescent {
+            job_failure = self
+                .release_containment_job()
+                .and_then(|()| self.record_cleanup(RecoveryCleanupDimension::Job))
+                .err();
+        }
         job_failure = self.retain_cleanup_failure(RecoveryCleanupDimension::Job, job_failure);
         self.job_cleanup = cleanup_attempt_state(
             self.recovery.cleanup().job_closed(),
@@ -119,7 +124,13 @@ impl WindowsSession {
             self.recovery.cleanup().secret_delivery_released(),
             self.recovery.cleanup_failures().secret_delivery(),
         );
-        let mut handle_failure = self.release_protected_handles().err();
+        let mut handle_failure = if self.recovery.cleanup().job_closed() {
+            self.release_protected_handles().err()
+        } else {
+            Some(process_error(&cleanup_error(
+                "protected handles cannot close before exact Job teardown",
+            )))
+        };
         if handle_failure.is_none() {
             handle_failure = self.record_cleanup(RecoveryCleanupDimension::Handles).err();
         }
@@ -133,6 +144,8 @@ impl WindowsSession {
         );
         let cleanup = self.recovery.cleanup();
         let report = ReleaseReport {
+            process_quiescent: self.process_quiescent,
+            job_quiescent: self.job_quiescent,
             job_closed: cleanup.job_closed(),
             helper_reaped: cleanup.helper_reaped(),
             acl_restored: cleanup.acl_restored(),
@@ -167,6 +180,72 @@ impl WindowsSession {
             )));
         }
         Ok(report)
+    }
+
+    fn prove_native_quiescence(&mut self) -> (Option<ProcessError>, Option<ProcessError>) {
+        let helper_reaped = match self.recovery.tree_identity() {
+            None => self.phase == crate::WindowsPhase::Prepared,
+            Some(_) => self.phase == crate::WindowsPhase::Terminated,
+        };
+        if !helper_reaped {
+            return (
+                Some(process_error(&cleanup_error(
+                    "helper process absence was not observed before teardown",
+                ))),
+                None,
+            );
+        }
+        if self.process_quiescent && self.job_quiescent {
+            return (None, None);
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let observation = match self.native_launch.windows_quiescence() {
+                Ok(Some(observation)) => observation,
+                Ok(None) => {
+                    if self.recovery.cleanup().job_closed() {
+                        self.process_quiescent = helper_reaped;
+                        self.job_quiescent = true;
+                        return (None, None);
+                    }
+                    return (
+                        Some(process_error(&cleanup_error(
+                            "retained target-process quiescence evidence is absent",
+                        ))),
+                        Some(process_error(&cleanup_error(
+                            "retained Job Object quiescence evidence is absent",
+                        ))),
+                    );
+                }
+                Err(error) => {
+                    return (
+                        Some(process_error(&cleanup_error(
+                            "retained target-process quiescence cannot be observed",
+                        ))),
+                        Some(error),
+                    );
+                }
+            };
+            self.process_quiescent =
+                helper_reaped && observation.target_process_quiescent();
+            self.job_quiescent = observation.job_quiescent();
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            self.process_quiescent = helper_reaped && self.recovery.cleanup().job_closed();
+            self.job_quiescent = self.recovery.cleanup().job_closed();
+        }
+        let process_failure = (!self.process_quiescent).then(|| {
+            process_error(&cleanup_error(
+                "adopted target process remains live during teardown",
+            ))
+        });
+        let job_failure = (!self.job_quiescent).then(|| {
+            process_error(&cleanup_error(
+                "retained Job Object still contains an active process",
+            ))
+        });
+        (process_failure, job_failure)
     }
 
     fn record_cleanup(
@@ -288,6 +367,22 @@ impl WindowsSession {
             return Ok(());
         }
         let Some(identities) = self.native_launch.windows_secret_files()? else {
+            if self
+                .windows_launch
+                .manifest()
+                .secret_handles()
+                .iter()
+                .any(|secret| {
+                    matches!(secret.destination(), crate::SecretHandleDestination::File(_))
+                })
+            {
+                if self.recovery.tree_identity().is_some() {
+                    return Err(secret_file_cleanup_error(
+                        "spawned helper lacks exact private secret-file custody",
+                    ));
+                }
+                verify_uncreated_secret_files_absent(&self.windows_launch)?;
+            }
             return Ok(());
         };
         let files = super::secret_file_recovery(&self.windows_launch, identities)?;
@@ -295,6 +390,37 @@ impl WindowsSession {
             .retain_secret_files(files)
             .map_err(|error| process_error(&error))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn verify_uncreated_secret_files_absent(
+    launch: &crate::WindowsLaunchDescription,
+) -> Result<(), ProcessError> {
+    for descriptor in launch.manifest().secret_handles() {
+        let crate::SecretHandleDestination::File(path) = descriptor.destination() else {
+            continue;
+        };
+        let native = crate::WindowsPath::from_sandbox(launch.manifest().working_directory(), path)
+            .map_err(|_| {
+                secret_file_cleanup_error(
+                    "private secret destination cannot be resolved for absence inspection",
+                )
+            })?;
+        match native.to_path_buf().try_exists() {
+            Ok(false) => {}
+            Ok(true) => {
+                return Err(secret_file_cleanup_error(
+                    "unadopted private secret destination exists during cleanup",
+                ));
+            }
+            Err(_) => {
+                return Err(secret_file_cleanup_error(
+                    "private secret destination absence cannot be inspected",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn cleanup_attempt_state(complete: bool, failure: Option<&CleanupFailure>) -> CleanupState {

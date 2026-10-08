@@ -1,4 +1,4 @@
-//! Bounded Windows-native lifecycle and enforcement observations.
+//! Windows-native lifecycle and enforcement observations.
 
 use peritus_sandbox::{
     CapabilityDomain, EnforcementObservation, ObservationDisposition, ObservationKind,
@@ -143,7 +143,7 @@ impl ObservationBinding {
     }
 }
 
-/// One bounded, fully bound Windows-specific fact.
+/// One fully bound Windows-specific fact.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WindowsObservation {
     sequence: u64,
@@ -152,6 +152,8 @@ pub struct WindowsObservation {
     capability: Option<WindowsCapability>,
     resource: Option<SandboxResourceKind>,
     enforcement: Option<EnforcementLevel>,
+    observed_value: Option<u64>,
+    ceiling: Option<u64>,
     status: ObservationStatus,
 }
 
@@ -168,7 +170,43 @@ impl WindowsObservation {
         enforcement: Option<EnforcementLevel>,
         status: ObservationStatus,
     ) -> Self {
-        Self { sequence, binding, phase, capability, resource, enforcement, status }
+        Self {
+            sequence,
+            binding,
+            phase,
+            capability,
+            resource,
+            enforcement,
+            observed_value: None,
+            ceiling: None,
+            status,
+        }
+    }
+
+    /// Creates one actual resource measurement bound to its checked ceiling.
+    #[allow(clippy::too_many_arguments, reason = "closed measured observation schema")]
+    #[must_use]
+    pub const fn measured(
+        sequence: u64,
+        binding: ObservationBinding,
+        phase: WindowsPhase,
+        resource: SandboxResourceKind,
+        enforcement: EnforcementLevel,
+        observed_value: u64,
+        ceiling: u64,
+        status: ObservationStatus,
+    ) -> Self {
+        Self {
+            sequence,
+            binding,
+            phase,
+            capability: None,
+            resource: Some(resource),
+            enforcement: Some(enforcement),
+            observed_value: Some(observed_value),
+            ceiling: Some(ceiling),
+            status,
+        }
     }
 
     /// Returns monotonic rich sequence.
@@ -200,6 +238,16 @@ impl WindowsObservation {
     #[must_use]
     pub const fn enforcement(self) -> Option<EnforcementLevel> {
         self.enforcement
+    }
+    /// Returns the actual measured quantity for a resource observation.
+    #[must_use]
+    pub const fn observed_value(self) -> Option<u64> {
+        self.observed_value
+    }
+    /// Returns the checked ceiling paired with an actual resource measurement.
+    #[must_use]
+    pub const fn ceiling(self) -> Option<u64> {
+        self.ceiling
     }
     /// Returns observation result.
     #[must_use]
