@@ -85,6 +85,8 @@ pub enum RecoveryRoute {
     None,
     /// Prepare and authorize a new action.
     Reauthorize,
+    /// Select a backend that covers the already-checked operation plan.
+    SelectBackend,
     /// Reconcile the workspace target.
     ReconcileWorkspace,
     /// Reconcile an owned process record.

@@ -216,6 +216,7 @@ pub fn read_result(reader: &mut CanonicalReader<'_>) -> Result<GateAttemptResult
         4 => RecoveryRequirement::ReconcileProcess,
         5 => RecoveryRequirement::RepublishArtifact,
         6 => RecoveryRequirement::HumanReview,
+        7 => RecoveryRequirement::SelectBackend,
         _ => return Err(CodecError::at(CodecErrorKind::UnknownTag, recovery_offset)),
     };
     let count = reader.read_collection_len(32 + 8 + 2 * 4)?;

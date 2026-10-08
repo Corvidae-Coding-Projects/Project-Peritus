@@ -187,6 +187,7 @@ pub const fn recovery_tag(value: RecoveryRequirement) -> u8 {
         RecoveryRequirement::ReconcileProcess => 4,
         RecoveryRequirement::RepublishArtifact => 5,
         RecoveryRequirement::HumanReview => 6,
+        RecoveryRequirement::SelectBackend => 7,
     }
 }
 

@@ -17,7 +17,10 @@ use crate::{
     CheckDefinition,
     dispatcher::adapter_failure,
     json_value::object,
-    observation::{CandidateGateObservation, QualityExecutionObservation, classify},
+    observation::{
+        CandidateGateObservation, ClassifiedQualityExecution, QualityExecutionObservation,
+        QualityTerminalClass, classify, classify_legacy,
+    },
     render,
 };
 
@@ -34,9 +37,59 @@ pub(super) fn build(
     progress_count: u64,
     progress_truncated: bool,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
-    let (observation, candidate) =
-        classify(definition, terminal, parser_complete, predicate_satisfied);
-    let structured = structured(&observation, candidate, progress_truncated)
+    build_classified(
+        prepared,
+        terminal,
+        classify(definition, terminal, parser_complete, predicate_satisfied),
+        store,
+        started_at,
+        finished_at,
+        progress_count,
+        progress_truncated,
+        false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn build_legacy(
+    prepared: &PreparedToolCall,
+    definition: &CheckDefinition,
+    terminal: &TerminalResult,
+    parser_complete: bool,
+    predicate_satisfied: bool,
+    store: &ArtifactStore,
+    started_at: AuthorityInstant,
+    finished_at: AuthorityInstant,
+    progress_count: u64,
+    progress_truncated: bool,
+) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
+    build_classified(
+        prepared,
+        terminal,
+        classify_legacy(definition, terminal, parser_complete, predicate_satisfied),
+        store,
+        started_at,
+        finished_at,
+        progress_count,
+        progress_truncated,
+        true,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_classified(
+    prepared: &PreparedToolCall,
+    terminal: &TerminalResult,
+    classified: ClassifiedQualityExecution,
+    store: &ArtifactStore,
+    started_at: AuthorityInstant,
+    finished_at: AuthorityInstant,
+    progress_count: u64,
+    progress_truncated: bool,
+    legacy: bool,
+) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
+    let candidate = classified.candidate();
+    let structured = structured(classified.observation(), candidate, progress_truncated, legacy)
         .map_err(|error| adapter_failure("quality-result-structure", &error.to_string()))?;
     let artifacts = artifacts(prepared, terminal)
         .map_err(|error| adapter_failure("quality-result-artifacts", &error.to_string()))?;
@@ -54,7 +107,7 @@ pub(super) fn build(
         model: rendering.model_truncation,
         human: rendering.human_truncation,
     };
-    if candidate.outcome() == GateOutcome::Passed {
+    if classified.terminal_class() == QualityTerminalClass::Passed {
         ToolResult::success(
             prepared,
             structured,
@@ -67,7 +120,12 @@ pub(super) fn build(
         )
         .map_err(|error| adapter_failure("quality-result-envelope", &error.to_string()))
     } else {
-        let (status, failure) = quality_failure(candidate.outcome(), terminal);
+        let Some((status, failure)) = quality_failure(classified.terminal_class()) else {
+            return Err(adapter_failure(
+                "quality-result-classification",
+                "a passing quality classification cannot construct a failure envelope",
+            ));
+        };
         ToolResult::failure(
             prepared,
             status,
@@ -88,24 +146,62 @@ fn structured(
     observation: &QualityExecutionObservation,
     candidate: CandidateGateObservation,
     progress_truncated: bool,
+    legacy: bool,
 ) -> Result<BoundedJson, peritus_tool_protocol::ProtocolError> {
     let candidate = object([
         ("gate_id", serde_json::Value::String(hex(candidate.gate_id().as_bytes()))),
         ("outcome", serde_json::Value::String(outcome_name(candidate.outcome()).to_owned())),
         ("result_digest", serde_json::Value::String(hex(candidate.result_digest().as_bytes()))),
     ]);
-    let execution = object([
-        ("complete", serde_json::Value::Bool(observation.complete())),
-        ("disposition", serde_json::Value::String(format!("{:?}", observation.disposition()))),
-        ("os_exit", serde_json::Value::String(format!("{:?}", observation.os_exit()))),
-        ("plan_digest", serde_json::Value::String(hex(observation.plan_digest().as_bytes()))),
-        ("process_id", serde_json::Value::String(hex(observation.process_id().as_bytes()))),
-    ]);
-    let value = object([
-        ("candidate", candidate),
-        ("execution", execution),
-        ("progress_truncated", serde_json::Value::Bool(progress_truncated)),
-    ]);
+    let execution = if legacy {
+        object([
+            ("complete", serde_json::Value::Bool(observation.complete())),
+            ("disposition", serde_json::Value::String(format!("{:?}", observation.disposition()))),
+            ("os_exit", serde_json::Value::String(format!("{:?}", observation.os_exit()))),
+            ("plan_digest", serde_json::Value::String(hex(observation.plan_digest().as_bytes()))),
+            ("process_id", serde_json::Value::String(hex(observation.process_id().as_bytes()))),
+        ])
+    } else {
+        object([
+            (
+                "artifact_publication_complete",
+                serde_json::Value::Bool(observation.artifact_publication_complete()),
+            ),
+            ("cleanup_complete", serde_json::Value::Bool(observation.cleanup_complete())),
+            ("complete", serde_json::Value::Bool(observation.complete())),
+            (
+                "disposition",
+                serde_json::Value::String(disposition_name(observation.disposition()).to_owned()),
+            ),
+            (
+                "expected_exit_satisfied",
+                serde_json::Value::Bool(observation.expected_exit_satisfied()),
+            ),
+            ("os_exit", serde_json::Value::String(format!("{:?}", observation.os_exit()))),
+            ("output_complete", serde_json::Value::Bool(observation.output_complete())),
+            ("parser_complete", serde_json::Value::Bool(observation.parser_complete())),
+            ("plan_digest", serde_json::Value::String(hex(observation.plan_digest().as_bytes()))),
+            (
+                "predicate_satisfied",
+                serde_json::Value::Bool(observation.predicate_satisfied()),
+            ),
+            ("process_id", serde_json::Value::String(hex(observation.process_id().as_bytes()))),
+        ])
+    };
+    let value = if legacy {
+        object([
+            ("candidate", candidate),
+            ("execution", execution),
+            ("progress_truncated", serde_json::Value::Bool(progress_truncated)),
+        ])
+    } else {
+        object([
+            ("candidate", candidate),
+            ("classification_version", serde_json::Value::Number(2_u64.into())),
+            ("execution", execution),
+            ("progress_truncated", serde_json::Value::Bool(progress_truncated)),
+        ])
+    };
     BoundedJson::parse(&value.to_string(), JsonLimits::PRODUCTION)
 }
 
@@ -135,10 +231,11 @@ fn artifacts(
         .collect()
 }
 
-fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultStatus, ToolFailure) {
+fn quality_failure(classification: QualityTerminalClass) -> Option<(ResultStatus, ToolFailure)> {
     let (status, category, code, subsystem, retryability, recovery, detail) =
-        match (terminal.disposition(), outcome) {
-            (TerminalDisposition::TimedOut, _) => (
+        match classification {
+            QualityTerminalClass::Passed => return None,
+            QualityTerminalClass::TimedOut => (
                 ResultStatus::TimedOut,
                 FailureCategory::Timeout,
                 "quality-timeout",
@@ -147,7 +244,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::Reauthorize,
                 "the quality check deadline elapsed",
             ),
-            (TerminalDisposition::Cancelled, _) => (
+            QualityTerminalClass::Cancelled => (
                 ResultStatus::Cancelled,
                 FailureCategory::Cancelled,
                 "quality-cancelled",
@@ -156,7 +253,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::Reauthorize,
                 "the quality check was cancelled",
             ),
-            (TerminalDisposition::RecoveryIndeterminate, _) => (
+            QualityTerminalClass::Indeterminate => (
                 ResultStatus::Indeterminate,
                 FailureCategory::Indeterminate,
                 "quality-recovery-indeterminate",
@@ -165,7 +262,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::ReconcileProcess,
                 "C2 could not establish the quality process outcome",
             ),
-            (_, GateOutcome::Failed(GateFailure::PredicateFailed)) => (
+            QualityTerminalClass::PredicateFailed => (
                 ResultStatus::Failed,
                 FailureCategory::Execution,
                 "quality-predicate-failed",
@@ -174,7 +271,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::None,
                 "the frozen check success predicate did not pass",
             ),
-            (_, GateOutcome::Failed(GateFailure::UnsuccessfulExit)) => (
+            QualityTerminalClass::UnsuccessfulExit => (
                 ResultStatus::Failed,
                 FailureCategory::Execution,
                 "quality-unsuccessful-exit",
@@ -183,7 +280,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::None,
                 "the frozen check exit predicate did not pass",
             ),
-            (_, GateOutcome::Failed(GateFailure::InvalidResult)) => (
+            QualityTerminalClass::InvalidResult => (
                 ResultStatus::Failed,
                 FailureCategory::Infrastructure,
                 "quality-parser-invalid",
@@ -192,7 +289,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 RecoveryRoute::Reauthorize,
                 "the configured output parser did not complete",
             ),
-            _ => (
+            QualityTerminalClass::Infrastructure => (
                 ResultStatus::Failed,
                 FailureCategory::Infrastructure,
                 "quality-infrastructure",
@@ -202,7 +299,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
                 "complete trustworthy quality execution evidence is unavailable",
             ),
         };
-    (
+    Some((
         status,
         ToolFailure::new(
             category,
@@ -212,7 +309,7 @@ fn quality_failure(outcome: GateOutcome, terminal: &TerminalResult) -> (ResultSt
             recovery,
             render::text(detail),
         ),
-    )
+    ))
 }
 
 fn output_truncation(terminal: &TerminalResult) -> Truncation {
@@ -243,6 +340,21 @@ const fn outcome_name(value: GateOutcome) -> &'static str {
         GateOutcome::Failed(GateFailure::UnsuccessfulExit) => "unsuccessful-exit",
         GateOutcome::Failed(GateFailure::InvalidResult) => "invalid-result",
         GateOutcome::Failed(GateFailure::Infrastructure) => "infrastructure",
+    }
+}
+
+const fn disposition_name(value: TerminalDisposition) -> &'static str {
+    match value {
+        TerminalDisposition::Exited => "exited",
+        TerminalDisposition::Signalled => "signalled",
+        TerminalDisposition::SpawnFailed => "spawn-failed",
+        TerminalDisposition::Cancelled => "cancelled",
+        TerminalDisposition::TimedOut => "timed-out",
+        TerminalDisposition::OutputLimit => "output-limit",
+        TerminalDisposition::ResourceLimit => "resource-limit",
+        TerminalDisposition::SandboxDenied => "sandbox-denied",
+        TerminalDisposition::SupervisorFailed => "supervisor-failed",
+        TerminalDisposition::RecoveryIndeterminate => "recovery-indeterminate",
     }
 }
 

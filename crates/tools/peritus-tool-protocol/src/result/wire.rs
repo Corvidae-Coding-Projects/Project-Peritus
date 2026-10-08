@@ -22,13 +22,14 @@ pub(super) fn failure(value: &ToolFailure) -> Vec<u8> {
         RecoveryRoute::ReconcileProcess => 4,
         RecoveryRoute::RepublishArtifact => 5,
         RecoveryRoute::HumanReview => 6,
+        RecoveryRoute::SelectBackend => 7,
     });
     crate::wire::text(&mut bytes, value.detail.as_str());
     bytes
 }
 
 pub(super) fn result(value: &ToolResult) -> Vec<u8> {
-    let mut bytes = crate::wire::begin(6);
+    let mut bytes = crate::wire::begin_version(6, value.encoding_version);
     bytes.extend_from_slice(value.action_id.as_bytes());
     bytes.extend_from_slice(value.descriptor_digest.as_bytes());
     bytes.extend_from_slice(value.prepared_digest.as_bytes());
@@ -54,7 +55,14 @@ pub(super) fn result(value: &ToolResult) -> Vec<u8> {
     bytes.push(truncation_tag(value.truncation.output));
     bytes.push(truncation_tag(value.truncation.model));
     bytes.push(truncation_tag(value.truncation.human));
-    crate::wire::u32_value(&mut bytes, value.progress_count);
+    if value.encoding_version == 1 {
+        crate::wire::u32_value(
+            &mut bytes,
+            u32::try_from(value.progress_frontier).unwrap_or(u32::MAX),
+        );
+    } else {
+        crate::wire::u64_value(&mut bytes, value.progress_frontier);
+    }
     bytes
 }
 

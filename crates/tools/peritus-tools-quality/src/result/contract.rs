@@ -39,7 +39,11 @@ pub(super) fn terminal_contract_consistent(
                 RecoveryRoute::ReconcileProcess,
             )
         }
-        (ResultStatus::Cancelled, Some(failure), Some(DecodedOutcome::Infrastructure)) => {
+        (
+            ResultStatus::Cancelled,
+            Some(failure),
+            Some(DecodedOutcome::Infrastructure | DecodedOutcome::InvalidResult),
+        ) => {
             exact_failure(
                 failure,
                 FailureCategory::Cancelled,
@@ -47,7 +51,11 @@ pub(super) fn terminal_contract_consistent(
                 RecoveryRoute::Reauthorize,
             )
         }
-        (ResultStatus::TimedOut, Some(failure), Some(DecodedOutcome::Infrastructure)) => {
+        (
+            ResultStatus::TimedOut,
+            Some(failure),
+            Some(DecodedOutcome::Infrastructure | DecodedOutcome::InvalidResult),
+        ) => {
             exact_failure(
                 failure,
                 FailureCategory::Timeout,
@@ -55,7 +63,11 @@ pub(super) fn terminal_contract_consistent(
                 RecoveryRoute::Reauthorize,
             )
         }
-        (ResultStatus::Indeterminate, Some(failure), Some(DecodedOutcome::Infrastructure)) => {
+        (
+            ResultStatus::Indeterminate,
+            Some(failure),
+            Some(DecodedOutcome::Infrastructure | DecodedOutcome::InvalidResult),
+        ) => {
             exact_failure(
                 failure,
                 FailureCategory::Indeterminate,

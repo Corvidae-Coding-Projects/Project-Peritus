@@ -505,7 +505,7 @@ impl QualityExecution {
         let completed = self.completed.as_ref().ok_or_else(|| {
             adapter_failure("quality-settlement-missing", "adopted terminal evidence disappeared")
         })?;
-        let result = terminal::build(
+        let current = terminal::build(
             &self.prepared,
             &self.definition,
             &completed.terminal,
@@ -516,7 +516,43 @@ impl QualityExecution {
             settlement.finished_at,
             settlement.progress_frontier,
             settlement.progress_truncated,
-        )?;
+        );
+        let result = if let Some(expected) = settlement.result_digest {
+            match current {
+                Ok(result) if peritus_codec::sha256(&result.canonical_bytes()) == expected => result,
+                current => {
+                    match terminal::build_legacy(
+                        &self.prepared,
+                        &self.definition,
+                        &completed.terminal,
+                        settlement.parser_complete,
+                        settlement.predicate_satisfied,
+                        &self.artifacts,
+                        self.started_at,
+                        settlement.finished_at,
+                        settlement.progress_frontier,
+                        settlement.progress_truncated,
+                    ) {
+                        Ok(result)
+                            if peritus_codec::sha256(&result.canonical_bytes()) == expected =>
+                        {
+                            result
+                        }
+                        _ => {
+                            if let Err(error) = current {
+                                return Err(error);
+                            }
+                            return Err(adapter_failure(
+                                "quality-result-checkpoint",
+                                "adopted quality result differs from its durable terminal receipt",
+                            ));
+                        }
+                    }
+                }
+            }
+        } else {
+            current?
+        };
         let result_digest = peritus_codec::sha256(&result.canonical_bytes());
         if settlement.result_digest.is_some_and(|expected| expected != result_digest) {
             return Err(adapter_failure(

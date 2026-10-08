@@ -272,11 +272,16 @@ pub fn decode_quality_result(
             (failure.retryability(), failure.recovery())
         });
 
-    let contract_consistent = contract::terminal_contract_consistent(
-        result.status(),
-        failure,
-        decoded.as_ref().map(|value| value.outcome),
-    );
+    let status_consistent = decoded
+        .as_ref()
+        .and_then(|value| value.expected_status)
+        .map_or(true, |expected| expected == result.status());
+    let contract_consistent = status_consistent
+        && contract::terminal_contract_consistent(
+            result.status(),
+            failure,
+            decoded.as_ref().map(|value| value.outcome),
+        );
     let incomplete = decoded.as_ref().is_some_and(|decoded| {
         !decoded.execution_complete
             || incomplete_artifact

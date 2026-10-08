@@ -27,6 +27,8 @@ pub enum RecoveryRequirement {
     None,
     /// Obtain fresh independent authority.
     Reauthorize,
+    /// Select a backend that covers the frozen operation plan.
+    SelectBackend,
     /// Reconcile the immutable workspace target.
     ReconcileWorkspace,
     /// Reconcile the owned C2 process.
@@ -312,6 +314,7 @@ const fn map_recovery(route: RecoveryRoute) -> RecoveryRequirement {
     match route {
         RecoveryRoute::None => RecoveryRequirement::None,
         RecoveryRoute::Reauthorize => RecoveryRequirement::Reauthorize,
+        RecoveryRoute::SelectBackend => RecoveryRequirement::SelectBackend,
         RecoveryRoute::ReconcileWorkspace => RecoveryRequirement::ReconcileWorkspace,
         RecoveryRoute::ReconcileProcess => RecoveryRequirement::ReconcileProcess,
         RecoveryRoute::RepublishArtifact => RecoveryRequirement::RepublishArtifact,

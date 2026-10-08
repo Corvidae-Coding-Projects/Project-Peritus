@@ -28,11 +28,17 @@ pub fn process(error: &ProcessError) -> DispatchFailure {
             Retryability::NewAction,
             RecoveryRoute::Reauthorize,
         ),
-        RecoveryClass::Reauthorize | RecoveryClass::SelectBackend => (
+        RecoveryClass::Reauthorize => (
             ResultStatus::Failed,
             FailureCategory::Authorization,
             Retryability::NewAction,
             RecoveryRoute::Reauthorize,
+        ),
+        RecoveryClass::SelectBackend => (
+            ResultStatus::Failed,
+            FailureCategory::Authorization,
+            Retryability::NewAction,
+            RecoveryRoute::SelectBackend,
         ),
         RecoveryClass::RetryPublication => (
             ResultStatus::Failed,
