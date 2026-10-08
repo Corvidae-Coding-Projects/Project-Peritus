@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4001,
-        "tip_oid": "3271f94af674dab8af1a867f4902c4fdc1848d3f",
-        "prefix_sha256": "9fe7ae217e39d76f82071575e743cb0123eb7fbed6d904ea6d0ea2b397eb07ae"
+        "sequence": 4002,
+        "tip_oid": "539e2af01b49dfc36e46face5685e83329520f06",
+        "prefix_sha256": "6df622b6ae2b7abe96fccb0fa82154136741deb51f6f27049af000b8da9dc1b2"
       },
       "NWAR": {
         "sequence": 39,
@@ -16029,12 +16029,13 @@
       "display_id": 527,
       "title": "[L448] F0 promotion always requires resource measurements, even with unconstrained thresholds and unrelated objectives",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L448.\n\n- Evidence: `crates/analysis/peritus-evolution/src/selection/engine.rs:39-46,52-153`, `src/binding/policy.rs:53-111`, `src/selection/tests.rs`, `src/qualification/evidence.rs:189-208` in the same crate.\n- Behavior: Assessment always creates fourteen mandatory criteria. Latency, cost, input tokens and output tokens each require an available measurement and satisfaction of its u64 ceiling. Choosing other ranking objectives or setting a ceiling to u64::MAX does not disable that availability prerequisite. Trace/teardown requirements have explicit optional flags; resource measurements do not. The qualification fixture supplies every metric.\n- Consequence: An evaluation with legitimately unavailable provider cost or token measurements cannot promote a candidate through F0, even when the caller intended no constraint on that metric. Additional correctness evidence does not remove the unavailable criterion. These are frozen quality-policy prerequisites, not elapsed-time enforcement; the blocker is lack of a representable optional requirement and capability validation. This audit did not run a provider evaluation.\n- Repair direction: Distinguish required measurements, optional measurements and ranking objectives in the policy. Validate required measurement capability before admitting a campaign; preserve unavailable values honestly rather than inventing passing observations. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.597593691Z",
-      "updated_at": "2026-10-08T03:00:18.705981742Z",
+      "updated_at": "2026-10-08T03:01:55.378312788Z",
+      "closed_at": "2026-10-08T03:01:55.375579070Z",
       "labels": [
         "daily-driving-limiter"
       ],
