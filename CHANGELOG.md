@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L453] An accepted out-of-range probability threshold cannot survive F0 wire decoding (#532)
 - [L452] F0's accepted bounds disagree with its attribution and assessment persistence schema (#531)
 - [L044] Any leave-alone path disables all unconfined commands (#143)
 - [L451] F0 recovery can report terminal completion without checking retained artifact/evidence observations (#530)
