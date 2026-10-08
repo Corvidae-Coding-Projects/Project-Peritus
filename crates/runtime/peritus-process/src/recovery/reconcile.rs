@@ -65,8 +65,7 @@ pub trait ProcessProbe {
 pub enum RecoveryDisposition {
     /// A complete durable result exists and resource ownership is settled.
     Terminal,
-    /// The exact process remains owned: either retained control was reattached or legacy
-    /// recovery requested termination of the exact live tree.
+    /// The exact process remains owned by its durable supervisor custody.
     LiveOwned,
     /// The process was absent without a committed terminal observation.
     AbsentUnobserved,
@@ -182,9 +181,8 @@ impl RecoveryReport {
 impl ProcessStore {
     /// Reconciles every durable manifest using exact injected process observations.
     ///
-    /// Only [`ProbeObservation::ExactLive`] permits a termination request. Absence is never
-    /// converted into successful completion, and mismatched or unverifiable identities remain
-    /// indeterminate.
+    /// Reconciliation only observes ownership. Absence is never converted into successful
+    /// completion, and mismatched or unverifiable identities remain indeterminate.
     ///
     /// # Errors
     ///
@@ -281,12 +279,10 @@ impl ProcessStore {
                     };
                     match native {
                         ProbeObservation::ExactLive => {
-                            if let Err(error) = probe.terminate(tree) {
-                                observe(RecoveryObservation::failed(process_id, error))?;
-                                continue;
-                            }
-                            self.reconcile_ownership(&manifest, false)?;
-                            (RecoveryDisposition::LiveOwned, true)
+                            // The durable supervisor or its owner-death guard still has exact
+                            // custody. Restart attachment is observational and must not become an
+                            // implicit cancellation request.
+                            (RecoveryDisposition::LiveOwned, false)
                         }
                         ProbeObservation::ExactAbsent => {
                             let quiescence = match probe.observe_quiescence(tree) {

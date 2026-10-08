@@ -35,6 +35,7 @@ pub(super) fn launch(
     plan: &SupervisorPlan,
     launch_command: &CommandSpec,
     handshake: Option<NativeHandshake>,
+    kill_on_parent_death: bool,
     spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<PlatformLaunch, ProcessError> {
@@ -57,7 +58,11 @@ pub(super) fn launch(
         command.env(variable.name(), variable.value());
     }
     #[cfg(target_os = "linux")]
-    super::configure_parent_death(&mut command);
+    if kill_on_parent_death {
+        super::configure_parent_death(&mut command);
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = kill_on_parent_death;
     #[cfg(windows)]
     if let Some(channels) = handshake
         .as_ref()

@@ -295,6 +295,7 @@ pub(crate) fn launch(
     spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<PlatformLaunch, ProcessError> {
+    let kill_on_parent_death = crash_watchdog.is_none();
     #[cfg(windows)]
     if matches!(plan.io_mode(), crate::IoMode::Pty(_))
         && handshake
@@ -302,13 +303,33 @@ pub(crate) fn launch(
             .and_then(|value| value.windows_channels.as_ref())
             .is_some()
     {
-        return pipe::launch(plan, command, handshake, spawned, should_continue);
+        return pipe::launch(
+            plan,
+            command,
+            handshake,
+            kill_on_parent_death,
+            spawned,
+            should_continue,
+        );
     }
     let launch = match plan.io_mode() {
-        crate::IoMode::Pipes => pipe::launch(plan, command, handshake, spawned, should_continue),
-        crate::IoMode::Pty(size) => {
-            pty::launch(plan, command, handshake, size, spawned, should_continue)
-        }
+        crate::IoMode::Pipes => pipe::launch(
+            plan,
+            command,
+            handshake,
+            kill_on_parent_death,
+            spawned,
+            should_continue,
+        ),
+        crate::IoMode::Pty(size) => pty::launch(
+            plan,
+            command,
+            handshake,
+            size,
+            kill_on_parent_death,
+            spawned,
+            should_continue,
+        ),
     }?;
     #[cfg(target_os = "linux")]
     if let Some(executable) = crash_watchdog {

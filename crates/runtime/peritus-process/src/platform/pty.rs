@@ -37,6 +37,7 @@ pub(super) fn launch(
     _command: &CommandSpec,
     _handshake: Option<super::NativeHandshake>,
     _size: TerminalSize,
+    _kill_on_parent_death: bool,
     _spawned: &mut dyn FnMut(super::ProcessTreeIdentity) -> Result<(), ProcessError>,
     _should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<super::PlatformLaunch, ProcessError> {
@@ -54,6 +55,7 @@ pub(super) fn launch(
     launch_command: &CommandSpec,
     handshake: Option<NativeHandshake>,
     size: TerminalSize,
+    kill_on_parent_death: bool,
     spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<super::PlatformLaunch, ProcessError> {
@@ -76,6 +78,7 @@ pub(super) fn launch(
             pair,
             reader,
             input,
+            kill_on_parent_death,
             spawned,
             should_continue,
         );
@@ -124,6 +127,7 @@ fn launch_native(
     pair: portable_pty::PtyPair,
     terminal_reader: Box<dyn std::io::Read + Send>,
     input: Option<ProcessInput>,
+    kill_on_parent_death: bool,
     spawned: &mut dyn FnMut(ProcessTreeIdentity) -> Result<(), ProcessError>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<super::PlatformLaunch, ProcessError> {
@@ -143,7 +147,11 @@ fn launch_native(
         command.env(variable.name(), variable.value());
     }
     #[cfg(target_os = "linux")]
-    super::configure_parent_death(&mut command);
+    if kill_on_parent_death {
+        super::configure_parent_death(&mut command);
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = kill_on_parent_death;
     command.env(crate::NATIVE_PTY_SLAVE_ENV, slave_path);
     let child = {
         let _inheritance =

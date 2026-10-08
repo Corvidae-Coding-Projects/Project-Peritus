@@ -638,10 +638,28 @@ impl ProcessOwner {
         // The initialization marker serializes concurrent openers without retaining the mutex
         // across filesystem recovery. A failed open clears the marker for a later safe retry.
         let opened = catch_unwind(AssertUnwindSafe(|| {
-            ProcessStore::open(
-                self.config.paths().process_root(),
-                self.config.paths().workspace_root(),
-            )
+            #[cfg(target_os = "linux")]
+            {
+                let watchdog = std::env::current_exe().map_err(|_| {
+                    owner_error(
+                        ErrorCode::Supervisor,
+                        RecoveryClass::CancelAndReap,
+                        "retained process crash watchdog cannot be resolved",
+                    )
+                })?;
+                ProcessStore::open_with_crash_watchdog(
+                    self.config.paths().process_root(),
+                    self.config.paths().workspace_root(),
+                    watchdog,
+                )
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                ProcessStore::open(
+                    self.config.paths().process_root(),
+                    self.config.paths().workspace_root(),
+                )
+            }
         }));
         let mut shared = self
             .store

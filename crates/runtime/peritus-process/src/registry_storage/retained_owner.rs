@@ -81,11 +81,15 @@ pub(crate) fn stage_retained_owner_request(
         return Err(store_error("retained owner staging binding is inconsistent"));
     }
     let name = hex(process_id.as_bytes());
-    persist_immutable(&directory.join(format!("{name}.{REQUEST_SUFFIX}")), request)?;
+    let authorized = manifest.encode()?;
+    // The request is the commit marker consumed by launch recovery. Publish its complete
+    // authorization first so a crash can leave only an invisible precursor, never a request
+    // whose nonce appears reusable without the matching immutable authorization.
     persist_immutable(
         &directory.join(format!("{name}.{AUTHORIZED_SUFFIX}")),
-        &manifest.encode()?,
+        &authorized,
     )?;
+    persist_immutable(&directory.join(format!("{name}.{REQUEST_SUFFIX}")), request)?;
     sync_directory(directory)
 }
 
@@ -352,31 +356,33 @@ pub(crate) fn load_unclaimed_retained_owner_request(
             return Ok(None);
         }
     };
-    match read_regular_file(
+    let authorized_exact = match read_regular_file(
         &authorized_path,
         "unclaimed retained owner authorization cannot be read",
     ) {
         Ok(bytes) => {
             let authorized = ExecutionManifest::decode(&bytes);
-            let exact = authorized.as_ref().is_ok_and(|manifest| {
+            authorized.as_ref().is_ok_and(|manifest| {
                 manifest.has_same_authorization(expected)
                     && manifest.identity.action_id()
                         == retained.execution_plan().identity().action_id()
                     && manifest.action_digest == retained.binding().action_digest()
                     && manifest.plan_digest == retained.execution_plan().digest()
-            });
-            if !exact {
-                remove_unclaimed_stage(&authorized_path)?;
-                sync_directory(directory)?;
-            }
+            })
         }
-        Err(error) if error.kind() == ErrorKind::NotFound => {}
+        Err(error) if error.kind() == ErrorKind::NotFound => false,
         Err(error) => {
             return Err(store_cause(
                 "unclaimed retained owner authorization cannot be read",
                 error,
             ));
         }
+    };
+    if !authorized_exact {
+        remove_unclaimed_stage(&request_path)?;
+        remove_unclaimed_stage(&authorized_path)?;
+        sync_directory(directory)?;
+        return Ok(None);
     }
     Ok(Some(request))
 }
