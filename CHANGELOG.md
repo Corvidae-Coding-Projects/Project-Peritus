@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L616] Windows managed networking adds a five-second native transaction wait and ephemeral filter ownership (#672)
 - [L450] Ordinary F0 committed-command replay fails after later checkpoint progress (#529)
 - [L043] Grounding evidence can reset at tool-executor reconstruction (#142)
 - [L449] F0 publication is permanently bounded to sixteen delivery claims (#528)
