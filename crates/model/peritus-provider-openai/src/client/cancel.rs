@@ -4,11 +4,12 @@ use peritus_model_protocol::{
     CanonicalJson, Capability, JsonBounds, ProtocolLimits, ResponseId, StateMode,
 };
 use peritus_provider_core::{
-    BoxFuture, CancellationToken, Header, HeaderName, HttpHeaders, HttpMethod, HttpRequest,
-    ProviderCoreError, ResponseCancellationOutcome,
+    BoxFuture, ByteStream, CancellationToken, Header, HeaderName, HttpHeaders, HttpMethod,
+    HttpRequest, ProviderCoreError, ResponseCancellationOutcome,
 };
+use serde_json::Value;
 
-use super::{OpenAiProvider, response};
+use super::OpenAiProvider;
 
 pub(super) fn cancel<'a>(
     provider: &'a OpenAiProvider,
@@ -37,36 +38,15 @@ pub(super) fn cancel<'a>(
         )?;
         let response = provider.transport.send(request, cancellation).await?;
         let (status, _headers, mut body) = response.into_parts();
-        let bytes = response::read_body(
+        if status.as_u16() != 200 {
+            return Err(cancel_status(status.as_u16()));
+        }
+        let value = read_native_outcome(
             &mut body,
             cancellation,
             provider.config.http_limits().max_response_body_bytes(),
         )
         .await?;
-        if status.as_u16() != 200 {
-            return Err(cancel_status(status.as_u16()));
-        }
-        CanonicalJson::parse(
-            core::str::from_utf8(&bytes).map_err(|_| {
-                ProviderCoreError::malformed_stream(
-                    "openai_cancel",
-                    "OpenAI cancellation response was not UTF-8",
-                )
-            })?,
-            JsonBounds::value(ProtocolLimits::PRODUCTION),
-        )
-        .map_err(|_| {
-            ProviderCoreError::malformed_stream(
-                "openai_cancel",
-                "OpenAI cancellation response was malformed or unbounded",
-            )
-        })?;
-        let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|_| {
-            ProviderCoreError::malformed_stream(
-                "openai_cancel",
-                "OpenAI cancellation response was not a JSON object",
-            )
-        })?;
         let identity = value.get("id").and_then(serde_json::Value::as_str);
         let state = value.get("status").and_then(serde_json::Value::as_str);
         if identity != Some(response_id.expose_for_wire()) {
@@ -88,6 +68,77 @@ pub(super) fn cancel<'a>(
         forget_known(provider, response_id)?;
         Ok(ResponseCancellationOutcome::Confirmed { already_terminal })
     })
+}
+
+async fn read_native_outcome(
+    body: &mut Box<dyn ByteStream>,
+    cancellation: &CancellationToken,
+    maximum: usize,
+) -> Result<Value, ProviderCoreError> {
+    let mut bytes = Vec::new();
+    loop {
+        if let Some(value) = complete_native_outcome(&bytes)? {
+            return Ok(value);
+        }
+        if bytes.len() == maximum {
+            return Err(ProviderCoreError::limit_exceeded(
+                "openai_cancel",
+                "OpenAI cancellation response exceeds its byte bound",
+            ));
+        }
+        let Some(chunk) = body.next(cancellation).await? else {
+            return Err(ProviderCoreError::malformed_stream(
+                "openai_cancel",
+                "OpenAI cancellation response ended before its native status",
+            ));
+        };
+        if bytes
+            .len()
+            .checked_add(chunk.len())
+            .is_none_or(|length| length > maximum)
+        {
+            return Err(ProviderCoreError::limit_exceeded(
+                "openai_cancel",
+                "OpenAI cancellation response exceeds its byte bound",
+            ));
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+}
+
+fn complete_native_outcome(bytes: &[u8]) -> Result<Option<Value>, ProviderCoreError> {
+    let mut values = serde_json::Deserializer::from_slice(bytes).into_iter::<Value>();
+    let value = match values.next() {
+        None => return Ok(None),
+        Some(Err(failure)) if failure.is_eof() => return Ok(None),
+        Some(Err(_)) => {
+            return Err(ProviderCoreError::malformed_stream(
+                "openai_cancel",
+                "OpenAI cancellation response was malformed",
+            ));
+        }
+        Some(Ok(value)) => value,
+    };
+    if !value.is_object() {
+        return Err(ProviderCoreError::malformed_stream(
+            "openai_cancel",
+            "OpenAI cancellation response was not a JSON object",
+        ));
+    }
+    let consumed = values.byte_offset();
+    let prefix = core::str::from_utf8(&bytes[..consumed]).map_err(|_| {
+        ProviderCoreError::malformed_stream(
+            "openai_cancel",
+            "OpenAI cancellation response was not UTF-8",
+        )
+    })?;
+    CanonicalJson::parse(prefix, JsonBounds::value(ProtocolLimits::PRODUCTION)).map_err(|_| {
+        ProviderCoreError::malformed_stream(
+            "openai_cancel",
+            "OpenAI cancellation response was recursively unbounded",
+        )
+    })?;
+    Ok(Some(value))
 }
 
 fn require_known(

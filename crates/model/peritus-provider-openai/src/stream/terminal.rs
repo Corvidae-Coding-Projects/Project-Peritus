@@ -33,12 +33,7 @@ impl OpenAiStream {
             .map_err(|_| error::malformed("OpenAI response model identity is invalid"))?;
         let mut events =
             vec![ModelEvent::ResponseStarted { response_id: Some(identity), model: Some(model) }];
-        if let Some(request_id) = self.metadata.take_request_id() {
-            events.push(provider_event("openai.request_id", &request_id)?);
-        }
-        if let Some(rate_limit) = self.metadata.take_rate_limit() {
-            events.push(ModelEvent::RateLimit(rate_limit));
-        }
+        events.extend(self.metadata.take_events());
         Ok(events)
     }
 
@@ -218,21 +213,6 @@ fn incomplete_reason(response: &Value) -> FinishReason {
         Some("content_filter") => FinishReason::Safety,
         _ => FinishReason::Incomplete,
     }
-}
-
-fn provider_event(name: &str, value: &str) -> Result<ModelEvent, ProviderCoreError> {
-    let name = peritus_model_protocol::ExtensionName::new(name.to_owned())
-        .map_err(|_| error::malformed("static OpenAI extension identity was invalid"))?;
-    let encoded = serde_json::to_string(value)
-        .map_err(|_| error::malformed("OpenAI provider observation serialization failed"))?;
-    let value = peritus_model_protocol::CanonicalJson::parse(
-        &encoded,
-        peritus_model_protocol::JsonBounds::value(
-            peritus_model_protocol::ProtocolLimits::PRODUCTION,
-        ),
-    )
-    .map_err(|_| error::malformed("OpenAI provider observation exceeded bounds"))?;
-    Ok(ModelEvent::ProviderEvent(peritus_model_protocol::ProviderExtension::new(name, value)))
 }
 
 fn response_object(value: &Value) -> Result<&Value, ProviderCoreError> {

@@ -3,67 +3,95 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use peritus_model_protocol::{
-    FailureCategory, ModelEvent, OutcomeCertainty, ProviderName, RateLimitDimension,
-    RateLimitObservation, RateLimitWindow, ResetTime, ResponseId, RetryAfterObservation,
-    RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase,
+    CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, ModelFailure,
+    OptionalObservation, OptionalObservationKind, OptionalObservationStatus, OutcomeCertainty,
+    ProtocolLimits, ProviderExtension, ProviderName, RateLimitDimension, RateLimitObservation,
+    RateLimitWindow, ResetTime, ResponseId, RetryAfterObservation, RetryAfterParseStatus,
+    RetryAfterUnit, Retryability, TransportPhase,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, RetryFailure, StatusCode};
 
 use crate::error;
 
 pub struct ResponseMetadata {
-    request_id: Option<String>,
-    rate_limit: Option<RateLimitObservation>,
+    events: Vec<ModelEvent>,
 }
 
 impl ResponseMetadata {
     pub const fn empty() -> Self {
-        Self { request_id: None, rate_limit: None }
+        Self { events: Vec::new() }
     }
 
-    pub fn parse(headers: &HttpHeaders) -> Result<Self, ProviderCoreError> {
-        let request_id = text_header(headers, "x-request-id", headers.byte_count())?;
+    pub fn parse(headers: &HttpHeaders, limits: ProtocolLimits) -> Self {
+        let mut events = Vec::new();
+        match mapped_request_id(headers) {
+            MappedRequestId::Missing => {}
+            MappedRequestId::Accepted(value) => events.push(provider_text_event(
+                "openai.request_id",
+                value.expose_for_wire(),
+                limits,
+            )),
+            MappedRequestId::Rejected(observation) => {
+                events.push(ModelEvent::OptionalObservation(observation));
+            }
+        }
         let mut windows = Vec::new();
-        add_window(headers, "requests", RateLimitDimension::Requests, &mut windows)?;
-        add_window(headers, "tokens", RateLimitDimension::TotalTokens, &mut windows)?;
-        add_window(headers, "project-tokens", RateLimitDimension::TotalTokens, &mut windows)?;
-        let rate_limit = if windows.is_empty() {
-            None
-        } else {
-            Some(
-                RateLimitObservation::new(windows)
-                    .map_err(|_| error::malformed("OpenAI rate-limit headers were inconsistent"))?,
-            )
-        };
-        Ok(Self { request_id, rate_limit })
+        let mut rate_limit_evidence = Vec::new();
+        add_window(
+            headers,
+            "requests",
+            RateLimitDimension::Requests,
+            &mut windows,
+            &mut events,
+            &mut rate_limit_evidence,
+        );
+        add_window(
+            headers,
+            "tokens",
+            RateLimitDimension::TotalTokens,
+            &mut windows,
+            &mut events,
+            &mut rate_limit_evidence,
+        );
+        add_window(
+            headers,
+            "project-tokens",
+            RateLimitDimension::TotalTokens,
+            &mut windows,
+            &mut events,
+            &mut rate_limit_evidence,
+        );
+        if !windows.is_empty() {
+            match RateLimitObservation::new(windows) {
+                Ok(observation) => events.push(ModelEvent::RateLimit(observation)),
+                Err(_) => events.push(ModelEvent::OptionalObservation(OptionalObservation::new(
+                    OptionalObservationKind::RateLimitWindow,
+                    OptionalObservationStatus::Inconsistent,
+                    &rate_limit_evidence,
+                ))),
+            }
+        }
+        Self { events }
     }
 
-    pub const fn take_request_id(&mut self) -> Option<String> {
-        self.request_id.take()
-    }
-
-    pub const fn take_rate_limit(&mut self) -> Option<RateLimitObservation> {
-        self.rate_limit.take()
+    pub fn take_events(&mut self) -> Vec<ModelEvent> {
+        std::mem::take(&mut self.events)
     }
 }
 
 pub fn http_failure(
     status: StatusCode,
     headers: &HttpHeaders,
-    body: &[u8],
     provider: &ProviderName,
     retry_after: &OpenAiRetryAfter,
-) -> Result<ModelEvent, ProviderCoreError> {
-    let value: Option<serde_json::Value> = serde_json::from_slice(body).ok();
-    let code = value
-        .as_ref()
-        .and_then(|value| value.get("error"))
-        .and_then(|error| error.get("code"))
-        .and_then(serde_json::Value::as_str);
+) -> Result<ModelFailure, ProviderCoreError> {
     let status_number = status.as_u16();
-    let (category, certainty, retryability, diagnostic) = classify(status_number, code);
-    let response_id = text_header(headers, "x-request-id", headers.byte_count())?
-        .and_then(|value| ResponseId::new(value).ok());
+    let (category, certainty, retryability, diagnostic) = classify(status_number);
+    let (response_id, rejected_request_id) = match mapped_request_id(headers) {
+        MappedRequestId::Missing => (None, None),
+        MappedRequestId::Accepted(value) => (Some(value), None),
+        MappedRequestId::Rejected(observation) => (None, Some(observation)),
+    };
     let mut failure = error::failure(
         provider,
         category,
@@ -80,26 +108,21 @@ pub fn http_failure(
             error::malformed("OpenAI retry-after observation was inconsistent")
         })?;
     }
-    Ok(ModelEvent::ResponseFailed(failure))
+    if let Some(observation) = rejected_request_id {
+        failure = failure.with_optional_observation(observation);
+    }
+    Ok(failure)
 }
 
 pub fn retry_directive(
     status: StatusCode,
-    body: &[u8],
     retry_after: &OpenAiRetryAfter,
 ) -> Option<(RetryFailure, Option<u64>)> {
     if !retry_after.local_scheduling_available {
         return None;
     }
-    let code = serde_json::from_slice::<serde_json::Value>(body).ok().and_then(|value| {
-        value
-            .get("error")
-            .and_then(|error| error.get("code"))
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_owned)
-    });
     let failure = match status.as_u16() {
-        429 if !quota_code(code.as_deref()) => Some(RetryFailure::RateLimited),
+        429 => Some(RetryFailure::RateLimited),
         500..=599 => Some(RetryFailure::Server),
         _ => None,
     };
@@ -316,9 +339,8 @@ fn retry_after_observation(
     .map_err(|_| error::malformed("OpenAI retry-after observation was invalid"))
 }
 
-fn classify(
+const fn classify(
     status: u16,
-    code: Option<&str>,
 ) -> (FailureCategory, OutcomeCertainty, Retryability, &'static str) {
     match status {
         400 | 422 => (
@@ -351,12 +373,6 @@ fn classify(
             Retryability::Never,
             "openai.http.conflict",
         ),
-        429 if quota_code(code) => (
-            FailureCategory::QuotaExhausted,
-            OutcomeCertainty::DefinitelyNotAccepted,
-            Retryability::Never,
-            "openai.http.quota",
-        ),
         429 => (
             FailureCategory::RateLimited,
             OutcomeCertainty::DefinitelyNotAccepted,
@@ -378,83 +394,297 @@ fn classify(
     }
 }
 
-fn quota_code(code: Option<&str>) -> bool {
-    matches!(
-        code,
-        Some(
-            "credit_balance_exhausted"
-                | "organization_spend_limit_exceeded"
-                | "project_spend_limit_exceeded"
-                | "organization_usage_limit_exceeded"
-                | "insufficient_quota"
-        )
-    )
-}
-
 fn add_window(
     headers: &HttpHeaders,
     suffix: &str,
     dimension: RateLimitDimension,
     windows: &mut Vec<RateLimitWindow>,
-) -> Result<(), ProviderCoreError> {
-    let limit = integer_header(headers, &format!("x-ratelimit-limit-{suffix}"))?;
-    let remaining = integer_header(headers, &format!("x-ratelimit-remaining-{suffix}"))?;
-    let reset = text_header(headers, &format!("x-ratelimit-reset-{suffix}"), 64)?
-        .and_then(|value| duration_millis(&value))
-        .map(ResetTime::AfterMillis);
+    events: &mut Vec<ModelEvent>,
+    aggregate_evidence: &mut Vec<u8>,
+) {
+    let mut trusted = true;
+    let (limit, limit_raw) = integer_value(
+        integer_header(
+            headers,
+            &format!("x-ratelimit-limit-{suffix}"),
+            OptionalObservationKind::RateLimitLimit,
+        ),
+        events,
+        &mut trusted,
+    );
+    let (remaining, remaining_raw) = integer_value(
+        integer_header(
+            headers,
+            &format!("x-ratelimit-remaining-{suffix}"),
+            OptionalObservationKind::RateLimitRemaining,
+        ),
+        events,
+        &mut trusted,
+    );
+    let (reset_millis, reset_raw) = duration_value(
+        duration_header(headers, &format!("x-ratelimit-reset-{suffix}")),
+        events,
+        &mut trusted,
+    );
+    if !trusted {
+        return;
+    }
+    let reset = reset_millis.map(ResetTime::AfterMillis);
     if limit.is_some() || remaining.is_some() || reset.is_some() {
-        windows.push(
-            RateLimitWindow::new(dimension, limit, remaining, reset)
-                .map_err(|_| error::malformed("OpenAI rate-limit window was inconsistent"))?,
-        );
+        let evidence = rate_limit_evidence([limit_raw, remaining_raw, reset_raw]);
+        aggregate_evidence.extend_from_slice(&evidence);
+        match RateLimitWindow::new(dimension, limit, remaining, reset) {
+            Ok(window) => windows.push(window),
+            Err(_) => events.push(ModelEvent::OptionalObservation(OptionalObservation::new(
+                OptionalObservationKind::RateLimitWindow,
+                OptionalObservationStatus::Inconsistent,
+                &evidence,
+            ))),
+        }
     }
-    Ok(())
 }
 
-fn integer_header(headers: &HttpHeaders, name: &str) -> Result<Option<u64>, ProviderCoreError> {
-    Ok(text_header(headers, name, 64)?.and_then(|value| value.parse::<u64>().ok()))
+const MAX_REQUEST_ID_BYTES: usize = 512;
+const MAX_NUMERIC_HEADER_BYTES: usize = 64;
+
+enum MappedRequestId {
+    Missing,
+    Accepted(ResponseId),
+    Rejected(OptionalObservation),
 }
 
-fn text_header(
-    headers: &HttpHeaders,
+enum MappedInteger<'a> {
+    Missing,
+    Accepted { value: u64, raw: &'a [u8] },
+    Rejected(OptionalObservation),
+}
+
+enum MappedDuration<'a> {
+    Missing,
+    Accepted { millis: u64, raw: &'a [u8] },
+    Rejected(OptionalObservation),
+}
+
+fn mapped_request_id(headers: &HttpHeaders) -> MappedRequestId {
+    let Some(value) = headers.first("x-request-id") else { return MappedRequestId::Missing };
+    let Some(bytes) = value.nonsensitive_bytes() else { return MappedRequestId::Missing };
+    if bytes.len() > MAX_REQUEST_ID_BYTES {
+        return MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::ExceededBound,
+            bytes,
+        ));
+    }
+    let Ok(text) = core::str::from_utf8(bytes) else {
+        return MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidEncoding,
+            bytes,
+        ));
+    };
+    match ResponseId::new(text.to_owned()) {
+        Ok(value) => MappedRequestId::Accepted(value),
+        Err(_) => MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidValue,
+            bytes,
+        )),
+    }
+}
+
+fn integer_header<'a>(
+    headers: &'a HttpHeaders,
     name: &str,
-    maximum: usize,
-) -> Result<Option<String>, ProviderCoreError> {
-    let Some(value) = headers.first(name) else { return Ok(None) };
-    let Some(bytes) = value.nonsensitive_bytes() else { return Ok(None) };
-    if bytes.len() > maximum {
-        return Err(error::limit("OpenAI response header exceeds its field bound"));
+    kind: OptionalObservationKind,
+) -> MappedInteger<'a> {
+    let Some(value) = headers.first(name) else { return MappedInteger::Missing };
+    let Some(bytes) = value.nonsensitive_bytes() else { return MappedInteger::Missing };
+    if bytes.len() > MAX_NUMERIC_HEADER_BYTES {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::ExceededBound,
+            bytes,
+        ));
     }
-    let text = core::str::from_utf8(bytes)
-        .map_err(|_| error::malformed("OpenAI response header is not UTF-8"))?;
-    Ok(Some(text.to_owned()))
+    let Ok(text) = core::str::from_utf8(bytes) else {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::InvalidEncoding,
+            bytes,
+        ));
+    };
+    if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::InvalidValue,
+            bytes,
+        ));
+    }
+    match text.parse::<u64>() {
+        Ok(value) => MappedInteger::Accepted { value, raw: bytes },
+        Err(_) => MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::Unrepresentable,
+            bytes,
+        )),
+    }
 }
 
-fn duration_millis(value: &str) -> Option<u64> {
-    let mut total = 0_u64;
-    let mut digits = String::new();
-    let mut chars = value.chars().peekable();
-    while let Some(character) = chars.next() {
-        if character.is_ascii_digit() {
-            digits.push(character);
-            continue;
-        }
-        let number = digits.parse::<u64>().ok()?;
-        digits.clear();
-        let multiplier = match character {
-            'h' => 3_600_000,
-            'm' if chars.peek() == Some(&'s') => {
-                chars.next();
-                1
-            }
-            'm' => 60_000,
-            's' => 1_000,
-            _ => return None,
-        };
-        total = total.checked_add(number.checked_mul(multiplier)?)?;
-        if total > 7 * 24 * 60 * 60 * 1_000 {
-            return None;
+fn duration_header<'a>(headers: &'a HttpHeaders, name: &str) -> MappedDuration<'a> {
+    let Some(value) = headers.first(name) else { return MappedDuration::Missing };
+    let Some(bytes) = value.nonsensitive_bytes() else { return MappedDuration::Missing };
+    if bytes.len() > MAX_NUMERIC_HEADER_BYTES {
+        return MappedDuration::Rejected(OptionalObservation::new(
+            OptionalObservationKind::RateLimitReset,
+            OptionalObservationStatus::ExceededBound,
+            bytes,
+        ));
+    }
+    let Ok(text) = core::str::from_utf8(bytes) else {
+        return MappedDuration::Rejected(OptionalObservation::new(
+            OptionalObservationKind::RateLimitReset,
+            OptionalObservationStatus::InvalidEncoding,
+            bytes,
+        ));
+    };
+    match duration_millis(text) {
+        Ok(millis) => MappedDuration::Accepted { millis, raw: bytes },
+        Err(status) => MappedDuration::Rejected(OptionalObservation::new(
+            OptionalObservationKind::RateLimitReset,
+            status,
+            bytes,
+        )),
+    }
+}
+
+fn integer_value<'a>(
+    value: MappedInteger<'a>,
+    events: &mut Vec<ModelEvent>,
+    trusted: &mut bool,
+) -> (Option<u64>, Option<&'a [u8]>) {
+    match value {
+        MappedInteger::Missing => (None, None),
+        MappedInteger::Accepted { value, raw } => (Some(value), Some(raw)),
+        MappedInteger::Rejected(observation) => {
+            *trusted = false;
+            events.push(ModelEvent::OptionalObservation(observation));
+            (None, None)
         }
     }
-    digits.is_empty().then_some(total)
+}
+
+fn duration_value<'a>(
+    value: MappedDuration<'a>,
+    events: &mut Vec<ModelEvent>,
+    trusted: &mut bool,
+) -> (Option<u64>, Option<&'a [u8]>) {
+    match value {
+        MappedDuration::Missing => (None, None),
+        MappedDuration::Accepted { millis, raw } => (Some(millis), Some(raw)),
+        MappedDuration::Rejected(observation) => {
+            *trusted = false;
+            events.push(ModelEvent::OptionalObservation(observation));
+            (None, None)
+        }
+    }
+}
+
+fn rate_limit_evidence(values: [Option<&[u8]>; 3]) -> Vec<u8> {
+    let mut evidence = Vec::new();
+    for value in values {
+        let value = value.unwrap_or(&[]);
+        evidence.extend_from_slice(&u64::try_from(value.len()).unwrap_or(u64::MAX).to_le_bytes());
+        evidence.extend_from_slice(value);
+    }
+    evidence
+}
+
+fn provider_text_event(name: &str, value: &str, limits: ProtocolLimits) -> ModelEvent {
+    let encoded = serde_json::Value::String(value.to_owned()).to_string();
+    let Ok(value_json) = CanonicalJson::parse(&encoded, JsonBounds::extension(limits)) else {
+        return ModelEvent::OptionalObservation(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::ExceededBound,
+            value.as_bytes(),
+        ));
+    };
+    let Ok(name) = ExtensionName::new(name.to_owned()) else {
+        return ModelEvent::OptionalObservation(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidValue,
+            value.as_bytes(),
+        ));
+    };
+    ModelEvent::ProviderEvent(ProviderExtension::new(name, value_json))
+}
+
+fn duration_millis(value: &str) -> Result<u64, OptionalObservationStatus> {
+    let bytes = value.as_bytes();
+    if bytes.is_empty() {
+        return Err(OptionalObservationStatus::InvalidValue);
+    }
+    let mut index = 0_usize;
+    let mut total = 0_u128;
+    while index < bytes.len() {
+        let start = index;
+        let mut whole = 0_u128;
+        while index < bytes.len() && bytes[index].is_ascii_digit() {
+            whole = whole
+                .checked_mul(10)
+                .and_then(|value| value.checked_add(u128::from(bytes[index] - b'0')))
+                .ok_or(OptionalObservationStatus::Unrepresentable)?;
+            index += 1;
+        }
+        if index == start {
+            return Err(OptionalObservationStatus::InvalidValue);
+        }
+        let mut fraction = 0_u128;
+        let mut fraction_scale = 1_u128;
+        if bytes.get(index) == Some(&b'.') {
+            index += 1;
+            let fraction_start = index;
+            while index < bytes.len() && bytes[index].is_ascii_digit() {
+                fraction = fraction
+                    .checked_mul(10)
+                    .and_then(|value| value.checked_add(u128::from(bytes[index] - b'0')))
+                    .ok_or(OptionalObservationStatus::Unrepresentable)?;
+                fraction_scale = fraction_scale
+                    .checked_mul(10)
+                    .ok_or(OptionalObservationStatus::Unrepresentable)?;
+                index += 1;
+            }
+            if index == fraction_start {
+                return Err(OptionalObservationStatus::InvalidValue);
+            }
+        }
+        let unit_millis = if bytes[index..].starts_with(b"ms") {
+            index += 2;
+            1_u128
+        } else if bytes.get(index) == Some(&b'h') {
+            index += 1;
+            3_600_000_u128
+        } else if bytes.get(index) == Some(&b'm') {
+            index += 1;
+            60_000_u128
+        } else if bytes.get(index) == Some(&b's') {
+            index += 1;
+            1_000_u128
+        } else {
+            return Err(OptionalObservationStatus::InvalidValue);
+        };
+        let whole_millis = whole
+            .checked_mul(unit_millis)
+            .ok_or(OptionalObservationStatus::Unrepresentable)?;
+        let fraction_numerator = fraction
+            .checked_mul(unit_millis)
+            .ok_or(OptionalObservationStatus::Unrepresentable)?;
+        if fraction_numerator % fraction_scale != 0 {
+            return Err(OptionalObservationStatus::Unrepresentable);
+        }
+        total = total
+            .checked_add(whole_millis)
+            .and_then(|value| value.checked_add(fraction_numerator / fraction_scale))
+            .ok_or(OptionalObservationStatus::Unrepresentable)?;
+    }
+    u64::try_from(total).map_err(|_| OptionalObservationStatus::Unrepresentable)
 }

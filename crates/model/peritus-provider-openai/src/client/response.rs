@@ -1,30 +1,109 @@
 //! Bounded response-body handling and normalized pre-stream failures.
 
 use peritus_model_protocol::{
-    FailureCategory, ModelEvent, OutcomeCertainty, ProviderProfile, Retryability, TransportPhase,
+    EventEnvelope, FailureCategory, ModelEvent, ModelFailure, OutcomeCertainty, ProviderProfile,
+    ResponseBodyCompletion, ResponseBodyObservation, Retryability, TransportPhase,
 };
 use peritus_provider_core::{
-    ByteStream, CancellationToken, HttpHeaders, OwnedModelStream, ProviderCoreError,
+    BoxFuture, ByteStream, CancellationToken, HttpHeaders, ModelStream, OwnedModelStream,
+    ProviderCoreError, ProviderCoreErrorKind,
 };
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 use crate::{error, stream::OpenAiStream};
 
-pub(super) async fn read_body(
-    body: &mut Box<dyn ByteStream>,
-    cancellation: &CancellationToken,
+pub(super) struct OpenAiRejectionStream {
+    body: Box<dyn ByteStream>,
+    failure: ModelFailure,
     maximum: usize,
-) -> Result<Vec<u8>, ProviderCoreError> {
-    let mut bytes = Vec::new();
-    while let Some(chunk) = body.next(cancellation).await? {
-        if bytes.len().checked_add(chunk.len()).is_none_or(|length| length > maximum) {
-            return Err(ProviderCoreError::limit_exceeded(
-                "openai_error_body",
-                "OpenAI response body exceeds its byte bound",
-            ));
+    observed_bytes: usize,
+    hasher: Sha256,
+    header_emitted: bool,
+    terminal: bool,
+}
+
+impl OpenAiRejectionStream {
+    pub(super) fn new(body: Box<dyn ByteStream>, failure: ModelFailure, maximum: usize) -> Self {
+        Self {
+            body,
+            failure,
+            maximum,
+            observed_bytes: 0,
+            hasher: Sha256::new(),
+            header_emitted: false,
+            terminal: false,
         }
-        bytes.extend_from_slice(&chunk);
     }
-    Ok(bytes)
+
+    fn envelope(
+        sequence: u64,
+        digest: Sha256Digest,
+        event: ModelEvent,
+    ) -> Result<EventEnvelope, ProviderCoreError> {
+        EventEnvelope::new(sequence, None, None, digest, event)
+            .map_err(|_| error::malformed("OpenAI rejection envelope was invalid"))
+    }
+
+    fn finish(
+        &mut self,
+        completion: ResponseBodyCompletion,
+    ) -> Result<EventEnvelope, ProviderCoreError> {
+        self.terminal = true;
+        let digest = Sha256Digest::new(std::mem::take(&mut self.hasher).finalize().into());
+        let observed_bytes = u64::try_from(self.observed_bytes).unwrap_or(u64::MAX);
+        let body = ResponseBodyObservation::new(digest, observed_bytes, completion);
+        let failure = self.failure.clone().with_response_body_observation(body);
+        Self::envelope(2, digest, ModelEvent::ResponseFailed(failure))
+    }
+}
+
+impl ModelStream for OpenAiRejectionStream {
+    fn next<'a>(
+        &'a mut self,
+        cancellation: &'a CancellationToken,
+    ) -> BoxFuture<'a, Result<Option<EventEnvelope>, ProviderCoreError>> {
+        Box::pin(async move {
+            if self.terminal {
+                return Ok(None);
+            }
+            if !self.header_emitted {
+                self.header_emitted = true;
+                let digest = peritus_codec::sha256(self.failure.diagnostic().code().as_bytes());
+                return Self::envelope(
+                    1,
+                    digest,
+                    ModelEvent::ResponseRejected(self.failure.clone()),
+                )
+                .map(Some);
+            }
+            let completion = loop {
+                match self.body.next(cancellation).await {
+                    Ok(Some(chunk)) => {
+                        let Some(next) = self.observed_bytes.checked_add(chunk.len()) else {
+                            break ResponseBodyCompletion::ExceededBound;
+                        };
+                        if next > self.maximum {
+                            break ResponseBodyCompletion::ExceededBound;
+                        }
+                        self.hasher.update(&chunk);
+                        self.observed_bytes = next;
+                    }
+                    Ok(None) => break ResponseBodyCompletion::Complete,
+                    Err(failure) => {
+                        break match failure.kind() {
+                            ProviderCoreErrorKind::Cancelled => ResponseBodyCompletion::Cancelled,
+                            ProviderCoreErrorKind::LimitExceeded => {
+                                ResponseBodyCompletion::ExceededBound
+                            }
+                            _ => ResponseBodyCompletion::TransportFailed,
+                        };
+                    }
+                }
+            };
+            self.finish(completion).map(Some)
+        })
+    }
 }
 
 pub(super) fn connection_failure(

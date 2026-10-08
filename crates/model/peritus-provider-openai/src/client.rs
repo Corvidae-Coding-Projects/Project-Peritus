@@ -270,21 +270,14 @@ impl ModelProvider for OpenAiProvider {
                     }
                     Err(failure) => return Err(failure),
                 };
-                let (status, headers, mut body) = response.into_parts();
+                let (status, headers, body) = response.into_parts();
                 if !status.is_success() {
-                    let bytes = response::read_body(
-                        &mut body,
-                        &cancellation,
-                        self.config.http_limits().max_response_body_bytes(),
-                    )
-                    .await?;
                     let retry_after =
                         metadata::retry_after(&headers, self.config.protocol_limits())?;
-                    let directive = metadata::retry_directive(status, &bytes, &retry_after);
-                    let event = metadata::http_failure(
+                    let directive = metadata::retry_directive(status, &retry_after);
+                    let failure = metadata::http_failure(
                         status,
                         &headers,
-                        &bytes,
                         self.profile.provider(),
                         &retry_after,
                     )?;
@@ -314,11 +307,11 @@ impl ModelProvider for OpenAiProvider {
                             continue;
                         }
                     }
-                    let stream = OpenAiStream::failure_stream(
-                        self.profile.provider().clone(),
-                        event,
-                        peritus_codec::sha256(&bytes),
-                    )?;
+                    let stream = response::OpenAiRejectionStream::new(
+                        body,
+                        failure,
+                        self.config.http_limits().max_response_body_bytes(),
+                    );
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
                 if status.as_u16() != 200 || !is_event_stream(&headers) {
@@ -332,7 +325,10 @@ impl ModelProvider for OpenAiProvider {
                         "openai.http.success_shape",
                     );
                 }
-                let metadata = metadata::ResponseMetadata::parse(&headers)?;
+                let metadata = metadata::ResponseMetadata::parse(
+                    &headers,
+                    self.config.protocol_limits(),
+                );
                 let structured_output =
                     !matches!(request.options().output(), StructuredOutput::Text);
                 let stream = if let Some(claim) = resume.take() {
