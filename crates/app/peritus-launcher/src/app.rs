@@ -77,7 +77,7 @@ async fn launch_interactive_target(
     }
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
-    let prepared = provider_setup::ensure_configured(prepared).await?;
+    let mut prepared = provider_setup::ensure_configured(prepared).await?;
     let discovery_cancellation = CancellationToken::new();
     let binaries = interruptible(
         &discovery_cancellation,
@@ -99,8 +99,9 @@ async fn launch_interactive_target(
         let readiness_cancellation = CancellationToken::new();
         interruptible(
             &readiness_cancellation,
-            supervisor.ensure_ready_cancellable(
-                &prepared,
+            supervisor.reconcile_ready_cancellable(
+                &mut prepared,
+                &product,
                 &binaries,
                 &readiness_cancellation,
             ),

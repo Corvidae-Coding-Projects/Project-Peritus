@@ -10,11 +10,12 @@ use std::{
 
 use peritus_app_client::{Client, ClientErrorKind, RequestIdentity};
 use peritus_app_protocol::{
-    AppRequestPayload, AppResponsePayload, DaemonHealth, DaemonReadiness, ShutdownRequest,
-    WellKnownProtocolFeature,
+    AppRequestPayload, AppResponsePayload, DaemonHealth, DaemonInstance, DaemonReadiness,
+    ProductRunQuery, ShutdownRequest, WellKnownProtocolFeature,
 };
 use peritus_process::{NativeProcessProbe, ProcessProbe, ProcessTreeIdentity};
 use peritus_provider_core::{CancellationToken, first as cancel_first};
+use peritus_tui::ProductLaunchContext;
 use peritus_types::Sha256Digest;
 use sha2::{Digest, Sha256};
 use tokio::{
@@ -22,7 +23,7 @@ use tokio::{
     process::{Child, Command},
 };
 
-use crate::{LauncherError, PreparedProduct};
+use crate::{LauncherError, PreparedProduct, persistence::publish_new};
 
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(100);
 const MAX_RETAINED_PROCESS_OUTPUT_BYTES: usize = 64 * 1_024;
@@ -190,6 +191,23 @@ struct HealthConnection {
     health: Option<DaemonHealth>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SupervisorCustody {
+    generation: u64,
+    configuration: PathBuf,
+    configuration_digest: Sha256Digest,
+}
+
+struct ReconciliationOwner {
+    lock: File,
+}
+
+impl Drop for ReconciliationOwner {
+    fn drop(&mut self) {
+        let _ = fs4::FileExt::unlock(&self.lock);
+    }
+}
+
 impl DaemonSupervisor {
     /// Creates a supervisor with one explicit startup bound.
     #[must_use]
@@ -228,6 +246,36 @@ impl DaemonSupervisor {
         cancellation: &CancellationToken,
     ) -> Result<DaemonLaunch, LauncherError> {
         let started = Instant::now();
+        let _reconciliation = self
+            .acquire_reconciliation_owner(product, started, cancellation)
+            .await?;
+        self.ensure_ready_owned(product, None, binaries, started, cancellation).await
+    }
+
+    /// Refreshes and reconciles the current product generation while preserving an open UI scope.
+    pub(crate) async fn reconcile_ready_cancellable(
+        &mut self,
+        product: &mut PreparedProduct,
+        launch: &ProductLaunchContext,
+        binaries: &SiblingBinaries,
+        cancellation: &CancellationToken,
+    ) -> Result<DaemonLaunch, LauncherError> {
+        let started = Instant::now();
+        let _reconciliation = self
+            .acquire_reconciliation_owner(product, started, cancellation)
+            .await?;
+        product.refresh_for_reconciliation(launch)?;
+        self.ensure_ready_owned(product, Some(launch), binaries, started, cancellation).await
+    }
+
+    async fn ensure_ready_owned(
+        &mut self,
+        product: &PreparedProduct,
+        launch: Option<&ProductLaunchContext>,
+        binaries: &SiblingBinaries,
+        started: Instant,
+        cancellation: &CancellationToken,
+    ) -> Result<DaemonLaunch, LauncherError> {
         let executable_digest = Sha256Digest::new(
             file_digest_cancellable(binaries.daemon(), cancellation).await?,
         );
@@ -240,19 +288,31 @@ impl DaemonSupervisor {
                 executable_digest,
                 &expected_implementation,
                 &connection,
+                self.owner.is_some(),
             )? {
-                HealthDisposition::Ready => {
-                    record_applied_configuration_digest(product, binaries, executable_digest)?;
+                HealthDisposition::Ready { custody, stale } => {
+                    stop_supervisors(binaries, &stale, cancellation).await?;
+                    record_reconciliation_receipt(product, connection.health.as_ref(), &custody)?;
                     return Ok(DaemonLaunch::Reused);
                 }
-                HealthDisposition::Replace => {
-                    request_shutdown(&mut connection.client, cancellation).await?;
-                    self.wait_for_withdrawal(product, started, cancellation).await?;
+                HealthDisposition::Replace { active, stale } => {
+                    let supervisors = request_replacement(
+                        &mut connection.client,
+                        launch,
+                        binaries,
+                        active,
+                        stale,
+                        cancellation,
+                    )
+                    .await?;
+                    self.wait_for_withdrawal(product, &supervisors, started, cancellation).await?;
                 }
-                HealthDisposition::Wait => {
+                HealthDisposition::Wait { stale } => {
+                    stop_supervisors(binaries, &stale, cancellation).await?;
                     if let Some(launch) = self
                         .wait_for_existing(
                             product,
+                            launch,
                             binaries,
                             executable_digest,
                             &expected_implementation,
@@ -267,10 +327,15 @@ impl DaemonSupervisor {
             }
         }
 
-        if (!instance_lock_available(product)? || !supervisor_lock_available(product)?)
+        let compatible_supervisor =
+            settle_unready_supervisors(product, binaries, cancellation).await?;
+        if (!instance_lock_available(product)?
+            || !supervisor_lock_available(product)?
+            || compatible_supervisor)
             && let Some(launch) = self
                 .wait_for_existing(
                     product,
+                    launch,
                     binaries,
                     executable_digest,
                     &expected_implementation,
@@ -304,8 +369,10 @@ impl DaemonSupervisor {
                     executable_digest,
                     &expected_implementation,
                     &connection,
+                    self.owner.is_some(),
                 )? {
-                    HealthDisposition::Ready => {
+                    HealthDisposition::Ready { custody, stale } => {
+                        stop_supervisors(binaries, &stale, cancellation).await?;
                         let process_id = connection
                             .health
                             .as_ref()
@@ -316,22 +383,38 @@ impl DaemonSupervisor {
                                         .to_owned(),
                                 )
                             })?;
-                        record_applied_configuration_digest(
+                        record_reconciliation_receipt(
                             product,
-                            binaries,
-                            executable_digest,
+                            connection.health.as_ref(),
+                            &custody,
                         )?;
                         return Ok(DaemonLaunch::Started { process_id });
                     }
-                    HealthDisposition::Replace => {
-                        request_shutdown(&mut connection.client, cancellation).await?;
-                        self.wait_for_withdrawal(product, started, cancellation).await?;
+                    HealthDisposition::Replace { active, stale } => {
+                        let supervisors = request_replacement(
+                            &mut connection.client,
+                            launch,
+                            binaries,
+                            active,
+                            stale,
+                            cancellation,
+                        )
+                        .await?;
+                        self.wait_for_withdrawal(
+                            product,
+                            &supervisors,
+                            started,
+                            cancellation,
+                        )
+                        .await?;
                         return Err(LauncherError::DaemonSpawn(
                             "started daemon reported a different store, configuration, or executable identity"
                                 .to_owned(),
                         ));
                     }
-                    HealthDisposition::Wait => {}
+                    HealthDisposition::Wait { stale } => {
+                        stop_supervisors(binaries, &stale, cancellation).await?;
+                    }
                 }
             }
             if let Some(status) = self.owned_exit()? {
@@ -371,6 +454,9 @@ impl DaemonSupervisor {
         cancellation: &CancellationToken,
     ) -> Result<DaemonShutdown, LauncherError> {
         let started = Instant::now();
+        let _reconciliation = self
+            .acquire_reconciliation_owner(product, started, cancellation)
+            .await?;
         let Some(mut connection) =
             probe_health(product, self.remaining(started), cancellation).await?
         else {
@@ -387,13 +473,14 @@ impl DaemonSupervisor {
             require_store(product, health)?;
         }
         request_shutdown(&mut connection.client, cancellation).await?;
-        self.wait_for_withdrawal(product, started, cancellation).await?;
+        self.wait_for_withdrawal(product, &[], started, cancellation).await?;
         Ok(DaemonShutdown::Stopped)
     }
 
     async fn wait_for_existing(
         &mut self,
         product: &PreparedProduct,
+        launch: Option<&ProductLaunchContext>,
         binaries: &SiblingBinaries,
         executable_digest: Sha256Digest,
         expected_implementation: &str,
@@ -408,25 +495,44 @@ impl DaemonSupervisor {
                     executable_digest,
                     expected_implementation,
                     &connection,
+                    self.owner.is_some(),
                 )? {
-                    HealthDisposition::Ready => {
-                        record_applied_configuration_digest(
+                    HealthDisposition::Ready { custody, stale } => {
+                        stop_supervisors(binaries, &stale, cancellation).await?;
+                        record_reconciliation_receipt(
                             product,
-                            binaries,
-                            executable_digest,
+                            connection.health.as_ref(),
+                            &custody,
                         )?;
                         return Ok(Some(DaemonLaunch::Reused));
                     }
-                    HealthDisposition::Replace => {
-                        request_shutdown(&mut connection.client, cancellation).await?;
-                        self.wait_for_withdrawal(product, started, cancellation).await?;
+                    HealthDisposition::Replace { active, stale } => {
+                        let supervisors = request_replacement(
+                            &mut connection.client,
+                            launch,
+                            binaries,
+                            active,
+                            stale,
+                            cancellation,
+                        )
+                        .await?;
+                        self.wait_for_withdrawal(
+                            product,
+                            &supervisors,
+                            started,
+                            cancellation,
+                        )
+                        .await?;
                         return Ok(None);
                     }
-                    HealthDisposition::Wait => {}
+                    HealthDisposition::Wait { stale } => {
+                        stop_supervisors(binaries, &stale, cancellation).await?;
+                    }
                 },
                 None
                     if instance_lock_available(product)?
-                        && supervisor_lock_available(product)? =>
+                        && supervisor_lock_available(product)?
+                        && !compatible_supervisor_held(product)? =>
                 {
                     return Ok(None);
                 }
@@ -439,12 +545,15 @@ impl DaemonSupervisor {
     async fn wait_for_withdrawal(
         &mut self,
         product: &PreparedProduct,
+        supervisors: &[SupervisorCustody],
         started: Instant,
         cancellation: &CancellationToken,
     ) -> Result<(), LauncherError> {
         let log_path = product.layout().daemon_log();
         loop {
-            if instance_lock_available(product)? && supervisor_lock_available(product)?
+            if instance_lock_available(product)?
+                && supervisor_lock_available(product)?
+                && supervisors_released(supervisors)?
             {
                 self.reap_owned()?;
                 return Ok(());
@@ -475,6 +584,41 @@ impl DaemonSupervisor {
         Ok(())
     }
 
+    async fn acquire_reconciliation_owner(
+        &mut self,
+        product: &PreparedProduct,
+        started: Instant,
+        cancellation: &CancellationToken,
+    ) -> Result<ReconciliationOwner, LauncherError> {
+        let path = product.layout().daemon_reconciliation_lock();
+        let lock = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&path)
+            .map_err(|error| {
+                LauncherError::filesystem("open daemon reconciliation lock", &path, error)
+            })?;
+        crate::persistence::protect_file(&lock, &path)?;
+        loop {
+            match fs4::FileExt::try_lock(&lock) {
+                Ok(()) => return Ok(ReconciliationOwner { lock }),
+                Err(fs4::TryLockError::WouldBlock) => {
+                    self.wait_progress(started, &product.layout().daemon_log(), cancellation)
+                        .await?;
+                }
+                Err(fs4::TryLockError::Error(error)) => {
+                    return Err(LauncherError::filesystem(
+                        "acquire daemon reconciliation lock",
+                        path,
+                        error,
+                    ));
+                }
+            }
+        }
+    }
+
     fn remaining(&self, started: Instant) -> Option<Duration> {
         self.readiness_timeout.map(|timeout| timeout.saturating_sub(started.elapsed()))
     }
@@ -503,11 +647,19 @@ impl DaemonSupervisor {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 enum HealthDisposition {
-    Ready,
-    Wait,
-    Replace,
+    Ready {
+        custody: SupervisorCustody,
+        stale: Vec<SupervisorCustody>,
+    },
+    Wait {
+        stale: Vec<SupervisorCustody>,
+    },
+    Replace {
+        active: Option<SupervisorCustody>,
+        stale: Vec<SupervisorCustody>,
+    },
 }
 
 fn instance_lock_available(product: &PreparedProduct) -> Result<bool, LauncherError> {
@@ -532,16 +684,24 @@ fn instance_lock_available(product: &PreparedProduct) -> Result<bool, LauncherEr
 }
 
 fn supervisor_lock_available(product: &PreparedProduct) -> Result<bool, LauncherError> {
-    let mut path = product.daemon_config_path().into_os_string();
+    supervisor_lock_available_at(&product.daemon_config_path())
+}
+
+fn supervisor_lock_available_at(configuration: &Path) -> Result<bool, LauncherError> {
+    let mut path = configuration.as_os_str().to_owned();
     path.push(".supervisor.lock");
     let path = PathBuf::from(path);
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&path)
-        .map_err(|error| LauncherError::filesystem("open daemon supervisor lock", &path, error))?;
+    let file = match OpenOptions::new().read(true).write(true).open(&path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(true),
+        Err(error) => {
+            return Err(LauncherError::filesystem(
+                "open daemon supervisor lock",
+                &path,
+                error,
+            ));
+        }
+    };
     match fs4::FileExt::try_lock(&file) {
         Ok(()) => {
             let _ = fs4::FileExt::unlock(&file);
@@ -622,23 +782,54 @@ fn classify_health(
     expected_executable: Sha256Digest,
     expected_implementation: &str,
     connection: &HealthConnection,
+    allow_owned_custody: bool,
 ) -> Result<HealthDisposition, LauncherError> {
     let Some(health) = &connection.health else {
-        return Ok(HealthDisposition::Replace);
+        return Ok(HealthDisposition::Replace {
+            active: None,
+            stale: held_supervisor_custodies(product)?,
+        });
     };
     require_store(product, health)?;
     let instance = health.instance();
+    let supervisors = held_supervisor_custodies(product)?;
+    let matching = supervisors
+        .iter()
+        .filter(|custody| custody.configuration_digest == instance.configuration_digest())
+        .cloned()
+        .collect::<Vec<_>>();
+    let receipt = receipt_custody(product, instance, &supervisors)?;
+    let custody = receipt.or_else(|| {
+        (allow_owned_custody && matching.len() == 1).then(|| matching[0].clone())
+    });
+    let stale = custody.as_ref().map_or_else(
+        || supervisors.clone(),
+        |active| {
+            supervisors
+                .iter()
+                .filter(|candidate| *candidate != active)
+                .cloned()
+                .collect()
+        },
+    );
     let expected_configuration = product.daemon_config().configuration_digest();
     if connection.client.server_implementation() != expected_implementation
         || instance.configuration_digest() != expected_configuration
         || instance.executable_digest() != expected_executable
     {
-        return Ok(HealthDisposition::Replace);
+        return Ok(HealthDisposition::Replace { active: custody, stale });
     }
     match health.status().readiness() {
-        DaemonReadiness::ReadyReadWrite => Ok(HealthDisposition::Ready),
+        DaemonReadiness::ReadyReadWrite => custody.map_or_else(
+            || Ok(HealthDisposition::Replace { active: None, stale: supervisors }),
+            |custody| Ok(HealthDisposition::Ready { custody, stale }),
+        ),
         DaemonReadiness::Starting | DaemonReadiness::Draining | DaemonReadiness::Unavailable => {
-            Ok(HealthDisposition::Wait)
+            if custody.is_some() {
+                Ok(HealthDisposition::Wait { stale })
+            } else {
+                Ok(HealthDisposition::Replace { active: None, stale: supervisors })
+            }
         }
         DaemonReadiness::ReadyReadOnly => Err(LauncherError::DaemonSpawn(format!(
             "daemon is in read-only recovery: {}",
@@ -656,6 +847,369 @@ fn require_store(product: &PreparedProduct, health: &DaemonHealth) -> Result<(),
             "authenticated endpoint belongs to a different daemon store".to_owned(),
         ))
     }
+}
+
+fn held_supervisor_custodies(
+    product: &PreparedProduct,
+) -> Result<Vec<SupervisorCustody>, LauncherError> {
+    let expected_store = product.daemon_config().store_identity()?;
+    let entries = fs::read_dir(product.layout().config_root()).map_err(|error| {
+        LauncherError::filesystem(
+            "list daemon configuration generations",
+            product.layout().config_root(),
+            error,
+        )
+    })?;
+    let mut custodians = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            LauncherError::filesystem(
+                "read daemon configuration directory entry",
+                product.layout().config_root(),
+                error,
+            )
+        })?;
+        let Some(generation) = configuration_generation(&entry.file_name()) else { continue };
+        let path = entry.path();
+        if supervisor_lock_available_at(&path)? {
+            continue;
+        }
+        let text = fs::read_to_string(&path).map_err(|error| {
+            LauncherError::filesystem("read supervised daemon configuration", &path, error)
+        })?;
+        let configuration = peritus_daemon::DaemonConfig::parse(&text)?;
+        if configuration.store_identity()? != expected_store {
+            continue;
+        }
+        custodians.push(SupervisorCustody {
+            generation,
+            configuration: path,
+            configuration_digest: configuration.configuration_digest(),
+        });
+    }
+    custodians.sort_unstable_by_key(|custody| custody.generation);
+    Ok(custodians)
+}
+
+fn configuration_generation(name: &std::ffi::OsStr) -> Option<u64> {
+    let name = name.to_str()?;
+    let value = name.strip_prefix("peritus-")?.strip_suffix(".toml")?;
+    if value.len() != 20 || !value.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    let generation = value.parse::<u64>().ok()?;
+    (generation > 0 && name == format!("peritus-{generation:020}.toml")).then_some(generation)
+}
+
+fn receipt_custody(
+    product: &PreparedProduct,
+    instance: DaemonInstance,
+    supervisors: &[SupervisorCustody],
+) -> Result<Option<SupervisorCustody>, LauncherError> {
+    let directory = product
+        .layout()
+        .daemon_reconciliation_lock()
+        .parent()
+        .ok_or_else(|| {
+            LauncherError::PlatformPaths(
+                "daemon reconciliation lock has no parent directory".to_owned(),
+            )
+        })?
+        .to_path_buf();
+    let suffix = format!(
+        "-{:010}-{:020}.receipt",
+        instance.process_id(),
+        instance.start_token(),
+    );
+    let entries = fs::read_dir(&directory).map_err(|error| {
+        LauncherError::filesystem("list daemon reconciliation receipts", &directory, error)
+    })?;
+    let mut receipts = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|error| {
+            LauncherError::filesystem("read daemon reconciliation receipt entry", &directory, error)
+        })?;
+        let Some(name) = entry.file_name().to_str().map(str::to_owned) else { continue };
+        let Some(generation) = name
+            .strip_prefix("configuration-reconciliation-")
+            .and_then(|value| value.strip_suffix(&suffix))
+            .filter(|value| value.len() == 20 && value.bytes().all(|byte| byte.is_ascii_digit()))
+            .and_then(|value| value.parse::<u64>().ok())
+        else {
+            continue;
+        };
+        receipts.push((generation, entry.path()));
+    }
+    receipts.sort_unstable_by_key(|(generation, _)| std::cmp::Reverse(*generation));
+    let Some((generation, path)) = receipts.first() else { return Ok(None) };
+    let text = fs::read_to_string(path).map_err(|error| {
+        LauncherError::filesystem("read daemon reconciliation receipt", path, error)
+    })?;
+    let expected_configuration = hex_digest(instance.configuration_digest().into_bytes());
+    let expected_executable = hex_digest(instance.executable_digest().into_bytes());
+    let expected_store = hex_bytes(&instance.store_id());
+    let mut lines = text.lines();
+    let valid = lines.next() == Some("peritus-daemon-reconciliation-v1")
+        && receipt_u64(lines.next(), "generation=") == Some(*generation)
+        && receipt_field(lines.next(), "configuration-sha256=")
+            == Some(expected_configuration.as_str())
+        && receipt_field(lines.next(), "executable-sha256=")
+            == Some(expected_executable.as_str())
+        && receipt_field(lines.next(), "store=") == Some(expected_store.as_str())
+        && receipt_u64(lines.next(), "pid=") == Some(u64::from(instance.process_id()))
+        && receipt_u64(lines.next(), "start-token=") == Some(instance.start_token());
+    let supervisor_generation = receipt_u64(lines.next(), "supervisor-generation=");
+    let routes = receipt_field(lines.next(), "routes=");
+    let default_route = receipt_field(lines.next(), "default-route=");
+    let failover = receipt_field(lines.next(), "automatic-failover=");
+    let workspace = receipt_field(lines.next(), "active-workspace=");
+    let scope_valid = match (routes, default_route, failover, workspace) {
+        (Some(routes), Some(default_route), Some(failover), Some(workspace)) => {
+            receipt_scope_matches(
+                product,
+                *generation,
+                routes,
+                default_route,
+                failover,
+                workspace,
+            )?
+        }
+        _ => false,
+    };
+    if !valid
+        || supervisor_generation.is_none()
+        || supervisor_generation == Some(0)
+        || routes.is_none()
+        || default_route.is_none()
+        || !matches!(failover, Some("true" | "false"))
+        || workspace.is_none()
+        || !scope_valid
+        || lines.next().is_some()
+    {
+        return Err(LauncherError::DaemonSpawn(format!(
+            "retained daemon reconciliation receipt is malformed: {}",
+            path.display(),
+        )));
+    }
+    Ok(supervisors
+        .iter()
+        .find(|custody| {
+            custody.generation == supervisor_generation.unwrap_or_default()
+                && custody.configuration_digest == instance.configuration_digest()
+        })
+        .cloned())
+}
+
+fn receipt_scope_matches(
+    product: &PreparedProduct,
+    generation: u64,
+    routes: &str,
+    default_route: &str,
+    failover: &str,
+    active_workspace: &str,
+) -> Result<bool, LauncherError> {
+    let path = product
+        .layout()
+        .product_state_root()
+        .join(format!("state-{generation:020}.json"));
+    let bytes = fs::read(&path).map_err(|error| {
+        LauncherError::filesystem("read reconciliation product generation", &path, error)
+    })?;
+    let state = peritus_product_state::ProductState::parse_json(&bytes)?;
+    let expected_routes = state
+        .providers()
+        .routes()
+        .into_iter()
+        .map(|route| route.identity().to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let expected_default = state
+        .providers()
+        .default_route()
+        .map_or_else(|| "none".to_owned(), |identity| identity.to_string());
+    let expected_workspace =
+        state.workspaces().active().map_or("none", peritus_product_state::WorkspaceProfile::workspace_id);
+    let expected_failover = state.providers().automatic_failover().to_string();
+    Ok(state.generation() == generation
+        && routes == expected_routes.as_str()
+        && default_route == expected_default.as_str()
+        && failover == expected_failover.as_str()
+        && active_workspace == expected_workspace)
+}
+
+fn receipt_field<'a>(line: Option<&'a str>, prefix: &str) -> Option<&'a str> {
+    line?.strip_prefix(prefix)
+}
+
+fn receipt_u64(line: Option<&str>, prefix: &str) -> Option<u64> {
+    receipt_field(line, prefix)?.parse().ok()
+}
+
+fn supervisors_released(supervisors: &[SupervisorCustody]) -> Result<bool, LauncherError> {
+    for custody in supervisors {
+        if !supervisor_lock_available_at(&custody.configuration)? {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn compatible_supervisor_held(product: &PreparedProduct) -> Result<bool, LauncherError> {
+    let expected = product.daemon_config().configuration_digest();
+    Ok(held_supervisor_custodies(product)?
+        .iter()
+        .any(|custody| custody.configuration_digest == expected))
+}
+
+async fn settle_unready_supervisors(
+    product: &PreparedProduct,
+    binaries: &SiblingBinaries,
+    cancellation: &CancellationToken,
+) -> Result<bool, LauncherError> {
+    let supervisors = held_supervisor_custodies(product)?;
+    let expected = product.daemon_config().configuration_digest();
+    let matching = supervisors
+        .iter()
+        .filter(|custody| custody.configuration_digest == expected)
+        .cloned()
+        .collect::<Vec<_>>();
+    if matching.len() == 1 {
+        let stale = supervisors
+            .iter()
+            .filter(|custody| *custody != &matching[0])
+            .cloned()
+            .collect::<Vec<_>>();
+        stop_supervisors(binaries, &stale, cancellation).await?;
+        return Ok(true);
+    }
+    stop_supervisors(binaries, &supervisors, cancellation).await?;
+    Ok(false)
+}
+
+async fn stop_supervisors(
+    binaries: &SiblingBinaries,
+    supervisors: &[SupervisorCustody],
+    cancellation: &CancellationToken,
+) -> Result<(), LauncherError> {
+    for custody in supervisors {
+        if supervisor_lock_available_at(&custody.configuration)? {
+            continue;
+        }
+        let mut command = Command::new(binaries.daemon());
+        command.arg("supervise-stop").arg("--config").arg(&custody.configuration);
+        let output = bounded_output(command, "stop stale daemon supervisor", cancellation).await?;
+        if !output.status.success() {
+            return Err(LauncherError::DaemonSpawn(format!(
+                "daemon supervisor for generation {} did not stop (status {}, stdout bytes {}, stderr bytes {})",
+                custody.generation,
+                output.status,
+                output.stdout.total_bytes,
+                output.stderr.total_bytes,
+            )));
+        }
+    }
+    Ok(())
+}
+
+async fn request_replacement(
+    client: &mut Client,
+    launch: Option<&ProductLaunchContext>,
+    binaries: &SiblingBinaries,
+    active: Option<SupervisorCustody>,
+    stale: Vec<SupervisorCustody>,
+    cancellation: &CancellationToken,
+) -> Result<Vec<SupervisorCustody>, LauncherError> {
+    if active.is_some() {
+        stop_supervisors(binaries, &stale, cancellation).await?;
+    }
+    coordinate_retained_scope(client, launch, cancellation).await?;
+    request_shutdown(client, cancellation).await?;
+    if active.is_none() {
+        stop_supervisors(binaries, &stale, cancellation).await?;
+    }
+    let mut supervisors = stale;
+    if let Some(active) = active {
+        supervisors.push(active);
+    }
+    Ok(supervisors)
+}
+
+async fn coordinate_retained_scope(
+    client: &mut Client,
+    launch: Option<&ProductLaunchContext>,
+    cancellation: &CancellationToken,
+) -> Result<(), LauncherError> {
+    let Some(launch) = launch else { return Ok(()) };
+    if let Some(run) = launch.run_id() {
+        let identity = RequestIdentity::generate()
+            .map_err(|error| LauncherError::DaemonSpawn(error.to_string()))?;
+        let response = cancel_first(
+            cancellation,
+            client.request(
+                identity,
+                AppRequestPayload::QueryProductRunObservations(ProductRunQuery::exact(run)),
+            ),
+        )
+        .await
+        .ok_or(LauncherError::Cancelled { operation: "coordinate retained product run" })?
+        .map_err(|error| {
+            LauncherError::DaemonSpawn(format!(
+                "cannot coordinate the retained product run before daemon replacement: {error}",
+            ))
+        })?;
+        let AppResponsePayload::ProductRunObservations(observations) = response.payload() else {
+            return Err(LauncherError::DaemonSpawn(
+                "daemon did not return the retained product-run ownership observation".to_owned(),
+            ));
+        };
+        if observations.len() > 1
+            || observations.first().is_some_and(|observation| {
+                observation.snapshot().run_id() != run
+                    || observation.snapshot().workspace_id() != launch.workspace_id()
+                    || !run_routes_belong_to_launch(observation.snapshot().providers(), launch)
+            })
+        {
+            return Err(LauncherError::DaemonSpawn(
+                "daemon returned a different retained product-run scope".to_owned(),
+            ));
+        }
+    }
+    if let Some(query) = launch.conversation() {
+        if !client.supports(WellKnownProtocolFeature::WorkbenchControl) {
+            return Err(LauncherError::DaemonSpawn(
+                "daemon cannot verify the retained conversation before replacement".to_owned(),
+            ));
+        }
+        let identity = RequestIdentity::generate()
+            .map_err(|error| LauncherError::DaemonSpawn(error.to_string()))?;
+        let response = cancel_first(
+            cancellation,
+            client.request(identity, AppRequestPayload::QueryWorkbench(query)),
+        )
+        .await
+        .ok_or(LauncherError::Cancelled { operation: "coordinate retained conversation" })?
+        .map_err(|error| {
+            LauncherError::DaemonSpawn(format!(
+                "cannot coordinate the retained conversation before daemon replacement: {error}",
+            ))
+        })?;
+        if !matches!(response.payload(), AppResponsePayload::Workbench(snapshot) if snapshot.query() == query)
+        {
+            return Err(LauncherError::DaemonSpawn(
+                "daemon did not return the exact retained conversation scope".to_owned(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn run_routes_belong_to_launch(
+    selection: peritus_app_protocol::ProductProviderSelection,
+    launch: &ProductLaunchContext,
+) -> bool {
+    [selection.writer(), selection.reviewer(), selection.fixer()]
+        .into_iter()
+        .all(|selected| launch.providers().iter().any(|route| route.profile_id() == selected))
 }
 
 async fn request_shutdown(
@@ -736,6 +1290,89 @@ async fn stop_supervisor(mut owner: OwnedSupervisor) {
     if owner.child.try_wait().ok().flatten().is_some() {
         let _ = owner.child.wait().await;
     }
+}
+
+fn record_reconciliation_receipt(
+    product: &PreparedProduct,
+    health: Option<&DaemonHealth>,
+    custody: &SupervisorCustody,
+) -> Result<(), LauncherError> {
+    let health = health.ok_or_else(|| {
+        LauncherError::DaemonSpawn(
+            "legacy reachability cannot publish an authenticated reconciliation receipt"
+                .to_owned(),
+        )
+    })?;
+    let instance = health.instance();
+    require_store(product, health)?;
+    if instance.configuration_digest() != product.daemon_config().configuration_digest()
+        || custody.configuration_digest != instance.configuration_digest()
+        || supervisor_lock_available_at(&custody.configuration)?
+    {
+        return Err(LauncherError::DaemonSpawn(
+            "daemon reconciliation lost its exact configuration or supervisor custody"
+                .to_owned(),
+        ));
+    }
+    let routes = product
+        .state()
+        .providers()
+        .routes()
+        .into_iter()
+        .map(|route| route.identity().to_string())
+        .collect::<Vec<_>>()
+        .join(",");
+    let default_route = product
+        .state()
+        .providers()
+        .default_route()
+        .map_or_else(|| "none".to_owned(), |identity| identity.to_string());
+    let active_workspace = product
+        .state()
+        .workspaces()
+        .active()
+        .map_or("none", peritus_product_state::WorkspaceProfile::workspace_id);
+    let bytes = format!(
+        "peritus-daemon-reconciliation-v1\ngeneration={}\nconfiguration-sha256={}\nexecutable-sha256={}\nstore={}\npid={}\nstart-token={}\nsupervisor-generation={}\nroutes={}\ndefault-route={}\nautomatic-failover={}\nactive-workspace={}\n",
+        product.state().generation(),
+        hex_digest(instance.configuration_digest().into_bytes()),
+        hex_digest(instance.executable_digest().into_bytes()),
+        hex_bytes(&instance.store_id()),
+        instance.process_id(),
+        instance.start_token(),
+        custody.generation,
+        routes,
+        default_route,
+        product.state().providers().automatic_failover(),
+        active_workspace,
+    );
+    let path = product.layout().daemon_reconciliation_receipt(
+        product.state().generation(),
+        instance.process_id(),
+        instance.start_token(),
+    );
+    match fs::read(&path) {
+        Ok(existing) if existing == bytes.as_bytes() => return Ok(()),
+        Ok(_) => {
+            return Err(LauncherError::DaemonSpawn(format!(
+                "daemon reconciliation receipt conflicts with retained evidence: {}",
+                path.display(),
+            )));
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(LauncherError::filesystem(
+                "read daemon reconciliation receipt",
+                path,
+                error,
+            ));
+        }
+    }
+    publish_new(
+        &product.layout().daemon_reconciliation_pending(),
+        &path,
+        bytes.as_bytes(),
+    )
 }
 
 fn applied_configuration_matches(
@@ -941,8 +1578,12 @@ async fn drain_bounded(mut input: impl AsyncRead + Unpin) -> std::io::Result<Bou
 }
 
 fn hex_digest(digest: [u8; 32]) -> String {
-    let mut output = String::with_capacity(64);
-    for byte in digest {
+    hex_bytes(&digest)
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
         use std::fmt::Write as _;
         let _ = write!(output, "{byte:02x}");
     }

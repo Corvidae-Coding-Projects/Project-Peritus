@@ -141,6 +141,31 @@ impl AppLayout {
         self.state.join("daemon/applied-configuration")
     }
 
+    /// Returns the stable cross-process owner lock for daemon configuration reconciliation.
+    #[must_use]
+    pub fn daemon_reconciliation_lock(&self) -> PathBuf {
+        self.state.join("daemon/configuration-reconciliation.lock")
+    }
+
+    /// Returns one immutable receipt for an exact adopted daemon process instance.
+    #[must_use]
+    pub fn daemon_reconciliation_receipt(
+        &self,
+        generation: u64,
+        process_id: u32,
+        start_token: u64,
+    ) -> PathBuf {
+        self.state.join(format!(
+            "daemon/configuration-reconciliation-{generation:020}-{process_id:010}-{start_token:020}.receipt"
+        ))
+    }
+
+    /// Returns the single owner-scoped staging path used to publish an adoption receipt.
+    #[must_use]
+    pub fn daemon_reconciliation_pending(&self) -> PathBuf {
+        self.state.join("daemon/.configuration-reconciliation.pending")
+    }
+
     #[cfg(test)]
     pub(crate) fn for_test(root: &std::path::Path) -> Self {
         Self {

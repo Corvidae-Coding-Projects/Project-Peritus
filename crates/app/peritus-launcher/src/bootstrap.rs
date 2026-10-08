@@ -9,6 +9,7 @@ use peritus_approval::{CredentialRegistrySnapshot, decode_credential_registry};
 use peritus_daemon::{DaemonConfig, LocalEndpointAddress};
 use peritus_product_state::ProviderSelection;
 use peritus_product_state::{BootstrapPhase, ProductState, WorkspaceProfile};
+use peritus_tui::ProductLaunchContext;
 use peritus_types::RevisionNumber;
 
 use crate::{
@@ -174,6 +175,104 @@ impl PreparedProduct {
             LocalEndpointAddress::Windows(pipe) => PathBuf::from(pipe),
         }
     }
+
+    /// Refreshes the immutable product generation while retaining the exact presentation scope.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a current generation that changes the selected workspace, route identities,
+    /// provider models, default, trust, or explicit failover choice beneath an open interface.
+    pub(crate) fn refresh_for_reconciliation(
+        &mut self,
+        launch: &ProductLaunchContext,
+    ) -> Result<(), LauncherError> {
+        let refreshed = ProductBootstrap::new(self.layout.clone()).prepare()?;
+        ensure_reconciliation_compatible(self, &refreshed, launch)?;
+        *self = refreshed;
+        Ok(())
+    }
+}
+
+fn ensure_reconciliation_compatible(
+    previous: &PreparedProduct,
+    refreshed: &PreparedProduct,
+    launch: &ProductLaunchContext,
+) -> Result<(), LauncherError> {
+    let workspace_id = hex_identifier(launch.workspace_id().as_bytes());
+    let previous_workspace = previous.state.workspaces().find(&workspace_id);
+    let refreshed_workspace = refreshed.state.workspaces().find(&workspace_id);
+    let providers_match = provider_scope_matches(
+        previous.state.providers(),
+        refreshed.state.providers(),
+    );
+    let active_workspace_matches = previous.state.workspaces().active()
+        == refreshed.state.workspaces().active();
+    let target_matches = previous_workspace.is_some()
+        && previous_workspace == refreshed_workspace
+        && refreshed_workspace.is_some_and(|workspace| {
+            workspace
+                .managed_root()
+                .unwrap_or_else(|| workspace.repository_root())
+                == launch.workspace_label()
+                && if workspace.is_direct_folder() {
+                    launch.direct_folder_writable()
+                        == Some(
+                            workspace.trust_level()
+                                == peritus_product_state::WorkspaceTrust::Trusted,
+                        )
+                } else {
+                    launch.direct_folder_writable().is_none()
+                }
+        });
+    let routes = refreshed.state.providers().routes();
+    let launch_routes_match = routes.len() == launch.providers().len()
+        && routes.iter().zip(launch.providers()).all(|(route, displayed)| {
+            route.identity().as_bytes() == displayed.profile_id().as_bytes()
+        });
+    let default_matches = refreshed
+        .state
+        .providers()
+        .default_route()
+        .and_then(|selected| routes.iter().position(|route| route.identity() == selected))
+        == launch.default_provider();
+    if previous.state.identity() != refreshed.state.identity()
+        || previous.endpoint != refreshed.endpoint
+        || refreshed.state.generation() < previous.state.generation()
+        || !providers_match
+        || !active_workspace_matches
+        || !target_matches
+        || !launch_routes_match
+        || !default_matches
+    {
+        return Err(LauncherError::Interaction(
+            "The durable workspace or provider scope changed while this interface was open. Reopen Peritus to adopt it without retargeting the retained conversation or draft."
+                .to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+fn provider_scope_matches(
+    previous: &ProviderSelection,
+    refreshed: &ProviderSelection,
+) -> bool {
+    previous.enabled() == refreshed.enabled()
+        && previous.routes() == refreshed.routes()
+        && previous.default_route() == refreshed.default_route()
+        && previous.automatic_failover() == refreshed.automatic_failover()
+        && previous.direct_profiles() == refreshed.direct_profiles()
+        && previous.enabled().iter().copied().filter(|kind| kind.is_account()).all(|kind| {
+            previous.account_model(kind) == refreshed.account_model(kind)
+        })
+}
+
+fn hex_identifier(bytes: &[u8; 16]) -> String {
+    let mut value = String::with_capacity(32);
+    for byte in bytes {
+        use std::fmt::Write as _;
+        write!(value, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    value
 }
 
 fn finish(
