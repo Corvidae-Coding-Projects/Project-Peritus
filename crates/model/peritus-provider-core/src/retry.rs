@@ -10,6 +10,55 @@ const MAX_ATTEMPTS: u32 = 16;
 const MAX_DELAY: Duration = Duration::from_hours(24);
 const MAX_CUMULATIVE_BYTES: u64 = 1024 * 1024 * 1024;
 
+fn checked_request_bytes(total: u64, length: usize) -> Result<u64, ProviderCoreError> {
+    let length = u64::try_from(length).map_err(|_| {
+        ProviderCoreError::limit_exceeded(
+            "retry_request_bytes",
+            "encoded request length cannot be represented",
+        )
+    })?;
+    total.checked_add(length).ok_or_else(|| {
+        ProviderCoreError::limit_exceeded(
+            "retry_request_bytes",
+            "cumulative encoded request bytes overflowed",
+        )
+    })
+}
+
+/// Admits one exact encoded request before its transport effect.
+///
+/// # Errors
+///
+/// Rejects an unrepresentable length, cumulative overflow, or a request that would exceed the
+/// selected finite retry byte budget.
+pub fn admit_request_bytes(
+    total: u64,
+    length: usize,
+    maximum: u64,
+) -> Result<u64, ProviderCoreError> {
+    let next = checked_request_bytes(total, length)?;
+    if next > maximum {
+        return Err(ProviderCoreError::limit_exceeded(
+            "retry_request_bytes",
+            "encoded request exceeded its explicit finite retry byte budget",
+        ));
+    }
+    Ok(next)
+}
+
+/// Reports whether one exact future submission fits the selected retry byte budget.
+///
+/// # Errors
+///
+/// Rejects an unrepresentable length or cumulative overflow.
+pub fn can_admit_request_bytes(
+    total: u64,
+    length: usize,
+    maximum: u64,
+) -> Result<bool, ProviderCoreError> {
+    Ok(checked_request_bytes(total, length)? <= maximum)
+}
+
 /// Failure class observed by retry policy.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RetryFailure {

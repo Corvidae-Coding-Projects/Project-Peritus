@@ -60,7 +60,7 @@ pub use redaction::RedactedValue;
 pub use reqwest_transport::ReqwestTransport;
 pub use retry::{
     RetryAction, RetryFailure, RetryObservation, RetryPlan, RetryPolicy, RetryProtection,
-    SubmissionState,
+    SubmissionState, admit_request_bytes, can_admit_request_bytes,
 };
 pub use runtime_session::{RuntimeSession, RuntimeTurnDirectory};
 pub use stream::{ModelStream, OwnedModelStream};

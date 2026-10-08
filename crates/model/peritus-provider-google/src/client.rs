@@ -6,14 +6,15 @@ use std::time::Instant;
 use peritus_model_protocol::{FailureCategory, ModelEvent, ModelRequest, ProviderProfile};
 use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialSource, Header, HeaderName, HttpHeaders, HttpMethod,
-    HttpRequest, HttpResponse, HttpTransport, ModelProvider, OwnedModelStream,
+    HttpRequest, HttpTransport, ModelProvider, OwnedModelStream,
     ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, RetryAction,
     RetryFailure, RetryObservation, SubmissionState, cancel_first, validate_request_profile,
-    wait_for_backoff,
+    admit_request_bytes, can_admit_request_bytes, wait_for_backoff,
 };
 
 use crate::config::GoogleConfig;
 use crate::error::{ambiguous_transport, status_failure, stream_failure};
+use crate::rejection::GoogleRejectionStream;
 use crate::stream::GoogleStream;
 
 /// Configured first-party Google Gemini stable-v1 provider.
@@ -157,26 +158,21 @@ impl GoogleClient {
             self.validate_request(&request)?;
             let encoded = self.project_request(&request, &cancellation).await?;
             let dialect = request.dialect();
+            let protocol_limits = request.protocol_limits();
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
+            let request_bytes = encoded.body.len();
+            let retry_policy = self.config.retry_policy();
             loop {
                 if cancellation.is_cancelled() {
                     return Err(ProviderCoreError::cancelled("google_start"));
                 }
-                cumulative_bytes = cumulative_bytes
-                    .checked_add(u64::try_from(encoded.body.len()).map_err(|_| {
-                        ProviderCoreError::limit_exceeded(
-                            "google_start",
-                            "request byte count cannot be represented",
-                        )
-                    })?)
-                    .ok_or_else(|| {
-                        ProviderCoreError::limit_exceeded(
-                            "google_start",
-                            "cumulative request byte count overflowed",
-                        )
-                    })?;
+                cumulative_bytes = admit_request_bytes(
+                    cumulative_bytes,
+                    request_bytes,
+                    retry_policy.max_cumulative_bytes(),
+                )?;
                 let request = self.http_request(encoded.endpoint.clone(), encoded.body.clone())?;
                 let response = match self.transport.send(request, &cancellation).await {
                     Ok(response) => response,
@@ -191,8 +187,14 @@ impl GoogleClient {
                             SubmissionState::NotSent,
                             RetryFailure::Connect,
                         );
-                        let plan = self.config.retry_policy().plan(observation)?;
-                        if plan.action() != RetryAction::RetryFresh {
+                        let plan = retry_policy.plan(observation)?;
+                        if plan.action() != RetryAction::RetryFresh
+                            || !can_admit_request_bytes(
+                                cumulative_bytes,
+                                request_bytes,
+                                retry_policy.max_cumulative_bytes(),
+                            )?
+                        {
                             return Err(error);
                         }
                         wait_for_backoff(plan, &cancellation).await?;
@@ -227,40 +229,33 @@ impl GoogleClient {
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
                 }
-                let status = response.status().as_u16();
-                let retry_after = retry_after_millis(response.headers());
-                let error_facts = drain_error(response, &cancellation).await?;
-                let quota = error_facts.quota_hint;
-                let failure = status_failure(
+                let (status, headers, body) = response.into_parts();
+                let retry_after = crate::metadata::retry_after(&headers, protocol_limits)?;
+                let response_identity = crate::metadata::response_identity(&headers);
+                let mut failure = status_failure(
                     self.config.profile().provider().clone(),
-                    status,
-                    retry_after,
-                    quota,
-                    error_facts.response_id,
+                    status.as_u16(),
+                    retry_after.delay_millis,
+                    false,
+                    response_identity.response_id,
                 )?;
-                let retry_failure = match status {
-                    429 if !quota => RetryFailure::RateLimited,
-                    408 | 409 | 500 | 502 | 503 | 504 => RetryFailure::Server,
-                    401..=403 => RetryFailure::Authentication,
-                    _ => RetryFailure::InvalidRequest,
-                };
-                let mut observation = RetryObservation::new(
-                    attempt,
-                    started.elapsed(),
-                    cumulative_bytes,
-                    SubmissionState::Rejected,
-                    retry_failure,
+                if let Some(observation) = retry_after.observation {
+                    failure = failure.with_retry_after_observation(observation).map_err(|_| {
+                        ProviderCoreError::malformed_stream(
+                            "google_retry_after",
+                            "Google retry-after classification was inconsistent",
+                        )
+                    })?;
+                }
+                if let Some(observation) = response_identity.observation {
+                    failure = failure.with_optional_observation(observation);
+                }
+                let stream = GoogleRejectionStream::new(
+                    body,
+                    failure,
+                    self.config.http_limits().max_response_body_bytes(),
                 );
-                if let Some(delay) = retry_after.map(std::time::Duration::from_millis) {
-                    observation = observation.with_retry_after(delay);
-                }
-                let plan = self.config.retry_policy().plan(observation)?;
-                if plan.action() != RetryAction::RetryFresh {
-                    let stream = GoogleStream::terminal(ModelEvent::ResponseFailed(failure))?;
-                    return Ok(OwnedModelStream::new(stream, cancellation));
-                }
-                wait_for_backoff(plan, &cancellation).await?;
-                attempt = next_attempt(attempt)?;
+                return Ok(OwnedModelStream::new(stream, cancellation));
             }
         })
     }
@@ -395,86 +390,6 @@ async fn cooperate() {
         }
     })
     .await;
-}
-
-async fn drain_error(
-    response: HttpResponse,
-    cancellation: &CancellationToken,
-) -> Result<HttpErrorFacts, ProviderCoreError> {
-    let (_status, headers, mut body) = response.into_parts();
-    let mut bytes = Vec::new();
-    while let Some(chunk) = body.next(cancellation).await? {
-        bytes.extend_from_slice(&chunk);
-    }
-    let value = serde_json::from_slice::<serde_json::Value>(&bytes).ok();
-    let interaction_code = value
-        .as_ref()
-        .and_then(|value| value.pointer("/error/code"))
-        .and_then(serde_json::Value::as_str);
-    let status = value
-        .as_ref()
-        .and_then(|value| value.pointer("/error/status"))
-        .and_then(serde_json::Value::as_str);
-    let explicit_quota_detail = value
-        .as_ref()
-        .and_then(|value| value.pointer("/error/details"))
-        .and_then(serde_json::Value::as_array)
-        .is_some_and(|details| {
-            details.iter().any(|detail| {
-                detail.get("@type").and_then(serde_json::Value::as_str).is_some_and(|kind| {
-                    kind.ends_with("/google.rpc.QuotaFailure")
-                        || kind.ends_with(".google.rpc.QuotaFailure")
-                })
-            })
-        });
-    let quota_hint = matches!(interaction_code, Some("quota_exceeded"))
-        || matches!(status, Some("RESOURCE_EXHAUSTED_QUOTA" | "QUOTA_EXHAUSTED"))
-        || explicit_quota_detail;
-    let response_id = header_text(&headers, "x-goog-request-id")
-        .or_else(|| header_text(&headers, "x-request-id"))
-        .or_else(|| {
-            value
-                .as_ref()
-                .and_then(|value| value.pointer("/error/request_id"))
-                .and_then(serde_json::Value::as_str)
-        })
-        .and_then(|id| peritus_model_protocol::ResponseId::new(id.to_owned()).ok());
-    Ok(HttpErrorFacts { quota_hint, response_id })
-}
-
-struct HttpErrorFacts {
-    quota_hint: bool,
-    response_id: Option<peritus_model_protocol::ResponseId>,
-}
-
-fn header_text<'a>(headers: &'a HttpHeaders, name: &str) -> Option<&'a str> {
-    let bytes = headers.first(name)?.nonsensitive_bytes()?;
-    core::str::from_utf8(bytes).ok()
-}
-
-fn retry_after_millis(headers: &HttpHeaders) -> Option<u64> {
-    let value = headers.first("retry-after")?.nonsensitive_bytes()?;
-    decimal_seconds_to_millis(core::str::from_utf8(value).ok()?)
-}
-
-fn decimal_seconds_to_millis(value: &str) -> Option<u64> {
-    let (seconds, fraction) =
-        value.split_once('.').map_or((value, None), |(whole, fraction)| (whole, Some(fraction)));
-    let seconds = seconds.parse::<u64>().ok()?.checked_mul(1_000)?;
-    let fraction = match fraction {
-        None => 0,
-        Some(fraction)
-            if !fraction.is_empty()
-                && fraction.len() <= 3
-                && fraction.bytes().all(|byte| byte.is_ascii_digit()) =>
-        {
-            fraction.parse::<u64>().ok()?.checked_mul(
-                10_u64.checked_pow(u32::try_from(3_usize.checked_sub(fraction.len())?).ok()?)?,
-            )?
-        }
-        Some(_) => return None,
-    };
-    seconds.checked_add(fraction)
 }
 
 fn is_event_stream(headers: &HttpHeaders) -> bool {

@@ -6,7 +6,9 @@
 mod client;
 mod config;
 mod error;
+mod metadata;
 mod profile;
+mod rejection;
 mod request;
 mod stream;
 
