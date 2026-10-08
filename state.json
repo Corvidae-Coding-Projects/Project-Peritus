@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4147,
-        "tip_oid": "4618a8178383debb997ecd7fa51c2de32dfe78d7",
-        "prefix_sha256": "5e0b489336de56ea1aa352b744da442185996b67fbc15118c9c95d91343914f7"
+        "sequence": 4148,
+        "tip_oid": "ad5c4f11e1e82ec61cc62764f4efd46bf4c7dfda",
+        "prefix_sha256": "1b6e7e3fa7a140d5e19e6ec762e236a963b5bf5c2723a55e77adeabfe1ee2232"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3277,
+  "next_comment_id": 3278,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -35270,11 +35270,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.497348958Z",
-      "updated_at": "2026-10-06T13:27:51.499899466Z",
+      "updated_at": "2026-10-08T10:40:48.265933223Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "03ef895c-4e48-4cf0-b35d-561ce10e2b6d": {
+          "display_id": 3277,
+          "author": "6ME5",
+          "content": "Code complete in commit 440db5013. Terminal attach now supports a leased atomic durable receipt and explicit detach/cancel interrupt policy. It retains exact session/attachment/process/request identities, per-stream/global frontiers, incremental sanitizer state, terminal disposition and prepared control receipts, reconnecting the original binding without retry exhaustion and suppressing exact replay prefixes. Stdin is sent incrementally in negotiated physical chunks while controls remain serviceable; ambiguous input is not blindly retried. Independent stdout/stderr/PTY sanitizers preserve split UTF-8 and escape state. Resize admits the portable native signed-coordinate range. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T10:40:48.256658857Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAObV/1LuZhyDwi3w0OIvHG2X1xRnSjIHtMtKhGmwDyOxWv6bSIg9HzNgACk6QyQChdl8ScT3TOBD2Ssa6IsF5Bw=="
+        },
         "56ed8de9-73d3-490b-abd4-c32e958fda1f": {
           "display_id": 2788,
           "author": "6ME5",
