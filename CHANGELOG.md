@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L446] F0 rejects multiline human-authored explanation text (#525)
 - [L445] F0 delta admission cannot represent several legitimate evolvable harness changes (#524)
 - [L613] Windows normal termination produces recovery bytes its decoder rejects (#669)
 - [L444] F0 phase progression prevents admitting later diagnosis, variants or replacement evaluations (#523)
