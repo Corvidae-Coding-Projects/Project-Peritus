@@ -16,6 +16,16 @@ use crate::{
 /// Parses the process arguments, executes one command, and returns its stable exit category.
 #[must_use]
 pub fn run_env() -> ExitCode {
+    #[cfg(windows)]
+    if let Some(record) = peritus_provider_onboarding::account_installer_owner_argument() {
+        return match peritus_provider_onboarding::run_account_installer_owner(&record) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => report_error(
+                &CliError::runtime("run provider installer owner", error.to_string()),
+                false,
+            ),
+        };
+    }
     run(std::env::args_os())
 }
 

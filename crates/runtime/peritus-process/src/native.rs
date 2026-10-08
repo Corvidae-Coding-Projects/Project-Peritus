@@ -8,6 +8,8 @@ mod protocol;
 mod pty;
 #[cfg(windows)]
 mod windows_channel;
+#[cfg(windows)]
+mod windows_owner;
 
 pub use probe::NativeProcessProbe;
 pub use protected_handle::NativeProtectedHandle;
@@ -31,6 +33,8 @@ pub use windows_channel::{
     NativeWindowsResourceSnapshot,
     NativeWindowsSecretFileBinding, NativeWindowsSecretFileIdentity,
 };
+#[cfg(windows)]
+pub use windows_owner::NativeWindowsProcessOwner;
 
 use peritus_sandbox::{
     BackendAdmission, BackendDescriptor, CheckedSandboxPlan, EnforcementObservation,

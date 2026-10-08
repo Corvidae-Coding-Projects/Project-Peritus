@@ -37,6 +37,7 @@ impl AppLayout {
         prepare_root(prepared.managed_workspaces_root())?;
         prepare_root(prepared.workspace_registrations_root())?;
         prepare_root(prepared.workspace_transactions_root())?;
+        prepare_root(prepared.provider_effects_root())?;
         Ok(prepared)
     }
 
@@ -120,6 +121,12 @@ impl AppLayout {
     #[must_use]
     pub fn logs_root(&self) -> PathBuf {
         self.state.join("logs")
+    }
+
+    /// Returns the protected durable provider-effect ownership journal.
+    #[must_use]
+    pub fn provider_effects_root(&self) -> PathBuf {
+        self.state.join("provider-effects")
     }
 
     /// Returns the retained daemon diagnostic log path.

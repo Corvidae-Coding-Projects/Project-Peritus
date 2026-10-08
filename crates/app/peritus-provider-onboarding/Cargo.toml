@@ -13,6 +13,7 @@ categories = ["authentication", "command-line-utilities"]
 
 [dependencies]
 peritus-provider-core = { version = "=0.0.5", path = "../../model/peritus-provider-core" }
+peritus-process = { version = "=0.0.5", path = "../../runtime/peritus-process" }
 tokio = { workspace = true, features = ["process"] }
 getrandom.workspace = true
 peritus-product-state = { version = "=0.0.5", path = "../peritus-product-state" }
@@ -21,6 +22,8 @@ peritus-provider-openai = { version = "=0.0.5", path = "../../model/peritus-prov
 peritus-secrets = { version = "=0.0.5", path = "../../runtime/peritus-secrets" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde_json.workspace = true
+serde.workspace = true
+sha2.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 zeroize.workspace = true

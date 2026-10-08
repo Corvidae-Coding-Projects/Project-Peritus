@@ -4,7 +4,7 @@ use peritus_product_state::{ProviderKind, ProviderRouteIdentity, ProviderSelecti
 use peritus_provider_core::CancellationToken;
 use peritus_provider_onboarding::{
     AccountLogin, AccountProvider, ProviderCatalog, ProviderObservation, ProviderStatus,
-    remove_direct_credential,
+    ProviderEffectStore,
 };
 
 use crate::{LauncherError, PreparedProduct, ProductBootstrap};
@@ -27,17 +27,20 @@ pub async fn ensure_configured(
     prepared: PreparedProduct,
 ) -> Result<PreparedProduct, LauncherError> {
     let cancellation = CancellationToken::new();
+    let effects = ProviderEffectStore::open(prepared.layout().provider_effects_root())?;
+    effects.reconcile_credentials(prepared.state().providers())?;
     let observations = ProviderCatalog::observe(&cancellation).await?;
     if !prepared.state().provider_setup_complete() {
-        return first_run(&prepared, &observations, &cancellation).await;
+        return first_run(&prepared, &observations, &cancellation, &effects).await;
     }
-    repair_if_needed(prepared, &observations, &cancellation).await
+    repair_if_needed(prepared, &observations, &cancellation, &effects).await
 }
 
 async fn first_run(
     prepared: &PreparedProduct,
     observations: &[ProviderObservation],
     cancellation: &CancellationToken,
+    effects: &ProviderEffectStore,
 ) -> Result<PreparedProduct, LauncherError> {
     let mut terminal = Terminal::stdio();
     terminal.line("")?;
@@ -54,7 +57,8 @@ async fn first_run(
     }
 
     let activated =
-        activate_requested(&mut terminal, observations, requested, None, cancellation).await?;
+        activate_requested(&mut terminal, observations, requested, None, cancellation, effects)
+            .await?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
     let default_route = choose_default_route(
         &mut terminal,
@@ -69,7 +73,7 @@ async fn first_run(
         activated.direct_profiles,
         automatic_failover,
     )?;
-    persist(prepared, selection)
+    persist(prepared, selection, effects)
 }
 
 /// Opens provider settings without replaying unrelated first-run setup.
@@ -77,6 +81,8 @@ pub async fn configure(
     prepared: &PreparedProduct,
 ) -> Result<PreparedProduct, LauncherError> {
     let cancellation = CancellationToken::new();
+    let effects = ProviderEffectStore::open(prepared.layout().provider_effects_root())?;
+    effects.reconcile_credentials(prepared.state().providers())?;
     let observations = ProviderCatalog::observe(&cancellation).await?;
     let current = prepared.state().providers().clone();
     let mut terminal = Terminal::stdio();
@@ -93,6 +99,7 @@ pub async fn configure(
         requested,
         Some(&current),
         &cancellation,
+        &effects,
     )
     .await?;
     let default = choose_default(&mut terminal, &activated.enabled)?;
@@ -113,8 +120,8 @@ pub async fn configure(
         activated.direct_profiles.clone(),
         automatic_failover,
     )?;
-    let configured = persist(prepared, selection)?;
-    remove_replaced_credentials(&mut terminal, &current, &activated.direct_profiles)?;
+    record_replaced_credentials(&effects, &current, &activated.direct_profiles)?;
+    let configured = persist(prepared, selection, &effects)?;
     terminal.line("Provider settings saved.")?;
     Ok(configured)
 }
@@ -123,6 +130,7 @@ async fn repair_if_needed(
     prepared: PreparedProduct,
     observations: &[ProviderObservation],
     cancellation: &CancellationToken,
+    effects: &ProviderEffectStore,
 ) -> Result<PreparedProduct, LauncherError> {
     let selected = prepared.state().providers().enabled();
     let unhealthy = selected
@@ -157,7 +165,7 @@ async fn repair_if_needed(
                 true,
             )?,
             ProviderStatus::Unavailable => {
-                if install::offer(&mut terminal, item.kind())? {
+                if install::offer(&mut terminal, item.kind(), cancellation, effects).await? {
                     true
                 } else {
                     installation_guidance(&mut terminal, item.kind())?;
@@ -205,7 +213,7 @@ async fn repair_if_needed(
         direct_profiles,
         automatic_failover,
     )?;
-    persist(&prepared, selection)
+    persist(&prepared, selection, effects)
 }
 
 fn show_catalog(
@@ -244,6 +252,7 @@ async fn activate_requested(
     requested: Vec<ProviderKind>,
     existing: Option<&ProviderSelection>,
     cancellation: &CancellationToken,
+    effects: &ProviderEffectStore,
 ) -> Result<ActivatedProviders, LauncherError> {
     let mut enabled = Vec::new();
     let mut direct_profiles = Vec::new();
@@ -256,7 +265,7 @@ async fn activate_requested(
                 .collect::<Vec<_>>();
             enabled.push(kind);
             if existing_profiles.is_empty() {
-                direct_profiles.push(direct::setup(terminal, kind)?);
+                direct_profiles.push(direct::setup(terminal, kind, effects)?);
             } else {
                 for profile in existing_profiles {
                     direct_profiles.push(connection::existing(terminal, profile)?);
@@ -276,10 +285,9 @@ async fn activate_requested(
                     LoginOutcome::Ready => true,
                     LoginOutcome::Unverified => retained,
                     LoginOutcome::Unavailable => false,
-                }
             }
             ProviderStatus::Unavailable => {
-                if install::offer(terminal, kind)? {
+                if install::offer(terminal, kind, cancellation, effects).await? {
                     match login(terminal, kind, cancellation).await? {
                         LoginOutcome::Ready => true,
                         LoginOutcome::Unverified => retained,
@@ -308,8 +316,8 @@ async fn activate_requested(
     Ok(ActivatedProviders { enabled, direct_profiles })
 }
 
-fn remove_replaced_credentials(
-    terminal: &mut Terminal<'_>,
+fn record_replaced_credentials(
+    effects: &ProviderEffectStore,
     previous: &ProviderSelection,
     retained: &[peritus_product_state::DirectProviderProfile],
 ) -> Result<(), LauncherError> {
@@ -317,12 +325,7 @@ fn remove_replaced_credentials(
         if retained.iter().any(|profile| profile == old) {
             continue;
         }
-        if let Err(error) = remove_direct_credential(old) {
-            terminal.line(&format!(
-                "The old {} key could not be removed automatically: {error}",
-                old.kind().label()
-            ))?;
-        }
+        effects.record_credential_cleanup(old.credential_reference())?;
     }
     Ok(())
 }
@@ -381,6 +384,7 @@ fn show_diagnostic(
 fn persist(
     prepared: &PreparedProduct,
     selection: ProviderSelection,
+    effects: &ProviderEffectStore,
 ) -> Result<PreparedProduct, LauncherError> {
     let selection = models::account_selections(
         &mut Terminal::stdio(),
@@ -388,7 +392,9 @@ fn persist(
         prepared.state().providers(),
     )?;
     let layout = prepared.layout().clone();
-    ProductBootstrap::new(layout).configure_providers(selection)
+    let configured = ProductBootstrap::new(layout).configure_providers(selection)?;
+    effects.reconcile_credentials(configured.state().providers())?;
+    Ok(configured)
 }
 
 fn observation(

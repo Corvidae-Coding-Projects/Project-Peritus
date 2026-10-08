@@ -46,7 +46,8 @@ pub use crate::native::{
     NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
     NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
     NativeWindowsCompletion, NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
-    NativeWindowsOwnerInspection, NativeWindowsQuiescence, NativeWindowsResourceSnapshot,
+    NativeWindowsOwnerInspection, NativeWindowsProcessOwner, NativeWindowsQuiescence,
+    NativeWindowsResourceSnapshot,
 };
 pub use crate::output::{OutputCompleteness, OutputStream, StreamAccounting};
 pub use crate::plan::{

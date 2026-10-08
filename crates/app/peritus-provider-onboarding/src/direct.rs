@@ -10,8 +10,9 @@ use peritus_secrets::{
     parse_credential_reference,
 };
 use peritus_types::ResourceId;
+use sha2::{Digest as _, Sha256};
 
-use crate::OnboardingError;
+use crate::{OnboardingError, ProviderEffectStore};
 
 /// Sensitive provider material that zeroizes its allocation on drop.
 pub struct DirectCredential(SecretMaterial);
@@ -110,6 +111,7 @@ impl DirectProviderDraft {
     pub fn store(
         self,
         credential: &DirectCredential,
+        effects: &ProviderEffectStore,
     ) -> Result<DirectProviderProfile, OnboardingError> {
         let catalog_endpoint = match (self.kind, self.catalog_endpoint.as_deref()) {
             (ProviderKind::CompatibleEndpoint, configured) => {
@@ -127,24 +129,76 @@ impl DirectProviderDraft {
             }
         };
         let resource_id = random_resource_id()?;
-        let store = PlatformCredentialStore::providers();
-        let reference = store.store(resource_id, &credential.0)?;
         let route_identity = ProviderRouteIdentity::new(*resource_id.as_bytes())?;
+        let expected_reference = credential.0.expose(|bytes| {
+            let digest = Sha256::digest(bytes);
+            format!(
+                "peritus-secret-v1:{}:{}",
+                hex(resource_id.as_bytes()),
+                hex(&digest),
+            )
+        });
         let profile = DirectProviderProfile::new_with_route_identity_and_catalog_endpoint(
             self.kind,
             route_identity,
-            format_credential_reference(reference),
+            expected_reference.clone(),
             self.endpoint,
             catalog_endpoint,
             self.model,
             self.compatible_protocol,
             self.credential_header,
-        );
-        match profile {
-            Ok(profile) => Ok(profile),
-            Err(error) => {
-                let _ignored = store.remove(resource_id);
-                Err(OnboardingError::from(error))
+        )?;
+        effects.begin_credential(&expected_reference)?;
+        let store = PlatformCredentialStore::providers();
+        match store.store(resource_id, &credential.0) {
+            Ok(reference) if format_credential_reference(reference) == expected_reference => {
+                if let Err(error) = effects.credential_published(&expected_reference) {
+                    return Err(reconcile_publication_failure(
+                        &store,
+                        effects,
+                        resource_id,
+                        expected_reference,
+                        error,
+                    ));
+                }
+                Ok(profile)
+            }
+            Ok(_) => Err(reconcile_publication_failure(
+                &store,
+                effects,
+                resource_id,
+                expected_reference.clone(),
+                OnboardingError::CredentialPublication {
+                    credential_reference: expected_reference,
+                    detail: "credential store returned a different content identity",
+                },
+            )),
+            Err(error) => Err(reconcile_publication_failure(
+                &store,
+                effects,
+                resource_id,
+                expected_reference,
+                OnboardingError::Secret(error),
+            )),
+        }
+    }
+}
+
+fn reconcile_publication_failure(
+    store: &PlatformCredentialStore,
+    effects: &ProviderEffectStore,
+    resource_id: ResourceId,
+    credential_reference: String,
+    publication: OnboardingError,
+) -> OnboardingError {
+    match store.remove(resource_id) {
+        Ok(()) => effects.credential_settled(&credential_reference).err().unwrap_or(publication),
+        Err(cleanup) => {
+            let _retained = effects.credential_cleanup_required(&credential_reference);
+            OnboardingError::CredentialReconciliation {
+                credential_reference,
+                publication: publication.to_string(),
+                cleanup,
             }
         }
     }
@@ -168,6 +222,16 @@ fn random_resource_id() -> Result<ResourceId, OnboardingError> {
         bytes[0] = 1;
     }
     ResourceId::new(bytes).map_err(|_| OnboardingError::Random("generated a zero identity".into()))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut value = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        value.push(char::from(HEX[usize::from(byte >> 4)]));
+        value.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    value
 }
 
 #[cfg(test)]

@@ -11,7 +11,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
-use peritus_provider_onboarding::{DirectCredential, DirectProviderDraft};
+use peritus_provider_onboarding::{DirectCredential, DirectProviderDraft, ProviderEffectStore};
 use zeroize::Zeroizing;
 
 use crate::{LauncherError, terminal::Terminal};
@@ -21,6 +21,7 @@ const MAX_CREDENTIAL_BYTES: usize = 16 * 1024;
 pub(super) fn setup(
     terminal: &mut Terminal<'_>,
     kind: ProviderKind,
+    effects: &ProviderEffectStore,
 ) -> Result<DirectProviderProfile, LauncherError> {
     terminal.line("")?;
     terminal.line(kind.label())?;
@@ -41,7 +42,7 @@ pub(super) fn setup(
     let (model, protocol) = super::models::choose_direct(terminal, kind, discovered)?;
     let draft = draft.with_model(model);
     let draft = if let Some(protocol) = protocol { draft.with_protocol(protocol) } else { draft };
-    let profile = draft.store(&credential)?;
+    let profile = draft.store(&credential, effects)?;
     terminal.line(&format!("{} is configured. Connection not yet tested.", kind.label()))?;
     super::connection::offer(terminal, &profile)?;
     Ok(profile)
