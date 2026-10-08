@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4029,
-        "tip_oid": "873b37fe63a395c5d79efe88405f0aa4fcd98cb9",
-        "prefix_sha256": "21434c606757f6ddb807fa91de6030f66eb362f6022e5badad1945ef6c385025"
+        "sequence": 4030,
+        "tip_oid": "125b611578fbd44df4e13018275d8c812ce2dada",
+        "prefix_sha256": "3b56bb3e87725399012787176a223525e61334bf1b8aa0e4ba393542fdfdc0a4"
       },
       "NWAR": {
         "sequence": 39,
@@ -20907,12 +20907,13 @@
       "display_id": 675,
       "title": "[L620] Evidence storage retains a five-second contention timer and fixed SQLite representation bounds",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L620.\n\n- Evidence: `crates/state/peritus-evidence/src/sqlite/store.rs:23-64`; `src/sqlite/connection.rs:7-44`; `src/sqlite/row.rs:158-173`; `src/error.rs:81-94` in the same crate.\n- Behavior: Default options install a five-second SQLite busy timeout. The API requires a Duration rather than an explicit wait-until-canceled policy. Connection setup also fixes SQLITE_LIMIT_LENGTH at 32 MiB and disables attached databases; journal positions must fit positive SQLite INTEGER. Busy and locked failures preserve their source and return Retry, but this crate supplies no persistent wait/retry owner.\n- Consequence: Ordinary database contention can interrupt evidence work at an artificial elapsed-time threshold. Integer, attachment, and row-size restrictions are storage/protocol constraints, not run deadlines; removing the timeout must not erase their error distinctions.\n- Repair direction: Carry cancellation and a durable contention continuation through the storage owner; separate optional operational waiting policy from schema representability. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.301718862Z",
-      "updated_at": "2026-10-08T03:49:44.176211330Z",
+      "updated_at": "2026-10-08T03:51:24.109419492Z",
+      "closed_at": "2026-10-08T03:51:24.106576958Z",
       "labels": [
         "daily-driving-limiter"
       ],
