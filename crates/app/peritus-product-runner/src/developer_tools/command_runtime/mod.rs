@@ -800,7 +800,6 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.prepared,
-            timeout_millis.unwrap_or(0),
         )
         .map_err(tool)?;
         ensure_not_cancelled(cancellation)?;
@@ -809,7 +808,6 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.execution,
-            timeout_millis.unwrap_or(0),
         )
         .map_err(tool)?;
         ensure_not_cancelled(cancellation)?;

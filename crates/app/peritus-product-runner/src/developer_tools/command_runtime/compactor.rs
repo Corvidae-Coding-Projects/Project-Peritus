@@ -60,7 +60,6 @@ pub(crate) struct PreparedLocalCompactor {
     runtime: CommandRuntime,
     cancellation: CancellationToken,
     input_page_bytes: usize,
-    authority_wall_millis: Option<u64>,
     directory: PathBuf,
     executable: SnapshotFile,
     weights: SnapshotFile,
@@ -246,12 +245,11 @@ impl PreparedLocalCompactor {
             &self.cancellation,
         )?;
         ensure_not_cancelled(&self.cancellation)?;
-        let process_authority = authority::commit_process_with_wall_policy(
+        let process_authority = authority::commit_process(
             &self.directory.join("authority.sqlite3"),
             &self.ids,
             &self.contract,
             &self.plan,
-            self.authority_wall_millis,
         )?;
         let authorization = process_authority.request(&self.ids, &self.plan);
         ensure_not_cancelled(&self.cancellation)?;
@@ -535,7 +533,6 @@ impl CommandRuntime {
             runtime: self.clone(),
             cancellation: cancellation.clone(),
             input_page_bytes: config.input_page_bytes().min(COPY_CHUNK_BYTES),
-            authority_wall_millis: wall,
             directory,
             executable,
             weights,

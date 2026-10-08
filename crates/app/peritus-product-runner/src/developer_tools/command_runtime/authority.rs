@@ -97,7 +97,6 @@ pub(super) fn commit_tool(
     ids: &CommandIds,
     contract: &AcceptanceContract,
     prepared: &PreparedToolCall,
-    wall_millis: u64,
 ) -> Result<ToolAuthority, String> {
     let label = "tool-authority-store";
     let mut store = journal::open(path, ids, label)?;
@@ -113,8 +112,16 @@ pub(super) fn commit_tool(
         .map_err(|error| format!("digest command tool intent: {error}"))?;
     let capability_use =
         capability_use(ids, digest, OperationClass::Execution, RiskClass::Execution)?;
-    let kernel =
-        kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
+    let wall_millis = prepared.call().limits().timeout_millis();
+    let kernel = kernel::commit_with_wall_policy(
+        &mut store,
+        label,
+        ids,
+        contract,
+        &intent,
+        &capability_use,
+        wall_millis,
+    )?;
     let capability = commit_capability(&mut store, label, ids, capability_use)?;
     let budget = commit_budget(&mut store, label, ids, digest, Some(wall_millis))?;
     let epoch = allocate_epoch(&mut store)?;
@@ -126,9 +133,25 @@ pub(super) fn commit_process(
     ids: &CommandIds,
     contract: &AcceptanceContract,
     plan: &ExecutionPlan,
-    wall_millis: u64,
 ) -> Result<ProcessAuthority, String> {
-    commit_process_with_wall_policy(path, ids, contract, plan, Some(wall_millis))
+    commit_process_with_wall_policy(
+        path,
+        ids,
+        contract,
+        plan,
+        effective_wall_millis(plan),
+    )
+}
+
+fn effective_wall_millis(plan: &ExecutionPlan) -> Option<u64> {
+    match (
+        plan.deadline_policy().wall_timeout_millis(),
+        plan.resource_policy().wall_millis(),
+    ) {
+        (Some(deadline), Some(resource)) => Some(deadline.min(resource)),
+        (deadline, None) => deadline,
+        (None, resource) => resource,
+    }
 }
 
 /// Commits process authority while preserving whether the caller selected a wall ceiling.

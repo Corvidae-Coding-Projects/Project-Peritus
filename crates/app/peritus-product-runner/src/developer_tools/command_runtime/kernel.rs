@@ -15,26 +15,6 @@ use peritus_spec::AcceptanceContract;
 
 use super::{identity::CommandIds, journal};
 
-pub(super) fn commit(
-    store: &mut SqliteJournal,
-    store_label: &str,
-    ids: &CommandIds,
-    contract: &AcceptanceContract,
-    intent: &ActionIntentDto,
-    capability: &CapabilityUseTransition,
-    wall_millis: u64,
-) -> Result<CommittedKernelTransition, String> {
-    commit_with_wall_policy(
-        store,
-        store_label,
-        ids,
-        contract,
-        intent,
-        capability,
-        Some(wall_millis),
-    )
-}
-
 pub(super) fn commit_with_wall_policy(
     store: &mut SqliteJournal,
     store_label: &str,

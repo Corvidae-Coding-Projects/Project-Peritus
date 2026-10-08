@@ -4,7 +4,7 @@ mod native;
 
 use std::sync::Arc;
 
-use peritus_budget::{BudgetDimension, BudgetOperation, BudgetReceiptKind};
+use peritus_budget::{BudgetAmounts, BudgetOperation, BudgetReceiptKind};
 use peritus_codec::{CodecLimits, decode_message};
 use peritus_kernel::{ActionPhase, KernelEventKind};
 use peritus_leases::{LeaseClaim, LeasePhase, LeaseTransitionKind};
@@ -273,13 +273,22 @@ fn validate_budget(
         )
     })?;
     let begin = snapshot.request();
+    let wall_millis = match (
+        plan.deadline_policy().wall_timeout_millis(),
+        plan.resource_policy().wall_millis(),
+    ) {
+        (Some(deadline), Some(resource)) => deadline.min(resource),
+        (Some(deadline), None) => deadline,
+        (None, Some(resource)) => resource,
+        (None, None) => 0,
+    };
     Ok(snapshot.is_admission_ready()
         && begin.reservation_id() == reservation_id
         && begin.action_id() == plan.identity().action_id()
         && begin.action_digest() == action_digest
         && begin.revision() == plan.identity().revision()
-        && begin.reserve().get(BudgetDimension::ActiveEffectMilliseconds).get()
-            >= plan.resource_policy().wall_millis().unwrap_or(0))
+        && begin.charge() == BudgetAmounts::from_units(0, 0, 0, 1, 0)
+        && begin.reserve() == BudgetAmounts::from_units(0, 0, wall_millis, 0, 0))
 }
 
 fn validate_lease(
