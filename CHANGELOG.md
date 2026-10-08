@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L614] Windows recovery cannot reconstruct or identify a live native owner (#670)
 - [L041] Workspace inspection truncates or omits evidence (#140)
 - [L446] F0 rejects multiline human-authored explanation text (#525)
 - [L445] F0 delta admission cannot represent several legitimate evolvable harness changes (#524)
