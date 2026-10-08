@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4019,
-        "tip_oid": "0813de506ba3184812d3c257e78145deb6eed57b",
-        "prefix_sha256": "e016f1847bfba8061456a83b681b2278b89780255b11820e9abadd7da52a463d"
+        "sequence": 4020,
+        "tip_oid": "ef882d88b2e07d9a7a373ad66f23b83327a44615",
+        "prefix_sha256": "96bdd0815d24f7c6f6d69e768c083eedae593eda1f6e00a1d123cfe0cdd12eb3"
       },
       "NWAR": {
         "sequence": 39,
@@ -14499,12 +14499,13 @@
       "display_id": 531,
       "title": "[L452] F0's accepted bounds disagree with its attribution and assessment persistence schema",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L452.\n\n- Evidence: `crates/analysis/peritus-evolution/src/limits.rs:22-33,63-94`, `src/attribution/record.rs:124-135`, `src/wire/semantic/attribution.rs:22-29`, `src/selection/engine.rs:52-153`, `src/campaign/reducer/transition.rs:160-183`, `src/wire/semantic/selection.rs:42-45`, `src/wire/semantic/state/campaign.rs:95-98` in that crate; codec collection ceiling documented in L009.\n- Behavior: Attribution permits 65,536 entries, but its single canonical collection uses the codec's 65,535 maximum. EvolutionLimits also accepts criteria=1 through 13. Assessment always produces fourteen results and campaign admission does not compare that count with the frozen criteria limit. Complete-state decoding does require all fourteen and a limit of at least fourteen.\n- Consequence: The advertised maximum attribution cannot be serialized. A campaign with a small accepted criteria limit can admit and encode an assessment that its own checkpoint decoder rejects during recovery. These are source-derived boundary cases; no fixture was constructed or executed in this audit.\n- Repair direction: Make admission, serialization and restore share one representability contract. Remove meaningless tunable criteria counts for a fixed schema, and page attribution independently of workload size rather than exposing incompatible maxima. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.616068096Z",
-      "updated_at": "2026-10-08T03:33:18.008671505Z",
+      "updated_at": "2026-10-08T03:34:56.359725321Z",
+      "closed_at": "2026-10-08T03:34:56.357036730Z",
       "labels": [
         "daily-driving-limiter"
       ],
