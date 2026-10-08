@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4033,
-        "tip_oid": "625cb375e5bf24db7bc1f5567121dadc78eac82d",
-        "prefix_sha256": "57172505f9fd785688af126a88572bcd46e43509e48dfbd5042afbefe8a3871d"
+        "sequence": 4034,
+        "tip_oid": "0512085948619e86409e6bf71386d0a34d85e285",
+        "prefix_sha256": "9c70c2648faf18fcd547f355b7992efe8c92bfec75f3b94434f1c2aeaf68dc68"
       },
       "NWAR": {
         "sequence": 39,
@@ -27966,12 +27966,13 @@
       "display_id": 534,
       "title": "[L455] F0 repeats whole-state and whole-store work synchronously during attribution, commit and recovery",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L455.\n\n- Evidence: `crates/analysis/peritus-evolution/src/attribution/engine.rs:123-142`, `src/campaign/reducer/transition.rs:61-63`, `src/campaign/state.rs:260-288`, `src/durability/replay.rs:79-116,127-161`, `src/wire/campaign.rs:170-199,279-281,318-321`, `src/wire/pointer.rs:178-213,299-301,338-341`, `src/runtime/publication.rs:53-83` in the same crate.\n- Behavior: Each task prediction performs an existence scan and another task/k scan through the complete pass-at-k vector. Transitions clone all nested prior campaign evidence and rebuild the collection digest. Commit prevalidates state encoding, clones it into a frame and encodes it again. Recovery loads all events, applies each reducer during frame checking and again in the replay loop, then decodes and compares the complete checkpoint. Every publication obtains a global journal integrity export and scans its artifact references before admitting evidence. These synchronous functions offer no cancellation/progress cursor.\n- Consequence: Task attribution can cost O(predictions times task/k observations), and campaign replay repeatedly copies growing embedded evidence. Pointer history bounds cap its hot state but do not make the event journal finite. These are source-derived latency and memory-pressure risks; no benchmark, active-session stall or wall timeout is attributed to F0 here.\n- Repair direction: Index task/k observations, reference immutable evidence, perform each checked reduction once and verify paged snapshots with authenticated replay cursors. Preserve integrity while providing resumable bounded work and observable progress. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.630750318Z",
-      "updated_at": "2026-10-08T03:56:21.622999769Z",
+      "updated_at": "2026-10-08T03:58:03.286635983Z",
+      "closed_at": "2026-10-08T03:58:03.283911283Z",
       "labels": [
         "daily-driving-limiter"
       ],
