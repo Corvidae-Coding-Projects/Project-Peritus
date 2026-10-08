@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4180,
-        "tip_oid": "e08c42cd029a8d2d25aa7a028bbad98229928bd0",
-        "prefix_sha256": "8073af3f8f6dfdfd1110a5fdb4450cd03dfc0b55c0a9b1cf96e2784877f1cef1"
+        "sequence": 4181,
+        "tip_oid": "3770610997aa0fdf9b4a5e5ed5db164bfd9bd89e",
+        "prefix_sha256": "79999bf7be472b4075c3c86ea9d33402c52f7e838d6085eb32072783f49db366"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3296,
+  "next_comment_id": 3297,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1383,11 +1383,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.693766405Z",
-      "updated_at": "2026-10-06T13:24:48.696307967Z",
+      "updated_at": "2026-10-08T16:06:34.955583903Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "165c515b-d3ab-4e5b-af05-de3f4c02cf3a": {
+          "display_id": 3296,
+          "author": "6ME5",
+          "content": "Delivered minimum repair L173 on fix/minimum-repair. Streamed JSON from a reader and YAML events, added cancellation and blocking-worker execution, and removed whole-file size and empty-document refusals.\n\nValidation: tests for the 12 affected/consuming packages were exercised; failing assertions and the test-only finalization wait were corrected and rerun successfully. Runner unit suite: 471 passed. Daemon finalization and six stable-executable fixture reruns passed. All-target Clippy with -D warnings, formatting, architecture-check, and ordinary-api-check passed. This is the selected 20-repair round only; no added blocker issue or batch.",
+          "created_at": "2026-10-08T16:06:34.945615682Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7KfWhXaky0bl9080hhX3rf9U64TgO2DrvVODjQuzqus27PnxQ6gXHSbnF7B0FEJSiK8FyrBPWJkDUdtAP+o9Cw=="
+        },
         "55b2936d-b539-4e0f-aa53-4ab0dc4db9c9": {
           "display_id": 2380,
           "author": "6ME5",
