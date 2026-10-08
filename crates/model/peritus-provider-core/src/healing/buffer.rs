@@ -28,18 +28,17 @@ impl ToolArgumentBuffer {
     /// Appends one bounded provider observation without exposing it as an admitted tool argument.
     ///
     /// # Errors
-    /// Rejects byte overflow and more observations than the selected event policy permits.
+    /// Rejects byte overflow under the selected tool-argument policy.
     pub fn append(
         &mut self,
         bytes: &[u8],
         limits: ProtocolLimits,
     ) -> Result<(), ProviderCoreError> {
-        if self.ends.len() >= limits.max_events()
-            || self
-                .bytes
-                .len()
-                .checked_add(bytes.len())
-                .is_none_or(|n| n > limits.max_tool_argument_bytes())
+        if self
+            .bytes
+            .len()
+            .checked_add(bytes.len())
+            .is_none_or(|n| n > limits.max_tool_argument_bytes())
         {
             return Err(invalid());
         }
