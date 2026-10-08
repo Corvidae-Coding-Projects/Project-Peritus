@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3934,
-        "tip_oid": "1443520d0260e498555156773d25c7e0c170494a",
-        "prefix_sha256": "2da0b802245c0e0ced2ec97a91974b3ff360af025025f310da4f3e0a56cd996f"
+        "sequence": 3935,
+        "tip_oid": "9a13e59703316f01cb95560833bc0ac80924f04e",
+        "prefix_sha256": "7576a65d8c5ae4e8ff20c1baf1dcdf18772e8d065635497625e86b311b39dc71"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3170,
+  "next_comment_id": 3171,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -30597,7 +30597,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.953981168Z",
-      "updated_at": "2026-10-06T13:19:07.955980113Z",
+      "updated_at": "2026-10-08T01:14:56.016510361Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -30608,6 +30608,15 @@
           "content": "Systemic repair plan for L030: Product task, detail, deliverable, and page admission.\n\nOwning contract and implementation boundary: peritus-app-protocol/src/product.rs:38-43. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nStore task text and deliverable evidence in exact referenced artifacts with paged changed-path/command indexes. Validate deliverable readiness before sealing the successful result, so presentation capacity cannot retroactively turn a completed effect into failure. Keep nonempty delivery semantics, authority-safe paths and lossless run-list cursors.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "fa8a4644-4adb-4a48-b09f-876d356afe1a": {
+          "display_id": 3170,
+          "author": "6ME5",
+          "content": "Code complete in commit 7e5a4fa37: removes cumulative task/detail/deliverable admission caps using digest/length-bound artifacts and root-bound paged evidence indexes. Daemon publishes readiness before terminal/control mutation, retains artifact ownership on restart, and enforces negotiated chunk capacity. CLI/Web/TUI hydrate exact artifacts and preserve run-list continuation. Safe paths, required text, successful-command restoration and historical inline decoding retained. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:14:56.007165683Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAh8QfaWKu0Lp2niQcj3alFfbDDYs9io2UkxE1gmlTauALVZHN2aVRYkKpZjtxjjQ9uKjf4RwtSk8NetVoJpDLBA=="
         }
       }
     },
