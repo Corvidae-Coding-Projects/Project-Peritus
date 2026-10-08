@@ -1,17 +1,17 @@
 //! Immutable evidence drafts, tags, and admitted records.
 
-use crate::canonical::{Reader, put_bytes, put_digest, put_revision, put_text, put_u64};
+use crate::canonical::{Reader, put_digest, put_revision};
 use crate::{EvidenceError, EvidenceErrorKind, JournalProvenance, RecoveryAction};
 use peritus_artifact_store::ArtifactDigest;
-use peritus_codec::sha256;
 use peritus_types::{EvidenceId, RevisionTuple, Sha256Digest};
+use sha2::{Digest, Sha256};
+use std::convert::Infallible;
 
-/// Maximum canonical artifact references on one evidence record.
-pub const MAX_EVIDENCE_ARTIFACTS: usize = 4_096;
-/// Maximum direct causal parents on one evidence record.
-pub const MAX_EVIDENCE_CAUSES: usize = 4_096;
-const MAX_TAG_BYTES: usize = 64;
-const RECORD_PREFIX: &[u8] = b"peritus-evidence-record-v1\0";
+const LEGACY_MAX_EVIDENCE_ARTIFACTS: usize = 4_096;
+const LEGACY_MAX_EVIDENCE_CAUSES: usize = 4_096;
+const LEGACY_MAX_TAG_BYTES: usize = 64;
+const RECORD_PREFIX_V1: &[u8] = b"peritus-evidence-record-v1\0";
+const RECORD_PREFIX_V2: &[u8] = b"peritus-evidence-record-v2\0";
 
 /// Stable semantic kind of an evidence record.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -22,7 +22,7 @@ impl EvidenceKind {
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or noncanonical tags.
+    /// Rejects empty or noncanonical tags.
     pub fn new(value: impl Into<String>) -> Result<Self, EvidenceError> {
         validate_tag(value).map(Self)
     }
@@ -43,7 +43,7 @@ impl EvidenceSource {
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or noncanonical tags.
+    /// Rejects empty or noncanonical tags.
     pub fn new(value: impl Into<String>) -> Result<Self, EvidenceError> {
         validate_tag(value).map(Self)
     }
@@ -59,14 +59,13 @@ fn validate_tag(value: impl Into<String>) -> Result<String, EvidenceError> {
     let value = value.into();
     let bytes = value.as_bytes();
     let valid = !bytes.is_empty()
-        && bytes.len() <= MAX_TAG_BYTES
         && bytes.first() != Some(&b'-')
         && bytes.last() != Some(&b'-')
         && bytes
             .iter()
             .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || *byte == b'-')
         && !bytes.windows(2).any(|pair| pair == b"--");
-    if valid { Ok(value) } else { Err(invalid("evidence tag must be bounded ASCII kebab-case")) }
+    if valid { Ok(value) } else { Err(invalid("evidence tag must be ASCII kebab-case")) }
 }
 
 /// Checked but not yet durable evidence admission request.
@@ -83,12 +82,11 @@ pub struct EvidenceDraft {
 }
 
 impl EvidenceDraft {
-    /// Creates a bounded canonical evidence request.
+    /// Creates a canonical evidence request.
     ///
     /// # Errors
     ///
-    /// Rejects a zero journal position, oversized sets, duplicates, noncanonical order, or a
-    /// direct self-cause.
+    /// Rejects a zero journal position, duplicates, noncanonical order, or a direct self-cause.
     #[allow(clippy::too_many_arguments, reason = "all durable evidence bindings remain explicit")]
     pub fn new(
         id: EvidenceId,
@@ -101,8 +99,6 @@ impl EvidenceDraft {
         causes: Vec<EvidenceId>,
     ) -> Result<Self, EvidenceError> {
         if journal_position == 0
-            || artifacts.len() > MAX_EVIDENCE_ARTIFACTS
-            || causes.len() > MAX_EVIDENCE_CAUSES
             || artifacts.windows(2).any(|pair| pair[0] >= pair[1])
             || causes.windows(2).any(|pair| pair[0] >= pair[1])
             || causes.contains(&id)
@@ -181,7 +177,7 @@ impl EvidenceRecord {
             causes: draft.causes,
             record_digest: Sha256Digest::new([0; 32]),
         };
-        record.record_digest = sha256(&record.canonical_body());
+        record.record_digest = record.body_digest();
         record
     }
 
@@ -233,10 +229,11 @@ impl EvidenceRecord {
     /// Encodes the complete portable record including its advertised digest.
     #[must_use]
     pub fn canonical_bytes(&self) -> Vec<u8> {
-        let body = self.canonical_body();
-        let mut bytes = Vec::with_capacity(body.len() + 40);
-        put_bytes(&mut bytes, &body);
-        put_digest(&mut bytes, self.record_digest);
+        let mut bytes = Vec::new();
+        let _ = self.write_canonical(&mut |chunk| {
+            bytes.extend_from_slice(chunk);
+            Ok(())
+        });
         bytes
     }
 
@@ -247,7 +244,7 @@ impl EvidenceRecord {
     /// Rejects malformed fields, bounds, ordering, or record digest mismatch.
     pub fn verify_portable(bytes: &[u8]) -> Result<Self, EvidenceError> {
         let mut outer = Reader::new(bytes);
-        let body = outer.bytes(32 * 1024 * 1024)?;
+        let body = outer.bytes_unbounded()?;
         let advertised = outer.digest()?;
         outer.finish()?;
         if sha256(body) != advertised {
@@ -256,47 +253,154 @@ impl EvidenceRecord {
         decode_body(body, advertised)
     }
 
-    fn canonical_body(&self) -> Vec<u8> {
-        let mut bytes = RECORD_PREFIX.to_vec();
-        bytes.extend_from_slice(self.id.as_bytes());
-        put_text(&mut bytes, self.kind.as_str());
-        put_text(&mut bytes, self.source.as_str());
-        put_revision(&mut bytes, &self.revision);
-        self.provenance.encode_into(&mut bytes);
-        put_digest(&mut bytes, self.payload_digest);
-        put_u64(&mut bytes, self.artifacts.len() as u64);
+    pub(crate) fn canonical_size(&self) -> Result<u64, EvidenceError> {
+        self.canonical_body_size()?
+            .checked_add(40)
+            .ok_or_else(|| representation_overflow("portable record length overflowed"))
+    }
+
+    pub(crate) fn write_canonical(
+        &self,
+        write: &mut impl FnMut(&[u8]) -> Result<(), EvidenceError>,
+    ) -> Result<(), EvidenceError> {
+        write(&self.canonical_body_size()?.to_be_bytes())?;
+        self.visit_body(write)?;
+        write(self.record_digest.as_bytes())
+    }
+
+    fn uses_legacy_encoding(&self) -> bool {
+        self.kind.as_str().len() <= LEGACY_MAX_TAG_BYTES
+            && self.source.as_str().len() <= LEGACY_MAX_TAG_BYTES
+            && self.artifacts.len() <= LEGACY_MAX_EVIDENCE_ARTIFACTS
+            && self.causes.len() <= LEGACY_MAX_EVIDENCE_CAUSES
+    }
+
+    fn prefix(&self) -> &'static [u8] {
+        if self.uses_legacy_encoding() { RECORD_PREFIX_V1 } else { RECORD_PREFIX_V2 }
+    }
+
+    fn canonical_body_size(&self) -> Result<u64, EvidenceError> {
+        let mut fixed = Vec::new();
+        put_revision(&mut fixed, &self.revision);
+        self.provenance.encode_into(&mut fixed);
+        put_digest(&mut fixed, self.payload_digest);
+        let components = [
+            u64::try_from(self.prefix().len())
+                .map_err(|_| representation_overflow("record prefix exceeds u64"))?,
+            16,
+            8,
+            u64::try_from(self.kind.as_str().len())
+                .map_err(|_| representation_overflow("record kind exceeds u64"))?,
+            8,
+            u64::try_from(self.source.as_str().len())
+                .map_err(|_| representation_overflow("record source exceeds u64"))?,
+            u64::try_from(fixed.len())
+                .map_err(|_| representation_overflow("record fixed fields exceed u64"))?,
+            8,
+            represented_bytes(self.artifacts.len(), 32)?,
+            8,
+            represented_bytes(self.causes.len(), 16)?,
+        ];
+        components.into_iter().try_fold(0_u64, |total, length| {
+            total
+                .checked_add(length)
+                .ok_or_else(|| representation_overflow("portable record body overflowed"))
+        })
+    }
+
+    fn visit_body<E>(
+        &self,
+        write: &mut impl FnMut(&[u8]) -> Result<(), E>,
+    ) -> Result<(), E> {
+        write(self.prefix())?;
+        write(self.id.as_bytes())?;
+        write(&(self.kind.as_str().len() as u64).to_be_bytes())?;
+        write(self.kind.as_str().as_bytes())?;
+        write(&(self.source.as_str().len() as u64).to_be_bytes())?;
+        write(self.source.as_str().as_bytes())?;
+        let mut fixed = Vec::new();
+        put_revision(&mut fixed, &self.revision);
+        self.provenance.encode_into(&mut fixed);
+        put_digest(&mut fixed, self.payload_digest);
+        write(&fixed)?;
+        write(&(self.artifacts.len() as u64).to_be_bytes())?;
         for digest in &self.artifacts {
-            put_digest(&mut bytes, digest.sha256());
+            write(digest.as_bytes())?;
         }
-        put_u64(&mut bytes, self.causes.len() as u64);
+        write(&(self.causes.len() as u64).to_be_bytes())?;
         for cause in &self.causes {
-            bytes.extend_from_slice(cause.as_bytes());
+            write(cause.as_bytes())?;
         }
-        bytes
+        Ok(())
+    }
+
+    fn body_digest(&self) -> Sha256Digest {
+        let mut hasher = Sha256::new();
+        let result: Result<(), Infallible> = self.visit_body(&mut |chunk| {
+            hasher.update(chunk);
+            Ok(())
+        });
+        if let Err(never) = result {
+            match never {}
+        }
+        Sha256Digest::new(hasher.finalize().into())
     }
 }
 
 fn decode_body(body: &[u8], digest: Sha256Digest) -> Result<EvidenceRecord, EvidenceError> {
     let mut reader = Reader::new(body);
-    if reader.take(RECORD_PREFIX.len())? != RECORD_PREFIX {
+    let prefix = reader.take(RECORD_PREFIX_V1.len())?;
+    let legacy = if prefix == RECORD_PREFIX_V1 {
+        true
+    } else if prefix == RECORD_PREFIX_V2 {
+        false
+    } else {
         return Err(bundle_invalid("record prefix mismatch"));
-    }
+    };
     let id = reader.evidence_id()?;
-    let kind = EvidenceKind::new(reader.text(MAX_TAG_BYTES)?)
+    let kind_text = if legacy {
+        reader.text(LEGACY_MAX_TAG_BYTES)?
+    } else {
+        reader.text_unbounded()?
+    };
+    let kind = EvidenceKind::new(kind_text)
         .map_err(|_| bundle_invalid("record kind is not canonical"))?;
-    let source = EvidenceSource::new(reader.text(MAX_TAG_BYTES)?)
+    let source_text = if legacy {
+        reader.text(LEGACY_MAX_TAG_BYTES)?
+    } else {
+        reader.text_unbounded()?
+    };
+    let source = EvidenceSource::new(source_text)
         .map_err(|_| bundle_invalid("record source is not canonical"))?;
     let revision = reader.revision()?;
     let provenance = JournalProvenance::decode(&mut reader)
         .map_err(|_| bundle_invalid("record journal provenance is invalid"))?;
     let payload_digest = reader.digest()?;
-    let artifact_count = bounded_count(reader.u64()?, MAX_EVIDENCE_ARTIFACTS)?;
-    let mut artifacts = Vec::with_capacity(artifact_count);
+    let artifact_count_value = reader.u64()?;
+    let artifact_count = represented_count(
+        artifact_count_value,
+        32,
+        reader.remaining(),
+        legacy.then_some(LEGACY_MAX_EVIDENCE_ARTIFACTS),
+    )?;
+    let mut artifacts = Vec::new();
+    artifacts
+        .try_reserve_exact(artifact_count)
+        .map_err(|_| bundle_invalid("record artifact allocation failed"))?;
     for _ in 0..artifact_count {
         artifacts.push(ArtifactDigest::from_sha256(reader.digest()?));
     }
-    let cause_count = bounded_count(reader.u64()?, MAX_EVIDENCE_CAUSES)?;
-    let mut causes = Vec::with_capacity(cause_count);
+    let cause_count_value = reader.u64()?;
+    let cause_count = represented_count(
+        cause_count_value,
+        16,
+        reader.remaining(),
+        legacy.then_some(LEGACY_MAX_EVIDENCE_CAUSES),
+    )?;
+    let mut causes = Vec::new();
+    causes
+        .try_reserve_exact(cause_count)
+        .map_err(|_| bundle_invalid("record cause allocation failed"))?;
     for _ in 0..cause_count {
         causes.push(reader.evidence_id()?);
     }
@@ -307,7 +411,7 @@ fn decode_body(body: &[u8], digest: Sha256Digest) -> Result<EvidenceRecord, Evid
     {
         return Err(bundle_invalid("record collections are not canonical"));
     }
-    Ok(EvidenceRecord {
+    let record = EvidenceRecord {
         id,
         kind,
         source,
@@ -317,12 +421,48 @@ fn decode_body(body: &[u8], digest: Sha256Digest) -> Result<EvidenceRecord, Evid
         artifacts,
         causes,
         record_digest: digest,
-    })
+    };
+    if record.uses_legacy_encoding() != legacy {
+        return Err(bundle_invalid("record encoding version is not canonical"));
+    }
+    Ok(record)
 }
 
-fn bounded_count(value: u64, limit: usize) -> Result<usize, EvidenceError> {
-    let value = usize::try_from(value).map_err(|_| bundle_invalid("record count overflows"))?;
-    if value > limit { Err(bundle_invalid("record count exceeds limit")) } else { Ok(value) }
+fn represented_count(
+    value: u64,
+    entry_bytes: u64,
+    remaining: usize,
+    legacy_limit: Option<usize>,
+) -> Result<usize, EvidenceError> {
+    let count = usize::try_from(value).map_err(|_| bundle_invalid("record count overflows"))?;
+    if legacy_limit.is_some_and(|limit| count > limit) {
+        return Err(bundle_invalid("legacy record count exceeds bound"));
+    }
+    let required = value
+        .checked_mul(entry_bytes)
+        .ok_or_else(|| bundle_invalid("record collection size overflows"))?;
+    let remaining = u64::try_from(remaining)
+        .map_err(|_| bundle_invalid("record remaining bytes exceed u64"))?;
+    if required > remaining {
+        return Err(bundle_invalid("record count exceeds remaining bytes"));
+    }
+    Ok(count)
+}
+
+fn represented_bytes(count: usize, entry_bytes: u64) -> Result<u64, EvidenceError> {
+    u64::try_from(count)
+        .ok()
+        .and_then(|count| count.checked_mul(entry_bytes))
+        .ok_or_else(|| representation_overflow("portable record collection size overflowed"))
+}
+
+fn representation_overflow(detail: &'static str) -> EvidenceError {
+    EvidenceError::new(
+        EvidenceErrorKind::ArithmeticOverflow,
+        RecoveryAction::CorrectInput,
+        "encode evidence record",
+        detail,
+    )
 }
 
 fn invalid(detail: &'static str) -> EvidenceError {

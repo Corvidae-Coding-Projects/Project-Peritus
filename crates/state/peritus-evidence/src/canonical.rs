@@ -53,6 +53,9 @@ impl<'a> Reader<'a> {
             Err(invalid("trailing canonical bytes"))
         }
     }
+    pub(super) const fn remaining(&self) -> usize {
+        self.bytes.len() - self.offset
+    }
     pub(super) fn take(&mut self, length: usize) -> Result<&'a [u8], EvidenceError> {
         let end =
             self.offset.checked_add(length).ok_or_else(|| invalid("canonical length overflow"))?;
@@ -85,8 +88,16 @@ impl<'a> Reader<'a> {
         }
         self.take(length)
     }
+    pub(super) fn bytes_unbounded(&mut self) -> Result<&'a [u8], EvidenceError> {
+        let length = usize::try_from(self.u64()?).map_err(|_| invalid("length exceeds usize"))?;
+        self.take(length)
+    }
     pub(super) fn text(&mut self, limit: usize) -> Result<String, EvidenceError> {
         let value = self.bytes(limit)?;
+        std::str::from_utf8(value).map(str::to_owned).map_err(|_| invalid("text is not UTF-8"))
+    }
+    pub(super) fn text_unbounded(&mut self) -> Result<String, EvidenceError> {
+        let value = self.bytes_unbounded()?;
         std::str::from_utf8(value).map(str::to_owned).map_err(|_| invalid("text is not UTF-8"))
     }
     pub(super) fn revision(&mut self) -> Result<RevisionTuple, EvidenceError> {

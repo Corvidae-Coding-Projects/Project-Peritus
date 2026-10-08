@@ -12,7 +12,6 @@ use std::io::Read;
 
 const STREAM_CHUNK_BYTES: usize = 64 * 1024;
 const STREAM_CHUNK_BYTES_U64: u64 = 64 * 1024;
-const MAX_PORTABLE_METADATA_BYTES: u64 = 32 * 1024 * 1024;
 
 /// Successful offline verification result.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -45,12 +44,13 @@ impl VerifiedBundle {
 /// Streams and re-verifies an inert portable bundle without consulting live state.
 ///
 /// This API accepts only `Read`; replay cannot acquire journal, artifact-store, network, or
-/// process-effect capabilities.
+/// process-effect capabilities. Memory grows only after the corresponding input bytes have been
+/// read, and optional caller budgets are checked before each allocation.
 ///
 /// # Errors
 ///
-/// Rejects truncation, trailing bytes, resource-limit violations, noncanonical ordering, and any
-/// record, frame, schema, artifact, manifest, or root digest mismatch.
+/// Rejects truncation, trailing bytes, selected resource-limit violations, noncanonical ordering,
+/// and any record, frame, schema, artifact, manifest, or root digest mismatch.
 pub fn verify_bundle<R: Read>(
     input: R,
     limits: BundleLimits,
@@ -59,11 +59,10 @@ pub fn verify_bundle<R: Read>(
     if reader.fixed::<8>()? != *MAGIC {
         return Err(invalid("bundle magic mismatch"));
     }
-    let metadata_limit = limits.max_entry_bytes().min(MAX_PORTABLE_METADATA_BYTES);
-    let manifest_bytes = reader.sized(metadata_limit)?;
+    let manifest_bytes = reader.sized(limits.max_entry_bytes())?;
     let manifest = EvidenceManifest::verify_portable(&manifest_bytes)?;
 
-    let records = read_records(&mut reader, &manifest, limits, metadata_limit)?;
+    let records = read_records(&mut reader, &manifest, limits)?;
     read_frames(&mut reader, &manifest, &records, limits)?;
     read_artifacts(&mut reader, &manifest, &records, limits)?;
 
@@ -79,15 +78,17 @@ fn read_records<R: Read>(
     reader: &mut HashingReader<R>,
     manifest: &EvidenceManifest,
     limits: BundleLimits,
-    metadata_limit: u64,
 ) -> Result<Vec<EvidenceRecord>, crate::EvidenceError> {
     let count = reader.count(limits.max_entries())?;
     if count != manifest.records().len() {
         return Err(invalid("record count disagrees with manifest"));
     }
-    let mut records = Vec::with_capacity(count);
+    let mut records = Vec::new();
+    records
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("bundle record allocation failed"))?;
     for expected in manifest.records() {
-        let bytes = reader.sized(metadata_limit)?;
+        let bytes = reader.sized(limits.max_entry_bytes())?;
         let record = EvidenceRecord::verify_portable(&bytes)?;
         if record.id() != expected.id()
             || record.record_digest() != expected.record_digest()
@@ -124,10 +125,9 @@ fn read_frames<R: Read>(
         if reader.u64()? != expected.global_position() {
             return Err(invalid("journal frame position disagrees with manifest"));
         }
-        let frame_limit = limits.max_entry_bytes().min(
-            u64::try_from(CodecLimits::PRODUCTION.max_frame_bytes)
-                .map_err(|_| invalid("production frame limit overflows u64"))?,
-        );
+        let production_limit = u64::try_from(CodecLimits::PRODUCTION.max_frame_bytes)
+            .map_err(|_| invalid("production frame limit overflows u64"))?;
+        let frame_limit = minimum_limit(limits.max_entry_bytes(), Some(production_limit));
         let bytes = reader.sized(frame_limit)?;
         let size = u64::try_from(bytes.len()).map_err(|_| invalid("frame size overflows u64"))?;
         if size != expected.frame_size() || peritus_codec::sha256(&bytes) != expected.frame_digest()
@@ -191,9 +191,10 @@ fn read_artifacts<R: Read>(
             return Err(invalid("artifact identity disagrees with manifest"));
         }
         let size = reader.u64()?;
-        if size != entry.size() || size > limits.max_entry_bytes() {
-            return Err(invalid("artifact size disagrees with manifest or limit"));
+        if size != entry.size() || limits.max_entry_bytes().is_some_and(|limit| size > limit) {
+            return Err(invalid("artifact size disagrees with manifest or selected limit"));
         }
+        reader.ensure_remaining(size)?;
         let mut remaining = size;
         let mut digest = Sha256::new();
         let mut buffer = vec![0_u8; STREAM_CHUNK_BYTES].into_boxed_slice();
@@ -212,27 +213,41 @@ fn read_artifacts<R: Read>(
     Ok(())
 }
 
+fn minimum_limit(left: Option<u64>, right: Option<u64>) -> Option<u64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (Some(limit), None) | (None, Some(limit)) => Some(limit),
+        (None, None) => None,
+    }
+}
+
 struct HashingReader<R> {
     inner: R,
     hasher: Sha256,
     count: u64,
-    limit: u64,
+    limit: Option<u64>,
 }
 
 impl<R: Read> HashingReader<R> {
-    fn new(inner: R, limit: u64) -> Self {
+    fn new(inner: R, limit: Option<u64>) -> Self {
         Self { inner, hasher: Sha256::new(), count: 0, limit }
     }
 
-    fn read_exact(&mut self, bytes: &mut [u8]) -> Result<(), crate::EvidenceError> {
-        let length = u64::try_from(bytes.len()).map_err(|_| invalid("read size overflows u64"))?;
+    fn ensure_remaining(&self, length: u64) -> Result<(), crate::EvidenceError> {
         let next = self
             .count
             .checked_add(length)
             .ok_or_else(|| invalid("bundle byte count overflowed"))?;
-        if next > self.limit {
-            return Err(invalid("bundle exceeds complete byte limit"));
+        if self.limit.is_some_and(|limit| next > limit) {
+            Err(invalid("bundle exceeds selected complete byte limit"))
+        } else {
+            Ok(())
         }
+    }
+
+    fn read_exact(&mut self, bytes: &mut [u8]) -> Result<(), crate::EvidenceError> {
+        let length = u64::try_from(bytes.len()).map_err(|_| invalid("read size overflows u64"))?;
+        self.ensure_remaining(length)?;
         self.inner.read_exact(bytes).map_err(|error| {
             if error.kind() == std::io::ErrorKind::UnexpectedEof {
                 invalid("bundle is truncated")
@@ -241,7 +256,7 @@ impl<R: Read> HashingReader<R> {
             }
         })?;
         self.hasher.update(bytes);
-        self.count = next;
+        self.count += length;
         Ok(())
     }
 
@@ -255,23 +270,34 @@ impl<R: Read> HashingReader<R> {
         Ok(u64::from_be_bytes(self.fixed()?))
     }
 
-    fn count(&mut self, limit: u64) -> Result<usize, crate::EvidenceError> {
+    fn count(&mut self, limit: Option<u64>) -> Result<usize, crate::EvidenceError> {
         let value = self.u64()?;
-        if value > limit {
-            return Err(invalid("bundle collection count exceeds limit"));
+        if limit.is_some_and(|limit| value > limit) {
+            return Err(invalid("bundle collection count exceeds selected limit"));
         }
         usize::try_from(value).map_err(|_| invalid("bundle collection count overflows usize"))
     }
 
-    fn sized(&mut self, limit: u64) -> Result<Vec<u8>, crate::EvidenceError> {
+    fn sized(&mut self, limit: Option<u64>) -> Result<Vec<u8>, crate::EvidenceError> {
         let size = self.u64()?;
-        if size > limit {
-            return Err(invalid("bundle entry exceeds byte limit"));
+        if limit.is_some_and(|limit| size > limit) {
+            return Err(invalid("bundle entry exceeds selected byte limit"));
         }
-        let length =
-            usize::try_from(size).map_err(|_| invalid("bundle entry size overflows usize"))?;
-        let mut bytes = vec![0_u8; length];
-        self.read_exact(&mut bytes)?;
+        self.ensure_remaining(size)?;
+        let length = usize::try_from(size)
+            .map_err(|_| invalid("bundle entry size overflows usize"))?;
+        let mut bytes = Vec::new();
+        let mut remaining = length;
+        let mut buffer = vec![0_u8; STREAM_CHUNK_BYTES].into_boxed_slice();
+        while remaining != 0 {
+            let available = remaining.min(STREAM_CHUNK_BYTES);
+            self.read_exact(&mut buffer[..available])?;
+            bytes
+                .try_reserve_exact(available)
+                .map_err(|_| invalid("bundle entry allocation failed"))?;
+            bytes.extend_from_slice(&buffer[..available]);
+            remaining -= available;
+        }
         Ok(bytes)
     }
 

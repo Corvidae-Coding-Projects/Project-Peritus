@@ -19,7 +19,8 @@ pub mod sqlite;
 pub mod verified;
 
 pub use bundle::{
-    BundleLimits, BundlePlan, BundleReceipt, VerifiedBundle, assemble_bundle, verify_bundle,
+    BundleExportCursor, BundleLimits, BundlePlan, BundleReceipt, VerifiedBundle, assemble_bundle,
+    publish_bundle, resume_bundle, verify_bundle,
 };
 pub use causality::CausalLink;
 pub use error::{EvidenceError, EvidenceErrorKind, RecoveryAction};

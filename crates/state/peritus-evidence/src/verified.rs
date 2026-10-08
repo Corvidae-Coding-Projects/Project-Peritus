@@ -108,24 +108,18 @@ pub const fn bundle_section_transition(previous: u8, current: u8) -> (valid: boo
     previous < 3 && current == previous + 1
 }
 
-/// Checks the nonempty frame coverage and all portable bundle collection bounds.
+/// Checks nonempty frame coverage and the fixed relationship between portable sections.
 #[must_use]
-pub const fn bundle_plan_shape(records: u64, frames: u64, artifacts: u64, limit: u64) -> (valid: bool)
+pub const fn bundle_plan_shape(records: u64, frames: u64) -> (valid: bool)
     ensures valid == (
         records > 0
             && frames > 0
             && frames <= records
-            && records <= limit
-            && frames <= limit
-            && artifacts <= limit
     )
 {
     records > 0
         && frames > 0
         && frames <= records
-        && records <= limit
-        && frames <= limit
-        && artifacts <= limit
 }
 
 } // verus!

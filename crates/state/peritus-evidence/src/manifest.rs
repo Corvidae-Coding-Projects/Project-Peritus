@@ -1,15 +1,16 @@
 //! Canonical portable evidence bundle manifest.
 
-use crate::canonical::{Reader, put_digest, put_revision, put_u64};
-use crate::record::{MAX_EVIDENCE_ARTIFACTS, MAX_EVIDENCE_CAUSES};
+use crate::canonical::{Reader, put_digest, put_revision};
 use crate::{EvidenceError, EvidenceErrorKind, EvidenceId, RecoveryAction};
 use peritus_artifact_store::ArtifactDigest;
 use peritus_codec::sha256;
 use peritus_types::{EventId, RevisionTuple, Sha256Digest};
+use sha2::{Digest, Sha256};
+use std::convert::Infallible;
 
-const PREFIX: &[u8] = b"peritus-evidence-manifest-v1\0";
-/// Maximum records, frames, or artifacts in one portable bundle.
-pub const MAX_MANIFEST_ENTRIES: usize = 4_096;
+const PREFIX_V1: &[u8] = b"peritus-evidence-manifest-v1\0";
+const PREFIX_V2: &[u8] = b"peritus-evidence-manifest-v2\0";
+const LEGACY_MAX_MANIFEST_ENTRIES: usize = 4_096;
 
 /// Manifest binding for one canonical evidence record.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -141,7 +142,7 @@ impl EvidenceManifest {
             manifest_digest: Sha256Digest::new([0; 32]),
             root_digest: Sha256Digest::new([0; 32]),
         };
-        manifest.manifest_digest = sha256(&manifest.body());
+        manifest.manifest_digest = manifest.body_digest();
         manifest.root_digest = root_digest(manifest.manifest_digest);
         Ok(manifest)
     }
@@ -184,9 +185,11 @@ impl EvidenceManifest {
     /// Encodes the complete portable manifest.
     #[must_use]
     pub fn canonical_bytes(&self) -> Vec<u8> {
-        let mut bytes = self.body();
-        put_digest(&mut bytes, self.manifest_digest);
-        put_digest(&mut bytes, self.root_digest);
+        let mut bytes = Vec::new();
+        let _ = self.write_canonical(&mut |chunk| {
+            bytes.extend_from_slice(chunk);
+            Ok(())
+        });
         bytes
     }
 
@@ -207,17 +210,22 @@ impl EvidenceManifest {
             return Err(invalid("manifest or root digest mismatch"));
         }
         let mut reader = Reader::new(body);
-        if reader.take(PREFIX.len())? != PREFIX {
+        let prefix = reader.take(PREFIX_V1.len())?;
+        let legacy = if prefix == PREFIX_V1 {
+            true
+        } else if prefix == PREFIX_V2 {
+            false
+        } else {
             return Err(invalid("manifest prefix mismatch"));
-        }
+        };
         let revision = reader.revision()?;
         let journal_head_digest = reader.digest()?;
-        let records = decode_records(&mut reader)?;
-        let journal = decode_journal(&mut reader)?;
-        let artifacts = decode_artifacts(&mut reader)?;
+        let records = decode_records(&mut reader, legacy)?;
+        let journal = decode_journal(&mut reader, legacy)?;
+        let artifacts = decode_artifacts(&mut reader, legacy)?;
         reader.finish()?;
         validate_entries(&records, &journal, &artifacts)?;
-        Ok(Self {
+        let manifest = Self {
             revision,
             journal_head_digest,
             records,
@@ -225,33 +233,100 @@ impl EvidenceManifest {
             artifacts,
             manifest_digest,
             root_digest: advertised_root,
+        };
+        if manifest.uses_legacy_encoding() != legacy {
+            return Err(invalid("manifest encoding version is not canonical"));
+        }
+        Ok(manifest)
+    }
+
+    pub(crate) fn canonical_size(&self) -> Result<u64, EvidenceError> {
+        self.canonical_body_size()?
+            .checked_add(64)
+            .ok_or_else(|| overflow("portable manifest length overflowed"))
+    }
+
+    pub(crate) fn write_canonical(
+        &self,
+        write: &mut impl FnMut(&[u8]) -> Result<(), EvidenceError>,
+    ) -> Result<(), EvidenceError> {
+        self.visit_body(write)?;
+        write(self.manifest_digest.as_bytes())?;
+        write(self.root_digest.as_bytes())
+    }
+
+    fn uses_legacy_encoding(&self) -> bool {
+        self.records.len() <= LEGACY_MAX_MANIFEST_ENTRIES
+            && self.journal.len() <= LEGACY_MAX_MANIFEST_ENTRIES
+            && self.artifacts.len() <= LEGACY_MAX_MANIFEST_ENTRIES
+    }
+
+    fn prefix(&self) -> &'static [u8] {
+        if self.uses_legacy_encoding() { PREFIX_V1 } else { PREFIX_V2 }
+    }
+
+    fn canonical_body_size(&self) -> Result<u64, EvidenceError> {
+        let records = represented_bytes(self.records.len(), 48)?;
+        let journal = represented_bytes(self.journal.len(), 128)?;
+        let artifacts = represented_bytes(self.artifacts.len(), 40)?;
+        [
+            u64::try_from(self.prefix().len()).map_err(|_| overflow("manifest prefix"))?,
+            96,
+            32,
+            8,
+            records,
+            8,
+            journal,
+            8,
+            artifacts,
+        ]
+        .into_iter()
+        .try_fold(0_u64, |total, length| {
+            total.checked_add(length).ok_or_else(|| overflow("manifest body length overflowed"))
         })
     }
 
-    fn body(&self) -> Vec<u8> {
-        let mut bytes = PREFIX.to_vec();
-        put_revision(&mut bytes, &self.revision);
-        put_digest(&mut bytes, self.journal_head_digest);
-        put_u64(&mut bytes, self.records.len() as u64);
+    fn visit_body<E>(
+        &self,
+        write: &mut impl FnMut(&[u8]) -> Result<(), E>,
+    ) -> Result<(), E> {
+        write(self.prefix())?;
+        let mut revision = Vec::new();
+        put_revision(&mut revision, &self.revision);
+        write(&revision)?;
+        write(self.journal_head_digest.as_bytes())?;
+        write(&(self.records.len() as u64).to_be_bytes())?;
         for entry in &self.records {
-            bytes.extend_from_slice(entry.id.as_bytes());
-            put_digest(&mut bytes, entry.record_digest);
+            write(entry.id.as_bytes())?;
+            write(entry.record_digest.as_bytes())?;
         }
-        put_u64(&mut bytes, self.journal.len() as u64);
+        write(&(self.journal.len() as u64).to_be_bytes())?;
         for entry in &self.journal {
-            put_u64(&mut bytes, entry.global_position);
-            bytes.extend_from_slice(entry.event_id.as_bytes());
-            put_digest(&mut bytes, entry.event_hash);
-            put_digest(&mut bytes, entry.frame_digest);
-            put_digest(&mut bytes, entry.schema_digest);
-            put_u64(&mut bytes, entry.frame_size);
+            write(&entry.global_position.to_be_bytes())?;
+            write(entry.event_id.as_bytes())?;
+            write(entry.event_hash.as_bytes())?;
+            write(entry.frame_digest.as_bytes())?;
+            write(entry.schema_digest.as_bytes())?;
+            write(&entry.frame_size.to_be_bytes())?;
         }
-        put_u64(&mut bytes, self.artifacts.len() as u64);
+        write(&(self.artifacts.len() as u64).to_be_bytes())?;
         for entry in &self.artifacts {
-            put_digest(&mut bytes, entry.digest.sha256());
-            put_u64(&mut bytes, entry.size);
+            write(entry.digest.as_bytes())?;
+            write(&entry.size.to_be_bytes())?;
         }
-        bytes
+        Ok(())
+    }
+
+    fn body_digest(&self) -> Sha256Digest {
+        let mut hasher = Sha256::new();
+        let result: Result<(), Infallible> = self.visit_body(&mut |chunk| {
+            hasher.update(chunk);
+            Ok(())
+        });
+        if let Err(never) = result {
+            match never {}
+        }
+        Sha256Digest::new(hasher.finalize().into())
     }
 }
 
@@ -261,9 +336,6 @@ fn validate_entries(
     artifacts: &[ArtifactManifestEntry],
 ) -> Result<(), EvidenceError> {
     if records.is_empty()
-        || records.len() > MAX_MANIFEST_ENTRIES
-        || journal.len() > MAX_MANIFEST_ENTRIES
-        || artifacts.len() > MAX_MANIFEST_ENTRIES
         || records.windows(2).any(|pair| pair[0].id >= pair[1].id)
         || journal.windows(2).any(|pair| pair[0].global_position >= pair[1].global_position)
         || artifacts.windows(2).any(|pair| pair[0].digest >= pair[1].digest)
@@ -275,17 +347,31 @@ fn validate_entries(
     }
 }
 
-fn decode_records(reader: &mut Reader<'_>) -> Result<Vec<RecordManifestEntry>, EvidenceError> {
-    let count = count(reader.u64()?)?;
-    let mut values = Vec::with_capacity(count);
+fn decode_records(
+    reader: &mut Reader<'_>,
+    legacy: bool,
+) -> Result<Vec<RecordManifestEntry>, EvidenceError> {
+    let value = reader.u64()?;
+    let count = count(reader, value, 48, legacy)?;
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("manifest record allocation failed"))?;
     for _ in 0..count {
         values.push(RecordManifestEntry::new(reader.evidence_id()?, reader.digest()?));
     }
     Ok(values)
 }
-fn decode_journal(reader: &mut Reader<'_>) -> Result<Vec<JournalManifestEntry>, EvidenceError> {
-    let count = count(reader.u64()?)?;
-    let mut values = Vec::with_capacity(count);
+fn decode_journal(
+    reader: &mut Reader<'_>,
+    legacy: bool,
+) -> Result<Vec<JournalManifestEntry>, EvidenceError> {
+    let value = reader.u64()?;
+    let count = count(reader, value, 128, legacy)?;
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("manifest journal allocation failed"))?;
     for _ in 0..count {
         values.push(JournalManifestEntry::new(
             reader.u64()?,
@@ -298,9 +384,16 @@ fn decode_journal(reader: &mut Reader<'_>) -> Result<Vec<JournalManifestEntry>, 
     }
     Ok(values)
 }
-fn decode_artifacts(reader: &mut Reader<'_>) -> Result<Vec<ArtifactManifestEntry>, EvidenceError> {
-    let count = count(reader.u64()?)?;
-    let mut values = Vec::with_capacity(count);
+fn decode_artifacts(
+    reader: &mut Reader<'_>,
+    legacy: bool,
+) -> Result<Vec<ArtifactManifestEntry>, EvidenceError> {
+    let value = reader.u64()?;
+    let count = count(reader, value, 40, legacy)?;
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| invalid("manifest artifact allocation failed"))?;
     for _ in 0..count {
         values.push(ArtifactManifestEntry::new(
             ArtifactDigest::from_sha256(reader.digest()?),
@@ -309,14 +402,39 @@ fn decode_artifacts(reader: &mut Reader<'_>) -> Result<Vec<ArtifactManifestEntry
     }
     Ok(values)
 }
-fn count(value: u64) -> Result<usize, EvidenceError> {
-    let value = usize::try_from(value).map_err(|_| invalid("manifest count overflows"))?;
-    if value > MAX_MANIFEST_ENTRIES || value > MAX_EVIDENCE_ARTIFACTS || value > MAX_EVIDENCE_CAUSES
-    {
-        Err(invalid("manifest count exceeds bound"))
-    } else {
-        Ok(value)
+fn count(
+    reader: &Reader<'_>,
+    value: u64,
+    entry_bytes: u64,
+    legacy: bool,
+) -> Result<usize, EvidenceError> {
+    let count = usize::try_from(value).map_err(|_| invalid("manifest count overflows"))?;
+    if legacy && count > LEGACY_MAX_MANIFEST_ENTRIES {
+        return Err(invalid("legacy manifest count exceeds bound"));
     }
+    let required = value
+        .checked_mul(entry_bytes)
+        .ok_or_else(|| invalid("manifest collection size overflows"))?;
+    let remaining = u64::try_from(reader.remaining())
+        .map_err(|_| invalid("manifest remaining bytes exceed u64"))?;
+    if required > remaining {
+        return Err(invalid("manifest count exceeds remaining bytes"));
+    }
+    Ok(count)
+}
+fn represented_bytes(count: usize, entry_bytes: u64) -> Result<u64, EvidenceError> {
+    u64::try_from(count)
+        .ok()
+        .and_then(|count| count.checked_mul(entry_bytes))
+        .ok_or_else(|| overflow("manifest collection length overflowed"))
+}
+fn overflow(detail: &'static str) -> EvidenceError {
+    EvidenceError::new(
+        EvidenceErrorKind::ArithmeticOverflow,
+        RecoveryAction::CorrectInput,
+        "encode evidence manifest",
+        detail,
+    )
 }
 fn root_digest(manifest: Sha256Digest) -> Sha256Digest {
     let mut bytes = b"peritus-evidence-bundle-root-v1\0".to_vec();
