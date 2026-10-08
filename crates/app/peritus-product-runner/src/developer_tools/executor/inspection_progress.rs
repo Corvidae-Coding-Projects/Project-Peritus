@@ -254,13 +254,13 @@ impl InspectionProgress {
                 "read a relevant returned file with `workspace_read`, or use the listing to finish the current analysis"
             }
             "workspace_search" => {
-                "read a returned location with `workspace_read`, or use the search evidence to finish the current analysis"
+                "follow the returned next cursor when present; otherwise read a returned location with workspace_read or use the completed search evidence"
             }
             "workspace_read" if read_only => {
-                "use the visible file evidence to finish the current analysis, or inspect a specifically named different source required by the task"
+                "follow the returned next cursor when present; otherwise use the completed visible file evidence or inspect a specifically named different source required by the task"
             }
             "workspace_read" => {
-                "use the visible file evidence for the requested patch, write, or verification, or inspect a specifically named different source required by the task"
+                "follow the returned next cursor when present; otherwise use the completed visible file evidence for the requested patch, write, or verification"
             }
             "request_sources" | "context_sources" => {
                 "follow the returned next cursor, or use the completed source catalog"

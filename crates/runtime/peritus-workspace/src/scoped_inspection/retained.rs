@@ -154,6 +154,21 @@ impl RetainedInspection {
         (self.observation.selected_bytes() != 0)
             .then(|| InspectionCursor { observation: self.observation.binding(), offset: 0 })
     }
+    /// Returns a cursor at an exact retained-selection byte boundary.
+    ///
+    /// The caller remains responsible for choosing semantic boundaries such as UTF-8 scalar or
+    /// line boundaries. This only binds the requested offset to the already verified retained
+    /// observation, so an owner can resume a smaller logical selection within a whole-file
+    /// capture without reopening the ambient source.
+    ///
+    /// # Errors
+    /// Rejects offsets beyond the retained selection.
+    pub fn cursor_at(&self, offset: u64) -> Result<InspectionCursor, WorkspaceError> {
+        if offset > self.observation.selected_bytes() {
+            return Err(invalid("retained inspection cursor is beyond the selected source"));
+        }
+        Ok(InspectionCursor { observation: self.observation.binding(), offset })
+    }
     /// Reads a page of at most the caller's nonzero capacity using fixed working memory.
     /// A physical page is at most 64 KiB and always carries an explicit continuation when
     /// more content remains. Page count and total included content have no ceiling.

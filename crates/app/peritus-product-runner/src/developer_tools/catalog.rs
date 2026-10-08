@@ -7,8 +7,8 @@ use peritus_model_protocol::{
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
 const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#;
-const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#;
-const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#;
+const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"max_results":{"minimum":1,"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#;
+const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"end_line":{"minimum":1,"type":"integer"},"path":{"type":"string"},"start_line":{"minimum":1,"type":"integer"}},"required":["path"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
 const CONTEXT_SOURCES_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"after":{"maxLength":20,"type":"string"}},"type":"object"}"#;
 const CONTEXT_SOURCE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"offset":{"maxLength":20,"type":"string"},"source":{"maxLength":20,"type":"string"}},"required":["source","offset"],"type":"object"}"#;
@@ -44,12 +44,12 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "workspace_search",
-            "Search text files for a literal string and return matching lines.",
+            "Search retained no-follow workspace sources for a literal string. The first call captures complete recursive membership and full source identities without a cumulative file, byte, line, or match allowance. Each response is only a physical result page: follow next as cursor with the same path and query until next is null. max_results may lower that physical page size but never limits logical coverage. Long matching lines are returned as ordered fragments with exact source byte and line positions. Typed omissions identify every excluded, inaccessible, unreadable, or non-UTF-8 entry; coverage_complete is false when any source was omitted. replay reopens the same accepted page after interruption.",
             WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
+            "Read one immutable no-follow capture of a workspace-relative UTF-8 text file. With no line bounds the logical selection is the complete source; start_line without end_line selects through EOF, and both bounds are one-based and inclusive. A response is only a physical page: follow next as cursor with the same path and line selection until next is null. Results bind the complete source digest and workspace identity, report exact logical-selection and returned byte ranges, and report actual rendered line and byte-column positions even when a page ends inside a long line. replay reopens the accepted page after interruption. An exact absolute file outside the workspace remains bounded read-only reference evidence and does not ground workspace mutation or commands. Call this after a workspace listing and complete the selected current workspace target before changing an existing file.",
             WORKSPACE_READ_SCHEMA,
         ),
         (
@@ -140,12 +140,12 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "workspace_search",
-            "Search text files for a literal string and return matching lines.",
+            "Search retained no-follow workspace sources for a literal string without a cumulative source or match allowance. Follow next with the same path and query until null. Results include exact source identities, fragmented long lines, and typed omissions; max_results controls only the physical page size.",
             WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. External references are case-sensitive and read-only.",
+            "Read a retained workspace-relative UTF-8 source or selected one-based inclusive line range through replayable physical pages. Follow next with the same path and selection until null; results report exact source, byte, line, and partial-line positions. Exact user-named absolute references remain case-sensitive read-only evidence.",
             WORKSPACE_READ_SCHEMA,
         ),
         (

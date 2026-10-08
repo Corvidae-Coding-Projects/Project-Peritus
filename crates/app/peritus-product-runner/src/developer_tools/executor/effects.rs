@@ -75,11 +75,24 @@ impl WorkspaceDeveloperTools {
                         .ok_or_else(|| tool("workspace listing owner is unavailable"))?,
                 )
             }
-            "workspace_search" => inspection::search(&self.root, arguments, &self.access_policy),
+            "workspace_search" => inspection::search(
+                &self.root,
+                arguments,
+                &self.access_policy,
+                self.workspace_inspections
+                    .as_ref()
+                    .ok_or_else(|| tool("workspace inspection owner is unavailable"))?,
+            ),
             "workspace_read" if routes_to_reference(&self.root, arguments) => {
                 reference::read(&self.references, arguments)
             }
-            "workspace_read" => inspection::read(&self.root, arguments),
+            "workspace_read" => inspection::read(
+                &self.root,
+                arguments,
+                self.workspace_inspections
+                    .as_ref()
+                    .ok_or_else(|| tool("workspace inspection owner is unavailable"))?,
+            ),
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),
@@ -166,22 +179,15 @@ impl WorkspaceDeveloperTools {
 
     pub(super) fn record_success(&mut self, name: &str, arguments: &Value, result: &Value) {
         match name {
-            "workspace_list"
-                if result.get("path_kind").and_then(Value::as_str)
-                    == Some("workspace-relative") =>
-            {
-                self.grounding.record_list(
-                    string(arguments, "path").unwrap_or(""),
-                    result
-                        .get("exact_empty")
-                        .and_then(Value::as_bool)
-                        .map_or(1, |empty| usize::from(!empty)),
-                );
+            "workspace_list" | "workspace_search" => {
+                self.grounding.record_inspection_result(name, arguments, result);
             }
-            "workspace_search" => self.grounding.record_search(),
             "workspace_read" if result.get("reference_root").is_none() => {
-                if let Some(path) = string(arguments, "path") {
-                    self.grounding.record_read(path);
+                if self
+                    .grounding
+                    .record_inspection_result(name, arguments, result)
+                    && let Some(path) = string(arguments, "path")
+                {
                     self.ownership.observe_file(self.root.join(path));
                 }
             }
@@ -192,19 +198,6 @@ impl WorkspaceDeveloperTools {
             }
             "run_command" => self.command_evidence.record(arguments, result),
             _ => {}
-        }
-        if name == "workspace_list"
-            && result.get("path_kind").and_then(Value::as_str) == Some("workspace-relative")
-        {
-            for path in result
-                .get("entries")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(|entry| entry.get("path").and_then(Value::as_str))
-            {
-                self.grounding.record_listed_path(path);
-            }
         }
     }
 

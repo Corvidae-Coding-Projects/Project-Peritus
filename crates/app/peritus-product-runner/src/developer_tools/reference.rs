@@ -27,6 +27,12 @@ pub(super) struct ExplicitReferences {
 }
 
 impl ExplicitReferences {
+    pub(super) fn merge(&mut self, other: &Self) {
+        self.roots.extend(other.roots.iter().cloned());
+        self.roots.sort();
+        self.roots.dedup();
+    }
+
     fn from_task(workspace_root: &Path, task: &str) -> Self {
         let mut roots = BTreeSet::new();
         for token in task_tokens(task) {
@@ -57,6 +63,13 @@ impl ExplicitReferences {
             case_correct_descendant(&resolved_root, &requested, root_components)?;
         Ok((resolved_root, resolved_requested))
     }
+
+    pub(super) fn extend_from_task(&mut self, workspace_root: &Path, task: &str) {
+        let added = Self::from_task(workspace_root, task);
+        self.roots.extend(added.roots);
+        self.roots.sort();
+        self.roots.dedup();
+    }
 }
 
 impl WorkspaceDeveloperTools {
@@ -71,6 +84,11 @@ pub(super) fn list(
     references: &ExplicitReferences,
     arguments: &Value,
 ) -> Result<Value, DeveloperLoopError> {
+    if arguments.get("cursor").is_some() {
+        return Err(tool(
+            "workspace continuation cursors cannot be applied to external reference listings",
+        ));
+    }
     let (root, start) = references.resolve(required_string(arguments, "path")?)?;
     let metadata = fs::symlink_metadata(&start).map_err(|error| reference_io_error(&error))?;
     if !metadata.is_dir() {
@@ -123,6 +141,11 @@ pub(super) fn read(
     references: &ExplicitReferences,
     arguments: &Value,
 ) -> Result<Value, DeveloperLoopError> {
+    if arguments.get("cursor").is_some() {
+        return Err(tool(
+            "workspace continuation cursors cannot be applied to external reference reads",
+        ));
+    }
     let (root, path) = references.resolve(required_string(arguments, "path")?)?;
     let metadata = fs::symlink_metadata(&path).map_err(|error| reference_io_error(&error))?;
     if !metadata.is_file() {

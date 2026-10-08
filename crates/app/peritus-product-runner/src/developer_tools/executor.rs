@@ -64,6 +64,7 @@ pub struct WorkspaceDeveloperTools {
     progress_nudges: u8,
     inspection_progress: inspection_progress::InspectionProgress,
     directory_listings: Option<inspection::DirectoryListingOwner>,
+    workspace_inspections: Option<inspection::WorkspaceInspectionOwner>,
     request_sources: sources::RequestSourceProgress,
     checkpoint_observer: Option<ToolCheckpointObserver>,
     checkpoint_view: Option<std::sync::Arc<dyn crate::ConversationView>>,

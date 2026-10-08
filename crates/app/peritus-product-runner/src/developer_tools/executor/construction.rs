@@ -16,6 +16,8 @@ impl WorkspaceDeveloperTools {
         let grounding = GroundingEvidence::for_workspace(&root);
         let directory_listings = super::inspection::DirectoryListingOwner::ephemeral(root.clone())
             .ok();
+        let workspace_inspections =
+            super::inspection::WorkspaceInspectionOwner::ephemeral(root.clone()).ok();
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
@@ -33,6 +35,7 @@ impl WorkspaceDeveloperTools {
             progress_nudges: 0,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
             directory_listings,
+            workspace_inspections,
             request_sources: super::sources::RequestSourceProgress::default(),
             checkpoint_observer: None,
             checkpoint_view: None,
@@ -68,6 +71,12 @@ impl WorkspaceDeveloperTools {
             std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             peritus_provider_core::CancellationToken::new(),
         ));
+        let workspace_inspections = Some(super::inspection::WorkspaceInspectionOwner::new(
+            root.clone(),
+            receipt_path.with_extension("workspace-inspections"),
+            std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            peritus_provider_core::CancellationToken::new(),
+        ));
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
@@ -85,6 +94,7 @@ impl WorkspaceDeveloperTools {
             progress_nudges: 0,
             inspection_progress: super::inspection_progress::InspectionProgress::default(),
             directory_listings,
+            workspace_inspections,
             request_sources: super::sources::RequestSourceProgress::default(),
             checkpoint_observer: None,
             checkpoint_view: None,

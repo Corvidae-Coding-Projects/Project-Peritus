@@ -1,7 +1,6 @@
 //! Bounded read-only workspace inspection operations.
 
 use std::{
-    collections::VecDeque,
     fmt::Write as _,
     fs,
     io::{BufRead as _, BufReader},
@@ -13,12 +12,19 @@ use serde_json::Value;
 
 use super::{
     access_policy::WorkspaceAccessPolicy,
-    effect::limit,
     path::{checked, ignored, tool},
     resources::CommandResources,
-    wire::{bounded_usize, collection, object, required_string, string},
+    wire::{object, required_string, string},
 };
-use crate::file_metadata;
+use peritus_workspace::{
+    DirectoryItem, NativeNameEncoding, ObservedDirectory, WorkspaceEntryKind,
+};
+
+mod listing;
+mod retained;
+mod search;
+pub(crate) use listing::{DirectoryListingOwner, ListingError, RetainedListingPage};
+pub(crate) use retained::{InspectionError, WorkspaceInspectionOwner};
 
 pub(super) const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
@@ -27,161 +33,360 @@ pub(super) fn list(
     arguments: &Value,
     resources: CommandResources,
     access_policy: &WorkspaceAccessPolicy,
+    owner: &DirectoryListingOwner,
 ) -> Result<Value, DeveloperLoopError> {
     let relative = string(arguments, "path").unwrap_or("");
-    let depth = bounded_usize(arguments, "depth", 3, 1, 12);
-    let start = if relative.is_empty() { root.to_owned() } else { checked(root, relative, false)? };
-    let mut queue = VecDeque::from([(start, 0_usize)]);
-    let mut entries = Vec::new();
-    while let Some((directory, level)) = queue.pop_front() {
-        let children = match fs::read_dir(&directory) {
-            Ok(children) => children,
-            Err(error) if level == 0 => return Err(tool(error.to_string())),
-            Err(_) => continue,
-        };
-        let mut children = children.filter_map(Result::ok).collect::<Vec<_>>();
-        children.sort_by_key(fs::DirEntry::file_name);
-        for child in children {
-            let path = child.path();
-            let Some(relative) = path.strip_prefix(root).ok() else {
-                continue;
-            };
-            if ignored(relative) || !access_policy.permits_search_result(relative) {
-                continue;
-            }
-            let Ok(metadata) = fs::symlink_metadata(&path) else { continue };
-            let kind = metadata.file_type();
-            entries.push(object(vec![
-                ("path", Value::String(relative.to_string_lossy().into_owned())),
-                ("kind", Value::String(entry_kind(kind).to_owned())),
-                ("bytes", Value::from(metadata.len())),
-                ("permissions", Value::String(file_metadata::permissions(&metadata))),
-            ]));
-            if entries.len() >= 2_000 {
-                return Ok(listing(root, entries, true, resources));
-            }
-            if kind.is_dir() && level + 1 < depth {
-                queue.push_back((path, level + 1));
-            }
-        }
-    }
-    Ok(listing(root, entries, false, resources))
+    let _ = checked(root, relative, false)?;
+    let selected = if relative.is_empty() || relative == "." {
+        None
+    } else {
+        Some(
+            peritus_patch::WorkspacePath::new(relative)
+                .map_err(|error| tool(error.to_string()))?,
+        )
+    };
+    let page = owner
+        .page(selected.as_ref(), string(arguments, "cursor"))
+        .map_err(|error| match error {
+            ListingError::Cancelled => DeveloperLoopError::Cancelled,
+            error => tool(error.to_string()),
+        })?;
+    listing(root, page, resources, access_policy, arguments.get("depth"))
 }
 
 fn listing(
     root: &Path,
-    entries: Vec<Value>,
-    truncated: bool,
+    page: RetainedListingPage,
     resources: CommandResources,
-) -> Value {
-    object(vec![
+    access_policy: &WorkspaceAccessPolicy,
+    requested_depth: Option<&Value>,
+) -> Result<Value, DeveloperLoopError> {
+    let mut entries = Vec::new();
+    let mut omissions = Vec::new();
+    let observed_items = page.items().len();
+    for item in page.items() {
+        let relative = item_relative(page.observation(), item)?;
+        if ignored(&relative) {
+            omissions.push(object(vec![
+                ("path", Value::String(relative.to_string_lossy().into_owned())),
+                ("reason", Value::String("ignored_path".to_owned())),
+                (
+                    "detail",
+                    Value::String(
+                        "entry is excluded from workspace inspection by repository policy"
+                            .to_owned(),
+                    ),
+                ),
+            ]));
+            continue;
+        }
+        if !access_policy.permits_search_result(&relative) {
+            omissions.push(object(vec![
+                ("path", Value::Null),
+                ("reason", Value::String("access_restricted".to_owned())),
+                (
+                    "detail",
+                    Value::String(
+                        "one entry is protected or opaque under the active request policy"
+                            .to_owned(),
+                    ),
+                ),
+            ]));
+            continue;
+        }
+        entries.push(item_value(item, &relative)?);
+    }
+    let returned_items = entries.len();
+    let omitted_items = omissions.len();
+    let mut fields = vec![
         ("workspace_root", Value::String(root.to_string_lossy().into_owned())),
         ("path_kind", Value::String("workspace-relative".to_owned())),
         ("execution_resources", resources.observation()),
         ("entries", Value::Array(entries)),
-        ("truncated", Value::Bool(truncated)),
-    ])
+        ("omissions", Value::Array(omissions)),
+        ("observation", Value::String(page.observation_handle())),
+        ("start", Value::String(page.start().to_string())),
+        (
+            "total_observed_entries",
+            Value::String(page.observation().count().to_string()),
+        ),
+        ("page_observed_entries", Value::from(observed_items)),
+        ("page_returned_entries", Value::from(returned_items)),
+        ("page_omitted_entries", Value::from(omitted_items)),
+        (
+            "exact_empty",
+            Value::Bool(page.observation().count() == 0),
+        ),
+        ("coverage_complete", Value::Bool(omitted_items == 0)),
+        ("complete", Value::Bool(page.complete())),
+        ("partial", Value::Bool(!page.complete())),
+        ("truncated", Value::Bool(!page.complete())),
+        (
+            "replay",
+            page.replay().map_or(Value::Null, |cursor| Value::String(cursor.to_owned())),
+        ),
+        (
+            "next",
+            page.next().map_or(Value::Null, |cursor| Value::String(cursor.to_owned())),
+        ),
+    ];
+    if let Some(depth) = requested_depth {
+        fields.push(("requested_depth", depth.clone()));
+        fields.push(("navigation_depth", Value::from(1)));
+    }
+    Ok(object(fields))
+}
+
+fn item_relative(
+    observation: &ObservedDirectory,
+    item: &DirectoryItem,
+) -> Result<std::path::PathBuf, DeveloperLoopError> {
+    let mut path = observation
+        .path()
+        .map_or_else(std::path::PathBuf::new, |path| path.as_path().to_path_buf());
+    path.push(item.name().native_name().map_err(|error| tool(error.to_string()))?);
+    Ok(path)
+}
+
+fn item_value(item: &DirectoryItem, relative: &Path) -> Result<Value, DeveloperLoopError> {
+    if let Some(metadata) = item.metadata() {
+        return Ok(object(vec![
+            ("path", Value::String(metadata.path().as_str().to_owned())),
+            (
+                "kind",
+                Value::String(
+                    match metadata.kind() {
+                        WorkspaceEntryKind::File => "file",
+                        WorkspaceEntryKind::Directory => "directory",
+                    }
+                    .to_owned(),
+                ),
+            ),
+            ("bytes", Value::from(metadata.size())),
+            ("executable", Value::Bool(metadata.executable())),
+        ]));
+    }
+    let exclusion = item
+        .exclusion()
+        .ok_or_else(|| tool("retained directory item has neither metadata nor exclusion"))?;
+    Ok(object(vec![
+        ("path", Value::String(relative.to_string_lossy().into_owned())),
+        ("kind", Value::String("excluded".to_owned())),
+        ("name", Value::String(item.name().display_name())),
+        (
+            "native_encoding",
+            Value::String(
+                match item.name().encoding() {
+                    NativeNameEncoding::UnixBytes => "unix_bytes",
+                    NativeNameEncoding::WindowsWide => "windows_utf16_be",
+                    NativeNameEncoding::Utf8 => "utf8",
+                }
+                .to_owned(),
+            ),
+        ),
+        ("native_units", Value::String(hex(item.name().encoded_bytes()))),
+        (
+            "exclusion",
+            Value::String(exclusion.as_str().to_owned()),
+        ),
+    ]))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut value = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        let _ = write!(value, "{byte:02x}");
+    }
+    value
 }
 
 pub(super) fn search(
     root: &Path,
     arguments: &Value,
     access_policy: &WorkspaceAccessPolicy,
+    owner: &WorkspaceInspectionOwner,
 ) -> Result<Value, DeveloperLoopError> {
     let query = required_string(arguments, "query")?;
-    if query.is_empty() {
-        return Err(tool("search query is empty"));
-    }
-    let start = match string(arguments, "path") {
-        Some(value) if !value.is_empty() => checked(root, value, false)?,
-        _ => root.to_owned(),
+    let selected = match string(arguments, "path") {
+        Some(value) if !value.is_empty() && value != "." => {
+            let _ = checked(root, value, false)?;
+            Some(
+                peritus_patch::WorkspacePath::new(value)
+                    .map_err(|error| tool(error.to_string()))?,
+            )
+        }
+        _ => None,
     };
-    let maximum = bounded_usize(arguments, "max_results", 200, 1, 1_000);
-    let mut queue = VecDeque::from([start.clone()]);
+    let page = owner
+        .search_page(
+            selected.as_ref(),
+            query,
+            arguments.get("max_results").and_then(Value::as_u64),
+            string(arguments, "cursor"),
+            access_policy,
+        )
+        .map_err(|error| match error {
+            InspectionError::Cancelled => DeveloperLoopError::Cancelled,
+            error => tool(error.to_string()),
+        })?;
     let mut matches = Vec::new();
-    while let Some(path) = queue.pop_front() {
-        if !access_policy.permits_search_result(path.strip_prefix(root).unwrap_or(&path)) {
-            continue;
-        }
-        let metadata = match fs::symlink_metadata(&path) {
-            Ok(metadata) => metadata,
-            Err(error) if path == start => return Err(tool(error.to_string())),
-            Err(_) => continue,
-        };
-        if metadata.is_dir() {
-            let children = match fs::read_dir(&path) {
-                Ok(children) => children,
-                Err(error) if path == start => return Err(tool(error.to_string())),
-                Err(_) => continue,
-            };
-            let mut children = children.filter_map(Result::ok).collect::<Vec<_>>();
-            children.sort_by_key(fs::DirEntry::file_name);
-            for child in children {
-                if child.path().strip_prefix(root).is_ok_and(ignored) {
-                    continue;
-                }
-                queue.push_back(child.path());
-            }
-            continue;
-        }
-        if !metadata.is_file() || metadata.len() > MAX_FILE_BYTES as u64 {
-            continue;
-        }
-        let relative = path.strip_prefix(root).unwrap_or(&path);
-        if !access_policy.permits_search_result(relative) {
-            continue;
-        }
-        let Ok(content) = fs::read_to_string(&path) else {
-            continue;
-        };
-        for (index, line) in content.lines().enumerate() {
-            if line.contains(query) {
-                matches.push(object(vec![
-                    (
-                        "path",
-                        Value::String(
-                            path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned(),
-                        ),
-                    ),
-                    ("line", Value::from(index + 1)),
-                    ("text", Value::String(line.to_owned())),
-                ]));
-                if matches.len() >= maximum {
-                    return Ok(collection("matches", matches, true));
-                }
-            }
+    let mut omissions = Vec::new();
+    for record in &page.records {
+        match record.get("kind").and_then(Value::as_str) {
+            Some("match") => matches.push(record.clone()),
+            Some("omission") => omissions.push(record.clone()),
+            _ => return Err(tool("retained workspace search result has no typed kind")),
         }
     }
-    Ok(collection("matches", matches, false))
+    let complete = page.next.is_none();
+    Ok(object(vec![
+        ("workspace_root", Value::String(root.to_string_lossy().into_owned())),
+        ("path_kind", Value::String("workspace-relative".to_owned())),
+        ("matches", Value::Array(matches)),
+        ("omissions", Value::Array(omissions)),
+        ("observation", Value::String(page.observation_handle)),
+        (
+            "workspace_identity",
+            Value::String(retained::digest_hex(page.observation.folder)),
+        ),
+        (
+            "membership_sha256",
+            Value::String(retained::digest_hex(page.observation.membership)),
+        ),
+        (
+            "sources_sha256",
+            Value::String(retained::digest_hex(page.observation.sources)),
+        ),
+        ("start", Value::String(page.start.to_string())),
+        (
+            "page_returned_records",
+            Value::from(page.records.len()),
+        ),
+        (
+            "total_records",
+            Value::String(page.observation.records.to_string()),
+        ),
+        (
+            "total_match_fragments",
+            Value::String(page.observation.matches.to_string()),
+        ),
+        (
+            "total_omissions",
+            Value::String(page.observation.omissions.to_string()),
+        ),
+        (
+            "coverage_complete",
+            Value::Bool(page.observation.omissions == 0),
+        ),
+        ("complete", Value::Bool(complete)),
+        ("partial", Value::Bool(!complete)),
+        ("truncated", Value::Bool(!complete)),
+        (
+            "replay",
+            page.replay.map_or(Value::Null, Value::String),
+        ),
+        ("next", page.next.map_or(Value::Null, Value::String)),
+    ]))
 }
 
-pub(super) fn read(root: &Path, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-    let path = checked(root, required_string(arguments, "path")?, true)?;
-    let metadata = fs::symlink_metadata(&path).map_err(|error| {
+pub(super) fn read(
+    root: &Path,
+    arguments: &Value,
+    owner: &WorkspaceInspectionOwner,
+) -> Result<Value, DeveloperLoopError> {
+    let relative = required_string(arguments, "path")?;
+    let path = checked(root, relative, true)?;
+    fs::symlink_metadata(&path).map_err(|error| {
         if error.kind() == std::io::ErrorKind::NotFound {
             tool("not_found: this file does not exist. Use the observed workspace listing; do not repeat this read unless the file has since been created. For an authorized greenfield task, create the planned file with workspace_write rather than assuming a manifest already exists.")
         } else { tool(error.to_string()) }
     })?;
-    if !metadata.is_file() {
-        return Err(tool("path is not a regular text file"));
-    }
-    let start = bounded_usize(arguments, "start_line", 1, 1, usize::MAX);
-    let default_end = start.saturating_add(499);
-    let end = bounded_usize(arguments, "end_line", default_end, start, usize::MAX);
-    let explicit_range =
-        arguments.get("start_line").is_some() || arguments.get("end_line").is_some();
-    if metadata.len() > MAX_FILE_BYTES as u64 && !explicit_range {
-        return Err(tool(
-            "file exceeds the inline byte bound; specify start_line and end_line to read a bounded range",
-        ));
-    }
-    let lines = read_line_range(&path, start, end)?;
+    let selected =
+        peritus_patch::WorkspacePath::new(relative).map_err(|error| tool(error.to_string()))?;
+    let first_line = arguments.get("start_line").and_then(Value::as_u64).unwrap_or(1);
+    let last_line = arguments.get("end_line").and_then(Value::as_u64);
+    let page = owner
+        .read_page(&selected, first_line, last_line, string(arguments, "cursor"))
+        .map_err(|error| match error {
+            InspectionError::Cancelled => DeveloperLoopError::Cancelled,
+            error => tool(error.to_string()),
+        })?;
+    let complete = page.next.is_none();
+    let start_line = page
+        .start_position
+        .map_or(Value::Null, |position| Value::from(position.line));
+    let end_line = page.last_rendered_line.map_or(Value::Null, Value::from);
+    let start_column = page
+        .start_position
+        .map_or(Value::Null, |position| Value::from(position.column_bytes));
+    let end_column = page
+        .end_position
+        .map_or(Value::Null, |position| Value::from(position.column_bytes));
+    let start_cursor_line = page
+        .start_position
+        .map_or(Value::Null, |position| Value::from(position.line));
+    let end_cursor_line = page
+        .end_position
+        .map_or(Value::Null, |position| Value::from(position.line));
     Ok(object(vec![
-        ("content", Value::String(limit(&lines))),
-        ("start_line", Value::from(start)),
-        ("end_line", Value::from(end)),
-        ("bytes", Value::from(metadata.len())),
-        ("permissions", Value::String(file_metadata::permissions(&metadata))),
+        ("path", Value::String(relative.to_owned())),
+        ("content", Value::String(page.content)),
+        ("start_line", start_line),
+        ("end_line", end_line),
+        ("requested_start_line", Value::from(first_line)),
+        (
+            "requested_end_line",
+            last_line.map_or(Value::Null, Value::from),
+        ),
+        (
+            "selection_start_byte",
+            Value::String(page.selection.start.to_string()),
+        ),
+        (
+            "selection_end_byte",
+            Value::String(page.selection.end.to_string()),
+        ),
+        (
+            "returned_start_byte",
+            Value::String(page.range.0.to_string()),
+        ),
+        (
+            "returned_end_byte",
+            Value::String(page.range.1.to_string()),
+        ),
+        ("returned_start_cursor_line", start_cursor_line),
+        ("returned_end_cursor_line", end_cursor_line),
+        ("returned_start_column_bytes", start_column),
+        ("returned_end_column_bytes", end_column),
+        (
+            "starts_mid_line",
+            Value::Bool(page.start_position.is_some_and(|position| position.column_bytes != 0)),
+        ),
+        (
+            "ends_mid_line",
+            Value::Bool(
+                !complete
+                    && page.end_position.is_some_and(|position| position.column_bytes != 0),
+            ),
+        ),
+        ("bytes", Value::from(page.observation.source_bytes())),
+        (
+            "source_sha256",
+            Value::String(retained::digest_hex(page.observation.source_digest())),
+        ),
+        (
+            "workspace_identity",
+            Value::String(retained::digest_hex(page.observation.folder_digest())),
+        ),
+        ("permissions", Value::String(page.permissions)),
+        ("observation", Value::String(page.observation_handle)),
+        ("coverage_complete", Value::Bool(true)),
+        ("complete", Value::Bool(complete)),
+        ("partial", Value::Bool(!complete)),
+        ("truncated", Value::Bool(!complete)),
+        ("replay", page.replay.map_or(Value::Null, Value::String)),
+        ("next", page.next.map_or(Value::Null, Value::String)),
     ]))
 }
 
