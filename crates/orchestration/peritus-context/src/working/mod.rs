@@ -34,7 +34,7 @@ pub use error::WorkingError;
 pub use evidence::{ObservationId, ObservationKind, ObservationSource};
 pub use event::{
     WorkingEvent, WorkingReplayFrontier, WorkingReplayPageError, apply_working_event,
-    replay_working_event_page, replay_working_events,
+    replay_working_event_page, replay_working_event_suffix, replay_working_events,
 };
 pub use limits::WorkingLimits;
 pub use protocol::{PendingOperationState, WorkingPendingOperation, WorkingProtocol, WorkingProtocolUpdate, apply_working_protocol};

@@ -19,14 +19,15 @@ use super::super::{
     storage::StoredArtifact,
     view_binding,
 };
-use super::LocalMemory;
+use super::{LocalMemory, replay_context_event};
 use peritus_agent::DeveloperLoopError;
 use peritus_context::ContextNodeId;
 use peritus_context::working::{
     ObservationId, ObservationSource, ReusableWorkingStateHistory, WorkingDelta,
-    WorkingEntryStatus, WorkingEvent, WorkingState, WorkingStateArtifact,
-    WorkingStateReadError, apply_working_event, decode_paged_working_state_with_history_from,
-    decode_working_event, decode_working_state, decode_working_state_core,
+    WorkingEntryStatus, WorkingEvent, WorkingReplayFrontier, WorkingState,
+    WorkingStateArtifact, WorkingStateReadError, apply_working_event,
+    decode_paged_working_state_with_history_from, decode_working_event, decode_working_state,
+    decode_working_state_core,
 };
 use peritus_model_protocol::{ProtocolLimits, decode_messages};
 use peritus_types::Sha256Digest;
@@ -496,7 +497,7 @@ impl LocalMemory {
         if update.transcript != expected_transcript {
             return Err(error("context update changed a host-owned transcript field"));
         }
-        let mut successor = self.state.clone();
+        let mut successor = WorkingReplayFrontier::new(self.state.clone(), 0);
         let mut saw_refresh = false;
         let mut saw_delta = false;
         for reducer in update.reducers {
@@ -507,12 +508,11 @@ impl LocalMemory {
             )
             .map_err(|_| error("invalid context update reducer"))?;
             validate_context_reducer_sequence(&event, &mut saw_refresh, &mut saw_delta)?;
-            successor = apply_working_event(&successor, &event)
-                .map_err(|_| error("context update replay rejected"))?;
+            replay_context_event(&mut successor, &event, "context update replay rejected")?;
         }
         self.adopt_context_update(
             update.base_model_revision,
-            successor,
+            successor.into_state(),
             update.transcript,
             saw_delta,
         )
@@ -536,7 +536,7 @@ impl LocalMemory {
             return Err(error("context update root binding mismatch"));
         }
 
-        let mut successor = self.state.clone();
+        let mut successor = WorkingReplayFrontier::new(self.state.clone(), 0);
         let mut saw_refresh = false;
         let mut saw_delta = false;
         let mut expected_reducer = 0_u64;
@@ -560,21 +560,19 @@ impl LocalMemory {
                 let (event, expected_successor) = self.read_context_reducer(
                     reducer,
                     root.source_index,
-                    &successor,
+                    successor.state(),
                 )?;
                 validate_context_reducer_sequence(
                     &event,
                     &mut saw_refresh,
                     &mut saw_delta,
                 )?;
-                let applied = apply_working_event(&successor, &event)
-                    .map_err(|_| error("context update replay rejected"))?;
+                replay_context_event(&mut successor, &event, "context update replay rejected")?;
                 if let Some(expected_successor) = expected_successor
-                    && applied != expected_successor
+                    && successor.state() != &expected_successor
                 {
                     return Err(error("context update reducer snapshot mismatch"));
                 }
-                successor = applied;
                 expected_reducer = expected_reducer
                     .checked_add(1)
                     .ok_or_else(|| error("context update reducer count overflow"))?;
@@ -591,7 +589,7 @@ impl LocalMemory {
         let transcript = self.read_context_update_transcript(&root)?;
         self.adopt_context_update(
             root.base_model_revision,
-            successor,
+            successor.into_state(),
             transcript,
             saw_delta,
         )

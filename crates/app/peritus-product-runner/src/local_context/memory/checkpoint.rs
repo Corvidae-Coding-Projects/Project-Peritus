@@ -15,12 +15,12 @@ use super::super::{
     storage::{LocalStore, StoredArtifact},
     view_binding,
 };
-use super::LocalMemory;
+use super::{LocalMemory, replay_context_event};
 use peritus_agent::{DeveloperLoopError, estimate_developer_request_tokens};
 use peritus_codec::sha256;
 use peritus_context::working::{
     EncodedWorkingStatePart, ReusableWorkingStateHistory, WorkingEntryStatus, WorkingEvent,
-    WorkingState, WorkingStateArtifact, WorkingStateWriteError, apply_working_event,
+    WorkingReplayFrontier, WorkingState, WorkingStateArtifact, WorkingStateWriteError,
     encode_paged_working_state_reusing_with, encode_working_event,
 };
 use peritus_model_protocol::{Message, ProtocolLimits, encode_messages};
@@ -370,14 +370,18 @@ fn store_context_reducer_pages(
     if events.is_empty() {
         return Err(error("context update has no reducer page"));
     }
-    let mut current = initial.clone();
+    let mut current = WorkingReplayFrontier::new(initial.clone(), 0);
     let mut reducer_artifacts = Vec::new();
     reducer_artifacts
         .try_reserve_exact(events.len())
         .map_err(|_| error("allocate context update reducer index"))?;
     for event in events {
-        let successor = apply_working_event(&current, event)
-            .map_err(|_| error("context update reducer rejected during storage"))?;
+        replay_context_event(
+            &mut current,
+            event,
+            "context update reducer rejected during storage",
+        )?;
+        let successor = current.state();
         let (descriptor, children) = match event {
             WorkingEvent::Refresh { base_revision, .. } => {
                 let state = store_working_snapshot(store, &successor, source_index)?;
@@ -422,7 +426,6 @@ fn store_context_reducer_pages(
             }
         };
         reducer_artifacts.push(store.store_bundle(&encode(&descriptor)?, &children)?);
-        current = successor;
     }
 
     let mut next = None;

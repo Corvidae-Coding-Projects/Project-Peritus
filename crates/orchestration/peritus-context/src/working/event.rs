@@ -31,6 +31,52 @@ pub enum WorkingEvent {
     Protocol(super::WorkingProtocolUpdate),
 }
 
+/// Last state and durable event cursor verified by resumable replay.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WorkingReplayFrontier {
+    state: WorkingState,
+    through_event: u64,
+}
+
+impl WorkingReplayFrontier {
+    /// Starts or resumes replay from an exact checkpoint and its durable cursor.
+    #[must_use]
+    pub const fn new(state: WorkingState, through_event: u64) -> Self {
+        Self { state, through_event }
+    }
+
+    /// Last fully verified state.
+    #[must_use]
+    pub const fn state(&self) -> &WorkingState {
+        &self.state
+    }
+
+    /// Durable sequence of the last event included in `state`.
+    #[must_use]
+    pub const fn through_event(&self) -> u64 {
+        self.through_event
+    }
+
+    /// Consumes the cursor and returns its last fully verified state.
+    #[must_use]
+    pub fn into_state(self) -> WorkingState {
+        self.state
+    }
+}
+
+/// Structural page failure or the exact committed event rejected by replay.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkingReplayPageError {
+    /// The supplied page does not begin after the frontier it names.
+    CursorMismatch { expected: u64, actual: u64 },
+    /// The caller supplied more than one configured physical replay page.
+    PageCapacity,
+    /// The durable event cursor cannot advance without overflow.
+    CursorExhausted,
+    /// The named committed event was the first reducer input rejected.
+    Event { at_event: u64, error: WorkingError },
+}
+
 /// Complete successful one-event frame used by ordered replay.
 pub open spec fn event_success_frame(
     state: &WorkingState,
@@ -119,18 +165,14 @@ pub open spec fn event_error_frame(
     }
 }
 
-/// The capacity precheck or first event error after an exact successful prefix.
+/// The first event error after an exact successful prefix.
 pub open spec fn replay_first_error(
     initial: &WorkingState,
     events: Seq<WorkingEvent>,
     error: WorkingError,
 ) -> bool {
-    if events.len() > initial.spec_limits().spec_observations() {
-        error == WorkingError::Capacity
-    } else {
-        exists |index: int, current: WorkingState|
-            #[trigger] replay_error_witness(initial, events, index, &current, error)
-    }
+    exists |index: int, current: WorkingState|
+        #[trigger] replay_error_witness(initial, events, index, &current, error)
 }
 
 /// One failing event following an exact successful replay prefix.
@@ -303,10 +345,108 @@ pub fn apply_working_event(
     }
 }
 
-/// Reconstructs a bounded committed suffix in its exact recorded order, without effects.
+/// Applies one physical page after an exact durable cursor.
+///
+/// The mutable frontier advances after each successful event. On failure it remains at the last
+/// successfully reduced state and cursor. Invalid committed evidence is identified by its exact
+/// event sequence and is never skipped. Callers can retry a transient page allocation failure with
+/// a smaller page under the same frontier.
 ///
 /// # Errors
-/// Rejects an oversized suffix or the first invalid event; never skips or repairs history.
+/// Returns a cursor mismatch, physical page-capacity failure, cursor exhaustion, or the first event
+/// reducer error. The supplied frontier always retains the last verified state.
+pub fn replay_working_event_page(
+    frontier: &mut WorkingReplayFrontier,
+    page_after_event: u64,
+    events: &[WorkingEvent],
+) -> Result<(), WorkingReplayPageError> {
+    if page_after_event != frontier.through_event {
+        return Err(WorkingReplayPageError::CursorMismatch {
+            expected: frontier.through_event,
+            actual: page_after_event,
+        });
+    }
+    if events.len() > frontier.state.limits().observations() {
+        return Err(WorkingReplayPageError::PageCapacity);
+    }
+    let mut index = 0;
+    while index < events.len()
+        invariant index <= events.len(),
+        decreases events.len() - index,
+    {
+        let Some(at_event) = frontier.through_event.checked_add(1) else {
+            return Err(WorkingReplayPageError::CursorExhausted);
+        };
+        let next = match apply_working_event(&frontier.state, &events[index]) {
+            Ok(next) => next,
+            Err(error) => {
+                return Err(WorkingReplayPageError::Event { at_event, error });
+            }
+        };
+        frontier.state = next;
+        frontier.through_event = at_event;
+        index += 1;
+    }
+    Ok(())
+}
+
+/// Replays one complete committed suffix from the exact checkpoint cursor that precedes it.
+///
+/// The configured observation bound is used only as the size of each internal physical replay
+/// page. It is never a cumulative allowance for the suffix. The mutable frontier advances after
+/// every accepted event, so cancellation or failure leaves the exact state and cursor from which
+/// the same lineage can resume.
+///
+/// # Errors
+/// Returns a cursor mismatch, cursor exhaustion, or the first rejected event with its durable
+/// sequence. The supplied frontier always retains the last verified state.
+pub fn replay_working_event_suffix(
+    frontier: &mut WorkingReplayFrontier,
+    suffix_after_event: u64,
+    events: &[WorkingEvent],
+) -> Result<(), WorkingReplayPageError> {
+    if suffix_after_event != frontier.through_event {
+        return Err(WorkingReplayPageError::CursorMismatch {
+            expected: frontier.through_event,
+            actual: suffix_after_event,
+        });
+    }
+    let page_capacity = frontier.state.limits().observations();
+    if page_capacity == 0 {
+        return Err(WorkingReplayPageError::PageCapacity);
+    }
+    let mut index = 0;
+    let mut page_events = 0;
+    while index < events.len()
+        invariant
+            index <= events.len(),
+            page_events <= page_capacity,
+        decreases events.len() - index,
+    {
+        if page_events == page_capacity {
+            page_events = 0;
+        }
+        let Some(at_event) = frontier.through_event.checked_add(1) else {
+            return Err(WorkingReplayPageError::CursorExhausted);
+        };
+        let next = match apply_working_event(&frontier.state, &events[index]) {
+            Ok(next) => next,
+            Err(error) => {
+                return Err(WorkingReplayPageError::Event { at_event, error });
+            }
+        };
+        frontier.state = next;
+        frontier.through_event = at_event;
+        index += 1;
+        page_events += 1;
+    }
+    Ok(())
+}
+
+/// Reconstructs a caller-owned committed suffix in its exact recorded order, without effects.
+///
+/// # Errors
+/// Rejects the first invalid event; never skips or repairs history.
 pub fn replay_working_events(
     state: &WorkingState,
     events: &[WorkingEvent],
@@ -316,30 +456,14 @@ pub fn replay_working_events(
         Err(error) => replay_first_error(state, events@, error),
     },
 {
-    let limits = state.limits();
-    let maximum_events = limits.observations();
-    proof {
-        assert(limits == state.spec_limits());
-        assert(maximum_events as nat == limits.spec_observations());
-        assert(maximum_events as nat == state.spec_limits().spec_observations());
-    }
-    if events.len() > maximum_events {
-        proof {
-            assert(events@.len() > state.spec_limits().spec_observations());
-            assert(replay_first_error(state, events@, WorkingError::Capacity));
-        }
-        return Err(WorkingError::Capacity);
-    }
     let mut result = state.clone();
     proof {
-        assert(events@.len() <= state.spec_limits().spec_observations());
         assert(replay_success_prefix(state, events@, 0, &result));
     }
     let mut index = 0;
     while index < events.len()
         invariant
             index <= events.len(),
-            events@.len() <= state.spec_limits().spec_observations(),
             replay_success_prefix(state, events@, index as int, &result),
         decreases events.len() - index,
     {
@@ -347,7 +471,6 @@ pub fn replay_working_events(
             Ok(next) => next,
             Err(error) => {
                 proof {
-                    assert(events@.len() <= state.spec_limits().spec_observations());
                     assert(event_error_frame(&events@[index as int], error));
                     assert(replay_error_witness(
                         state,

@@ -16,8 +16,9 @@ use super::{
 };
 use peritus_agent::DeveloperLoopError;
 use peritus_context::working::{
-    ReusableWorkingStateHistory, WorkingBinding, WorkingEvent, WorkingLimits, WorkingState,
-    apply_working_event, encode_working_event,
+    ReusableWorkingStateHistory, WorkingBinding, WorkingEvent, WorkingLimits,
+    WorkingReplayFrontier, WorkingReplayPageError, WorkingState, apply_working_event,
+    encode_working_event, replay_working_event_page, replay_working_event_suffix,
 };
 use peritus_model_protocol::{Message, ProviderProfile, ToolDefinition};
 use peritus_types::Sha256Digest;
@@ -69,6 +70,35 @@ pub(super) struct PreparedView {
     pub(super) validation: ViewValidation,
     pub(super) through_event: u64,
     pub(super) policy: Sha256Digest,
+}
+
+pub(super) fn replay_context_event(
+    frontier: &mut WorkingReplayFrontier,
+    event: &WorkingEvent,
+    operation: &'static str,
+) -> Result<(), DeveloperLoopError> {
+    let after_event = frontier.through_event();
+    replay_working_event_page(frontier, after_event, std::slice::from_ref(event))
+        .map_err(|failure| context_replay_error(operation, failure))
+}
+
+pub(super) fn context_replay_error(
+    operation: &'static str,
+    failure: WorkingReplayPageError,
+) -> DeveloperLoopError {
+    let detail = match failure {
+        WorkingReplayPageError::CursorMismatch { expected, actual } => {
+            format!("reducer cursor mismatch (expected {expected}, received {actual})")
+        }
+        WorkingReplayPageError::PageCapacity => {
+            "physical reducer page exceeds the configured bound".to_owned()
+        }
+        WorkingReplayPageError::CursorExhausted => "reducer cursor exhausted".to_owned(),
+        WorkingReplayPageError::Event { at_event, error } => {
+            format!("committed reducer {at_event} rejected ({error:?})")
+        }
+    };
+    DeveloperLoopError::Context(format!("local working memory: {operation}: {detail}"))
 }
 
 impl LocalMemory {
@@ -224,7 +254,6 @@ impl LocalMemory {
         if transcript != expected_transcript {
             return Err(error("context update changed a host-owned transcript field"));
         }
-        let mut successor = self.state.clone();
         let mut saw_refresh = false;
         let mut saw_delta = false;
         for event in events {
@@ -237,12 +266,14 @@ impl LocalMemory {
                     return Err(error("invalid context update reducer sequence"));
                 }
             }
-            successor = apply_working_event(&successor, event)
-                .map_err(|_| error("context update successor rejected"))?;
         }
         if !saw_delta {
             return Err(error("context update has no working delta"));
         }
+        let mut replay = WorkingReplayFrontier::new(self.state.clone(), 0);
+        replay_working_event_suffix(&mut replay, 0, events)
+            .map_err(|failure| context_replay_error("context update successor rejected", failure))?;
+        let successor = replay.into_state();
         checkpoint_validation::validate_transcript(
             &successor,
             &self.sources,
