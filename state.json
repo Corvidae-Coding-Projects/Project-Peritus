@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3916,
-        "tip_oid": "85f08c69d9f60dbf8a93dfe49d328862e6af2fc7",
-        "prefix_sha256": "34f3cfa8e4bb1bfbc4abaa0b6f3f2fc497eba6c1a7dcd23a87fe9ae7ce97b3c7"
+        "sequence": 3917,
+        "tip_oid": "8f3b1dbd0897b442e30aab130ce9b4a10c3e5f91",
+        "prefix_sha256": "48ab5150fbb3aef98391a8e2ce18e3abcf6f3eb130c22ae9fb8e55223e0f8feb"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3161,
+  "next_comment_id": 3162,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -21434,11 +21434,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.513897620Z",
-      "updated_at": "2026-10-06T13:27:50.516173325Z",
+      "updated_at": "2026-10-08T00:47:09.572352528Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "338d2532-b04e-4a00-8025-0042bec48b69": {
+          "display_id": 3161,
+          "author": "6ME5",
+          "content": "Code complete in commit a8e390a2a. Represented optional execution deadlines with explicit untimed binding and propagated the same option to candidate/evaluator stages. Existing positive bindings keep canonical bytes/digests; ownership, cancellation, isolation, teardown and elapsed measurement remain independent. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:47:09.563811249Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9saTeoG9A3AXCSBzuNplnAzZMSGuCxz4pza/13xrWuSyeBr5Mz3zYBzKArSMSXrAYWgCE8tyjmmj27yqlLyNCg=="
+        },
         "4c512928-57d1-4816-b063-3914d859a287": {
           "display_id": 2582,
           "author": "6ME5",
