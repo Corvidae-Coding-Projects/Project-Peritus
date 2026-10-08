@@ -38,4 +38,7 @@ pub use peritus_types::EvidenceId;
 pub use peritus_journal::JournalCancellation as EvidenceCancellation;
 pub use provenance::JournalProvenance;
 pub use record::{EvidenceDraft, EvidenceKind, EvidenceRecord, EvidenceSource};
-pub use sqlite::{EvidenceQuarantine, EvidenceStore, EvidenceStoreOptions};
+pub use sqlite::{
+    EvidenceQuarantine, EvidenceQuarantineAudit, EvidenceQuarantineId, EvidenceStore,
+    EvidenceStoreOptions,
+};

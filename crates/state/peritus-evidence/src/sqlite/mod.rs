@@ -7,5 +7,5 @@ mod row;
 mod schema;
 mod store;
 
-pub use quarantine::EvidenceQuarantine;
+pub use quarantine::{EvidenceQuarantine, EvidenceQuarantineAudit, EvidenceQuarantineId};
 pub use store::{EvidenceStore, EvidenceStoreOptions};

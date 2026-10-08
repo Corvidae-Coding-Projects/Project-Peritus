@@ -106,11 +106,12 @@ impl EvidenceStore {
         contention_policy: ContentionPolicy,
         cancellation: Option<JournalCancellation>,
     ) -> Result<Self, EvidenceError> {
-        let connection = super::connection::open(path, contention_policy)?;
+        let mut connection = super::connection::open(path, contention_policy)?;
         validate_dependencies(&connection)?;
         connection
             .execute_batch(super::schema::INSTALL)
             .map_err(|error| EvidenceError::sqlite("install evidence schema", error))?;
+        super::schema::migrate(&mut connection)?;
         let mut store = Self { connection, cancellation };
         store.contain_corrupt_records()?;
         Ok(store)
