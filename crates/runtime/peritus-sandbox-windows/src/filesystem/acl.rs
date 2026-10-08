@@ -47,6 +47,16 @@ impl AclAccess {
     const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)
     }
+
+    const fn difference(self, other: Self) -> Self {
+        Self(self.0 & !other.0)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+enum AclTargetDisposition {
+    Existing,
+    CreateDenyDirectory,
 }
 
 /// One exact path/effect/scope ACL projection.
@@ -56,6 +66,8 @@ pub struct AclEntry {
     path: WindowsPath,
     scope: PathScope,
     access: AclAccess,
+    authority_root: WindowsPath,
+    target: AclTargetDisposition,
 }
 
 impl AclEntry {
@@ -69,10 +81,46 @@ impl AclEntry {
         scope: PathScope,
         access: AclAccess,
     ) -> Result<Self, WindowsError> {
+        Self::new_authorized(
+            effect,
+            path.clone(),
+            scope,
+            access,
+            path,
+            false,
+        )
+    }
+
+    pub(super) fn new_authorized(
+        effect: RuleEffect,
+        path: WindowsPath,
+        scope: PathScope,
+        mut access: AclAccess,
+        authority_root: WindowsPath,
+        create_deny_directory: bool,
+    ) -> Result<Self, WindowsError> {
         if access.bits() == 0 {
             return Err(error::invalid(WindowsOperation::CompileAcl, "ACL entry is empty"));
         }
-        Ok(Self { effect, path, scope, access })
+        if !authority_root.contains(&path) {
+            return Err(error::invalid(
+                WindowsOperation::CompileAcl,
+                "ACL target is outside its exact authorized root",
+            ));
+        }
+        let target = if create_deny_directory {
+            if effect != RuleEffect::Deny || scope != PathScope::Descendants {
+                return Err(error::invalid(
+                    WindowsOperation::CompileAcl,
+                    "only descendant denies may create a temporary ACL anchor",
+                ));
+            }
+            access = access.union(AclAccess(operation_bit(FileOperation::Remove)));
+            AclTargetDisposition::CreateDenyDirectory
+        } else {
+            AclTargetDisposition::Existing
+        };
+        Ok(Self { effect, path, scope, access, authority_root, target })
     }
 
     /// Returns allow or deny effect.
@@ -98,6 +146,38 @@ impl AclEntry {
     pub const fn access(&self) -> AclAccess {
         self.access
     }
+
+    /// Returns the exact configured root that supplies this target's volume authority.
+    #[must_use]
+    pub const fn authority_root(&self) -> &WindowsPath {
+        &self.authority_root
+    }
+
+    /// Reports whether an absent descendant-deny target may be created as a temporary directory.
+    #[must_use]
+    pub const fn creates_deny_directory(&self) -> bool {
+        matches!(self.target, AclTargetDisposition::CreateDenyDirectory)
+    }
+
+    pub(super) fn subtract_inherited_deny(&mut self, deny: &Self) {
+        if deny.effect == RuleEffect::Deny
+            && deny.scope == PathScope::Descendants
+            && deny.path.contains(&self.path)
+            && !deny.path.same_native_path(&self.path)
+        {
+            self.access = self.access.difference(deny.access);
+        }
+    }
+
+    fn canonical_cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.path
+            .stable_native_cmp(&other.path)
+            .then_with(|| self.effect.cmp(&other.effect))
+            .then_with(|| self.scope.cmp(&other.scope))
+            .then_with(|| self.authority_root.stable_native_cmp(&other.authority_root))
+            .then_with(|| self.target.cmp(&other.target))
+            .then_with(|| self.access.cmp(&other.access))
+    }
 }
 
 /// Deterministic temporary ACL mutation plan.
@@ -113,27 +193,30 @@ impl AclPlan {
         principal_sid: &str,
         mut entries: Vec<AclEntry>,
     ) -> Result<Self, WindowsError> {
-        entries.sort();
-        let mut merged: Vec<AclEntry> = Vec::with_capacity(entries.len());
+        entries.sort_by(AclEntry::canonical_cmp);
+        if entries.windows(2).any(|pair| {
+            pair[0].path.same_native_path(&pair[1].path) && pair[0].path != pair[1].path
+        }) {
+            return Err(error::invalid(
+                WindowsOperation::CompileAcl,
+                "ACL entries contain a case-fold path alias",
+            ));
+        }
+        let mut merged: Vec<AclEntry> = Vec::new();
+        merged.try_reserve_exact(entries.len()).map_err(|_| {
+            error::invalid(WindowsOperation::CompileAcl, "ACL merge capacity is unavailable")
+        })?;
         for entry in entries {
             if let Some(previous) = merged.last_mut()
                 && previous.effect == entry.effect
                 && previous.path == entry.path
                 && previous.scope == entry.scope
+                && previous.authority_root == entry.authority_root
+                && previous.target == entry.target
             {
                 previous.access = previous.access.union(entry.access);
             } else {
                 merged.push(entry);
-            }
-        }
-        for (index, entry) in merged.iter().enumerate() {
-            if merged[..index].iter().any(|prior| {
-                prior.path.case_folded() == entry.path.case_folded() && prior.path != entry.path
-            }) {
-                return Err(error::invalid(
-                    WindowsOperation::CompileAcl,
-                    "ACL entries contain a case-fold path alias",
-                ));
             }
         }
         let digest = digest_plan(principal_sid, &merged);
@@ -176,7 +259,7 @@ impl AclPlan {
 
 fn digest_plan(principal: &str, entries: &[AclEntry]) -> Sha256Digest {
     let mut bytes = Vec::new();
-    bytes.extend_from_slice(b"PERITUS-WINDOWS-ACL-V1\0");
+    bytes.extend_from_slice(b"PERITUS-WINDOWS-ACL-V2\0");
     bytes.extend_from_slice(principal.as_bytes());
     for entry in entries {
         bytes.push(match entry.effect {
@@ -188,6 +271,11 @@ fn digest_plan(principal: &str, entries: &[AclEntry]) -> Sha256Digest {
             PathScope::Descendants => 2,
         });
         bytes.extend_from_slice(entry.path.digest().as_bytes());
+        bytes.extend_from_slice(entry.authority_root.digest().as_bytes());
+        bytes.push(match entry.target {
+            AclTargetDisposition::Existing => 1,
+            AclTargetDisposition::CreateDenyDirectory => 2,
+        });
         bytes.extend_from_slice(&entry.access.bits().to_be_bytes());
     }
     peritus_codec::sha256(&bytes)

@@ -570,8 +570,9 @@ impl WindowsBackend {
             crate::ResolvedWindowsPath::resolve(input.clone())?;
         }
         for protected in &self.config.protected_roots {
-            let resolved = crate::ResolvedWindowsPath::resolve(protected.clone())?;
-            if workspace.evidence().volume_serial() != resolved.evidence().volume_serial() {
+            let (anchor, _) =
+                crate::ResolvedWindowsPath::resolve_existing_or_parent(protected.clone())?;
+            if workspace.evidence().volume_serial() != anchor.evidence().volume_serial() {
                 return Err(crate::error::invalid(
                     WindowsOperation::ResolvePath,
                     "protected root is on another volume",
