@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4132,
-        "tip_oid": "bf9bdbf4e4206c0d9de55cef74cbcb51cf9b78ac",
-        "prefix_sha256": "e134cfdaeee284b0d450b8fc80f53274a79b2593bd013f181b361ecfbfea7ba0"
+        "sequence": 4133,
+        "tip_oid": "26ea170656daed19198f4c7d82767b866e623278",
+        "prefix_sha256": "ff012dcd1dc2fbf5010fe908820c01b804b745a14882d94365ade7276cb25b35"
       },
       "NWAR": {
         "sequence": 39,
@@ -39997,12 +39997,13 @@
       "display_id": 160,
       "title": "[L061] Working-memory lineage has hard observation and entry-count ceilings",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L061.\n\n- `peritus-context/src/working/limits.rs:31-40,64-72` sets and hard-caps **65,535 exact observation locators per lineage**, **512 retained working entries**, **2,048 bytes per entry**, **32 items per source/dependency/file-validity list**, and **32 operations per atomic delta**. Construction permits only positive narrower limits.\n- Getter contracts explicitly include stale/superseded entries in the retained-entry count (lines 75-99). A persistent memory lineage can therefore exhaust representational policy without a wall-clock timeout. Actual insertion/compaction/retirement behavior and user recovery remain pending complete reducer/host reads.\n- `context_config.rs:140-142` uses this same hard envelope by default. These are fixed allocation policies, not a provider's actual context-window size. Preferred rendering token budgets (L058) are a separate layer.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.090544830Z",
-      "updated_at": "2026-10-08T10:03:15.052314371Z",
+      "updated_at": "2026-10-08T10:04:41.391154185Z",
+      "closed_at": "2026-10-08T10:04:41.388207961Z",
       "labels": [
         "daily-driving-limiter"
       ],
