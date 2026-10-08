@@ -7,7 +7,9 @@ use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
 
 use super::state::{ActiveBlock, NormalizeState, Phase};
-use super::value::{ReplayKind, invalid, item_id, provider_event, required_str, required_u32};
+use super::value::{
+    ReplayAccumulator, ReplayKind, invalid, item_id, provider_event, required_str, required_u32,
+};
 
 pub(super) fn start(
     state: &mut NormalizeState,
@@ -71,6 +73,7 @@ pub(super) fn start(
                 item_id: item,
                 call_id,
                 arguments: peritus_provider_core::healing::ToolArgumentBuffer::default(),
+                progress_revision: 0,
             }
         }
         "thinking" => {
@@ -84,7 +87,7 @@ pub(super) fn start(
             {
                 state.emit(reasoning_delta(item.clone(), thinking, limits)?, digest, event_id)?;
             }
-            ActiveBlock::Thinking { item_id: item, signature: false }
+            ActiveBlock::Thinking { item_id: item, signature: None }
         }
         "redacted_thinking" => {
             let data = required_str(value, "/content_block/data")?;
@@ -134,13 +137,28 @@ pub(super) fn delta(
         (ActiveBlock::Text { .. }, "citations_delta") => {
             Some(provider_event("anthropic.citation", value, limits)?)
         }
-        (ActiveBlock::Tool { arguments, .. }, "input_json_delta") => {
+        (
+            ActiveBlock::Tool { call_id, arguments, progress_revision, .. },
+            "input_json_delta",
+        ) => {
             let partial = required_str(value, "/delta/partial_json")?.as_bytes();
             if partial.is_empty() {
                 return Err(invalid("Anthropic tool argument fragment is empty"));
             }
+            let fragment = fragment(partial, limits)?;
+            let revision = progress_revision.checked_add(1).ok_or_else(|| {
+                ProviderCoreError::limit_exceeded(
+                    "anthropic_stream",
+                    "tool argument progress revision overflowed",
+                )
+            })?;
             arguments.append(partial, limits)?;
-            Some(ModelEvent::Heartbeat)
+            *progress_revision = revision;
+            Some(ModelEvent::ToolArgumentProgress {
+                call_id: call_id.clone(),
+                revision,
+                fragment,
+            })
         }
         (ActiveBlock::Thinking { item_id, .. }, "thinking_delta") => {
             Some(reasoning_delta(
@@ -149,18 +167,23 @@ pub(super) fn delta(
                 limits,
             )?)
         }
-        (ActiveBlock::Thinking { item_id, signature }, "signature_delta") => {
-            if *signature {
-                return Err(invalid("Anthropic thinking block emitted multiple signatures"));
-            }
-            *signature = true;
-            state.defer_replay(
-                item_id.clone(),
+        (ActiveBlock::Thinking { signature, .. }, "signature_delta") => {
+            let maximum = limits.max_extension_bytes().min(limits.max_output_bytes());
+            let accumulator = signature.get_or_insert_with(ReplayAccumulator::new);
+            let previous = accumulator.append(
                 ReplayKind::ThinkingSignature,
                 required_str(value, "/delta/signature")?,
+                maximum,
                 digest,
                 event_id,
             )?;
+            if let Some(previous) = previous {
+                state.emit(
+                    ModelEvent::Heartbeat,
+                    previous.digest,
+                    previous.event_id.as_deref(),
+                )?;
+            }
             None
         }
         _ => return Err(invalid("Anthropic content delta contradicts its open block")),
@@ -189,12 +212,26 @@ pub(super) fn stop(
         .ok_or_else(|| invalid("Anthropic content stop targets no open block"))?;
     let item = match block {
         ActiveBlock::Text { item_id }
-        | ActiveBlock::Redacted { item_id }
-        | ActiveBlock::Thinking { item_id, signature: true } => item_id,
-        ActiveBlock::Thinking { .. } => {
+        | ActiveBlock::Redacted { item_id } => item_id,
+        ActiveBlock::Thinking { item_id, signature: Some(mut signature) } => {
+            let provenance = signature
+                .take_provenance()
+                .ok_or_else(|| invalid("Anthropic thinking signature lost its provenance"))?;
+            return state.defer_replay_then(
+                item_id.clone(),
+                ReplayKind::ThinkingSignature,
+                signature.as_str(),
+                provenance.digest,
+                provenance.event_id.as_deref(),
+                ModelEvent::ItemCompleted(item_id),
+                digest,
+                event_id,
+            );
+        }
+        ActiveBlock::Thinking { signature: None, .. } => {
             return Err(invalid("Anthropic thinking block closed without a replay signature"));
         }
-        ActiveBlock::Tool { item_id, call_id, mut arguments } => {
+        ActiveBlock::Tool { item_id, call_id, mut arguments, .. } => {
             if arguments.as_bytes().is_empty() {
                 arguments.append(b"{}", limits)?;
             }

@@ -13,4 +13,4 @@ pub use page::{
 };
 
 /// Latest canonical normalized-event schema version.
-pub const EVENT_ENVELOPE_SCHEMA_VERSION: u16 = 4;
+pub const EVENT_ENVELOPE_SCHEMA_VERSION: u16 = 5;

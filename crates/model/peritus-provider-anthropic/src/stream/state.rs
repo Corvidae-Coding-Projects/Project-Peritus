@@ -9,7 +9,9 @@ use peritus_model_protocol::{
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, SseFrame, SseItem};
 use serde_json::Value;
 
-use super::value::{ReplayBytes, ReplayKind, invalid, limit, metadata_events, owned_string};
+use super::value::{
+    ReplayAccumulator, ReplayBytes, ReplayKind, invalid, limit, metadata_events, owned_string,
+};
 
 struct ExactReplayIndex {
     entries: BTreeMap<String, peritus_types::Sha256Digest>,
@@ -65,6 +67,13 @@ struct DeferredReplay {
     bytes: ReplayBytes,
     digest: peritus_types::Sha256Digest,
     event_id: Option<String>,
+    after: Option<DeferredEmission>,
+}
+
+struct DeferredEmission {
+    event: ModelEvent,
+    digest: peritus_types::Sha256Digest,
+    event_id: Option<String>,
 }
 
 pub(super) enum Phase {
@@ -82,10 +91,11 @@ pub(super) enum ActiveBlock {
         item_id: peritus_model_protocol::ItemId,
         call_id: peritus_model_protocol::ToolCallId,
         arguments: peritus_provider_core::healing::ToolArgumentBuffer,
+        progress_revision: u64,
     },
     Thinking {
         item_id: peritus_model_protocol::ItemId,
-        signature: bool,
+        signature: Option<ReplayAccumulator>,
     },
     Redacted {
         item_id: peritus_model_protocol::ItemId,
@@ -209,14 +219,55 @@ impl NormalizeState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
+        self.defer_replay_with_after(item_id, kind, value, digest, event_id, None)
+    }
+
+    pub(super) fn defer_replay_then(
+        &mut self,
+        item_id: ItemId,
+        kind: ReplayKind,
+        value: &str,
+        digest: peritus_types::Sha256Digest,
+        event_id: Option<&str>,
+        event: ModelEvent,
+        event_digest: peritus_types::Sha256Digest,
+        event_id_after: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        let event_id_after = event_id_after
+            .map(|value| {
+                owned_string(value, "Anthropic deferred event identity capacity is unavailable")
+            })
+            .transpose()?;
+        self.defer_replay_with_after(
+            item_id,
+            kind,
+            value,
+            digest,
+            event_id,
+            Some(DeferredEmission { event, digest: event_digest, event_id: event_id_after }),
+        )
+    }
+
+    fn defer_replay_with_after(
+        &mut self,
+        item_id: ItemId,
+        kind: ReplayKind,
+        value: &str,
+        digest: peritus_types::Sha256Digest,
+        event_id: Option<&str>,
+        after: Option<DeferredEmission>,
+    ) -> Result<(), ProviderCoreError> {
         if self.deferred_replay.is_some() {
             return Err(invalid("Anthropic reasoning replay overlapped another replay"));
         }
         let maximum = self.limits.max_extension_bytes().min(self.limits.max_output_bytes());
         let bytes = ReplayBytes::new(kind, value, maximum)?;
         let fragments = bytes.fragment_count(self.limits.max_event_bytes())?;
+        let future_events = fragments
+            .checked_add(usize::from(after.is_some()))
+            .ok_or_else(|| limit("Anthropic deferred event count overflowed"))?;
         let emitted = usize::try_from(self.sequence).unwrap_or(usize::MAX);
-        if fragments > self.limits.max_events().saturating_sub(emitted) {
+        if future_events > self.limits.max_events().saturating_sub(emitted) {
             return Err(limit("Anthropic reasoning replay exceeded the selected event bound"));
         }
         let event_id = event_id
@@ -224,13 +275,17 @@ impl NormalizeState {
                 owned_string(value, "Anthropic deferred event identity capacity is unavailable")
             })
             .transpose()?;
-        self.deferred_replay = Some(DeferredReplay { item_id, bytes, digest, event_id });
+        self.deferred_replay = Some(DeferredReplay { item_id, bytes, digest, event_id, after });
         Ok(())
     }
 
     pub(super) fn emit_deferred_replay(&mut self) -> Result<bool, ProviderCoreError> {
         let Some(mut replay) = self.deferred_replay.take() else { return Ok(false) };
         let Some(bytes) = replay.bytes.next_chunk(self.limits.max_event_bytes())? else {
+            if let Some(after) = replay.after.take() {
+                self.push(after.event, after.digest, after.event_id.as_deref())?;
+                return Ok(true);
+            }
             return Ok(false);
         };
         let fragment = StreamFragment::new(bytes, self.limits)

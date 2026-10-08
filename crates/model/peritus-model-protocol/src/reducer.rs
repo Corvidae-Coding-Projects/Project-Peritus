@@ -140,6 +140,8 @@ pub enum ReducerTransition {
 struct ToolAssembly {
     id: ToolCallId,
     name: crate::ToolName,
+    progress_revision: u64,
+    progress: Vec<u8>,
     arguments: Vec<u8>,
 }
 

@@ -112,6 +112,11 @@ fn decode_event(
             call_id: tool_call_id(reader)?,
             fragment: fragment(reader, limits)?,
         }),
+        22 if schema >= 5 => Ok(ModelEvent::ToolArgumentProgress {
+            call_id: tool_call_id(reader)?,
+            revision: reader.read_u64().map_err(read_codec)?,
+            fragment: fragment(reader, limits)?,
+        }),
         10 => item_id(reader).map(ModelEvent::ItemCompleted),
         11 => usage(reader, limits).map(ModelEvent::Usage),
         12 => rate_limits(reader).map(ModelEvent::RateLimit),

@@ -69,9 +69,10 @@ fn envelope_value(
 
 const fn envelope_schema(envelope: &EventEnvelope) -> u16 {
     match envelope.event() {
-        ModelEvent::ResponseRejected(_) => super::EVENT_ENVELOPE_SCHEMA_VERSION,
+        ModelEvent::ToolArgumentProgress { .. } => super::EVENT_ENVELOPE_SCHEMA_VERSION,
+        ModelEvent::ResponseRejected(_) => 4,
         ModelEvent::ResponseFailed(failure) if failure.response_body_observation().is_some() => {
-            super::EVENT_ENVELOPE_SCHEMA_VERSION
+            4
         }
         ModelEvent::OptionalObservation(_) => 3,
         ModelEvent::ResponseFailed(failure) if !failure.optional_observations().is_empty() => {
@@ -131,6 +132,12 @@ fn event(
         }
         ModelEvent::ToolArgumentDelta { call_id, fragment } => {
             fragment_event(writer, 9, call_id.expose_for_wire(), fragment.expose())?;
+        }
+        ModelEvent::ToolArgumentProgress { call_id, revision, fragment } => {
+            writer.write_u8(22).map_err(write_codec)?;
+            writer.write_str(call_id.expose_for_wire()).map_err(write_codec)?;
+            writer.write_u64(*revision).map_err(write_codec)?;
+            writer.write_bytes(fragment.expose()).map_err(write_codec)?;
         }
         ModelEvent::ItemCompleted(id) => {
             writer.write_u8(10).map_err(write_codec)?;

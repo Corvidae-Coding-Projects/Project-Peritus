@@ -187,6 +187,64 @@ pub(super) enum ReplayKind {
     RedactedThinking,
 }
 
+pub(super) struct ReplayProvenance {
+    pub(super) digest: peritus_types::Sha256Digest,
+    pub(super) event_id: Option<String>,
+}
+
+pub(super) struct ReplayAccumulator {
+    value: String,
+    encoded_content_bytes: usize,
+    provenance: Option<ReplayProvenance>,
+}
+
+impl ReplayAccumulator {
+    pub(super) const fn new() -> Self {
+        Self { value: String::new(), encoded_content_bytes: 0, provenance: None }
+    }
+
+    pub(super) fn append(
+        &mut self,
+        kind: ReplayKind,
+        fragment: &str,
+        maximum: usize,
+        digest: peritus_types::Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<Option<ReplayProvenance>, ProviderCoreError> {
+        let additional = encoded_len(fragment)?
+            .checked_sub(2)
+            .ok_or_else(|| invalid("Anthropic replay string encoding was invalid"))?;
+        let encoded_content_bytes = self
+            .encoded_content_bytes
+            .checked_add(additional)
+            .ok_or_else(|| limit("Anthropic reasoning replay size overflowed"))?;
+        let (prefix, suffix) = kind.syntax();
+        let expected = checked_sum(&[prefix.len(), encoded_content_bytes, suffix.len()])?;
+        if expected > maximum {
+            return Err(limit("Anthropic reasoning replay exceeded its aggregate bound"));
+        }
+        let event_id = event_id
+            .map(|value| {
+                owned_string(value, "Anthropic replay event identity capacity is unavailable")
+            })
+            .transpose()?;
+        self.value
+            .try_reserve(fragment.len())
+            .map_err(|_| limit("Anthropic reasoning replay capacity is unavailable"))?;
+        self.value.push_str(fragment);
+        self.encoded_content_bytes = encoded_content_bytes;
+        Ok(self.provenance.replace(ReplayProvenance { digest, event_id }))
+    }
+
+    pub(super) fn take_provenance(&mut self) -> Option<ReplayProvenance> {
+        self.provenance.take()
+    }
+
+    pub(super) fn as_str(&self) -> &str {
+        &self.value
+    }
+}
+
 impl ReplayKind {
     const fn syntax(self) -> (&'static [u8], &'static [u8]) {
         match self {

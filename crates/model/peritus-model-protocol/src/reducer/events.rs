@@ -34,6 +34,9 @@ impl ResponseReducer {
             ModelEvent::ToolCallStarted { item_id, call_id, name } => {
                 self.start_call(item_id, call_id, name)?;
             }
+            ModelEvent::ToolArgumentProgress { call_id, revision, fragment } => {
+                self.append_argument_progress(&call_id, revision, fragment.expose())?;
+            }
             ModelEvent::ToolArgumentDelta { call_id, fragment } => {
                 self.append_arguments(&call_id, fragment.expose())?;
             }
@@ -153,8 +156,48 @@ impl ResponseReducer {
         if item.complete || item.kind != ItemKind::ToolCall || item.call.is_some() {
             return self.reject_unit("tool call targeted a completed or incompatible item");
         }
-        item.call = Some(ToolAssembly { id: call_id.clone(), name, arguments: Vec::new() });
+        item.call = Some(ToolAssembly {
+            id: call_id.clone(),
+            name,
+            progress_revision: 0,
+            progress: Vec::new(),
+            arguments: Vec::new(),
+        });
         self.calls.insert(call_id, item_id);
+        Ok(())
+    }
+
+    fn append_argument_progress(
+        &mut self,
+        call_id: &ToolCallId,
+        revision: u64,
+        bytes: &[u8],
+    ) -> Result<(), ProtocolError> {
+        let Some(item_id) = self.calls.get(call_id) else {
+            return self.reject_unit("tool argument progress preceded call start");
+        };
+        let item_id = item_id.clone();
+        let Some(item) = self.items.get_mut(&item_id) else {
+            return self.reject_unit("tool-call progress assembly is missing");
+        };
+        let Some(call) = item.call.as_mut() else {
+            return self.reject_unit("tool-call progress assembly is missing");
+        };
+        let Some(expected_revision) = call.progress_revision.checked_add(1) else {
+            return self.reject_unit("tool argument progress revision overflowed");
+        };
+        if item.complete || !call.arguments.is_empty() || revision != expected_revision {
+            return self.reject_unit(
+                "tool argument progress targeted a closed call or skipped its revision",
+            );
+        }
+        if call.progress.len().saturating_add(bytes.len())
+            > self.limits.max_tool_argument_bytes()
+        {
+            return self.reject_unit("tool argument progress exceeds its byte bound");
+        }
+        call.progress.extend_from_slice(bytes);
+        call.progress_revision = revision;
         Ok(())
     }
 

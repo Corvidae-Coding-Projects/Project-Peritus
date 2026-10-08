@@ -142,6 +142,15 @@ pub enum ModelEvent {
         /// Declared function name.
         name: ToolName,
     },
+    /// Untrusted function-argument progress observed before the provider closes the call.
+    ToolArgumentProgress {
+        /// Target call.
+        call_id: ToolCallId,
+        /// Monotonic per-call progress revision, beginning at one.
+        revision: u64,
+        /// Exact provider fragment, retained for progress and audit only.
+        fragment: StreamFragment,
+    },
     /// Function arguments JSON string fragment.
     ToolArgumentDelta {
         /// Target call.
@@ -183,6 +192,16 @@ impl ModelEvent {
             | Self::ReasoningReplayDelta { fragment, .. }
             | Self::RefusalDelta { fragment, .. }
             | Self::ToolArgumentDelta { fragment, .. } => fragment.validate_under(limits),
+            Self::ToolArgumentProgress { revision, fragment, .. } => {
+                if *revision == 0 {
+                    return Err(ProtocolError::at(
+                        ProtocolErrorKind::InvalidEvent,
+                        "event.tool_argument_progress",
+                        "tool argument progress revision must be nonzero",
+                    ));
+                }
+                fragment.validate_under(limits)
+            }
             Self::Usage(observation) => {
                 if let Some(detail) = observation.provider_detail() {
                     detail.validate_under(JsonBounds::extension(limits))?;
