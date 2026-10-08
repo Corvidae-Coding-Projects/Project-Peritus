@@ -43,6 +43,17 @@ impl WorkspaceDeveloperTools {
         }
     }
 
+    /// Attaches the run-owned command runtime for native, read-only verification commands.
+    #[must_use]
+    pub(crate) fn with_observational_commands(
+        mut self,
+        command_runtime: crate::CommandRuntime,
+    ) -> Self {
+        self.command_budget = Some(CommandBudget::new(None));
+        self.command_runtime = Some(command_runtime);
+        self
+    }
+
     pub(crate) fn with_ownership(
         root: PathBuf,
         ownership: WorkspaceOwnership,

@@ -8,7 +8,7 @@ use serde_json::Value;
 use super::WorkspaceDeveloperTools;
 use crate::developer_tools::{
     command_budget::{CommandAllowance, CommandDeadlineSource},
-    command_runtime::StartCommand,
+    command_runtime::{CommandExecutionMode, StartCommand},
     effect::reject_destructive_command,
     path::{checked, tool},
     wire::{bounded_u64, required_string, string},
@@ -24,6 +24,7 @@ struct ParsedCommand {
     cwd: PathBuf,
     timeout: Option<Duration>,
     allowance: CommandAllowance,
+    mode: CommandExecutionMode,
 }
 
 impl WorkspaceDeveloperTools {
@@ -40,8 +41,12 @@ impl WorkspaceDeveloperTools {
         if !command.allowance.starts_execution() {
             return Ok(command.allowance.exhausted_result());
         }
-        let unowned_before = self.ownership.unowned_files(&self.root);
-        let result = self.command_runtime()?.run(StartCommand {
+        let unowned_before = command
+            .mode
+            .is_mutation()
+            .then(|| self.ownership.unowned_files(&self.root))
+            .unwrap_or_default();
+        let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
             cwd: &command.cwd,
@@ -51,7 +56,13 @@ impl WorkspaceDeveloperTools {
             columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS).expect("bounded terminal columns"),
             idempotency_key: call_id,
             environment: self.resources.environment_bindings(),
-        });
+        };
+        let result = match command.mode {
+            CommandExecutionMode::Observational => {
+                self.command_runtime()?.run_observational(request)
+            }
+            CommandExecutionMode::Mutation => self.command_runtime()?.run(request),
+        };
         self.finish_run_command(arguments, result, unowned_before, &command)
     }
 
@@ -64,10 +75,13 @@ impl WorkspaceDeveloperTools {
         if !command.allowance.starts_execution() {
             return Ok(command.allowance.exhausted_result());
         }
-        let unowned_before = self.ownership.unowned_files(&self.root);
+        let unowned_before = command
+            .mode
+            .is_mutation()
+            .then(|| self.ownership.unowned_files(&self.root))
+            .unwrap_or_default();
         let runtime = self.command_runtime()?.clone();
-        let result = runtime
-            .run_async(StartCommand {
+        let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
                 cwd: &command.cwd,
@@ -78,8 +92,11 @@ impl WorkspaceDeveloperTools {
                     .expect("bounded terminal columns"),
                 idempotency_key: call_id,
                 environment: self.resources.environment_bindings(),
-            })
-            .await;
+            };
+        let result = match command.mode {
+            CommandExecutionMode::Observational => runtime.run_observational_async(request).await,
+            CommandExecutionMode::Mutation => runtime.run_async(request).await,
+        };
         self.finish_run_command(arguments, result, unowned_before, &command)
     }
 
@@ -95,14 +112,22 @@ impl WorkspaceDeveloperTools {
                 if matches!(result.get("state").and_then(Value::as_str), Some("running" | "starting")) {
                     // The original process can still produce files after this observation fails.
                     // Retain its admission preimage and purpose until same-handle settlement.
-                    self.active_commands.started_named("run_command", arguments, &result, unowned_before)?;
-                } else {
+                    self.active_commands.started_named(
+                        "run_command",
+                        arguments,
+                        &result,
+                        unowned_before,
+                        command.mode,
+                    )?;
+                } else if command.mode.is_mutation() {
                     self.ownership.record_command_creations(&self.root, &unowned_before);
                 }
                 annotate_result(self, result, command)
             }
             Err(error) => {
-                self.ownership.record_command_creations(&self.root, &unowned_before);
+                if command.mode.is_mutation() {
+                    self.ownership.record_command_creations(&self.root, &unowned_before);
+                }
                 Err(error)
             }
         }
@@ -121,8 +146,12 @@ impl WorkspaceDeveloperTools {
         let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
         let columns =
             bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
-        let unowned_before = self.ownership.unowned_files(&self.root);
-        let result = self.command_runtime()?.start(StartCommand {
+        let unowned_before = command
+            .mode
+            .is_mutation()
+            .then(|| self.ownership.unowned_files(&self.root))
+            .unwrap_or_default();
+        let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
             cwd: &command.cwd,
@@ -132,9 +161,15 @@ impl WorkspaceDeveloperTools {
             columns: u16::try_from(columns).expect("bounded terminal columns"),
             idempotency_key: call_id,
             environment: self.resources.environment_bindings(),
-        })?;
+        };
+        let result = match command.mode {
+            CommandExecutionMode::Observational => {
+                self.command_runtime()?.start_observational(request)
+            }
+            CommandExecutionMode::Mutation => self.command_runtime()?.start(request),
+        }?;
         let result = annotate_result(self, result, &command)?;
-        self.active_commands.started(arguments, &result, unowned_before)?;
+        self.active_commands.started(arguments, &result, unowned_before, command.mode)?;
         Ok(result)
     }
 
@@ -151,10 +186,13 @@ impl WorkspaceDeveloperTools {
         let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
         let columns =
             bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
-        let unowned_before = self.ownership.unowned_files(&self.root);
+        let unowned_before = command
+            .mode
+            .is_mutation()
+            .then(|| self.ownership.unowned_files(&self.root))
+            .unwrap_or_default();
         let runtime = self.command_runtime()?.clone();
-        let result = runtime
-            .start_async(StartCommand {
+        let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
                 cwd: &command.cwd,
@@ -164,10 +202,13 @@ impl WorkspaceDeveloperTools {
                 columns: u16::try_from(columns).expect("bounded terminal columns"),
                 idempotency_key: call_id,
                 environment: self.resources.environment_bindings(),
-            })
-            .await?;
+            };
+        let result = match command.mode {
+            CommandExecutionMode::Observational => runtime.start_observational_async(request).await,
+            CommandExecutionMode::Mutation => runtime.start_async(request).await,
+        }?;
         let result = annotate_result(self, result, &command)?;
-        self.active_commands.started(arguments, &result, unowned_before)?;
+        self.active_commands.started(arguments, &result, unowned_before, command.mode)?;
         Ok(result)
     }
 
@@ -275,7 +316,7 @@ impl WorkspaceDeveloperTools {
     }
 
     fn command_runtime(&self) -> Result<&crate::CommandRuntime, DeveloperLoopError> {
-        self.command_runtime.as_ref().ok_or_else(|| tool("writable tools have no command runtime"))
+        self.command_runtime.as_ref().ok_or_else(|| tool("process tools have no command runtime"))
     }
 
     fn parse_command(&self, arguments: &Value) -> Result<ParsedCommand, DeveloperLoopError> {
@@ -311,6 +352,8 @@ impl WorkspaceDeveloperTools {
                     tool("timeout_seconds must be a positive integer representable in milliseconds")
                 })?),
         };
+        let mode = CommandExecutionMode::from_purpose(required_string(arguments, "purpose")?)
+            .ok_or_else(|| tool("command purpose does not select a declared execution mode"))?;
         let allowance = self
             .command_budget
             .as_ref()
@@ -322,6 +365,7 @@ impl WorkspaceDeveloperTools {
             cwd,
             timeout: allowance.timeout,
             allowance,
+            mode,
         })
     }
 }

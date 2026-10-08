@@ -3,6 +3,7 @@
 use super::{WorkspaceDeveloperTools, WorkspaceToolMode};
 use crate::developer_tools::{
     arguments,
+    command_runtime::CommandExecutionMode,
     path::tool,
     wire::{object, observation},
 };
@@ -11,7 +12,11 @@ use peritus_model_protocol::CompletedToolCall;
 use serde_json::Value;
 
 pub(super) enum PreparedTool {
-    Ready { arguments: Value, effect: bool },
+    Ready {
+        arguments: Value,
+        effect: bool,
+        process_mode: Option<CommandExecutionMode>,
+    },
     Observed(DeveloperToolObservation),
 }
 
@@ -36,46 +41,53 @@ impl WorkspaceDeveloperTools {
         if let Some(detail) = self.request_source_denial(call.name().as_str()) {
             return self.denied(call, &arguments, detail);
         }
+        if let Err(error) = arguments::validate(call.name().as_str(), &arguments) {
+            return self.denied(call, &arguments, error.to_string());
+        }
+        let process_mode = match self.process_mode(call.name().as_str(), &arguments) {
+            Ok(mode) => mode,
+            Err(error) => return self.denied(call, &arguments, error.to_string()),
+        };
         // No enrollment, checkpoint, receipt or effect may precede live permission validation.
-        if let Some(detail) = self.permission_denial(call.name().as_str()) {
+        if let Some(detail) = self.permission_denial(call.name().as_str(), process_mode) {
             return self.denied(call, &arguments, detail);
         }
         self.refresh_hard_constraints();
-        if let Err(detail) = self.access_policy.authorize(call.name().as_str(), &arguments) {
+        if let Err(detail) = self.access_policy.authorize_with_process_mode(
+            call.name().as_str(),
+            &arguments,
+            process_mode,
+        ) {
             return self.denied(call, &arguments, detail);
         }
         if self.mode == WorkspaceToolMode::ReadOnly
-            && !matches!(
-                call.name().as_str(),
-                "request_sources" | "request_source_read"
-                    | "context_sources" | "context_source_read"
-                    | "workspace_list" | "workspace_search" | "workspace_read"
-            )
+            && !read_only_role_allows(call.name().as_str(), process_mode)
         {
             return self.denied(call, &arguments, "this role has read-only workspace access");
-        }
-        if let Err(error) = arguments::validate(call.name().as_str(), &arguments) {
-            return self.denied(call, &arguments, error.to_string());
         }
         let effect = matches!(
             call.name().as_str(),
             "workspace_write"
                 | "workspace_patch"
                 | "workspace_remove"
-                | "run_command"
-                | "command_start"
-                | "command_stdin"
-                | "command_resize"
-                | "command_signal"
-                | "command_cancel"
-        ) && self.mode == WorkspaceToolMode::ReadWrite;
+        ) || (process_mode == Some(CommandExecutionMode::Mutation)
+            && matches!(
+                call.name().as_str(),
+                "run_command"
+                    | "command_start"
+                    | "command_stdin"
+                    | "command_resize"
+                    | "command_signal"
+            ));
         if effect && let Some(observation) = self.replay_effect(call, &arguments)? {
             return Ok(PreparedTool::Observed(observation));
         }
-        if let Err(error) = self.prepare_in_place(call.name().as_str(), &arguments) {
+        if let Err(error) =
+            self.prepare_in_place(call.name().as_str(), &arguments, process_mode)
+        {
             return self.denied(call, &arguments, error.to_string());
         }
-        Ok(PreparedTool::Ready { arguments, effect })
+        Ok(PreparedTool::Ready { arguments, effect, process_mode })
     }
 
     pub(super) fn dispatch_prepared(
@@ -134,11 +146,13 @@ impl WorkspaceDeveloperTools {
             Err(error) => (object(vec![("error", Value::String(error.to_string()))]), true, false),
         };
         if accepted {
+            let mut original_checkpoint_completed = false;
             if let Some((handle, request)) = self.active_commands.pending_checkpoint(&value) {
                 // Finalize the original command's checkpoint obligation even when this receipt
                 // came from a read-only poll/recovery. No process effect is dispatched here.
                 self.record_checkpoint("command_poll", &request, &value)?;
                 self.active_commands.checkpoint_completed(&handle)?;
+                original_checkpoint_completed = true;
             }
             self.active_commands.observe(
                 &self.root,
@@ -146,6 +160,13 @@ impl WorkspaceDeveloperTools {
                 &mut self.ownership,
                 &mut self.command_evidence,
             )?;
+            if !effect
+                && !original_checkpoint_completed
+                && call.name().as_str() == "run_command"
+                && value.get("state").and_then(Value::as_str) == Some("completed")
+            {
+                self.record_checkpoint("run_command", arguments, &value)?;
+            }
         }
         if effect {
             if accepted {
@@ -167,4 +188,21 @@ impl WorkspaceDeveloperTools {
         }
         self.finish_observation(call, arguments, &value, is_error, accepted, effect && accepted)
     }
+}
+
+fn read_only_role_allows(
+    tool_name: &str,
+    process_mode: Option<CommandExecutionMode>,
+) -> bool {
+    matches!(
+        tool_name,
+        "request_sources" | "request_source_read"
+            | "context_sources" | "context_source_read"
+            | "workspace_list" | "workspace_search" | "workspace_read"
+            | "command_poll" | "command_recover" | "command_cancel"
+    ) || (matches!(
+        tool_name,
+        "run_command" | "command_start" | "command_stdin" | "command_resize"
+            | "command_signal"
+    ) && process_mode.is_none_or(CommandExecutionMode::is_observational))
 }

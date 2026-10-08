@@ -137,6 +137,7 @@ pub async fn complete(
         let (prompt, attachments) = media.into_parts(request.prompt);
         let mut tools = input.configure_tools(
             WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+                .with_observational_commands(input.command_runtime.clone())
                 .with_grounding(grounding.clone())
                 .with_task_contract(evidence.conversation),
         );

@@ -19,7 +19,7 @@ use peritus_policy::{
 };
 use peritus_process::{
     EXECUTION_INTENT_MEDIA_TYPE, ExecutionAuthorizationRequest, ExecutionIntentPayload,
-    ExecutionPlan,
+    ExecutionPlan, WorkspaceAccess,
 };
 use peritus_protocol::ActionIntentDto;
 use peritus_spec::AcceptanceContract;
@@ -65,7 +65,7 @@ pub(super) struct ProcessAuthority {
     kernel: CommittedKernelTransition,
     capability: CommittedCapabilityUse,
     budget: CommittedBudgetTransition,
-    lease: CommittedLeaseTransition,
+    lease: Option<CommittedLeaseTransition>,
     epoch: CurrentAuthorityEpoch,
 }
 
@@ -80,7 +80,7 @@ impl ProcessAuthority {
             &self.kernel,
             &self.capability,
             &self.budget,
-            Some(&self.lease),
+            self.lease.as_ref(),
             &self.epoch,
             ids.revision,
             ids.session,
@@ -160,7 +160,13 @@ pub(super) fn commit_process(
     let kernel =
         kernel::commit(&mut store, label, ids, contract, &intent, &capability_use, wall_millis)?;
     let (capability, committed_lease) =
-        lease::commit(&mut store, label, ids, capability_use, wall_millis)?;
+        if plan.working_directory().access() == WorkspaceAccess::ReadOnly {
+            (commit_capability(&mut store, label, ids, capability_use)?, None)
+        } else {
+            let (capability, lease) =
+                lease::commit(&mut store, label, ids, capability_use, wall_millis)?;
+            (capability, Some(lease))
+        };
     let budget = commit_budget(&mut store, label, ids, digest, wall_millis)?;
     let epoch = allocate_epoch(&mut store)?;
     Ok(ProcessAuthority { intent, kernel, capability, budget, lease: committed_lease, epoch })

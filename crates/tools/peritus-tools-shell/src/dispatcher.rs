@@ -25,6 +25,7 @@ pub struct ShellDispatcher<'gateway, 'authority, B> {
     backend: Option<B>,
     artifacts: Option<ArtifactStore>,
     descriptor: peritus_tool_protocol::ToolDescriptor,
+    observed: Option<peritus_process::ProcessControl>,
 }
 
 /// One-use dispatcher for an explicitly authorized raw-effect C2 execution plan.
@@ -79,6 +80,12 @@ impl<'gateway, 'authority, B> ShellDispatcher<'gateway, 'authority, B>
 where
     B: NativeSandboxBackend,
 {
+    /// Borrows the control minted by the successfully authorized native launch.
+    #[must_use]
+    pub fn process_control(&self) -> Option<peritus_process::ProcessControl> {
+        self.observed.clone()
+    }
+
     /// Binds all lower-layer authority and one exact precompiled C4-linked C2 plan.
     ///
     /// # Errors
@@ -116,6 +123,7 @@ where
             backend: Some(backend),
             artifacts: Some(artifacts),
             descriptor,
+            observed: None,
         })
     }
 }
@@ -152,13 +160,18 @@ where
         let artifacts = self.artifacts.take().ok_or_else(|| {
             failure::adapter("shell-already-consumed", "shell artifact store was already consumed")
         })?;
+        let process_id = plan.identity().process_id();
+        let process_store = self.gateway.store().clone();
         let owner = self
             .gateway
             .launch_with_backend(self.authorization, plan, &self.sandbox, &self.admission, backend)
             .map_err(|error| failure::process(&error))?;
+        self.observed = Some(owner.control());
         Ok(ToolStart::Active(Box::new(ShellExecution::new(
             prepared,
             owner,
+            process_store,
+            process_id,
             artifacts,
             creating_event,
             started_at,
@@ -192,6 +205,8 @@ impl ToolDispatcher for RawShellDispatcher<'_, '_> {
         let artifacts = self.artifacts.take().ok_or_else(|| {
             failure::adapter("shell-already-consumed", "shell artifact store was already consumed")
         })?;
+        let process_id = plan.identity().process_id();
+        let process_store = self.gateway.store().clone();
         let owner = self
             .gateway
             .launch(self.authorization, plan)
@@ -200,6 +215,8 @@ impl ToolDispatcher for RawShellDispatcher<'_, '_> {
         Ok(ToolStart::Active(Box::new(ShellExecution::new(
             prepared,
             owner,
+            process_store,
+            process_id,
             artifacts,
             creating_event,
             started_at,
@@ -255,22 +272,35 @@ fn validate_invocation(
             "router invocation differs from the C2 caller-bound execution plan",
         ));
     }
-    let expected_command = match prepared.descriptor().name().as_str() {
+    let command_matches = match prepared.descriptor().name().as_str() {
         "shell.exec" => {
-            ExecInput::from_arguments(prepared.arguments()).and_then(|input| input.command())
+            ExecInput::from_arguments(prepared.arguments())
+                .and_then(|input| input.matches_command(plan.command()))
         }
-        "shell.script" => {
-            ScriptInput::from_arguments(prepared.arguments()).and_then(|input| input.command())
-        }
+        "shell.script" => ScriptInput::from_arguments(prepared.arguments())
+            .and_then(|input| input.command())
+            .map(|command| &command == plan.command()),
         _ => Err(mismatch("authorized invocation names another tool")),
     }
     .map_err(|error| failure::adapter("shell-input", error.detail()))?;
-    if &expected_command != plan.command()
+    if !command_matches
         || plan.deadline_policy().wall_timeout_millis() != prepared.call().limits().timeout_millis()
-        || plan.output_policy().spool_bytes() > prepared.call().limits().output_bytes()
-        || plan.output_policy().stdout_bytes() > prepared.call().limits().output_bytes()
-        || plan.output_policy().stderr_bytes() > prepared.call().limits().output_bytes()
-        || plan.output_policy().terminal_bytes() > prepared.call().limits().output_bytes()
+        || exceeds_output_allowance(
+            plan.output_policy().spool_limit(),
+            prepared.call().limits().output_limit(),
+        )
+        || exceeds_output_allowance(
+            plan.output_policy().stdout_limit(),
+            prepared.call().limits().output_limit(),
+        )
+        || exceeds_output_allowance(
+            plan.output_policy().stderr_limit(),
+            prepared.call().limits().output_limit(),
+        )
+        || exceeds_output_allowance(
+            plan.output_policy().terminal_limit(),
+            prepared.call().limits().output_limit(),
+        )
     {
         return Err(failure::adapter(
             "shell-plan-mismatch",
@@ -288,6 +318,14 @@ fn validate_invocation(
         ));
     }
     Ok(())
+}
+
+const fn exceeds_output_allowance(value: Option<u64>, maximum: Option<u64>) -> bool {
+    match (value, maximum) {
+        (_, None) => false,
+        (Some(value), Some(maximum)) => value > maximum,
+        (None, Some(_)) => true,
+    }
 }
 
 fn mismatch(detail: &'static str) -> ShellError {

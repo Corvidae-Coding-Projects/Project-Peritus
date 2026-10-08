@@ -11,6 +11,7 @@ use serde_json::Value;
 use super::{
     access_policy::WorkspaceAccessPolicy,
     command_budget::CommandBudget,
+    command_runtime::CommandExecutionMode,
     effect::atomic_write,
     evidence::CommandEvidence,
     grounding::GroundingEvidence,
@@ -139,14 +140,39 @@ impl WorkspaceDeveloperTools {
         self.command_evidence.successful()
     }
 
-    fn permission_denial(&self, tool_name: &str) -> Option<String> {
+    fn permission_denial(
+        &self,
+        tool_name: &str,
+        process_mode: Option<CommandExecutionMode>,
+    ) -> Option<String> {
         let permissions = self.protection_view.as_ref()?.effective_permissions();
-        first_missing_permission(tool_name, permissions).map(|capability| {
+        first_missing_permission(tool_name, process_mode, permissions).map(|capability| {
             format!(
                 "{tool_name} is disabled by the current {} permission; inspect /permissions",
                 permission_name(capability)
             )
         })
+    }
+
+    fn process_mode(
+        &self,
+        tool_name: &str,
+        arguments: &Value,
+    ) -> Result<Option<CommandExecutionMode>, DeveloperLoopError> {
+        match tool_name {
+            "run_command" | "command_start" => {
+                let purpose = required_string(arguments, "purpose")?;
+                CommandExecutionMode::from_purpose(purpose)
+                    .map(Some)
+                    .ok_or_else(|| tool("command purpose does not select a declared execution mode"))
+            }
+            "command_stdin" | "command_resize" | "command_signal" => self
+                .command_runtime
+                .as_ref()
+                .ok_or_else(|| tool("process controls have no command runtime"))?
+                .control_mode(required_string(arguments, "handle")?),
+            _ => Ok(None),
+        }
     }
 
     fn request_source_denial(&self, tool_name: &str) -> Option<String> {
@@ -199,15 +225,19 @@ impl WorkspaceDeveloperTools {
 
 fn first_missing_permission(
     tool_name: &str,
+    process_mode: Option<CommandExecutionMode>,
     permissions: HostPermissions,
 ) -> Option<PermissionCapability> {
-    required_permissions(tool_name)?
+    required_permissions(tool_name, process_mode)?
         .iter()
         .copied()
         .find(|capability| !permissions.allows(*capability))
 }
 
-fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
+fn required_permissions(
+    tool_name: &str,
+    process_mode: Option<CommandExecutionMode>,
+) -> Option<&'static [PermissionCapability]> {
     use PermissionCapability::{Process, Read, Write};
     match tool_name {
         // Governing user messages and retained assistant history are part of the conversation.
@@ -218,9 +248,25 @@ fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapabilit
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
-        "run_command" | "command_start" | "command_stdin" | "command_resize" | "command_signal" => {
-            Some(&[Read, Write, Process])
+        "run_command" | "command_start"
+            if process_mode == Some(CommandExecutionMode::Observational) =>
+        {
+            Some(&[Read, Process])
         }
+        "run_command" | "command_start" => Some(&[Read, Write, Process]),
+        "command_stdin" | "command_resize" | "command_signal"
+            if process_mode == Some(CommandExecutionMode::Observational) =>
+        {
+            Some(&[Process])
+        }
+        "command_stdin" | "command_resize" | "command_signal"
+            if process_mode == Some(CommandExecutionMode::Mutation) =>
+        {
+            Some(&[Write, Process])
+        }
+        // A settled owned handle cannot accept new control input. Let the runtime return its
+        // stable terminal observation without requiring authority that can no longer be used.
+        "command_stdin" | "command_resize" | "command_signal" => Some(&[]),
         // Observation and cleanup of an already-owned process remain available after revocation.
         "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
         _ => None,
@@ -251,15 +297,29 @@ fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
+        let name = call.name().as_str();
         if matches!(
-            call.name().as_str(),
+            name,
             "request_sources" | "request_source_read" | "context_sources" | "context_source_read"
                 | "workspace_list" | "workspace_search" | "workspace_read"
+                | "command_poll" | "command_recover" | "command_cancel"
         ) {
-            DeveloperToolEffect::ReadOnly
-        } else {
-            DeveloperToolEffect::MutationCapable
+            return DeveloperToolEffect::ReadOnly;
         }
+        if matches!(
+            name,
+            "run_command" | "command_start" | "command_stdin" | "command_resize"
+                | "command_signal"
+        ) {
+            let mode = serde_json::from_slice::<Value>(call.arguments().canonical_bytes())
+                .ok()
+                .and_then(|arguments| self.process_mode(name, &arguments).ok())
+                .flatten();
+            if mode.is_none_or(CommandExecutionMode::is_observational) {
+                return DeveloperToolEffect::ReadOnly;
+            }
+        }
+        DeveloperToolEffect::MutationCapable
     }
 
     fn required_tool_name(&self) -> Option<&str> {
@@ -283,7 +343,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         match self.prepare_dispatch(call)? {
             dispatch::PreparedTool::Observed(observation) => Ok(observation),
-            dispatch::PreparedTool::Ready { arguments, effect } => {
+            dispatch::PreparedTool::Ready { arguments, effect, .. } => {
                 if effect
                     && let Err(error) =
                         self.prepare_effect_checkpoint(call.name().as_str(), &arguments)
@@ -310,7 +370,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
         Box::pin(async move {
             match self.prepare_dispatch(call)? {
                 dispatch::PreparedTool::Observed(observation) => Ok(observation),
-                dispatch::PreparedTool::Ready { arguments, effect } => {
+                dispatch::PreparedTool::Ready { arguments, effect, process_mode } => {
                     if effect
                         && let Err(error) = self
                             .prepare_effect_checkpoint_async(call.name().as_str(), &arguments)
@@ -327,7 +387,9 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                         );
                     }
                     // Permission and protection changes received while waiting remain authoritative.
-                    if let Some(detail) = self.permission_denial(call.name().as_str()) {
+                    if let Some(detail) =
+                        self.permission_denial(call.name().as_str(), process_mode)
+                    {
                         let value = object(vec![("error", Value::String(detail))]);
                         return self.finish_observation(
                             call,
@@ -340,7 +402,11 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     }
                     self.refresh_hard_constraints();
                     if let Err(detail) =
-                        self.access_policy.authorize(call.name().as_str(), &arguments)
+                        self.access_policy.authorize_with_process_mode(
+                            call.name().as_str(),
+                            &arguments,
+                            process_mode,
+                        )
                     {
                         let value = object(vec![("error", Value::String(detail))]);
                         return self.finish_observation(

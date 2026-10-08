@@ -291,13 +291,17 @@ impl WorkspaceDeveloperTools {
             && result.get("state").and_then(Value::as_str) == Some("completed");
         let successful_command =
             completed_command && result.get("success").and_then(Value::as_bool) == Some(true);
+        let mutating_command = completed_command
+            && string(arguments, "purpose")
+                .or_else(|| result.get("purpose").and_then(Value::as_str))
+                == Some("external_effect");
         let mutations = if completed_direct_mutation {
             if name == "workspace_remove" {
                 std::mem::take(&mut self.prepared_mutations)
             } else {
                 self.confirm_direct_file_mutation(arguments, result)?
             }
-        } else if completed_command {
+        } else if mutating_command {
             self.command_mutations()?
         } else {
             self.prepared_mutations.clear();

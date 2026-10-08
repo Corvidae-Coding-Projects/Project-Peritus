@@ -35,12 +35,21 @@ impl ProductRunner {
         let allow_pipeline = writable
             && mode == ConversationMode::Chat
             && input.conversation.permits_pipeline_handoff();
-        let memory = input.working_memory(if mode == ConversationMode::Review {
+        let memory = input.working_memory_async(if mode == ConversationMode::Review {
             "reviewer"
         } else {
             "writer"
-        })?;
+        }).await?;
         let mut continuing_segment = false;
+        let mut grounding_revision = input.conversation.revision();
+        let mut grounding = memory.as_ref()
+            .map(|memory| memory.recover_grounding(
+                &logical_prefix(&input, grounding_revision)?,
+            ).map_err(|error| crate::turn::developer_error(&error)))
+            .transpose()?
+            .unwrap_or_else(|| crate::developer_tools::GroundingEvidence::for_workspace(
+                &input.workspace_root,
+            ));
         loop {
             accounting.check()?;
             let model = if mode == ConversationMode::Review {
@@ -48,8 +57,14 @@ impl ProductRunner {
             } else {
                 &input.providers.writer
             };
+            let revision = input.conversation.revision();
+            if revision != grounding_revision {
+                grounding.clear_repository_evidence();
+                grounding_revision = revision;
+            }
             let mut tools = ConversationTools::new(&input, allow_pipeline);
-            let request = request(
+            tools.workspace = tools.workspace.with_grounding(grounding.clone());
+            let mut request = request(
                 &input,
                 mode,
                 allow_pipeline,
@@ -57,6 +72,16 @@ impl ProductRunner {
                 accounting.latest_snapshot().model_requests(),
                 continuing_segment,
             )?;
+            let logical_prefix = logical_prefix(&input, revision)?;
+            if let Some(prefix) = memory
+                .as_ref()
+                .map(|memory| memory.pending_reentry_prefix(&logical_prefix))
+                .transpose()
+                .map_err(|error| crate::turn::developer_error(&error))?
+                .flatten()
+            {
+                request.request_prefix = prefix;
+            }
             let remaining = accounting.remaining();
             let invocation = crate::local_context::run_live_invocation(
                 model.as_ref(),
@@ -78,6 +103,7 @@ impl ProductRunner {
                 Some(remaining) => tokio::time::timeout(remaining, invocation).await,
                 None => Ok(invocation.await),
             };
+            grounding = tools.workspace.grounding().clone();
             let (cause, reply, detail) = match result {
                 Ok(Ok(result)) => {
                     accounting.check()?;
@@ -88,7 +114,7 @@ impl ProductRunner {
                             continue;
                         }
                         super::check_cancelled(&input)?;
-                        if !tools::pipeline_permissions_allow(input.conversation.as_ref()) {
+                        if !tools::pipeline_permissions_allow(&input) {
                             return Err(invalid(
                                 "pipeline permissions changed before launch; inspect /permissions",
                             ));
@@ -129,6 +155,15 @@ impl ProductRunner {
     }
 }
 
+fn logical_prefix(input: &ProductRunInput, revision: u64) -> Result<String, ProductRunnerError> {
+    let cycle = u32::try_from(revision)
+        .map_err(|_| invalid("conversation revision overflow"))?;
+    Ok(format!(
+        "{}-revision-{revision}-invocation-",
+        crate::turn::request_name(input.run_id, "conversation", cycle),
+    ))
+}
+
 fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
     ProductRunUpdate {
         phase: ProductRunPhase::Finalizing,
@@ -156,22 +191,26 @@ fn settle(
         // Discussing interrupted work does not throw away its continuation. The same production
         // finalizer refreshes its scoped identity and invalidates stale qualification, without
         // running design, writer, checks or review for this read-only conversational turn.
-        let execution = super::state::ExecutionContext::prepare(input)?;
-        return super::settlement::finalize(super::settlement::FinalizationInput {
-            input,
-            baseline: &execution.baseline,
-            recorder: &execution.recorder,
-            design: execution.design.as_ref(),
-            state: execution.state.as_ref(),
-            diff: &execution.evidence.diff,
-            gates: &execution.evidence.gates,
-            review: &execution.evidence.review,
-            gate_report: execution.gate_report.as_ref(),
-            cause,
-            question: reply.map(|message| (message, revision)),
-            detail,
-            next_phase: execution.next_phase,
-        });
+        let mut execution = super::state::ExecutionContext::prepare(input)?;
+        let _ = execution.refresh_obligation_contract(input)?;
+        return super::settlement::finalize_current(
+            super::settlement::FinalizationInput {
+                input,
+                baseline: &execution.baseline,
+                recorder: &execution.recorder,
+                design: execution.design.as_ref(),
+                state: execution.state.as_ref(),
+                diff: &execution.evidence.diff,
+                gates: &execution.evidence.gates,
+                review: &execution.evidence.review,
+                gate_report: execution.gate_report.as_ref(),
+                cause,
+                question: reply.map(|message| (message, revision)),
+                detail,
+                next_phase: execution.next_phase,
+            },
+            &execution.obligations,
+        );
     }
     Ok(ProductRunOutcome {
         settlement: SettlementReducer::new()
@@ -197,10 +236,10 @@ fn invalid(detail: &str) -> ProductRunnerError {
 pub(super) fn system(mode: ConversationMode) -> String {
     let policy = match mode {
         ConversationMode::Chat => {
-            "You are Peritus, a conversational coding assistant. Follow the user's exact scope. Questions, explanations, reviews and diagnosis do not authorize changes. Implement only when asked to implement or fix. Never turn ordinary conversation into an automatic build pipeline. You may answer directly without tools. You have read-only inspection tools and run_pipeline. For an explicitly authorized implementation, fix or effectful task, call run_pipeline to use the existing design, writer, verification, reviewer and fixer workflow. Do not attempt direct edits or commands in conversation. Preserve unrelated changes. Questions, explanations, diagnosis, planning and read-only review stay conversational; they do not authorize pipeline execution."
+            "You are Peritus, a conversational coding assistant. Follow the user's exact scope. Questions, explanations, reviews and diagnosis do not authorize changes. Implement only when asked to implement or fix. Never turn ordinary conversation into an automatic build pipeline. You may answer directly without tools. You have read-only inspection tools, natively confined verification commands, and run_pipeline. For an explicitly authorized implementation, fix or effectful task, call run_pipeline to use the existing design, writer, verification, reviewer and fixer workflow. Do not attempt direct edits or mutation-capable commands in conversation. Preserve unrelated changes. Questions, explanations, diagnosis, planning and read-only review stay conversational; they do not authorize pipeline execution."
         }
         ConversationMode::Plan => {
-            "You are Peritus in read-only planning mode. Discuss and inspect relevant repository evidence to propose a practical design or plan. Do not implement, invoke processes, change files, or claim the plan was approved. Answer conversationally; ask only material questions."
+            "You are Peritus in read-only planning mode. Discuss and inspect relevant repository evidence to propose a practical design or plan. You may run verification commands only through the host's enforced native read-only process boundary. Do not implement, invoke mutation-capable processes, change files, or claim the plan was approved. Answer conversationally; ask only material questions."
         }
         ConversationMode::Review => {
             "You are Peritus performing a fresh independent read-only review. Inspect actual source and changes using the available read-only tools. Report concrete findings with locations and evidence, distinguish uncertainty, and do not implement fixes or claim unrun checks passed. The conversation is context, not proof of correctness."
@@ -242,15 +281,14 @@ fn request(
         local_session_directory: Some(input.native_session_directory(
             if mode == ConversationMode::Review { "reviewer" } else { "writer" },
         )),
-        request_prefix: format!(
-            "{}-{model_requests}",
-            crate::turn::request_name(
-                input.run_id,
-                "conversation",
-                u32::try_from(input.conversation.revision())
-                    .map_err(|_| invalid("conversation revision overflow"))?
-            )
-        ),
+        request_prefix: crate::turn::invocation_request_name(
+            input.run_id,
+            "conversation",
+            u32::try_from(input.conversation.revision())
+                .map_err(|_| invalid("conversation revision overflow"))?,
+            input.conversation.revision(),
+            u64::from(model_requests),
+        )?,
         system: policy,
         prompt,
         attachments,

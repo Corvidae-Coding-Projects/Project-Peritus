@@ -148,6 +148,46 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
             "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. External references are case-sensitive and read-only.",
             WORKSPACE_READ_SCHEMA,
         ),
+        (
+            "run_command",
+            "Run an explicitly labeled verification command to completion. The host admits it only with current read and process permissions and only through a selected native backend that enforces a read-only workspace, denied network, denied secrets, and contained descendants. This tool cannot perform external effects or workspace writes.",
+            r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"cwd":{"type":"string"},"program":{"type":"string"},"purpose":{"enum":["verification"],"type":"string"},"timeout_seconds":{"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_start",
+            "Start an explicitly labeled verification command through the same enforced native read-only process boundary and return its owned handle. Use the handle tools only for that exact retained process.",
+            r#"{"additionalProperties":false,"properties":{"args":{"items":{"type":"string"},"type":"array"},"columns":{"default":80,"maximum":65535,"minimum":1,"type":"integer"},"cwd":{"type":"string"},"interactive":{"default":true,"type":"boolean"},"program":{"type":"string"},"purpose":{"enum":["verification"],"type":"string"},"rows":{"default":24,"maximum":65535,"minimum":1,"type":"integer"},"timeout_seconds":{"maximum":18446744073709551,"minimum":1,"type":"integer"}},"required":["args","program","purpose"],"type":"object"}"#,
+        ),
+        (
+            "command_poll",
+            "Poll an owned verification-command handle without granting new process authority.",
+            COMMAND_HANDLE_SCHEMA,
+        ),
+        (
+            "command_stdin",
+            "Write bounded UTF-8 input to an owned interactive verification process. The original native read-only sandbox remains authoritative.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"text":{"maxLength":65536,"minLength":1,"type":"string"}},"required":["handle","text"],"type":"object"}"#,
+        ),
+        (
+            "command_resize",
+            "Resize the terminal of an owned interactive verification process.",
+            r#"{"additionalProperties":false,"properties":{"columns":{"maximum":65535,"minimum":1,"type":"integer"},"handle":{"type":"string"},"rows":{"maximum":65535,"minimum":1,"type":"integer"}},"required":["columns","handle","rows"],"type":"object"}"#,
+        ),
+        (
+            "command_signal",
+            "Send a supported signal to an owned verification process. The original native read-only sandbox remains authoritative.",
+            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"signal":{"type":"string"}},"required":["handle","signal"],"type":"object"}"#,
+        ),
+        (
+            "command_cancel",
+            "Cancel and reconcile an already-owned process after permission changes without granting new execution authority.",
+            COMMAND_HANDLE_SCHEMA,
+        ),
+        (
+            "command_recover",
+            "Recover the durable observation for an already-owned process without granting new execution authority.",
+            COMMAND_HANDLE_SCHEMA,
+        ),
     ])
 }
 

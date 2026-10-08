@@ -25,6 +25,7 @@ impl ConversationTools {
         Self {
             workspace: input.configure_tools(
                 WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+                    .with_observational_commands(input.command_runtime.clone())
                     .with_task_contract(&input.conversation.render()),
             ),
             requested_revision: None,

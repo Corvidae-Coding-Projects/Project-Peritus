@@ -53,10 +53,15 @@ pub(super) fn load(root: &Path) -> Result<BTreeMap<String, Value>, String> {
             continue;
         }
         let value = if entry.value.get("state").and_then(Value::as_str) == Some("running") {
-            result::indeterminate(
+            let execution_mode = entry.value.get("execution_mode").cloned();
+            let mut value = result::indeterminate(
                 &entry.handle,
                 "the daemon restarted while this command was active; its durable process record was reconciled, but live control cannot be resumed",
-            )
+            );
+            if let (Some(mode), Some(object)) = (execution_mode, value.as_object_mut()) {
+                object.insert("execution_mode".to_owned(), mode);
+            }
+            value
         } else {
             entry.value
         };
@@ -68,6 +73,20 @@ pub(super) fn load(root: &Path) -> Result<BTreeMap<String, Value>, String> {
 pub(super) fn record(root: &Path, handle: &str, value: Value) -> Result<(), String> {
     let path = root.join(FILE_NAME);
     let mut file = read_file(&path)?;
+    // A successful older observation may arrive here after a newer terminal observer released
+    // its invocation lock and published. Preserve the durable lifecycle frontier regardless of
+    // response/render scheduling; a late active update must not erase known terminal truth.
+    if matches!(value.get("state").and_then(Value::as_str), Some("running" | "starting"))
+        && file.entries.iter().any(|entry| {
+            entry.handle == handle
+                && matches!(
+                    entry.value.get("state").and_then(Value::as_str),
+                    Some("completed" | "indeterminate")
+                )
+        })
+    {
+        return Ok(());
+    }
     file.entries.retain(|entry| entry.handle != handle);
     file.entries.push(Projection { handle: handle.to_owned(), value });
     if file.entries.len() > MAX_PROJECTIONS {
@@ -102,6 +121,24 @@ pub(super) fn record(root: &Path, handle: &str, value: Value) -> Result<(), Stri
         .and_then(|directory| directory.sync_all())
         .map_err(|error| format!("sync command projection directory: {error}"))?;
     Ok(())
+}
+
+pub(super) fn record_deferred(
+    root: &Path,
+    handle: &str,
+    value: Value,
+) -> Result<bool, String> {
+    let path = root.join(FILE_NAME);
+    let file = read_file(&path)?;
+    if file.entries.iter().any(|entry| {
+        entry.handle == handle
+            && entry.value.get("state").and_then(Value::as_str) == Some("completed")
+            && entry.value.get("preview_pending").and_then(Value::as_bool) != Some(true)
+    }) {
+        return Ok(false);
+    }
+    record(root, handle, value)?;
+    Ok(true)
 }
 
 fn read_file(path: &Path) -> Result<ProjectionFile, String> {

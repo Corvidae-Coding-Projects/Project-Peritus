@@ -8,6 +8,7 @@ use std::{
 use serde_json::Value;
 
 use super::executor::WorkspaceDeveloperTools;
+use super::command_runtime::CommandExecutionMode;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct WorkspaceAccessPolicy {
@@ -39,6 +40,7 @@ impl WorkspaceDeveloperTools {
     ) -> Self {
         self.access_policy.set_hard_constraints(&self.root, &view.protected_paths());
         self.protection_view = Some(view);
+        self.restore_request_source_evidence();
         self
     }
 
@@ -47,9 +49,19 @@ impl WorkspaceDeveloperTools {
             self.access_policy.set_hard_constraints(&self.root, &view.protected_paths());
         }
     }
+
+    pub(super) fn observe_request_authority(&mut self, text: &str) {
+        self.references.extend_from_task(&self.root, text);
+        self.access_policy.extend_from_transcript(&self.root, text);
+    }
 }
 
 impl WorkspaceAccessPolicy {
+    pub(super) fn merge_request_evidence(&mut self, other: &Self) {
+        self.opaque_paths.extend(other.opaque_paths.iter().cloned());
+        self.hidden_identifiers.extend(other.hidden_identifiers.iter().cloned());
+    }
+
     pub(super) fn protect(&mut self, root: &Path, paths: &[PathBuf]) {
         for path in paths {
             if let Some(relative) = configured_relative(root, path) {
@@ -119,7 +131,28 @@ impl WorkspaceAccessPolicy {
         policy
     }
 
+    fn extend_from_transcript(&mut self, root: &Path, transcript: &str) {
+        let added = Self::from_transcript(root, transcript);
+        self.protected_paths.extend(added.protected_paths);
+        self.opaque_paths.extend(added.opaque_paths);
+        self.hidden_identifiers.extend(added.hidden_identifiers);
+    }
+
     pub(super) fn authorize(&self, tool: &str, arguments: &Value) -> Result<(), String> {
+        let inferred_mode = match arguments.get("purpose").and_then(Value::as_str) {
+            Some("verification") => Some(CommandExecutionMode::Observational),
+            Some("external_effect") => Some(CommandExecutionMode::Mutation),
+            _ => None,
+        };
+        self.authorize_with_process_mode(tool, arguments, inferred_mode)
+    }
+
+    pub(super) fn authorize_with_process_mode(
+        &self,
+        tool: &str,
+        arguments: &Value,
+        process_mode: Option<CommandExecutionMode>,
+    ) -> Result<(), String> {
         match tool {
             "workspace_list" | "workspace_search" | "workspace_read" => {
                 if let Some(path) = arguments.get("path").and_then(Value::as_str) {
@@ -132,8 +165,9 @@ impl WorkspaceAccessPolicy {
                     self.authorize_mutation_path(path)?;
                 }
             }
-            "run_command" | "command_start" | "command_stdin" => {
-                self.authorize_command(arguments)?;
+            "run_command" | "command_start" | "command_stdin" | "command_resize"
+            | "command_signal" => {
+                self.authorize_command(arguments, process_mode)?;
             }
             _ => {}
         }
@@ -172,8 +206,14 @@ impl WorkspaceAccessPolicy {
         Ok(())
     }
 
-    fn authorize_command(&self, arguments: &Value) -> Result<(), String> {
-        if !self.hard_constraint_paths.is_empty() {
+    fn authorize_command(
+        &self,
+        arguments: &Value,
+        process_mode: Option<CommandExecutionMode>,
+    ) -> Result<(), String> {
+        if !self.hard_constraint_paths.is_empty()
+            && process_mode != Some(CommandExecutionMode::Observational)
+        {
             return Err(
                 "process admission refused: the configured command backend cannot confine writes away from protected paths; explicitly revise the constraint or use enforceable file tools"
                     .to_owned(),

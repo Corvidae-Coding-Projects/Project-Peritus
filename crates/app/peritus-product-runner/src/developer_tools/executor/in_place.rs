@@ -2,6 +2,7 @@
 
 use super::{WorkspaceDeveloperTools, WorkspaceToolMode};
 use crate::developer_tools::{
+    command_runtime::CommandExecutionMode,
     path::tool,
     wire::{object, required_string},
 };
@@ -13,6 +14,7 @@ impl WorkspaceDeveloperTools {
         &self,
         name: &str,
         arguments: &Value,
+        process_mode: Option<CommandExecutionMode>,
     ) -> Result<(), DeveloperLoopError> {
         let Some(scope) = &self.in_place_scope else {
             return Ok(());
@@ -30,6 +32,7 @@ impl WorkspaceDeveloperTools {
                 .map_err(|error| tool(error.to_string()))?;
         }
         if matches!(name, "run_command" | "command_start")
+            && process_mode == Some(CommandExecutionMode::Mutation)
             && scope.paths().map_err(|error| tool(error.to_string()))?.is_empty()
         {
             return Err(tool(
