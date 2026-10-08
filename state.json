@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3922,
-        "tip_oid": "bffed5b7f28bf78cb22e5919cc779faa3865611a",
-        "prefix_sha256": "fd7392454f78805b923ecc577146c03267cb9c2089042f390b4b69d15d8bb554"
+        "sequence": 3923,
+        "tip_oid": "afa504d8fab4c6cc01b7d449646e14656a0d558d",
+        "prefix_sha256": "3f71c07912fb0ec7a08d7e52bd65e6c9a42887f45f2ffd89844057bd95d974d9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3164,
+  "next_comment_id": 3165,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -27103,7 +27103,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.518596553Z",
-      "updated_at": "2026-10-06T13:27:50.521364326Z",
+      "updated_at": "2026-10-08T00:57:10.052604989Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -27114,6 +27114,15 @@
           "content": "Systemic repair plan for L431: E3 blocking stage effects cannot observe cancellation through the execution-port contract.\n\nOwning contract and implementation boundary: crates/analysis/peritus-eval/src/execution/port.rs:12-36,56-129,132-165; src/execution/directive.rs:12-28,137-147; src/execution/observation.rs:11-51,249-260. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nGive effect ownership an interruptible, resumable contract carrying cancellation and exact stage/continuation identity. Retain partial outcomes and failed-stage resource observations before reconciliation or retry. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "e58ffbbb-bd79-4691-8f58-2bc4ca86d4d8": {
+          "display_id": 3164,
+          "author": "6ME5",
+          "content": "Code complete in commit 1ef30df59: candidate/evaluator stages carry stable stage and continuation identity plus live monotonic cancellation; cancellation is observed before and after effects. Failed/interrupted stages retain partial resources and exact continuations; late results cannot override cancellation and malformed observations cannot become verdicts. Necessary adapter migrated. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T00:57:10.043503265Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALxLwk9cbv8F3MOgC+b5f9muQh5JecAaqo232Ae8GPwKOMpEDbGNjyLmYy00S+aKJC+IC0D9GzUNYqBcP1ZdwDg=="
         }
       }
     },
