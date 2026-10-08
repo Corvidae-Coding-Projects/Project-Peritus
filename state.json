@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4193,
-        "tip_oid": "852c902d6c3786eda140dbaaec6d88e57c57e0f6",
-        "prefix_sha256": "35782aedec70569617fefcbccf2ad7d8892da8dc4465630b8bb8993998840b57"
+        "sequence": 4194,
+        "tip_oid": "149100c4e426f89d1bc01173642a9d6950ad8b04",
+        "prefix_sha256": "98ebd4c8544385ee65221ff747114a4092c04f382c95f29f7edee2dfcded2774"
       },
       "NWAR": {
         "sequence": 39,
@@ -22362,12 +22362,13 @@
       "display_id": 798,
       "title": "[L798] Attachment previews select launcher role defaults instead of the active conversation's provider",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L798.\n\n- Evidence: `crates/app/peritus-tui/src/model/chat/workbench/images.rs:1-245`, `files.rs:1-341`, and `files/import.rs:1-300`, all completely read; `src/model/chat.rs:278-284` and binding/receipt callers already fully read.\n- Behavior: Image reads, workspace-file previews, external-text imports, and their confirmation checks take the writer profile from `ProductUi::providers`, which represents the launcher's next-run role selection. Ordinary chat uses `chat_providers`, which first prefers the selected run snapshot's actual providers. Attachment model choice is separately taken from `chat.models.writer`. Thus opening an existing conversation with a different provider can pair its model with the launcher's default profile for preview/consent. Confirmation consistently checks that same launcher profile, rather than resolving the conversation's authoritative provider.\n- Consequence: A daily-driving attachment can be rejected by an unrelated default profile's model/media capabilities, or inspected against the wrong provider selection. The exact consent checks themselves are necessary; their source of identity must be corrected. This source-derived mismatch was not reproduced against the installed daemon.\n- Repair direction: Resolve provider/model selection through the same exact conversation/run binding used for chat, and invalidate a preview only when that authoritative binding changes. Keep byte digest, workspace, model, and user-confirmation identity together.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.865586747Z",
-      "updated_at": "2026-10-08T22:56:34.069658739Z",
+      "updated_at": "2026-10-08T22:58:11.832885234Z",
+      "closed_at": "2026-10-08T22:58:11.829685224Z",
       "labels": [
         "daily-driving-limiter"
       ],
