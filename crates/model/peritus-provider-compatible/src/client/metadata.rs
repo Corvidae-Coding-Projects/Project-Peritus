@@ -21,7 +21,8 @@ pub(super) fn success(
     {
         events.push(provider_text_event("compatible.request_id", &value)?);
     }
-    if let Some(mapping) = mappings.rate_limit() {
+    let mut windows = Vec::new();
+    for mapping in mappings.rate_limits() {
         let limit = integer_header(headers, mapping.limit().as_str())?;
         let remaining = integer_header(headers, mapping.remaining().as_str())?;
         let reset = match integer_header(headers, mapping.reset().as_str())? {
@@ -37,10 +38,13 @@ pub(super) fn success(
         if limit.is_some() || remaining.is_some() || reset.is_some() {
             let window = RateLimitWindow::new(mapping.dimension().clone(), limit, remaining, reset)
                 .map_err(|_| error::malformed("compatible rate-limit headers were inconsistent"))?;
-            let observation = RateLimitObservation::new(vec![window])
-                .map_err(|_| error::malformed("compatible rate-limit observation was invalid"))?;
-            events.push(ModelEvent::RateLimit(observation));
+            windows.push(window);
         }
+    }
+    if !windows.is_empty() {
+        let observation = RateLimitObservation::new(windows)
+            .map_err(|_| error::malformed("compatible rate-limit observation was invalid"))?;
+        events.push(ModelEvent::RateLimit(observation));
     }
     Ok(events)
 }

@@ -137,6 +137,12 @@ impl RetryPolicy {
         Self::checked(max_attempts, delays, None, max_cumulative_bytes)
     }
 
+    /// Returns the cumulative encoded request-byte budget for this finite policy.
+    #[must_use]
+    pub const fn max_cumulative_bytes(self) -> u64 {
+        self.max_cumulative_bytes
+    }
+
     /// Plans the next action from checked deterministic observations.
     ///
     /// # Errors

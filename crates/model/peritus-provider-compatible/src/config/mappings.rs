@@ -51,14 +51,14 @@ impl CompatibleRetryStatuses {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct CompatibleResponseHeaders {
     request_id: Option<HeaderName>,
-    rate_limit: Option<CompatibleRateHeaders>,
+    rate_limits: Vec<CompatibleRateHeaders>,
 }
 
 impl CompatibleResponseHeaders {
     /// Creates an empty mapping. No provider-specific response header is inferred.
     #[must_use]
     pub const fn none() -> Self {
-        Self { request_id: None, rate_limit: None }
+        Self { request_id: None, rate_limits: Vec::new() }
     }
 
     /// Maps one explicitly documented nonsensitive provider request-ID header.
@@ -79,7 +79,15 @@ impl CompatibleResponseHeaders {
     /// Maps one explicitly documented rate-limit header group.
     #[must_use]
     pub fn with_rate_limit(mut self, mapping: CompatibleRateHeaders) -> Self {
-        self.rate_limit = Some(mapping);
+        if let Some(index) = self
+            .rate_limits
+            .iter()
+            .position(|existing| existing.dimension() == mapping.dimension())
+        {
+            self.rate_limits[index] = mapping;
+        } else {
+            self.rate_limits.push(mapping);
+        }
         self
     }
 
@@ -91,8 +99,14 @@ impl CompatibleResponseHeaders {
 
     /// Returns the rate-limit header mapping when explicitly mapped.
     #[must_use]
-    pub const fn rate_limit(&self) -> Option<&CompatibleRateHeaders> {
-        self.rate_limit.as_ref()
+    pub fn rate_limit(&self) -> Option<&CompatibleRateHeaders> {
+        self.rate_limits.first()
+    }
+
+    /// Returns every explicitly mapped rate-limit dimension in stable insertion order.
+    #[must_use]
+    pub fn rate_limits(&self) -> &[CompatibleRateHeaders] {
+        &self.rate_limits
     }
 }
 

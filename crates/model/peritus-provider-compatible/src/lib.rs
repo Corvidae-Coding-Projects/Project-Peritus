@@ -13,8 +13,8 @@ mod stream;
 
 pub use client::CompatibleClient;
 pub use config::{
-    CompatibleAuth, CompatibleConfig, CompatibleHeader, CompatibleRateHeaders, CompatibleResetUnit,
-    CompatibleResponseHeaders, CompatibleRetryStatuses, CredentialScheme,
+    CompatibleAuth, CompatibleConfig, CompatibleHeader, CompatibleLimits, CompatibleRateHeaders,
+    CompatibleResetUnit, CompatibleResponseHeaders, CompatibleRetryStatuses, CredentialScheme,
 };
 pub use profile::{
     CompatibleContract, CompatibleProfile, CreateReplayGuarantee, EventMapping, RequestField,

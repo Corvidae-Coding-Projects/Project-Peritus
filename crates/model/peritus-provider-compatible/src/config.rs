@@ -18,8 +18,7 @@ use peritus_provider_core::{
 
 use crate::error;
 
-const MAX_FIXED_HEADERS: usize = 16;
-const MAX_FIXED_HEADER_VALUE_BYTES: usize = 4_096;
+const MANDATORY_REQUEST_HEADERS: usize = 3;
 
 /// Credential value projection for a compatible endpoint.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -125,7 +124,7 @@ impl CompatibleHeader {
         if reserved_header(name.as_str())
             || secret_header_name(name.as_str())
             || value.is_empty()
-            || value.len() > MAX_FIXED_HEADER_VALUE_BYTES
+            || value.len() > HttpLimits::PRODUCTION.max_header_bytes()
             || value.bytes().any(|byte| byte < 0x20 || byte == 0x7f)
         {
             return Err(error::configuration(
@@ -156,6 +155,98 @@ impl fmt::Debug for CompatibleHeader {
     }
 }
 
+/// Deliberately selected physical capacities for one compatible adapter.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct CompatibleLimits {
+    http: HttpLimits,
+    framing: FramingLimits,
+    protocol: ProtocolLimits,
+    max_fixed_headers: usize,
+    max_fixed_header_value_bytes: usize,
+}
+
+impl CompatibleLimits {
+    /// Production-wide capacities with no compatible-only hidden narrowing.
+    pub const PRODUCTION: Self = Self {
+        http: HttpLimits::PRODUCTION,
+        framing: FramingLimits::PRODUCTION,
+        protocol: ProtocolLimits::PRODUCTION,
+        max_fixed_headers: HttpLimits::PRODUCTION.max_headers() - MANDATORY_REQUEST_HEADERS,
+        max_fixed_header_value_bytes: HttpLimits::PRODUCTION.max_header_bytes(),
+    };
+
+    /// Creates an internally consistent set of compatible-adapter capacities.
+    ///
+    /// # Errors
+    ///
+    /// Rejects capacities that cannot fit the adapter's mandatory headers or that allow the HTTP
+    /// transport to admit chunks, frames, or output larger than downstream consumers accept.
+    pub fn new(
+        http: HttpLimits,
+        framing: FramingLimits,
+        protocol: ProtocolLimits,
+        max_fixed_headers: usize,
+        max_fixed_header_value_bytes: usize,
+    ) -> Result<Self, ProviderCoreError> {
+        if http.max_headers() < MANDATORY_REQUEST_HEADERS
+            || max_fixed_headers
+                > http.max_headers().saturating_sub(MANDATORY_REQUEST_HEADERS)
+            || max_fixed_header_value_bytes == 0
+            || max_fixed_header_value_bytes > http.max_header_bytes()
+            || http.max_chunk_bytes() > framing.max_buffer_bytes()
+            || protocol.max_event_bytes() > framing.max_frame_bytes()
+            || protocol.max_output_bytes() > http.max_response_body_bytes()
+        {
+            return Err(error::configuration(
+                "compatible capacities are inconsistent across HTTP, framing, protocol, or fixed headers",
+            ));
+        }
+        Ok(Self {
+            http,
+            framing,
+            protocol,
+            max_fixed_headers,
+            max_fixed_header_value_bytes,
+        })
+    }
+
+    /// Returns HTTP request, response, header, and chunk capacities.
+    #[must_use]
+    pub const fn http(self) -> HttpLimits {
+        self.http
+    }
+
+    /// Returns incremental framing capacities.
+    #[must_use]
+    pub const fn framing(self) -> FramingLimits {
+        self.framing
+    }
+
+    /// Returns normalized protocol capacities.
+    #[must_use]
+    pub const fn protocol(self) -> ProtocolLimits {
+        self.protocol
+    }
+
+    /// Returns the maximum caller-supplied fixed-header count.
+    #[must_use]
+    pub const fn max_fixed_headers(self) -> usize {
+        self.max_fixed_headers
+    }
+
+    /// Returns the maximum bytes in one caller-supplied fixed-header value.
+    #[must_use]
+    pub const fn max_fixed_header_value_bytes(self) -> usize {
+        self.max_fixed_header_value_bytes
+    }
+}
+
+impl Default for CompatibleLimits {
+    fn default() -> Self {
+        Self::PRODUCTION
+    }
+}
+
 /// Exact compatible endpoint and transport policy.
 #[derive(Clone)]
 pub struct CompatibleConfig {
@@ -166,9 +257,8 @@ pub struct CompatibleConfig {
     response_headers: CompatibleResponseHeaders,
     retry_statuses: CompatibleRetryStatuses,
     retry_policy: RetryPolicy,
-    http_limits: HttpLimits,
-    framing_limits: FramingLimits,
-    protocol_limits: ProtocolLimits,
+    finite_retries: bool,
+    limits: CompatibleLimits,
 }
 
 impl CompatibleConfig {
@@ -198,9 +288,8 @@ impl CompatibleConfig {
                 [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
                 64 * 1024 * 1024,
             )?,
-            http_limits: HttpLimits::PRODUCTION,
-            framing_limits: FramingLimits::PRODUCTION,
-            protocol_limits: ProtocolLimits::PRODUCTION,
+            finite_retries: false,
+            limits: CompatibleLimits::PRODUCTION,
         })
     }
 
@@ -243,23 +332,28 @@ impl CompatibleConfig {
         mut self,
         headers: Vec<CompatibleHeader>,
     ) -> Result<Self, ProviderCoreError> {
-        let mut names = BTreeSet::new();
-        if headers.len() > MAX_FIXED_HEADERS
-            || headers.iter().any(|header| !names.insert(header.name.as_str()))
-        {
-            return Err(error::configuration(
-                "fixed compatible headers are duplicated or exceed their count bound",
-            ));
-        }
+        validate_fixed_headers(&headers, self.limits)?;
         self.fixed_headers = headers;
         Ok(self)
     }
 
-    /// Replaces the bounded retry policy.
+    /// Explicitly enables finite in-adapter retries with the supplied request budget.
     #[must_use]
     pub const fn with_retry_policy(mut self, retry_policy: RetryPolicy) -> Self {
         self.retry_policy = retry_policy;
+        self.finite_retries = true;
         self
+    }
+
+    /// Selects the compatible adapter's physical capacities.
+    ///
+    /// # Errors
+    ///
+    /// Rejects existing fixed headers that do not fit the selected capacities.
+    pub fn with_limits(mut self, limits: CompatibleLimits) -> Result<Self, ProviderCoreError> {
+        validate_fixed_headers(&self.fixed_headers, limits)?;
+        self.limits = limits;
+        Ok(self)
     }
 
     /// Installs exact documented response-header mappings.
@@ -306,28 +400,43 @@ impl CompatibleConfig {
         self.retry_statuses
     }
 
-    /// Returns the bounded retry policy.
+    /// Returns the legacy finite retry bounds.
+    ///
+    /// These bounds are active only after [`Self::with_retry_policy`] explicitly enables adapter
+    /// retries. New durable callers should inspect [`Self::finite_retry_policy`].
     #[must_use]
     pub const fn retry_policy(&self) -> RetryPolicy {
         self.retry_policy
     }
 
+    /// Returns the explicitly enabled finite adapter retry policy, if any.
+    #[must_use]
+    pub const fn finite_retry_policy(&self) -> Option<RetryPolicy> {
+        if self.finite_retries { Some(self.retry_policy) } else { None }
+    }
+
+    /// Returns all deliberately selected physical capacities.
+    #[must_use]
+    pub const fn limits(&self) -> CompatibleLimits {
+        self.limits
+    }
+
     /// Returns HTTP request, response, and header limits.
     #[must_use]
     pub const fn http_limits(&self) -> HttpLimits {
-        self.http_limits
+        self.limits.http()
     }
 
     /// Returns SSE framing limits.
     #[must_use]
     pub const fn framing_limits(&self) -> FramingLimits {
-        self.framing_limits
+        self.limits.framing()
     }
 
     /// Returns provider-neutral event and output limits.
     #[must_use]
     pub const fn protocol_limits(&self) -> ProtocolLimits {
-        self.protocol_limits
+        self.limits.protocol()
     }
 }
 
@@ -342,11 +451,28 @@ impl fmt::Debug for CompatibleConfig {
             .field("response_headers", &self.response_headers)
             .field("retry_statuses", &self.retry_statuses)
             .field("retry_policy", &self.retry_policy)
-            .field("http_limits", &self.http_limits)
-            .field("framing_limits", &self.framing_limits)
-            .field("protocol_limits", &self.protocol_limits)
+            .field("finite_retries", &self.finite_retries)
+            .field("limits", &self.limits)
             .finish()
     }
+}
+
+fn validate_fixed_headers(
+    headers: &[CompatibleHeader],
+    limits: CompatibleLimits,
+) -> Result<(), ProviderCoreError> {
+    let mut names = BTreeSet::new();
+    if headers.len() > limits.max_fixed_headers()
+        || headers
+            .iter()
+            .any(|header| header.value.len() > limits.max_fixed_header_value_bytes())
+        || headers.iter().any(|header| !names.insert(header.name.as_str()))
+    {
+        return Err(error::configuration(
+            "fixed compatible headers are duplicated or exceed selected capacities",
+        ));
+    }
+    Ok(())
 }
 
 fn operation_path(endpoint: &str) -> Option<&str> {

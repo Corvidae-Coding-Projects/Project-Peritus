@@ -35,12 +35,34 @@ pub(super) fn is_event_stream(headers: &HttpHeaders) -> bool {
         })
 }
 
-pub(super) fn add_request_bytes(total: u64, length: usize) -> Result<u64, ProviderCoreError> {
+fn add_request_bytes(total: u64, length: usize) -> Result<u64, ProviderCoreError> {
     let length = u64::try_from(length)
         .map_err(|_| error::limit("compatible request length was not representable"))?;
     total
         .checked_add(length)
         .ok_or_else(|| error::limit("compatible cumulative request bytes overflowed"))
+}
+
+pub(super) fn admit_request_bytes(
+    total: u64,
+    length: usize,
+    maximum: u64,
+) -> Result<u64, ProviderCoreError> {
+    let next = add_request_bytes(total, length)?;
+    if next > maximum {
+        return Err(error::limit(
+            "compatible encoded request exceeded its explicit finite retry byte budget",
+        ));
+    }
+    Ok(next)
+}
+
+pub(super) fn can_admit_request_bytes(
+    total: u64,
+    length: usize,
+    maximum: u64,
+) -> Result<bool, ProviderCoreError> {
+    Ok(add_request_bytes(total, length)? <= maximum)
 }
 
 pub(super) fn failure_stream(

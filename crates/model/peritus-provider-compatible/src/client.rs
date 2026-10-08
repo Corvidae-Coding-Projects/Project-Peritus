@@ -142,6 +142,7 @@ impl ModelProvider for CompatibleClient {
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
+            let retry_policy = self.config.finite_retry_policy();
             loop {
                 if cancellation.is_cancelled() {
                     return Err(ProviderCoreError::cancelled("compatible_start"));
@@ -149,23 +150,40 @@ impl ModelProvider for CompatibleClient {
                 let credential = self.credentials.resolve(self.config.auth().credential())?;
                 let http_request =
                     request::http_request(&self.config, &self.profile, &request, credential)?;
-                cumulative_bytes =
-                    response::add_request_bytes(cumulative_bytes, http_request.body().len())?;
+                let request_bytes = http_request.body().len();
+                if let Some(policy) = retry_policy {
+                    cumulative_bytes = response::admit_request_bytes(
+                        cumulative_bytes,
+                        request_bytes,
+                        policy.max_cumulative_bytes(),
+                    )?;
+                }
                 let http_response = match self.transport.send(http_request, &cancellation).await {
                     Ok(value) => value,
                     Err(failure) if failure.kind() == ProviderCoreErrorKind::Cancelled => {
                         return Err(failure);
                     }
                     Err(failure) if failure.kind() == ProviderCoreErrorKind::Connect => {
-                        let observation = RetryObservation::new(
-                            attempt,
-                            started.elapsed(),
-                            cumulative_bytes,
-                            SubmissionState::NotSent,
-                            RetryFailure::Connect,
-                        );
-                        let directive = self.config.retry_policy().plan(observation)?;
-                        if directive.action() != RetryAction::RetryFresh {
+                        let directive = if let Some(policy) = retry_policy {
+                            let observation = RetryObservation::new(
+                                attempt,
+                                started.elapsed(),
+                                cumulative_bytes,
+                                SubmissionState::NotSent,
+                                RetryFailure::Connect,
+                            );
+                            let directive = policy.plan(observation)?;
+                            (directive.action() == RetryAction::RetryFresh
+                                && response::can_admit_request_bytes(
+                                    cumulative_bytes,
+                                    request_bytes,
+                                    policy.max_cumulative_bytes(),
+                                )?)
+                            .then_some(directive)
+                        } else {
+                            None
+                        };
+                        let Some(directive) = directive else {
                             return response::failure_stream(
                                 &self.profile,
                                 &cancellation,
@@ -175,7 +193,7 @@ impl ModelProvider for CompatibleClient {
                                 peritus_model_protocol::Retryability::SafeNewRequest,
                                 "compatible.connect.failed",
                             );
-                        }
+                        };
                         wait_for_backoff(directive, &cancellation).await?;
                         attempt = next_attempt(attempt)?;
                         continue;
@@ -208,7 +226,7 @@ impl ModelProvider for CompatibleClient {
                         &headers,
                         self.profile.provider_profile().provider(),
                     )?;
-                    if let Some((failure, retry_after)) = retry {
+                    if let (Some(policy), Some((failure, retry_after))) = (retry_policy, retry) {
                         let mut observation = RetryObservation::new(
                             attempt,
                             started.elapsed(),
@@ -219,8 +237,14 @@ impl ModelProvider for CompatibleClient {
                         if let Some(delay) = retry_after.map(Duration::from_millis) {
                             observation = observation.with_retry_after(delay);
                         }
-                        let directive = self.config.retry_policy().plan(observation)?;
-                        if directive.action() == RetryAction::RetryFresh {
+                        let directive = policy.plan(observation)?;
+                        if directive.action() == RetryAction::RetryFresh
+                            && response::can_admit_request_bytes(
+                                cumulative_bytes,
+                                request_bytes,
+                                policy.max_cumulative_bytes(),
+                            )?
+                        {
                             wait_for_backoff(directive, &cancellation).await?;
                             attempt = next_attempt(attempt)?;
                             continue;
