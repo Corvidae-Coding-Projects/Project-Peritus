@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L044] Any leave-alone path disables all unconfined commands (#143)
 - [L451] F0 recovery can report terminal completion without checking retained artifact/evidence observations (#530)
 - [L616] Windows managed networking adds a five-second native transaction wait and ephemeral filter ownership (#672)
 - [L450] Ordinary F0 committed-command replay fails after later checkpoint progress (#529)
