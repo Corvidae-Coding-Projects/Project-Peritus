@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3956,
-        "tip_oid": "dde448a7351732b58e29923aba9ec1007ff8c91f",
-        "prefix_sha256": "00f84c536714e650e484d0399931c48bcdef6d308ecda3d8c5d3113a1d66145d"
+        "sequence": 3957,
+        "tip_oid": "b7d46ff8b9450d7886cd0271577069debb587ae2",
+        "prefix_sha256": "26554603774e177e0bac2af09f377256ecc15b47b52e20023ebc3ab4540c22d7"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3181,
+  "next_comment_id": 3182,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -33024,7 +33024,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.975347828Z",
-      "updated_at": "2026-10-06T13:19:07.977674915Z",
+      "updated_at": "2026-10-08T01:50:31.410273110Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -33035,6 +33035,15 @@
           "content": "Systemic repair plan for L035: Tool writes and completed-command receipts impose a tighter file ceiling.\n\nOwning contract and implementation boundary: peritus-product-runner/src/developer_tools/executor.rs:27; executor/effects.rs:203-208,234-253; checkpoint_observer.rs:129-170; checkpoint_observer.rs:333-355. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse one artifact-backed effect evidence contract across direct writes, patches, checkpoint capture and completed commands. Stream large file bodies and record their exact digests; preflight must establish durable settlement capacity before mutation. A completed command must settle its actual outcome even if a later display cannot inline its generated file.\n\nPreserve: committed command/event identity, exact causal and digest roots, exclusive ownership, atomic publication, reference-safe artifact retention and verified recovery from the last durable frontier. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: history beyond the reported count/byte boundaries, lock contention lasting beyond the old patience window, lost commit acknowledgements followed by later progress, torn uncommitted tails and true committed corruption, then reopen and resolve exact historical receipts. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "e944f2d6-fe44-4db8-a0f3-8ba3975bf6dc": {
+          "display_id": 3181,
+          "author": "6ME5",
+          "content": "Code complete in commit 4883cbacd: file writes and literal patches no longer hit the independent 2MiB ceiling. Fixed-memory transformation stages and syncs complete output before atomic replacement; streamed digest/size evidence is shared by effect receipts, postimage/restart reconciliation and completed commands. Permissions, expected postimages and concurrent-target identity remain checked before sealing. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:50:31.400629379Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA0XPhi4JYuCVkNa/Otuj8ULR4gOvJA2UWuOpL5EodwSk2m1Ugnim4Uj6s/mef8KF2WRVJM3AHoVfzvJWO4DdNAw=="
         }
       }
     },
