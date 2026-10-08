@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L104] Tool schemas add fixed property/enum bounds and byte-based exported string cardinality (#203)
 - [L674] CLI artifact transfers lose resumable progress and output replacement has a destructive failure gap (#715)
 - [L514] Telemetry queues impose finite item counts and bounded shutdown flushing (#587)
 - [L103] Tool JSON envelopes have production ceilings that callers cannot widen (#202)
