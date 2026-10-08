@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L030] Product task, detail, deliverable, and page admission (#129)
 - [L434] E3 retry retention acknowledges the only execution directive without scheduling the next attempt (#514)
 - [L605] Windows capability gates rely on synchronous and incomplete probe evidence (#661)
 - [L433] E3 refuses cancellation once deterministic analysis begins (#513)
