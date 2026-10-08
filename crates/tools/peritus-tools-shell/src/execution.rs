@@ -5,4 +5,4 @@ pub mod failure;
 mod progress;
 mod terminal;
 
-pub use active::ShellExecution;
+pub use active::{RecoveredTerminalExecution, ShellExecution};

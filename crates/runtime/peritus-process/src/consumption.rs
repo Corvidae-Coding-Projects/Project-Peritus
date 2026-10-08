@@ -44,6 +44,7 @@ use watchdog::configured_crash_watchdog;
 pub use completion::{
     RetainedCompletionBinding, RetainedOwnerCompletionStatus, RetainedStreamSnapshot,
 };
+pub use state::{ProcessClaimState, ProcessReceipt};
 
 struct StoreState {
     index: RegistryIndex,

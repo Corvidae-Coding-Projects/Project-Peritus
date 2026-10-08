@@ -8,7 +8,8 @@ pub use crate::command::{
     native_executable_reference_matches,
 };
 pub use crate::consumption::{
-    ProcessStore, RetainedCompletionBinding, RetainedOwnerCompletionStatus,
+    ProcessClaimState, ProcessReceipt, ProcessStore, RetainedCompletionBinding,
+    RetainedOwnerCompletionStatus,
     RetainedStreamSnapshot,
 };
 pub use crate::control::{ProcessControl, ProcessSignal};

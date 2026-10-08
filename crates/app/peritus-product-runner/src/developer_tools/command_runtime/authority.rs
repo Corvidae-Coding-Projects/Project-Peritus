@@ -58,6 +58,14 @@ impl ToolAuthority {
             prepared.prepared_digest(),
         )
     }
+
+    pub(super) fn dispatch_event(&self) -> Result<peritus_types::EventId, String> {
+        let records = self.kernel.batch().records();
+        match records {
+            [record] => Ok(record.event_id()),
+            _ => Err("command tool authority did not retain one exact dispatch event".to_owned()),
+        }
+    }
 }
 
 pub(super) struct ProcessAuthority {
@@ -89,6 +97,12 @@ impl ProcessAuthority {
             instant(20),
             plan.digest(),
         )
+    }
+
+    pub(super) fn action_digest(&self) -> Result<Sha256Digest, String> {
+        self.intent
+            .digest(CodecLimits::PRODUCTION)
+            .map_err(|error| format!("digest retained command process intent: {error}"))
     }
 }
 

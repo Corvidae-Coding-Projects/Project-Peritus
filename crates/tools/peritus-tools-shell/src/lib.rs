@@ -12,6 +12,6 @@ mod render;
 pub use catalog::{exec_descriptor, script_descriptor};
 pub use dispatcher::{RawShellDispatcher, ShellDispatcher};
 pub use error::{ShellError, ShellErrorKind};
-pub use execution::ShellExecution;
+pub use execution::{RecoveredTerminalExecution, ShellExecution};
 pub use input::{ExecInput, ScriptInput};
 pub use plan::ExecutionPlanInputs;

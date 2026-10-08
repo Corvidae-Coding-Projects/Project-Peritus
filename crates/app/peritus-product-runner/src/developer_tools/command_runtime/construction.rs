@@ -1,10 +1,10 @@
 //! Construction of managed-workspace and explicitly trusted direct-folder command runtimes.
 
-use super::{ARTIFACT_QUOTA_BYTES, CommandRuntime, RuntimeInner, RuntimeState, plan, runtime_open};
+use super::{CommandRuntime, RuntimeInner, RuntimeState, cancellation, replay_index, runtime_open};
 use peritus_artifact_store::StoreConfig;
 use peritus_policy::{OperationDescriptor, OperationRegistry, RiskSet};
 use peritus_process::{ExecutionGateway, ProcessStore};
-use peritus_tool_router::{RouterLimits, ToolRegistry, ToolRouter};
+use peritus_tool_router::{RouterLimits, ToolRegistry};
 use peritus_tools_shell::exec_descriptor;
 use peritus_types::RunId;
 use std::{
@@ -76,10 +76,8 @@ impl CommandRuntime {
                 "command state and agent-visible workspace roots overlap".to_owned(),
             ));
         }
-        let artifacts = StoreConfig::new(
+        let artifacts = StoreConfig::for_available_space_without_artifact_limit(
             state_root.join("artifacts"),
-            plan::OUTPUT_BYTES,
-            ARTIFACT_QUOTA_BYTES,
         )
         .map_err(|error| runtime_open(error.to_string()))?;
         let descriptor = exec_descriptor().map_err(|error| runtime_open(error.to_string()))?;
@@ -94,28 +92,42 @@ impl CommandRuntime {
             .map_err(|error| runtime_open(format!("{error:?}")))?;
         let registry = ToolRegistry::new(vec![Arc::new(descriptor)], &operations)
             .map_err(|error| runtime_open(error.to_string()))?;
-        let limits =
-            RouterLimits::new(64, 4_096).map_err(|error| runtime_open(error.to_string()))?;
-        let recovered = super::projections::load(&state_root).map_err(runtime_open)?;
-        Ok(Self {
+        let allocation_pages =
+            RouterLimits::new(1, 1).map_err(|error| runtime_open(error.to_string()))?;
+        let replay_index = replay_index::ReplayIndex::open(&state_root).map_err(runtime_open)?;
+        let projections = super::projections::Store::open(&state_root).map_err(runtime_open)?;
+        let cancellation_worker =
+            cancellation::CancellationWorker::start().map_err(runtime_open)?;
+        let runtime = Self {
             local_context: crate::LocalContextConfig::default(),
+            managed_gate_network: super::ManagedGateNetworkCatalog::default(),
+            managed_gate_workspace: None,
             inner: Arc::new(RuntimeInner {
                 run_id,
                 workspace_root,
                 state_root,
                 artifacts,
+                registry,
+                router_limits: allocation_pages,
+                replay_index,
+                projections,
+                cancellation_worker,
                 gateway: ExecutionGateway::new(process_store),
+                projection_lock: Mutex::new(()),
                 state: Mutex::new(RuntimeState {
-                    router: ToolRouter::new(registry, limits),
                     next_ordinal: 0,
                     next_folder_patch_ordinal: 0,
+                    starting: BTreeMap::new(),
                     active: BTreeMap::new(),
                     terminal: BTreeMap::new(),
-                    recovered,
+                    recovered: BTreeMap::new(),
+                    replay_pending: BTreeMap::new(),
                 }),
                 #[cfg(test)]
                 state_guard: None,
             }),
-        })
+        };
+        runtime.rebuild_reconnect().map_err(runtime_open)?;
+        Ok(runtime)
     }
 }

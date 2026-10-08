@@ -25,6 +25,7 @@ mod preview;
 mod preview_terminal;
 pub use preview_terminal::PreviewTerminal;
 mod projections;
+mod reconnect;
 mod replay_index;
 mod result;
 mod sandbox;
@@ -78,6 +79,7 @@ struct RuntimeInner {
     registry: ToolRegistry,
     router_limits: RouterLimits,
     replay_index: replay_index::ReplayIndex,
+    projections: projections::Store,
     cancellation_worker: cancellation::CancellationWorker,
     gateway: ExecutionGateway,
     projection_lock: Mutex<()>,
@@ -114,6 +116,7 @@ struct ActiveCommand {
     router: CommandRouter,
     invocation: InvocationHandle,
     started: Instant,
+    observed_base: AuthorityInstant,
     interactive: bool,
     resource_evidence: Option<Value>,
     protected_paths: Vec<PathBuf>,
@@ -703,14 +706,23 @@ impl CommandRuntime {
         let projection = {
             let state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
             if let Some(terminal) = state.terminal.get(handle) {
-                result::terminal_deferred(handle, &terminal.result, &terminal.progress)
+                Some(result::terminal_deferred(handle, &terminal.result, &terminal.progress))
             } else if let Some(recovered) = state.recovered.get(handle) {
-                recovered.clone()
+                Some(recovered.clone())
             } else if state.starting.contains_key(handle) || state.active.contains_key(handle) {
                 return Err(tool("command output is available only after terminal completion"));
             } else {
-                return Err(tool("command invocation handle is unknown"));
+                None
             }
+        };
+        let projection = match projection {
+            Some(projection) => projection,
+            None => self
+                .inner
+                .projections
+                .lookup(handle)
+                .map_err(tool)?
+                .ok_or_else(|| tool("command invocation handle is unknown"))?,
         };
         result::read_output_page(
             &projection,
@@ -771,6 +783,7 @@ impl CommandRuntime {
                 .map_err(|_| tool("command runtime is poisoned"))?;
             state.next_ordinal = state.next_ordinal.max(ordinal);
         }
+        let idempotency_key = identity::bounded_key(request.idempotency_key);
         let command = plan::compile(
             &self.inner.registry,
             &ids,
@@ -785,7 +798,7 @@ impl CommandRuntime {
                 interactive: request.interactive,
                 rows: request.rows,
                 columns: request.columns,
-                idempotency_key: identity::bounded_key(request.idempotency_key),
+                idempotency_key: idempotency_key.clone(),
                 environment: request.environment,
                 mode,
                 protected_paths: request.protected_paths,
@@ -810,6 +823,23 @@ impl CommandRuntime {
             &command.execution,
         )
         .map_err(tool)?;
+        ensure_not_cancelled(cancellation)?;
+        let reconnect = projections::ReconnectReceipt::new(
+            &command.prepared,
+            &command.execution,
+            process_authority.action_digest().map_err(tool)?,
+            tool_authority.dispatch_event().map_err(tool)?,
+            idempotency_key,
+            request.interactive,
+            mode,
+            resource_evidence.clone(),
+            request.protected_paths.to_vec(),
+        )
+        .map_err(tool)?;
+        self.inner
+            .projections
+            .record_receipt(&reconnect)
+            .map_err(tool)?;
         ensure_not_cancelled(cancellation)?;
         let process_request = process_authority.request(&ids, &command.execution);
         let artifacts = ArtifactStore::open(self.inner.artifacts.clone())
@@ -1007,6 +1037,10 @@ impl CommandRuntime {
                                 router: Arc::clone(&router_owner),
                                 invocation,
                                 started,
+                                observed_base: AuthorityInstant::new(
+                                    peritus_types::Generation::first(),
+                                    20,
+                                ),
                                 interactive: request.interactive,
                                 resource_evidence: resource_evidence.clone(),
                                 protected_paths: request.protected_paths.to_vec(),
@@ -1091,6 +1125,10 @@ impl CommandRuntime {
                         router: Arc::clone(&router_owner),
                         invocation,
                         started,
+                        observed_base: AuthorityInstant::new(
+                            peritus_types::Generation::first(),
+                            20,
+                        ),
                         interactive: request.interactive,
                         resource_evidence: resource_evidence.clone(),
                         protected_paths: request.protected_paths.to_vec(),
@@ -1674,16 +1712,21 @@ impl CommandRuntime {
                 elapsed_millis,
             });
         }
-        let active = state
-            .active
-            .get(handle)
-            .ok_or_else(|| tool("command invocation handle is unknown"))?;
-        Ok(ObservationTarget::Active {
-            router: Arc::clone(&active.router),
-            control: active.control.clone(),
-            invocation: active.invocation,
-            observed_at: observed_at(active.started),
-        })
+        if let Some(active) = state.active.get(handle) {
+            return Ok(ObservationTarget::Active {
+                router: Arc::clone(&active.router),
+                control: active.control.clone(),
+                invocation: active.invocation,
+                observed_at: observed_at(active.observed_base, active.started),
+            });
+        }
+        drop(state);
+        self.inner
+            .projections
+            .lookup(handle)
+            .map_err(tool)?
+            .map(ObservationTarget::Recovered)
+            .ok_or_else(|| tool("command invocation handle is unknown"))
     }
 
     pub(super) fn control_mode(
@@ -1704,7 +1747,12 @@ impl CommandRuntime {
         if state.terminal.contains_key(handle) || state.recovered.contains_key(handle) {
             return Ok(None);
         }
-        Err(tool("command invocation handle is unknown"))
+        drop(state);
+        if self.inner.projections.lookup(handle).map_err(tool)?.is_some() {
+            Ok(None)
+        } else {
+            Err(tool("command invocation handle is unknown"))
+        }
     }
 
     pub(super) fn control_confinement(
@@ -1721,7 +1769,12 @@ impl CommandRuntime {
         if state.terminal.contains_key(handle) || state.recovered.contains_key(handle) {
             return Ok(None);
         }
-        Err(tool("command invocation handle is unknown"))
+        drop(state);
+        if self.inner.projections.lookup(handle).map_err(tool)?.is_some() {
+            Ok(None)
+        } else {
+            Err(tool("command invocation handle is unknown"))
+        }
     }
 
     fn projection_context(
@@ -1751,10 +1804,29 @@ impl CommandRuntime {
                 resource_evidence: command.resource_evidence.clone(),
             });
         }
-        let recovered = state.recovered.get(handle);
+        if let Some(recovered) = state.recovered.get(handle) {
+            return Ok(ProjectionContext {
+                mode: execution_mode_from_value(recovered),
+                resource_evidence: recovered.get("execution_resources").cloned(),
+            });
+        }
+        drop(state);
+        if let Some(receipt) = self
+            .inner
+            .projections
+            .receipt_for_handle(handle)
+            .map_err(tool)?
+        {
+            return Ok(ProjectionContext {
+                mode: Some(receipt.mode),
+                resource_evidence: receipt.resource_evidence,
+            });
+        }
+        let recovered = self.inner.projections.lookup(handle).map_err(tool)?;
         Ok(ProjectionContext {
-            mode: recovered.and_then(execution_mode_from_value),
+            mode: recovered.as_ref().and_then(execution_mode_from_value),
             resource_evidence: recovered
+                .as_ref()
                 .and_then(|value| value.get("execution_resources"))
                 .cloned(),
         })
@@ -1854,7 +1926,16 @@ impl CommandRuntime {
             .projection_lock
             .lock()
             .map_err(|_| tool("command projection writer is poisoned"))?;
-        projections::record(&self.inner.state_root, handle, value).map_err(tool)
+        self.inner.projections.record(handle, value).map_err(tool)
+    }
+
+    fn repair_projection(&self, handle: &str, value: Value) -> Result<(), DeveloperLoopError> {
+        let _guard = self
+            .inner
+            .projection_lock
+            .lock()
+            .map_err(|_| tool("command projection writer is poisoned"))?;
+        self.inner.projections.repair(handle, value).map_err(tool)
     }
 
     fn record_deferred_projection(
@@ -1867,7 +1948,7 @@ impl CommandRuntime {
             .projection_lock
             .lock()
             .map_err(|_| tool("command projection writer is poisoned"))?;
-        projections::record_deferred(&self.inner.state_root, handle, value)
+        self.inner.projections.record_deferred(handle, value)
             .map(|_| ())
             .map_err(tool)
     }
@@ -1894,7 +1975,18 @@ impl CommandRuntime {
                 .any(|action_id| identity::action_hex(*action_id) == handle);
             return Ok(final_projection && !publication_pending);
         }
-        Err(tool("command invocation handle is unknown"))
+        let publication_pending = state
+            .replay_pending
+            .keys()
+            .any(|action_id| identity::action_hex(*action_id) == handle);
+        drop(state);
+        let Some(projection) = self.inner.projections.lookup(handle).map_err(tool)? else {
+            return Err(tool("command invocation handle is unknown"));
+        };
+        Ok(matches!(
+            projection.get("state").and_then(Value::as_str),
+            Some("completed" | "indeterminate")
+        ) && !publication_pending)
     }
 
     fn pending_replay_action_for_handle(
@@ -1984,9 +2076,9 @@ enum Observation {
     Recover,
 }
 
-fn observed_at(started: Instant) -> AuthorityInstant {
+fn observed_at(base: AuthorityInstant, started: Instant) -> AuthorityInstant {
     let elapsed = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    AuthorityInstant::new(peritus_types::Generation::first(), 20_u64.saturating_add(elapsed))
+    AuthorityInstant::new(base.epoch(), base.tick_millis().saturating_add(elapsed))
 }
 
 fn ensure_not_cancelled(cancellation: &CancellationToken) -> Result<(), DeveloperLoopError> {

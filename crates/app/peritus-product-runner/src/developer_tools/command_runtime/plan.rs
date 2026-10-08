@@ -257,6 +257,70 @@ pub(super) fn compile(
     Ok(CommandPlan { prepared, execution, backend })
 }
 
+/// Reconstructs the exact effect-free C4 preparation bound into a retained C2 plan.
+pub(super) fn recover_prepared(
+    registry: &ToolRegistry,
+    execution: &ExecutionPlan,
+    idempotency_key: String,
+) -> Result<PreparedToolCall, String> {
+    let binding = execution
+        .caller_binding()
+        .ok_or_else(|| "recovered command plan has no C4 caller binding".to_owned())?;
+    let wire_executable = execution
+        .command()
+        .executable()
+        .to_str()
+        .map(str::to_owned)
+        .unwrap_or_else(|| native_executable_reference(execution.command().executable()));
+    let arguments = execution
+        .command()
+        .arguments()
+        .iter()
+        .map(|argument| {
+            argument
+                .to_str()
+                .map(str::to_owned)
+                .ok_or_else(|| "recovered command argument is not C4 UTF-8".to_owned())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let wire_arguments = object(vec![
+        ("arguments", Value::Array(arguments.into_iter().map(Value::String).collect())),
+        ("executable", Value::String(wire_executable)),
+    ]);
+    let arguments = BoundedJson::parse(&wire_arguments.to_string(), JsonLimits::PRODUCTION)
+        .map_err(|error| format!("restore command tool arguments: {error}"))?;
+    let timeout_millis = execution.deadline_policy().wall_timeout_millis();
+    let limits = CallLimits::with_optional_output(
+        timeout_millis,
+        None,
+        MODEL_OUTPUT_BYTES,
+        MODEL_OUTPUT_BYTES,
+        4_096,
+        3,
+    )
+    .map_err(|error| format!("restore command call limits: {error}"))?
+    .with_paged_progress();
+    let identity = execution.identity();
+    let call = ToolCall::new(
+        identity.action_id(),
+        binding.capability_name().clone(),
+        SemanticVersion::new(2, 0, 0)
+            .map_err(|error| format!("restore command tool version: {error}"))?,
+        arguments,
+        limits,
+        identity.revision(),
+        AuthorityInstant::new(
+            peritus_types::Generation::first(),
+            timeout_millis.map_or(21, |timeout| timeout.saturating_add(21)),
+        ),
+        IdempotencyKey::new(idempotency_key)
+            .map_err(|error| format!("restore command idempotency key: {error}"))?,
+    );
+    registry
+        .prepare(call)
+        .map_err(|error| format!("restore prepared command call: {error}"))
+}
+
 fn environment(bindings: Vec<(String, String)>) -> Result<EnvironmentPlan, String> {
     let allowlist = std::env::vars_os()
         .map(|(name, _)| name)
