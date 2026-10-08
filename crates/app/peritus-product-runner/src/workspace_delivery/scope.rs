@@ -15,7 +15,6 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const MAX_JOURNAL_BYTES: u64 = 64 * 1024 * 1024;
 const MAX_PREVIEW_BYTES: usize = 16 * 1024;
 
 #[cfg(test)]
@@ -228,9 +227,6 @@ impl ScopedBaseline {
         let mut bytes = serde_json::to_vec(&entry).map_err(|error| failure(error.to_string()))?;
         bytes.push(b'\n');
         let size = self.journal_size()?;
-        if size.unwrap_or(0).saturating_add(bytes.len() as u64) > MAX_JOURNAL_BYTES {
-            return Err(failure("in-place evidence journal exceeds its bound"));
-        }
         let mut options = fs::OpenOptions::new();
         options.append(true);
         if size.is_none() {
@@ -365,14 +361,8 @@ impl ScopedBaseline {
 
     fn journal_size(&self) -> Result<Option<u64>, ProductRunnerError> {
         match fs::symlink_metadata(&self.journal) {
-            Ok(meta)
-                if meta.is_file()
-                    && !meta.file_type().is_symlink()
-                    && meta.len() <= MAX_JOURNAL_BYTES =>
-            {
-                Ok(Some(meta.len()))
-            }
-            Ok(_) => Err(failure("in-place evidence is not a bounded regular journal")),
+            Ok(meta) if meta.is_file() && !meta.file_type().is_symlink() => Ok(Some(meta.len())),
+            Ok(_) => Err(failure("in-place evidence is not a regular owned journal")),
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(error) => Err(failure(error.to_string())),
         }

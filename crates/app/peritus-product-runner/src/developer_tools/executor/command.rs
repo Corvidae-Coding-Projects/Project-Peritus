@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use super::WorkspaceDeveloperTools;
 use crate::developer_tools::{
+    argument_contract,
     command_budget::{CommandAllowance, CommandDeadlineSource},
     command_runtime::{CommandExecutionMode, StartCommand},
     effect::reject_destructive_command,
@@ -246,8 +247,20 @@ impl WorkspaceDeveloperTools {
     }
 
     pub(super) fn resize_command(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        let rows = bounded_u64(arguments, "rows", 0, 0, u16::MAX.into());
-        let columns = bounded_u64(arguments, "columns", 0, 0, u16::MAX.into());
+        let rows = bounded_u64(
+            arguments,
+            "rows",
+            0,
+            0,
+            argument_contract::MAX_TERMINAL_DIMENSION,
+        );
+        let columns = bounded_u64(
+            arguments,
+            "columns",
+            0,
+            0,
+            argument_contract::MAX_TERMINAL_DIMENSION,
+        );
         self.command_runtime()?.resize(
             required_string(arguments, "handle")?,
             u16::try_from(rows).expect("bounded terminal rows"),
@@ -259,8 +272,20 @@ impl WorkspaceDeveloperTools {
         &self,
         arguments: &Value,
     ) -> Result<Value, DeveloperLoopError> {
-        let rows = bounded_u64(arguments, "rows", 0, 0, u16::MAX.into());
-        let columns = bounded_u64(arguments, "columns", 0, 0, u16::MAX.into());
+        let rows = bounded_u64(
+            arguments,
+            "rows",
+            0,
+            0,
+            argument_contract::MAX_TERMINAL_DIMENSION,
+        );
+        let columns = bounded_u64(
+            arguments,
+            "columns",
+            0,
+            0,
+            argument_contract::MAX_TERMINAL_DIMENSION,
+        );
         let handle = required_string(arguments, "handle")?.to_owned();
         let runtime = self.command_runtime()?.clone();
         runtime

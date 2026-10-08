@@ -6,6 +6,8 @@ use peritus_model_protocol::{
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
+use super::argument_contract;
+
 const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#;
 const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"max_results":{"minimum":1,"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#;
 const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"type":"string"},"end_line":{"minimum":1,"type":"integer"},"path":{"type":"string"},"start_line":{"minimum":1,"type":"integer"}},"required":["path"],"type":"object"}"#;
@@ -84,13 +86,13 @@ pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
         ),
         (
             "command_stdin",
-            "Write non-empty UTF-8 text to an active interactive command handle, then return its latest state.",
-            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"text":{"maxLength":65536,"minLength":1,"type":"string"}},"required":["handle","text"],"type":"object"}"#,
+            "Write non-empty UTF-8 text to an active interactive command handle. One transport-bounded call is streamed through backend-sized controls on the same retained owner; the result reports requested and acknowledged byte counts and a next byte offset when admission stops early.",
+            argument_contract::COMMAND_STDIN_SCHEMA,
         ),
         (
             "command_resize",
-            "Resize the terminal attached to an active interactive command handle.",
-            r#"{"additionalProperties":false,"properties":{"columns":{"maximum":65535,"minimum":1,"type":"integer"},"handle":{"type":"string"},"rows":{"maximum":65535,"minimum":1,"type":"integer"}},"required":["columns","handle","rows"],"type":"object"}"#,
+            "Resize the terminal attached to an active interactive command handle. Positive rows and columns issue one backend resize; zero rows and zero columns perform an owned observation without changing terminal dimensions. Mixed zero and positive dimensions are malformed.",
+            argument_contract::COMMAND_RESIZE_SCHEMA,
         ),
         (
             "command_signal",
@@ -165,13 +167,13 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
         ),
         (
             "command_stdin",
-            "Write bounded UTF-8 input to an owned interactive verification process. The original native read-only sandbox remains authoritative.",
-            r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"text":{"maxLength":65536,"minLength":1,"type":"string"}},"required":["handle","text"],"type":"object"}"#,
+            "Write transport-bounded UTF-8 input to an owned interactive verification process. The host streams it through acknowledged backend byte chunks on the same retained owner; the original native read-only sandbox remains authoritative.",
+            argument_contract::COMMAND_STDIN_SCHEMA,
         ),
         (
             "command_resize",
-            "Resize the terminal of an owned interactive verification process.",
-            r#"{"additionalProperties":false,"properties":{"columns":{"maximum":65535,"minimum":1,"type":"integer"},"handle":{"type":"string"},"rows":{"maximum":65535,"minimum":1,"type":"integer"}},"required":["columns","handle","rows"],"type":"object"}"#,
+            "Resize the terminal of an owned interactive verification process. Positive dimensions resize it; zero/zero observes the retained owner without changing its terminal.",
+            argument_contract::COMMAND_RESIZE_SCHEMA,
         ),
         (
             "command_signal",
@@ -194,8 +196,8 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
 pub fn in_place_definition() -> Result<ToolDefinition, ProductRunnerError> {
     definition(
         "workspace_scope",
-        "Declare additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
-        r#"{"type":"object","additionalProperties":false,"properties":{"paths":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":256}},"required":["paths"]}"#,
+        "Declare one transport-bounded page of additional exact workspace-relative task files BEFORE a command creates or modifies them in an in-place folder. Repeat with further pages to extend the same durable scope; each result acknowledges only that page and reports the cumulative tracked count. File reads/writes are enrolled automatically. This records comparison evidence, not permission; preserve unrelated/private files. Do not declare a whole home directory or build-cache tree.",
+        argument_contract::WORKSPACE_SCOPE_SCHEMA,
     )
 }
 

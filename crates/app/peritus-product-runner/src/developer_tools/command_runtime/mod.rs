@@ -244,6 +244,7 @@ struct AdvancedObservation {
     observation: AdvancedObservationKind,
     retain_projection: bool,
     control: Option<peritus_process::ProcessControl>,
+    control_admitted: Option<bool>,
 }
 
 enum AdvancedObservationKind {
@@ -1257,6 +1258,7 @@ impl CommandRuntime {
             observation,
             retain_projection: persist_projection,
             control,
+            control_admitted,
         } = advanced;
         let publication_action = match &observation {
             AdvancedObservationKind::Terminal(terminal) => Some(terminal.result.action_id()),
@@ -1282,11 +1284,17 @@ impl CommandRuntime {
                 return Err(error);
             }
         };
-        let value = with_execution_context(
+        let mut value = with_execution_context(
             value,
             context.mode,
             context.resource_evidence.as_ref(),
         );
+        if let Some(admitted) = control_admitted {
+            value
+                .as_object_mut()
+                .ok_or_else(|| tool("command control observation is not an object"))?
+                .insert("control_admitted".to_owned(), Value::Bool(admitted));
+        }
         if persist_projection {
             if publication_action.is_some() {
                 if let Err(error) = self.record_projection(handle, value.clone()) {
@@ -1313,6 +1321,7 @@ impl CommandRuntime {
         handle: &str,
         operation: Observation,
     ) -> Result<AdvancedObservation, DeveloperLoopError> {
+        let control_requested = matches!(&operation, Observation::Control(_));
         let target = self.observation_target(handle)?;
         let (router_owner, control, invocation) = match target {
             ObservationTarget::Active { router, control, invocation, .. } => {
@@ -1323,6 +1332,7 @@ impl CommandRuntime {
                     observation: AdvancedObservationKind::Terminal(terminal),
                     retain_projection: true,
                     control: None,
+                    control_admitted: control_requested.then_some(false),
                 });
             }
             ObservationTarget::Recovered(value) => {
@@ -1332,6 +1342,7 @@ impl CommandRuntime {
                     observation: AdvancedObservationKind::Recovered(value),
                     retain_projection,
                     control: None,
+                    control_admitted: control_requested.then_some(false),
                 });
             }
             ObservationTarget::Starting { process_id, interactive, elapsed_millis } => {
@@ -1343,6 +1354,7 @@ impl CommandRuntime {
                     },
                     retain_projection: false,
                     control: None,
+                    control_admitted: control_requested.then_some(false),
                 });
             }
         };
@@ -1404,6 +1416,7 @@ impl CommandRuntime {
                     observation,
                     retain_projection,
                     control: None,
+                    control_admitted: control_requested.then_some(false),
                 });
             }
         };
@@ -1459,6 +1472,7 @@ impl CommandRuntime {
                         // be downgraded to running by a late rejected-control response.
                         retain_projection: false,
                         control,
+                        control_admitted: control_requested.then_some(false),
                     });
                 }
                 let publication_pending = settled
@@ -1593,7 +1607,12 @@ impl CommandRuntime {
                 indeterminate_projection.expect("indeterminate command retains its projection"),
             ),
         };
-        Ok(AdvancedObservation { observation, retain_projection: true, control })
+        Ok(AdvancedObservation {
+            observation,
+            retain_projection: true,
+            control,
+            control_admitted: control_requested.then_some(true),
+        })
     }
 
     fn observation_target(&self, handle: &str) -> Result<ObservationTarget, DeveloperLoopError> {

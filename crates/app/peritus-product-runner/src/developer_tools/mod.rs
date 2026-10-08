@@ -5,6 +5,8 @@ use serde_json::Value;
 #[cfg(not(verus_only))]
 mod access_policy;
 #[cfg(not(verus_only))]
+mod argument_contract;
+#[cfg(not(verus_only))]
 mod arguments;
 #[cfg(not(verus_only))]
 mod catalog;
@@ -43,14 +45,21 @@ mod wire;
 pub use catalog::{definitions, in_place_definition, read_only_definitions};
 #[cfg(not(verus_only))]
 pub use command_runtime::{
-    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, PreviewTerminal,
+    CommandRuntime, FolderPatchAuthority, FolderPatchAuthorityPlan, ManagedGateNetworkCatalog,
+    ManagedGateNetworkDestination, ManagedGateNetworkGrant, PreviewTerminal,
 };
+#[cfg(not(verus_only))]
+pub(crate) use command_runtime::{GateInvocationOutcome, GateInvocationRequest};
 #[cfg(not(verus_only))]
 pub use evidence::{CommandPurpose, SuccessfulCommand, merge_successful};
 #[cfg(not(verus_only))]
 pub use executor::ToolCheckpointBoundary;
 #[cfg(not(verus_only))]
 pub use executor::WorkspaceDeveloperTools;
+#[cfg(not(verus_only))]
+pub(crate) use grounding::GroundingEvidence;
+#[cfg(not(verus_only))]
+pub(crate) use inspection::{DirectoryListingOwner, ListingError};
 pub use folder_patch_request::FolderPatchAuthorityPlanRequest;
 #[cfg(not(verus_only))]
 pub use ownership::WorkspaceOwnership;
@@ -93,13 +102,28 @@ pub fn checked_protected_file_for_developer(
     contract: &str,
     protected: &[std::path::PathBuf],
 ) -> Result<std::path::PathBuf, peritus_agent::DeveloperLoopError> {
+    checked_context_file_for_developer(root, relative, contract, protected)?.ok_or_else(|| {
+        path::tool("context file dependency is outside the current task's access policy")
+    })
+}
+
+/// Distinguishes an intentional context-policy omission from a path or inspection failure.
+/// The returned path is only an observation; the caller must open and verify its own read.
+#[cfg(not(verus_only))]
+pub(crate) fn checked_context_file_for_developer(
+    root: &std::path::Path,
+    relative: &str,
+    contract: &str,
+    protected: &[std::path::PathBuf],
+) -> Result<Option<std::path::PathBuf>, peritus_agent::DeveloperLoopError> {
     let mut policy = access_policy::WorkspaceAccessPolicy::from_transcript(root, contract);
     policy.protect(root, protected);
-    policy
+    if policy
         .authorize("workspace_read", &Value::from_iter([("path", Value::from(relative))]))
-        .map_err(|_| {
-            path::tool("context file dependency is outside the current task's access policy")
-        })?;
+        .is_err()
+    {
+        return Ok(None);
+    }
     let selected = peritus_patch::WorkspacePath::new(relative)
         .map_err(|error| path::tool(error.to_string()))?;
     let identity = peritus_workspace::FolderIdentity::observe(root)
@@ -107,5 +131,5 @@ pub fn checked_protected_file_for_developer(
     let inspection = peritus_workspace::FolderInspection::open(&identity)
         .map_err(|error| path::tool(error.to_string()))?;
     inspection.check_path(&selected, true).map_err(|error| path::tool(error.to_string()))?;
-    Ok(root.join(selected.as_path()))
+    Ok(Some(root.join(selected.as_path())))
 }
