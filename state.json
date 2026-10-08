@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3965,
-        "tip_oid": "7f175386de12210aa77f17f428b934032dc315f1",
-        "prefix_sha256": "04df7c14f98e8cdda07fb5b2b61c8b5e59d61cf18c164ac897b2f60c7a9adca4"
+        "sequence": 3966,
+        "tip_oid": "d522198aa72fbacba7ed934cbaf2fceed20fe4b8",
+        "prefix_sha256": "4b22527cd3a2e380fe2272d8ff8fa957221bd6d9fa369959740e364819034bdc"
       },
       "NWAR": {
         "sequence": 39,
@@ -40681,12 +40681,13 @@
       "display_id": 519,
       "title": "[L439] E3 bootstrap analysis performs every resample synchronously with no durable cursor or cancellation",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L439.\n\n- Evidence: `crates/analysis/peritus-eval/src/statistics/paired.rs:189-245,248-284`, `src/report/analysis.rs:72-122,245-306`, `src/limits.rs:13-24`, `src/aggregate/reducer.rs:285-293` in the same crate.\n- Behavior: Bootstrap allocates one result per replicate and, for every task in every replicate, allocates a new preimage and computes SHA-256. It then sorts the complete result vector. The normal frozen policy allows up to 100,000 replicates over up to 2,048 selected tasks. The statistical functions are synchronous and have no cancellation/progress parameter, checkpoint cursor or resumable partial result. Public compare_paired requires only a positive replicate count rather than checking EvaluationLimits itself.\n- Consequence: An admitted maximum-size campaign can require 204.8 million hash/draw iterations in one analysis call before a result is returned, while durable campaign cancellation is forbidden during Analyzing (L433). A process restart recomputes analysis rather than resuming a saved replicate cursor. This is a counted loop bound, not a measured runtime or proof of the live writer's stall. Statistical confidence and probability bounds are mathematical preconditions, not execution deadlines.\n- Repair direction: Preserve deterministic seed/draw identity while processing resamples in cancellable, durable batches. Expose progress and resumable state; make requested statistical workload explicit instead of relying on a compulsory compiled ceiling to contain blocking computation. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.560330686Z",
-      "updated_at": "2026-10-08T02:02:45.981980081Z",
+      "updated_at": "2026-10-08T02:04:20.576696966Z",
+      "closed_at": "2026-10-08T02:04:20.573663472Z",
       "labels": [
         "daily-driving-limiter"
       ],
