@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4091,
-        "tip_oid": "3a36efaf967446d7ddc1b37445d9dda4945c7715",
-        "prefix_sha256": "42d312ef34e7b0407e7282fbb4e2a13cf07de009b77c1b04390aade5527a46ea"
+        "sequence": 4092,
+        "tip_oid": "3b277f404143f501771cd75bce4b52cbe5e03bda",
+        "prefix_sha256": "5233d74b549134d1160d00cd871e80f80c9721a0f8f3856c4848120f1843d3eb"
       },
       "NWAR": {
         "sequence": 39,
@@ -28262,12 +28262,13 @@
       "display_id": 547,
       "title": "[L469] Connection qualification conflicts with explicitly selected reasoning effort",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L469.\n\n- Evidence: `crates/model/peritus-provider-core/src/effort.rs:19-30,70-86`, `src/qualification/canary.rs:20-29`, `src/connection.rs:132-145` in the same crate.\n- Behavior: select_reasoning_effort wraps the provider and refuses every start whose ReasoningPolicy is not exactly the selected effort. Live-canary construction instead hardcodes Low whenever reasoning controls are supported. Connection-test tool/result stages always choose Disabled. These helpers do not read ModelProvider::reasoning_effort or negotiate the selected wrapper's requirement. Canary output is capped at min(256, profile maximum); tool stages at min(512, profile maximum).\n- Consequence: a valid selected Medium/High/etc. wrapper cannot start that live canary; even a Low wrapper cannot run the tool stages as constructed. Qualification can therefore fail locally despite valid credentials and transport. The effect on current UI flows depends on whether their caller supplies the wrapper; no current login flow exercised. These small output caps are explicit qualification-request policy, not a limit on all ordinary turns.\n- Repair direction: construct qualification requests from the exact immutable selection, or deliberately qualify its underlying transport while labeling what the evidence covers. Preserve the user's selected effort and report policy incompatibility separately from credential repair. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.691186290Z",
-      "updated_at": "2026-10-08T05:40:06.422396796Z",
+      "updated_at": "2026-10-08T05:41:58.642524781Z",
+      "closed_at": "2026-10-08T05:41:58.639826959Z",
       "labels": [
         "daily-driving-limiter"
       ],
