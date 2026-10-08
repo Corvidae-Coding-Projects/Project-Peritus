@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L634] Filesystem schemas impose whole-file and inline-mutation ceilings without ranged alternatives (#685)
 - [L469] Connection qualification conflicts with explicitly selected reasoning effort (#547)
 - [L052] Candidate freshness capture retries exactly three times (#151)
 - [L468] Live provider qualification bypasses normalized response legality (#546)
