@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3991,
-        "tip_oid": "277d247d7288d0dd52c587f38574adf8f60773cc",
-        "prefix_sha256": "fa312b97ceabb2029f0ca5d99fa4fb6211a72bcd2161ae36879f1d5872b9e774"
+        "sequence": 3992,
+        "tip_oid": "445abe9c9b60c4c5b5cdfa0f057cc0b16d4186bb",
+        "prefix_sha256": "8ec6bc36139ffcfb74dd9a5183c694ffaf096ecf2fea4d242c39422ff7115922"
       },
       "NWAR": {
         "sequence": 39,
@@ -33403,12 +33403,13 @@
       "display_id": 524,
       "title": "[L445] F0 delta admission cannot represent several legitimate evolvable harness changes",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L445.\n\n- Evidence: `crates/analysis/peritus-evolution/src/change/delta.rs:49-56`, `src/change/manifest.rs:86-97,248-263`, `src/change/variant.rs:61-82` in that crate.\n- Behavior: A ComponentDelta requires both before and after declarations with the same component identity and kind, both marked Evolvable, and different content digests. A manifest verifies that both declarations exist. A variant then requires the union of its deltas to equal the complete baseline/candidate changed-component set, which includes added or removed components and executable/dependency changes.\n- Consequence: An added or removed evolvable component cannot have the required two declarations. A dependency-only or executable-only update with unchanged content digest cannot produce an accepted delta either, yet still requires one. Such candidates cannot enter an F0 campaign through this contract. This is a source-derived representational blocker, not an executed fixture or a reason to weaken protection on protected components.\n- Repair direction: Represent add, remove and update as explicit change operations and compare all executable, dependency and content semantics. Apply protection and approval rules to the operation rather than requiring every legitimate change to look like a content replacement. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.583922446Z",
-      "updated_at": "2026-10-08T02:44:20.975037822Z",
+      "updated_at": "2026-10-08T02:45:58.253308578Z",
+      "closed_at": "2026-10-08T02:45:58.249795250Z",
       "labels": [
         "daily-driving-limiter"
       ],
