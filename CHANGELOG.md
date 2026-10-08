@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L448] F0 promotion always requires resource measurements, even with unconstrained thresholds and unrelated objectives (#527)
 - [L447] F0 accepts mandatory failure-class predictions that its attribution engine can never confirm (#526)
 - [L614] Windows recovery cannot reconstruct or identify a live native owner (#670)
 - [L041] Workspace inspection truncates or omits evidence (#140)
