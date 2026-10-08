@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3918,
-        "tip_oid": "e8ec297d644b3589d8115f8526c8ef92413421ef",
-        "prefix_sha256": "7bfef699bb58f4b6d37dfb5bf16843f375ff2fa2f777b007a44c644592666b3f"
+        "sequence": 3919,
+        "tip_oid": "69876b5e298645fb3b4b72e9be46dc2a8816d43a",
+        "prefix_sha256": "15c5812c8253166960f3d9952a6ed5e1f8132e93b9110afceedeb0d7d0492175"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3162,
+  "next_comment_id": 3163,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -38466,11 +38466,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.226836602Z",
-      "updated_at": "2026-10-06T13:27:51.229098689Z",
+      "updated_at": "2026-10-08T00:50:32.690037342Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "d3e80a3b-750b-4440-98a9-649abe830037": {
+          "display_id": 3162,
+          "author": "6ME5",
+          "content": "Code complete in commit 8751861e6: activation retains exact writer handoff, partial status frame progress, cached validation and monotonic cancellation; recovery custody is staged before writer close and committed without allocation. Retries resume the original owner; cleanup closes the reader before recording release. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T00:50:32.680164056Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAL+/oc0HvhUlwMKqUse9Idq4kt6D38+0UR1PTWCH1hli32P31SjgSBcB08yWKEMNuPxPIaBULBrDmDY56Bm88BA=="
+        },
         "ff491f4a-b89a-484d-8f89-215388517726": {
           "display_id": 2731,
           "author": "6ME5",
