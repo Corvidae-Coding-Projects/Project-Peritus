@@ -19,10 +19,19 @@ impl LocalMemory {
         &self,
         expected_prefix: &str,
     ) -> Result<GroundingEvidence, DeveloperLoopError> {
+        self.recover_grounding_aliases(&[expected_prefix])
+    }
+
+    pub(super) fn recover_grounding_aliases(
+        &self,
+        expected_prefixes: &[&str],
+    ) -> Result<GroundingEvidence, DeveloperLoopError> {
         let mut grounding = GroundingEvidence::for_workspace(&self.workspace);
-        self.replay_tool_observations(expected_prefix, None, &mut |call, output| {
-            grounding.record_completed(call, output);
-        })?;
+        for expected_prefix in expected_prefixes {
+            self.replay_tool_observations(expected_prefix, None, &mut |call, output| {
+                grounding.record_completed(call, output);
+            })?;
+        }
         Ok(grounding)
     }
 

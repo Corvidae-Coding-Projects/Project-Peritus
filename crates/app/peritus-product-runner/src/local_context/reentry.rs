@@ -53,8 +53,15 @@ impl LocalMemory {
         &self,
         expected_prefix: &str,
     ) -> Result<Option<String>, DeveloperLoopError> {
+        self.pending_reentry_prefixes(&[expected_prefix])
+    }
+
+    pub(super) fn pending_reentry_prefixes(
+        &self,
+        expected_prefixes: &[&str],
+    ) -> Result<Option<String>, DeveloperLoopError> {
         Ok(self
-            .pending_developer_reentry(expected_prefix)?
+            .pending_developer_reentry_prefixes(expected_prefixes)?
             .map(|(request_prefix, _)| request_prefix))
     }
 
@@ -62,6 +69,16 @@ impl LocalMemory {
         &self,
         expected_prefix: &str,
     ) -> Result<Option<(String, u64)>, DeveloperLoopError> {
+        self.pending_developer_reentry_prefixes(&[expected_prefix])
+    }
+
+    fn pending_developer_reentry_prefixes(
+        &self,
+        expected_prefixes: &[&str],
+    ) -> Result<Option<(String, u64)>, DeveloperLoopError> {
+        if expected_prefixes.is_empty() || expected_prefixes.iter().any(|prefix| prefix.is_empty()) {
+            return Err(error("pending reentry has no accepted logical invocation identity"));
+        }
         let pending = crate::trace::pending_retry(&self.trace_path)?;
         if pending.is_none() && self.segment_continuation.is_none() {
             return Ok(None);
@@ -84,10 +101,9 @@ impl LocalMemory {
         {
             return Err(error("pending retry does not bind the durable invocation"));
         }
-        if !super::grounding::valid_invocation(
-            &request_prefix,
-            expected_prefix,
-        ) {
+        if !expected_prefixes.iter().any(|expected_prefix| {
+            super::grounding::valid_invocation(&request_prefix, expected_prefix)
+        }) {
             if let Some(pending) = pending {
                 let physical = DeveloperLoopLimits::request_prefix_for_segment(
                     &request_prefix,

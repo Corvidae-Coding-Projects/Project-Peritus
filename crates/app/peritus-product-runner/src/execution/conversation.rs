@@ -42,10 +42,15 @@ impl ProductRunner {
         }).await?;
         let mut continuing_segment = false;
         let mut grounding_revision = input.conversation.revision();
+        let grounding_identity =
+            ConversationRequestIdentity::new(input.run_id, grounding_revision);
+        let grounding_prefixes = grounding_identity.accepted_prefixes();
         let mut grounding = memory.as_ref()
-            .map(|memory| memory.recover_grounding(
-                &logical_prefix(&input, grounding_revision)?,
-            ).map_err(|error| crate::turn::developer_error(&error)))
+            .map(|memory| {
+                memory
+                    .recover_grounding_aliases(&grounding_prefixes)
+                    .map_err(|error| crate::turn::developer_error(&error))
+            })
             .transpose()?
             .unwrap_or_else(|| crate::developer_tools::GroundingEvidence::for_workspace(
                 &input.workspace_root,
@@ -64,18 +69,20 @@ impl ProductRunner {
             }
             let mut tools = ConversationTools::new(&input, allow_pipeline);
             tools.workspace = tools.workspace.with_grounding(grounding.clone());
+            let request_identity = ConversationRequestIdentity::new(input.run_id, revision);
             let mut request = request(
                 &input,
                 mode,
                 allow_pipeline,
                 model.profile(),
+                &request_identity,
                 accounting.latest_snapshot().model_requests(),
                 continuing_segment,
             )?;
-            let logical_prefix = logical_prefix(&input, revision)?;
+            let accepted_prefixes = request_identity.accepted_prefixes();
             if let Some(prefix) = memory
                 .as_ref()
-                .map(|memory| memory.pending_reentry_prefix(&logical_prefix))
+                .map(|memory| memory.pending_reentry_prefixes(&accepted_prefixes))
                 .transpose()
                 .map_err(|error| crate::turn::developer_error(&error))?
                 .flatten()
@@ -156,13 +163,40 @@ impl ProductRunner {
     }
 }
 
-fn logical_prefix(input: &ProductRunInput, revision: u64) -> Result<String, ProductRunnerError> {
-    let cycle = u32::try_from(revision)
-        .map_err(|_| invalid("conversation revision overflow"))?;
-    Ok(format!(
-        "{}-revision-{revision}-invocation-",
-        crate::turn::request_name(input.run_id, "conversation", cycle),
-    ))
+struct ConversationRequestIdentity {
+    role: String,
+    cycle: u32,
+    revision: u64,
+    logical_prefix: String,
+    legacy_logical_prefix: Option<String>,
+}
+
+impl ConversationRequestIdentity {
+    fn new(run_id: peritus_types::RunId, revision: u64) -> Self {
+        let [a, b, c, d, e, f, g, h] = revision.to_be_bytes();
+        let epoch = u32::from_be_bytes([a, b, c, d]);
+        let cycle = u32::from_be_bytes([e, f, g, h]);
+        let role = format!("conversation-v2-epoch-{epoch}");
+        let logical_prefix = format!(
+            "{}-revision-{revision}-invocation-",
+            crate::turn::request_name(run_id, &role, cycle),
+        );
+        let legacy_logical_prefix = u32::try_from(revision).ok().map(|legacy_cycle| {
+            format!(
+                "{}-revision-{revision}-invocation-",
+                crate::turn::request_name(run_id, "conversation", legacy_cycle),
+            )
+        });
+        Self { role, cycle, revision, logical_prefix, legacy_logical_prefix }
+    }
+
+    fn accepted_prefixes(&self) -> Vec<&str> {
+        self.legacy_logical_prefix
+            .iter()
+            .map(String::as_str)
+            .chain(std::iter::once(self.logical_prefix.as_str()))
+            .collect()
+    }
 }
 
 fn finishing_update(progress: crate::ProductRunProgress) -> ProductRunUpdate {
@@ -256,6 +290,7 @@ fn request(
     mode: ConversationMode,
     allow_pipeline: bool,
     profile: &peritus_model_protocol::ProviderProfile,
+    identity: &ConversationRequestIdentity,
     model_requests: u32,
     continuing_segment: bool,
 ) -> Result<DeveloperLoopRequest, ProductRunnerError> {
@@ -284,10 +319,9 @@ fn request(
         )),
         request_prefix: crate::turn::invocation_request_name(
             input.run_id,
-            "conversation",
-            u32::try_from(input.conversation.revision())
-                .map_err(|_| invalid("conversation revision overflow"))?,
-            input.conversation.revision(),
+            &identity.role,
+            identity.cycle,
+            identity.revision,
             u64::from(model_requests),
         )?,
         system: policy,

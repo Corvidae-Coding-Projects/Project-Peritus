@@ -149,6 +149,13 @@ impl LocalContextHandle {
         self.lock()?.pending_reentry_prefix(expected_prefix)
     }
 
+    pub(crate) fn pending_reentry_prefixes(
+        &self,
+        expected_prefixes: &[&str],
+    ) -> Result<Option<String>, DeveloperLoopError> {
+        self.lock()?.pending_reentry_prefixes(expected_prefixes)
+    }
+
     pub(crate) fn pending_developer_reentry(
         &self,
         expected_prefix: &str,
@@ -161,6 +168,13 @@ impl LocalContextHandle {
         expected_prefix: &str,
     ) -> Result<GroundingEvidence, DeveloperLoopError> {
         self.lock()?.recover_grounding(expected_prefix)
+    }
+
+    pub(crate) fn recover_grounding_aliases(
+        &self,
+        expected_prefixes: &[&str],
+    ) -> Result<GroundingEvidence, DeveloperLoopError> {
+        self.lock()?.recover_grounding_aliases(expected_prefixes)
     }
 
     pub(crate) fn recover_grounding_scope(
