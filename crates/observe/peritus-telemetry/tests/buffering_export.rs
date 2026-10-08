@@ -5,11 +5,13 @@ mod support;
 use std::num::NonZeroUsize;
 
 use peritus_telemetry::{
-    BufferConfig, DrainAction, EnqueueOutcome, ExportAck, ExportBatch, ExportPhase, ExportPoll,
-    ExportPollControl, ExportProgress, ExportStreamId, Exporter, ExporterError, ExporterErrorCode,
-    ExporterShutdownPoll, FlushOutcome, ObservationLossPolicy, RejectionReason, ShutdownOutcome,
-    TelemetryBuffer, TelemetryErrorKind, TelemetryPump,
+    BufferConfig, CheckpointStore, DrainAction, EnqueueOutcome, ExportAck, ExportBatch,
+    ExportPhase, ExportPoll, ExportPollControl, ExportProgress, ExportStreamId, Exporter,
+    ExporterError, ExporterErrorCode, ExporterShutdownPoll, FlushOutcome, ObservationLossPolicy,
+    PendingBatchStore, RejectionReason, ShutdownOutcome, TelemetryBuffer, TelemetryErrorKind,
+    TelemetryPump,
 };
+use tempfile::TempDir;
 
 use support::metric_record;
 
@@ -58,7 +60,10 @@ fn exporter_failure_is_explicit_and_retains_the_exact_batch_for_retry() {
     let stream = ExportStreamId::new([31; 16]).expect("stream");
     let buffer = TelemetryBuffer::new(config(4, ObservationLossPolicy::RejectNewest))
         .expect("buffer");
-    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
+    let temporary = TempDir::new().expect("temporary directory");
+    let ownership = PendingBatchStore::open(temporary.path().join("pending"), stream)
+        .expect("pending batch store");
+    let mut pump = TelemetryPump::new(stream, buffer, ownership).expect("pump");
     pump.enqueue(metric_record(1)).expect("enqueue");
     pump.enqueue(metric_record(2)).expect("enqueue");
     let mut exporter = RecordingExporter::failing_once();
@@ -85,7 +90,10 @@ fn contradictory_acknowledgement_keeps_the_batch_pinned_for_exact_retry() {
     let stream = ExportStreamId::new([32; 16]).expect("stream");
     let buffer = TelemetryBuffer::new(config(2, ObservationLossPolicy::DropOldest))
         .expect("buffer");
-    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
+    let temporary = TempDir::new().expect("temporary directory");
+    let ownership = PendingBatchStore::open(temporary.path().join("pending"), stream)
+        .expect("pending batch store");
+    let mut pump = TelemetryPump::new(stream, buffer, ownership).expect("pump");
     pump.enqueue(metric_record(1)).expect("enqueue");
     let mut exporter = BadAckExporter { pending: None };
     let error = pump
@@ -118,7 +126,16 @@ fn shutdown_returns_an_actionable_continuation_until_cleanup_completes() {
     )
     .expect("config");
     let buffer = TelemetryBuffer::new(config).expect("buffer");
-    let mut pump = TelemetryPump::new(stream, buffer).expect("pump");
+    let temporary = TempDir::new().expect("temporary directory");
+    let ownership = PendingBatchStore::open(temporary.path().join("pending"), stream)
+        .expect("pending batch store");
+    let checkpoints = CheckpointStore::open(
+        temporary.path().join("checkpoints"),
+        stream,
+        NonZeroUsize::new(2).expect("checkpoint retention"),
+    )
+    .expect("checkpoint store");
+    let mut pump = TelemetryPump::new(stream, buffer, ownership).expect("pump");
     pump.enqueue(metric_record(1)).expect("enqueue");
     pump.enqueue(metric_record(2)).expect("enqueue");
     let mut exporter = RecordingExporter::success();
@@ -126,18 +143,20 @@ fn shutdown_returns_an_actionable_continuation_until_cleanup_completes() {
         pump.poll_shutdown(&mut exporter, continue_poll()).expect("first batch"),
         ShutdownOutcome::Pending {
             remaining,
-            next: DrainAction::PollExport,
+            next: DrainAction::PersistCheckpoint,
             ..
         } if remaining.total() == 1
     ));
+    checkpoints.persist_and_retire(&mut pump).expect("checkpoint first batch");
     assert!(matches!(
         pump.poll_shutdown(&mut exporter, continue_poll()).expect("second batch"),
         ShutdownOutcome::Pending {
             remaining,
-            next: DrainAction::PollExporterShutdown,
+            next: DrainAction::PersistCheckpoint,
             ..
         } if remaining.total() == 0
     ));
+    checkpoints.persist_and_retire(&mut pump).expect("checkpoint second batch");
     assert_eq!(
         pump.poll_shutdown(&mut exporter, continue_poll()).expect("cleanup"),
         ShutdownOutcome::Complete,

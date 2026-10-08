@@ -418,6 +418,41 @@ impl TelemetryBuffer {
         }
     }
 
+    pub(crate) fn restore_exact_batch(
+        &mut self,
+        stream_id: ExportStreamId,
+        durable: &ExportBatch,
+    ) -> Result<ExportBatch, TelemetryError> {
+        if durable.stream_id() != stream_id || durable.is_empty() || self.pinned_records != 0 {
+            return Err(TelemetryError::new(
+                TelemetryErrorKind::RecoveryMismatch,
+                "restore pending telemetry batch",
+                "pending batch stream, count, or pin state is invalid",
+            ));
+        }
+        let resident = durable.len().min(self.queue.len());
+        let mut records = self.queue.iter().take(resident).cloned().collect::<Vec<_>>();
+        let spill_count = durable.len().checked_sub(resident).ok_or_else(buffer_invariant)?;
+        if spill_count > 0 {
+            records.extend(
+                self.spill
+                    .as_ref()
+                    .ok_or_else(buffer_invariant)?
+                    .load_count(spill_count)?,
+            );
+        }
+        let restored = ExportBatch::from_buffered(stream_id, records)?;
+        if &restored != durable {
+            return Err(TelemetryError::new(
+                TelemetryErrorKind::RecoveryMismatch,
+                "restore pending telemetry batch",
+                "recovered queue prefix differs from durable pending batch identity",
+            ));
+        }
+        self.pin(&restored)?;
+        Ok(restored)
+    }
+
     pub(crate) fn pin(&mut self, batch: &ExportBatch) -> Result<(), TelemetryError> {
         if self.pinned_records != 0 {
             return Err(buffer_invariant());

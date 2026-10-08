@@ -8,6 +8,7 @@ pub(crate) mod buffer;
 mod error;
 mod export;
 mod metrics;
+mod ownership;
 mod projection;
 mod recovery;
 mod spill;
@@ -25,6 +26,7 @@ pub use export::{
     ExporterShutdownPoll, FlushOutcome, PendingTelemetry, ShutdownOutcome, TelemetryPump,
 };
 pub use metrics::{MetricIter, MetricName, MetricPoint, MetricState};
+pub use ownership::PendingBatchStore;
 pub use projection::{OtelEvent, OtelSpan, TelemetryProjection, project_telemetry};
 pub use recovery::{RecoveryReport, recover_buffer};
 pub use spill::SpillStore;

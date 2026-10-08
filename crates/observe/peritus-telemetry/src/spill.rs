@@ -147,6 +147,40 @@ impl SpillStore {
         Ok(records)
     }
 
+    pub(crate) fn load_count(
+        &self,
+        count: usize,
+    ) -> Result<Vec<BufferedRecord>, TelemetryError> {
+        if count == 0 {
+            return Ok(Vec::new());
+        }
+        let Some(mut sequence) = self.first_sequence else {
+            return Err(spill_integrity_error(
+                "exact pending batch exceeds durable spill custody",
+            ));
+        };
+        let last = self
+            .last_sequence
+            .ok_or_else(|| spill_integrity_error("spill range has no last sequence"))?;
+        let mut records = Vec::new();
+        for _ in 0..count {
+            if sequence > last {
+                return Err(spill_integrity_error(
+                    "exact pending batch exceeds durable spill range",
+                ));
+            }
+            records.push(decode_record(
+                self.stream_id,
+                sequence,
+                &read_file(&self.final_path(sequence))?,
+            )?);
+            sequence = sequence.checked_add(1).ok_or_else(|| {
+                spill_integrity_error("exact pending batch sequence overflows")
+            })?;
+        }
+        Ok(records)
+    }
+
     pub(crate) fn remove_prefix(
         &mut self,
         records: &[BufferedRecord],

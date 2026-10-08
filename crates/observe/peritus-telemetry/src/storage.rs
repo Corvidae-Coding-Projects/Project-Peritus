@@ -172,6 +172,21 @@ impl CheckpointStore {
         self.persist_with_finalize(checkpoint, Self::finalize_published_generation)
     }
 
+    /// Persists the pump's exact final-disposition boundary before retiring acknowledged batch
+    /// ownership.
+    ///
+    /// A failure leaves the durable acknowledgement and exact pending batch available for the
+    /// same operation to be retried or recovered after restart.
+    ///
+    /// # Errors
+    ///
+    /// Returns checkpoint publication, synchronization, or pending-ownership retirement errors.
+    pub fn persist_and_retire(&self, pump: &mut TelemetryPump) -> Result<(), TelemetryError> {
+        let checkpoint = ExportCheckpoint::from_pump(pump);
+        self.persist(checkpoint)?;
+        pump.retire_checkpointed(checkpoint)
+    }
+
     fn persist_with_finalize<F>(
         &self,
         checkpoint: ExportCheckpoint,

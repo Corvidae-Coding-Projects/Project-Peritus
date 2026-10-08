@@ -2,7 +2,8 @@
 
 use crate::{
     BufferConfig, EnqueueOutcome, ExportCheckpoint, ExportStreamId, ObservationLossPolicy,
-    TelemetryBuffer, TelemetryError, TelemetryErrorKind, TelemetryProjection, TelemetryPump,
+    PendingBatchStore, TelemetryBuffer, TelemetryError, TelemetryErrorKind, TelemetryProjection,
+    TelemetryPump, ownership::RecoveredOwnership,
 };
 
 /// Successful reconstruction report.
@@ -48,13 +49,98 @@ impl RecoveryReport {
 /// Returns stream, future-checkpoint, prefix, counter, spill, or enqueue failures.
 pub fn recover_buffer(
     buffer: TelemetryBuffer,
+    ownership: PendingBatchStore,
     stream_id: ExportStreamId,
     checkpoint: Option<ExportCheckpoint>,
     projection: &TelemetryProjection,
 ) -> Result<RecoveryReport, TelemetryError> {
+    if buffer.spill_stream_id().is_some_and(|owner| owner != stream_id)
+        || ownership.stream_id() != stream_id
+    {
+        return Err(recovery_error(
+            "durable telemetry storage belongs to another export stream",
+        ));
+    }
     let config = buffer.config();
-    let mut pump = TelemetryPump::new(stream_id, buffer)?;
-    let checkpoint = checkpoint.unwrap_or_else(|| ExportCheckpoint::from_pump(&pump));
+    let mut recovered_ownership = ownership.load()?;
+    let disposed = validate_checkpoint(config, stream_id, checkpoint, projection)?;
+    if let (Some(checkpoint), Some(last_sequence)) =
+        (checkpoint, recovered_ownership.last_sequence())
+        && last_sequence <= checkpoint.disposed_through_sequence()
+    {
+        ownership.clear_checkpointed(checkpoint, &recovered_ownership)?;
+        recovered_ownership = RecoveredOwnership::None;
+    }
+    if matches!(&recovered_ownership, RecoveredOwnership::OrphanAcknowledgement(_)) {
+        return Err(recovery_error(
+            "pending acknowledgement is not covered by a durable checkpoint",
+        ));
+    }
+
+    let ownership_through = recovered_ownership
+        .last_sequence()
+        .map(|sequence| {
+            usize::try_from(sequence)
+                .map_err(|_| recovery_error("pending batch cannot index projection records"))
+        })
+        .transpose()?;
+    if ownership_through.is_some_and(|through| through > projection.records().len()) {
+        return Err(recovery_error("pending batch is ahead of the rebuilt projection"));
+    }
+
+    let mut pump = TelemetryPump::from_recovery(stream_id, buffer, ownership)?;
+    if let Some(checkpoint) = checkpoint {
+        pump.restore_disposition(checkpoint.prefix_digest(), checkpoint.counters());
+    }
+    let mut replayed = 0_u64;
+    let mut dropped = 0_u64;
+    let mut spilled = 0_u64;
+    let ownership_through = ownership_through.unwrap_or(disposed);
+    if ownership_through < disposed {
+        return Err(recovery_error("pending batch precedes the durable checkpoint"));
+    }
+    replay_records(
+        &mut pump,
+        &projection.records()[disposed..ownership_through],
+        &mut replayed,
+        &mut dropped,
+        &mut spilled,
+    )?;
+    match recovered_ownership {
+        RecoveredOwnership::Pending(batch) => pump.restore_ownership(batch, false)?,
+        RecoveredOwnership::Acknowledged(batch) => pump.restore_ownership(batch, true)?,
+        RecoveredOwnership::None => {}
+        RecoveredOwnership::OrphanAcknowledgement(_) => return Err(recovery_invariant()),
+    }
+    replay_records(
+        &mut pump,
+        &projection.records()[ownership_through..],
+        &mut replayed,
+        &mut dropped,
+        &mut spilled,
+    )?;
+    if config.loss_policy() == ObservationLossPolicy::LosslessSpill
+        && (dropped != 0 || pump.pending().total() != replayed)
+    {
+        return Err(recovery_error(
+            "lossless spill custody does not match the projection suffix",
+        ));
+    }
+    Ok(RecoveryReport {
+        pump,
+        replayed,
+        dropped_during_recovery: dropped,
+        spilled_during_recovery: spilled,
+    })
+}
+
+fn validate_checkpoint(
+    config: BufferConfig,
+    stream_id: ExportStreamId,
+    checkpoint: Option<ExportCheckpoint>,
+    projection: &TelemetryProjection,
+) -> Result<usize, TelemetryError> {
+    let Some(checkpoint) = checkpoint else { return Ok(0) };
     if checkpoint.stream_id() != stream_id {
         return Err(recovery_error("checkpoint belongs to another export stream"));
     }
@@ -69,40 +155,33 @@ pub fn recover_buffer(
             "checkpoint prefix differs from rebuilt canonical and loss history",
         ));
     }
+    Ok(disposed)
+}
 
-    pump.restore_disposition(checkpoint.prefix_digest(), checkpoint.counters());
-    let mut replayed = 0_u64;
-    let mut dropped = 0_u64;
-    let mut spilled = 0_u64;
-    for record in projection.records().iter().skip(disposed) {
+fn replay_records(
+    pump: &mut TelemetryPump,
+    records: &[crate::ExportRecord],
+    replayed: &mut u64,
+    dropped: &mut u64,
+    spilled: &mut u64,
+) -> Result<(), TelemetryError> {
+    for record in records {
         let outcome = pump.enqueue(record.clone())?;
-        replayed = replayed.checked_add(1).ok_or_else(replay_overflow)?;
+        *replayed = (*replayed).checked_add(1).ok_or_else(replay_overflow)?;
         match outcome {
             EnqueueOutcome::DroppedOldest { count, .. } => {
-                dropped = dropped.checked_add(count).ok_or_else(replay_overflow)?;
+                *dropped = (*dropped).checked_add(count).ok_or_else(replay_overflow)?;
             }
             EnqueueOutcome::RejectedNewest { .. } => {
-                dropped = dropped.checked_add(1).ok_or_else(replay_overflow)?;
+                *dropped = (*dropped).checked_add(1).ok_or_else(replay_overflow)?;
             }
             EnqueueOutcome::Spilled { .. } => {
-                spilled = spilled.checked_add(1).ok_or_else(replay_overflow)?;
+                *spilled = (*spilled).checked_add(1).ok_or_else(replay_overflow)?;
             }
             EnqueueOutcome::Accepted { .. } => {}
         }
     }
-    if config.loss_policy() == ObservationLossPolicy::LosslessSpill
-        && (dropped != 0 || pump.pending().total() != replayed)
-    {
-        return Err(recovery_error(
-            "lossless spill custody does not match the projection suffix",
-        ));
-    }
-    Ok(RecoveryReport {
-        pump,
-        replayed,
-        dropped_during_recovery: dropped,
-        spilled_during_recovery: spilled,
-    })
+    Ok(())
 }
 
 fn rebuilt_prefix(
@@ -156,4 +235,8 @@ const fn replay_overflow() -> TelemetryError {
 
 const fn recovery_error(detail: &'static str) -> TelemetryError {
     TelemetryError::new(TelemetryErrorKind::RecoveryMismatch, "recover telemetry buffer", detail)
+}
+
+const fn recovery_invariant() -> TelemetryError {
+    recovery_error("pending export recovery state is internally inconsistent")
 }

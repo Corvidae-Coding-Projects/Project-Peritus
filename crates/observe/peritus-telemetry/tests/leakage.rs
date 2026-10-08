@@ -7,8 +7,9 @@ use std::{error::Error, fmt::Write as _, num::NonZeroUsize};
 use peritus_telemetry::{
     BufferConfig, ExportBatch, ExportPhase, ExportPoll, ExportPollControl, ExportProgress,
     ExportStreamId, Exporter, ExporterError, ExporterErrorCode, ExporterShutdownPoll,
-    ObservationLossPolicy, TelemetryBuffer, TelemetryPump,
+    ObservationLossPolicy, PendingBatchStore, TelemetryBuffer, TelemetryPump,
 };
+use tempfile::TempDir;
 
 use support::metric_record;
 
@@ -24,9 +25,14 @@ fn exporter_adapter_state_never_enters_errors_metrics_or_source_chains() {
     )
     .expect("config");
     let buffer = TelemetryBuffer::new(config).expect("buffer");
+    let temporary = TempDir::new().expect("temporary directory");
+    let stream = ExportStreamId::new([51; 16]).expect("stream");
+    let ownership = PendingBatchStore::open(temporary.path().join("pending"), stream)
+        .expect("pending batch store");
     let mut pump = TelemetryPump::new(
-        ExportStreamId::new([51; 16]).expect("stream"),
+        stream,
         buffer,
+        ownership,
     )
     .expect("pump");
     pump.enqueue(metric_record(1)).expect("enqueue");

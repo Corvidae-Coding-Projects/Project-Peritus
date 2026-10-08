@@ -4,8 +4,8 @@ use std::{num::NonZeroUsize, path::Path};
 
 use peritus_journal::{SqliteJournal, StoreId};
 use peritus_telemetry::{
-    BufferConfig, CheckpointStore, ExportCheckpoint, ExportPollControl, ExportStreamId,
-    FlushOutcome, ObservationLossPolicy, ShutdownOutcome, SpillStore, TelemetryBuffer,
+    BufferConfig, CheckpointStore, DrainAction, ExportPollControl, ExportStreamId, FlushOutcome,
+    ObservationLossPolicy, PendingBatchStore, ShutdownOutcome, SpillStore, TelemetryBuffer,
     TelemetryPump, project_telemetry, recover_buffer,
 };
 
@@ -49,7 +49,9 @@ impl TelemetryRuntime {
         .map_err(component_error)?;
         let spill = SpillStore::open(directory.join("spill"), stream).map_err(component_error)?;
         let buffer = TelemetryBuffer::with_spill(config, spill).map_err(component_error)?;
-        let pump = recover_buffer(buffer, stream, checkpoint, &projection)
+        let ownership =
+            PendingBatchStore::open(directory.join("pending"), stream).map_err(component_error)?;
+        let pump = recover_buffer(buffer, ownership, stream, checkpoint, &projection)
             .map_err(component_error)?
             .into_pump();
         let exporter = LocalFileExporter::open(&directory.join("batches"), quota_bytes)
@@ -78,19 +80,19 @@ impl TelemetryRuntime {
 
     pub(crate) fn shutdown(&mut self) -> Result<(), DaemonError> {
         loop {
-            let prior_disposition = self.pump.disposed_through_sequence();
             let outcome = self
                 .pump
                 .poll_shutdown(&mut self.exporter, poll_control())
                 .map_err(component_error)?;
-            if self.pump.disposed_through_sequence() != prior_disposition {
-                self.persist_checkpoint()?;
-            }
             match outcome {
                 ShutdownOutcome::Complete => {
                     self.persist_checkpoint()?;
                     return Ok(());
                 }
+                ShutdownOutcome::Pending {
+                    next: DrainAction::PersistCheckpoint,
+                    ..
+                } => self.persist_checkpoint()?,
                 ShutdownOutcome::Pending { .. } => {}
                 ShutdownOutcome::Cancelled { remaining, .. } => {
                     return Err(cancelled_drain_error(remaining.total()));
@@ -99,9 +101,9 @@ impl TelemetryRuntime {
         }
     }
 
-    fn persist_checkpoint(&self) -> Result<(), DaemonError> {
+    fn persist_checkpoint(&mut self) -> Result<(), DaemonError> {
         self.checkpoints
-            .persist(ExportCheckpoint::from_pump(&self.pump))
+            .persist_and_retire(&mut self.pump)
             .map_err(component_error)
     }
 }

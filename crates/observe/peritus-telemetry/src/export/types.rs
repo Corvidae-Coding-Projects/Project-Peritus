@@ -11,6 +11,8 @@ use crate::{
     buffer::{BufferedRecord, DispositionPrefix},
 };
 
+const OWNERSHIP_PREFIX: &[u8] = b"PERITUS-C7-PENDING-EXPORT-V1\0";
+
 /// Nonzero 16-byte logical export-stream identity.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ExportStreamId([u8; 16]);
@@ -165,6 +167,121 @@ impl ExportBatch {
         self.items.clone().into_iter().map(ExportItem::into_buffered).collect()
     }
 
+    pub(crate) fn ownership_bytes(&self) -> Result<Vec<u8>, TelemetryError> {
+        let mut bytes = OWNERSHIP_PREFIX.to_vec();
+        bytes.extend_from_slice(self.stream_id.as_bytes());
+        bytes.extend_from_slice(self.batch_id.as_bytes());
+        bytes.extend_from_slice(&self.first_sequence.to_be_bytes());
+        bytes.extend_from_slice(&self.last_sequence.to_be_bytes());
+        let count = u64::try_from(self.items.len()).map_err(|_| ownership_error(
+            "pending export item count is not representable",
+        ))?;
+        bytes.extend_from_slice(&count.to_be_bytes());
+        for item in &self.items {
+            bytes.extend_from_slice(&item.sequence.to_be_bytes());
+            bytes.extend_from_slice(item.prefix_digest.as_bytes());
+            bytes.extend_from_slice(&item.accepted_total.to_be_bytes());
+            match item.gap_before {
+                Some(gap) => {
+                    bytes.push(1);
+                    bytes.extend_from_slice(&gap.sequence.to_be_bytes());
+                    bytes.extend_from_slice(gap.prefix_digest.as_bytes());
+                    bytes.extend_from_slice(&gap.accepted_total.to_be_bytes());
+                }
+                None => bytes.push(0),
+            }
+            let length = u64::try_from(item.canonical.len()).map_err(|_| ownership_error(
+                "pending export canonical length is not representable",
+            ))?;
+            bytes.extend_from_slice(&length.to_be_bytes());
+            bytes.extend_from_slice(&item.canonical);
+        }
+        let checksum = peritus_codec::sha256(&bytes);
+        bytes.extend_from_slice(checksum.as_bytes());
+        Ok(bytes)
+    }
+
+    pub(crate) fn from_ownership_bytes(bytes: &[u8]) -> Result<Self, TelemetryError> {
+        let minimum = OWNERSHIP_PREFIX
+            .len()
+            .checked_add(16 + 32 + 8 + 8 + 8 + Sha256Digest::LENGTH)
+            .ok_or_else(|| ownership_error("pending export fixed length overflows"))?;
+        if bytes.len() < minimum || !bytes.starts_with(OWNERSHIP_PREFIX) {
+            return Err(ownership_error("pending export marker or length is invalid"));
+        }
+        let checksum_start = bytes.len() - Sha256Digest::LENGTH;
+        let checksum = Sha256Digest::new(
+            bytes[checksum_start..]
+                .try_into()
+                .map_err(|_| ownership_error("pending export checksum length is invalid"))?,
+        );
+        if peritus_codec::sha256(&bytes[..checksum_start]) != checksum {
+            return Err(ownership_error("pending export checksum does not match"));
+        }
+        let mut offset = OWNERSHIP_PREFIX.len();
+        let stream_id = ExportStreamId::new(take_ownership::<16>(bytes, &mut offset)?)?;
+        let stored_batch_id = Sha256Digest::new(take_ownership::<32>(bytes, &mut offset)?);
+        let stored_first = u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?);
+        let stored_last = u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?);
+        let count = usize::try_from(u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?))
+            .map_err(|_| ownership_error("pending export item count is not representable"))?;
+        let mut records = Vec::new();
+        for _ in 0..count {
+            let sequence = u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?);
+            let prefix_digest = Sha256Digest::new(take_ownership::<32>(bytes, &mut offset)?);
+            let accepted_total = u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?);
+            let gap_before = match take_ownership::<1>(bytes, &mut offset)?[0] {
+                0 => None,
+                1 => Some(DispositionPrefix {
+                    sequence: u64::from_be_bytes(take_ownership::<8>(bytes, &mut offset)?),
+                    prefix_digest: Sha256Digest::new(take_ownership::<32>(bytes, &mut offset)?),
+                    accepted_total: u64::from_be_bytes(take_ownership::<8>(
+                        bytes,
+                        &mut offset,
+                    )?),
+                }),
+                _ => return Err(ownership_error("pending export gap tag is invalid")),
+            };
+            let length = usize::try_from(u64::from_be_bytes(take_ownership::<8>(
+                bytes,
+                &mut offset,
+            )?))
+            .map_err(|_| ownership_error("pending export canonical length is not representable"))?;
+            let end = offset
+                .checked_add(length)
+                .ok_or_else(|| ownership_error("pending export canonical offset overflows"))?;
+            if end > checksum_start {
+                return Err(ownership_error("pending export canonical bytes are truncated"));
+            }
+            let canonical = bytes[offset..end].to_vec().into_boxed_slice();
+            offset = end;
+            records.push(BufferedRecord {
+                sequence,
+                canonical,
+                prefix_digest,
+                accepted_total,
+                gap_before,
+                resident_bytes: 0,
+            });
+        }
+        if offset != checksum_start || records.is_empty() {
+            return Err(ownership_error(
+                "pending export item count does not consume its exact bytes",
+            ));
+        }
+        let batch = Self::from_buffered(stream_id, records)?;
+        if batch.batch_id != stored_batch_id
+            || batch.first_sequence != stored_first
+            || batch.last_sequence != stored_last
+            || batch.items.len() != count
+        {
+            return Err(ownership_error(
+                "pending export identity does not match its canonical records",
+            ));
+        }
+        Ok(batch)
+    }
+
     /// Encodes one complete redaction-safe batch for durable local-file export.
     ///
     /// Existing accepted canonical record bytes are copied verbatim; they are never decoded or
@@ -201,6 +318,30 @@ impl ExportBatch {
         }
         Ok(bytes)
     }
+}
+
+fn take_ownership<const N: usize>(
+    bytes: &[u8],
+    offset: &mut usize,
+) -> Result<[u8; N], TelemetryError> {
+    let end = offset
+        .checked_add(N)
+        .ok_or_else(|| ownership_error("pending export field offset overflows"))?;
+    let value = bytes
+        .get(*offset..end)
+        .ok_or_else(|| ownership_error("pending export is truncated"))?
+        .try_into()
+        .map_err(|_| ownership_error("pending export field length is invalid"))?;
+    *offset = end;
+    Ok(value)
+}
+
+const fn ownership_error(detail: &'static str) -> TelemetryError {
+    TelemetryError::new(
+        TelemetryErrorKind::InvalidCheckpoint,
+        "validate pending telemetry export",
+        detail,
+    )
 }
 
 /// Exact whole-batch exporter acknowledgement.

@@ -1,14 +1,14 @@
-//! Caller-polled export and shutdown state machine without cumulative work ceilings.
+//! Caller-polled export with durable exact-batch ownership and checkpoint-backed retirement.
 
 use peritus_types::Sha256Digest;
 
 use super::{
-    ExportBatch, ExportPoll, ExportPollControl, ExportProgress, ExportStreamId, Exporter,
-    ExporterShutdownPoll,
+    ExportBatch, ExportPhase, ExportPoll, ExportPollControl, ExportProgress, ExportStreamId,
+    Exporter, ExporterShutdownPoll,
 };
 use crate::{
-    BufferCounters, EnqueueOutcome, ExportRecord, TelemetryBuffer, TelemetryError,
-    TelemetryErrorKind,
+    BufferCounters, EnqueueOutcome, ExportCheckpoint, ExportRecord, PendingBatchStore,
+    TelemetryBuffer, TelemetryError, TelemetryErrorKind,
 };
 
 /// Exact resident and durable-spill records awaiting acknowledgement.
@@ -41,6 +41,8 @@ impl PendingTelemetry {
 pub enum DrainAction {
     /// Poll the active or next exact export batch again.
     PollExport,
+    /// Persist the pump checkpoint and retire its acknowledged durable batch ownership.
+    PersistCheckpoint,
     /// Poll exporter-owned resource shutdown again.
     PollExporterShutdown,
 }
@@ -52,7 +54,7 @@ pub enum FlushOutcome {
     Empty,
     /// The exporter owns an incomplete operation and must be polled again.
     Pending(ExportProgress),
-    /// One exact batch was acknowledged.
+    /// One exact batch was acknowledged and now requires checkpoint-backed retirement.
     Exported {
         /// Acknowledged record count.
         count: u64,
@@ -79,7 +81,7 @@ pub enum ShutdownOutcome {
     Pending {
         /// Records that remain under buffer or durable-spill custody.
         remaining: PendingTelemetry,
-        /// Operation the caller should poll next.
+        /// Operation the caller should perform next.
         next: DrainAction,
         /// Latest content-free exporter progress.
         progress: ExportProgress,
@@ -95,40 +97,81 @@ pub enum ShutdownOutcome {
     },
 }
 
+enum InFlightPhase {
+    Ready,
+    Exporting,
+    AckObserved {
+        progress: ExportProgress,
+        durable: bool,
+    },
+    AwaitingCheckpoint {
+        progress: ExportProgress,
+    },
+}
+
 struct InFlight {
     batch: ExportBatch,
-    operation_active: bool,
+    phase: InFlightPhase,
 }
 
 /// Owns canonical export progress around one byte-accounted queue.
 pub struct TelemetryPump {
     stream_id: ExportStreamId,
     buffer: TelemetryBuffer,
+    ownership: PendingBatchStore,
     in_flight: Option<InFlight>,
     exporter_shutdown_started: bool,
     closed: bool,
 }
 
 impl TelemetryPump {
-    /// Creates a pump at genesis and validates durable-spill ownership.
+    /// Creates a pump at genesis with an empty caller-owned pending-batch store.
     ///
     /// # Errors
     ///
-    /// Rejects a spill store owned by a different logical export stream.
+    /// Rejects mismatched stream ownership or durable state that requires restart recovery.
     pub fn new(
         stream_id: ExportStreamId,
         buffer: TelemetryBuffer,
+        ownership: PendingBatchStore,
     ) -> Result<Self, TelemetryError> {
-        if buffer.spill_stream_id().is_some_and(|owner| owner != stream_id) {
+        ownership.require_empty()?;
+        if !buffer.is_empty() {
             return Err(TelemetryError::new(
                 TelemetryErrorKind::InvalidConfiguration,
                 "create telemetry pump",
-                "durable spill store belongs to another export stream",
+                "durable spill state requires checkpoint-aware recovery",
+            ));
+        }
+        Self::construct(stream_id, buffer, ownership)
+    }
+
+    pub(crate) fn from_recovery(
+        stream_id: ExportStreamId,
+        buffer: TelemetryBuffer,
+        ownership: PendingBatchStore,
+    ) -> Result<Self, TelemetryError> {
+        Self::construct(stream_id, buffer, ownership)
+    }
+
+    fn construct(
+        stream_id: ExportStreamId,
+        buffer: TelemetryBuffer,
+        ownership: PendingBatchStore,
+    ) -> Result<Self, TelemetryError> {
+        if buffer.spill_stream_id().is_some_and(|owner| owner != stream_id)
+            || ownership.stream_id() != stream_id
+        {
+            return Err(TelemetryError::new(
+                TelemetryErrorKind::InvalidConfiguration,
+                "create telemetry pump",
+                "durable telemetry storage belongs to another export stream",
             ));
         }
         Ok(Self {
             stream_id,
             buffer,
+            ownership,
             in_flight: None,
             exporter_shutdown_started: false,
             closed: false,
@@ -144,13 +187,20 @@ impl TelemetryPump {
     ///
     /// # Errors
     ///
-    /// Returns explicit encoding, storage, sequence, or accounting failures.
+    /// Returns explicit encoding, storage, sequence, accounting, or checkpoint-order failures.
     pub fn enqueue(&mut self, record: ExportRecord) -> Result<EnqueueOutcome, TelemetryError> {
         if self.closed {
             return Err(TelemetryError::new(
                 TelemetryErrorKind::InvalidConfiguration,
                 "enqueue telemetry",
                 "telemetry exporter has completed shutdown",
+            ));
+        }
+        if self.awaiting_checkpoint() {
+            return Err(TelemetryError::new(
+                TelemetryErrorKind::InvalidCheckpoint,
+                "enqueue telemetry",
+                "acknowledged export must be checkpointed before accepting another observation",
             ));
         }
         self.buffer.enqueue(record)
@@ -184,14 +234,11 @@ impl TelemetryPump {
         }
     }
 
-    /// Advances at most one exporter-owned operation poll, retaining the exact batch on failure.
-    ///
-    /// The control byte count bounds only this poll. It never rejects pending records or ends the
-    /// export session. Cancellation must be acknowledged by the exporter after owned cleanup.
+    /// Advances at most one exporter-owned operation poll while durably retaining its exact batch.
     ///
     /// # Errors
     ///
-    /// Returns explicit exporter, acknowledgement, storage, or sequence failures.
+    /// Returns explicit exporter, acknowledgement, storage, checkpoint, or sequence failures.
     pub fn poll_flush<E: Exporter>(
         &mut self,
         exporter: &mut E,
@@ -204,37 +251,49 @@ impl TelemetryPump {
                 "telemetry exporter has completed shutdown",
             ));
         }
+        if self.awaiting_checkpoint() || self.ack_observed() {
+            return self.finish_acknowledgement();
+        }
         if self.in_flight.is_none() {
             let Some(batch) = self.buffer.batch(self.stream_id)? else {
                 return Ok(FlushOutcome::Empty);
             };
             self.buffer.pin(&batch)?;
-            self.in_flight = Some(InFlight { batch, operation_active: false });
+            if let Err(error) = self.ownership.persist(&batch) {
+                self.buffer.unpin();
+                return Err(error);
+            }
+            self.in_flight = Some(InFlight { batch, phase: InFlightPhase::Ready });
         }
 
-        let needs_begin = self
-            .in_flight
-            .as_ref()
-            .is_some_and(|in_flight| !in_flight.operation_active);
-        if needs_begin {
+        if matches!(control, ExportPollControl::Cancel) && self.ready_to_begin() {
+            let batch = self.in_flight.as_ref().ok_or_else(pump_invariant)?.batch.clone();
+            self.ownership.discard_unaccepted(&batch)?;
+            self.in_flight = None;
+            self.buffer.unpin();
+            return Ok(FlushOutcome::Cancelled {
+                remaining: self.pending(),
+                progress: complete_progress(),
+            });
+        }
+
+        if self.ready_to_begin() {
             let begin = exporter.begin_export(
                 &self.in_flight.as_ref().ok_or_else(pump_invariant)?.batch,
             );
             if let Err(error) = begin {
-                self.in_flight = None;
-                self.buffer.unpin();
                 return Err(TelemetryError::exporter("begin telemetry export", error));
             }
-            self.in_flight.as_mut().ok_or_else(pump_invariant)?.operation_active = true;
+            self.in_flight.as_mut().ok_or_else(pump_invariant)?.phase =
+                InFlightPhase::Exporting;
         }
 
-        let polled = exporter.poll_export(control);
-        let polled = match polled {
+        let polled = match exporter.poll_export(control) {
             Ok(polled) => polled,
             Err(error) => {
                 if error.cleanup_complete() {
-                    self.in_flight = None;
-                    self.buffer.unpin();
+                    self.in_flight.as_mut().ok_or_else(pump_invariant)?.phase =
+                        InFlightPhase::Ready;
                 }
                 return Err(TelemetryError::exporter("poll telemetry export", error));
             }
@@ -242,31 +301,26 @@ impl TelemetryPump {
         match polled {
             ExportPoll::Pending(progress) => Ok(FlushOutcome::Pending(progress)),
             ExportPoll::Cancelled(progress) => {
+                let batch = self.in_flight.as_ref().ok_or_else(pump_invariant)?.batch.clone();
+                self.in_flight.as_mut().ok_or_else(pump_invariant)?.phase =
+                    InFlightPhase::Ready;
+                self.ownership.discard_unaccepted(&batch)?;
                 self.in_flight = None;
                 self.buffer.unpin();
                 Ok(FlushOutcome::Cancelled { remaining: self.pending(), progress })
             }
             ExportPoll::Accepted { ack, progress } => {
                 let in_flight = self.in_flight.as_mut().ok_or_else(pump_invariant)?;
-                in_flight.operation_active = false;
                 if !ack.matches(&in_flight.batch) {
+                    in_flight.phase = InFlightPhase::Ready;
                     return Err(TelemetryError::new(
                         TelemetryErrorKind::AckMismatch,
                         "poll telemetry export",
-                        "export acknowledgement does not match the complete pending batch",
+                        "export acknowledgement does not match the durable pending batch",
                     ));
                 }
-                let count = u64::try_from(in_flight.batch.len()).map_err(|_| {
-                    TelemetryError::new(
-                        TelemetryErrorKind::SequenceOverflow,
-                        "poll telemetry export",
-                        "export batch length cannot be represented by telemetry counters",
-                    )
-                })?;
-                let through_sequence = in_flight.batch.last_sequence();
-                self.buffer.acknowledge(&in_flight.batch)?;
-                self.in_flight = None;
-                Ok(FlushOutcome::Exported { count, through_sequence, progress })
+                in_flight.phase = InFlightPhase::AckObserved { progress, durable: false };
+                self.finish_acknowledgement()
             }
         }
     }
@@ -297,11 +351,7 @@ impl TelemetryPump {
                 FlushOutcome::Exported { progress, .. } => {
                     return Ok(ShutdownOutcome::Pending {
                         remaining: self.pending(),
-                        next: if self.buffer.is_empty() {
-                            DrainAction::PollExporterShutdown
-                        } else {
-                            DrainAction::PollExport
-                        },
+                        next: DrainAction::PersistCheckpoint,
                         progress,
                     });
                 }
@@ -349,6 +399,47 @@ impl TelemetryPump {
         }
     }
 
+    pub(crate) fn restore_ownership(
+        &mut self,
+        durable: ExportBatch,
+        acknowledged: bool,
+    ) -> Result<(), TelemetryError> {
+        if self.in_flight.is_some() {
+            return Err(pump_invariant());
+        }
+        let batch = self.buffer.restore_exact_batch(self.stream_id, &durable)?;
+        self.in_flight = Some(InFlight {
+            batch,
+            phase: if acknowledged {
+                InFlightPhase::AckObserved { progress: complete_progress(), durable: true }
+            } else {
+                InFlightPhase::Ready
+            },
+        });
+        Ok(())
+    }
+
+    pub(crate) fn retire_checkpointed(
+        &mut self,
+        checkpoint: ExportCheckpoint,
+    ) -> Result<(), TelemetryError> {
+        let Some(in_flight) = self.in_flight.as_ref() else { return Ok(()) };
+        if !matches!(&in_flight.phase, InFlightPhase::AwaitingCheckpoint { .. }) {
+            return Ok(());
+        }
+        if checkpoint != ExportCheckpoint::from_pump(self) {
+            return Err(TelemetryError::new(
+                TelemetryErrorKind::InvalidCheckpoint,
+                "retire pending telemetry export",
+                "persisted checkpoint does not match acknowledged pump disposition",
+            ));
+        }
+        let batch = in_flight.batch.clone();
+        self.ownership.retire_acknowledged(&batch)?;
+        self.in_flight = None;
+        Ok(())
+    }
+
     pub(crate) const fn restore_disposition(
         &mut self,
         prefix: Sha256Digest,
@@ -356,6 +447,72 @@ impl TelemetryPump {
     ) {
         self.buffer.restore_boundary(counters, prefix);
     }
+
+    fn finish_acknowledgement(&mut self) -> Result<FlushOutcome, TelemetryError> {
+        if self.awaiting_checkpoint() {
+            return self.exported_outcome();
+        }
+        let (batch, progress, durable) = match self.in_flight.as_ref() {
+            Some(InFlight {
+                batch,
+                phase: InFlightPhase::AckObserved { progress, durable },
+            }) => (batch.clone(), *progress, *durable),
+            _ => return Err(pump_invariant()),
+        };
+        if !durable {
+            self.ownership.mark_acknowledged(&batch)?;
+            self.in_flight.as_mut().ok_or_else(pump_invariant)?.phase =
+                InFlightPhase::AckObserved { progress, durable: true };
+        }
+        self.buffer.acknowledge(&batch)?;
+        self.in_flight.as_mut().ok_or_else(pump_invariant)?.phase =
+            InFlightPhase::AwaitingCheckpoint { progress };
+        self.exported_outcome()
+    }
+
+    fn exported_outcome(&self) -> Result<FlushOutcome, TelemetryError> {
+        let Some(InFlight {
+            batch,
+            phase: InFlightPhase::AwaitingCheckpoint { progress },
+        }) = self.in_flight.as_ref()
+        else {
+            return Err(pump_invariant());
+        };
+        let count = u64::try_from(batch.len()).map_err(|_| {
+            TelemetryError::new(
+                TelemetryErrorKind::SequenceOverflow,
+                "complete telemetry export",
+                "export batch length cannot be represented by telemetry counters",
+            )
+        })?;
+        Ok(FlushOutcome::Exported {
+            count,
+            through_sequence: batch.last_sequence(),
+            progress: *progress,
+        })
+    }
+
+    fn ready_to_begin(&self) -> bool {
+        self.in_flight
+            .as_ref()
+            .is_some_and(|in_flight| matches!(&in_flight.phase, InFlightPhase::Ready))
+    }
+
+    fn ack_observed(&self) -> bool {
+        self.in_flight.as_ref().is_some_and(|in_flight| {
+            matches!(&in_flight.phase, InFlightPhase::AckObserved { .. })
+        })
+    }
+
+    fn awaiting_checkpoint(&self) -> bool {
+        self.in_flight.as_ref().is_some_and(|in_flight| {
+            matches!(&in_flight.phase, InFlightPhase::AwaitingCheckpoint { .. })
+        })
+    }
+}
+
+const fn complete_progress() -> ExportProgress {
+    ExportProgress::new(ExportPhase::Complete, 0, None)
 }
 
 const fn pump_invariant() -> TelemetryError {
