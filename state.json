@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3923,
-        "tip_oid": "afa504d8fab4c6cc01b7d449646e14656a0d558d",
-        "prefix_sha256": "3f71c07912fb0ec7a08d7e52bd65e6c9a42887f45f2ffd89844057bd95d974d9"
+        "sequence": 3924,
+        "tip_oid": "2ec506cc17c067f47c03c29ba6a26fa55b2f2913",
+        "prefix_sha256": "b41ff6aa9daee9d7d1fa27a1336bcb53ce71cbf281c0dd7e08ba558bec31680c"
       },
       "NWAR": {
         "sequence": 39,
@@ -27098,12 +27098,13 @@
       "display_id": 511,
       "title": "[L431] E3 blocking stage effects cannot observe cancellation through the execution-port contract",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L431.\n\n- Evidence: `crates/analysis/peritus-eval/src/execution/port.rs:12-36,56-129,132-165`, `src/execution/directive.rs:12-28,137-147`, `src/execution/observation.rs:11-51,249-260` in the same crate.\n- Behavior: execute_rollout probes cancellation before candidate execution and again before evaluator execution. Each port call is synchronous and receives a directive without the CancellationProbe or a cancellation token. No probe is made after evaluator return before constructing its verdict. Required trace completeness and optional teardown completeness are validated after effects; invalid observations return Quarantine. Failed-stage observations retain only a class/digest/retryable flag, not resources consumed before failure.\n- Consequence: E3 itself cannot interrupt a stuck stage through this trait, regardless of durable cancellation becoming true during the call. An external adapter could independently observe cancellation, so an inevitable hang is not claimed. Post-effect validation can leave the wrapper without a returned complete rollout record despite completed work, and failed-attempt consumption is unavailable through this failure type. The downstream reducer only admits SettleRollout in Running, so a late ordinary verdict cannot legally override Cancelling; explicit cancellation settlement is required (aggregate/reducer.rs:274-305). The blocker is interruptibility and retained partial observations, not cancellation dominance.\n- Repair direction: Give effect ownership an interruptible, resumable contract carrying cancellation and exact stage/continuation identity. Retain partial outcomes and failed-stage resource observations before reconciliation or retry. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.518596553Z",
-      "updated_at": "2026-10-08T00:57:10.052604989Z",
+      "updated_at": "2026-10-08T00:58:39.099839227Z",
+      "closed_at": "2026-10-08T00:58:39.096923783Z",
       "labels": [
         "daily-driving-limiter"
       ],
