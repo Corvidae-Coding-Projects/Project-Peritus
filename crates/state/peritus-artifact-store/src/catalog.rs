@@ -838,19 +838,18 @@ impl Catalog {
         Ok(inventory)
     }
 
-    pub(crate) fn used_bytes(&self) -> Result<u64, ArtifactStoreError> {
-        checked_used_bytes(&self.connection)
+    pub(crate) fn quota_bytes(&self) -> Result<(u64, u64), ArtifactStoreError> {
+        checked_quota_bytes(&self.connection)
     }
 
     pub(crate) fn set_quarantine(
-        &mut self,
+        &self,
         digest: ArtifactDigest,
         state: QuarantineState,
     ) -> Result<(), ArtifactStoreError> {
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(catalog_io)?;
+        let transaction =
+            Transaction::new_unchecked(&self.connection, TransactionBehavior::Immediate)
+                .map_err(catalog_io)?;
         let referenced: i64 = transaction
             .query_row(
                 "SELECT EXISTS(
@@ -909,13 +908,12 @@ impl Catalog {
     }
 
     pub(crate) fn delete_record(
-        &mut self,
+        &self,
         digest: ArtifactDigest,
     ) -> Result<(), ArtifactStoreError> {
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(catalog_io)?;
+        let transaction =
+            Transaction::new_unchecked(&self.connection, TransactionBehavior::Immediate)
+                .map_err(catalog_io)?;
         let changed = transaction
             .execute(
                 "DELETE FROM artifact_records
@@ -1167,8 +1165,11 @@ fn enforce_quota(
     let Some(quota_limit) = quota_limit else {
         return Ok(());
     };
-    let used = checked_used_bytes(connection)?;
-    let attempted = used.checked_add(size).ok_or_else(|| {
+    let (committed, reserved) = checked_quota_bytes(connection)?;
+    let attempted = committed
+        .checked_add(reserved)
+        .and_then(|total| total.checked_add(size))
+        .ok_or_else(|| {
         ArtifactStoreError::message(
             ErrorCode::ArithmeticOverflow,
             RecoveryClass::RecoverStore,
@@ -1207,14 +1208,15 @@ const fn decode_repair_reason(value: i64) -> Result<ArtifactRepairReason, Artifa
     }
 }
 
-fn checked_used_bytes(connection: &Connection) -> Result<u64, ArtifactStoreError> {
+fn checked_quota_bytes(connection: &Connection) -> Result<(u64, u64), ArtifactStoreError> {
     const PAGE_ROWS: usize = 1_024;
     let mut after = Vec::new();
-    let mut total = 0_u64;
+    let mut committed = 0_u64;
+    let mut reserved = 0_u64;
     loop {
         let mut statement = connection
             .prepare(
-                "SELECT digest, size FROM artifact_records
+                "SELECT digest, size, finalization_state FROM artifact_records
                   WHERE digest > ?1 ORDER BY digest LIMIT ?2",
             )
             .map_err(catalog_error)?;
@@ -1223,16 +1225,27 @@ fn checked_used_bytes(connection: &Connection) -> Result<u64, ArtifactStoreError
                 params![after.as_slice(), i64::try_from(PAGE_ROWS).map_err(|_| {
                     corrupt_catalog("artifact accounting page size cannot be represented")
                 })?],
-                |row| Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, i64>(1)?)),
+                |row| {
+                    Ok((
+                        row.get::<_, Vec<u8>>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, i64>(2)?,
+                    ))
+                },
             )
             .map_err(catalog_error)?;
         let mut page_rows = 0_usize;
         for row in rows {
-            let (digest, size) = row.map_err(catalog_error)?;
+            let (digest, size, finalization) = row.map_err(catalog_error)?;
             let _ = array::<32>(&digest)?;
             let size = u64::try_from(size)
                 .map_err(|_| corrupt_catalog("artifact accounting contains a negative size"))?;
-            total = total.checked_add(size).ok_or_else(|| {
+            let total = match finalization {
+                1 => &mut reserved,
+                2 => &mut committed,
+                _ => return Err(corrupt_catalog("artifact accounting has invalid finalization")),
+            };
+            *total = total.checked_add(size).ok_or_else(|| {
                 ArtifactStoreError::message(
                     ErrorCode::ArithmeticOverflow,
                     RecoveryClass::RecoverStore,
@@ -1245,7 +1258,7 @@ fn checked_used_bytes(connection: &Connection) -> Result<u64, ArtifactStoreError
             })?;
         }
         if page_rows < PAGE_ROWS {
-            return Ok(total);
+            return Ok((committed, reserved));
         }
     }
 }

@@ -165,7 +165,7 @@ impl GcPlan {
                 return Err(invalid_plan("duplicate artifact in collection inventory"));
             }
         }
-        let marked = roots.all();
+        let marked = roots.deduplicated();
         if marked.iter().any(|digest| !entries.contains_key(digest)) {
             return Err(invalid_plan("a collection root names a missing artifact"));
         }

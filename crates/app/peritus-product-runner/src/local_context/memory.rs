@@ -118,8 +118,14 @@ impl LocalMemory {
     ) -> Result<Self, DeveloperLoopError> {
         config.validate().map_err(|_| error("invalid local context configuration"))?;
         let limits = config.working_limits().map_err(|_| error("invalid local context limits"))?;
-        let store = LocalStore::open_folder_cancellable(
-            root, workspace, binding, &workspace_scope.protected, &cancellation,
+        let store = LocalStore::open_folder_cancellable_with_policy(
+            root,
+            workspace,
+            binding,
+            &workspace_scope.protected,
+            &cancellation,
+            config.storage_minimum_free_bytes,
+            config.storage_pressure_retry_millis,
         )?;
         let environment = environment::capture(
             workspace,

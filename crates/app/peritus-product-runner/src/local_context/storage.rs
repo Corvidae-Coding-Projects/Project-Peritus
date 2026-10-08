@@ -26,11 +26,14 @@ use peritus_types::Sha256Digest;
 use std::{
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 const FRAME_FAMILY: u16 = 3401;
 const STATE_NAMESPACE: u16 = 3401;
 const STATE_KEY: &[u8] = b"local-working-memory/checkpoint/v1";
+const DEFAULT_STORAGE_PRESSURE_RETRY_MILLIS: u64 = 100;
+const STORAGE_PRESSURE_CANCELLATION_POLL_MILLIS: u64 = 10;
 
 /// Local artifact handle with exact verified size.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -50,6 +53,7 @@ pub(super) struct LocalStore {
     generation: u64,
     journal_cancellation: JournalCancellation,
     catalog_cancellation: ArtifactCatalogCancellation,
+    storage_pressure_retry: Duration,
     // The lock's lifetime covers both journal and artifact owners, including failed invocations.
     _owner: File,
 }
@@ -90,6 +94,29 @@ impl LocalStore {
         protected: &[PathBuf],
         cancellation: &CancellationToken,
     ) -> Result<Self, DeveloperLoopError> {
+        Self::open_folder_cancellable_with_policy(
+            root,
+            workspace,
+            binding,
+            protected,
+            cancellation,
+            0,
+            DEFAULT_STORAGE_PRESSURE_RETRY_MILLIS,
+        )
+    }
+
+    pub(super) fn open_folder_cancellable_with_policy(
+        root: &Path,
+        workspace: &Path,
+        binding: WorkingBinding,
+        protected: &[PathBuf],
+        cancellation: &CancellationToken,
+        storage_minimum_free_bytes: u64,
+        storage_pressure_retry_millis: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        if storage_pressure_retry_millis == 0 {
+            return Err(error("storage pressure retry cadence must be positive"));
+        }
         location::validate(root, workspace, protected)?;
         fs::create_dir_all(root).map_err(|_| error("create storage root"))?;
         let root = root.canonicalize().map_err(|_| error("resolve storage root"))?;
@@ -116,6 +143,7 @@ impl LocalStore {
         )
         .map_err(|failure| map_journal_failure(&journal_cancellation, "open C0 journal", failure))?;
         let config = StoreConfig::for_available_space_without_artifact_limit(root.join("artifacts"))
+            .and_then(|config| config.with_minimum_free_bytes(storage_minimum_free_bytes))
             .and_then(|config| config.with_database_path(&database))
             .map_err(|_| error("configure C0 artifact store"))?;
         let artifacts = catalog_cancellation.run(|| ArtifactStore::open(config))
@@ -126,7 +154,18 @@ impl LocalStore {
             .map_err(|failure| map_journal_failure(&journal_cancellation, "read checkpoint root", failure))?;
         let generation =
             checkpoint.as_ref().map_or(0, peritus_journal::DurableStateRecord::revision);
-        Ok(Self { root, journal, artifacts, identity, head, generation, journal_cancellation, catalog_cancellation, _owner: owner })
+        Ok(Self {
+            root,
+            journal,
+            artifacts,
+            identity,
+            head,
+            generation,
+            journal_cancellation,
+            catalog_cancellation,
+            storage_pressure_retry: Duration::from_millis(storage_pressure_retry_millis),
+            _owner: owner,
+        })
     }
 
     pub(super) fn root(&self) -> &Path {
@@ -199,23 +238,39 @@ impl LocalStore {
         self.check_cancelled()?;
         let length = u64::try_from(bytes.len()).map_err(|_| error("artifact size overflow"))?;
         let digest = sha256(bytes);
+        let artifact_digest = ArtifactDigest::from_sha256(digest);
+        if let Some(metadata) = self.retry_artifact_pressure("read artifact metadata", || {
+            self.artifacts.metadata(artifact_digest)
+        })? {
+            if metadata.size() != length {
+                return Err(error("artifact digest length conflict"));
+            }
+            if metadata.is_referenceable() {
+                let verified = self.retry_artifact_pressure("verify existing artifact", || {
+                    self.artifacts.verify(artifact_digest)
+                })?;
+                if verified.size() != length {
+                    return Err(error("artifact digest length conflict"));
+                }
+                return Ok(StoredArtifact { digest, bytes: length });
+            }
+        }
         let event = self.identity.event(
             self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?,
         )?;
         let request = WriteRequest::new(
-            ArtifactDigest::from_sha256(digest),
+            artifact_digest,
             length,
             length.max(1),
             MediaType::new("application/octet-stream").map_err(|_| error("artifact media type"))?,
             EncryptionMetadata::unencrypted(),
             event,
         );
-        self.catalog_cancellation.run(|| {
-        let mut writer =
-            self.artifacts.begin_write(request).map_err(|failure| self.artifact_failure("begin artifact write", failure))?;
-        writer.write_chunk(bytes).map_err(|failure| self.artifact_failure("write artifact bytes", failure))?;
-        let finalized = writer.finalize().map_err(|failure| self.artifact_failure("finalize artifact", failure))?;
-        Ok(StoredArtifact { digest, bytes: finalized.size() })
+        self.retry_artifact_pressure("store artifact", || {
+            let mut writer = self.artifacts.begin_write(request.clone())?;
+            writer.write_chunk(bytes)?;
+            let finalized = writer.finalize()?;
+            Ok(StoredArtifact { digest, bytes: finalized.size() })
         })
     }
 
@@ -242,15 +297,14 @@ impl LocalStore {
         }
         let parent = self.store(bytes)?;
         self.check_cancelled()?;
-        self.catalog_cancellation.run(|| {
+        self.retry_artifact_pressure("bind artifact dependency bundle", || {
             self.artifacts.bind_dependencies(
                 ArtifactDigest::from_sha256(parent.digest),
                 unique_children.iter().map(|child| {
                     (ArtifactDigest::from_sha256(child.digest), child.bytes)
                 }),
             )
-        })
-            .map_err(|failure| self.artifact_failure("bind artifact dependency bundle", failure))?;
+        })?;
         Ok(parent)
     }
 
@@ -327,11 +381,56 @@ impl LocalStore {
         owner: Sha256Digest,
     ) -> Result<(), DeveloperLoopError> {
         self.check_cancelled()?;
-        self.catalog_cancellation.run(|| self.artifacts
-            .retire_reference_owner(ReferenceOwner::journal(owner))
-        )
+        self.retry_artifact_pressure("retire obsolete checkpoint artifact roots", || {
+            self.artifacts.retire_reference_owner(ReferenceOwner::journal(owner))
+        })
             .map(|_| ())
-            .map_err(|failure| self.artifact_failure("retire obsolete checkpoint artifact roots", failure))
+    }
+
+    fn retry_artifact_pressure<T>(
+        &self,
+        operation: &str,
+        mut action: impl FnMut() -> Result<T, ArtifactStoreError>,
+    ) -> Result<T, DeveloperLoopError> {
+        loop {
+            self.check_cancelled()?;
+            match self.catalog_cancellation.run(|| action()) {
+                Ok(value) => return Ok(value),
+                Err(failure) if failure.code() == ArtifactErrorCode::StoragePressure => {
+                    self.prepare_storage_pressure_wait()?;
+                    self.wait_for_storage_pressure()?;
+                }
+                Err(failure) => return Err(self.artifact_failure(operation, failure)),
+            }
+        }
+    }
+
+    fn prepare_storage_pressure_wait(&self) -> Result<(), DeveloperLoopError> {
+        self.check_cancelled()?;
+        match self
+            .catalog_cancellation
+            .run(|| self.artifacts.collect_released_for_pressure())
+        {
+            Ok(()) => Ok(()),
+            Err(failure) if failure.code() == ArtifactErrorCode::StoragePressure => Ok(()),
+            Err(failure) => {
+                Err(self.artifact_failure("collect released artifacts under storage pressure", failure))
+            }
+        }
+    }
+
+    fn wait_for_storage_pressure(&self) -> Result<(), DeveloperLoopError> {
+        let started = Instant::now();
+        let cancellation_poll =
+            Duration::from_millis(STORAGE_PRESSURE_CANCELLATION_POLL_MILLIS);
+        loop {
+            self.check_cancelled()?;
+            let elapsed = started.elapsed();
+            if elapsed >= self.storage_pressure_retry {
+                return Ok(());
+            }
+            std::thread::sleep((self.storage_pressure_retry - elapsed).min(cancellation_poll));
+        }
     }
 
     fn check_cancelled(&self) -> Result<(), DeveloperLoopError> {

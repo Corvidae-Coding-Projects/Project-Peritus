@@ -55,13 +55,20 @@ pub struct LocalProcessConfig {
     pub executable: PathBuf,
     /// Absolute path to one preinstalled weights file; directories are not admitted.
     pub model_path: PathBuf,
-    /// Explicit caller-selected wall-clock deadline in milliseconds.
+    /// Explicit caller-selected wall-clock deadline in milliseconds; zero selects no deadline.
     pub timeout_millis: u64,
-    /// Maximum complete input bytes, at most one MiB.
+    /// Maximum bytes in one physical semantic-process input page.
+    ///
+    /// Version-one configuration already declared this physical page ownership. The field name
+    /// remains unchanged for strict-decoder compatibility; it is not a lifetime-input allowance.
     pub max_input_bytes: usize,
-    /// Maximum complete output bytes, at most 256 KiB.
+    /// Maximum bytes in one durable semantic-process output segment.
+    ///
+    /// Version-one configuration declared this as one physical output page. The existing field is
+    /// retained as the durable segment allocation; it is not a cumulative output allowance and
+    /// reaching one segment boundary does not stop the process.
     pub max_output_bytes: usize,
-    /// Maximum resident memory under the platform's enforced resource envelope.
+    /// Selected resident-memory ceiling; zero explicitly selects no memory ceiling.
     pub memory_bytes: u64,
 }
 
@@ -84,14 +91,20 @@ pub struct LocalContextConfig {
     pub retain_recent_messages: usize,
     /// Preferred token ceiling for working entries; required closure may borrow input headroom.
     pub working_state_max_tokens: u64,
-    /// Maximum tokens allocated to automatically retrieved older observations.
+    /// Preferred token allocation for optional automatically retrieved older observations.
     pub retrieved_evidence_max_tokens: u64,
-    /// Maximum operations in an agent-authored atomic update.
+    /// Maximum operations in one physical reducer page of an atomic logical update.
     pub max_update_operations: usize,
     /// Maximum UTF-8 bytes in an agent-authored entry.
     pub max_entry_bytes: usize,
     /// Maximum bytes in one evidence read response.
     pub max_read_bytes: usize,
+    /// Unprivileged filesystem bytes retained after each local-memory artifact reservation.
+    /// Zero keeps preallocation advisory while actual filesystem exhaustion remains retryable.
+    pub storage_minimum_free_bytes: u64,
+    /// Polling cadence while durable local-memory writes wait for physical storage pressure to
+    /// clear. This is a cadence, not a deadline; cancellation remains the only implicit stop.
+    pub storage_pressure_retry_millis: u64,
     /// Publishes a checkpoint after each completed batch in addition to each next model view.
     pub checkpoint_every_completed_batch: bool,
 }
@@ -110,6 +123,8 @@ impl Default for LocalContextConfig {
             max_update_operations: 32,
             max_entry_bytes: 2048,
             max_read_bytes: 16_384,
+            storage_minimum_free_bytes: 0,
+            storage_pressure_retry_millis: 100,
             checkpoint_every_completed_batch: true,
         }
     }
@@ -123,10 +138,10 @@ impl LocalContextConfig {
     pub fn validate(&self) -> Result<(), ProductRunnerError> {
         self.working_limits()?;
         if !(1..=100).contains(&self.trigger_percent)
-            || !(1..=128).contains(&self.retain_recent_messages)
-            || !(1..=16_384).contains(&self.working_state_max_tokens)
-            || self.retrieved_evidence_max_tokens > 16_384
-            || !(256..=65_536).contains(&self.max_read_bytes)
+            || self.retain_recent_messages == 0
+            || self.working_state_max_tokens == 0
+            || !(1..=65_536).contains(&self.max_read_bytes)
+            || self.storage_pressure_retry_millis == 0
         {
             return Err(error("invalid context policy bounds"));
         }
@@ -144,18 +159,40 @@ impl LocalContextConfig {
 }
 
 impl LocalProcessConfig {
-    fn validate(&self) -> Result<(), ProductRunnerError> {
+    pub(crate) fn validate(&self) -> Result<(), ProductRunnerError> {
         self.sandbox.validate()?;
         if !self.executable.is_absolute()
             || !self.model_path.is_absolute()
-            || self.timeout_millis == 0
-            || !(1..=1_048_576).contains(&self.max_input_bytes)
-            || !(1..=262_144).contains(&self.max_output_bytes)
-            || !(16 * 1024 * 1024..=64 * 1024 * 1024 * 1024).contains(&self.memory_bytes)
+            || self.max_input_bytes == 0
+            || self.max_output_bytes == 0
         {
             return Err(error("invalid local process envelope"));
         }
         Ok(())
+    }
+
+    /// Returns the selected wall deadline, or `None` for explicitly unlimited execution.
+    #[must_use]
+    pub const fn wall_timeout_millis(&self) -> Option<u64> {
+        if self.timeout_millis == 0 { None } else { Some(self.timeout_millis) }
+    }
+
+    /// Returns the selected physical input-page allocation.
+    #[must_use]
+    pub const fn input_page_bytes(&self) -> usize {
+        self.max_input_bytes
+    }
+
+    /// Returns the selected durable output-segment allocation.
+    #[must_use]
+    pub const fn output_segment_bytes(&self) -> usize {
+        self.max_output_bytes
+    }
+
+    /// Returns the selected memory ceiling, or `None` when the caller selected no ceiling.
+    #[must_use]
+    pub const fn memory_limit_bytes(&self) -> Option<u64> {
+        if self.memory_bytes == 0 { None } else { Some(self.memory_bytes) }
     }
 }
 

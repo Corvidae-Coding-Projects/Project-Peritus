@@ -62,23 +62,38 @@ impl LocalStore {
         let expectation = self
             .head
             .map_or(HeadExpectation::Absent(self.identity.aggregate), HeadExpectation::Present);
-        let plan = AppendRequest::new(
-            self.identity.store,
-            self.identity.command(sequence)?,
-            sha256(payload),
-            vec![expectation],
-            vec![draft],
-            installs,
-            dependencies,
-            None,
-            None,
-            Vec::new(),
-        )
-        .plan()
-        .map_err(|_| error("validate journal transaction"))?;
+        let command = self.identity.command(sequence)?;
+        let payload_digest = sha256(payload);
         let cancellation = self.journal_cancellation.clone();
-        let committed = cancellation.run(|| self.journal.append(plan))
-            .map_err(|failure| self.journal_failure("commit local journal transaction", failure))?;
+        let committed = loop {
+            self.check_cancelled()?;
+            let plan = AppendRequest::new(
+                self.identity.store,
+                command,
+                payload_digest,
+                vec![expectation],
+                vec![draft.clone()],
+                installs.clone(),
+                dependencies.clone(),
+                None,
+                None,
+                Vec::new(),
+            )
+            .plan()
+            .map_err(|_| error("validate journal transaction"))?;
+            match cancellation.run(|| self.journal.append(plan)) {
+                Ok(committed) => break committed,
+                Err(failure) if failure.is_storage_exhausted() => {
+                    self.prepare_storage_pressure_wait()?;
+                    self.wait_for_storage_pressure()?;
+                }
+                Err(failure) => {
+                    return Err(
+                        self.journal_failure("commit local journal transaction", failure)
+                    );
+                }
+            }
+        };
         self.head = cancellation.run(|| self
             .journal
             .head(self.identity.aggregate)

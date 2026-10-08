@@ -146,7 +146,9 @@ impl ReferenceRoots {
         self.journal.contains(digest) || self.evidence.contains(digest)
     }
 
-    pub(crate) fn all(&self) -> BTreeSet<ArtifactDigest> {
+    /// Returns the exact union of journal and evidence roots, deduplicating shared artifact and
+    /// dependency-closure references by content digest.
+    pub(crate) fn deduplicated(&self) -> BTreeSet<ArtifactDigest> {
         self.journal.iter().chain(self.evidence.iter()).copied().collect()
     }
 }

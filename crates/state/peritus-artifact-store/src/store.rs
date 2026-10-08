@@ -377,8 +377,16 @@ impl ArtifactStore {
     ///
     /// Returns overflow or quota exhaustion for an invalid observation.
     pub fn quota_snapshot(&self, reserved_bytes: u64) -> Result<QuotaSnapshot, ArtifactStoreError> {
+        let (committed_bytes, durable_reserved_bytes) = self.catalog.quota_bytes()?;
+        let reserved_bytes = durable_reserved_bytes.checked_add(reserved_bytes).ok_or_else(|| {
+            ArtifactStoreError::message(
+                ErrorCode::ArithmeticOverflow,
+                RecoveryClass::RecoverStore,
+                "durable and requested artifact reservations overflowed",
+            )
+        })?;
         QuotaSnapshot::for_policy(
-            self.catalog.used_bytes()?,
+            committed_bytes,
             reserved_bytes,
             self.config.quota_bytes(),
         )
@@ -406,6 +414,47 @@ impl ArtifactStore {
         GcPlan::build(generation, self.catalog.inventory()?, &self.catalog.roots()?)
     }
 
+    /// Collects only explicitly released, currently unreferenced artifacts before a caller waits
+    /// for physical storage. Two fresh generations preserve the durable quarantine transition
+    /// while allowing already released bytes to be swept during this pressure response.
+    ///
+    /// Finalized publications that have not acquired or released an owner remain protected, and
+    /// reference roots are reloaded between generations so shared dependency closure stays live.
+    ///
+    /// # Errors
+    ///
+    /// Returns catalog, integrity, generation-overflow, or filesystem errors.
+    pub fn collect_released_for_pressure(&self) -> Result<(), ArtifactStoreError> {
+        let inventory = self.catalog.inventory()?;
+        let latest = inventory
+            .iter()
+            .filter_map(|entry| match entry.quarantine() {
+                QuarantineState::Active => None,
+                QuarantineState::Quarantined { since } => Some(since.get()),
+            })
+            .max()
+            .unwrap_or(0);
+        let first = CollectionGeneration::new(latest.checked_add(1).ok_or_else(|| {
+            ArtifactStoreError::message(
+                ErrorCode::ArithmeticOverflow,
+                RecoveryClass::RecoverStore,
+                "artifact pressure collection generation overflowed",
+            )
+        })?)?;
+        let first_plan = self.plan_gc(first)?;
+        self.apply_gc_plan(&first_plan)?;
+        let second = CollectionGeneration::new(first.get().checked_add(1).ok_or_else(|| {
+            ArtifactStoreError::message(
+                ErrorCode::ArithmeticOverflow,
+                RecoveryClass::RecoverStore,
+                "artifact pressure sweep generation overflowed",
+            )
+        })?)?;
+        let second_plan = self.plan_gc(second)?;
+        self.apply_gc_plan(&second_plan)?;
+        Ok(())
+    }
+
     /// Applies an explicit collection plan in canonical action order.
     ///
     /// Each action is restart-recoverable. If an error interrupts a plan, reopening the store
@@ -414,7 +463,7 @@ impl ArtifactStore {
     /// # Errors
     ///
     /// Returns stale-plan, catalog, I/O, missing-file, or corruption errors.
-    pub fn apply_gc_plan(&mut self, plan: &GcPlan) -> Result<GcApplication, ArtifactStoreError> {
+    pub fn apply_gc_plan(&self, plan: &GcPlan) -> Result<GcApplication, ArtifactStoreError> {
         let mut application = GcApplication::default();
         for &action in plan.actions() {
             self.apply_action(action)?;
@@ -423,7 +472,7 @@ impl ArtifactStore {
         Ok(application)
     }
 
-    fn apply_action(&mut self, action: GcAction) -> Result<(), ArtifactStoreError> {
+    fn apply_action(&self, action: GcAction) -> Result<(), ArtifactStoreError> {
         match action {
             GcAction::Quarantine { digest, size, generation } => {
                 let metadata = self.require_state(digest, size, QuarantineState::Active)?;
