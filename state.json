@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3895,
-        "tip_oid": "4af1e1b40d9915962569620d94865fbffea1dd99",
-        "prefix_sha256": "a811bca3d5a9c6005e2296a005add81c88116920477b8963cf2a292147835a96"
+        "sequence": 3896,
+        "tip_oid": "689d216adabab3a07f854e12f4085c644fcbd81f",
+        "prefix_sha256": "9981a50d91bc84aab80d255e8c49b5db1150e34b8a9d7a128070be214a971432"
       },
       "NWAR": {
         "sequence": 39,
@@ -24217,12 +24217,13 @@
       "display_id": 655,
       "title": "[L598] macOS public helper-launch assembly has an independent fixed descriptor ceiling",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L598.\n\n- Evidence: `crates/runtime/peritus-sandbox-macos/src/process.rs:15,167-172,199-244`.\n- Behavior: `HelperLaunch::new` builds manifest, optional proxy, and secret descriptors, then rejects more than 64 inherited descriptors. This public assembly omits the distinct exec-status descriptor used by the production native launch description.\n- Consequence: The utility has a separate fixed capacity and cannot represent every wider secret descriptor set accepted elsewhere. Production preparation uses the native launch description directly, so this read does not establish that the utility's 64-descriptor gate blocks ordinary production launches.\n- Repair direction: Consolidate descriptor assembly around one validated launch representation and report selected platform capacity before consuming preparation authority.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.208853007Z",
-      "updated_at": "2026-10-08T00:12:42.385040953Z",
+      "updated_at": "2026-10-08T00:14:06.314553934Z",
+      "closed_at": "2026-10-08T00:14:06.311583016Z",
       "labels": [
         "daily-driving-limiter"
       ],
