@@ -2,7 +2,7 @@
 
 use std::path::{Component, Path};
 
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer, de};
 use sha2::{Digest as _, Sha256};
 
 use crate::{
@@ -37,7 +37,7 @@ impl PluginEntrypoint {
     ///
     /// # Errors
     ///
-    /// Rejects absolute/traversing artifacts or oversized/control-containing arguments.
+    /// Rejects absolute/traversing artifacts or NUL-containing paths and arguments.
     pub fn new(artifact: impl Into<String>, arguments: Vec<String>) -> Result<Self, SdkError> {
         let value = Self { artifact: artifact.into(), arguments };
         value.validate()?;
@@ -59,20 +59,22 @@ impl PluginEntrypoint {
     fn validate(&self) -> Result<(), SdkError> {
         let path = Path::new(&self.artifact);
         let valid_path = !self.artifact.is_empty()
-            && self.artifact.len() <= 512
+            && !self.artifact.contains('\0')
             && !path.is_absolute()
             && path.components().all(|component| matches!(component, Component::Normal(_)));
         if !valid_path {
             return Err(manifest_error("entrypoint artifact must be one safe relative path"));
         }
-        if self.arguments.len() > 64
-            || self.arguments.iter().any(|argument| {
-                argument.len() > 4096 || argument.chars().any(|character| character == '\0')
-            })
-        {
-            return Err(manifest_error("entrypoint arguments exceed their bound"));
+        if self.arguments.iter().any(|argument| argument.contains('\0')) {
+            return Err(manifest_error("entrypoint arguments must not contain NUL"));
         }
         Ok(())
+    }
+
+    fn is_v1_compatible(&self) -> bool {
+        self.artifact.len() <= 512
+            && self.arguments.len() <= 64
+            && self.arguments.iter().all(|argument| argument.len() <= 4096)
     }
 }
 
@@ -94,12 +96,29 @@ pub enum PluginOperation {
 }
 
 /// One declared capability required or optionally used by the plugin.
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct CapabilityDeclaration {
     name: String,
     operation: PluginOperation,
     required: bool,
+}
+
+impl<'de> Deserialize<'de> for CapabilityDeclaration {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            name: String,
+            operation: PluginOperation,
+            required: bool,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Self::new(wire.name, wire.operation, wire.required).map_err(de::Error::custom)
+    }
 }
 
 impl CapabilityDeclaration {
@@ -138,11 +157,27 @@ impl CapabilityDeclaration {
 }
 
 /// Inclusive plugin protocol compatibility range.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProtocolRange {
     minimum: u16,
     maximum: u16,
+}
+
+impl<'de> Deserialize<'de> for ProtocolRange {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            minimum: u16,
+            maximum: u16,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Self::new(wire.minimum, wire.maximum).map_err(de::Error::custom)
+    }
 }
 
 impl ProtocolRange {
@@ -196,8 +231,7 @@ impl ProtocolRange {
 }
 
 /// Explicit policy for a counter accumulated across one plugin lifecycle.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(tag = "policy", rename_all = "snake_case", deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CumulativeQuota {
     /// Permanently consumes one unit for every admitted operation.
     Limited {
@@ -211,6 +245,28 @@ pub enum CumulativeQuota {
     },
     /// Does not impose a cumulative counter limit.
     Unlimited,
+}
+
+impl<'de> Deserialize<'de> for CumulativeQuota {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(tag = "policy", rename_all = "snake_case", deny_unknown_fields)]
+        enum Wire {
+            Limited { limit: u64 },
+            Replenishable { capacity: u64 },
+            Unlimited,
+        }
+
+        let value = match Wire::deserialize(deserializer)? {
+            Wire::Limited { limit } => Self::Limited { limit },
+            Wire::Replenishable { capacity } => Self::Replenishable { capacity },
+            Wire::Unlimited => Self::Unlimited,
+        };
+        value.validate().map_err(de::Error::custom)
+    }
 }
 
 impl CumulativeQuota {
@@ -265,8 +321,7 @@ impl CumulativeQuota {
 }
 
 /// Hard physical ceilings and explicit lifecycle policies requested by a manifest.
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PluginQuotas {
     /// Maximum concurrent requests.
     pub concurrent_requests: u16,
@@ -282,6 +337,38 @@ pub struct PluginQuotas {
     pub lifecycle_requests: CumulativeQuota,
     /// Protocol-violation accounting policy during one host lifecycle.
     pub protocol_violations: CumulativeQuota,
+}
+
+impl<'de> Deserialize<'de> for PluginQuotas {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            concurrent_requests: u16,
+            frame_bytes: u32,
+            output_bytes: u64,
+            json: JsonStructure,
+            invocation_millis: Option<u64>,
+            lifecycle_requests: CumulativeQuota,
+            protocol_violations: CumulativeQuota,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Self {
+            concurrent_requests: wire.concurrent_requests,
+            frame_bytes: wire.frame_bytes,
+            output_bytes: wire.output_bytes,
+            json: wire.json,
+            invocation_millis: wire.invocation_millis,
+            lifecycle_requests: wire.lifecycle_requests,
+            protocol_violations: wire.protocol_violations,
+        }
+        .validate()
+        .map_err(de::Error::custom)
+    }
 }
 
 impl PluginQuotas {
@@ -378,8 +465,7 @@ impl PluginQuotas {
 }
 
 /// Detached signature metadata interpreted by the configured host trust verifier.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SignatureDeclaration {
     key_id: String,
     algorithm: String,
@@ -387,6 +473,25 @@ pub struct SignatureDeclaration {
 }
 
 impl SignatureDeclaration {
+    /// Creates exact detached-signature metadata for a configured verifier.
+    ///
+    /// # Errors
+    ///
+    /// Rejects empty/control-containing identifiers or whitespace-bearing signatures.
+    pub fn new(
+        key_id: impl Into<String>,
+        algorithm: impl Into<String>,
+        signature: impl Into<String>,
+    ) -> Result<Self, SdkError> {
+        let value = Self {
+            key_id: key_id.into(),
+            algorithm: algorithm.into(),
+            signature: signature.into(),
+        };
+        value.validate()?;
+        Ok(value)
+    }
+
     /// Borrows the stable signer key identifier.
     #[must_use]
     pub fn key_id(&self) -> &str {
@@ -407,19 +512,40 @@ impl SignatureDeclaration {
 
     fn validate(&self) -> Result<(), SdkError> {
         if self.key_id.is_empty()
-            || self.key_id.len() > 128
             || self.algorithm.is_empty()
-            || self.algorithm.len() > 64
             || self.signature.is_empty()
-            || self.signature.len() > 4096
             || self.key_id.chars().any(char::is_control)
             || self.algorithm.chars().any(char::is_control)
             || self.signature.chars().any(char::is_whitespace)
         {
-            Err(manifest_error("signature declaration is invalid or oversized"))
+            Err(manifest_error("signature declaration is invalid"))
         } else {
             Ok(())
         }
+    }
+
+    fn is_v1_compatible(&self) -> bool {
+        self.key_id.len() <= 128
+            && self.algorithm.len() <= 64
+            && self.signature.len() <= 4096
+    }
+}
+
+impl<'de> Deserialize<'de> for SignatureDeclaration {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            key_id: String,
+            algorithm: String,
+            signature: String,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Self::new(wire.key_id, wire.algorithm, wire.signature).map_err(de::Error::custom)
     }
 }
 
@@ -456,8 +582,7 @@ impl TrustMaterial {
 }
 
 /// Versioned canonical plugin manifest.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PluginManifest {
     manifest_version: u16,
     id: PluginId,
@@ -468,6 +593,42 @@ pub struct PluginManifest {
     capabilities: Vec<CapabilityDeclaration>,
     quotas: PluginQuotas,
     signature: Option<SignatureDeclaration>,
+}
+
+impl<'de> Deserialize<'de> for PluginManifest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            manifest_version: u16,
+            id: PluginId,
+            version: PluginVersion,
+            kind: PluginKind,
+            protocol: ProtocolRange,
+            entrypoint: PluginEntrypoint,
+            capabilities: Vec<CapabilityDeclaration>,
+            quotas: PluginQuotas,
+            signature: Option<SignatureDeclaration>,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        let value = Self {
+            manifest_version: wire.manifest_version,
+            id: wire.id,
+            version: wire.version,
+            kind: wire.kind,
+            protocol: wire.protocol,
+            entrypoint: wire.entrypoint,
+            capabilities: wire.capabilities,
+            quotas: wire.quotas,
+            signature: wire.signature,
+        };
+        value.validate().map_err(de::Error::custom)?;
+        Ok(value)
+    }
 }
 
 impl PluginManifest {
@@ -501,12 +662,21 @@ impl PluginManifest {
         self.quotas.validate()?;
         if (self.manifest_version == LEGACY_MANIFEST_VERSION
             || self.protocol.maximum == crate::protocol::LEGACY_PROTOCOL_VERSION)
-            && self.quotas.legacy_values().is_none()
+            && (!self.id.is_v1_compatible()
+                || !self.version.is_v1_compatible()
+                || !self.entrypoint.is_v1_compatible()
+                || self.capabilities.len() > 256
+                || self
+                    .capabilities
+                    .iter()
+                    .any(|capability| !is_v1_capability_name(capability.name()))
+                || self
+                    .signature
+                    .as_ref()
+                    .is_some_and(|signature| !signature.is_v1_compatible())
+                || self.quotas.legacy_values().is_none())
         {
-            return Err(manifest_error("version-one manifest quotas are not representable"));
-        }
-        if self.capabilities.len() > 256 {
-            return Err(manifest_error("capability count exceeds its bound"));
+            return Err(manifest_error("version-one manifest fields are not representable"));
         }
         for capability in &self.capabilities {
             validate_capability_name(capability.name())?;
@@ -621,9 +791,8 @@ impl PluginManifest {
     }
 }
 
-fn validate_capability_name(name: &str) -> Result<(), SdkError> {
+pub(crate) fn validate_capability_name(name: &str) -> Result<(), SdkError> {
     let valid = !name.is_empty()
-        && name.len() <= 128
         && name.split('.').all(|part| {
             !part.is_empty()
                 && part.bytes().all(|byte| {
@@ -637,6 +806,10 @@ fn validate_capability_name(name: &str) -> Result<(), SdkError> {
     } else {
         Err(manifest_error("capability name is not canonical hierarchical ASCII"))
     }
+}
+
+pub(crate) fn is_v1_capability_name(name: &str) -> bool {
+    name.len() <= 128
 }
 
 const fn min_u32(left: u32, right: u32) -> u32 {

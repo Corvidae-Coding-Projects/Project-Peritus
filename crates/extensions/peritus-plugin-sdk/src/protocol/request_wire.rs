@@ -31,6 +31,7 @@ impl serde::Serialize for InvocationContext {
     where
         S: serde::Serializer,
     {
+        self.validate().map_err(S::Error::custom)?;
         let fields = 5 + usize::from(self.deadline_millis.is_some());
         let mut state = serializer.serialize_struct("InvocationContext", fields)?;
         state.serialize_field("session_id", &self.session_id)?;
@@ -316,7 +317,7 @@ where
                     capability: body.capability,
                     input: JsonPayload::parse_active(body.input.get().as_bytes())
                         .map_err(E::custom)?,
-                    context: body.context.migrate(),
+                    context: body.context.migrate().map_err(E::custom)?,
                 })
             } else {
                 let body: InvokeBody<'_> = decode_raw(params, "invoke params")?;
@@ -355,6 +356,13 @@ impl serde::Serialize for PluginRequestEnvelope {
     where
         S: serde::Serializer,
     {
+        if self.protocol_version == LEGACY_PROTOCOL_VERSION
+            && !self.request_id.is_v1_compatible()
+        {
+            return Err(S::Error::custom(
+                "protocol version one request identifier is not representable",
+            ));
+        }
         validate_request(self.protocol_version, &self.request).map_err(S::Error::custom)?;
         let mut state = serializer.serialize_struct("PluginRequestEnvelope", 3)?;
         state.serialize_field("protocol_version", &self.protocol_version)?;
@@ -390,6 +398,13 @@ impl<'de> Deserialize<'de> for PluginRequestEnvelope {
         if !matches!(wire.protocol_version, LEGACY_PROTOCOL_VERSION | PROTOCOL_VERSION) {
             return Err(de::Error::custom("unsupported plugin request protocol version"));
         }
+        if wire.protocol_version == LEGACY_PROTOCOL_VERSION
+            && !wire.request_id.is_v1_compatible()
+        {
+            return Err(de::Error::custom(
+                "protocol version one request identifier is not representable",
+            ));
+        }
         let request = decode_request::<D::Error>(wire.request, wire.protocol_version)?;
         validate_request(wire.protocol_version, &request).map_err(D::Error::custom)?;
         Ok(Self {
@@ -402,28 +417,46 @@ impl<'de> Deserialize<'de> for PluginRequestEnvelope {
 
 fn validate_request(protocol_version: u16, request: &HostRequest) -> Result<(), String> {
     match request {
-        HostRequest::Initialize { protocol_version: selected, quotas, .. } => {
+        HostRequest::Initialize {
+            protocol_version: selected,
+            plugin_id,
+            plugin_version,
+            quotas,
+            ..
+        } => {
             if *selected != protocol_version {
                 return Err(
                     "initialize protocol version differs from its request envelope".to_owned(),
                 );
             }
             quotas.validate().map_err(|error| error.to_string())?;
-            if protocol_version == LEGACY_PROTOCOL_VERSION && quotas.legacy_values().is_none() {
-                return Err("protocol version one requires finite numeric quotas".to_owned());
+            if protocol_version == LEGACY_PROTOCOL_VERSION
+                && (!plugin_id.is_v1_compatible()
+                    || !plugin_version.is_v1_compatible()
+                    || quotas.legacy_values().is_none())
+            {
+                return Err(
+                    "protocol version one requires representable version and quota fields"
+                        .to_owned(),
+                );
             }
         }
         HostRequest::Invoke { capability, context, .. } => {
-            if capability.is_empty()
-                || context.session_id.is_empty()
-                || context.actor_id.is_empty()
-                || context.deadline_millis == Some(0)
-                || !context.granted_capabilities.iter().any(|granted| granted == capability)
-                || context
-                    .granted_capabilities
-                    .windows(2)
-                    .any(|pair| pair[0] >= pair[1])
+            crate::manifest::validate_capability_name(capability)
+                .map_err(|error| error.to_string())?;
+            context.validate().map_err(|error| error.to_string())?;
+            if protocol_version == LEGACY_PROTOCOL_VERSION
+                && (!crate::manifest::is_v1_capability_name(capability)
+                    || context
+                        .granted_capabilities
+                        .iter()
+                        .any(|name| !crate::manifest::is_v1_capability_name(name)))
             {
+                return Err(
+                    "protocol version one capability identity is not representable".to_owned(),
+                );
+            }
+            if !context.granted_capabilities.iter().any(|granted| granted == capability) {
                 return Err(
                     "invocation context is malformed or lacks exact authority".to_owned(),
                 );
@@ -432,7 +465,14 @@ fn validate_request(protocol_version: u16, request: &HostRequest) -> Result<(), 
                 return Err("protocol version one requires an invocation deadline".to_owned());
             }
         }
-        HostRequest::Cancel { .. } | HostRequest::Health | HostRequest::Shutdown => {}
+        HostRequest::Cancel { request_id, .. } => {
+            if protocol_version == LEGACY_PROTOCOL_VERSION && !request_id.is_v1_compatible() {
+                return Err(
+                    "protocol version one cancellation identity is not representable".to_owned(),
+                );
+            }
+        }
+        HostRequest::Health | HostRequest::Shutdown => {}
     }
     Ok(())
 }
@@ -544,15 +584,15 @@ struct LegacyInvocationContext {
 }
 
 impl LegacyInvocationContext {
-    fn migrate(self) -> InvocationContext {
-        InvocationContext {
-            session_id: self.session_id,
-            actor_id: self.actor_id,
-            role: self.role,
-            granted_capabilities: self.granted_capabilities,
-            authority_generation: self.authority_generation,
-            deadline_millis: Some(self.deadline_millis),
-        }
+    fn migrate(self) -> Result<InvocationContext, crate::SdkError> {
+        InvocationContext::new(
+            self.session_id,
+            self.actor_id,
+            self.role,
+            self.granted_capabilities,
+            self.authority_generation,
+            Some(self.deadline_millis),
+        )
     }
 }
 

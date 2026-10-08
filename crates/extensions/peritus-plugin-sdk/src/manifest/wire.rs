@@ -98,7 +98,7 @@ impl<'de> Visitor<'de> for PluginEntrypointVisitor {
         let artifact =
             sequence.next_element()?.ok_or_else(|| de::Error::invalid_length(0, &self))?;
         let arguments = sequence.next_element()?.unwrap_or_default();
-        Ok(PluginEntrypoint { artifact, arguments })
+        PluginEntrypoint::new(artifact, arguments).map_err(de::Error::custom)
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
@@ -127,7 +127,7 @@ impl<'de> Visitor<'de> for PluginEntrypointVisitor {
             }
         }
         let artifact = artifact.ok_or_else(|| de::Error::missing_field("artifact"))?;
-        Ok(PluginEntrypoint { artifact, arguments: arguments.unwrap_or_default() })
+        PluginEntrypoint::new(artifact, arguments.unwrap_or_default()).map_err(de::Error::custom)
     }
 }
 

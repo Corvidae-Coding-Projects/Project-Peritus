@@ -25,6 +25,6 @@ pub use manifest::{
 pub use payload::{JsonBounds, JsonPayload, JsonStructure, JsonWirePolicy};
 pub use protocol::{
     FailureClass, HostRequest, InvocationContext, LEGACY_PROTOCOL_VERSION, PROTOCOL_VERSION,
-    PluginFailure, PluginRequestEnvelope, PluginResponse, PluginResponseEnvelope, PluginRole,
-    PluginStatus,
+    PluginFailure, PluginFailureCode, PluginFailureDetail, PluginRequestEnvelope, PluginResponse,
+    PluginResponseEnvelope, PluginRole, PluginStatus,
 };

@@ -36,7 +36,13 @@ impl SdkError {
     #[must_use]
     pub fn new(kind: SdkErrorKind, operation: &'static str, detail: impl Into<String>) -> Self {
         let mut detail = detail.into();
-        detail.truncate(512);
+        if detail.len() > 512 {
+            let mut boundary = 512;
+            while !detail.is_char_boundary(boundary) {
+                boundary -= 1;
+            }
+            detail.truncate(boundary);
+        }
         Self { kind, operation, detail }
     }
 

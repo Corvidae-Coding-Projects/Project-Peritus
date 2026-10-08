@@ -311,7 +311,7 @@ impl PluginHost {
                 Ok(PluginInvocationResult::Succeeded { output, rendering })
             }
             PluginResponse::Failure(failure) => {
-                if failure.class == FailureClass::Cancelled {
+                if failure.class() == FailureClass::Cancelled {
                     Ok(PluginInvocationResult::Cancelled)
                 } else {
                     Ok(PluginInvocationResult::Failed(failure))

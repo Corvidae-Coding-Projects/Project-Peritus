@@ -3,11 +3,14 @@
 use serde::{
     Deserialize,
     de,
-    ser::{SerializeMap, SerializeStruct},
+    ser::{Error as _, SerializeMap, SerializeStruct},
 };
 use serde_json::value::RawValue;
 
-use super::{FailureClass, PluginFailure, PluginResponse, PluginResponseEnvelope, PluginStatus};
+use super::{
+    FailureClass, LEGACY_PROTOCOL_VERSION, PROTOCOL_VERSION, PluginFailure, PluginFailureCode,
+    PluginFailureDetail, PluginResponse, PluginResponseEnvelope, PluginStatus,
+};
 use crate::{JsonPayload, RequestId};
 
 impl serde::Serialize for FailureClass {
@@ -91,6 +94,67 @@ impl serde::Serialize for PluginFailure {
         state.serialize_field("detail", &self.detail)?;
         state.serialize_field("retryable_with_new_action", &self.retryable_with_new_action)?;
         state.end()
+    }
+}
+
+impl serde::Serialize for PluginFailureCode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginFailureCode {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Self::new(String::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
+impl serde::Serialize for PluginFailureDetail {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginFailureDetail {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Self::new(String::deserialize(deserializer)?).map_err(de::Error::custom)
+    }
+}
+
+impl<'de> Deserialize<'de> for PluginFailure {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Wire {
+            class: FailureClass,
+            code: String,
+            detail: String,
+            retryable_with_new_action: bool,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Self::new(
+            wire.class,
+            wire.code,
+            wire.detail,
+            wire.retryable_with_new_action,
+        )
+        .map_err(de::Error::custom)
     }
 }
 
@@ -193,6 +257,18 @@ impl serde::Serialize for PluginResponseEnvelope {
     where
         S: serde::Serializer,
     {
+        if !matches!(self.protocol_version, LEGACY_PROTOCOL_VERSION | PROTOCOL_VERSION) {
+            return Err(S::Error::custom(
+                "unsupported plugin response protocol version",
+            ));
+        }
+        if self.protocol_version == LEGACY_PROTOCOL_VERSION
+            && !self.request_id.is_v1_compatible()
+        {
+            return Err(S::Error::custom(
+                "protocol version one response identifier is not representable",
+            ));
+        }
         let mut state = serializer.serialize_struct("PluginResponseEnvelope", 3)?;
         state.serialize_field("protocol_version", &self.protocol_version)?;
         state.serialize_field("request_id", &self.request_id)?;
@@ -207,6 +283,16 @@ impl<'de> Deserialize<'de> for PluginResponseEnvelope {
         D: serde::Deserializer<'de>,
     {
         let wire = ResponseEnvelopeWire::deserialize(deserializer)?;
+        if !matches!(wire.protocol_version, LEGACY_PROTOCOL_VERSION | PROTOCOL_VERSION) {
+            return Err(de::Error::custom("unsupported plugin response protocol version"));
+        }
+        if wire.protocol_version == LEGACY_PROTOCOL_VERSION
+            && !wire.request_id.is_v1_compatible()
+        {
+            return Err(de::Error::custom(
+                "protocol version one response identifier is not representable",
+            ));
+        }
         Ok(Self {
             protocol_version: wire.protocol_version,
             request_id: wire.request_id,

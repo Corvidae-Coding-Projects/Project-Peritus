@@ -16,10 +16,10 @@ impl PluginId {
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, uppercase, empty-segment, or non-ASCII identifiers.
+    /// Rejects empty, uppercase, empty-segment, or non-ASCII identifiers.
     pub fn new(value: impl Into<String>) -> Result<Self, SdkError> {
         let value = value.into();
-        validate_name(&value, 128, "plugin id")?;
+        validate_name(&value, "plugin id")?;
         Ok(Self(value))
     }
 
@@ -27,6 +27,10 @@ impl PluginId {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub(crate) fn is_v1_compatible(&self) -> bool {
+        self.0.len() <= 128
     }
 }
 
@@ -54,13 +58,12 @@ impl<'de> Deserialize<'de> for PluginId {
     }
 }
 
-/// Strict three-part semantic version used by plugin artifacts.
+/// Three-part semantic version used by plugin artifacts.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[serde(deny_unknown_fields)]
 pub struct PluginVersion {
-    major: u16,
-    minor: u16,
-    patch: u16,
+    major: u64,
+    minor: u64,
+    patch: u64,
 }
 
 impl serde::Serialize for PluginVersion {
@@ -79,26 +82,32 @@ impl serde::Serialize for PluginVersion {
 impl PluginVersion {
     /// Creates a semantic version.
     #[must_use]
-    pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
+    pub const fn new(major: u64, minor: u64, patch: u64) -> Self {
         Self { major, minor, patch }
     }
 
     /// Returns the major version.
     #[must_use]
-    pub const fn major(self) -> u16 {
+    pub const fn major(self) -> u64 {
         self.major
     }
 
     /// Returns the minor version.
     #[must_use]
-    pub const fn minor(self) -> u16 {
+    pub const fn minor(self) -> u64 {
         self.minor
     }
 
     /// Returns the patch version.
     #[must_use]
-    pub const fn patch(self) -> u16 {
+    pub const fn patch(self) -> u64 {
         self.patch
+    }
+
+    pub(crate) const fn is_v1_compatible(self) -> bool {
+        self.major <= u16::MAX as u64
+            && self.minor <= u16::MAX as u64
+            && self.patch <= u16::MAX as u64
     }
 }
 
@@ -113,18 +122,18 @@ impl fmt::Display for PluginVersion {
 pub struct RequestId(String);
 
 impl RequestId {
-    /// Creates a bounded opaque request identifier.
+    /// Creates an opaque request identifier.
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or control-containing values.
+    /// Rejects empty or control-containing values.
     pub fn new(value: impl Into<String>) -> Result<Self, SdkError> {
         let value = value.into();
-        if value.is_empty() || value.len() > 128 || value.chars().any(char::is_control) {
+        if value.is_empty() || value.chars().any(char::is_control) {
             return Err(SdkError::new(
                 SdkErrorKind::InvalidIdentity,
                 "validate request id",
-                "request id must contain 1 to 128 non-control UTF-8 bytes",
+                "request id must contain non-control UTF-8 text",
             ));
         }
         Ok(Self(value))
@@ -134,6 +143,10 @@ impl RequestId {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    pub(crate) fn is_v1_compatible(&self) -> bool {
+        self.0.len() <= 128
     }
 }
 
@@ -184,9 +197,8 @@ impl ManifestDigest {
     }
 }
 
-fn validate_name(value: &str, maximum: usize, label: &'static str) -> Result<(), SdkError> {
+fn validate_name(value: &str, label: &'static str) -> Result<(), SdkError> {
     let valid = !value.is_empty()
-        && value.len() <= maximum
         && value.bytes().all(|byte| {
             byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'-' | b'_')
         })
