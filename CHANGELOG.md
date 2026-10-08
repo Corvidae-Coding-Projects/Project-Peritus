@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L441] E3 can publish analysis/report bindings that F0 later rejects with no in-place campaign repair (#520)
 - [L610] Windows kill-on-close jobs tie target lifetime to the helper owner (#666)
 - [L037] Selected horizons synthesize a completion reserve and clamp command execution (#136)
 - [L439] E3 bootstrap analysis performs every resample synchronously with no durable cursor or cancellation (#519)
