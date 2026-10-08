@@ -11,9 +11,10 @@ use std::{
 
 use peritus_agent::{DeveloperLoopLimits, DeveloperLoopRequest};
 use peritus_provider_core::ModelProvider;
+use peritus_run_settlement::CandidateIdentity;
 
 use crate::budget::RunAccounting;
-use crate::developer_tools::{WorkspaceDeveloperTools, read_only_definitions};
+use crate::developer_tools::{GroundingEvidence, WorkspaceDeveloperTools, read_only_definitions};
 use crate::execution::{ProductRunInput, check_cancelled};
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
@@ -21,6 +22,86 @@ use crate::{ProductRunnerError, ProductRunnerErrorKind};
 enum DesignScope {
     Artifact,
     Source,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct SourceGroundingIdentity {
+    run: [u8; 16],
+    workspace: [u8; 16],
+    content: [u8; 32],
+    request_sources: [u8; 32],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SourceDesignBinding {
+    grounding: SourceGroundingIdentity,
+    repository: [u8; 32],
+    conversation_revision: u64,
+    request_source_revision: u64,
+    request_source_catalog: [u8; 32],
+    request_sources_required: bool,
+}
+
+impl SourceDesignBinding {
+    fn capture(
+        input: &ProductRunInput,
+        candidate: CandidateIdentity,
+    ) -> Result<Self, ProductRunnerError> {
+        if candidate.run_id() != input.run_id || candidate.workspace_id() != input.workspace_id {
+            return Err(source_binding(
+                "retained candidate identity belongs to a different run or workspace",
+            ));
+        }
+        let conversation_revision = input.conversation.revision();
+        let request_source_revision = input
+            .conversation
+            .request_source_revision()
+            .map_err(source_binding)?;
+        let request_sources_required = input
+            .conversation
+            .request_sources_required()
+            .map_err(source_binding)?;
+        if request_source_revision != conversation_revision {
+            return Err(source_binding(
+                "request-source revision differs from the current conversation revision",
+            ));
+        }
+        Ok(Self {
+            grounding: SourceGroundingIdentity {
+                run: *candidate.run_id().as_bytes(),
+                workspace: *candidate.workspace_id().as_bytes(),
+                content: candidate.content_digest().into_bytes(),
+                request_sources: input.conversation.request_source_binding(),
+            },
+            repository: candidate.repository_digest().into_bytes(),
+            conversation_revision,
+            request_source_revision,
+            request_source_catalog: input.conversation.request_source_catalog_binding(),
+            request_sources_required,
+        })
+    }
+
+    fn grounding_is_reusable_for(&self, current: &Self) -> bool {
+        self.grounding == current.grounding
+    }
+
+    fn same_authority_as(&self, current: &Self) -> bool {
+        self.grounding == current.grounding
+            && self.repository == current.repository
+            && self.conversation_revision == current.conversation_revision
+            && self.request_source_revision == current.request_source_revision
+            && self.request_source_catalog == current.request_source_catalog
+            && self.request_sources_required == current.request_sources_required
+    }
+
+    fn grounding_role(&self) -> String {
+        let mut bytes = [0_u8; 96];
+        bytes[..16].copy_from_slice(&self.grounding.run);
+        bytes[16..32].copy_from_slice(&self.grounding.workspace);
+        bytes[32..64].copy_from_slice(&self.grounding.content);
+        bytes[64..].copy_from_slice(&self.grounding.request_sources);
+        format!("designer-{}", hex_bytes(peritus_codec::sha256(&bytes).as_bytes()))
+    }
 }
 
 /// Detailed design artifact and conversation revision it covers.
@@ -60,21 +141,72 @@ pub async fn create(
     fallbacks: &[Arc<dyn ModelProvider>],
     cycle: u32,
     accounting: &mut RunAccounting,
+    candidate: CandidateIdentity,
 ) -> Result<DesignDocument, ProductRunnerError> {
     let scope = read_design_scope(&input.workspace_root)?;
     if scope == DesignScope::Artifact && !input.workspace_kind.is_in_place() {
         return artifact::create(input);
     }
-    let memory = crate::local_context::LocalContextHandle::open(input, "designer")?;
+    let memory = crate::local_context::LocalContextHandle::open_async(input, "designer").await?;
     let mut providers = crate::failover::ProviderCursor::new(primary, fallbacks);
-    let mut invocation = 0_u32;
+    let mut invocation = 0_u64;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut correction = None;
+    let mut binding = SourceDesignBinding::capture(input, candidate)?;
+    let mut grounding_role = binding.grounding_role();
+    let mut grounding_scope = crate::turn::request_scope(input.run_id, &grounding_role);
+    let mut grounding_revision = binding.conversation_revision;
+    let mut grounding_prefix = format!(
+        "{}-revision-{grounding_revision}-invocation-",
+        crate::turn::request_name(input.run_id, &grounding_role, cycle),
+    );
+    let mut grounding = memory
+        .as_ref()
+        .map(|memory| memory.recover_grounding_scope(&grounding_scope))
+        .transpose()
+        .map_err(|error| crate::turn::developer_error(&error))?
+        .unwrap_or_else(|| GroundingEvidence::for_workspace(&input.workspace_root));
     loop {
         check_cancelled(input)?;
-        crate::failover::bypass_open_circuit(input, "designer", cycle, accounting, &mut providers)?;
-        invocation = invocation.saturating_add(1);
-        let revision = input.conversation.revision();
+        let current_binding = SourceDesignBinding::capture(input, candidate)?;
+        if !binding.same_authority_as(&current_binding) {
+            if current_binding.conversation_revision == binding.conversation_revision
+                && !binding.grounding_is_reusable_for(&current_binding)
+            {
+                return Err(source_binding(
+                    "governing request-source identity changed without a conversation revision",
+                ));
+            }
+            grounding_role = current_binding.grounding_role();
+            grounding_scope = crate::turn::request_scope(input.run_id, &grounding_role);
+            grounding_revision = current_binding.conversation_revision;
+            grounding_prefix = format!(
+                "{}-revision-{grounding_revision}-invocation-",
+                crate::turn::request_name(input.run_id, &grounding_role, cycle),
+            );
+            let recovered = memory
+                .as_ref()
+                .map(|memory| memory.recover_grounding_scope(&grounding_scope))
+                .transpose()
+                .map_err(|error| crate::turn::developer_error(&error))?
+                .unwrap_or_else(|| GroundingEvidence::for_workspace(&input.workspace_root));
+            if binding.grounding_is_reusable_for(&current_binding) {
+                grounding.merge(&recovered);
+            } else {
+                grounding = recovered;
+            }
+            providers.reopen();
+            binding = current_binding;
+            correction = None;
+        }
+        invocation = invocation.checked_add(1).ok_or_else(|| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::Repository,
+                "allocate designer invocation identity",
+                "invocation sequence overflow",
+            )
+        })?;
+        let revision = binding.conversation_revision;
         let transcript = input.conversation.render();
         let media = match input.media(&transcript, providers.current().profile()) {
             Ok(media) => media,
@@ -89,16 +221,30 @@ pub async fn create(
             media.into_parts(user_prompt(&stable_context, correction.as_deref()));
         let mut tools = input.configure_tools(
             WorkspaceDeveloperTools::read_only(input.workspace_root.clone())
+                .with_grounding(grounding.clone())
                 .with_task_contract(&transcript),
         );
+        let reopened = memory
+            .as_ref()
+            .map(|memory| memory.pending_reentry_prefix(&grounding_prefix))
+            .transpose()
+            .map_err(|error| crate::turn::developer_error(&error))?
+            .flatten();
+        let request_prefix = match reopened {
+            Some(prefix) => prefix,
+            None => crate::turn::invocation_request_name(
+                input.run_id,
+                &grounding_role,
+                cycle,
+                revision,
+                invocation,
+            )?,
+        };
         let result = crate::local_context::run_live_invocation(
             providers.current(),
             DeveloperLoopRequest {
                 local_session_directory: Some(input.native_session_directory("designer")),
-                request_prefix: format!(
-                    "{}-invocation-{invocation}",
-                    crate::turn::request_name(input.run_id, "designer", cycle)
-                ),
+                request_prefix,
                 system: system_prompt(accounting.remaining()) + input.delivery_instructions(),
                 prompt,
                 attachments,
@@ -117,6 +263,7 @@ pub async fn create(
             peritus_agent::DeveloperModelRole::Writer,
         )
         .await;
+        grounding = tools.grounding().clone();
         accounting.check()?;
         let result = match result {
             Ok(result) => result,
@@ -141,9 +288,9 @@ pub async fn create(
                 return Err(crate::turn::developer_error(&error));
             }
         };
-        crate::failover::record_provider_success(accounting, &providers, &mut provider_recovery);
+        crate::failover::record_provider_success(&mut provider_recovery);
         check_cancelled(input)?;
-        if input.conversation.revision() != revision {
+        if !binding.same_authority_as(&SourceDesignBinding::capture(input, candidate)?) {
             correction = None;
             continue;
         }
@@ -165,10 +312,26 @@ fn grounded_markdown(
     tools: &WorkspaceDeveloperTools,
     text: &str,
 ) -> Result<String, ProductRunnerError> {
-    tools.grounding().validate().map_err(grounding)?;
-    let mut markdown = normalize(text)?;
-    markdown.push_str(&tools.grounding().markdown());
-    Ok(markdown)
+    match (tools.grounding().validate(), normalize(text)) {
+        (Ok(()), Ok(mut markdown)) => {
+            markdown.push_str(&tools.grounding().markdown());
+            Ok(markdown)
+        }
+        (grounding_result, markdown_result) => {
+            let mut failures = Vec::new();
+            if let Err(detail) = grounding_result {
+                failures.push(detail.to_owned());
+            }
+            if let Err(error) = markdown_result {
+                failures.push(error.detail().to_owned());
+            }
+            Err(ProductRunnerError::new(
+                ProductRunnerErrorKind::InvalidModelOutput,
+                "validate implementation design",
+                failures.join("; "),
+            ))
+        }
+    }
 }
 
 fn system_prompt(remaining: Option<std::time::Duration>) -> String {
@@ -264,12 +427,21 @@ fn filesystem(detail: impl Into<String>) -> ProductRunnerError {
     )
 }
 
-fn grounding(detail: &'static str) -> ProductRunnerError {
+fn source_binding(detail: impl Into<String>) -> ProductRunnerError {
     ProductRunnerError::new(
-        ProductRunnerErrorKind::InvalidModelOutput,
-        "ground implementation design in repository evidence",
+        ProductRunnerErrorKind::Repository,
+        "bind implementation design to authoritative sources",
         detail,
     )
+}
+
+fn hex_bytes(bytes: &[u8]) -> String {
+    use std::fmt::Write as _;
+    let mut value = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        let _ = write!(value, "{byte:02x}");
+    }
+    value
 }
 
 #[cfg(test)]

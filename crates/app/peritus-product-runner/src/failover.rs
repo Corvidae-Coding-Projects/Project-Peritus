@@ -3,50 +3,43 @@
 use std::sync::Arc;
 
 use peritus_agent::{DeveloperLoopError, ModelDriveError};
-use peritus_model_protocol::{Capability, FailureCategory};
+use peritus_model_protocol::{
+    Capability, FailureCategory, OutcomeCertainty, Retryability,
+};
 use peritus_provider_core::{ModelProvider, ProviderCoreErrorKind};
 use peritus_types::ProviderProfileId;
 
 use crate::{ProductRunnerError, budget::RunAccounting, execution::ProductRunInput};
 
-const MAX_SAME_PROVIDER_ROLE_INVOCATIONS: u8 = 3;
-
-/// Bounded fresh-invocation recovery after one role exhausts its in-turn provider retries.
+/// Same-provider recovery under the role's durable local context and native session namespace.
 #[derive(Default)]
-pub struct RoleRecovery {
-    failed_invocations: u8,
-}
+pub struct RoleRecovery;
 
 impl RoleRecovery {
     /// Whether material progress may start another attempt after a provider failure.
-    pub const fn may_continue_after_progress(error: &DeveloperLoopError) -> bool {
+    pub fn may_continue_after_progress(error: &DeveloperLoopError) -> bool {
         same_provider_retry_reason(error).is_some()
     }
 
-    /// Returns a stable reason when the role may start another grounded invocation.
+    /// Returns a stable reason when the role may reconnect under retained context.
     pub fn retry(&mut self, error: &DeveloperLoopError) -> Option<&'static str> {
-        let reason = same_provider_retry_reason(error)?;
-        self.failed_invocations = self.failed_invocations.saturating_add(1);
-        (self.failed_invocations < MAX_SAME_PROVIDER_ROLE_INVOCATIONS).then_some(reason)
+        same_provider_retry_reason(error)
     }
 
-    /// Starts a fresh recovery budget after progress or a usable provider response.
+    /// Compatibility hook; retained recovery has no cumulative invocation budget.
     pub const fn reset(&mut self) {
-        self.failed_invocations = 0;
     }
 
-    /// Builds the correction that starts a fresh repository-grounded invocation.
+    /// Builds the correction that resumes retained context or transfers it explicitly.
     pub fn correction(reason: &str) -> String {
         if reason == "segment_boundary" {
-            return "The preceding bounded invocation segment ended before the role produced its terminal result. Start the next segment from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets needed to resume, preserve completed work and evidence, and continue to the required terminal result without repeating finished effects.".to_owned();
+            return "The preceding invocation segment ended before the role produced its terminal result. Continue the same task and role from the retained host context. Prior assistant/tool exchanges and completed effects remain authoritative at their recorded revisions; resume outstanding work without replaying finished effects or repeating startup inspection solely because the segment changed.".to_owned();
         }
-        let repair = if matches!(reason, "malformed_payload" | "malformed_stream") {
-            " The provider output contract was not satisfied. Return one valid response using only the declared host tools and their exact argument schemas. If the adapter requires a structured envelope, put role-specific text or JSON inside its content field, put calls in tool_calls, and encode arguments_json exactly once; do not use native tools, Markdown fences, undeclared fields, or a second structured result. Do not replay prior side effects: inspect the existing results and recover any retained command handle first."
-        } else {
-            ""
-        };
+        if reason == "provider_transfer" {
+            return "The host explicitly transferred this role to another configured provider. Continue the same task and obligations from the retained host transcript and completed tool evidence. Treat provider-native state as route-specific, and do not repeat settled effects or startup inspection solely because the route changed.".to_owned();
+        }
         format!(
-            "The preceding provider invocation ended with recoverable `{reason}` after its bounded in-turn retries. At entry to this new host invocation, ground once from the exact current workspace: call `workspace_list`, read the authoritative inputs and current targets, preserve any useful existing work, and continue to the required terminal result. Later provider steps in this same invocation must continue from completed work, not repeat this startup sequence.{repair}"
+            "The preceding provider connection ended with definitely-unaccepted `{reason}`. Reconnect under the same task, role, provider profile, native session namespace, and retained host transcript. Continue from completed tool evidence and outstanding obligations; do not repeat startup inspection or settled effects solely because the transport reconnected."
         )
     }
 }
@@ -79,6 +72,12 @@ impl<'a> ProviderCursor<'a> {
         self.candidates[self.index]
     }
 
+    /// Reconsiders the caller-selected primary after the caller observes a new authority binding.
+    /// The durable retry trace, rather than this route cursor, retains every failed attempt.
+    pub fn reopen(&mut self) {
+        self.index = 0;
+    }
+
     pub fn advance(&mut self, error: &DeveloperLoopError) -> Option<ProviderSwitch> {
         let reason = failover_reason(error)?;
         let next = self.index.checked_add(1)?;
@@ -95,28 +94,6 @@ impl<'a> ProviderCursor<'a> {
             return None;
         }
         self.advance_with_reason("capability_mismatch")
-    }
-
-    pub fn advance_past_open_circuit(
-        &mut self,
-        accounting: &RunAccounting,
-    ) -> Option<ProviderSwitch> {
-        let previous = self.current().profile().profile_id();
-        if !accounting.provider_circuit_open(previous) {
-            return None;
-        }
-        let next = self.candidates.iter().enumerate().skip(self.index + 1).find_map(
-            |(index, provider)| {
-                (!accounting.provider_circuit_open(provider.profile().profile_id()))
-                    .then_some(index)
-            },
-        )?;
-        self.index = next;
-        Some(ProviderSwitch {
-            previous,
-            next: self.current().profile().profile_id(),
-            reason: "open_circuit",
-        })
     }
 
     fn advance_with_reason(&mut self, reason: &'static str) -> Option<ProviderSwitch> {
@@ -149,15 +126,25 @@ impl ProviderSwitch {
     }
 }
 
-const fn failover_reason(error: &DeveloperLoopError) -> Option<&'static str> {
+fn failover_reason(error: &DeveloperLoopError) -> Option<&'static str> {
     match error {
-        DeveloperLoopError::EmptyResponse => Some("empty_response"),
-        DeveloperLoopError::ProviderTerminal { category, .. } => terminal_reason(*category),
+        DeveloperLoopError::ProviderFailure(failure)
+            if failure.certainty() == OutcomeCertainty::DefinitelyNotAccepted =>
+        {
+            match failure.retryability() {
+                Retryability::SafeNewRequest | Retryability::Never => {
+                    terminal_reason(failure.category())
+                }
+                Retryability::ExactResumeOnly | Retryability::CallerDecision => None,
+            }
+        }
+        DeveloperLoopError::ProviderFailure(_) | DeveloperLoopError::ProviderTerminal { .. } => {
+            None
+        }
         DeveloperLoopError::Model(ModelDriveError::Provider(error)) => match error.kind() {
             ProviderCoreErrorKind::InvalidCredential => Some("credential_unavailable"),
             ProviderCoreErrorKind::LimitExceeded => Some("provider_limit"),
             ProviderCoreErrorKind::Connect => Some("connection"),
-            ProviderCoreErrorKind::MalformedStream => Some("malformed_stream"),
             ProviderCoreErrorKind::Configuration => Some("provider_configuration"),
             _ => None,
         },
@@ -165,18 +152,53 @@ const fn failover_reason(error: &DeveloperLoopError) -> Option<&'static str> {
     }
 }
 
-const fn same_provider_retry_reason(error: &DeveloperLoopError) -> Option<&'static str> {
+fn same_provider_retry_reason(error: &DeveloperLoopError) -> Option<&'static str> {
     match error {
-        DeveloperLoopError::EmptyResponse => Some("empty_response"),
-        DeveloperLoopError::ProviderTerminal { category, .. } => {
-            same_provider_terminal_reason(*category)
+        DeveloperLoopError::ProviderFailure(failure)
+            if failure.certainty() == OutcomeCertainty::DefinitelyNotAccepted
+                && failure.retryability() == Retryability::SafeNewRequest =>
+        {
+            same_provider_terminal_reason(failure.category())
+        }
+        DeveloperLoopError::ProviderFailure(_) | DeveloperLoopError::ProviderTerminal { .. } => {
+            None
         }
         DeveloperLoopError::Model(ModelDriveError::Provider(error)) => match error.kind() {
             ProviderCoreErrorKind::Connect => Some("connection"),
-            ProviderCoreErrorKind::MalformedStream => Some("malformed_stream"),
             _ => None,
         },
         _ => None,
+    }
+}
+
+/// Whether a newer authority binding must wait for reconciliation of the completed invocation.
+/// Only an explicit terminal or a definitely-unaccepted/pre-dispatch failure makes a new request
+/// safe. Durable trace, context, tool, and ambiguous transport failures retain their exact owner.
+pub fn requires_reconciliation_before_new_request(error: &DeveloperLoopError) -> bool {
+    match error {
+        DeveloperLoopError::ProviderFailure(failure) => !matches!(
+            failure.certainty(),
+            OutcomeCertainty::DefinitelyNotAccepted | OutcomeCertainty::Terminal
+        ),
+        DeveloperLoopError::Model(ModelDriveError::Provider(error)) => !matches!(
+            error.kind(),
+            ProviderCoreErrorKind::InvalidEndpoint
+                | ProviderCoreErrorKind::InvalidCredential
+                | ProviderCoreErrorKind::InvalidRequest
+                | ProviderCoreErrorKind::InvalidHttp
+                | ProviderCoreErrorKind::LimitExceeded
+                | ProviderCoreErrorKind::Connect
+                | ProviderCoreErrorKind::InvalidRetry
+                | ProviderCoreErrorKind::Configuration
+                | ProviderCoreErrorKind::UnsupportedCapability
+                | ProviderCoreErrorKind::Unavailable
+        ),
+        DeveloperLoopError::ProviderTerminal { .. } => true,
+        DeveloperLoopError::Refused
+        | DeveloperLoopError::LimitExceeded
+        | DeveloperLoopError::SegmentExhausted
+        | DeveloperLoopError::EmptyResponse => false,
+        _ => true,
     }
 }
 
@@ -201,36 +223,11 @@ pub fn record_switch(
     switch: ProviderSwitch,
 ) -> Result<(), ProductRunnerError> {
     crate::trace::record_provider_switch(&input.trace_path, role, cycle, switch)?;
-    if opens_circuit(switch.reason()) {
-        accounting.open_provider_circuit(switch.previous());
-    }
     accounting.record_provider_failover()
 }
 
-pub fn bypass_open_circuit(
-    input: &ProductRunInput,
-    role: &str,
-    cycle: u32,
-    accounting: &mut RunAccounting,
-    providers: &mut ProviderCursor<'_>,
-) -> Result<(), ProductRunnerError> {
-    if let Some(switch) = providers.advance_past_open_circuit(accounting) {
-        record_switch(input, role, cycle, accounting, switch)?;
-    }
-    Ok(())
-}
-
-pub fn record_provider_success(
-    accounting: &mut RunAccounting,
-    providers: &ProviderCursor<'_>,
-    recovery: &mut RoleRecovery,
-) {
+pub fn record_provider_success(recovery: &mut RoleRecovery) {
     recovery.reset();
-    accounting.close_provider_circuit(providers.current().profile().profile_id());
-}
-
-fn opens_circuit(reason: &str) -> bool {
-    !matches!(reason, "capability_mismatch" | "open_circuit")
 }
 
 const fn terminal_reason(category: FailureCategory) -> Option<&'static str> {

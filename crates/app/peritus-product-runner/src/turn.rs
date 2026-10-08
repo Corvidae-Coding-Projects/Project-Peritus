@@ -9,13 +9,15 @@ use peritus_provider_core::ModelProvider;
 use peritus_types::RunId;
 
 use crate::budget::RunAccounting;
-use crate::developer_tools::{WorkspaceDeveloperTools, WorkspaceOwnership, merge_rendered};
+use crate::developer_tools::{
+    GroundingEvidence, WorkspaceDeveloperTools, WorkspaceOwnership, merge_rendered,
+};
 use crate::execution::CandidateRecorder;
 use crate::execution::{
     AppliedTurn, AppliedWrite, HostTurnEvidence, ProductRunInput, check_cancelled,
 };
 use crate::local_context::LocalContextHandle;
-use crate::{ProductRunnerError, ProductRunnerErrorKind};
+use crate::{ProductRunnerError, ProductRunnerErrorKind, ProductRunnerFailureCause};
 
 mod correction;
 mod evidence;
@@ -23,7 +25,7 @@ mod provider;
 mod request_name;
 mod reviewer_prompt;
 mod writer_prompt;
-pub use reviewer_prompt::{ReviewDelivery, reviewer_system, reviewer_user};
+pub use reviewer_prompt::{ReviewDelivery, reviewer_system, reviewer_user, reviewer_user_with_catalog};
 use writer_prompt::{writer_system, writer_user};
 mod terminal;
 
@@ -32,6 +34,20 @@ use terminal::TerminalTurn;
 
 pub fn request_name(run_id: RunId, role: &str, cycle: u32) -> String {
     request_name::format(run_id, role, cycle)
+}
+
+pub(crate) fn request_scope(run_id: RunId, role: &str) -> String {
+    request_name::scope(run_id, role)
+}
+
+pub(crate) fn invocation_request_name(
+    run_id: RunId,
+    role: &str,
+    cycle: u32,
+    revision: u64,
+    invocation: u64,
+) -> Result<String, ProductRunnerError> {
+    request_name::invocation(run_id, role, cycle, revision, invocation)
 }
 
 #[allow(
@@ -51,13 +67,24 @@ pub async fn complete_developer_turn(
     recorder: &CandidateRecorder,
 ) -> Result<AppliedTurn, ProductRunnerError> {
     let mut providers = crate::failover::ProviderCursor::new(primary, &input.providers.fallbacks);
-    let memory = input.working_memory(role)?;
+    let memory = input.working_memory_async(role).await?;
     let mut checkpoint = input.checkpoint()?;
-    let mut invocation = 0_u32;
+    let mut grounding_revision = input.conversation.revision();
+    let grounding_prefix = format!(
+        "{}-revision-{grounding_revision}-invocation-",
+        request_name(input.run_id, role, cycle),
+    );
+    let mut grounding = memory
+        .as_ref()
+        .map(|memory| memory.recover_grounding(&grounding_prefix))
+        .transpose()
+        .map_err(|error| developer_error(&error))?
+        .unwrap_or_default();
+    let mut invocation = 0_u64;
     let mut provider_recovery = crate::failover::RoleRecovery::default();
     let mut host = HostTurnEvidence {
         tool_calls: 0,
-        conversation_revision: input.conversation.revision(),
+        conversation_revision: grounding_revision,
         verification_evidence: String::new(),
         successful_commands: Vec::new(),
     };
@@ -66,13 +93,18 @@ pub async fn complete_developer_turn(
         if let Err(error) = check_cancelled(input) {
             return Ok(AppliedTurn::Rejected { error, host });
         }
-        if let Err(error) =
-            crate::failover::bypass_open_circuit(input, role, cycle, accounting, &mut providers)
-        {
-            return Ok(AppliedTurn::Rejected { error, host });
-        }
-        invocation = invocation.saturating_add(1);
+        invocation = invocation.checked_add(1).ok_or_else(|| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::Repository,
+                "allocate developer invocation identity",
+                "invocation sequence overflow",
+            )
+        })?;
         let revision = input.conversation.revision();
+        if revision != grounding_revision {
+            grounding.clear_repository_evidence();
+            grounding_revision = revision;
+        }
         let identity = DeveloperInvocation { role, cycle, invocation };
         let remaining = accounting.remaining();
         let selected = run_selected_invocation(
@@ -87,6 +119,7 @@ pub async fn complete_developer_turn(
                 remaining,
                 recorder,
                 memory: memory.as_ref(),
+                grounding: &grounding,
             },
             accounting,
         )
@@ -97,6 +130,7 @@ pub async fn complete_developer_turn(
         }) else {
             continue;
         };
+        let retained_grounding = tools.grounding().clone();
         *ownership = tools.ownership().clone();
         merge_rendered(&mut host.verification_evidence, &tools.verification_evidence());
         crate::developer_tools::merge_successful(
@@ -112,14 +146,24 @@ pub async fn complete_developer_turn(
         if let Err(error) = check_cancelled(input) {
             return Ok(AppliedTurn::Rejected { error, host });
         }
+        if let Err(error) = &result
+            && crate::failover::requires_reconciliation_before_new_request(error)
+            && input.conversation.revision() != revision
+        {
+            return Ok(AppliedTurn::Rejected { error: developer_error(error), host });
+        }
         if input.conversation.revision() != revision {
             checkpoint = match input.checkpoint() {
                 Ok(checkpoint) => checkpoint,
                 Err(error) => return Ok(AppliedTurn::Rejected { error, host }),
             };
             provider_recovery.reset();
+            providers.reopen();
             (correction, pending_question) = (None, None);
-            host.conversation_revision = input.conversation.revision();
+            grounding = retained_grounding;
+            grounding.clear_repository_evidence();
+            grounding_revision = input.conversation.revision();
+            host.conversation_revision = grounding_revision;
             host.successful_commands.clear();
             merge_rendered(
                 &mut host.verification_evidence,
@@ -127,6 +171,7 @@ pub async fn complete_developer_turn(
             );
             continue;
         }
+        grounding = retained_grounding;
         let resolution = match provider::resolve(
             input,
             &mut providers,
@@ -210,7 +255,7 @@ fn parse_grounded_terminal(
 struct DeveloperInvocation<'a> {
     role: &'a str,
     cycle: u32,
-    invocation: u32,
+    invocation: u64,
 }
 
 struct InvocationContext<'a> {
@@ -221,6 +266,7 @@ struct InvocationContext<'a> {
     ownership: &'a WorkspaceOwnership,
     remaining: Option<Duration>,
     recorder: &'a CandidateRecorder,
+    grounding: &'a GroundingEvidence,
 }
 
 async fn run_selected_invocation(
@@ -270,13 +316,27 @@ async fn run_developer_invocation(
         context.correction,
     );
     let (prompt, attachments) = media.into_parts(prompt);
-    let request_prefix = request_name::invocation(
-        input.run_id,
-        identity.role,
-        identity.cycle,
-        input.conversation.revision(),
-        identity.invocation,
-    )?;
+    let revision = input.conversation.revision();
+    let logical_prefix = format!(
+        "{}-revision-{revision}-invocation-",
+        request_name(input.run_id, identity.role, identity.cycle),
+    );
+    let reopened = context
+        .memory
+        .map(|memory| memory.pending_reentry_prefix(&logical_prefix))
+        .transpose()
+        .map_err(|error| developer_error(&error))?
+        .flatten();
+    let request_prefix = match reopened {
+        Some(prefix) => prefix,
+        None => invocation_request_name(
+            input.run_id,
+            identity.role,
+            identity.cycle,
+            revision,
+            identity.invocation,
+        )?,
+    };
     let mut tools = input.configure_tools(
         WorkspaceDeveloperTools::with_ownership(
             input.workspace_root.clone(),
@@ -286,6 +346,7 @@ async fn run_developer_invocation(
             context.remaining,
             input.command_runtime.clone(),
         )
+        .with_grounding(context.grounding.clone())
         .with_checkpoint_observer(context.recorder.tool_observer(Arc::clone(&input.conversation)))
         .with_checkpoint_view(Arc::clone(&input.conversation))
         .with_task_contract(&transcript),
@@ -344,7 +405,16 @@ pub fn developer_error(error: &DeveloperLoopError) -> ProductRunnerError {
         }
         _ => ProductRunnerErrorKind::Provider,
     };
-    ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string())
+    let result = ProductRunnerError::new(kind, "execute D0 developer loop", error.to_string());
+    match error {
+        DeveloperLoopError::Context(_) => {
+            result.with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
+        }
+        DeveloperLoopError::ProviderFailure(failure) => {
+            result.with_provider_failure(failure.clone())
+        }
+        _ => result,
+    }
 }
 
 #[cfg(test)]

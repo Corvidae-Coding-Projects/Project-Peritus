@@ -1,15 +1,14 @@
 //! Cumulative accounting and caller-selected elapsed horizon for one complete product run.
 
 use std::{
-    collections::BTreeSet,
     path::Path,
+    sync::{Arc, atomic::AtomicBool},
     time::{Duration, Instant},
 };
 
 use peritus_agent::{DeveloperAccountingEvent, DeveloperUsage};
-use peritus_types::ProviderProfileId;
 
-use crate::{ProductRunnerError, ProductRunnerErrorKind};
+use crate::{ProductRunnerError, ProductRunnerErrorKind, ProductRunnerFailureCause};
 
 mod folder;
 #[path = "resource_probe.rs"]
@@ -17,17 +16,20 @@ mod resource_probe;
 
 use resource_probe::RunResourceProbe;
 
-pub use crate::accounting::ProductRunProgress;
+pub use crate::accounting::{
+    ProductRunProgress, ResourceIoErrorKind, ResourceMeasurement, ResourceMeasurementStatus,
+    ResourceObservationCause, ResourceObservationCoverage, ResourceObservationOperation,
+};
 use crate::accounting::{
     AccountingError, AccountingState, BudgetViolation, UsageSnapshot, WorkEvent,
 };
 
 pub struct RunAccounting {
     started: Instant,
-    max_elapsed: Option<Duration>,
+    selected_horizon: Option<Duration>,
     state: AccountingState,
     resources: RunResourceProbe,
-    unavailable_providers: BTreeSet<ProviderProfileId>,
+    pending_failure: Option<ProductRunnerError>,
 }
 
 impl RunAccounting {
@@ -35,13 +37,25 @@ impl RunAccounting {
         workspace_root: &Path,
         max_elapsed: Option<Duration>,
     ) -> Result<Self, ProductRunnerError> {
+        Self::new_with_cancellation(
+            workspace_root,
+            max_elapsed,
+            Arc::new(AtomicBool::new(false)),
+        )
+    }
+
+    pub(crate) fn new_with_cancellation(
+        workspace_root: &Path,
+        max_elapsed: Option<Duration>,
+        cancelled: Arc<AtomicBool>,
+    ) -> Result<Self, ProductRunnerError> {
         validate_run_horizon(max_elapsed)?;
         Ok(Self {
             started: Instant::now(),
-            max_elapsed,
+            selected_horizon: max_elapsed,
             state: AccountingState::default(),
-            resources: RunResourceProbe::new(workspace_root)?,
-            unavailable_providers: BTreeSet::new(),
+            resources: RunResourceProbe::new_with_cancellation(workspace_root, cancelled),
+            pending_failure: None,
         })
     }
 
@@ -49,6 +63,9 @@ impl RunAccounting {
         &mut self,
         event: DeveloperAccountingEvent,
     ) -> Result<(), ProductRunnerError> {
+        if let Some(error) = self.pending_failure.as_ref() {
+            return Err(error.clone());
+        }
         match event {
             DeveloperAccountingEvent::ModelRequest { retry } => {
                 self.record_work(WorkEvent::ModelRequest { retry })?;
@@ -68,8 +85,8 @@ impl RunAccounting {
         // Per-event admission is cheap: do not recursively probe the workspace for every token
         // or tool. The ordinary role/settlement boundary still samples host resources.
         self.state.progress.elapsed_millis = millis(self.started.elapsed());
-        budget_violation(self.started.elapsed(), self.max_elapsed)
-            .map_or(Ok(()), |detail| Err(exhausted(detail)))
+        budget_violation(self.started.elapsed(), self.selected_horizon)
+            .map_or(Ok(()), |detail| Err(deadline_exhausted(detail)))
     }
 
     fn record_usage(&mut self, usage: DeveloperUsage) -> Result<(), ProductRunnerError> {
@@ -107,27 +124,37 @@ impl RunAccounting {
         self.check()
     }
 
-    pub fn open_provider_circuit(&mut self, profile: ProviderProfileId) {
-        self.unavailable_providers.insert(profile);
-    }
-
-    pub fn provider_circuit_open(&self, profile: ProviderProfileId) -> bool {
-        self.unavailable_providers.contains(&profile)
-    }
-
-    pub fn close_provider_circuit(&mut self, profile: ProviderProfileId) {
-        self.unavailable_providers.remove(&profile);
-    }
-
     pub fn check(&mut self) -> Result<(), ProductRunnerError> {
+        if let Some(error) = self.pending_failure.take() {
+            return Err(error);
+        }
         self.state.progress.elapsed_millis = millis(self.started.elapsed());
-        let resources = self.resources.observe()?;
-        self.state.progress.workspace_bytes = resources.workspace;
-        self.state.progress.workspace_growth_bytes = resources.growth;
-        self.state.progress.peak_rss_bytes =
-            self.state.progress.peak_rss_bytes.max(resources.peak_rss);
-        let violation = budget_violation(self.started.elapsed(), self.max_elapsed);
-        violation.map_or(Ok(()), |detail| Err(exhausted(detail)))
+        // Observation availability is data, not an implicit run deadline. The probe publishes a
+        // typed unavailable/partial measurement and remains attached to this accounting context.
+        let resources = self.resources.observe();
+        self.state.progress.workspace_measurement = resources.workspace_measurement;
+        self.state.progress.workspace_growth_measurement = resources.growth_measurement;
+        self.state.progress.peak_rss_measurement = resources.peak_rss_measurement;
+        if resources.workspace_measurement.measured_value().is_some() {
+            self.state.progress.workspace_bytes = resources.workspace;
+        }
+        if resources.growth_measurement.measured_value().is_some() {
+            self.state.progress.workspace_growth_bytes =
+                self.state.progress.workspace_growth_bytes.max(resources.growth);
+        }
+        if resources.peak_rss_measurement.value().is_some() {
+            self.state.progress.peak_rss_bytes =
+                self.state.progress.peak_rss_bytes.max(resources.peak_rss);
+        }
+        let violation = budget_violation(self.started.elapsed(), self.selected_horizon);
+        violation.map_or(Ok(()), |detail| Err(deadline_exhausted(detail)))
+    }
+
+    /// Preserve the first host accounting rejection across the developer trace adapter.
+    pub(crate) fn retain_failure(&mut self, error: ProductRunnerError) {
+        if self.pending_failure.is_none() {
+            self.pending_failure = Some(error);
+        }
     }
 
     pub fn snapshot(&mut self) -> Result<ProductRunProgress, ProductRunnerError> {
@@ -142,7 +169,7 @@ impl RunAccounting {
     }
 
     pub fn remaining(&self) -> Option<Duration> {
-        self.max_elapsed.map(|limit| limit.saturating_sub(self.started.elapsed()))
+        self.selected_horizon.map(|limit| limit.saturating_sub(self.started.elapsed()))
     }
 }
 
@@ -169,6 +196,12 @@ fn millis(duration: Duration) -> u64 {
 
 fn exhausted(detail: &'static str) -> ProductRunnerError {
     ProductRunnerError::new(ProductRunnerErrorKind::Budget, "account complete coding run", detail)
+        .with_failure_cause(ProductRunnerFailureCause::AccountingRepresentation)
+}
+
+fn deadline_exhausted(detail: &'static str) -> ProductRunnerError {
+    ProductRunnerError::new(ProductRunnerErrorKind::Budget, "account complete coding run", detail)
+        .with_failure_cause(ProductRunnerFailureCause::SelectedDeadline)
 }
 
 fn invalid_horizon(detail: &'static str) -> ProductRunnerError {

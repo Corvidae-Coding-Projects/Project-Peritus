@@ -26,7 +26,7 @@ pub(super) fn resolve(
 ) -> Result<ProviderResolution, ProductRunnerError> {
     let error = match result {
         Ok(outcome) => {
-            crate::failover::record_provider_success(accounting, providers, recovery);
+            crate::failover::record_provider_success(recovery);
             return Ok(ProviderResolution::Outcome(outcome));
         }
         Err(error) => error,
@@ -52,7 +52,7 @@ pub(super) fn resolve(
     if let Some(switch) = providers.advance(&error) {
         crate::failover::record_switch(input, identity.role, identity.cycle, accounting, switch)?;
         recovery.reset();
-        return Ok(ProviderResolution::Retry(None));
+        return Ok(ProviderResolution::Retry(Some("provider_transfer")));
     }
     Err(developer_error(&error))
 }
