@@ -131,8 +131,11 @@ impl JournalCatalogProjection {
     ///
     /// Returns an identity error only if built-in constants are invalid.
     pub fn new() -> Result<Self, ProjectionError> {
-        schema("journal-catalog", b"all-registered-families:v1;aggregate-heads;family-counts")
-            .map(|schema| Self { schema })
+        schema(
+            "journal-catalog",
+            b"all-journal-admitted-families:v2;aggregate-heads;family-counts",
+        )
+        .map(|schema| Self { schema })
     }
 }
 

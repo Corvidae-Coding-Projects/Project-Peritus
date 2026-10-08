@@ -2,6 +2,11 @@
 
 mod registry_commit;
 
+pub use registry_commit::{
+    CREDENTIAL_REGISTRY_EVENT_FAMILY, CREDENTIAL_REGISTRY_EVENT_SCHEMA,
+    CredentialRegistryEvent, decode_credential_registry_event,
+};
+
 use crate::{ExactFrame, JournalError, JournalErrorKind};
 use peritus_approval::CredentialRegistrySnapshot;
 use peritus_codec::{CodecLimits, decode_frame, encode_frame, sha256};

@@ -37,8 +37,9 @@ pub use application::{
     NewApplicationWorkspace,
 };
 pub use authority::{
-    AllocatedAuthorityEpoch, AuthorityEpoch, CredentialRegistryInstall, CurrentAuthorityEpoch,
-    ExpectedAuthorityEpoch,
+    AllocatedAuthorityEpoch, AuthorityEpoch, CREDENTIAL_REGISTRY_EVENT_FAMILY,
+    CREDENTIAL_REGISTRY_EVENT_SCHEMA, CredentialRegistryEvent, CredentialRegistryInstall,
+    CurrentAuthorityEpoch, ExpectedAuthorityEpoch, decode_credential_registry_event,
 };
 pub use domain::{
     ApprovalCommitRequest, ApprovalUseCommitRequest, ApprovalUseResolution,

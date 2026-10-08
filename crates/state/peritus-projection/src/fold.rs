@@ -1,7 +1,7 @@
 //! Effect-free projection fold contracts.
 
 use crate::{ProjectionError, ProjectionSchema};
-use peritus_journal::{CommittedRecord, IntegrityExport};
+use peritus_journal::{CommittedRecord, IntegrityExport, StoreId};
 use peritus_types::Sha256Digest;
 
 /// Read-only checked input passed to a pure fold.
@@ -11,8 +11,10 @@ use peritus_types::Sha256Digest;
 #[derive(Clone, Copy, Debug)]
 pub struct FoldContext<'a> {
     pub(crate) record: &'a CommittedRecord,
+    pub(crate) store_id: StoreId,
     pub(crate) family: u16,
     pub(crate) schema_version: u16,
+    pub(crate) previous_revision_digest: Option<Sha256Digest>,
 }
 
 impl FoldContext<'_> {
@@ -20,6 +22,12 @@ impl FoldContext<'_> {
     #[must_use]
     pub const fn record(&self) -> &CommittedRecord {
         self.record
+    }
+
+    /// Returns the authoritative journal owner of this checked record.
+    #[must_use]
+    pub const fn store_id(&self) -> StoreId {
+        self.store_id
     }
 
     /// Returns the checked frame family.
@@ -32,6 +40,15 @@ impl FoldContext<'_> {
     #[must_use]
     pub const fn schema_version(&self) -> u16 {
         self.schema_version
+    }
+
+    /// Returns the prior per-event revision binding for this aggregate, or absence at genesis.
+    ///
+    /// Revision digests are opaque to generic replay. A projection that owns the frame family can
+    /// use this value and its versioned decoder to validate the domain-specific transition.
+    #[must_use]
+    pub const fn previous_revision_digest(&self) -> Option<Sha256Digest> {
+        self.previous_revision_digest
     }
 
     /// Borrows the exact complete frame bytes without reserialization.

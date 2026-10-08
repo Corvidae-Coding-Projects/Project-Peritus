@@ -2,9 +2,15 @@
 
 use crate::encoding::{Decoder, decode_error, put_digest, put_key, put_u16, put_u64};
 use crate::lifecycle::{invalid_frame, invariant, schema};
-use crate::{FoldContext, Projection, ProjectionError, ProjectionSchema, ProjectionState};
+use crate::{
+    FoldContext, Projection, ProjectionError, ProjectionErrorKind, ProjectionSchema,
+    ProjectionState, RecoveryClass,
+};
 use peritus_codec::{CodecLimits, decode_message, sha256};
-use peritus_journal::{AggregateKey, AggregateKind};
+use peritus_journal::{
+    AggregateKey, AggregateKind, CREDENTIAL_REGISTRY_EVENT_FAMILY, JournalError,
+    JournalErrorKind, decode_credential_registry_event,
+};
 use peritus_protocol::{
     AcceptanceContractDto, ActionIntentDto, PolicyAmendmentDto, PolicyDefinitionDto,
 };
@@ -19,6 +25,7 @@ pub struct AuthorityEntry {
     family: u16,
     frame_digest: Sha256Digest,
     revision_digest: Sha256Digest,
+    registry_generation: Option<u64>,
 }
 
 impl AuthorityEntry {
@@ -27,12 +34,31 @@ impl AuthorityEntry {
     pub const fn family(self) -> u16 {
         self.family
     }
+
+    /// Returns the decoded credential-registry generation for a typed family-94 observation.
+    #[must_use]
+    pub const fn registry_generation(self) -> Option<u64> {
+        self.registry_generation
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum AuthorityEncoding {
+    LegacyV1,
+    V2,
 }
 
 /// Deterministic authority catalog state.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AuthorityState {
+    encoding: AuthorityEncoding,
     entries: BTreeMap<AggregateKey, AuthorityEntry>,
+}
+
+impl Default for AuthorityState {
+    fn default() -> Self {
+        Self { encoding: AuthorityEncoding::V2, entries: BTreeMap::new() }
+    }
 }
 
 impl AuthorityState {
@@ -51,7 +77,10 @@ impl AuthorityState {
 
 impl ProjectionState for AuthorityState {
     fn encode(&self) -> Vec<u8> {
-        let mut bytes = b"peritus-authority-projection-v1\0".to_vec();
+        let mut bytes = match self.encoding {
+            AuthorityEncoding::LegacyV1 => b"peritus-authority-projection-v1\0".to_vec(),
+            AuthorityEncoding::V2 => b"peritus-authority-projection-v2\0".to_vec(),
+        };
         put_u64(&mut bytes, self.entries.len() as u64);
         for (key, entry) in &self.entries {
             put_key(&mut bytes, *key);
@@ -60,27 +89,53 @@ impl ProjectionState for AuthorityState {
             put_u16(&mut bytes, entry.family);
             put_digest(&mut bytes, entry.frame_digest);
             put_digest(&mut bytes, entry.revision_digest);
+            if self.encoding == AuthorityEncoding::V2 {
+                put_u64(&mut bytes, entry.registry_generation.unwrap_or(0));
+            }
         }
         bytes
     }
 
     fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
-        let mut decoder = Decoder::new(payload, b"peritus-authority-projection-v1\0")?;
-        let count = decoder.count(100)?;
+        let encoding = if payload.starts_with(b"peritus-authority-projection-v1\0") {
+            AuthorityEncoding::LegacyV1
+        } else {
+            AuthorityEncoding::V2
+        };
+        let domain: &[u8] = match encoding {
+            AuthorityEncoding::LegacyV1 => b"peritus-authority-projection-v1\0",
+            AuthorityEncoding::V2 => b"peritus-authority-projection-v2\0",
+        };
+        let mut decoder = Decoder::new(payload, domain)?;
+        let count = decoder.count(if encoding == AuthorityEncoding::V2 { 108 } else { 100 })?;
         let mut entries = BTreeMap::new();
         for _ in 0..count {
             let key = decoder.key()?;
+            let last_position = decoder.u64()?;
+            let sequence = decoder.u64()?;
+            let family = decoder.u16()?;
+            let frame_digest = decoder.digest()?;
+            let revision_digest = decoder.digest()?;
+            let registry_generation = if encoding == AuthorityEncoding::V2 {
+                match decoder.u64()? {
+                    0 => None,
+                    generation => Some(generation),
+                }
+            } else {
+                None
+            };
             let entry = AuthorityEntry {
-                last_position: decoder.u64()?,
-                sequence: decoder.u64()?,
-                family: decoder.u16()?,
-                frame_digest: decoder.digest()?,
-                revision_digest: decoder.digest()?,
+                last_position,
+                sequence,
+                family,
+                frame_digest,
+                revision_digest,
+                registry_generation,
             };
             entries.insert(key, entry);
         }
         decoder.finish()?;
-        let state = Self { entries };
+        let state = Self { encoding, entries };
         state.validate()?;
         if state.encode() != payload {
             return Err(decode_error("authority checkpoint is not canonical"));
@@ -90,10 +145,28 @@ impl ProjectionState for AuthorityState {
 
     fn validate(&self) -> Result<(), ProjectionError> {
         if self.entries.iter().any(|(key, entry)| {
-            !matches!(key.kind(), AggregateKind::Approval | AggregateKind::CredentialRegistry)
-                || entry.last_position == 0
+            entry.last_position == 0
                 || entry.sequence == 0
-                || !matches!(entry.family, 20 | 21 | 23 | 31 | 94)
+                || match self.encoding {
+                    AuthorityEncoding::LegacyV1 => {
+                        !matches!(
+                            key.kind(),
+                            AggregateKind::Approval | AggregateKind::CredentialRegistry
+                        ) || !matches!(entry.family, 20 | 21 | 23 | 31 | 94)
+                            || entry.registry_generation.is_some()
+                    }
+                    AuthorityEncoding::V2 => match key.kind() {
+                        AggregateKind::Approval => {
+                            !matches!(entry.family, 20 | 21 | 23 | 31)
+                                || entry.registry_generation.is_some()
+                        }
+                        AggregateKind::CredentialRegistry => {
+                            entry.family != CREDENTIAL_REGISTRY_EVENT_FAMILY
+                                || entry.registry_generation.is_none()
+                        }
+                        _ => true,
+                    },
+                }
         }) {
             return Err(invariant("invalid authority projection entry"));
         }
@@ -101,7 +174,10 @@ impl ProjectionState for AuthorityState {
     }
 
     fn invariant_digest(&self) -> Sha256Digest {
-        let mut bytes = b"peritus-authority-invariants-v1\0".to_vec();
+        let mut bytes = match self.encoding {
+            AuthorityEncoding::LegacyV1 => b"peritus-authority-invariants-v1\0".to_vec(),
+            AuthorityEncoding::V2 => b"peritus-authority-invariants-v2\0".to_vec(),
+        };
         bytes.extend_from_slice(&self.encode());
         sha256(&bytes)
     }
@@ -122,7 +198,7 @@ impl AuthorityProjection {
     pub fn new() -> Result<Self, ProjectionError> {
         schema(
             "authority",
-            b"action-intent:v1;policy:v1;amendment:v1;acceptance:v1;credential-registry:v1",
+            b"action-intent:v1;policy:v1;amendment:v1;acceptance:v1;credential-registry-install:v2",
         )
         .map(|schema| Self { schema })
     }
@@ -140,19 +216,26 @@ impl Projection for AuthorityProjection {
     }
 
     fn fold(&self, state: &mut Self::State, input: FoldContext<'_>) -> Result<(), ProjectionError> {
-        match input.family() {
+        if state.encoding != AuthorityEncoding::V2 {
+            return Err(invariant("legacy authority checkpoint requires a genesis rebuild"));
+        }
+        let record = input.record();
+        let registry_generation = match input.family() {
             20 => decode_message::<ActionIntentDto>(input.frame_bytes(), CodecLimits::PRODUCTION)
                 .map(|_| ())
-                .map_err(|_| invalid_frame("decode action intent"))?,
+                .map_err(|_| invalid_frame("decode action intent"))
+                .map(|()| None)?,
             21 => {
                 decode_message::<PolicyDefinitionDto>(input.frame_bytes(), CodecLimits::PRODUCTION)
                     .map(|_| ())
                     .map_err(|_| invalid_frame("decode policy definition"))?;
+                None
             }
             23 => {
                 decode_message::<PolicyAmendmentDto>(input.frame_bytes(), CodecLimits::PRODUCTION)
                     .map(|_| ())
                     .map_err(|_| invalid_frame("decode policy amendment"))?;
+                None
             }
             31 => {
                 decode_message::<AcceptanceContractDto>(
@@ -161,15 +244,29 @@ impl Projection for AuthorityProjection {
                 )
                 .map(|_| ())
                 .map_err(|_| invalid_frame("decode acceptance contract"))?;
+                None
             }
-            94 => {}
+            CREDENTIAL_REGISTRY_EVENT_FAMILY => {
+                let event = decode_credential_registry_event(record, input.store_id())
+                    .map_err(registry_event_error)?;
+                let previous = state.entries.get(&record.aggregate());
+                if event.expected_revision() != previous.map(|entry| entry.sequence)
+                    || previous.is_some_and(|entry| {
+                        entry.family != CREDENTIAL_REGISTRY_EVENT_FAMILY
+                            || entry
+                                .registry_generation
+                                .is_none_or(|generation| generation >= event.generation())
+                    })
+                {
+                    return Err(invariant(
+                        "credential registry event does not extend its typed authority lineage",
+                    ));
+                }
+                Some(event.generation())
+            }
             _ => return Ok(()),
-        }
-        let record = input.record();
-        if !matches!(
-            record.aggregate().kind(),
-            AggregateKind::Approval | AggregateKind::CredentialRegistry
-        ) {
+        };
+        if registry_generation.is_none() && record.aggregate().kind() != AggregateKind::Approval {
             return Err(invariant("authority frame belongs to an unrelated aggregate"));
         }
         state.entries.insert(
@@ -180,8 +277,23 @@ impl Projection for AuthorityProjection {
                 family: input.family(),
                 frame_digest: record.frame_digest(),
                 revision_digest: record.revision_digest(),
+                registry_generation,
             },
         );
         Ok(())
     }
+}
+
+fn registry_event_error(error: JournalError) -> ProjectionError {
+    let kind = match error.kind() {
+        JournalErrorKind::UnsupportedSchema => ProjectionErrorKind::UnsupportedSchema,
+        JournalErrorKind::CorruptJournal => ProjectionErrorKind::FoldInvariant,
+        _ => ProjectionErrorKind::InvalidFrame,
+    };
+    ProjectionError::new(
+        kind,
+        RecoveryClass::RepairJournal,
+        "decode credential registry event",
+        error.to_string(),
+    )
 }

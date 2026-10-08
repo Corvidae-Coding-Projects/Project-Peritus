@@ -9,7 +9,6 @@ use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_journal::{
     AggregateHead, AggregateKey, CommittedRecord, IntegrityExport, IntegrityReport,
 };
-use peritus_protocol::schema::FAMILIES;
 use peritus_types::{EventId, Sha256Digest};
 use std::collections::BTreeMap;
 
@@ -128,16 +127,18 @@ impl ReplayFrontier {
         Ok(frontier)
     }
 
-    fn apply(&mut self, record: &CommittedRecord) -> Result<(), ProjectionError> {
+    fn apply(
+        &mut self,
+        record: &CommittedRecord,
+    ) -> Result<Option<Sha256Digest>, ProjectionError> {
         let prior = self.aggregates.get(&record.aggregate()).copied();
-        let (last_sequence, expected_id, expected_hash, expected_revision) = prior.map_or_else(
-            || (0, None, Sha256Digest::new([0; 32]), None),
+        let (last_sequence, expected_id, expected_hash) = prior.map_or_else(
+            || (0, None, Sha256Digest::new([0; 32])),
             |cursor| {
                 (
                     cursor.sequence,
                     Some(cursor.event_id),
                     cursor.event_hash,
-                    Some(cursor.revision),
                 )
             },
         );
@@ -150,12 +151,6 @@ impl ReplayFrontier {
                 "aggregate sequence or predecessor is invalid",
             ));
         }
-        if expected_revision.is_some_and(|revision| revision != record.revision_digest()) {
-            return Err(journal_error(
-                ProjectionErrorKind::StaleRevision,
-                "aggregate changed its exact revision binding during replay",
-            ));
-        }
         self.aggregates.insert(
             record.aggregate(),
             AggregateCursor {
@@ -165,7 +160,7 @@ impl ReplayFrontier {
                 revision: record.revision_digest(),
             },
         );
-        Ok(())
+        Ok(prior.map(|cursor| cursor.revision))
     }
 
     fn matches_heads(&self, heads: &[AggregateHead]) -> bool {
@@ -229,6 +224,7 @@ impl<S: ProjectionState> ReplayCheckpoint<S> {
     pub(crate) fn apply<P: Projection<State = S>>(
         &mut self,
         projection: &P,
+        store_id: peritus_journal::StoreId,
         record: &CommittedRecord,
     ) -> Result<(), ProjectionError> {
         if !crate::verified::position_transition(self.last_position, record.global_position()) {
@@ -239,14 +235,22 @@ impl<S: ProjectionState> ReplayCheckpoint<S> {
             };
             return Err(journal_error(kind, "global positions are not contiguous"));
         }
-        self.frontier.apply(record)?;
+        let previous_revision_digest = self.frontier.apply(record)?;
         let frame = decode_frame(record.frame_bytes(), CodecLimits::PRODUCTION).map_err(|_| {
             journal_error(ProjectionErrorKind::InvalidFrame, "record frame is not canonical B3")
         })?;
         let family = frame.header().family();
         let schema_version = frame.header().schema_version();
-        validate_family(family, schema_version)?;
-        projection.fold(&mut self.state, FoldContext { record, family, schema_version })?;
+        projection.fold(
+            &mut self.state,
+            FoldContext {
+                record,
+                store_id,
+                family,
+                schema_version,
+                previous_revision_digest,
+            },
+        )?;
         self.last_position = record.global_position();
         self.record_count = self
             .record_count
@@ -305,8 +309,9 @@ impl<S: ProjectionState> ReplayCheckpoint<S> {
 ///
 /// # Errors
 ///
-/// Rejects range mismatches, gaps, order violations, unknown families, unsupported schemas,
-/// aggregate revision changes, typed fold failures, and final invariant failures.
+/// Rejects range mismatches, gaps, aggregate predecessor violations, projection-owned typed fold
+/// failures, and final invariant failures. Unrelated canonical historical families and schemas are
+/// left inert for projections that do not own them.
 pub fn replay_from_genesis<P: Projection>(
     projection: &P,
     export: &IntegrityExport,
@@ -314,7 +319,7 @@ pub fn replay_from_genesis<P: Projection>(
     validate_export_range(export)?;
     let mut replay = ReplayCheckpoint::genesis(projection.genesis());
     for record in export.records() {
-        replay.apply(projection, record)?;
+        replay.apply(projection, export.report().store_id(), record)?;
     }
     projection.finish(&mut replay.state, export)?;
     replay.finish(projection.schema(), export.report(), export.heads())
@@ -332,40 +337,6 @@ fn validate_export_range(export: &IntegrityExport) -> Result<(), ProjectionError
     Ok(())
 }
 
-fn validate_family(family: u16, schema_version: u16) -> Result<(), ProjectionError> {
-    let Some(registered) = FAMILIES.iter().find(|candidate| candidate.tag == family) else {
-        return Err(journal_error(
-            ProjectionErrorKind::UnsupportedFamily,
-            format!("unknown frame family {family}"),
-        ));
-    };
-    if !registered.supports(schema_version) {
-        return Err(journal_error(
-            ProjectionErrorKind::UnsupportedSchema,
-            format!("family {family} schema {schema_version} is unsupported"),
-        ));
-    }
-    Ok(())
-}
-
 fn journal_error(kind: ProjectionErrorKind, detail: impl Into<String>) -> ProjectionError {
     ProjectionError::new(kind, RecoveryClass::RepairJournal, "replay journal", detail)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::validate_family;
-    use crate::ProjectionErrorKind;
-
-    #[test]
-    fn scheduler_family_validation_accepts_v1_v2_and_rejects_v0_v3() {
-        assert!(validate_family(71, 1).is_ok());
-        assert!(validate_family(71, 2).is_ok());
-        for version in [0, 3] {
-            let error = validate_family(71, version).expect_err("unsupported scheduler schema");
-            assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
-        }
-        let error = validate_family(3, 2).expect_err("non-scheduler family remains v1 only");
-        assert_eq!(error.kind(), ProjectionErrorKind::UnsupportedSchema);
-    }
 }

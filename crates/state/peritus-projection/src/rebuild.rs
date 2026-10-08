@@ -298,7 +298,7 @@ pub fn resume_or_rebuild<P: Projection>(
                     "scoped integrity export does not contain the exact suffix record",
                 ));
             }
-            replay.apply(projection, record)?;
+            replay.apply(projection, owner, record)?;
             if batch
                 .records()
                 .last()
