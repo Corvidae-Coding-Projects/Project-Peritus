@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3907,
-        "tip_oid": "d63c1b9ca82c37aadc25aee04c6d06a91fbcee34",
-        "prefix_sha256": "b14b93fcc1d1a531ee5e947f0da070aa7831b50b19b42c1b848c0b8f46973b5b"
+        "sequence": 3908,
+        "tip_oid": "bc95e7788b2d2f281f8d099d3c710069b32a2216",
+        "prefix_sha256": "0cd1388f71b1f2e2b125d8614fdcaed5d0fd17e9acd8f746d16af5d9ab1fe452"
       },
       "NWAR": {
         "sequence": 39,
@@ -30885,12 +30885,13 @@
       "display_id": 508,
       "title": "[L427] E2 model schema and semantic statement limits measure different units",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L427.\n\n- Evidence: `crates/analysis/peritus-debugger/src/model/plan.rs:21-43`, `src/model/proposal.rs:78-149`, `src/causal/candidate.rs:17-37`, `src/model/runner.rs:109-167` in the same crate.\n- Behavior: The advertised JSON schema permits statement maxLength 4,096, while DiagnosticText enforces at most 4,096 UTF-8 bytes. JSON Schema string length counts Unicode characters rather than UTF-8 bytes. Proposal validation first deserializes the complete typed JSON before checking its output-byte bound; findings/recommendations/citations then have whole-proposal canonical ordering and provenance requirements. The runner only accepts one completed structured item and a successful Stop terminal.\n- Consequence: Schema-valid non-ASCII statements can be rejected by semantic validation; for example, 2,000 ordinary three-byte characters fit the schema length but exceed DiagnosticText's byte ceiling. This is a source-derived example, not an executed provider response. Provenance, strict output shape, and authority separation are deliberate integrity controls; their whole-proposal failure behavior should not be misreported as arbitrary run/session expiration.\n- Repair direction: Advertise and validate the same explicit text-length contract, normalize canonical order where safe, retain typed rejection causes, and perform byte admission before full allocation. Keep provenance and inert output requirements. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.504838958Z",
-      "updated_at": "2026-10-08T00:33:04.087644768Z",
+      "updated_at": "2026-10-08T00:34:29.053912439Z",
+      "closed_at": "2026-10-08T00:34:29.051092726Z",
       "labels": [
         "daily-driving-limiter"
       ],
