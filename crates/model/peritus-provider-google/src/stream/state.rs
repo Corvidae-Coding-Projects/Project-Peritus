@@ -13,6 +13,7 @@ use super::value::{invalid, metadata_events};
 enum DialectState {
     Interactions(InteractionState),
     Generate(GenerateState),
+    Vacant,
 }
 
 pub(super) struct NormalizeState {
@@ -31,14 +32,15 @@ impl NormalizeState {
         provider: ProviderName,
         dialect: WireDialect,
         structured: bool,
+        tool_controls: crate::request::ToolControls,
         headers: &HttpHeaders,
     ) -> Result<Self, ProviderCoreError> {
         let dialect = match dialect {
             WireDialect::GeminiInteractionsV1 => {
-                DialectState::Interactions(InteractionState::new(structured))
+                DialectState::Interactions(InteractionState::new(structured, tool_controls))
             }
             WireDialect::GeminiGenerateContentV1 => {
-                DialectState::Generate(GenerateState::new(structured))
+                DialectState::Generate(GenerateState::new(structured, tool_controls))
             }
             _ => return Err(invalid("Google stream selected a non-Google dialect")),
         };
@@ -145,13 +147,11 @@ impl NormalizeState {
         }
         let value: Value = serde_json::from_str(frame.data())
             .map_err(|_| invalid("Google SSE data is not valid JSON"))?;
-        let mut dialect = core::mem::replace(
-            &mut self.dialect,
-            DialectState::Generate(GenerateState::new(false)),
-        );
+        let mut dialect = core::mem::replace(&mut self.dialect, DialectState::Vacant);
         let result = match &mut dialect {
             DialectState::Interactions(state) => state.process(self, frame, &value, digest),
             DialectState::Generate(state) => state.process(self, frame, &value, digest),
+            DialectState::Vacant => Err(invalid("Google stream decoder state is unavailable")),
         };
         self.dialect = dialect;
         result

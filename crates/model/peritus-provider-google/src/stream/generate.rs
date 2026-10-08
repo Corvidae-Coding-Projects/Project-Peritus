@@ -1,8 +1,10 @@
 //! Stable-v1 Generate Content streamed response and candidate normalization.
 
+use std::collections::BTreeSet;
+
 use peritus_model_protocol::{
     BoundedText, FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName,
-    ProtocolLimits, ResponseId, UsageScope,
+    ProtocolLimits, ResponseId, ToolCallId, UsageScope,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
@@ -17,11 +19,17 @@ pub(super) struct GenerateState {
     next_item: u32,
     structured: bool,
     saw_tool: bool,
+    calls: u32,
+    call_ids: BTreeSet<ToolCallId>,
+    controls: crate::request::ToolControls,
     json: peritus_provider_core::healing::ToolArgumentBuffer,
 }
 
 impl GenerateState {
-    pub(super) const fn new(structured: bool) -> Self {
+    pub(super) fn new(
+        structured: bool,
+        controls: crate::request::ToolControls,
+    ) -> Self {
         Self {
             started: false,
             response_id: None,
@@ -29,6 +37,9 @@ impl GenerateState {
             next_item: 0,
             structured,
             saw_tool: false,
+            calls: 0,
+            call_ids: BTreeSet::new(),
+            controls,
             json: peritus_provider_core::healing::ToolArgumentBuffer::new(),
         }
     }
@@ -93,6 +104,7 @@ impl GenerateState {
             }
         }
         if blocked {
+            self.controls.validate_completion(self.calls)?;
             self.close_active(owner, digest, frame.id())?;
             owner.emit(ModelEvent::Finish(FinishReason::Safety), digest, frame.id())?;
             owner.emit(ModelEvent::ResponseCompleted, digest, frame.id())?;
@@ -312,13 +324,18 @@ impl GenerateState {
         let arguments = call
             .get("args")
             .ok_or_else(|| invalid("Generate Content function arguments are missing"))?;
-        let item = self.ensure_item(owner, ItemKind::ToolCall, digest, event_id)?;
         let call_id = call_id(&id)?;
+        if !self.call_ids.insert(call_id.clone()) {
+            return Err(invalid("Generate Content reused a function-call identity"));
+        }
+        let name = tool_name(name)?;
+        self.calls = self.controls.admit_call(name.as_str(), self.calls)?;
+        let item = self.ensure_item(owner, ItemKind::ToolCall, digest, event_id)?;
         owner.emit(
             ModelEvent::ToolCallStarted {
                 item_id: item,
                 call_id: call_id.clone(),
-                name: tool_name(name)?,
+                name,
             },
             digest,
             event_id,
@@ -366,6 +383,7 @@ impl GenerateState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
+        self.controls.validate_completion(self.calls)?;
         self.close_active(owner, digest, event_id)?;
         let reason = match reason {
             "STOP" if self.saw_tool => FinishReason::ToolCalls,

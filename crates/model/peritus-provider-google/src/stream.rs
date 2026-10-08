@@ -35,13 +35,20 @@ impl GoogleStream {
         provider: ProviderName,
         dialect: WireDialect,
         structured: bool,
+        tool_controls: crate::request::ToolControls,
         framing_limits: FramingLimits,
     ) -> Result<Self, ProviderCoreError> {
         let (_status, headers, body) = response.into_parts();
         Ok(Self {
             body: Some(body),
             parser: SseParser::new(framing_limits),
-            state: NormalizeState::new(provider.clone(), dialect, structured, &headers)?,
+            state: NormalizeState::new(
+                provider.clone(),
+                dialect,
+                structured,
+                tool_controls,
+                &headers,
+            )?,
             pending: VecDeque::new(),
             provider,
             ended: false,
@@ -59,6 +66,7 @@ impl GoogleStream {
             provider.clone(),
             WireDialect::GeminiInteractionsV1,
             false,
+            crate::request::ToolControls::terminal(),
             &peritus_provider_core::HttpHeaders::empty(),
         )?;
         state.push_synthetic(event)?;

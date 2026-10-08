@@ -8,7 +8,8 @@ use peritus_provider_core::{
     BoxFuture, CancellationToken, CredentialSource, Header, HeaderName, HttpHeaders, HttpMethod,
     HttpRequest, HttpResponse, HttpTransport, ModelProvider, OwnedModelStream,
     ProviderAvailability, ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, RetryAction,
-    RetryFailure, RetryObservation, SubmissionState, validate_request_profile, wait_for_backoff,
+    RetryFailure, RetryObservation, SubmissionState, cancel_first, validate_request_profile,
+    wait_for_backoff,
 };
 
 use crate::config::GoogleConfig;
@@ -21,6 +22,7 @@ pub struct GoogleClient {
     credentials: std::sync::Arc<dyn CredentialSource>,
     transport: std::sync::Arc<dyn HttpTransport>,
     catalog: tokio::sync::Mutex<peritus_provider_core::catalog::HttpCatalogDiscovery>,
+    projection: tokio::sync::Mutex<Option<crate::request::Projection>>,
 }
 
 impl GoogleClient {
@@ -37,7 +39,13 @@ impl GoogleClient {
         let transport: Box<dyn HttpTransport> =
             Box::new(ReqwestTransport::new(config.http_limits())?);
         let catalog = tokio::sync::Mutex::new(config.catalog_discovery());
-        Ok(Self { config, credentials: credentials.into(), transport: transport.into(), catalog })
+        Ok(Self {
+            config,
+            credentials: credentials.into(),
+            transport: transport.into(),
+            catalog,
+            projection: tokio::sync::Mutex::new(None),
+        })
     }
 
     #[cfg(test)]
@@ -47,13 +55,93 @@ impl GoogleClient {
         transport: Box<dyn HttpTransport>,
     ) -> Self {
         let catalog = tokio::sync::Mutex::new(config.catalog_discovery());
-        Self { config, credentials: credentials.into(), transport: transport.into(), catalog }
+        Self {
+            config,
+            credentials: credentials.into(),
+            transport: transport.into(),
+            catalog,
+            projection: tokio::sync::Mutex::new(None),
+        }
     }
 
     /// Returns this instance's exact immutable profile.
     #[must_use]
     pub const fn profile(&self) -> &ProviderProfile {
         self.config.profile()
+    }
+
+    async fn project_request(
+        &self,
+        request: &ModelRequest,
+        cancellation: &CancellationToken,
+    ) -> Result<crate::request::EncodedRequest, ProviderCoreError> {
+        let Some(mut cached) = cancel_first(cancellation, self.projection.lock()).await else {
+            return Err(ProviderCoreError::cancelled("google_projection"));
+        };
+        let matches = cached
+            .as_ref()
+            .map(|projection| projection.matches(request))
+            .transpose()?;
+        if matches != Some(true) {
+            *cached = Some(crate::request::Projection::new(request, &self.config)?);
+        }
+        loop {
+            if cancellation.is_cancelled() {
+                return Err(ProviderCoreError::cancelled("google_projection"));
+            }
+            let result = cached
+                .as_mut()
+                .ok_or_else(|| {
+                    ProviderCoreError::invalid_request(
+                        "google_projection",
+                        "Google projection state disappeared",
+                    )
+                })?
+                .advance(request);
+            let complete = match result {
+                Ok(complete) => complete,
+                Err(error) => {
+                    *cached = None;
+                    return Err(error);
+                }
+            };
+            if complete {
+                if cancellation.is_cancelled() {
+                    return Err(ProviderCoreError::cancelled("google_projection"));
+                }
+                let finish = cached
+                    .as_mut()
+                    .ok_or_else(|| {
+                        ProviderCoreError::invalid_request(
+                            "google_projection",
+                            "Google projection state disappeared",
+                        )
+                    })?
+                    .finish_encoding(request, &self.config, Some(cancellation));
+                if let Err(error) = finish {
+                    if error.kind() == ProviderCoreErrorKind::Cancelled {
+                        return Err(error);
+                    }
+                    *cached = None;
+                    return Err(error);
+                }
+                if cancellation.is_cancelled() {
+                    return Err(ProviderCoreError::cancelled("google_projection"));
+                }
+                let encoded = cached
+                    .as_mut()
+                    .ok_or_else(|| {
+                        ProviderCoreError::invalid_request(
+                            "google_projection",
+                            "Google projection state disappeared",
+                        )
+                    })?
+                    .take_encoded()?;
+                *cached = None;
+                return Ok(encoded);
+            }
+            cooperate().await;
+        }
     }
 
     #[allow(
@@ -66,8 +154,8 @@ impl GoogleClient {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
-            validate_request_profile(self.config.profile(), &request)?;
-            let encoded = crate::request::encode(&request, &self.config)?;
+            self.validate_request(&request)?;
+            let encoded = self.project_request(&request, &cancellation).await?;
             let dialect = request.dialect();
             let started = Instant::now();
             let mut attempt = 1_u32;
@@ -134,6 +222,7 @@ impl GoogleClient {
                         self.config.profile().provider().clone(),
                         dialect,
                         encoded.structured,
+                        encoded.tool_controls.clone(),
                         self.config.framing_limits(),
                     )?;
                     return Ok(OwnedModelStream::new(stream, cancellation));
@@ -193,6 +282,11 @@ impl GoogleClient {
 }
 
 impl ModelProvider for GoogleClient {
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        validate_request_profile(self.config.profile(), request)?;
+        crate::request::validate(request, &self.config)
+    }
+
     fn supports_reasoning_effort(&self, effort: peritus_model_protocol::ReasoningEffort) -> bool {
         self.profile()
             .capabilities()
@@ -248,6 +342,7 @@ impl ModelProvider for GoogleClient {
         let config = self.config.clone().with_selected_profile(profile)?;
         Ok(std::sync::Arc::new(Self {
             catalog: tokio::sync::Mutex::new(config.catalog_discovery()),
+            projection: tokio::sync::Mutex::new(None),
             config,
             credentials: std::sync::Arc::clone(&self.credentials),
             transport: std::sync::Arc::clone(&self.transport),
@@ -283,8 +378,23 @@ impl fmt::Debug for GoogleClient {
             .field("credentials", &"[private credential source]")
             .field("transport", &"[private HTTP transport]")
             .field("catalog", &"[resumable model catalog]")
+            .field("projection", &"[resumable request projection]")
             .finish()
     }
+}
+
+async fn cooperate() {
+    let mut yielded = false;
+    std::future::poll_fn(move |context| {
+        if yielded {
+            core::task::Poll::Ready(())
+        } else {
+            yielded = true;
+            context.waker().wake_by_ref();
+            core::task::Poll::Pending
+        }
+    })
+    .await;
 }
 
 async fn drain_error(

@@ -1,8 +1,10 @@
 //! Stable-v1 Generate Content contents, functions, cache, and generation projection.
 
+use std::collections::BTreeMap;
+
 use peritus_model_protocol::{
     CachePolicy, ContentBlock, ModelRequest, ReasoningEffort, ReasoningPolicy, Role,
-    StructuredOutput, SummaryPolicy, ToolChoice,
+    StructuredOutput, SummaryPolicy, ToolCallId, ToolChoice, ToolName,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -11,13 +13,89 @@ use super::content::{generate_part, generate_tool};
 use super::invalid;
 use super::value::{insert, millionths, object, parse, string};
 
-pub(super) fn project(request: &ModelRequest) -> Result<Value, ProviderCoreError> {
+pub(super) struct Projection {
+    message: usize,
+    block: usize,
+    system_parts: Vec<Value>,
+    contents: Vec<Value>,
+    current_parts: Vec<Value>,
+    preceding_calls: BTreeMap<ToolCallId, ToolName>,
+}
+
+impl Projection {
+    pub(super) const fn new() -> Self {
+        Self {
+            message: 0,
+            block: 0,
+            system_parts: Vec::new(),
+            contents: Vec::new(),
+            current_parts: Vec::new(),
+            preceding_calls: BTreeMap::new(),
+        }
+    }
+
+    pub(super) fn advance(
+        &mut self,
+        request: &ModelRequest,
+    ) -> Result<bool, ProviderCoreError> {
+        let Some(message) = request.messages().get(self.message) else { return Ok(true) };
+        let Some(block) = message.content().get(self.block) else {
+            if !matches!(message.role(), Role::System | Role::Developer) {
+                self.contents.push(object([
+                    ("role", string(role_name(message.role()))),
+                    ("parts", Value::Array(core::mem::take(&mut self.current_parts))),
+                ]));
+            }
+            self.message = self
+                .message
+                .checked_add(1)
+                .ok_or_else(|| invalid("Generate Content message cursor overflowed"))?;
+            self.block = 0;
+            return Ok(self.message == request.messages().len());
+        };
+        match message.role() {
+            Role::System | Role::Developer => {
+                let ContentBlock::Text(text) = block else {
+                    return Err(invalid("Google system instruction accepts text only"));
+                };
+                self.system_parts.push(object([("text", string(text.expose_for_wire()))]));
+            }
+            _ => {
+                if let ContentBlock::ToolCall(call) = block
+                    && self
+                        .preceding_calls
+                        .insert(call.id().clone(), call.name().clone())
+                        .is_some()
+                {
+                    return Err(invalid("Google history reused a function-call identity"));
+                }
+                self.current_parts.push(generate_part(block, &self.preceding_calls)?);
+            }
+        }
+        self.block = self
+            .block
+            .checked_add(1)
+            .ok_or_else(|| invalid("Generate Content block cursor overflowed"))?;
+        Ok(false)
+    }
+
+    pub(super) fn finish(self, request: &ModelRequest) -> Result<Value, ProviderCoreError> {
+        if self.contents.is_empty() {
+            return Err(invalid("Generate Content requires at least one conversational content"));
+        }
+        let system = (!self.system_parts.is_empty())
+            .then(|| object([("parts", Value::Array(self.system_parts))]));
+        project_fields(request, system, self.contents)
+    }
+}
+
+fn project_fields(
+    request: &ModelRequest,
+    system: Option<Value>,
+    contents: Vec<Value>,
+) -> Result<Value, ProviderCoreError> {
     if request.options().continuation().is_some() || request.options().persistence().store() {
         return Err(invalid("Generate Content is stateless and has no response continuation"));
-    }
-    let (system, contents) = contents(request)?;
-    if contents.is_empty() {
-        return Err(invalid("Generate Content requires at least one conversational content"));
     }
     let mut value = Map::new();
     value.insert("contents".to_owned(), Value::Array(contents));
@@ -44,37 +122,6 @@ pub(super) fn project(request: &ModelRequest) -> Result<Value, ProviderCoreError
         }
     }
     Ok(Value::Object(value))
-}
-
-fn contents(request: &ModelRequest) -> Result<(Option<Value>, Vec<Value>), ProviderCoreError> {
-    let mut system_parts = Vec::new();
-    let mut contents = Vec::new();
-    for message in request.messages() {
-        match message.role() {
-            Role::System | Role::Developer => {
-                for block in message.content() {
-                    let ContentBlock::Text(text) = block else {
-                        return Err(invalid("Google system instruction accepts text only"));
-                    };
-                    system_parts.push(object([("text", string(text.expose_for_wire()))]));
-                }
-            }
-            role => {
-                let parts = message
-                    .content()
-                    .iter()
-                    .map(|block| generate_part(block, request))
-                    .collect::<Result<Vec<_>, _>>()?;
-                contents.push(object([
-                    ("role", string(role_name(role))),
-                    ("parts", Value::Array(parts)),
-                ]));
-            }
-        }
-    }
-    let system =
-        (!system_parts.is_empty()).then(|| object([("parts", Value::Array(system_parts))]));
-    Ok((system, contents))
 }
 
 const fn role_name(role: Role) -> &'static str {

@@ -1,5 +1,7 @@
 //! Stable-v1 Interactions event grammar and step normalization.
 
+use std::collections::BTreeSet;
+
 use peritus_model_protocol::{
     FailureCategory, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits,
     ResponseId, ToolCallId, UsageScope,
@@ -37,11 +39,26 @@ pub(super) struct InteractionState {
     active: Option<ActiveStep>,
     next_index: u32,
     structured: bool,
+    calls: u32,
+    call_ids: BTreeSet<ToolCallId>,
+    controls: crate::request::ToolControls,
 }
 
 impl InteractionState {
-    pub(super) const fn new(structured: bool) -> Self {
-        Self { created: false, response_id: None, active: None, next_index: 0, structured }
+    pub(super) fn new(
+        structured: bool,
+        controls: crate::request::ToolControls,
+    ) -> Self {
+        Self {
+            created: false,
+            response_id: None,
+            active: None,
+            next_index: 0,
+            structured,
+            calls: 0,
+            call_ids: BTreeSet::new(),
+            controls,
+        }
     }
 
     pub(super) fn process(
@@ -143,6 +160,11 @@ impl InteractionState {
                 let id = required_str(value, "/step/id")?;
                 let name = required_str(value, "/step/name")?;
                 let call = call_id(id)?;
+                if !self.call_ids.insert(call.clone()) {
+                    return Err(invalid("Google interaction reused a function-call identity"));
+                }
+                let name = tool_name(name)?;
+                self.calls = self.controls.admit_call(name.as_str(), self.calls)?;
                 owner.emit(
                     ModelEvent::ItemStarted {
                         item_id: item.clone(),
@@ -156,7 +178,7 @@ impl InteractionState {
                     ModelEvent::ToolCallStarted {
                         item_id: item.clone(),
                         call_id: call.clone(),
-                        name: tool_name(name)?,
+                        name,
                     },
                     digest,
                     event_id,
@@ -325,7 +347,11 @@ impl InteractionState {
                 owner.emit(cache, digest, event_id)?;
             }
         }
-        match required_str(value, "/interaction/status")? {
+        let status = required_str(value, "/interaction/status")?;
+        if matches!(status, "completed" | "requires_action" | "incomplete") {
+            self.controls.validate_completion(self.calls)?;
+        }
+        match status {
             "completed" => {
                 owner.emit(ModelEvent::Finish(FinishReason::Stop), digest, event_id)?;
                 owner.emit(ModelEvent::ResponseCompleted, digest, event_id)

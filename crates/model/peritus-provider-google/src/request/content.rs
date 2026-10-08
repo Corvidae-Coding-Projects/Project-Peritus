@@ -1,10 +1,12 @@
 //! Shared content, tool-schema, and opaque-thinking projection.
 
+use std::collections::BTreeMap;
+
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use peritus_model_protocol::{
     ContentBlock, MediaInput, MediaKind, MediaReferenceKind, ReasoningReplay, SchemaDialect,
-    ToolDefinition,
+    ToolCallId, ToolDefinition, ToolName,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
@@ -26,7 +28,7 @@ pub(super) fn interaction_content(block: &ContentBlock) -> Result<Value, Provide
 
 pub(super) fn generate_part(
     block: &ContentBlock,
-    request: &peritus_model_protocol::ModelRequest,
+    preceding_calls: &BTreeMap<ToolCallId, ToolName>,
 ) -> Result<Value, ProviderCoreError> {
     match block {
         ContentBlock::Text(text) | ContentBlock::Refusal(text) => {
@@ -45,17 +47,9 @@ pub(super) fn generate_part(
         ContentBlock::ToolResult(result) => {
             let mut function = Map::new();
             function.insert("id".to_owned(), string(result.call_id().expose_for_wire()));
-            let name = request
-                .messages()
-                .iter()
-                .flat_map(peritus_model_protocol::Message::content)
-                .rev()
-                .find_map(|block| match block {
-                    ContentBlock::ToolCall(call) if call.id() == result.call_id() => {
-                        Some(call.name().as_str())
-                    }
-                    _ => None,
-                })
+            let name = preceding_calls
+                .get(result.call_id())
+                .map(ToolName::as_str)
                 .ok_or_else(|| invalid("Google function result has no matching call name"))?;
             function.insert("name".to_owned(), string(name));
             function.insert("response".to_owned(), parse(result.output().canonical_bytes())?);

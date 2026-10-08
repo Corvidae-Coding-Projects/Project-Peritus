@@ -11,9 +11,84 @@ use super::content::{interaction_content, interaction_replay, interaction_tool};
 use super::invalid;
 use super::value::{insert, millionths, object, parse, string};
 
-pub(super) fn project(request: &ModelRequest) -> Result<Value, ProviderCoreError> {
-    let (system, input) = input(request)?;
-    if input.is_empty() {
+pub(super) struct Projection {
+    message: usize,
+    block: usize,
+    system: Vec<String>,
+    steps: Vec<Value>,
+    current_user: Vec<Value>,
+}
+
+impl Projection {
+    pub(super) const fn new() -> Self {
+        Self {
+            message: 0,
+            block: 0,
+            system: Vec::new(),
+            steps: Vec::new(),
+            current_user: Vec::new(),
+        }
+    }
+
+    pub(super) fn advance(
+        &mut self,
+        request: &ModelRequest,
+    ) -> Result<bool, ProviderCoreError> {
+        let Some(message) = request.messages().get(self.message) else { return Ok(true) };
+        let Some(block) = message.content().get(self.block) else {
+            if message.role() == Role::User {
+                self.steps.push(object([
+                    ("type", string("user_input")),
+                    ("content", Value::Array(core::mem::take(&mut self.current_user))),
+                ]));
+            }
+            self.message = self
+                .message
+                .checked_add(1)
+                .ok_or_else(|| invalid("Google Interactions message cursor overflowed"))?;
+            self.block = 0;
+            return Ok(self.message == request.messages().len());
+        };
+        match message.role() {
+            Role::System | Role::Developer => {
+                let ContentBlock::Text(text) = block else {
+                    return Err(invalid("Google system instruction accepts text only"));
+                };
+                self.system.push(text.expose_for_wire().to_owned());
+            }
+            Role::User => self.current_user.push(interaction_content(block)?),
+            Role::Assistant => self.steps.push(assistant_step(block)?),
+            Role::Tool => self.steps.push(tool_step(block)?),
+        }
+        self.block = self
+            .block
+            .checked_add(1)
+            .ok_or_else(|| invalid("Google Interactions block cursor overflowed"))?;
+        Ok(false)
+    }
+
+    pub(super) fn finish(self, request: &ModelRequest) -> Result<Value, ProviderCoreError> {
+        let system = (!self.system.is_empty()).then(|| self.system.join("\n"));
+        project_fields(request, system, self.steps)
+    }
+}
+
+fn project_fields(
+    request: &ModelRequest,
+    system: Option<String>,
+    input: Vec<Value>,
+) -> Result<Value, ProviderCoreError> {
+    let continuation = request.options().continuation();
+    if let Some(continuation) = continuation
+        && (!request.options().persistence().store()
+            || continuation.event_id().is_some()
+            || continuation.sequence().is_some())
+    {
+        return Err(invalid(
+            "Google Interactions continuation requires storage and permits no exact cursor",
+        ));
+    }
+    if input.is_empty() && continuation.is_none() {
         return Err(invalid("Google Interactions requires non-system input or continuation"));
     }
     let mut value = Map::new();
@@ -25,18 +100,9 @@ pub(super) fn project(request: &ModelRequest) -> Result<Value, ProviderCoreError
     insert(&mut value, "system_instruction", system.map(Value::String));
     let tools = request.tools().iter().map(interaction_tool).collect::<Result<Vec<_>, _>>()?;
     insert(&mut value, "tools", (!tools.is_empty()).then_some(Value::Array(tools)));
-    value.insert("tool_choice".to_owned(), tool_choice(request.tool_choice()));
     insert(&mut value, "response_format", response_format(request.options().output())?);
     value.insert("generation_config".to_owned(), generation(request)?);
-    if let Some(continuation) = request.options().continuation() {
-        if !request.options().persistence().store()
-            || continuation.event_id().is_some()
-            || continuation.sequence().is_some()
-        {
-            return Err(invalid(
-                "Google Interactions continuation requires storage and permits no exact cursor",
-            ));
-        }
+    if let Some(continuation) = continuation {
         value.insert(
             "previous_interaction_id".to_owned(),
             string(continuation.response_id().expose_for_wire()),
@@ -53,67 +119,33 @@ pub(super) fn project(request: &ModelRequest) -> Result<Value, ProviderCoreError
     Ok(Value::Object(value))
 }
 
-fn input(request: &ModelRequest) -> Result<(Option<String>, Vec<Value>), ProviderCoreError> {
-    let mut system = Vec::new();
-    let mut steps = Vec::new();
-    for message in request.messages() {
-        match message.role() {
-            Role::System | Role::Developer => {
-                for block in message.content() {
-                    let ContentBlock::Text(text) = block else {
-                        return Err(invalid("Google system instruction accepts text only"));
-                    };
-                    system.push(text.expose_for_wire());
-                }
-            }
-            Role::User => steps.push(content_step("user_input", message.content())?),
-            Role::Assistant => assistant_steps(message.content(), &mut steps)?,
-            Role::Tool => tool_steps(message.content(), &mut steps)?,
-        }
-    }
-    Ok(((!system.is_empty()).then(|| system.join("\n")), steps))
-}
-
-fn content_step(kind: &str, blocks: &[ContentBlock]) -> Result<Value, ProviderCoreError> {
-    let content = blocks.iter().map(interaction_content).collect::<Result<Vec<_>, _>>()?;
-    Ok(object([("type", string(kind)), ("content", Value::Array(content))]))
-}
-
-fn assistant_steps(
-    blocks: &[ContentBlock],
-    steps: &mut Vec<Value>,
-) -> Result<(), ProviderCoreError> {
-    for block in blocks {
-        match block {
-            ContentBlock::Text(_) | ContentBlock::Refusal(_) => {
-                steps.push(content_step("model_output", core::slice::from_ref(block))?);
-            }
-            ContentBlock::ToolCall(call) => steps.push(object([
+fn assistant_step(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+    match block {
+        ContentBlock::Text(_) | ContentBlock::Refusal(_) => Ok(object([
+            ("type", string("model_output")),
+            ("content", Value::Array(vec![interaction_content(block)?])),
+        ])),
+        ContentBlock::ToolCall(call) => Ok(object([
                 ("type", string("function_call")),
                 ("id", string(call.id().expose_for_wire())),
                 ("name", string(call.name().as_str())),
                 ("arguments", parse(call.arguments().canonical_bytes())?),
-            ])),
-            ContentBlock::Reasoning(replay) => steps.push(interaction_replay(replay)?),
-            _ => return Err(invalid("assistant block is unsupported by Google Interactions")),
-        }
+        ])),
+        ContentBlock::Reasoning(replay) => interaction_replay(replay),
+        _ => Err(invalid("assistant block is unsupported by Google Interactions")),
     }
-    Ok(())
 }
 
-fn tool_steps(blocks: &[ContentBlock], steps: &mut Vec<Value>) -> Result<(), ProviderCoreError> {
-    for block in blocks {
-        let ContentBlock::ToolResult(result) = block else {
-            return Err(invalid("Google tool messages require function results"));
-        };
-        steps.push(object([
-            ("type", string("function_result")),
-            ("call_id", string(result.call_id().expose_for_wire())),
-            ("result", parse(result.output().canonical_bytes())?),
-            ("is_error", Value::Bool(result.is_error())),
-        ]));
-    }
-    Ok(())
+fn tool_step(block: &ContentBlock) -> Result<Value, ProviderCoreError> {
+    let ContentBlock::ToolResult(result) = block else {
+        return Err(invalid("Google tool messages require function results"));
+    };
+    Ok(object([
+        ("type", string("function_result")),
+        ("call_id", string(result.call_id().expose_for_wire())),
+        ("result", parse(result.output().canonical_bytes())?),
+        ("is_error", Value::Bool(result.is_error())),
+    ]))
 }
 
 fn tool_choice(choice: &ToolChoice) -> Value {
@@ -175,6 +207,7 @@ fn generation(request: &ModelRequest) -> Result<Value, ProviderCoreError> {
     let (level, summaries) = thinking(options.reasoning())?;
     insert(&mut value, "thinking_level", level.map(string));
     insert(&mut value, "thinking_summaries", summaries.map(string));
+    value.insert("tool_choice".to_owned(), tool_choice(request.tool_choice()));
     Ok(Value::Object(value))
 }
 
