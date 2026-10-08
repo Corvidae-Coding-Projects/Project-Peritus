@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3981,
-        "tip_oid": "c76ca57ead3ba47e43979796adde21be10b9be9e",
-        "prefix_sha256": "06f75e7940a97ef503c61ed5404056bc315dbc44f633f6787d8b1f6f1a75e594"
+        "sequence": 3982,
+        "tip_oid": "4dd4c167073f3756993b884ae14330a4357e8d64",
+        "prefix_sha256": "0a6a5f68382eefe52690a3ff11801504fc37e5359a81cc3a6b66882c5a340258"
       },
       "NWAR": {
         "sequence": 39,
@@ -2694,12 +2694,13 @@
       "display_id": 522,
       "title": "[L443] F0 silently evicts rollback targets from the long-lived production pointer",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L443.\n\n- Evidence: `crates/analysis/peritus-evolution/src/pointer/reducer.rs:161-184,239-243,245-255,272-300,313-319`, `src/pointer/rollback.rs:156-176`, `src/pointer/state.rs:206-210`, `src/limits.rs:22-33` in the same crate.\n- Behavior: Each activation appends a history record; when the retained history length equals activation_history, append_history removes index zero first. The compiled maximum is 256 and a caller may tighten it to 1. RollbackProposal and both rollback preparation/activation require the target activation to remain in that suffix. With limit=1, even the immediately previous activation is absent after a new activation. No pointer command expands the window or loads an older target from immutable journal history.\n- Consequence: Authorized rollback becomes impossible through the normal F0 pointer contract solely because enough later activations occurred. The authoritative journal may retain every event; this is checkpoint-target eviction, not deletion of evidence or model session context. The pointer continues promoting rather than halting at capacity, so the blocker is historical reachability rather than a promotion-count ceiling.\n- Repair direction: Resolve rollback targets from durable immutable activation history with exact provenance and compatibility checks. Bound the hot projection/cache independently of target eligibility and preserve stable target identity across checkpoint compaction. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.574391395Z",
-      "updated_at": "2026-10-08T02:27:56.802672363Z",
+      "updated_at": "2026-10-08T02:29:35.289970573Z",
+      "closed_at": "2026-10-08T02:29:35.287083486Z",
       "labels": [
         "daily-driving-limiter"
       ],
