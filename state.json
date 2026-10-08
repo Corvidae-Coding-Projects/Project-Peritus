@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3999,
-        "tip_oid": "bed8f4d5f0b2e1c0130023287ccf3d72d57f137a",
-        "prefix_sha256": "e8b98dba7cd8d0e9b71e3c4b664aa54840dd133e7464101947e85bf6aef0a415"
+        "sequence": 4000,
+        "tip_oid": "141b3d3a02814474635217198c026525a6bd97c7",
+        "prefix_sha256": "8efcac9fce1bee541f9d4569c346c72b851a0bc066c5e0d1408f1d7ea498d71e"
       },
       "NWAR": {
         "sequence": 39,
@@ -33806,12 +33806,13 @@
       "display_id": 526,
       "title": "[L447] F0 accepts mandatory failure-class predictions that its attribution engine can never confirm",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L447.\n\n- Evidence: `crates/analysis/peritus-evolution/src/change/prediction.rs:160-170`, `src/attribution/engine.rs:68-69`, `src/attribution/record.rs:158-160`, `src/selection/engine.rs:85-90` in the same crate.\n- Behavior: Prediction construction admits a FailureClass subject for metrics other than TaskPassAtK. Attribution unconditionally returns Unavailable with UnsupportedFailureClass for that subject. Every mandatory prediction whose result is not Confirmed counts as a mandatory failure, and selection requires that count to be zero.\n- Consequence: A syntactically accepted mandatory failure-class prediction makes its candidate permanently ineligible through the current engine. More runs or waiting cannot satisfy it. The mandatory-evidence rule itself is a valid quality contract; admitting a requirement the engine cannot evaluate is the blocker. No installed campaign was reproduced.\n- Repair direction: Validate evaluability at admission or implement class-specific measurements and uncertainty handling. Return a repairable unsupported-capability result before freezing a campaign requirement. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.592952102Z",
-      "updated_at": "2026-10-08T02:57:09.697174975Z",
+      "updated_at": "2026-10-08T02:58:42.799075685Z",
+      "closed_at": "2026-10-08T02:58:42.796176096Z",
       "labels": [
         "daily-driving-limiter"
       ],
