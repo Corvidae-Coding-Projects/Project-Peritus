@@ -12,10 +12,11 @@ use std::{
 };
 
 use peritus_plugin_host::{
-    AuthorityDecision, AuthorityMediator, AuthorityRequest, DigestTrustStore, DiscoveryLimits,
-    HostCancellation, HostConfig, HostError, HostFailureClass, HostFuture, HostStateStore,
-    InvocationGrant, InvocationSubject, PluginHost, PluginInstanceId, PluginInvocationResult,
-    PluginLifecycle, StateOwnerId, discover,
+    ArtifactAdmission, AuthorityDecision, AuthorityMediator, AuthorityRequest, DigestTrustStore,
+    DiscoveryLimits, DiscoveryPageSize, DiscoveryStatus, HostCancellation, HostConfig, HostError,
+    HostFailureClass, HostFuture, HostStateStore, InvocationGrant, InvocationSubject,
+    PluginCatalog, PluginDiscovery, PluginHost, PluginInstanceId, PluginInvocationResult,
+    PluginLifecycle, SdkTomlManifestAdmission, StateOwnerId,
 };
 use peritus_plugin_sdk::{
     CumulativeQuota, JsonBounds, JsonPayload, JsonStructure, PluginId, PluginQuotas,
@@ -174,8 +175,7 @@ impl Fixture {
         permissions.set_mode(0o700);
         fs::set_permissions(&artifact, permissions).expect("executable permissions");
         let root = fs::canonicalize(root).expect("canonical root");
-        let catalog =
-            discover(std::slice::from_ref(&root), DiscoveryLimits::PRODUCTION).expect("discovery");
+        let catalog = discover_catalog(std::slice::from_ref(&root));
         Self {
             _temporary: temporary,
             root,
@@ -263,6 +263,26 @@ fn host(fixture: &Fixture, authority: Arc<dyn AuthorityMediator>, output_bytes: 
 
 fn instance_id() -> PluginInstanceId {
     PluginInstanceId::new("fixture-process-1").expect("plugin instance id")
+}
+
+fn discover_catalog(roots: &[PathBuf]) -> PluginCatalog {
+    let manifest_bytes = u64::try_from(MANIFEST.len()).expect("fixture manifest byte count");
+    let manifest =
+        SdkTomlManifestAdmission::new(manifest_bytes).expect("manifest admission policy");
+    let limits = DiscoveryLimits::new(manifest, ArtifactAdmission::streamed());
+    let mut discovery = PluginDiscovery::new(roots.iter().cloned(), limits);
+    let page_size = DiscoveryPageSize::new(8).expect("discovery page size");
+    let cancellation = HostCancellation::new();
+    loop {
+        match discovery.next_page(page_size, &cancellation).status() {
+            DiscoveryStatus::More => {}
+            DiscoveryStatus::Complete => break,
+            DiscoveryStatus::Cancelled => panic!("fixture discovery was cancelled"),
+        }
+    }
+    let catalog = discovery.into_catalog();
+    assert!(catalog.diagnostics().is_empty(), "{:?}", catalog.diagnostics());
+    catalog
 }
 
 #[test]

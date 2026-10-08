@@ -58,8 +58,7 @@ fn canonical_manifest(
         .catalog
         .get(&fixture.id, fixture.version)
         .ok_or(PluginConformanceError::Infrastructure)?;
-    let repeated = discover(std::slice::from_ref(&fixture.root), DiscoveryLimits::PRODUCTION)
-        .map_err(|_| PluginConformanceError::Infrastructure)?;
+    let repeated = discover_catalog(std::slice::from_ref(&fixture.root));
     let same = repeated.get(&fixture.id, fixture.version).is_some_and(|again| {
         again.manifest_digest() == discovered.manifest_digest()
             && again.artifact_sha256() == discovered.artifact_sha256()

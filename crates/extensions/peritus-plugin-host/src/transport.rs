@@ -19,13 +19,22 @@ use tokio::{
 use crate::{
     HostCancellation, HostError, HostFailureClass, RecoveryDisposition,
     quota::QuotaPermit,
-    state::InvocationClaim,
+    state::{ExecutionArtifact, InvocationClaim},
 };
 
 #[derive(Clone, Debug)]
-pub enum LaunchPlan {
-    Process { executable: PathBuf, arguments: Vec<String>, working_directory: PathBuf },
-    Wasm { runtime: PathBuf, module: PathBuf, arguments: Vec<String>, working_directory: PathBuf },
+pub(crate) enum LaunchPlan {
+    Process {
+        executable: ExecutionArtifact,
+        arguments: Vec<String>,
+        working_directory: PathBuf,
+    },
+    Wasm {
+        runtime: PathBuf,
+        module: ExecutionArtifact,
+        arguments: Vec<String>,
+        working_directory: PathBuf,
+    },
 }
 
 pub struct PluginConnection {
@@ -35,6 +44,7 @@ pub struct PluginConnection {
     transaction: Mutex<()>,
     request_policy: JsonWirePolicy,
     response_policy: JsonWirePolicy,
+    _execution_artifact: ExecutionArtifact,
 }
 
 pub(crate) struct PluginDispatch<'a> {
@@ -66,21 +76,21 @@ impl PluginConnection {
         let response_policy = quotas
             .response_wire_policy()
         .map_err(|error| wire_policy_error(error.to_string()))?;
-        let mut command = match plan {
+        let (mut command, execution_artifact) = match plan {
             LaunchPlan::Process { executable, arguments, working_directory } => {
-                let mut command = Command::new(executable);
+                let mut command = Command::new(executable.path());
                 command.args(arguments).current_dir(working_directory);
-                command
+                (command, executable)
             }
             LaunchPlan::Wasm { runtime, module, arguments, working_directory } => {
                 let mut command = Command::new(runtime);
                 command
                     .arg("run")
                     .arg("--")
-                    .arg(module)
+                    .arg(module.path())
                     .args(arguments)
                     .current_dir(working_directory);
-                command
+                (command, module)
             }
         };
         command
@@ -114,6 +124,7 @@ impl PluginConnection {
             transaction: Mutex::new(()),
             request_policy,
             response_policy,
+            _execution_artifact: execution_artifact,
         }))
     }
 

@@ -2,13 +2,13 @@
 
 use std::{
     fs::{self, File, OpenOptions},
-    io::{Read as _, Write as _},
+    io::{Read as _, Seek as _, SeekFrom, Write as _},
     path::{Path, PathBuf},
     sync::{Arc, Mutex as StdMutex},
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use peritus_plugin_sdk::{PluginId, PluginVersion, RequestId};
+use peritus_plugin_sdk::{PluginId, PluginKind, PluginVersion, RequestId};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as _, Sha256};
 
@@ -20,6 +20,7 @@ use crate::{
 const STATE_SCHEMA: u16 = 1;
 const MAX_IDENTITY_BYTES: usize = 512;
 const MAX_RECORD_BYTES: u64 = 64 * 1024;
+const EXECUTION_BUFFER_BYTES: usize = 64 * 1024;
 
 /// Stable caller identity whose successive store openings fence older writers.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -183,6 +184,7 @@ struct StateInner {
     owner_directory: PathBuf,
     instance_directory: PathBuf,
     invocation_directory: PathBuf,
+    execution_directory: PathBuf,
     owner_id: StateOwnerId,
     fence: u64,
     mutation: StdMutex<()>,
@@ -226,6 +228,24 @@ pub(crate) struct InvocationClaim {
     key: String,
 }
 
+/// Exact immutable artifact held in caller-rooted custody through process launch and lifetime.
+#[derive(Clone, Debug)]
+pub(crate) struct ExecutionArtifact {
+    path: PathBuf,
+    sha256: [u8; 32],
+    _handle: Arc<File>,
+}
+
+impl ExecutionArtifact {
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub(crate) const fn sha256(&self) -> [u8; 32] {
+        self.sha256
+    }
+}
+
 impl HostStateStore {
     /// Exclusively leases concrete custody beneath `root` and durably claims the next owner fence.
     ///
@@ -255,6 +275,7 @@ impl HostStateStore {
         let owners = checked_directory(&root, "owners")?;
         let instance_directory = checked_directory(&root, "instances")?;
         let invocation_directory = checked_directory(&root, "invocations")?;
+        let execution_directory = checked_directory(&root, "execution")?;
         let owner_key = digest_key(&[owner_id.as_str().as_bytes()]);
         let owner_directory = checked_directory(&owners, &owner_key)?;
         establish_owner_identity(&owner_directory, &owner_id)?;
@@ -267,6 +288,7 @@ impl HostStateStore {
                 owner_directory,
                 instance_directory,
                 invocation_directory,
+                execution_directory,
                 owner_id,
                 fence,
                 mutation: StdMutex::new(()),
@@ -398,13 +420,96 @@ impl HostStateStore {
         invocation_evidence(record)
     }
 
+    pub(crate) fn stage_execution_artifact(
+        &self,
+        plugin: &DiscoveredPlugin,
+    ) -> Result<ExecutionArtifact, HostError> {
+        let _mutation = self.lock_mutation()?;
+        self.ensure_current_fence()?;
+        let suffix = match plugin.manifest().kind() {
+            PluginKind::Process => "process.exe",
+            PluginKind::WasmComponent => "component.wasm",
+        };
+        let digest = plugin.artifact_sha256();
+        let path = self
+            .inner
+            .execution_directory
+            .join(format!("{}-{suffix}", hex_digest(digest)));
+        reject_symlink(&path, "plugin execution artifact is a symbolic link")?;
+        if path.try_exists().map_err(|error| {
+            state_source(
+                "inspect staged plugin artifact",
+                RecoveryDisposition::Reconcile,
+                error,
+            )
+        })? {
+            return open_execution_artifact(&path, plugin);
+        }
+
+        let sequence = self
+            .inner
+            .temporary_sequence
+            .fetch_add(1, Ordering::Relaxed);
+        let temporary = self.inner.execution_directory.join(format!(
+            ".artifact-{:020}-{sequence:020}.tmp",
+            self.inner.fence
+        ));
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&temporary)
+            .map_err(|error| {
+                state_source(
+                    "create staged plugin artifact",
+                    RecoveryDisposition::Reconcile,
+                    error,
+                )
+            })?;
+        if let Err(error) = plugin.copy_verified_artifact(&mut file) {
+            return Err(clean_execution_temporary(&temporary, file, error));
+        }
+        if let Err(error) = harden_execution_artifact(&file, plugin.manifest().kind()) {
+            return Err(clean_execution_temporary(&temporary, file, error));
+        }
+        if let Err(error) = file.sync_all().map_err(|error| {
+            state_source(
+                "persist staged plugin artifact",
+                RecoveryDisposition::Reconcile,
+                error,
+            )
+        }) {
+            return Err(clean_execution_temporary(&temporary, file, error));
+        }
+        if let Err(error) = fs::rename(&temporary, &path).map_err(|error| {
+            state_source(
+                "commit staged plugin artifact",
+                RecoveryDisposition::Reconcile,
+                error,
+            )
+        }) {
+            return Err(clean_execution_temporary(&temporary, file, error));
+        }
+        sync_directory(&self.inner.execution_directory)?;
+        Ok(ExecutionArtifact { path, sha256: digest, _handle: Arc::new(file) })
+    }
+
     pub(crate) fn register_instance(
         &self,
         plugin: &DiscoveredPlugin,
+        execution: &ExecutionArtifact,
         instance_id: &PluginInstanceId,
     ) -> Result<(), HostError> {
         let _mutation = self.lock_mutation()?;
         self.ensure_current_fence()?;
+        if execution.sha256() != plugin.artifact_sha256() {
+            return Err(HostError::new(
+                HostFailureClass::Trust,
+                RecoveryDisposition::EstablishTrust,
+                "register plugin process instance",
+                "staged execution artifact differs from its discovered identity",
+            ));
+        }
         let key = instance_key(self.inner.owner_id.as_str(), instance_id.as_str());
         let path = self.inner.instance_directory.join(format!("{key}.json"));
         if path.try_exists().map_err(|error| {
@@ -426,7 +531,7 @@ impl HostStateStore {
             plugin_id: plugin.manifest().id().as_str().to_owned(),
             plugin_version: [version.major(), version.minor(), version.patch()],
             manifest_sha256: plugin.manifest_digest().to_hex(),
-            artifact_sha256: hex_digest(plugin.artifact_sha256()),
+            artifact_sha256: hex_digest(execution.sha256()),
             frontier: PluginInstanceFrontier::Starting,
         };
         self.write_json_record(&path, &record)
@@ -926,6 +1031,167 @@ fn parse_digest(value: &str) -> Result<[u8; 32], HostError> {
         return Err(state_fence_error("durable SHA-256 is not canonical lowercase hexadecimal"));
     }
     Ok(digest)
+}
+
+fn open_execution_artifact(
+    path: &Path,
+    plugin: &DiscoveredPlugin,
+) -> Result<ExecutionArtifact, HostError> {
+    reject_symlink(path, "plugin execution artifact is a symbolic link")?;
+    let mut file = OpenOptions::new().read(true).open(path).map_err(|error| {
+        state_source(
+            "open staged plugin artifact",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?;
+    let metadata = file.metadata().map_err(|error| {
+        state_source(
+            "inspect staged plugin artifact",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?;
+    if !metadata.is_file() || metadata.len() != plugin.artifact_bytes() {
+        return Err(execution_state_error(
+            "staged plugin artifact is not the expected bounded regular file",
+        ));
+    }
+    verify_execution_artifact(&mut file, plugin)?;
+    harden_execution_artifact(&file, plugin.manifest().kind())?;
+    file.sync_all().map_err(|error| {
+        state_source(
+            "persist staged plugin artifact permissions",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?;
+    Ok(ExecutionArtifact {
+        path: path.to_path_buf(),
+        sha256: plugin.artifact_sha256(),
+        _handle: Arc::new(file),
+    })
+}
+
+fn verify_execution_artifact(
+    file: &mut File,
+    plugin: &DiscoveredPlugin,
+) -> Result<(), HostError> {
+    file.seek(SeekFrom::Start(0)).map_err(|error| {
+        state_source(
+            "rewind staged plugin artifact",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?;
+    let mut hasher = Sha256::new();
+    let mut total = 0_u64;
+    let mut buffer = vec![0_u8; EXECUTION_BUFFER_BYTES].into_boxed_slice();
+    loop {
+        let count = file.read(&mut buffer).map_err(|error| {
+            state_source(
+                "verify staged plugin artifact",
+                RecoveryDisposition::Reconcile,
+                error,
+            )
+        })?;
+        if count == 0 {
+            break;
+        }
+        let count_u64 = u64::try_from(count).map_err(|_| {
+            execution_state_error("staged plugin artifact read size is not representable")
+        })?;
+        total = total.checked_add(count_u64).ok_or_else(|| {
+            execution_state_error("staged plugin artifact size overflowed")
+        })?;
+        if total > plugin.artifact_bytes() {
+            return Err(execution_state_error(
+                "staged plugin artifact exceeds its discovered size",
+            ));
+        }
+        hasher.update(&buffer[..count]);
+    }
+    file.seek(SeekFrom::Start(0)).map_err(|error| {
+        state_source(
+            "restore staged plugin artifact",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?;
+    let digest: [u8; 32] = hasher.finalize().into();
+    if total != plugin.artifact_bytes() || digest != plugin.artifact_sha256() {
+        return Err(execution_state_error(
+            "staged plugin artifact differs from its discovered identity",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn harden_execution_artifact(file: &File, kind: PluginKind) -> Result<(), HostError> {
+    use std::os::unix::fs::PermissionsExt as _;
+
+    let mut permissions = file.metadata().map_err(|error| {
+        state_source(
+            "inspect staged plugin artifact permissions",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?.permissions();
+    permissions.set_mode(match kind {
+        PluginKind::Process => 0o500,
+        PluginKind::WasmComponent => 0o400,
+    });
+    file.set_permissions(permissions).map_err(|error| {
+        state_source(
+            "harden staged plugin artifact permissions",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })
+}
+
+#[cfg(not(unix))]
+fn harden_execution_artifact(file: &File, _kind: PluginKind) -> Result<(), HostError> {
+    let mut permissions = file.metadata().map_err(|error| {
+        state_source(
+            "inspect staged plugin artifact permissions",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })?.permissions();
+    permissions.set_readonly(true);
+    file.set_permissions(permissions).map_err(|error| {
+        state_source(
+            "harden staged plugin artifact permissions",
+            RecoveryDisposition::Reconcile,
+            error,
+        )
+    })
+}
+
+fn clean_execution_temporary(path: &Path, file: File, error: HostError) -> HostError {
+    drop(file);
+    match fs::remove_file(path) {
+        Ok(()) => error,
+        Err(cleanup) if cleanup.kind() == std::io::ErrorKind::NotFound => error,
+        Err(cleanup) => HostError::with_source(
+            HostFailureClass::Infrastructure,
+            RecoveryDisposition::Reconcile,
+            "clean failed staged plugin artifact",
+            format!("staging failed ({error}); temporary cleanup also failed: {cleanup}"),
+            cleanup,
+        ),
+    }
+}
+
+fn execution_state_error(detail: impl Into<String>) -> HostError {
+    HostError::new(
+        HostFailureClass::Infrastructure,
+        RecoveryDisposition::Reconcile,
+        "verify staged plugin artifact",
+        detail,
+    )
 }
 
 fn checked_directory(parent: &Path, name: &str) -> Result<PathBuf, HostError> {

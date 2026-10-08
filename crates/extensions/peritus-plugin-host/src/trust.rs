@@ -22,8 +22,12 @@ pub enum TrustDecision {
 
 /// Read-only trust verifier invoked before every plugin start.
 pub trait TrustVerifier: Send + Sync {
-    /// Verifies exact discovered bytes against configured trust state.
-    fn verify(&self, plugin: &DiscoveredPlugin) -> TrustDecision;
+    /// Verifies the canonical manifest and exact staged execution bytes against trust state.
+    fn verify(
+        &self,
+        plugin: &DiscoveredPlugin,
+        execution_artifact_sha256: [u8; 32],
+    ) -> TrustDecision;
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -71,14 +75,19 @@ impl DigestTrustStore {
 }
 
 impl TrustVerifier for DigestTrustStore {
-    fn verify(&self, plugin: &DiscoveredPlugin) -> TrustDecision {
+    fn verify(
+        &self,
+        plugin: &DiscoveredPlugin,
+        execution_artifact_sha256: [u8; 32],
+    ) -> TrustDecision {
         let key =
             TrustKey { id: plugin.manifest().id().clone(), version: plugin.manifest().version() };
         let Some(anchor) = self.anchors.get(&key) else {
             return TrustDecision::Unknown;
         };
         if anchor.manifest == plugin.manifest_digest()
-            && anchor.artifact == plugin.artifact_sha256()
+            && plugin.artifact_sha256() == execution_artifact_sha256
+            && anchor.artifact == execution_artifact_sha256
         {
             TrustDecision::Trusted { anchor: anchor.name.clone() }
         } else {

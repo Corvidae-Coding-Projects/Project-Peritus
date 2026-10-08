@@ -21,7 +21,11 @@ pub use authority::{
     InvocationSubject,
 };
 pub use cancellation::HostCancellation;
-pub use discovery::{DiscoveredPlugin, DiscoveryLimits, PluginCatalog, discover};
+pub use discovery::{
+    ArtifactAdmission, DiscoveredPlugin, DiscoveryDiagnostic, DiscoveryDiagnosticScope,
+    DiscoveryLimits, DiscoveryPage, DiscoveryPageSize, DiscoveryStatus, PluginCatalog,
+    PluginDiscovery, SdkTomlManifestAdmission,
+};
 pub use error::{HostError, HostFailureClass, RecoveryDisposition};
 pub use host::{HostConfig, PluginHost, PluginInvocationResult, PluginLifecycle, PluginSnapshot};
 pub use state::{

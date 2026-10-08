@@ -14,7 +14,7 @@ use crate::{
     HostError, HostFailureClass, HostStateStore, InvocationGrant, InvocationSubject, PluginCatalog,
     PluginInstanceFrontier, PluginInstanceId, RecoveryDisposition, TrustDecision, TrustVerifier,
     quota::QuotaLedger,
-    state::authority_fingerprint,
+    state::{ExecutionArtifact, authority_fingerprint},
     transport::{LaunchPlan, PluginConnection, internal_request_id},
 };
 
@@ -154,7 +154,8 @@ impl PluginHost {
                 "requested plugin identity and version were not discovered",
             )
         })?;
-        let trust_anchor = match self.trust.verify(&discovered) {
+        let execution = self.state.stage_execution_artifact(&discovered)?;
+        let trust_anchor = match self.trust.verify(&discovered, execution.sha256()) {
             TrustDecision::Trusted { anchor } => anchor,
             TrustDecision::Unknown => {
                 return Err(trust_error("plugin has no explicit trust anchor"));
@@ -184,8 +185,8 @@ impl PluginHost {
                 "selected host ceilings are not representable by plugin protocol version one",
             ));
         }
-        self.state.register_instance(&discovered, &instance_id)?;
-        let plan = self.launch_plan(&discovered);
+        self.state.register_instance(&discovered, &execution, &instance_id)?;
+        let plan = self.launch_plan(&discovered, execution);
         let connection = match PluginConnection::spawn(plan, quotas, protocol_version) {
             Ok(connection) => connection,
             Err(error) => {
@@ -565,17 +566,21 @@ impl PluginHost {
             .ok_or_else(|| unavailable("plugin is not owned by this host"))
     }
 
-    fn launch_plan(&self, plugin: &DiscoveredPlugin) -> LaunchPlan {
+    fn launch_plan(
+        &self,
+        plugin: &DiscoveredPlugin,
+        execution: ExecutionArtifact,
+    ) -> LaunchPlan {
         let arguments = plugin.manifest().entrypoint().arguments().to_vec();
         match plugin.manifest().kind() {
             PluginKind::Process => LaunchPlan::Process {
-                executable: plugin.artifact_path().to_path_buf(),
+                executable: execution,
                 arguments,
                 working_directory: plugin.root().to_path_buf(),
             },
             PluginKind::WasmComponent => LaunchPlan::Wasm {
                 runtime: self.config.wasm_runtime.clone(),
-                module: plugin.artifact_path().to_path_buf(),
+                module: execution,
                 arguments,
                 working_directory: plugin.root().to_path_buf(),
             },
