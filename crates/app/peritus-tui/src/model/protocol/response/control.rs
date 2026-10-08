@@ -36,12 +36,34 @@ fn project_setup(
             ),
         ) => return model.accept_workbench_checkpoint(&command, receipt),
         (
+            AppResponsePayload::WorkbenchCheckpointPage(page),
+            Some(PendingRequest::WorkbenchCheckpointPage(request)),
+        ) => model.accept_workbench_checkpoint_page(request, page.clone()),
+        (
+            AppResponsePayload::WorkbenchCheckpointPage(page),
+            Some(
+                PendingRequest::WorkbenchControl(command)
+                | PendingRequest::WorkbenchReceipt(command),
+            ),
+        ) => return model.accept_workbench_checkpoint_command_page(&command, page),
+        (
+            AppResponsePayload::WorkbenchRewindPage(page),
+            Some(PendingRequest::WorkbenchRewindPage(request)),
+        ) => model.accept_workbench_rewind_page(request, page.clone()),
+        (
             AppResponsePayload::WorkbenchRestore(receipt),
             Some(
                 PendingRequest::WorkbenchControl(command)
                 | PendingRequest::WorkbenchReceipt(command),
             ),
         ) => return model.accept_workbench_restore(&command, receipt),
+        (
+            AppResponsePayload::WorkbenchRestoreSummary(summary),
+            Some(
+                PendingRequest::WorkbenchControl(command)
+                | PendingRequest::WorkbenchReceipt(command),
+            ),
+        ) => return model.accept_workbench_restore_summary(&command, summary),
         (
             AppResponsePayload::WorkbenchPermissions(permissions),
             Some(PendingRequest::WorkbenchPermissions(query)),
@@ -175,7 +197,10 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
         payload,
         AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchPermissions(_)
             | AppResponsePayload::InitProposal(_)
             | AppResponsePayload::WorkbenchMemory(_)

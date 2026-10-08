@@ -271,6 +271,7 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchPreview,
         WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,
+        WellKnownProtocolFeature::WorkbenchCheckpointPages,
         WellKnownProtocolFeature::ConversationLibrary,
         WellKnownProtocolFeature::ConversationForks,
         WellKnownProtocolFeature::WorkbenchPermissions,

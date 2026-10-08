@@ -10,6 +10,12 @@ pub(super) fn write(
         | AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
             super::super::workbench_checkpoints::write_request(writer, *value)
         }
+        AppRequestPayload::QueryWorkbenchCheckpointPage(value) => {
+            super::super::workbench_checkpoint_pages::write_checkpoint_request(writer, *value)
+        }
+        AppRequestPayload::QueryWorkbenchRewindPage(value) => {
+            super::super::workbench_checkpoint_pages::write_rewind_request(writer, *value)
+        }
         AppRequestPayload::QueryWorkbenchMemory(value) => {
             super::super::workbench_memory::write_query(writer, *value)
         }

@@ -2297,6 +2297,7 @@ dependencies = [
  "peritus-run-settlement",
  "peritus-test-support",
  "peritus-types",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]
@@ -2842,6 +2843,7 @@ version = "0.0.5"
 dependencies = [
  "peritus-codec",
  "peritus-types",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
 ]

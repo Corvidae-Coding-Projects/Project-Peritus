@@ -12,10 +12,6 @@ pub(super) fn object(entries: Vec<(&str, Value)>) -> Value {
     )
 }
 
-pub(super) fn collection(name: &str, values: Vec<Value>, truncated: bool) -> Value {
-    object(vec![(name, Value::Array(values)), ("truncated", Value::Bool(truncated))])
-}
-
 pub(super) fn observation(
     value: &Value,
     is_error: bool,

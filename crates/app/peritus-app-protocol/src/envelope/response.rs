@@ -73,6 +73,12 @@ pub enum AppResponsePayload {
     WorkbenchRewindPreview(crate::WorkbenchRewindPreview),
     /// Durable terminal restore receipt.
     WorkbenchRestore(crate::WorkbenchRestoreReceipt),
+    /// Bounded outcome for a paged checkpoint restore with count-only coverage.
+    WorkbenchRestoreSummary(crate::WorkbenchRestoreSummary),
+    /// One bounded page of complete immutable checkpoint coverage.
+    WorkbenchCheckpointPage(crate::WorkbenchCheckpointCoveragePage),
+    /// One bounded page bound to the exact complete rewind selection.
+    WorkbenchRewindPage(crate::WorkbenchRewindCoveragePage),
     /// Bounded revision-fenced project guidance and optional content-free tombstones.
     WorkbenchMemory(crate::WorkbenchMemory),
     /// Exact read-only initialization observations, patch diff, and unverified command inventory.

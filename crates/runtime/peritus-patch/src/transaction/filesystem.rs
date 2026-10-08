@@ -11,6 +11,7 @@ use crate::{
     ErrorCode, FileMode, PatchError, PatchOperationContext, RecoveryClass, RollbackStatus,
     WorkspacePath,
 };
+use sha2::{Digest as _, Sha256};
 
 use super::manifest::FileIdentity;
 
@@ -18,7 +19,6 @@ use super::manifest::FileIdentity;
 pub(super) enum Observation {
     Absent,
     Present(FileIdentity),
-    Oversized,
 }
 
 pub(super) fn observe_target(
@@ -44,45 +44,72 @@ pub(super) fn observe_absolute(
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(unsafe_target(operation, rollback));
     }
-    if metadata.len() > crate::set::MAX_FILE_BYTES as u64 {
-        return Ok(Observation::Oversized);
-    }
-    let capacity = usize::try_from(metadata.len()).map_err(|_| {
-        PatchError::message(
-            ErrorCode::ArithmeticOverflow,
-            RecoveryClass::FenceWorkspace,
-            operation,
-            rollback,
-            "observed file size cannot be represented",
-        )
-    })?;
-    let file = File::open(path).map_err(|error| PatchError::io(operation, rollback, error))?;
-    let mut bytes = Vec::with_capacity(capacity);
-    file.take(crate::set::MAX_FILE_BYTES as u64 + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|error| PatchError::io(operation, rollback, error))?;
-    let after =
-        fs::symlink_metadata(path).map_err(|error| PatchError::io(operation, rollback, error))?;
-    if after.file_type().is_symlink() || !after.is_file() {
+    let mut file = File::open(path).map_err(|error| PatchError::io(operation, rollback, error))?;
+    let opened = file.metadata().map_err(|error| PatchError::io(operation, rollback, error))?;
+    if !opened.is_file() || !same_file_version(&metadata, &opened) {
         return Err(unsafe_target(operation, rollback));
     }
-    if bytes.len() > crate::set::MAX_FILE_BYTES || after.len() > crate::set::MAX_FILE_BYTES as u64 {
-        return Ok(Observation::Oversized);
+    let mut hasher = Sha256::new();
+    let mut size = 0_u64;
+    let mut buffer = vec![0_u8; 64 * 1024];
+    loop {
+        let count =
+            file.read(&mut buffer).map_err(|error| PatchError::io(operation, rollback, error))?;
+        if count == 0 {
+            break;
+        }
+        size = size
+            .checked_add(
+                u64::try_from(count)
+                    .map_err(|_| arithmetic_observation_error(operation, rollback))?,
+            )
+            .ok_or_else(|| arithmetic_observation_error(operation, rollback))?;
+        hasher.update(&buffer[..count]);
     }
-    let size = u64::try_from(bytes.len()).map_err(|_| {
-        PatchError::message(
-            ErrorCode::ArithmeticOverflow,
-            RecoveryClass::FenceWorkspace,
-            operation,
-            rollback,
-            "observed file size cannot be represented",
-        )
-    })?;
+    let after =
+        fs::symlink_metadata(path).map_err(|error| PatchError::io(operation, rollback, error))?;
+    if after.file_type().is_symlink()
+        || !after.is_file()
+        || !same_file_version(&metadata, &after)
+        || metadata.len() != size
+        || after.len() != size
+    {
+        return Err(unsafe_target(operation, rollback));
+    }
     Ok(Observation::Present(FileIdentity {
-        digest: peritus_codec::sha256(&bytes),
+        digest: peritus_types::Sha256Digest::new(hasher.finalize().into()),
         size,
         mode: mode_from_metadata(&after),
     }))
+}
+
+fn same_file_version(before: &Metadata, after: &Metadata) -> bool {
+    let same = before.len() == after.len() && before.modified().ok() == after.modified().ok();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        same && before.dev() == after.dev()
+            && before.ino() == after.ino()
+            && before.ctime() == after.ctime()
+            && before.ctime_nsec() == after.ctime_nsec()
+    }
+    #[cfg(not(unix))]
+    {
+        same
+    }
+}
+
+const fn arithmetic_observation_error(
+    operation: PatchOperationContext,
+    rollback: RollbackStatus,
+) -> PatchError {
+    PatchError::message(
+        ErrorCode::ArithmeticOverflow,
+        RecoveryClass::FenceWorkspace,
+        operation,
+        rollback,
+        "observed file size cannot be represented",
+    )
 }
 
 pub(super) fn observation_matches(observed: Observation, expected: Option<FileIdentity>) -> bool {

@@ -158,6 +158,10 @@ pub(super) fn checkpoint(
         WorkbenchIntent::ApplyRewind(preview) => {
             workbench_checkpoints::write_preview(writer, preview)
         }
+        WorkbenchIntent::ConfirmRewind(confirmation) => {
+            workbench_checkpoints::write_request(writer, confirmation.request())?;
+            write_digest(writer, confirmation.preview_digest())
+        }
         _ => Err(wrong_domain(writer)),
     }
 }

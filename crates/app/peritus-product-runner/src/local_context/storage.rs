@@ -12,7 +12,8 @@ use super::error;
 use identity::StorageIdentity;
 use peritus_agent::DeveloperLoopError;
 use peritus_artifact_store::{
-    ArtifactDigest, ArtifactStore, EncryptionMetadata, MediaType, StoreConfig, WriteRequest,
+    ArtifactDigest, ArtifactReadHandle, ArtifactStore, EncryptionMetadata, MediaType, StoreConfig,
+    WriteRequest,
 };
 use peritus_codec::{CodecLimits, decode_frame, sha256};
 use peritus_context::working::WorkingBinding;
@@ -166,6 +167,20 @@ impl LocalStore {
             return Err(error("artifact length mismatch"));
         }
         Ok(bytes)
+    }
+
+    pub(super) fn open_read(
+        &self,
+        artifact: StoredArtifact,
+    ) -> Result<ArtifactReadHandle, DeveloperLoopError> {
+        let reader = self
+            .artifacts
+            .open_read(ArtifactDigest::from_sha256(artifact.digest))
+            .map_err(|_| error("artifact unavailable or digest mismatch"))?;
+        if reader.metadata().size() != artifact.bytes {
+            return Err(error("artifact length mismatch"));
+        }
+        Ok(reader)
     }
 
     pub(super) fn read_digest(&self, digest: [u8; 32]) -> Result<Vec<u8>, DeveloperLoopError> {

@@ -20,13 +20,13 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
         connection
             .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
             .expect("initial version"),
-        2
+        3
     );
     assert_eq!(
         connection
             .query_row("SELECT schema_version FROM store_meta", [], |row| row.get::<_, i64>(0))
             .expect("journal version"),
-        2
+        3
     );
     for name in [
         "aggregate_heads",
@@ -69,8 +69,8 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
     let mut engine = MigrationEngine::open(configuration.clone(), MigrationRegistry::current())
         .expect("migration engine");
     assert!(engine.adopt_current_install(operation(8)).expect("adopt initial schema"));
-    let plan = engine.preflight(version(2)).expect("initial preflight").into_plan();
-    assert_eq!(plan.current_version(), 2);
+    let plan = engine.preflight(version(3)).expect("initial preflight").into_plan();
+    assert_eq!(plan.current_version(), 3);
     assert!(plan.steps().is_empty());
     assert!(!plan.backup_required());
     assert!(!engine.adopt_current_install(operation(8)).expect("repeated adoption is inert"));
@@ -91,7 +91,7 @@ fn fresh_schema_is_complete_and_adopted_once_without_upgrade_or_backup() {
         connection
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |row| row.get::<_, i64>(0))
             .expect("marker count"),
-        2
+        3
     );
     assert_eq!(
         connection
@@ -132,7 +132,7 @@ fn version_one_installations_upgrade_with_or_without_adopted_history() {
         let mut engine =
             MigrationEngine::open(configuration, MigrationRegistry::current()).unwrap();
         assert_eq!(engine.adopt_current_install(operation(11)).unwrap(), !adopted);
-        let plan = engine.preflight(version(2)).unwrap().into_plan();
+        let plan = engine.preflight(version(3)).unwrap().into_plan();
         assert_eq!(plan.current_version(), 1);
         assert!(plan.backup_required());
         engine.apply(&plan, operation(12)).unwrap();
@@ -243,4 +243,95 @@ fn frame(marker: u8) -> ExactFrame {
     bytes.extend_from_slice(&1_u32.to_be_bytes());
     bytes.push(marker);
     ExactFrame::new(bytes).expect("exact frame")
+}
+
+#[test]
+fn adopted_version_two_history_upgrade_keeps_durable_state_and_node_identities() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let path = create_journal_database(&temp);
+    let store = StoreId::new([1; 16]).expect("store");
+    let mut journal =
+        SqliteJournal::open(&path, store, SqliteJournalOptions::default()).expect("journal");
+    let aggregate =
+        AggregateKey::new(AggregateKind::Kernel, AggregateId::new([4; 16]).expect("aggregate"));
+    let event = EventDraft::new(
+        aggregate,
+        EventSequence::first(),
+        EventId::new([4; 16]).expect("event"),
+        None,
+        frame(4),
+        Sha256Digest::new([4; 32]),
+        Vec::new(),
+    )
+    .expect("event draft");
+    let state =
+        StateInstall::new(4, b"retained".to_vec(), None, 1, b"exact retained state".to_vec())
+            .expect("state");
+    journal
+        .append(
+            AppendRequest::new(
+                store,
+                CommandId::new([4; 16]).expect("command"),
+                Sha256Digest::new([4; 32]),
+                vec![HeadExpectation::Absent(aggregate)],
+                vec![event],
+                vec![state],
+                Vec::new(),
+                None,
+                None,
+                Vec::new(),
+            )
+            .plan()
+            .expect("plan"),
+        )
+        .expect("append retained state");
+    drop(journal);
+    let connection = rusqlite::Connection::open(&path).expect("old fixture");
+    let root: Vec<u8> = connection
+        .query_row("SELECT root_digest FROM state_record_history", [], |row| row.get(0))
+        .expect("root identity");
+    connection
+        .execute_batch(
+            "ALTER TABLE state_history_nodes RENAME TO history_before;
+        CREATE TABLE state_history_nodes (
+            node_digest BLOB PRIMARY KEY CHECK(length(node_digest) = 32),
+            level INTEGER NOT NULL CHECK(level BETWEEN 0 AND 4),
+            byte_length INTEGER NOT NULL CHECK(byte_length BETWEEN 0 AND 16777216),
+            payload BLOB NOT NULL CHECK(length(payload) <= 512)
+        ) STRICT, WITHOUT ROWID;
+        INSERT INTO state_history_nodes SELECT * FROM history_before;
+        DROP TABLE history_before;
+        UPDATE store_meta SET schema_version = 2; PRAGMA user_version = 2;",
+        )
+        .expect("version two capacity constraints");
+    drop(connection);
+    let mut engine =
+        MigrationEngine::open(config(&temp, path.clone()), MigrationRegistry::current())
+            .expect("migration owner");
+    assert!(engine.adopt_current_install(operation(13)).expect("adopt version two"));
+    let plan = engine.preflight(version(3)).expect("history upgrade plan").into_plan();
+    assert_eq!(plan.current_version(), 2);
+    assert_eq!(plan.steps().len(), 1);
+    assert!(plan.backup_required());
+    let applied = engine.apply(&plan, operation(14)).expect("backed-up history upgrade");
+    assert!(applied.backup_path().expect("backup").is_file());
+    drop(engine);
+    let mut journal = SqliteJournal::open(&path, store, SqliteJournalOptions::default())
+        .expect("reopen upgraded journal");
+    let retained =
+        journal.state_record_revision(4, b"retained", 1).expect("history").expect("retained state");
+    assert_eq!(retained.bytes(), b"exact retained state");
+    assert_eq!(journal.integrity_scan().expect("retained integrity").event_count(), 1);
+    drop(journal);
+    let connection = rusqlite::Connection::open(&path).expect("upgraded database");
+    let retained_root: Vec<u8> = connection
+        .query_row("SELECT root_digest FROM state_record_history", [], |row| row.get(0))
+        .expect("retained root identity");
+    assert_eq!(retained_root, root);
+    connection
+        .execute(
+            "INSERT INTO state_history_nodes VALUES (?1, 5, 33554433, ?2)",
+            rusqlite::params![[9_u8; 32], [8_u8; 64]],
+        )
+        .expect("former logical state capacity removed");
 }

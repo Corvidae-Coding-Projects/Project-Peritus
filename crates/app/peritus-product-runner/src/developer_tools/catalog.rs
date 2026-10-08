@@ -6,26 +6,26 @@ use peritus_model_protocol::{
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"depth":{"type":"integer"},"path":{"type":"string"}},"type":"object"}"#;
-const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"max_results":{"type":"integer"},"path":{"type":"string"},"query":{"type":"string"}},"required":["query"],"type":"object"}"#;
-const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer"},"path":{"type":"string"},"start_line":{"type":"integer"}},"required":["path"],"type":"object"}"#;
+const WORKSPACE_LIST_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"depth":{"type":"integer","minimum":1},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"path":{"type":"string"}},"type":"object"}"#;
+const WORKSPACE_SEARCH_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"cursor":{"additionalProperties":false,"properties":{"ordinal":{"minimum":0,"type":"integer"},"scope":{"type":"string"}},"required":["ordinal","scope"],"type":"object"},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"max_results":{"type":"integer","minimum":1},"path":{"type":"string"},"query":{"type":"string","minLength":1}},"required":["query"],"type":"object"}"#;
+const WORKSPACE_READ_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"end_line":{"type":"integer","minimum":1},"line_byte_offset":{"type":"integer","minimum":0},"max_bytes":{"type":"integer","minimum":256,"maximum":524288},"path":{"type":"string"},"start_line":{"type":"integer","minimum":1}},"required":["path"],"type":"object"}"#;
 const COMMAND_HANDLE_SCHEMA: &str = r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"}},"required":["handle"],"type":"object"}"#;
 
 pub fn definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError> {
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. An exact absolute directory outside the workspace is accepted only when the user's task explicitly named it; that result is read-only reference evidence and does not ground workspace mutation or commands. Call this first with a workspace-relative path in every fresh writer or fixer turn; mutation and process tools remain locked until a successful workspace listing and a targeted workspace file read.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root, path semantics, and observed execution_resources including the recommended build parallelism. Pages stay within max_bytes; pass the full next_cursor object back as cursor to continue, and inspect omissions because inaccessible entries are reported there. A cursor is bound to its path and depth. When the task names an absolute path below that root, remove the exact root prefix once instead of repeating the root directory. An exact absolute directory outside the workspace is accepted only when the user's task explicitly named it; that result is read-only reference evidence and does not ground workspace mutation or commands. Call this first with a workspace-relative path in every fresh writer or fixer turn; mutation and process tools remain locked until a successful workspace listing and a targeted workspace file read.",
             WORKSPACE_LIST_SCHEMA,
         ),
         (
             "workspace_search",
-            "Search text files for a literal string and return matching lines.",
+            "Search text files for a literal string and return matching line excerpts. Pages stay within max_bytes; pass the full next_cursor object back as cursor to continue the same path and query. Each result reports its line number, byte offset, and line length so workspace_read can retrieve an oversized line in exact byte ranges. Omitted or unreadable files are reported explicitly.",
             WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file. Line numbers are one-based and both start_line and end_line are inclusive; the default is lines 1 through 500. Pages stay within max_bytes and report the actual last displayed line. When next_line equals end_line and next_line_byte_offset is positive, continue that oversized line with the same start_line and line_byte_offset; otherwise continue at next_line with byte offset zero. An exact absolute file outside the workspace is accepted only when it is user-named reference evidence; it remains read-only and does not ground workspace mutation or commands. Call this after a workspace listing and read the exact current workspace target before changing an existing file.",
             WORKSPACE_READ_SCHEMA,
         ),
         (
@@ -91,17 +91,17 @@ pub fn read_only_definitions() -> Result<Vec<ToolDefinition>, ProductRunnerError
     definitions_from(&[
         (
             "workspace_list",
-            "List files and directories below one workspace-relative path with current byte size and permission metadata. The result reports the exact workspace_root and confirms that ordinary workspace paths are relative to it; remove that exact prefix once from absolute in-workspace paths. An exact user-named absolute directory outside the workspace is available only as read-only reference evidence.",
+            "List files and directories below one workspace-relative path with current byte size and permission metadata. Pages stay within max_bytes; pass the full next_cursor object as cursor to continue the same path and depth. Check omissions and depth_limited before treating the listing as complete. The result reports the exact workspace_root and confirms that ordinary workspace paths are relative to it; remove that exact prefix once from absolute in-workspace paths. An exact user-named absolute directory outside the workspace is available only as read-only reference evidence.",
             WORKSPACE_LIST_SCHEMA,
         ),
         (
             "workspace_search",
-            "Search text files for a literal string and return matching lines.",
+            "Search for a literal string and return bounded matching excerpts with line and byte offsets. Pages stay within max_bytes; pass the full next_cursor object as cursor to continue the same path and query. Check omissions before treating the search as complete.",
             WORKSPACE_SEARCH_SCHEMA,
         ),
         (
             "workspace_read",
-            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. External references are case-sensitive and read-only.",
+            "Read a bounded line range plus current byte size and permission metadata from one workspace-relative text file, or from an exact user-named absolute reference file outside the workspace. Pages report actual end_line and next_line_byte_offset so oversized lines can resume exactly. External references are read-only.",
             WORKSPACE_READ_SCHEMA,
         ),
     ])

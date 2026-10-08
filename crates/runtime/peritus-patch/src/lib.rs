@@ -4,6 +4,7 @@
 //! generation, and revision validation. The transaction adapter accepts plans, never unchecked
 //! patch sets, and reports success only after every final file is re-read and verified.
 
+mod codec;
 mod content;
 mod error;
 mod line_endings;
@@ -14,6 +15,8 @@ mod preimage;
 mod set;
 mod transaction;
 mod verified;
+
+pub(crate) use codec::local_record_codec_limits;
 
 pub use content::FinalFile;
 pub use error::{ErrorCode, PatchError, PatchOperationContext, RecoveryClass, RollbackStatus};

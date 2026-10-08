@@ -23,7 +23,8 @@ impl ProductRunService {
             peritus_app_protocol::WorkbenchIntent::ApplyInitDiff(_) => {
                 self.apply_workbench_init(actor, session, command).await
             }
-            peritus_app_protocol::WorkbenchIntent::ApplyRewind(_) => {
+            peritus_app_protocol::WorkbenchIntent::ApplyRewind(_)
+            | peritus_app_protocol::WorkbenchIntent::ConfirmRewind(_) => {
                 self.apply_workbench_rewind(actor, session, command).await
             }
             _ => super::error_response(ControlError::InvalidInput.into()),

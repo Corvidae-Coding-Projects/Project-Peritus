@@ -88,6 +88,8 @@ export type AppPayloadKind =
   | "query-product-run-observations"
   | "preview-workbench-rewind"
   | "inspect-workbench-checkpoint"
+  | "query-workbench-checkpoint-page"
+  | "query-workbench-rewind-page"
   | "query-conversation-library"
   | "query-workbench-permissions"
   | "query-workbench-memory"
@@ -131,6 +133,9 @@ export type AppPayloadKind =
   | "workbench-checkpoint"
   | "workbench-rewind-preview"
   | "workbench-restore"
+  | "workbench-checkpoint-page"
+  | "workbench-rewind-page"
+  | "workbench-restore-summary"
   | "conversation-library"
   | "workbench-permissions"
   | "workbench-memory"
@@ -1264,6 +1269,82 @@ export interface WorkbenchRestoreReceipt {
   readonly restored: readonly string[];
   readonly conflicts: readonly string[];
   readonly externalEffects: readonly string[];
+}
+
+export interface WorkbenchRewindConfirmation {
+  readonly request: WorkbenchRewindRequest;
+  readonly previewDigest: Sha256Digest;
+}
+
+export interface WorkbenchConfirmRewindIntent {
+  readonly kind: "confirmRewind";
+  readonly confirmation: WorkbenchRewindConfirmation;
+}
+
+export interface WorkbenchCoverageCursor {
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly fingerprint: Sha256Digest;
+}
+
+export interface WorkbenchCheckpointPageRequest {
+  readonly query: WorkbenchQuery;
+  readonly revision: UInt64;
+  readonly checkpoint: ControlOperationId;
+  readonly hasCursor: boolean;
+  readonly cursor?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRewindPageRequest {
+  readonly request: WorkbenchRewindRequest;
+  readonly hasCursor: boolean;
+  readonly cursor?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchCheckpointCoveragePage {
+  readonly checkpoint: ControlOperationId;
+  readonly query: WorkbenchQuery;
+  readonly selectedRevision: UInt64;
+  readonly acceptedRevision: UInt64;
+  readonly name: string;
+  readonly references: WorkbenchCheckpointReferences;
+  readonly fingerprint: Sha256Digest;
+  readonly totalPaths: UInt64;
+  readonly totalExclusions: UInt64;
+  readonly totalExternalEffects: UInt64;
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly paths: readonly WorkbenchCheckpointPath[];
+  readonly exclusions: readonly string[];
+  readonly externalEffects: readonly string[];
+  readonly hasNext: boolean;
+  readonly next?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRewindCoveragePage {
+  readonly confirmation: WorkbenchRewindConfirmation;
+  readonly totalPaths: UInt64;
+  readonly totalExclusions: UInt64;
+  readonly totalExternalEffects: UInt64;
+  readonly section: "paths" | "exclusions" | "externalEffects";
+  readonly offset: UInt64;
+  readonly paths: readonly WorkbenchRewindPath[];
+  readonly exclusions: readonly string[];
+  readonly externalEffects: readonly string[];
+  readonly hasNext: boolean;
+  readonly next?: WorkbenchCoverageCursor;
+}
+
+export interface WorkbenchRestoreSummary {
+  readonly restore: ControlOperationId;
+  readonly checkpoint: ControlOperationId;
+  readonly recoveryCheckpoint: ControlOperationId;
+  readonly query: WorkbenchQuery;
+  readonly acceptedRevision: UInt64;
+  readonly status: "applied" | "conflict" | "recoveryRequired";
+  readonly restoredPaths: UInt64;
+  readonly conflictingPaths: UInt64;
+  readonly fingerprint: Sha256Digest;
 }
 
 export interface WorkbenchCompactionRequest {

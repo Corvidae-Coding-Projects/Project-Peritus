@@ -150,23 +150,18 @@ fn rejects_targets_inside_a_nested_git_worktree() {
 }
 
 #[test]
-fn rejects_oversized_preimage_before_application() {
+fn applies_replacement_with_preimage_above_the_former_file_limit() {
     let workspace = tempfile::tempdir().expect("workspace");
-    let bytes = vec![5; peritus_patch::MAX_PATCH_BYTES + 1];
+    let bytes = vec![5; 8 * 1024 * 1024 + 1];
     std::fs::write(workspace.path().join("large"), &bytes).expect("large preimage");
     let operation = PatchOperation::replace(
         WorkspacePath::new("large").expect("path"),
-        Preimage::present(peritus_codec::sha256(&[]), bytes.len() as u64, FileMode::Regular),
+        Preimage::present(peritus_codec::sha256(&bytes), bytes.len() as u64, FileMode::Regular),
         final_file(b"replacement", FileMode::Regular),
     )
     .expect("replace shape");
-    let error = PatchSet::new(
-        workspace_id(),
-        Generation::first(),
-        RevisionNumber::first(),
-        vec![operation],
-    )
-    .expect_err("oversized preimage rejected");
-    assert_eq!(error.code(), ErrorCode::InvalidPatchBounds);
-    assert_eq!(std::fs::read(workspace.path().join("large")).expect("unchanged"), bytes);
+    let transactions = tempfile::tempdir().expect("transactions");
+    apply_patch(workspace.path(), transactions.path(), &plan(vec![operation]))
+        .expect("large exact preimage accepted");
+    assert_eq!(std::fs::read(workspace.path().join("large")).expect("replacement"), b"replacement");
 }

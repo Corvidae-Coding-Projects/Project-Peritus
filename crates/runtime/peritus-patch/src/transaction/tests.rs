@@ -247,23 +247,24 @@ fn parseable_same_length_manifest_tamper_is_quarantined_without_workspace_effect
 }
 
 #[test]
-fn oversized_observation_never_matches_a_forged_empty_digest() {
+fn large_observation_hashes_the_complete_file() {
     let directory = tempfile::tempdir().expect("directory");
     let path = directory.path().join("large");
-    std::fs::write(&path, vec![7; crate::set::MAX_FILE_BYTES + 1]).expect("large file");
+    let bytes = vec![7; 8 * 1024 * 1024 + 1];
+    std::fs::write(&path, &bytes).expect("large file");
     let observed = observe_absolute(
         &path,
         crate::PatchOperationContext::InspectPreimage,
         RollbackStatus::NotRequired,
     )
     .expect("observation");
-    assert_eq!(observed, Observation::Oversized);
-    let forged = super::manifest::FileIdentity {
-        digest: peritus_codec::sha256(&[]),
-        size: (crate::set::MAX_FILE_BYTES + 1) as u64,
+    let expected = super::manifest::FileIdentity {
+        digest: peritus_codec::sha256(&bytes),
+        size: bytes.len() as u64,
         mode: FileMode::Regular,
     };
-    assert!(!observation_matches(observed, Some(forged)));
+    assert_eq!(observed, Observation::Present(expected));
+    assert!(observation_matches(observed, Some(expected)));
 }
 
 #[test]

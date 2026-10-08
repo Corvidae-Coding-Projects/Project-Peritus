@@ -56,6 +56,20 @@ where
             AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
                 product_runs.inspect_workbench_checkpoint(actor_id, *value)
             }
+            AppRequestPayload::QueryWorkbenchCheckpointPage(value) => {
+                workbench::checkpoint_coverage_page(
+                    product_runs,
+                    actor_id,
+                    *value,
+                    &request,
+                    limits,
+                )
+                .await
+            }
+            AppRequestPayload::QueryWorkbenchRewindPage(value) => {
+                workbench::rewind_coverage_page(product_runs, actor_id, *value, &request, limits)
+                    .await
+            }
             AppRequestPayload::PreviewWorkbenchRewind(value) => {
                 product_runs.preview_workbench_rewind(actor_id, value).await
             }
@@ -94,8 +108,18 @@ where
                 product_runs.workbench_queue(actor_id, *query)
             }
             AppRequestPayload::WorkbenchCommand(command) => {
-                workbench::respond(authority, product_runs, actor_id, limits, &request, command)
-                    .await?
+                workbench::respond(
+                    authority,
+                    product_runs,
+                    actor_id,
+                    limits,
+                    context.supports(
+                        peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointPages,
+                    ),
+                    &request,
+                    command,
+                )
+                .await?
             }
             AppRequestPayload::ContinueWorkbenchExecution(query) => {
                 product_runs.continue_workbench_execution(actor_id, *query).await

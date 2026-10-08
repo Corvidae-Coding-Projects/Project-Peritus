@@ -1,4 +1,4 @@
-//! One bounded source scan with exact range capture and observed-change rejection.
+//! One streamed source scan with exact inclusion capture and observed-change rejection.
 
 use super::{
     FileReadSelection, FolderIdentity, FolderInspection, InspectedFile,
@@ -13,22 +13,22 @@ use sha2::{Digest as _, Sha256};
 use std::io::Read as _;
 
 impl FolderInspection {
-    /// Reads an exact selection while hashing the complete bounded source.
+    /// Reads an exact selection while hashing the complete source.
     ///
     /// `maximum_bytes` bounds included bytes, not total source size. A whole-file selection
     /// exceeding it rejects with guidance to choose a range. No partial result is returned.
     ///
     /// # Errors
     /// Rejects invalid bounds/ranges, links, special files, changed identity/metadata, oversized
-    /// sources or inclusions, missing lines, unavailable timestamps, and I/O failures.
+    /// ranges or inclusions, missing lines, unavailable timestamps, and I/O failures.
     pub fn read_file(
         &self,
         path: &WorkspacePath,
         selection: FileReadSelection,
         maximum_bytes: u64,
     ) -> Result<InspectedFile, WorkspaceError> {
-        if maximum_bytes == 0 || maximum_bytes > crate::MAX_INSPECTION_FILE_BYTES {
-            return Err(invalid("included byte bound is outside the C1 maximum"));
+        if maximum_bytes == 0 {
+            return Err(invalid("included byte bound must be nonzero"));
         }
         let mut file = self.open_file(path)?;
         let before = file.metadata().map_err(|error| read_error(&error))?;
@@ -90,12 +90,8 @@ struct Scan {
     bytes: Vec<u8>,
 }
 impl Scan {
-    const fn new(
-        selection: Selection,
-        maximum: u64,
-        source_size: u64,
-    ) -> Result<Self, WorkspaceError> {
-        if source_size > MAX_INSPECTION_SOURCE_BYTES {
+    fn new(selection: Selection, maximum: u64, source_size: u64) -> Result<Self, WorkspaceError> {
+        if source_size > MAX_INSPECTION_SOURCE_BYTES && !matches!(selection, Selection::All) {
             return Err(invalid("source exceeds the 64 MiB inspection ceiling"));
         }
         match selection {
@@ -109,6 +105,15 @@ impl Scan {
             }
             _ => {}
         }
+        let mut bytes = Vec::new();
+        if matches!(selection, Selection::All) {
+            let capacity = usize::try_from(source_size)
+                .map_err(|_| invalid("whole-file selection cannot be represented in memory"))?;
+            bytes.try_reserve_exact(capacity).map_err(|error| {
+                let error = std::io::Error::other(error);
+                read_error(&error)
+            })?;
+        }
         Ok(Self {
             selection,
             maximum,
@@ -117,7 +122,7 @@ impl Scan {
             line: 1,
             last_seen_line: 0,
             range: None,
-            bytes: Vec::new(),
+            bytes,
         })
     }
     fn accept(&mut self, bytes: &[u8]) -> Result<(), WorkspaceError> {

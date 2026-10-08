@@ -54,6 +54,15 @@ fn write_payload(
         AppResponsePayload::WorkbenchRestore(value) => {
             super::workbench_checkpoints::write_restore_receipt(writer, value)
         }
+        AppResponsePayload::WorkbenchRestoreSummary(value) => {
+            super::workbench_checkpoint_pages::write_restore_summary(writer, value)
+        }
+        AppResponsePayload::WorkbenchCheckpointPage(value) => {
+            super::workbench_checkpoint_pages::write_checkpoint_page(writer, value)
+        }
+        AppResponsePayload::WorkbenchRewindPage(value) => {
+            super::workbench_checkpoint_pages::write_rewind_page(writer, value)
+        }
         AppResponsePayload::WorkbenchMemory(value) => {
             super::workbench_memory::write_memory(writer, value)
         }
@@ -144,6 +153,9 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchCheckpoint(_) => 120,
         AppResponsePayload::WorkbenchRewindPreview(_) => 121,
         AppResponsePayload::WorkbenchRestore(_) => 122,
+        AppResponsePayload::WorkbenchRestoreSummary(_) => 125,
+        AppResponsePayload::WorkbenchCheckpointPage(_) => 123,
+        AppResponsePayload::WorkbenchRewindPage(_) => 124,
         AppResponsePayload::WorkbenchMemory(_) => 161,
         AppResponsePayload::InitProposal(_) => 162,
         AppResponsePayload::WorkbenchPermissions(_) => 160,
@@ -220,6 +232,15 @@ pub(super) fn read_response(
         ),
         122 => AppResponsePayload::WorkbenchRestore(
             super::workbench_checkpoints::read_restore_receipt(reader)?,
+        ),
+        125 => AppResponsePayload::WorkbenchRestoreSummary(
+            super::workbench_checkpoint_pages::read_restore_summary(reader)?,
+        ),
+        123 => AppResponsePayload::WorkbenchCheckpointPage(
+            super::workbench_checkpoint_pages::read_checkpoint_page(reader)?,
+        ),
+        124 => AppResponsePayload::WorkbenchRewindPage(
+            super::workbench_checkpoint_pages::read_rewind_page(reader)?,
         ),
         140 => {
             AppResponsePayload::ConversationLibrary(super::workbench_library::read_page(reader)?)

@@ -309,7 +309,7 @@ fn verify_plan_preimages(workspace: &Path, plan: &PatchPlan) -> Result<(), Patch
                 (Observation::Absent, Preimage::Present { .. }) => {
                     (ErrorCode::PreimageMissing, "required preimage file is absent")
                 }
-                (Observation::Present(_) | Observation::Oversized, Preimage::Absent) => {
+                (Observation::Present(_), Preimage::Absent) => {
                     (ErrorCode::PreimageUnexpected, "create target already exists")
                 }
                 _ => {

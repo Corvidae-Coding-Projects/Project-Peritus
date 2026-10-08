@@ -176,6 +176,8 @@ enum PendingRequest {
     },
     WorkbenchCheckpointInspect(peritus_app_protocol::WorkbenchRewindRequest),
     WorkbenchRewind(peritus_app_protocol::WorkbenchRewindRequest),
+    WorkbenchCheckpointPage(peritus_app_protocol::WorkbenchCheckpointPageRequest),
+    WorkbenchRewindPage(peritus_app_protocol::WorkbenchRewindPageRequest),
     WorkbenchMemory(peritus_app_protocol::WorkbenchMemoryQuery),
     WorkbenchInit(peritus_app_protocol::InitDiscoveryRequest),
     WorkbenchPermissions(peritus_app_protocol::WorkbenchQuery),

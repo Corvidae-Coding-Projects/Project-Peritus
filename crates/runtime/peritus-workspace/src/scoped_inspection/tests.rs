@@ -65,11 +65,11 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
     assert!(reader.read_file(&target, FileReadSelection::lines(1, 1).expect("line"), 1).is_err());
     let file = fs::File::create(directory.path().join("reference")).expect("file");
     file.set_len(crate::MAX_INSPECTION_FILE_BYTES + 1).expect("large");
-    assert!(
-        reader
-            .read_file(&target, FileReadSelection::all(), crate::MAX_INSPECTION_FILE_BYTES)
-            .is_err()
-    );
+    let complete = reader
+        .read_file(&target, FileReadSelection::all(), crate::MAX_INSPECTION_FILE_BYTES + 1)
+        .expect("caller-bounded whole-file read above the former inclusion ceiling");
+    assert_eq!(complete.source_bytes(), crate::MAX_INSPECTION_FILE_BYTES + 1);
+    assert_eq!(complete.bytes().len() as u64, crate::MAX_INSPECTION_FILE_BYTES + 1);
     assert_eq!(
         reader
             .read_file(&target, FileReadSelection::bytes(0, 1).expect("range"), 1)
@@ -79,9 +79,7 @@ fn empty_files_large_ranged_files_and_invalid_bounds_have_explicit_results() {
     );
     file.set_len(MAX_INSPECTION_SOURCE_BYTES + 1).expect("excessive");
     assert!(reader.read_file(&target, FileReadSelection::bytes(0, 1).expect("range"), 1).is_err());
-    for bound in [0, crate::MAX_INSPECTION_FILE_BYTES + 1] {
-        assert!(reader.read_file(&target, FileReadSelection::all(), bound).is_err());
-    }
+    assert!(reader.read_file(&target, FileReadSelection::all(), 0).is_err());
     for (start, end) in [(0, 0), (2, 1), (0, MAX_INSPECTION_SOURCE_BYTES + 1)] {
         assert!(FileReadSelection::bytes(start, end).is_err());
     }

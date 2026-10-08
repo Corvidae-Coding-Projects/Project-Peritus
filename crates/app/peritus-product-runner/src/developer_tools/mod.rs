@@ -24,6 +24,16 @@ mod grounding;
 #[cfg(not(verus_only))]
 mod inspection;
 #[cfg(not(verus_only))]
+mod inspection_cancellation;
+#[cfg(not(verus_only))]
+pub mod inspection_cursor;
+#[cfg(not(verus_only))]
+mod inspection_list;
+#[cfg(not(verus_only))]
+mod inspection_read;
+#[cfg(not(verus_only))]
+mod inspection_search;
+#[cfg(not(verus_only))]
 mod ownership;
 #[cfg(not(verus_only))]
 mod path;
@@ -32,6 +42,10 @@ mod preview;
 mod receipt;
 #[cfg(not(verus_only))]
 mod reference;
+#[cfg(not(verus_only))]
+mod reference_list;
+#[cfg(not(verus_only))]
+mod reference_path;
 #[cfg(not(verus_only))]
 mod removal;
 #[cfg(not(verus_only))]

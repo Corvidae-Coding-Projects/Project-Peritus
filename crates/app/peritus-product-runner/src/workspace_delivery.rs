@@ -66,6 +66,10 @@ impl ProductRunInput {
     ) -> WorkspaceDeveloperTools {
         let reference_authority = self.conversation.reference_authority_context();
         tools
+            .with_inspection_cancellation(
+                std::sync::Arc::clone(&self.cancelled),
+                self.provider_cancellation.clone(),
+            )
             .with_reference_contract(&reference_authority)
             .with_protected_paths(self.workspace_kind.protected_paths())
             .with_protection_view(std::sync::Arc::clone(&self.conversation))

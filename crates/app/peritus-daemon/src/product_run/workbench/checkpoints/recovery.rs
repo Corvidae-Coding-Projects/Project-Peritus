@@ -13,7 +13,10 @@ use peritus_workspace::{
     FolderMutationRecoveryState, recover_folder_mutation,
 };
 
-use super::{ControlError, ControlStore, Error, ProductRunService, public_version};
+use super::{
+    ControlError, ControlStore, Error, ProductRunService, public_version,
+    reconstruct_rewind_preview,
+};
 
 const RECOVERY_MAGIC: &[u8] = b"PERITUS-WORKBENCH-REWIND-RECOVERY-V1\0";
 
@@ -34,8 +37,19 @@ impl ProductRunService {
         evidence: (&UserCheckpoint, &UserCheckpoint),
     ) -> Result<RecoveredRestore, Error> {
         let (checkpoint, recovery) = evidence;
-        let WorkbenchIntent::ApplyRewind(confirmed) = command.intent() else {
-            return Err(ControlError::InvalidInput.into());
+        let reconstructed = match command.intent() {
+            WorkbenchIntent::ApplyRewind(_) => None,
+            WorkbenchIntent::ConfirmRewind(confirmation) => {
+                Some(reconstruct_rewind_preview(confirmation.request(), checkpoint, recovery)?)
+            }
+            _ => return Err(ControlError::InvalidInput.into()),
+        };
+        let confirmed = match command.intent() {
+            WorkbenchIntent::ApplyRewind(preview) => preview,
+            WorkbenchIntent::ConfirmRewind(_) => {
+                reconstructed.as_ref().ok_or(ControlError::InvalidInput)?
+            }
+            _ => return Err(ControlError::InvalidInput.into()),
         };
         if checkpoint.id() != restore.checkpoint() {
             return Err(Error::Corrupt("restore source checkpoint identity differs"));
@@ -140,6 +154,7 @@ impl ProductRunService {
         };
         let evidence = encode_evidence(
             command,
+            confirmed,
             restore,
             recovery,
             status,
@@ -235,6 +250,7 @@ fn classify_c1(
 )]
 fn encode_evidence(
     command: &WorkbenchCommand,
+    preview: &peritus_app_protocol::WorkbenchRewindPreview,
     restore: &RestoreOperation,
     recovery: &UserCheckpoint,
     status: RestoreStatus,
@@ -243,9 +259,6 @@ fn encode_evidence(
     observed: Option<&[CheckpointFileVersion]>,
     c1: Option<&FolderMutationRecoveryOutcome>,
 ) -> Vec<u8> {
-    let WorkbenchIntent::ApplyRewind(preview) = command.intent() else {
-        return RECOVERY_MAGIC.to_vec();
-    };
     let mut bytes = RECOVERY_MAGIC.to_vec();
     bytes.extend_from_slice(command.operation().as_bytes());
     bytes.extend_from_slice(command.query().workspace().as_bytes());

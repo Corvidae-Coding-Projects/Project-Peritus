@@ -15,6 +15,7 @@ use super::{
     evidence::CommandEvidence,
     grounding::GroundingEvidence,
     inspection,
+    inspection_cancellation::InspectionCancellation,
     ownership::WorkspaceOwnership,
     path::{checked, tool},
     receipt::{EffectReceiptLedger, ReceiptDecision},
@@ -24,7 +25,6 @@ use super::{
     wire::{object, observation, required_string, string},
 };
 use crate::control::{HostPermissions, PermissionCapability};
-const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
 const MAX_PROGRESS_NUDGES: u8 = 2;
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
@@ -60,6 +60,7 @@ pub struct WorkspaceDeveloperTools {
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
     resources: CommandResources,
+    inspection_cancellation: InspectionCancellation,
     command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     tools_without_delivery_progress: u16,
@@ -72,6 +73,15 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    pub(crate) fn with_inspection_cancellation(
+        mut self,
+        cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        provider: peritus_provider_core::CancellationToken,
+    ) -> Self {
+        self.inspection_cancellation = InspectionCancellation::new(cancelled, provider);
+        self
+    }
+
     pub(crate) fn with_in_place_scope(
         mut self,
         scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,

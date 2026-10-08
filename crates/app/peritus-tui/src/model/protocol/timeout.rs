@@ -25,6 +25,8 @@ impl PendingRequest {
             | Self::TerminalLineInput(_) => Recovery::Read,
             Self::WorkbenchCheckpointInspect(_)
             | Self::WorkbenchRewind(_)
+            | Self::WorkbenchCheckpointPage(_)
+            | Self::WorkbenchRewindPage(_)
             | Self::WorkbenchMemory(_)
             | Self::WorkbenchInit(_)
             | Self::WorkbenchPermissions(_)

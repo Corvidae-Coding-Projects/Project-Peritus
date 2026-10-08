@@ -1,10 +1,10 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_FILE_BYTES,
-    MAX_PROGRESS_NUDGES, ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value,
-    WorkspaceDeveloperTools, WorkspaceToolMode, atomic_write, checked, fs, object, observation,
-    removal, required_string, string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_PROGRESS_NUDGES,
+    ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools,
+    WorkspaceToolMode, atomic_write, checked, fs, object, observation, removal, required_string,
+    string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -56,20 +56,32 @@ impl WorkspaceDeveloperTools {
         call: &CompletedToolCall,
         arguments: &Value,
     ) -> Result<Value, DeveloperLoopError> {
+        use super::super::inspection_search;
         use super::inspection;
         use crate::developer_tools::reference;
         match call.name().as_str() {
             "workspace_list" if routes_to_reference(&self.root, arguments) => {
-                reference::list(&self.references, arguments)
+                reference::list(&self.references, arguments, &self.inspection_cancellation)
             }
-            "workspace_list" => {
-                inspection::list(&self.root, arguments, self.resources, &self.access_policy)
-            }
-            "workspace_search" => inspection::search(&self.root, arguments, &self.access_policy),
+            "workspace_list" => inspection::list(
+                &self.root,
+                arguments,
+                self.resources,
+                &self.access_policy,
+                &self.inspection_cancellation,
+            ),
+            "workspace_search" => inspection_search::search(
+                &self.root,
+                arguments,
+                &self.access_policy,
+                &self.inspection_cancellation,
+            ),
             "workspace_read" if routes_to_reference(&self.root, arguments) => {
-                reference::read(&self.references, arguments)
+                reference::read(&self.references, arguments, &self.inspection_cancellation)
             }
-            "workspace_read" => inspection::read(&self.root, arguments),
+            "workspace_read" => {
+                inspection::read(&self.root, arguments, &self.inspection_cancellation)
+            }
             "workspace_scope" => self.declare_in_place(arguments),
             "workspace_write" => self.write(arguments),
             "workspace_patch" => self.patch(arguments),
@@ -203,9 +215,6 @@ impl WorkspaceDeveloperTools {
     pub(super) fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
-        if content.len() > MAX_FILE_BYTES {
-            return Err(tool("write exceeds the per-file byte bound"));
-        }
         let path = checked(&self.root, relative, true)?;
         let existed_before = path.exists();
         self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
@@ -248,9 +257,6 @@ impl WorkspaceDeveloperTools {
         }
         let replaced =
             if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
-        if replaced.len() > MAX_FILE_BYTES {
-            return Err(tool("patched file exceeds the per-file byte bound"));
-        }
         atomic_write(&path, replaced.as_bytes())?;
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),

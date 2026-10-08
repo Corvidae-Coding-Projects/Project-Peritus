@@ -171,8 +171,11 @@ impl AppModel {
                 self.notice(NoticeLevel::Info, format!("{} harness improvement suggestions. Inspect them in the GUI inbox or with peritus improvements list.", inbox.candidates().len()));
             }
             AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)
@@ -356,8 +359,11 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
     matches!(
         payload,
         AppResponsePayload::WorkbenchCheckpoint(_)
+            | AppResponsePayload::WorkbenchCheckpointPage(_)
+            | AppResponsePayload::WorkbenchRewindPage(_)
             | AppResponsePayload::WorkbenchRewindPreview(_)
             | AppResponsePayload::WorkbenchRestore(_)
+            | AppResponsePayload::WorkbenchRestoreSummary(_)
             | AppResponsePayload::WorkbenchExecution(_)
             | AppResponsePayload::Workbench(_)
             | AppResponsePayload::ConversationLibrary(_)

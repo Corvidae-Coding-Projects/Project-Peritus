@@ -1,12 +1,13 @@
 //! Durable automatic before-images and exact owned-postimage checkpoint settlement.
 
 use super::{
-    AUTOMATIC_CHECKPOINT_NAME, ActorId, CheckpointFileMode, CheckpointFileVersion, CheckpointPath,
-    ControlError, ControlIntent, ControlOperation, ConversationId, ConversationRecord, Error,
-    OperationId, Path, ProductRunService, RunId, UserCheckpoint, WorkspaceId,
-    WorkspaceMutationKind, automatic_checkpoint_id, check_automatic_record, check_protected,
-    checkpoint_references, empty_directory_exclusion, external_effects, observe_empty_directory,
-    observe_path, public_query, validate_automatic_checkpoint, validate_run_binding,
+    AUTOMATIC_CHECKPOINT_NAME, ActorId, CheckpointExclusion, CheckpointFileMode,
+    CheckpointFileVersion, CheckpointPath, ControlError, ControlIntent, ControlOperation,
+    ConversationId, ConversationRecord, EMPTY_DIRECTORY_EXCLUSION, Error, OperationId, Path,
+    ProductRunService, RunId, UserCheckpoint, WorkspaceId, WorkspaceMutationKind,
+    automatic_checkpoint_id, check_automatic_record, check_protected, checkpoint_references,
+    external_effects, observe_empty_directory, observe_path, public_query,
+    validate_automatic_checkpoint, validate_run_binding,
 };
 
 impl ProductRunService {
@@ -76,10 +77,17 @@ impl ProductRunService {
             }
             WorkspaceMutationKind::EmptyDirectory => {
                 observe_empty_directory(&identity, path)?;
-                (Vec::new(), vec![empty_directory_exclusion(path)], Vec::new())
+                (
+                    Vec::new(),
+                    vec![CheckpointExclusion::from_label_and_reason(
+                        path.to_owned(),
+                        EMPTY_DIRECTORY_EXCLUSION.to_owned(),
+                    )?],
+                    Vec::new(),
+                )
             }
         };
-        let value = UserCheckpoint::automatic(
+        let value = UserCheckpoint::automatic_with_exclusions(
             checkpoint,
             AUTOMATIC_CHECKPOINT_NAME.to_owned(),
             checkpoint_references(&record),

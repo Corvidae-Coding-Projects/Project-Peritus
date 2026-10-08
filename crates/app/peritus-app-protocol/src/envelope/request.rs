@@ -102,6 +102,10 @@ pub enum AppRequestPayload {
     PreviewWorkbenchRewind(crate::WorkbenchRewindRequest),
     /// Inspects one exact durable checkpoint manifest without mutating current state.
     InspectWorkbenchCheckpoint(crate::WorkbenchRewindRequest),
+    /// Reads one bounded page of a durable checkpoint's complete immutable coverage.
+    QueryWorkbenchCheckpointPage(crate::WorkbenchCheckpointPageRequest),
+    /// Reads one bounded page of immutable facts bound to a full rewind confirmation.
+    QueryWorkbenchRewindPage(crate::WorkbenchRewindPageRequest),
     /// Inspects bounded active guidance and optional content-free tombstones.
     QueryWorkbenchMemory(crate::WorkbenchMemoryQuery),
     /// Discovers bounded local project controls and an exact inert instruction-file proposal.
@@ -207,6 +211,9 @@ impl AppRequestPayload {
             Self::PreviewWorkbenchRewind(_) | Self::InspectWorkbenchCheckpoint(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCheckpoints)
             }
+            Self::QueryWorkbenchCheckpointPage(_) | Self::QueryWorkbenchRewindPage(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchCheckpointPages)
+            }
             Self::QueryWorkbenchMemory(_) => Some(crate::WellKnownProtocolFeature::WorkbenchMemory),
             Self::DiscoverInit(_) => Some(crate::WellKnownProtocolFeature::WorkbenchInit),
             Self::QueryWorkbenchPermissions(_) => {
@@ -294,6 +301,7 @@ const fn required_workbench_intent_feature(
         | Intent::StopPreview { .. }
         | Intent::CheckPreviewBehavior { .. }
         | Intent::AddArtifactFeedback { .. } => Feature::WorkbenchPreview,
+        Intent::ConfirmRewind(_) => Feature::WorkbenchCheckpointPages,
         Intent::CreateCheckpoint(_) | Intent::ApplyRewind(_) => Feature::WorkbenchCheckpoints,
         Intent::CreateConversation(_)
         | Intent::RenameConversation(_)

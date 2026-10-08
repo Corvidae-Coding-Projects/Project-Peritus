@@ -286,10 +286,7 @@ fn completed_outcome(
 fn read_manifest(transaction_directory: &Path) -> io::Result<Vec<u8>> {
     let path = transaction_directory.join(MANIFEST_FILE);
     let metadata = fs::symlink_metadata(&path)?;
-    if metadata.file_type().is_symlink()
-        || !metadata.is_file()
-        || metadata.len() > peritus_codec::CodecLimits::PRODUCTION.max_payload_bytes as u64
-    {
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "unsafe manifest file"));
     }
     fs::read(path)
@@ -336,4 +333,46 @@ fn quarantine(transaction_directory: &Path) -> Result<bool, PatchError> {
 
 fn rollback_io(error: io::Error) -> PatchError {
     PatchError::io(PatchOperationContext::Rollback, RollbackStatus::Indeterminate, error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{FileMode, PatchIdentity, WorkspacePath};
+    use peritus_types::{Generation, RevisionNumber, Sha256Digest, WorkspaceId};
+
+    #[test]
+    fn recovery_reads_complete_valid_manifest_above_former_payload_limit() {
+        let directory = tempfile::tempdir().expect("transaction directory");
+        let prefix = format!("{}/", "d".repeat(250)).repeat(16);
+        let manifest = Manifest {
+            phase: TransactionPhase::Prepared,
+            workspace_id: WorkspaceId::new([1; 16]).expect("workspace"),
+            generation: Generation::new(1).expect("generation"),
+            revision: RevisionNumber::new(1).expect("revision"),
+            identity: PatchIdentity::new(Sha256Digest::new([2; 32])),
+            entries: (0..4_200)
+                .map(|index| ManifestEntry {
+                    kind: PatchOperationKind::Delete,
+                    path: WorkspacePath::new(format!("{prefix}file-{index:05}"))
+                        .expect("canonical path"),
+                    preimage: Some(super::super::manifest::FileIdentity {
+                        digest: Sha256Digest::new([3; 32]),
+                        size: 1,
+                        mode: FileMode::Regular,
+                    }),
+                    postimage: None,
+                })
+                .collect(),
+            created_directories: Vec::new(),
+        };
+        let bytes = manifest.encode().expect("encode full manifest");
+        assert!(bytes.len() > peritus_codec::CodecLimits::PRODUCTION.max_payload_bytes);
+        fs::write(directory.path().join(MANIFEST_FILE), &bytes).expect("persist manifest");
+        let retained = read_manifest(directory.path()).expect("read full recovery manifest");
+        let decoded = Manifest::decode(&retained).expect("decode full recovery manifest");
+        assert_eq!(retained, bytes);
+        assert_eq!(decoded.entries, manifest.entries);
+        assert_eq!(decoded.binding(), manifest.binding());
+    }
 }

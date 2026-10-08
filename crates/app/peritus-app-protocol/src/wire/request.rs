@@ -67,6 +67,8 @@ fn write_payload(
         AppRequestPayload::Improvements(value) => super::improvements::write_request(writer, value),
         AppRequestPayload::PreviewWorkbenchRewind(_)
         | AppRequestPayload::InspectWorkbenchCheckpoint(_)
+        | AppRequestPayload::QueryWorkbenchCheckpointPage(_)
+        | AppRequestPayload::QueryWorkbenchRewindPage(_)
         | AppRequestPayload::QueryWorkbenchMemory(_)
         | AppRequestPayload::DiscoverInit(_)
         | AppRequestPayload::PreviewWorkbenchCompaction(_)
@@ -138,6 +140,8 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::Improvements(_) => 180,
         AppRequestPayload::PreviewWorkbenchRewind(_) => 120,
         AppRequestPayload::InspectWorkbenchCheckpoint(_) => 121,
+        AppRequestPayload::QueryWorkbenchCheckpointPage(_) => 122,
+        AppRequestPayload::QueryWorkbenchRewindPage(_) => 123,
         AppRequestPayload::QueryWorkbenchMemory(_) => 161,
         AppRequestPayload::DiscoverInit(_) => 162,
         AppRequestPayload::QueryWorkbenchPermissions(_) => 160,
@@ -233,6 +237,12 @@ fn read_payload(
         ),
         121 => AppRequestPayload::InspectWorkbenchCheckpoint(
             super::workbench_checkpoints::read_request(reader)?,
+        ),
+        122 => AppRequestPayload::QueryWorkbenchCheckpointPage(
+            super::workbench_checkpoint_pages::read_checkpoint_request(reader)?,
+        ),
+        123 => AppRequestPayload::QueryWorkbenchRewindPage(
+            super::workbench_checkpoint_pages::read_rewind_request(reader)?,
         ),
         140 => AppRequestPayload::QueryConversationLibrary(super::workbench_library::read_query(
             reader,

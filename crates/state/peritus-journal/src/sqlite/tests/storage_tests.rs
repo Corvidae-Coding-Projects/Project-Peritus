@@ -98,6 +98,54 @@ fn schema_objects(connection: &rusqlite::Connection) -> Vec<(String, String)> {
 }
 
 #[test]
+fn version_two_history_upgrade_preserves_nodes_and_removes_capacity_checks() {
+    let temp = TempDir::new().expect("temporary directory");
+    let path = temp.path().join("old-history.sqlite3");
+    let connection = rusqlite::Connection::open(&path).expect("old database");
+    let schema = super::super::schema::INSTALL_SCHEMA
+        .replace("level BETWEEN 0 AND 255", "level BETWEEN 0 AND 4")
+        .replace("byte_length >= 0", "byte_length BETWEEN 0 AND 16777216");
+    connection.execute_batch(&schema).expect("version two tables");
+    connection
+        .execute("INSERT INTO store_meta VALUES (1, ?1, 2)", [store_id().as_bytes().as_slice()])
+        .expect("old store binding");
+    connection.pragma_update(None, "user_version", 2).expect("old version");
+    connection
+        .execute(
+            "INSERT INTO state_history_nodes VALUES (?1, 0, 1, ?2)",
+            params![[3_u8; 32], [7_u8]],
+        )
+        .expect("retained history node");
+    drop(connection);
+    let journal =
+        crate::SqliteJournal::open(&path, store_id(), crate::SqliteJournalOptions::default())
+            .expect("history upgrade");
+    let retained: (i64, i64, Vec<u8>) = journal
+        .connection
+        .query_row(
+            "SELECT level, byte_length, payload FROM state_history_nodes WHERE node_digest = ?1",
+            [[3_u8; 32]],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .expect("retained node");
+    assert_eq!(retained, (0, 1, vec![7]));
+    journal
+        .connection
+        .execute(
+            "INSERT INTO state_history_nodes VALUES (?1, 5, 33554433, ?2)",
+            params![[4_u8; 32], [8_u8; 64]],
+        )
+        .expect("larger logical history node admitted");
+    assert_eq!(
+        journal
+            .connection
+            .pragma_query_value(None, "user_version", |row| row.get::<_, i64>(0))
+            .expect("new version"),
+        3
+    );
+}
+
+#[test]
 fn page_ceiling_returns_exact_storage_exhaustion_without_partial_append() {
     let temp = TempDir::new().expect("temporary directory");
     let mut journal = open(&temp);
