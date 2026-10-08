@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L618] Windows helper narrows target status and hides post-activation failure causes (#674)
 - [L454] F0 wraps complete growing checkpoints in a fixed eight-MiB opaque payload (#533)
 - [L617] Windows session observations and release predicates assume unmeasured native facts (#673)
 - [L453] An accepted out-of-range probability threshold cannot survive F0 wire decoding (#532)
