@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3969,
-        "tip_oid": "d3793c077cc3ae16c73c08f813d0990325477b53",
-        "prefix_sha256": "87838f78b7384b6782c0083671451f10089f3c97c7f7235952b3ab41e939bfe3"
+        "sequence": 3970,
+        "tip_oid": "fd12acf0a70f235615c65f27f7541ca4a70cc83c",
+        "prefix_sha256": "e68f46ee38203610d53b1f0687b1fed7e5d818a43be277cacf8ee47d5d91bca8"
       },
       "NWAR": {
         "sequence": 39,
@@ -2444,12 +2444,13 @@
       "display_id": 666,
       "title": "[L610] Windows kill-on-close jobs tie target lifetime to the helper owner",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L610.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/process.rs:80-105`; `src/native/job.rs:20-58,65-74`; `src/native/mod.rs:21-41`; `src/native/launch.rs:91-127` in the same crate.\n- Behavior: Every Job Object is unnamed, kill-on-close, and owned in helper activation state. It installs finite active-process and memory limits plus an optional CPU limit; CPU zero correctly omits `JOB_OBJECT_LIMIT_JOB_TIME`. CPU milliseconds must fit signed 64-bit 100-nanosecond representation. The helper creates the target suspended, assigns it to that job, resumes, and waits indefinitely for root completion. Target/job identity and ownership are not made durable by these native routines.\n- Consequence: Helper owner death or final job-handle closure kills the target tree, so an otherwise persistent logical session cannot survive that ownership loss. The infinite wait is not a synthetic run deadline; the persistence blocker is owner lifetime. Representation overflow can reject a very large explicit CPU budget.\n- Repair direction: Keep native containment ownership in a durable supervisor with explicit adoption/handoff and independently inspectable job identity; preserve no-CPU-deadline semantics while negotiating representable explicit budgets.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.259669358Z",
-      "updated_at": "2026-10-08T02:09:01.830172968Z",
+      "updated_at": "2026-10-08T02:10:33.991471068Z",
+      "closed_at": "2026-10-08T02:10:33.988355339Z",
       "labels": [
         "daily-driving-limiter"
       ],
