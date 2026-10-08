@@ -14,6 +14,7 @@ test-runtime-fake = []
 
 [dependencies]
 base64.workspace = true
+httpdate.workspace = true
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-model-protocol = { version = "=0.0.5", path = "../peritus-model-protocol" }
 peritus-provider-core = { version = "=0.0.5", path = "../peritus-provider-core" }

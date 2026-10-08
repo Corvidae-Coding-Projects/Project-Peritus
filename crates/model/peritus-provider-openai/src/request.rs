@@ -1,17 +1,14 @@
-//! Responses request planning, validation, and HTTP construction.
+//! Responses request planning, pure admission, and exact bounded HTTP construction.
 
 mod input;
 mod options;
-mod value;
+mod wire;
 
 use peritus_model_protocol::{Capability, ModelRequest, ResponseId};
 use peritus_provider_core::{
     Credential, Endpoint, Header, HeaderName, HttpHeaders, HttpMethod, HttpRequest,
     ProviderCoreError,
 };
-use serde::Serialize;
-use serde::ser::{SerializeMap, Serializer};
-use serde_json::Value;
 
 use crate::{config::OpenAiConfig, error};
 
@@ -20,94 +17,19 @@ pub enum RequestPlan {
     Resume { response_id: ResponseId, sequence: u64 },
 }
 
-#[allow(
-    clippy::struct_excessive_bools,
-    reason = "these booleans are independent fields in the fixed Responses wire contract"
-)]
-struct WireRequest<'a> {
-    model: &'a str,
-    input: Vec<Value>,
-    stream: bool,
-    store: bool,
-    background: bool,
-    max_output_tokens: u64,
-    previous_response_id: Option<&'a str>,
-    reasoning_includes: Vec<&'static str>,
-    tools: Vec<Value>,
-    tool_choice: Option<Value>,
-    parallel_tool_calls: bool,
-    text: Value,
-    reasoning: Option<Value>,
-    temperature: Option<f64>,
-    top_p: Option<f64>,
-    prompt_cache_key: Option<&'a str>,
-    prompt_cache_options: Option<Value>,
+pub(super) struct PreparedRequest {
+    method: HttpMethod,
+    endpoint: Endpoint,
+    body: Vec<u8>,
 }
 
-impl Serialize for WireRequest<'_> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut map = serializer.serialize_map(None)?;
-        map.serialize_entry("model", self.model)?;
-        map.serialize_entry("input", &self.input)?;
-        map.serialize_entry("stream", &self.stream)?;
-        map.serialize_entry("store", &self.store)?;
-        map.serialize_entry("background", &self.background)?;
-        map.serialize_entry("max_output_tokens", &self.max_output_tokens)?;
-        if let Some(value) = self.previous_response_id {
-            map.serialize_entry("previous_response_id", value)?;
-        }
-        if !self.reasoning_includes.is_empty() {
-            map.serialize_entry("include", &self.reasoning_includes)?;
-        }
-        if !self.tools.is_empty() {
-            map.serialize_entry("tools", &self.tools)?;
-        }
-        if let Some(value) = &self.tool_choice {
-            map.serialize_entry("tool_choice", value)?;
-        }
-        map.serialize_entry("parallel_tool_calls", &self.parallel_tool_calls)?;
-        map.serialize_entry("text", &self.text)?;
-        if let Some(value) = &self.reasoning {
-            map.serialize_entry("reasoning", value)?;
-        }
-        if let Some(value) = self.temperature {
-            map.serialize_entry("temperature", &value)?;
-        }
-        if let Some(value) = self.top_p {
-            map.serialize_entry("top_p", &value)?;
-        }
-        if let Some(value) = self.prompt_cache_key {
-            map.serialize_entry("prompt_cache_key", value)?;
-        }
-        if let Some(value) = &self.prompt_cache_options {
-            map.serialize_entry("prompt_cache_options", value)?;
-        }
-        map.end()
+impl PreparedRequest {
+    pub(super) fn len(&self) -> usize {
+        self.body.len()
     }
 }
 
-pub fn plan(request: &ModelRequest) -> Result<RequestPlan, ProviderCoreError> {
-    validate_common(request)?;
-    match request.options().continuation() {
-        Some(continuation) if continuation.sequence().is_some() => {
-            if !request.options().persistence().background() {
-                return Err(error::invalid(
-                    "exact cursor continuation requires background persistence",
-                ));
-            }
-            Ok(RequestPlan::Resume {
-                response_id: continuation.response_id().clone(),
-                sequence: continuation.sequence().unwrap_or(0),
-            })
-        }
-        _ => Ok(RequestPlan::Create),
-    }
-}
-
-fn validate_common(request: &ModelRequest) -> Result<(), ProviderCoreError> {
+pub fn validate(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     if !request.negotiated().includes(Capability::Streaming) {
         return Err(error::invalid(
             "OpenAI Responses streaming was not negotiated for this request",
@@ -132,59 +54,77 @@ fn validate_common(request: &ModelRequest) -> Result<(), ProviderCoreError> {
     options::validate(request)
 }
 
+pub fn plan(request: &ModelRequest) -> Result<RequestPlan, ProviderCoreError> {
+    validate(request)?;
+    match request.options().continuation() {
+        Some(continuation) if continuation.sequence().is_some() => {
+            if !request.options().persistence().background() {
+                return Err(error::invalid(
+                    "exact cursor continuation requires background persistence",
+                ));
+            }
+            Ok(RequestPlan::Resume {
+                response_id: continuation.response_id().clone(),
+                sequence: continuation.sequence().unwrap_or(0),
+            })
+        }
+        _ => Ok(RequestPlan::Create),
+    }
+}
+
+pub(super) fn prepare(
+    config: &OpenAiConfig,
+    request: &ModelRequest,
+    plan: &RequestPlan,
+) -> Result<PreparedRequest, ProviderCoreError> {
+    validate(request)?;
+    match plan {
+        RequestPlan::Create => {
+            input::validate_resolved(request)?;
+            Ok(PreparedRequest {
+                method: HttpMethod::Post,
+                endpoint: config.responses_endpoint()?,
+                body: wire::encode(request, config.http_limits().max_request_body_bytes())?,
+            })
+        }
+        RequestPlan::Resume { response_id, sequence } => Ok(PreparedRequest {
+            method: HttpMethod::Get,
+            endpoint: resume_endpoint(config.endpoint(), response_id, *sequence)?,
+            body: Vec::new(),
+        }),
+    }
+}
+
+pub(super) fn prepared_http_request(
+    config: &OpenAiConfig,
+    request: &ModelRequest,
+    prepared: &PreparedRequest,
+    credential: Credential,
+) -> Result<HttpRequest, ProviderCoreError> {
+    let headers = headers(config, request, credential)?;
+    HttpRequest::new(
+        prepared.method,
+        prepared.endpoint.clone(),
+        headers,
+        prepared.body.clone(),
+        config.http_limits(),
+    )
+}
+
 pub fn http_request(
     config: &OpenAiConfig,
     request: &ModelRequest,
     plan: &RequestPlan,
     credential: Credential,
 ) -> Result<HttpRequest, ProviderCoreError> {
-    let (method, endpoint, body) = match plan {
-        RequestPlan::Create => (HttpMethod::Post, config.responses_endpoint()?, encode(request)?),
-        RequestPlan::Resume { response_id, sequence } => (
-            HttpMethod::Get,
-            resume_endpoint(config.endpoint(), response_id, *sequence)?,
-            Vec::new(),
-        ),
-    };
-    let headers = headers(config, request, credential)?;
-    HttpRequest::new(method, endpoint, headers, body, config.http_limits())
+    let prepared = prepare(config, request, plan)?;
+    prepared_http_request(config, request, &prepared, credential)
 }
 
 pub fn encode(request: &ModelRequest) -> Result<Vec<u8>, ProviderCoreError> {
-    validate_common(request)?;
-    let projected = WireRequest {
-        model: request.model().as_str(),
-        input: input::messages(request)?,
-        stream: true,
-        store: request.options().persistence().store(),
-        background: request.options().persistence().background(),
-        max_output_tokens: request.options().generation().max_output_tokens(),
-        previous_response_id: request
-            .options()
-            .continuation()
-            .filter(|continuation| continuation.sequence().is_none())
-            .map(|continuation| continuation.response_id().expose_for_wire()),
-        reasoning_includes: input::reasoning_includes(request),
-        tools: options::tools(request)?,
-        tool_choice: options::tool_choice(request),
-        parallel_tool_calls: options::parallel(request),
-        text: options::text(request)?,
-        reasoning: options::reasoning(request),
-        temperature: request
-            .options()
-            .generation()
-            .temperature_millionths()
-            .map(|value| f64::from(value) / 1_000_000.0),
-        top_p: request
-            .options()
-            .generation()
-            .top_p_millionths()
-            .map(|value| f64::from(value) / 1_000_000.0),
-        prompt_cache_key: options::cache_key(request),
-        prompt_cache_options: options::cache_options(request),
-    };
-    serde_json::to_vec(&projected)
-        .map_err(|_| error::invalid("OpenAI request serialization failed"))
+    validate(request)?;
+    input::validate_resolved(request)?;
+    wire::encode(request, usize::MAX)
 }
 
 fn headers(

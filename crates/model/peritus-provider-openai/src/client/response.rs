@@ -57,22 +57,6 @@ pub(super) fn ambiguous_failure(
     )
 }
 
-pub(super) fn add_request_bytes(total: u64, body_bytes: usize) -> Result<u64, ProviderCoreError> {
-    total
-        .checked_add(u64::try_from(body_bytes).map_err(|_| {
-            ProviderCoreError::limit_exceeded(
-                "openai_retry",
-                "OpenAI request byte count cannot be represented",
-            )
-        })?)
-        .ok_or_else(|| {
-            ProviderCoreError::limit_exceeded(
-                "openai_retry",
-                "OpenAI cumulative request byte count overflowed",
-            )
-        })
-}
-
 pub(super) fn is_event_stream(headers: &HttpHeaders) -> bool {
     headers
         .first("content-type")

@@ -17,14 +17,14 @@ use peritus_provider_core::{
     ModelProvider, OwnedModelStream, PersistedContinuation, ProviderAvailability,
     ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport, ResponseCancellationOutcome,
     RetryAction, RetryFailure, RetryObservation, SubmissionState, validate_request_profile,
-    wait_for_backoff,
+    admit_request_bytes, can_admit_request_bytes, wait_for_backoff,
 };
 
 use crate::config::OpenAiConfig;
 use crate::error;
 use crate::request::{self, RequestPlan};
 use crate::stream::{BackgroundResponseRegistry, OpenAiResumeState, OpenAiStream, metadata};
-use response::{add_request_bytes, ambiguous_failure, connection_failure, is_event_stream};
+use response::{ambiguous_failure, connection_failure, is_event_stream};
 
 /// One first-party `OpenAI` Responses adapter bound to an immutable profile revision.
 pub struct OpenAiProvider {
@@ -154,6 +154,11 @@ impl OpenAiProvider {
 }
 
 impl ModelProvider for OpenAiProvider {
+    fn validate_request(&self, request: &ModelRequest) -> Result<(), ProviderCoreError> {
+        validate_request_profile(&self.profile, request)?;
+        request::validate(request)
+    }
+
     fn supports_reasoning_effort(&self, _effort: peritus_model_protocol::ReasoningEffort) -> bool {
         self.profile().capabilities().supports(Capability::ReasoningControls)
     }
@@ -205,38 +210,58 @@ impl ModelProvider for OpenAiProvider {
         cancellation: CancellationToken,
     ) -> BoxFuture<'_, Result<OwnedModelStream, ProviderCoreError>> {
         Box::pin(async move {
-            validate_request_profile(&self.profile, &request)?;
+            self.validate_request(&request)?;
             let plan = request::plan(&request)?;
+            let prepared = request::prepare(&self.config, &request, &plan)?;
+            let request_bytes = prepared.len();
             let mut resume = self.claim_exact_resume(&plan)?;
             let started = Instant::now();
             let mut attempt = 1_u32;
             let mut cumulative_bytes = 0_u64;
+            let retry_policy = self.config.finite_retry_policy();
             loop {
                 if cancellation.is_cancelled() {
                     return Err(ProviderCoreError::cancelled("openai_start"));
                 }
                 let credential = self.credentials.resolve(self.config.credential())?;
                 let http_request =
-                    request::http_request(&self.config, &request, &plan, credential)?;
-                cumulative_bytes = add_request_bytes(cumulative_bytes, http_request.body().len())?;
+                    request::prepared_http_request(&self.config, &request, &prepared, credential)?;
+                if let Some(policy) = retry_policy {
+                    cumulative_bytes = admit_request_bytes(
+                        cumulative_bytes,
+                        request_bytes,
+                        policy.max_cumulative_bytes(),
+                    )?;
+                }
                 let response = match self.transport.send(http_request, &cancellation).await {
                     Ok(response) => response,
                     Err(failure) if failure.kind() == ProviderCoreErrorKind::Cancelled => {
                         return Err(failure);
                     }
                     Err(failure) if failure.kind() == ProviderCoreErrorKind::Connect => {
-                        let observation = RetryObservation::new(
-                            attempt,
-                            started.elapsed(),
-                            cumulative_bytes,
-                            SubmissionState::NotSent,
-                            RetryFailure::Connect,
-                        );
-                        let retry = self.config.retry_policy().plan(observation)?;
-                        if retry.action() != RetryAction::RetryFresh {
+                        let directive = if let Some(policy) = retry_policy {
+                            let observation = RetryObservation::new(
+                                attempt,
+                                started.elapsed(),
+                                cumulative_bytes,
+                                SubmissionState::NotSent,
+                                RetryFailure::Connect,
+                            );
+                            let directive = policy.plan(observation)?;
+                            (directive.action() == RetryAction::RetryFresh
+                                && can_admit_request_bytes(
+                                    cumulative_bytes,
+                                    request_bytes,
+                                    policy.max_cumulative_bytes(),
+                                )?)
+                            .then_some(directive)
+                        } else {
+                            None
+                        };
+                        let Some(directive) = directive else {
                             return connection_failure(&self.profile, &cancellation);
-                        }
-                        wait_for_backoff(retry, &cancellation).await?;
+                        };
+                        wait_for_backoff(directive, &cancellation).await?;
                         attempt = next_attempt(attempt)?;
                         continue;
                     }
@@ -253,10 +278,19 @@ impl ModelProvider for OpenAiProvider {
                         self.config.http_limits().max_response_body_bytes(),
                     )
                     .await?;
-                    let directive = metadata::retry_directive(status, &headers, &bytes)?;
-                    let event =
-                        metadata::http_failure(status, &headers, &bytes, self.profile.provider())?;
-                    if let Some((failure, retry_after)) = directive {
+                    let retry_after =
+                        metadata::retry_after(&headers, self.config.protocol_limits())?;
+                    let directive = metadata::retry_directive(status, &bytes, &retry_after);
+                    let event = metadata::http_failure(
+                        status,
+                        &headers,
+                        &bytes,
+                        self.profile.provider(),
+                        &retry_after,
+                    )?;
+                    if let (Some(policy), Some((failure, retry_after))) =
+                        (retry_policy, directive)
+                    {
                         let mut observation = RetryObservation::new(
                             attempt,
                             started.elapsed(),
@@ -267,9 +301,15 @@ impl ModelProvider for OpenAiProvider {
                         if let Some(delay) = retry_after.map(Duration::from_millis) {
                             observation = observation.with_retry_after(delay);
                         }
-                        let retry = self.config.retry_policy().plan(observation)?;
-                        if retry.action() == RetryAction::RetryFresh {
-                            wait_for_backoff(retry, &cancellation).await?;
+                        let directive = policy.plan(observation)?;
+                        if directive.action() == RetryAction::RetryFresh
+                            && can_admit_request_bytes(
+                                cumulative_bytes,
+                                request_bytes,
+                                policy.max_cumulative_bytes(),
+                            )?
+                        {
+                            wait_for_backoff(directive, &cancellation).await?;
                             attempt = next_attempt(attempt)?;
                             continue;
                         }

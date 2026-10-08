@@ -1,8 +1,11 @@
 //! Bounded response-header observations and HTTP error classification.
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use peritus_model_protocol::{
     FailureCategory, ModelEvent, OutcomeCertainty, ProviderName, RateLimitDimension,
-    RateLimitObservation, RateLimitWindow, ResetTime, ResponseId, Retryability, TransportPhase,
+    RateLimitObservation, RateLimitWindow, ResetTime, ResponseId, RetryAfterObservation,
+    RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, RetryFailure, StatusCode};
 
@@ -49,6 +52,7 @@ pub fn http_failure(
     headers: &HttpHeaders,
     body: &[u8],
     provider: &ProviderName,
+    retry_after: &OpenAiRetryAfter,
 ) -> Result<ModelEvent, ProviderCoreError> {
     let value: Option<serde_json::Value> = serde_json::from_slice(body).ok();
     let code = value
@@ -58,10 +62,9 @@ pub fn http_failure(
         .and_then(serde_json::Value::as_str);
     let status_number = status.as_u16();
     let (category, certainty, retryability, diagnostic) = classify(status_number, code);
-    let retry_after = retry_after(headers)?;
     let response_id = text_header(headers, "x-request-id", headers.byte_count())?
         .and_then(|value| ResponseId::new(value).ok());
-    let failure = error::failure(
+    let mut failure = error::failure(
         provider,
         category,
         TransportPhase::ReadingBody,
@@ -69,17 +72,25 @@ pub fn http_failure(
         retryability,
         Some(status_number),
         response_id,
-        retry_after,
+        retry_after.delay_millis,
         diagnostic,
     )?;
+    if let Some(observation) = retry_after.observation.clone() {
+        failure = failure.with_retry_after_observation(observation).map_err(|_| {
+            error::malformed("OpenAI retry-after observation was inconsistent")
+        })?;
+    }
     Ok(ModelEvent::ResponseFailed(failure))
 }
 
 pub fn retry_directive(
     status: StatusCode,
-    headers: &HttpHeaders,
     body: &[u8],
-) -> Result<Option<(RetryFailure, Option<u64>)>, ProviderCoreError> {
+    retry_after: &OpenAiRetryAfter,
+) -> Option<(RetryFailure, Option<u64>)> {
+    if !retry_after.local_scheduling_available {
+        return None;
+    }
     let code = serde_json::from_slice::<serde_json::Value>(body).ok().and_then(|value| {
         value
             .get("error")
@@ -92,7 +103,217 @@ pub fn retry_directive(
         500..=599 => Some(RetryFailure::Server),
         _ => None,
     };
-    failure.map(|failure| Ok((failure, retry_after(headers)?))).transpose()
+    failure.map(|failure| (failure, retry_after.delay_millis))
+}
+
+#[derive(Clone)]
+pub struct OpenAiRetryAfter {
+    delay_millis: Option<u64>,
+    observation: Option<RetryAfterObservation>,
+    local_scheduling_available: bool,
+}
+
+pub fn retry_after(
+    headers: &HttpHeaders,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<OpenAiRetryAfter, ProviderCoreError> {
+    if let Some(value) = headers.first("retry-after-ms") {
+        let Some(raw_value) = value.nonsensitive_bytes() else {
+            return Ok(empty_retry_after());
+        };
+        return parse_millisecond_retry_after(raw_value, limits);
+    }
+    let Some(value) = headers.first("retry-after") else {
+        return Ok(empty_retry_after());
+    };
+    let Some(raw_value) = value.nonsensitive_bytes() else {
+        return Ok(empty_retry_after());
+    };
+    parse_standard_retry_after(raw_value, limits)
+}
+
+const fn empty_retry_after() -> OpenAiRetryAfter {
+    OpenAiRetryAfter {
+        delay_millis: None,
+        observation: None,
+        local_scheduling_available: true,
+    }
+}
+
+fn parse_millisecond_retry_after(
+    raw_value: &[u8],
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<OpenAiRetryAfter, ProviderCoreError> {
+    let Ok(text) = core::str::from_utf8(raw_value) else {
+        return unschedulable_retry_after(
+            raw_value,
+            RetryAfterUnit::Unsupported,
+            RetryAfterParseStatus::Invalid,
+            limits,
+        );
+    };
+    let value = text.trim_matches(|character| matches!(character, ' ' | '\t'));
+    if !value.is_empty()
+        && value.bytes().all(|byte| byte.is_ascii_digit())
+        && let Ok(delay_millis) = value.parse::<u64>()
+    {
+        return Ok(OpenAiRetryAfter {
+            delay_millis: Some(delay_millis),
+            observation: None,
+            local_scheduling_available: true,
+        });
+    }
+    unschedulable_retry_after(
+        raw_value,
+        RetryAfterUnit::Unsupported,
+        RetryAfterParseStatus::Invalid,
+        limits,
+    )
+}
+
+fn parse_standard_retry_after(
+    raw_value: &[u8],
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<OpenAiRetryAfter, ProviderCoreError> {
+    let Ok(text) = core::str::from_utf8(raw_value) else {
+        return unschedulable_retry_after(
+            raw_value,
+            RetryAfterUnit::Unsupported,
+            RetryAfterParseStatus::Invalid,
+            limits,
+        );
+    };
+    let value = text.trim_matches(|character| matches!(character, ' ' | '\t'));
+    if !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit()) {
+        let Ok(seconds) = value.parse::<u64>() else {
+            return unschedulable_retry_after(
+                raw_value,
+                RetryAfterUnit::DeltaSeconds,
+                RetryAfterParseStatus::Unrepresentable,
+                limits,
+            );
+        };
+        let Some(delay_millis) = seconds.checked_mul(1_000) else {
+            return unschedulable_retry_after(
+                raw_value,
+                RetryAfterUnit::DeltaSeconds,
+                RetryAfterParseStatus::Unrepresentable,
+                limits,
+            );
+        };
+        let legacy_accepted = raw_value.len() <= 64 && value == text && seconds <= 86_400;
+        let observation = (!legacy_accepted)
+            .then(|| {
+                retry_after_observation(
+                    raw_value,
+                    RetryAfterUnit::DeltaSeconds,
+                    RetryAfterParseStatus::Parsed,
+                    None,
+                    limits,
+                )
+            })
+            .transpose()?;
+        return Ok(OpenAiRetryAfter {
+            delay_millis: Some(delay_millis),
+            observation,
+            local_scheduling_available: true,
+        });
+    }
+    let Ok(eligible) = httpdate::parse_http_date(value) else {
+        return unschedulable_retry_after(
+            raw_value,
+            RetryAfterUnit::Unsupported,
+            RetryAfterParseStatus::Invalid,
+            limits,
+        );
+    };
+    parsed_http_date(raw_value, eligible, limits)
+}
+
+fn parsed_http_date(
+    raw_value: &[u8],
+    eligible: SystemTime,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<OpenAiRetryAfter, ProviderCoreError> {
+    let eligible_unix_millis = match eligible.duration_since(UNIX_EPOCH) {
+        Ok(duration) => match u64::try_from(duration.as_millis()) {
+            Ok(value) => value,
+            Err(_) => {
+                return unschedulable_retry_after(
+                    raw_value,
+                    RetryAfterUnit::HttpDate,
+                    RetryAfterParseStatus::Unrepresentable,
+                    limits,
+                );
+            }
+        },
+        Err(_) => 0,
+    };
+    let Some(observed_unix_millis) = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| u64::try_from(duration.as_millis()).ok())
+    else {
+        return unschedulable_retry_after(
+            raw_value,
+            RetryAfterUnit::HttpDate,
+            RetryAfterParseStatus::Unrepresentable,
+            limits,
+        );
+    };
+    let parse_status = if eligible_unix_millis <= observed_unix_millis {
+        RetryAfterParseStatus::AlreadyEligible
+    } else {
+        RetryAfterParseStatus::Parsed
+    };
+    let delay_millis = eligible_unix_millis.saturating_sub(observed_unix_millis);
+    Ok(OpenAiRetryAfter {
+        delay_millis: Some(delay_millis),
+        observation: Some(retry_after_observation(
+            raw_value,
+            RetryAfterUnit::HttpDate,
+            parse_status,
+            Some(eligible_unix_millis),
+            limits,
+        )?),
+        local_scheduling_available: true,
+    })
+}
+
+fn unschedulable_retry_after(
+    raw_value: &[u8],
+    unit: RetryAfterUnit,
+    parse_status: RetryAfterParseStatus,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<OpenAiRetryAfter, ProviderCoreError> {
+    Ok(OpenAiRetryAfter {
+        delay_millis: None,
+        observation: Some(retry_after_observation(
+            raw_value,
+            unit,
+            parse_status,
+            None,
+            limits,
+        )?),
+        local_scheduling_available: false,
+    })
+}
+
+fn retry_after_observation(
+    raw_value: &[u8],
+    unit: RetryAfterUnit,
+    parse_status: RetryAfterParseStatus,
+    eligible_unix_millis: Option<u64>,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> Result<RetryAfterObservation, ProviderCoreError> {
+    RetryAfterObservation::new(
+        raw_value,
+        unit,
+        parse_status,
+        eligible_unix_millis,
+        limits,
+    )
+    .map_err(|_| error::malformed("OpenAI retry-after observation was invalid"))
 }
 
 fn classify(
@@ -168,17 +389,6 @@ fn quota_code(code: Option<&str>) -> bool {
                 | "insufficient_quota"
         )
     )
-}
-
-fn retry_after(headers: &HttpHeaders) -> Result<Option<u64>, ProviderCoreError> {
-    if let Some(value) = text_header(headers, "retry-after-ms", 64)? {
-        return Ok(value.parse::<u64>().ok().filter(|millis| *millis <= 86_400_000));
-    }
-    let Some(value) = text_header(headers, "retry-after", 64)? else {
-        return Ok(None);
-    };
-    let seconds = value.parse::<u64>().ok().filter(|seconds| *seconds <= 86_400);
-    Ok(seconds.and_then(|seconds| seconds.checked_mul(1_000)))
 }
 
 fn add_window(

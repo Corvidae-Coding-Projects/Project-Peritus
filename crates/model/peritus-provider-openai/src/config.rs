@@ -62,6 +62,7 @@ pub struct OpenAiConfig {
     framing_limits: FramingLimits,
     protocol_limits: ProtocolLimits,
     retry_policy: RetryPolicy,
+    finite_retries: bool,
 }
 
 impl OpenAiConfig {
@@ -130,11 +131,11 @@ impl OpenAiConfig {
         Ok(self)
     }
 
-    /// Replaces the bounded retry policy used for connection failures and explicit temporary
-    /// provider rejections.
+    /// Explicitly enables finite in-adapter retries with the supplied request budget.
     #[must_use]
     pub const fn with_retry_policy(mut self, retry_policy: RetryPolicy) -> Self {
         self.retry_policy = retry_policy;
+        self.finite_retries = true;
         self
     }
 
@@ -156,6 +157,7 @@ impl OpenAiConfig {
                 [Duration::from_millis(100), Duration::from_secs(2), Duration::from_secs(2)],
                 64 * 1024 * 1024,
             )?,
+            finite_retries: false,
         })
     }
 
@@ -187,8 +189,17 @@ impl OpenAiConfig {
         self.protocol_limits
     }
 
-    pub(crate) const fn retry_policy(&self) -> RetryPolicy {
+    /// Returns the legacy finite retry bounds.
+    ///
+    /// These bounds are active only after [`Self::with_retry_policy`] explicitly enables adapter
+    /// retries. Durable callers normally own replenishable recovery outside the adapter.
+    #[must_use]
+    pub const fn retry_policy(&self) -> RetryPolicy {
         self.retry_policy
+    }
+
+    pub(crate) const fn finite_retry_policy(&self) -> Option<RetryPolicy> {
+        if self.finite_retries { Some(self.retry_policy) } else { None }
     }
 
     #[cfg(test)]
@@ -213,6 +224,7 @@ impl fmt::Debug for OpenAiConfig {
             .field("framing_limits", &self.framing_limits)
             .field("protocol_limits", &self.protocol_limits)
             .field("retry_policy", &self.retry_policy)
+            .field("finite_retries", &self.finite_retries)
             .finish()
     }
 }
