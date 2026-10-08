@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4021,
-        "tip_oid": "0f4b26f3fd157a48cf198171f95ed90087aeb484",
-        "prefix_sha256": "6eebf2937dea62306bca36b3c450c19242a0e8058cf65df2e4d52a2591596a5b"
+        "sequence": 4022,
+        "tip_oid": "5d0dbc51a99f89a9314233ce9494aaf38c29c369",
+        "prefix_sha256": "8645a54427bf0b5cfcbff795228e8b84a2db2cb67bfd2117f35b13ebd0ab0107"
       },
       "NWAR": {
         "sequence": 39,
@@ -2594,12 +2594,13 @@
       "display_id": 532,
       "title": "[L453] An accepted out-of-range probability threshold cannot survive F0 wire decoding",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L453.\n\n- Evidence: `crates/analysis/peritus-evolution/src/change/prediction.rs:85-118,151-176`, `src/wire/semantic/change.rs:251-285`, `src/wire/campaign.rs:32-44,350-363` in the same crate.\n- Behavior: MetricValue exposes ProbabilityMillionths directly. Its probability helper rejects values above 1,000,000, but Prediction::new only checks numeric variant compatibility and subject/metric rules, so direct enum construction bypasses the range check. Semantic writing emits the raw u32, while semantic reading always calls the bounded helper.\n- Consequence: An accepted prediction can encode successfully and then fail canonical read/replay. For example, a directly constructed ProbabilityMillionths(1,000,001) threshold is incompatible with the wire contract despite passing the prediction constructor. This is an admission/restore mismatch, not a legitimate deadline; the probability range itself is mathematically required. No executed reproduction is claimed.\n- Repair direction: Enforce numeric domain invariants at every public admission boundary or use a validated probability type that cannot be bypassed. Verify encode/decode parity before committing accepted semantic state. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.621235565Z",
-      "updated_at": "2026-10-08T03:36:32.208975564Z",
+      "updated_at": "2026-10-08T03:38:11.148716293Z",
+      "closed_at": "2026-10-08T03:38:11.145910221Z",
       "labels": [
         "daily-driving-limiter"
       ],
