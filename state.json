@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3989,
-        "tip_oid": "1fb2d38a51757185d8b4dd166092e60b1e329fc5",
-        "prefix_sha256": "68bb7ac304ffd834fd4e5e1e3850e684c432639e2863b3034d190540991d11c7"
+        "sequence": 3990,
+        "tip_oid": "cc3ab5a5f78f63a0255d08b2d58f7bfd4e3ac5b1",
+        "prefix_sha256": "fde1d6c82ede8ffa26b9c1cbf26f69c33eb668384a5cfffda97fe5ccb0d9fb23"
       },
       "NWAR": {
         "sequence": 39,
@@ -7801,12 +7801,13 @@
       "display_id": 669,
       "title": "[L613] Windows normal termination produces recovery bytes its decoder rejects",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L613.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/session.rs:216-221`; `src/recovery.rs:108-126,180-202`; `tests/contracts.rs:234-240`; `tests/windows_conformance_support/projection.rs:119-125` in the same crate.\n- Behavior: Normal termination advances recovery to `Terminated` with ACL/secret cleanup false and helper-reaped true. The writer allows and encodes this state. The decoder rejects any record with at least one true cleanup flag unless all three are true. Tests pass through the same partial state but decode only after final release.\n- Consequence: Reopening a normal terminated-but-not-released execution rejects its valid emitted recovery record and quarantines it. This source-derived writer/reader mismatch is a direct restart blocker without any timeout.\n- Repair direction: Make independently progressing cleanup dimensions canonical and reopenable at every emitted phase; verify round trips after each lifecycle and cleanup transition, not just complete release.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.273223596Z",
-      "updated_at": "2026-10-08T02:41:10.633088923Z",
+      "updated_at": "2026-10-08T02:42:44.811629183Z",
+      "closed_at": "2026-10-08T02:42:44.808553332Z",
       "labels": [
         "daily-driving-limiter"
       ],
