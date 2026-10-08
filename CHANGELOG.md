@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L031] Legacy goal-tool replay is a schema barrier (#130)
 - [L606] Windows preparation consumes channel owners before later fallible compilation (#662)
 - [L435] E3 hard-codes sixteen deliveries for every effect lane (#515)
 - [L030] Product task, detail, deliverable, and page admission (#129)
