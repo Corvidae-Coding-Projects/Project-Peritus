@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4066,
-        "tip_oid": "5ad5d2a0bcd7bcb87163841bf5e074b2dccdb9a1",
-        "prefix_sha256": "a7f80914b7bb97cefa7f0013555f9ad6163bb867da183719c707f97db12ead06"
+        "sequence": 4067,
+        "tip_oid": "a64ec60d10009591bc0a4e48102d364fc52f587e",
+        "prefix_sha256": "7b4873b89401433589cd9e39e9b79436dca0fcc8587c9f5c6ddebab7b2f87dd4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3236,
+  "next_comment_id": 3237,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1872,11 +1872,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.663467282Z",
-      "updated_at": "2026-10-06T13:27:50.665604344Z",
+      "updated_at": "2026-10-08T04:57:28.239458619Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "468d441d-96e8-4666-9023-377adc575721": {
+          "display_id": 3236,
+          "author": "6ME5",
+          "content": "Code complete in commit 8ce6941ff. Canonical parity and digests stream without a duplicate full encoded buffer; request aggregate block/media allocation is checked before nested reserve/copy while history remains separate. Authenticated atomic page progress and cancellable driver restoration retain exact identities, legacy bytes and decode compatibility. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T04:57:28.230277095Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAu5KZwEpNtU3ZW7l6WIxfTnG4+/IyGYeq0gS5hC52A2b6sLySnVj1JtwSQvgWgp34tSIGTkBwFS6RiasJpiODDw=="
+        },
         "6e777700-5b6c-4207-8d54-09d7890e3b0f": {
           "display_id": 2613,
           "author": "6ME5",
