@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4008,
-        "tip_oid": "a7f54292fb60ae07efc84c418a87549a2f0226fe",
-        "prefix_sha256": "d5e3e7341dce84bf2b98e336c766d578912e18144504dfe6e021b7b863e74f8e"
+        "sequence": 4009,
+        "tip_oid": "2ef3f5564f77cfd9ec6f6f1082c094aed963bde1",
+        "prefix_sha256": "6f30828f210a113253176513ba5bfbbeb214f454fbe92de05bb8c32a42dff2b1"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3207,
+  "next_comment_id": 3208,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1958,7 +1958,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.011605766Z",
-      "updated_at": "2026-10-06T13:19:08.013704914Z",
+      "updated_at": "2026-10-08T03:13:07.679146399Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -1969,6 +1969,15 @@
           "content": "Systemic repair plan for L043: Grounding evidence can reset at tool-executor reconstruction.\n\nOwning contract and implementation boundary: developer_tools/grounding.rs:23-31,49-72; executor.rs:190-192,302-304; executor/construction.rs:20,52; catalog.rs:18,28,33,38,48; peritus-product-runner/src/turn.rs:65-99,142-163,254-291; executor/in_place.rs:24-38; workspace_delivery/scope.rs. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMove grounding evidence into the durable task-role state, bound to workspace revision, path identity and exact observed bytes. Tool executor reconstruction, provider retries and segment continuation must reattach that state and the same native context. Invalidate only observations whose dependencies changed; require a new read for a genuinely stale mutation target, not a new global listing on every invocation.\n\nPreserve: governing inputs, complete pending tool protocol pairs, exact source/lineage references, explicit permissions, unresolved effect truth and task-role/native-provider identity. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long productive read/write sessions through repeated compaction and segment boundaries, source/dependency changes, non-ASCII and large evidence, interrupted checkpoint publication, then reopen the same lineage and prove that valid grounding is reused and stale targets are reread. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:19:07.750Z",
           "kind": "decision"
+        },
+        "f7f00979-9485-4fda-abc3-69656e54d3c4": {
+          "display_id": 3207,
+          "author": "6ME5",
+          "content": "Code complete in commit 087d7f22f. Executor grounding reattaches durable task-role observations through retries, segments, provider transfer, and restart, bound to conversation and workspace revision. Completed reads retain exact source digests and bytes; mutation checks refresh only stale or unbound targets without resetting valid listing/read evidence. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:13:07.670501316Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACnz1BvCXzqsXz8ZsLUAbn2VRwOPCT/axAJDaFFGL3JohotCA6jNfk1MujskxE6YF9g3zeXYL+9shJP82A/NSAQ=="
         }
       }
     },
