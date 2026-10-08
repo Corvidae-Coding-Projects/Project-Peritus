@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3982,
-        "tip_oid": "4dd4c167073f3756993b884ae14330a4357e8d64",
-        "prefix_sha256": "0a6a5f68382eefe52690a3ff11801504fc37e5359a81cc3a6b66882c5a340258"
+        "sequence": 3983,
+        "tip_oid": "d64c3817486aaee0d1e99540674124cfc4fd27c0",
+        "prefix_sha256": "fd6536a682b3b420a0afaa63bb21e503c3649e40180f3373a7352c8caca0f453"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3194,
+  "next_comment_id": 3195,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -20520,7 +20520,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.268726104Z",
-      "updated_at": "2026-10-06T13:27:51.270908493Z",
+      "updated_at": "2026-10-08T02:31:10.853221801Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -20531,6 +20531,15 @@
           "content": "Systemic repair plan for L612: Windows secret reader rejects material exactly at its advertised one-MiB boundary.\n\nOwning contract and implementation boundary: crates/runtime/peritus-sandbox-windows/src/native/secret.rs:16-17,29-80,93-123; src/channels.rs:155-184. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRead at most maximum plus one byte with an explicit length/EOF contract, preserve ownership through fallible staging, and retain exact private-file cleanup obligations through helper and session recovery.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "44031d32-1f29-48ba-908e-2ac60ca75634": {
+          "display_id": 3194,
+          "author": "6ME5",
+          "content": "Code complete in commit 5351a79f4: schema5 exact payload binding removes Windows1MiB cap and streams declared secret bytes plus EOF probe under cancellation while retaining source custody. Exclusive no-follow delete-on-close files transfer exact native identity to C2 before target adoption; recovery schema4 retains path/payload/volume/file identity, and teardown deletes only matching objects with uncertain cleanup still owned. Old manifest/recovery decoders retained. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:31:10.844107411Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABARQ6jRo0tyaBM3e8ZCX5DVd5wo3hvLHM0l3lzdzTb2R7Rt6SAappgtyrL3mbRzXE6BXnXuyy+UrZAnHFobeL0Bg=="
         }
       }
     },
