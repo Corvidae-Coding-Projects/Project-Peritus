@@ -114,7 +114,7 @@ impl ResponsesDecoder {
             "response.incomplete" => self.failed(value, true),
             "error" => self.stream_error(),
             unknown if ancillary::safe_responses(unknown) => {
-                Ok(vec![ancillary::event(value, self.limits)?])
+                Ok(vec![ancillary::event(value, self.limits)])
             }
             _ => Err(error::malformed("unknown correctness-critical Responses-compatible event")),
         }
@@ -140,7 +140,7 @@ impl ResponsesDecoder {
         if !self.state.response_matches(string(response, "id")?) {
             return Err(error::malformed("Responses-compatible lifecycle identity changed"));
         }
-        Ok(vec![ancillary::event(value, self.limits)?])
+        Ok(vec![ancillary::event(value, self.limits)])
     }
 
     fn item_added(&mut self, value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {

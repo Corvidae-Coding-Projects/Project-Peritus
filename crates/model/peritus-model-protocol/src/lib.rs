@@ -18,6 +18,7 @@ pub mod identity;
 mod json_duplicates;
 pub mod message;
 mod message_codec;
+pub mod observation;
 pub mod rate_limit;
 pub mod redaction;
 pub mod reducer;
@@ -61,6 +62,9 @@ pub use message::{Message, Role};
 pub use message_codec::{
     MessageArchivePage, decode_message_archive_page, decode_messages,
     decode_next_message_archive_page, encode_message_archive_page, encode_messages,
+};
+pub use observation::{
+    OptionalObservation, OptionalObservationKind, OptionalObservationStatus,
 };
 pub use rate_limit::{
     CacheObservation, CacheStatus, RateLimitDimension, RateLimitObservation, RateLimitWindow,

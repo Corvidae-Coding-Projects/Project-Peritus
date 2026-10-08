@@ -5,9 +5,10 @@ use super::primitive::{
 };
 use crate::{
     CacheObservation, CacheStatus, EventEnvelope, FailureCategory, FinishReason, ItemKind,
-    ModelEvent, ModelFailure, OutcomeCertainty, RateLimitDimension, RateLimitObservation,
-    ResetTime, RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase, UsageCounters,
-    UsageObservation, UsageScope,
+    ModelEvent, ModelFailure, OptionalObservation, OptionalObservationKind,
+    OptionalObservationStatus, OutcomeCertainty, RateLimitDimension, RateLimitObservation,
+    ResetTime, RetryAfterObservation, RetryAfterParseStatus, RetryAfterUnit, Retryability,
+    TransportPhase, UsageCounters, UsageObservation, UsageScope,
 };
 
 /// Encodes one normalized event envelope into canonical versioned bytes.
@@ -67,8 +68,12 @@ fn envelope_value(
 
 const fn envelope_schema(envelope: &EventEnvelope) -> u16 {
     match envelope.event() {
-        ModelEvent::ResponseFailed(failure) if failure.retry_after_observation().is_some() => {
+        ModelEvent::OptionalObservation(_) => super::EVENT_ENVELOPE_SCHEMA_VERSION,
+        ModelEvent::ResponseFailed(failure) if !failure.optional_observations().is_empty() => {
             super::EVENT_ENVELOPE_SCHEMA_VERSION
+        }
+        ModelEvent::ResponseFailed(failure) if failure.retry_after_observation().is_some() => {
+            2
         }
         _ => 1,
     }
@@ -154,6 +159,10 @@ fn event(
             failure_value(writer, failure, schema)?;
         }
         ModelEvent::ResponseCancelled => writer.write_u8(19).map_err(write_codec)?,
+        ModelEvent::OptionalObservation(observation) => {
+            writer.write_u8(20).map_err(write_codec)?;
+            optional_observation(writer, observation)?;
+        }
     }
     Ok(())
 }
@@ -319,26 +328,82 @@ fn failure_value(
     write_option_u64(writer, diagnostic.request_bytes())?;
     write_option_u64(writer, diagnostic.response_bytes())?;
     write_option_u64(writer, diagnostic.elapsed_millis())?;
-    if schema >= 2 {
+    if schema == 2 {
         let observation = failure.retry_after_observation().ok_or_else(|| {
             invalid(
                 "canonical_event.retry_after",
                 "schema version two requires retry-after parsing evidence",
             )
         })?;
-        writer.write_u64(observation.raw_bytes()).map_err(write_codec)?;
-        writer.write_fixed(observation.raw_digest().as_bytes()).map_err(write_codec)?;
-        writer.write_option_tag(observation.raw_value().is_some()).map_err(write_codec)?;
-        if let Some(raw_value) = observation.raw_value() {
-            writer.write_bytes(raw_value).map_err(write_codec)?;
-        }
-        writer.write_u8(retry_after_unit(observation.unit())).map_err(write_codec)?;
+        retry_after_observation(writer, observation)?;
+    } else if schema >= 3 {
         writer
-            .write_u8(retry_after_parse_status(observation.parse_status()))
+            .write_option_tag(failure.retry_after_observation().is_some())
             .map_err(write_codec)?;
-        write_option_u64(writer, observation.eligible_unix_millis())?;
+        if let Some(observation) = failure.retry_after_observation() {
+            retry_after_observation(writer, observation)?;
+        }
+        writer
+            .write_collection_len(failure.optional_observations().len())
+            .map_err(write_codec)?;
+        for observation in failure.optional_observations() {
+            optional_observation(writer, observation)?;
+        }
     }
     Ok(())
+}
+
+fn retry_after_observation(
+    writer: &mut impl CanonicalWrite,
+    observation: &RetryAfterObservation,
+) -> Result<(), crate::ProtocolError> {
+    writer.write_u64(observation.raw_bytes()).map_err(write_codec)?;
+    writer.write_fixed(observation.raw_digest().as_bytes()).map_err(write_codec)?;
+    writer.write_option_tag(observation.raw_value().is_some()).map_err(write_codec)?;
+    if let Some(raw_value) = observation.raw_value() {
+        writer.write_bytes(raw_value).map_err(write_codec)?;
+    }
+    writer.write_u8(retry_after_unit(observation.unit())).map_err(write_codec)?;
+    writer
+        .write_u8(retry_after_parse_status(observation.parse_status()))
+        .map_err(write_codec)?;
+    write_option_u64(writer, observation.eligible_unix_millis())
+}
+
+fn optional_observation(
+    writer: &mut impl CanonicalWrite,
+    observation: &OptionalObservation,
+) -> Result<(), crate::ProtocolError> {
+    writer.write_u8(optional_observation_kind(observation.kind())).map_err(write_codec)?;
+    writer
+        .write_u8(optional_observation_status(observation.status()))
+        .map_err(write_codec)?;
+    writer.write_fixed(observation.value_digest().as_bytes()).map_err(write_codec)?;
+    writer.write_u64(observation.value_bytes()).map_err(write_codec)
+}
+
+const fn optional_observation_kind(value: OptionalObservationKind) -> u8 {
+    match value {
+        OptionalObservationKind::MappedRequestId => 1,
+        OptionalObservationKind::RateLimitLimit => 2,
+        OptionalObservationKind::RateLimitRemaining => 3,
+        OptionalObservationKind::RateLimitReset => 4,
+        OptionalObservationKind::RateLimitWindow => 5,
+        OptionalObservationKind::Usage => 6,
+        OptionalObservationKind::Ancillary => 7,
+    }
+}
+
+const fn optional_observation_status(value: OptionalObservationStatus) -> u8 {
+    match value {
+        OptionalObservationStatus::InvalidEncoding => 1,
+        OptionalObservationStatus::InvalidValue => 2,
+        OptionalObservationStatus::Inconsistent => 3,
+        OptionalObservationStatus::Undeclared => 4,
+        OptionalObservationStatus::ExceededBound => 5,
+        OptionalObservationStatus::Unrepresentable => 6,
+        OptionalObservationStatus::Unsupported => 7,
+    }
 }
 
 const fn retry_after_unit(value: RetryAfterUnit) -> u8 {

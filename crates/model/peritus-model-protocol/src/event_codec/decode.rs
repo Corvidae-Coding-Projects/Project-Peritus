@@ -7,7 +7,8 @@ use super::primitive::{
 use crate::{
     BoundedText, CacheKey, CacheObservation, CacheStatus, CanonicalJson, EventEnvelope, EventId,
     ExtensionName, FailureCategory, FinishReason, ItemId, ItemKind, JsonBounds, ModelEvent,
-    ModelFailure, ModelName, OutcomeCertainty, ProtocolError, ProtocolErrorKind, ProtocolLimits,
+    ModelFailure, ModelName, OptionalObservation, OptionalObservationKind,
+    OptionalObservationStatus, OutcomeCertainty, ProtocolError, ProtocolErrorKind, ProtocolLimits,
     ProtocolVersion, ProviderExtension, ProviderName, RateLimitDimension, RateLimitObservation,
     RateLimitWindow, RedactedDiagnostic, ResetTime, ResponseId, RetryAfterObservation,
     RetryAfterParseStatus, RetryAfterUnit, Retryability, StreamFragment, ToolCallId, ToolName,
@@ -120,6 +121,7 @@ fn decode_event(
         17 => Ok(ModelEvent::ResponseCompleted),
         18 => failure(reader, limits, schema).map(ModelEvent::ResponseFailed),
         19 => Ok(ModelEvent::ResponseCancelled),
+        20 if schema >= 3 => optional_observation(reader).map(ModelEvent::OptionalObservation),
         _ => Err(unknown("model_event")),
     }
 }
@@ -328,7 +330,7 @@ fn failure(
         option_u64(reader)?,
         option_u64(reader)?,
     )?;
-    let failure = ModelFailure::new(
+    let mut failure = ModelFailure::new(
         provider,
         category,
         phase,
@@ -342,6 +344,31 @@ fn failure(
     if schema == 1 {
         return Ok(failure);
     }
+    if schema == 2 {
+        let observation = retry_after_observation(reader, limits)?;
+        return failure.with_retry_after_observation(observation);
+    }
+    if reader.read_option_tag().map_err(read_codec)? {
+        let observation = retry_after_observation(reader, limits)?;
+        failure = failure.with_retry_after_observation(observation)?;
+    }
+    let count = reader.read_collection_len(42).map_err(read_codec)?;
+    let mut observations = reader
+        .reserve_collection::<OptionalObservation>(count)
+        .map_err(read_codec)?;
+    for _ in 0..count {
+        observations.push(optional_observation(reader)?);
+    }
+    for observation in observations {
+        failure = failure.with_optional_observation(observation);
+    }
+    Ok(failure)
+}
+
+fn retry_after_observation(
+    reader: &mut CanonicalReader<'_>,
+    limits: ProtocolLimits,
+) -> Result<RetryAfterObservation, ProtocolError> {
     let raw_bytes = reader.read_u64().map_err(read_codec)?;
     let raw_digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(read_codec)?);
     let raw_value = if reader.read_option_tag().map_err(read_codec)? {
@@ -367,7 +394,7 @@ fn failure(
     let unit = decode_retry_after_unit(reader.read_u8().map_err(read_codec)?)?;
     let parse_status = decode_retry_after_parse_status(reader.read_u8().map_err(read_codec)?)?;
     let eligible_unix_millis = option_u64(reader)?;
-    let observation = RetryAfterObservation::from_encoded(
+    RetryAfterObservation::from_encoded(
         raw_value,
         raw_digest,
         raw_bytes,
@@ -375,8 +402,35 @@ fn failure(
         parse_status,
         eligible_unix_millis,
         limits,
-    )?;
-    failure.with_retry_after_observation(observation)
+    )
+}
+
+fn optional_observation(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<OptionalObservation, ProtocolError> {
+    let kind = match reader.read_u8().map_err(read_codec)? {
+        1 => OptionalObservationKind::MappedRequestId,
+        2 => OptionalObservationKind::RateLimitLimit,
+        3 => OptionalObservationKind::RateLimitRemaining,
+        4 => OptionalObservationKind::RateLimitReset,
+        5 => OptionalObservationKind::RateLimitWindow,
+        6 => OptionalObservationKind::Usage,
+        7 => OptionalObservationKind::Ancillary,
+        _ => return Err(unknown("optional_observation_kind")),
+    };
+    let status = match reader.read_u8().map_err(read_codec)? {
+        1 => OptionalObservationStatus::InvalidEncoding,
+        2 => OptionalObservationStatus::InvalidValue,
+        3 => OptionalObservationStatus::Inconsistent,
+        4 => OptionalObservationStatus::Undeclared,
+        5 => OptionalObservationStatus::ExceededBound,
+        6 => OptionalObservationStatus::Unrepresentable,
+        7 => OptionalObservationStatus::Unsupported,
+        _ => return Err(unknown("optional_observation_status")),
+    };
+    let value_digest = Sha256Digest::new(reader.read_fixed::<32>().map_err(read_codec)?);
+    let value_bytes = reader.read_u64().map_err(read_codec)?;
+    Ok(OptionalObservation::from_encoded(kind, status, value_digest, value_bytes))
 }
 
 fn decode_retry_after_unit(tag: u8) -> Result<RetryAfterUnit, ProtocolError> {

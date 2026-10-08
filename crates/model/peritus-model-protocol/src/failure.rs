@@ -5,7 +5,8 @@ use core::fmt;
 use peritus_types::Sha256Digest;
 
 use crate::{
-    ProtocolError, ProtocolErrorKind, ProtocolLimits, ProviderName, RedactedDiagnostic, ResponseId,
+    OptionalObservation, ProtocolError, ProtocolErrorKind, ProtocolLimits, ProviderName,
+    RedactedDiagnostic, ResponseId,
 };
 
 /// Stable failure taxonomy.
@@ -303,6 +304,7 @@ pub struct ModelFailure {
     response_id: Option<ResponseId>,
     retry_after_millis: Option<u64>,
     retry_after_observation: Option<RetryAfterObservation>,
+    optional_observations: Vec<OptionalObservation>,
     diagnostic: RedactedDiagnostic,
 }
 
@@ -334,6 +336,7 @@ impl ModelFailure {
             response_id,
             retry_after_millis,
             retry_after_observation: None,
+            optional_observations: Vec::new(),
             diagnostic,
         }
     }
@@ -351,6 +354,13 @@ impl ModelFailure {
         observation.validate_delay(self.retry_after_millis)?;
         self.retry_after_observation = Some(observation);
         Ok(self)
+    }
+
+    /// Retains fixed-size evidence for an optional provider datum rejected during normalization.
+    #[must_use]
+    pub fn with_optional_observation(mut self, observation: OptionalObservation) -> Self {
+        self.optional_observations.push(observation);
+        self
     }
 
     /// Provider family.
@@ -398,6 +408,11 @@ impl ModelFailure {
     pub const fn retry_after_observation(&self) -> Option<&RetryAfterObservation> {
         self.retry_after_observation.as_ref()
     }
+    /// Borrows rejected optional provider observations carried by this terminal failure.
+    #[must_use]
+    pub fn optional_observations(&self) -> &[OptionalObservation] {
+        &self.optional_observations
+    }
     /// Redacted allowlisted detail.
     #[must_use]
     pub const fn diagnostic(&self) -> &RedactedDiagnostic {
@@ -405,6 +420,13 @@ impl ModelFailure {
     }
 
     pub(crate) fn validate_under(&self, limits: ProtocolLimits) -> Result<(), ProtocolError> {
+        if self.optional_observations.len() > limits.max_events() {
+            return Err(ProtocolError::at(
+                ProtocolErrorKind::InvalidEvent,
+                "failure.optional_observations",
+                "optional observation collection exceeds the selected event bound",
+            ));
+        }
         if let Some(observation) = &self.retry_after_observation {
             observation.validate_under(limits)?;
             observation.validate_delay(self.retry_after_millis)?;

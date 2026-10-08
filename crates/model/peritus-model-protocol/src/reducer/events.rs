@@ -57,6 +57,9 @@ impl ResponseReducer {
             ModelEvent::ProviderEvent(extension) => {
                 self.extensions.push(extension);
             }
+            ModelEvent::OptionalObservation(observation) => {
+                self.optional_observations.push(observation);
+            }
             ModelEvent::ResponseCompleted => return self.complete_response(),
             ModelEvent::Heartbeat
             | ModelEvent::ResponseStarted { .. }

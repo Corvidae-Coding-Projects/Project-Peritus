@@ -6,15 +6,16 @@ use tools::ToolState;
 use std::collections::BTreeMap;
 
 use peritus_model_protocol::{
-    EventId, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, ProtocolLimits, ProviderName,
-    ResponseId, StreamFragment, UsageCounters, UsageObservation, UsageScope,
+    EventId, FinishReason, ItemId, ItemKind, ModelEvent, ModelName, OptionalObservationKind,
+    OptionalObservationStatus, ProtocolLimits, ProviderName, ResponseId, StreamFragment,
+    UsageObservation, UsageScope, UsageTracker,
 };
 use peritus_provider_core::{ProviderCoreError, SseFrame};
 use serde_json::{Map, Value};
 
 use super::responses::FrameEvents;
 use crate::error;
-use fields::{append, integer, string, validate_top_level};
+use fields::{append, integer, string, unmapped_top_level};
 
 pub(super) fn required_tool_choice_missing(error: &ProviderCoreError) -> bool {
     error.kind() == peritus_provider_core::ProviderCoreErrorKind::MalformedStream
@@ -40,7 +41,9 @@ pub(super) struct ChatDecoder {
     refusal_bytes: Vec<u8>,
     tools: BTreeMap<u32, ToolState>,
     finish: Option<hosted::CompletedChoice>,
-    usage: Option<Box<UsageCounters>>,
+    usage: UsageTracker,
+    usage_seen: bool,
+    usage_untrusted: bool,
 }
 
 impl ChatDecoder {
@@ -70,7 +73,9 @@ impl ChatDecoder {
             refusal_bytes: Vec::new(),
             tools: BTreeMap::new(),
             finish: None,
-            usage: None,
+            usage: UsageTracker::new(),
+            usage_seen: false,
+            usage_untrusted: false,
         }
     }
 
@@ -90,7 +95,7 @@ impl ChatDecoder {
         let object = value
             .as_object()
             .ok_or_else(|| error::malformed("Chat-compatible chunk was not a JSON object"))?;
-        validate_top_level(object, self.service)?;
+        let unmapped = unmapped_top_level(object, self.service);
         if self.service == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
             && let Some(failure) = object.get("error").filter(|value| !value.is_null())
         {
@@ -125,17 +130,16 @@ impl ChatDecoder {
         self.decode_choices(&value, &mut events)?;
         if let Some(usage) = value.get("usage").filter(|value| !value.is_null()) {
             if !self.allow_usage {
-                return Err(error::malformed(
-                    "Chat-compatible usage was not declared by the profile",
-                ));
+                self.reject_usage(usage, OptionalObservationStatus::Undeclared, &mut events);
+            } else {
+                self.observe_usage(usage, &mut events);
             }
-            self.observe_usage(usage, &mut events)?;
         }
         if value.get("provider_metadata").is_some() {
             let metadata = value
                 .get("provider_metadata")
                 .ok_or_else(|| error::malformed("Chat-compatible provider metadata disappeared"))?;
-            events.push(super::ancillary::event(metadata, self.limits)?);
+            events.push(super::ancillary::event(metadata, self.limits));
         }
         let gateway_metadata = object
             .iter()
@@ -143,20 +147,22 @@ impl ChatDecoder {
             .map(|(name, value)| (name.clone(), value.clone()))
             .collect::<Map<_, _>>();
         if !gateway_metadata.is_empty() {
-            events.push(super::ancillary::event(&Value::Object(gateway_metadata), self.limits)?);
+            events.push(super::ancillary::event(&Value::Object(gateway_metadata), self.limits));
         }
         if self.service == Some(peritus_provider_core::hosted::HostedService::Groq)
             && let Some(metadata) = value.get("x_groq")
         {
-            if let Some(usage) = metadata.get("usage").filter(|value| !value.is_null())
-                && self.allow_usage
-            {
-                self.observe_usage(usage, &mut events)?;
+            if let Some(usage) = metadata.get("usage").filter(|value| !value.is_null()) {
+                if self.allow_usage {
+                    self.observe_usage(usage, &mut events);
+                } else {
+                    self.reject_usage(usage, OptionalObservationStatus::Undeclared, &mut events);
+                }
             }
             events.push(super::ancillary::event(
                 &serde_json::json!({"x_groq":metadata}),
                 self.limits,
-            )?);
+            ));
         }
         if self.service == Some(peritus_provider_core::hosted::HostedService::OpenRouter)
             && let Some(provider) = value.get("provider")
@@ -164,7 +170,14 @@ impl ChatDecoder {
             events.push(super::ancillary::event(
                 &serde_json::json!({"provider":provider}),
                 self.limits,
-            )?);
+            ));
+        }
+        if !unmapped.is_empty() {
+            events.push(super::ancillary::diagnostic(
+                &Value::Object(unmapped),
+                OptionalObservationKind::Ancillary,
+                OptionalObservationStatus::Unsupported,
+            ));
         }
         if events.is_empty() {
             events.push(ModelEvent::Heartbeat);
@@ -179,9 +192,14 @@ impl ChatDecoder {
         {
             return Err(error::malformed("Chat-compatible DONE preceded a mapped finish"));
         }
-        let mut events = Vec::with_capacity(usize::from(self.usage.is_some()) + 1);
-        if let Some(usage) = self.usage.as_deref() {
-            events.push(ModelEvent::Usage(UsageObservation::new(UsageScope::Final, *usage, None)));
+        let trusted_final = self.usage_seen && !self.usage_untrusted;
+        let mut events = Vec::with_capacity(usize::from(trusted_final) + 1);
+        if trusted_final {
+            events.push(ModelEvent::Usage(UsageObservation::new(
+                UsageScope::Final,
+                self.usage.high_water(),
+                None,
+            )));
         }
         events.push(ModelEvent::ResponseCompleted);
         Ok(events)
@@ -191,16 +209,36 @@ impl ChatDecoder {
         &mut self,
         value: &Value,
         events: &mut Vec<ModelEvent>,
-    ) -> Result<(), ProviderCoreError> {
-        let observation = fields::usage(value)?;
-        let counters = observation.counters();
-        if let Some(usage) = self.usage.as_deref_mut() {
-            *usage = counters;
-        } else {
-            self.usage = Some(Box::new(counters));
+    ) {
+        let observation = match fields::usage(value) {
+            Ok(observation) => observation,
+            Err(status) => {
+                self.reject_usage(value, status, events);
+                return;
+            }
+        };
+        let mut candidate = self.usage;
+        if candidate.observe(&observation).is_err() {
+            self.reject_usage(value, OptionalObservationStatus::Inconsistent, events);
+            return;
         }
+        self.usage = candidate;
+        self.usage_seen = true;
         events.push(ModelEvent::Usage(observation));
-        Ok(())
+    }
+
+    fn reject_usage(
+        &mut self,
+        value: &Value,
+        status: OptionalObservationStatus,
+        events: &mut Vec<ModelEvent>,
+    ) {
+        self.usage_untrusted = true;
+        events.push(super::ancillary::diagnostic(
+            value,
+            OptionalObservationKind::Usage,
+            status,
+        ));
     }
 
     fn choice(

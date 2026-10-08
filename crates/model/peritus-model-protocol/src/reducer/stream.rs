@@ -3,8 +3,9 @@
 use super::{ReducerTransition, ResponseReducer, SeenEvent};
 use crate::{
     CacheObservation, Continuation, EventEnvelope, FailureCategory, ModelEvent, ProtocolError,
-    ProtocolErrorKind, ProtocolLimits, ProviderExtension, ProviderName, RateLimitObservation,
-    ReducerTransitionFacts, ResponseId, ResumeKind, TerminalOutcome, UsageCounters, UsageTracker,
+    OptionalObservation, ProtocolErrorKind, ProtocolLimits, ProviderExtension, ProviderName,
+    RateLimitObservation, ReducerTransitionFacts, ResponseId, ResumeKind, TerminalOutcome,
+    UsageCounters, UsageTracker,
 };
 
 impl ResponseReducer {
@@ -30,6 +31,7 @@ impl ResponseReducer {
             rate_limits: Vec::new(),
             cache: Vec::new(),
             extensions: Vec::new(),
+            optional_observations: Vec::new(),
             finish: None,
             terminal: None,
         }
@@ -178,6 +180,11 @@ impl ResponseReducer {
     pub fn provider_events(&self) -> &[ProviderExtension] {
         &self.extensions
     }
+    /// Borrows rejected optional observations, including evidence attached to terminal failures.
+    #[must_use]
+    pub fn optional_observations(&self) -> &[OptionalObservation] {
+        &self.optional_observations
+    }
 
     fn duplicate(
         &mut self,
@@ -213,6 +220,7 @@ impl ResponseReducer {
                 self.response_id = response_id;
             }
             ModelEvent::ResponseFailed(failure) => {
+                self.optional_observations.extend_from_slice(failure.optional_observations());
                 return Ok(self.set_terminal(TerminalOutcome::Failed(failure)));
             }
             ModelEvent::ResponseCancelled => {

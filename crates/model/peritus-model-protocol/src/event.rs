@@ -6,8 +6,8 @@ use peritus_types::Sha256Digest;
 
 use crate::{
     CacheObservation, EventId, FinishReason, ItemId, JsonBounds, ModelFailure, ModelName,
-    ProtocolError, ProtocolErrorKind, ProtocolLimits, ProtocolVersion, ProviderExtension,
-    RateLimitObservation, ResponseId, ToolCallId, ToolName, UsageObservation,
+    OptionalObservation, ProtocolError, ProtocolErrorKind, ProtocolLimits, ProtocolVersion,
+    ProviderExtension, RateLimitObservation, ResponseId, ToolCallId, ToolName, UsageObservation,
 };
 
 /// Sensitive stream bytes that may split UTF-8 or JSON tokens.
@@ -161,6 +161,8 @@ pub enum ModelEvent {
     Finish(FinishReason),
     /// Explicit bounded ancillary provider event.
     ProviderEvent(ProviderExtension),
+    /// Bounded evidence for an optional provider datum that could not be normalized.
+    OptionalObservation(OptionalObservation),
     /// Keepalive/ping without model semantics.
     Heartbeat,
     /// Successful protocol terminal; reducer still validates all prior state.
@@ -195,6 +197,7 @@ impl ModelEvent {
             | Self::RateLimit(_)
             | Self::Cache(_)
             | Self::Finish(_)
+            | Self::OptionalObservation(_)
             | Self::Heartbeat
             | Self::ResponseCompleted
             | Self::ResponseCancelled => Ok(()),

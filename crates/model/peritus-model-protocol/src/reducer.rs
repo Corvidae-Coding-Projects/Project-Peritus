@@ -11,8 +11,8 @@ use peritus_types::Sha256Digest;
 
 use crate::{
     BoundedText, CacheObservation, CanonicalJson, CompletedToolCall, EventId, FinishReason, ItemId,
-    ItemKind, ProtocolLimits, ProviderExtension, ProviderName, RateLimitObservation, ResponseId,
-    TerminalOutcome, ToolCallId, UsageTracker,
+    ItemKind, OptionalObservation, ProtocolLimits, ProviderExtension, ProviderName,
+    RateLimitObservation, ResponseId, TerminalOutcome, ToolCallId, UsageTracker,
 };
 
 /// Fully validated completed output item.
@@ -181,6 +181,7 @@ pub struct ResponseReducer {
     rate_limits: Vec<RateLimitObservation>,
     cache: Vec<CacheObservation>,
     extensions: Vec<ProviderExtension>,
+    optional_observations: Vec<OptionalObservation>,
     finish: Option<FinishReason>,
     terminal: Option<TerminalOutcome>,
 }
@@ -201,6 +202,7 @@ impl fmt::Debug for ResponseReducer {
             .field("open_items", &self.items.len())
             .field("completed_items", &self.completed.len())
             .field("tool_calls", &self.calls.len())
+            .field("optional_observations", &self.optional_observations.len())
             .field("terminal", &self.terminal)
             .finish_non_exhaustive()
     }

@@ -261,7 +261,7 @@ impl ModelProvider for CompatibleClient {
                         "compatible.http.success_shape",
                     );
                 }
-                let response_metadata = metadata::success(&self.config, &headers)?;
+                let response_metadata = metadata::success(&self.config, &headers);
                 let stream = CompatibleStream::new(
                     body,
                     self.config.framing_limits(),

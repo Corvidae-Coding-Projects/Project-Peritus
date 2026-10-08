@@ -1,8 +1,9 @@
 //! Responses lifecycle terminals and final usage normalization.
 
 use peritus_model_protocol::{
-    FailureCategory, FinishReason, ItemKind, ModelEvent, OutcomeCertainty, Retryability,
-    TransportPhase, UsageCounters, UsageObservation, UsageScope,
+    FailureCategory, FinishReason, ItemKind, ModelEvent, OptionalObservationKind,
+    OptionalObservationStatus, OutcomeCertainty, Retryability, TransportPhase, UsageCounters,
+    UsageObservation, UsageScope,
 };
 use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
@@ -16,7 +17,7 @@ impl ResponsesDecoder {
         if !self.state.all_complete() {
             return Err(error::malformed("Responses-compatible terminal preceded item closure"));
         }
-        let mut events = usage(response, self.allow_usage)?;
+        let mut events = usage(response, self.allow_usage);
         let reason = if self.state.has_kind(ItemKind::Refusal) {
             FinishReason::Refusal
         } else if self.state.has_kind(ItemKind::ToolCall) {
@@ -51,7 +52,7 @@ impl ResponsesDecoder {
                 "compatible.response.failed"
             },
         )?;
-        let mut events = usage(response, self.allow_usage)?;
+        let mut events = usage(response, self.allow_usage);
         if incomplete {
             events.push(ModelEvent::Finish(FinishReason::Incomplete));
         }
@@ -91,33 +92,49 @@ impl ResponsesDecoder {
     }
 }
 
-fn usage(response: &Value, allowed: bool) -> Result<Vec<ModelEvent>, ProviderCoreError> {
-    let Some(value) = response.get("usage") else { return Ok(Vec::new()) };
+fn usage(response: &Value, allowed: bool) -> Vec<ModelEvent> {
+    let Some(value) = response.get("usage") else { return Vec::new() };
     if value.is_null() {
-        return Ok(Vec::new());
+        return Vec::new();
     }
     if !allowed {
-        return Err(error::malformed("Responses-compatible usage was not declared by the profile"));
+        return usage_diagnostic(value, OptionalObservationStatus::Undeclared);
     }
-    let input = optional_integer(value, "input_tokens")?;
-    let output = optional_integer(value, "output_tokens")?;
-    let total = optional_integer(value, "total_tokens")?;
+    if !value.is_object() {
+        return usage_diagnostic(value, OptionalObservationStatus::InvalidValue);
+    }
+    let (Ok(input), Ok(output), Ok(total)) = (
+        optional_integer(value, "input_tokens"),
+        optional_integer(value, "output_tokens"),
+        optional_integer(value, "total_tokens"),
+    ) else {
+        return usage_diagnostic(value, OptionalObservationStatus::InvalidValue);
+    };
     if matches!((input, output, total), (Some(a), Some(b), Some(c)) if a.checked_add(b) != Some(c))
     {
-        return Err(error::malformed("compatible usage total was inconsistent"));
+        return usage_diagnostic(value, OptionalObservationStatus::Inconsistent);
     }
-    Ok(vec![ModelEvent::Usage(UsageObservation::new(
+    vec![ModelEvent::Usage(UsageObservation::new(
         UsageScope::Final,
         UsageCounters::new(input, None, None, output, None, None, total, None),
         None,
-    ))])
+    ))]
 }
 
-fn optional_integer(value: &Value, name: &str) -> Result<Option<u64>, ProviderCoreError> {
+fn usage_diagnostic(value: &Value, status: OptionalObservationStatus) -> Vec<ModelEvent> {
+    vec![super::super::ancillary::diagnostic(
+        value,
+        OptionalObservationKind::Usage,
+        status,
+    )]
+}
+
+fn optional_integer(
+    value: &Value,
+    name: &str,
+) -> Result<Option<u64>, OptionalObservationStatus> {
     match value.get(name) {
         None | Some(Value::Null) => Ok(None),
-        Some(value) => value.as_u64().map(Some).ok_or_else(|| {
-            error::malformed("compatible usage counter was not a nonnegative integer")
-        }),
+        Some(value) => value.as_u64().map(Some).ok_or(OptionalObservationStatus::InvalidValue),
     }
 }

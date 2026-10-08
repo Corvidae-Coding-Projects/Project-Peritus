@@ -1,24 +1,42 @@
 use peritus_model_protocol::{
-    CanonicalJson, ExtensionName, JsonBounds, ModelEvent, ProtocolLimits, ProviderExtension,
+    CanonicalJson, ExtensionName, JsonBounds, ModelEvent, OptionalObservation,
+    OptionalObservationKind, OptionalObservationStatus, ProtocolLimits, ProviderExtension,
 };
-use peritus_provider_core::ProviderCoreError;
 use serde_json::Value;
 
-use crate::error;
+pub(super) fn event(value: &Value, limits: ProtocolLimits) -> ModelEvent {
+    let encoded = value.to_string();
+    let Ok(canonical) = CanonicalJson::parse(&encoded, JsonBounds::extension(limits)) else {
+        return diagnostic_bytes(
+            encoded.as_bytes(),
+            OptionalObservationKind::Ancillary,
+            OptionalObservationStatus::ExceededBound,
+        );
+    };
+    let Ok(name) = ExtensionName::new("compatible.ancillary".to_owned()) else {
+        return diagnostic_bytes(
+            encoded.as_bytes(),
+            OptionalObservationKind::Ancillary,
+            OptionalObservationStatus::InvalidValue,
+        );
+    };
+    ModelEvent::ProviderEvent(ProviderExtension::new(name, canonical))
+}
 
-pub(super) fn event(
+pub(super) fn diagnostic(
     value: &Value,
-    limits: ProtocolLimits,
-) -> Result<ModelEvent, ProviderCoreError> {
-    let bytes = serde_json::to_vec(value)
-        .map_err(|_| error::malformed("compatible ancillary serialization failed"))?;
-    let text = core::str::from_utf8(&bytes)
-        .map_err(|_| error::malformed("compatible ancillary value was not UTF-8"))?;
-    let canonical = CanonicalJson::parse(text, JsonBounds::value(limits))
-        .map_err(|_| error::malformed("compatible ancillary event exceeded bounds"))?;
-    let name = ExtensionName::new("compatible.ancillary".to_owned())
-        .map_err(|_| error::malformed("static compatible extension name was invalid"))?;
-    Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, canonical)))
+    kind: OptionalObservationKind,
+    status: OptionalObservationStatus,
+) -> ModelEvent {
+    diagnostic_bytes(value.to_string().as_bytes(), kind, status)
+}
+
+fn diagnostic_bytes(
+    value: &[u8],
+    kind: OptionalObservationKind,
+    status: OptionalObservationStatus,
+) -> ModelEvent {
+    ModelEvent::OptionalObservation(OptionalObservation::new(kind, status, value))
 }
 
 pub(super) fn safe_responses(event_type: &str) -> bool {

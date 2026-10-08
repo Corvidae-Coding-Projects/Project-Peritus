@@ -1,41 +1,43 @@
 //! Chat chunk field validation, usage, and aggregate bounds.
 
-use peritus_model_protocol::{UsageCounters, UsageObservation, UsageScope};
+use peritus_model_protocol::{
+    OptionalObservationStatus, UsageCounters, UsageObservation, UsageScope,
+};
 use peritus_provider_core::ProviderCoreError;
 use serde_json::{Map, Value};
 
 use crate::error;
 
-pub(super) fn validate_top_level(
+pub(super) fn unmapped_top_level(
     value: &Map<String, Value>,
     service: Option<peritus_provider_core::hosted::HostedService>,
-) -> Result<(), ProviderCoreError> {
-    for name in value.keys() {
-        let generic = matches!(
-            name.as_str(),
-            "id" | "object"
-                | "created"
-                | "model"
-                | "choices"
-                | "usage"
-                | "system_fingerprint"
-                | "service_tier"
-                | "provider_metadata"
-        ) || gateway_metadata(name);
-        if !generic
-            && !matches!(
-                (service, name.as_str()),
-                (Some(peritus_provider_core::hosted::HostedService::Groq), "x_groq")
-                    | (
-                        Some(peritus_provider_core::hosted::HostedService::OpenRouter),
-                        "provider" | "error"
-                    )
-            )
-        {
-            return Err(error::malformed("Chat-compatible top-level field was unmapped"));
-        }
-    }
-    Ok(())
+) -> Map<String, Value> {
+    value
+        .iter()
+        .filter(|(name, _)| {
+            let generic = matches!(
+                name.as_str(),
+                "id" | "object"
+                    | "created"
+                    | "model"
+                    | "choices"
+                    | "usage"
+                    | "system_fingerprint"
+                    | "service_tier"
+                    | "provider_metadata"
+            ) || gateway_metadata(name);
+            !generic
+                && !matches!(
+                    (service, name.as_str()),
+                    (Some(peritus_provider_core::hosted::HostedService::Groq), "x_groq")
+                        | (
+                            Some(peritus_provider_core::hosted::HostedService::OpenRouter),
+                            "provider" | "error"
+                        )
+                )
+        })
+        .map(|(name, value)| (name.clone(), value.clone()))
+        .collect()
 }
 
 pub(super) fn gateway_metadata(name: &str) -> bool {
@@ -49,13 +51,16 @@ pub(super) fn gateway_metadata(name: &str) -> bool {
     )
 }
 
-pub(super) fn usage(value: &Value) -> Result<UsageObservation, ProviderCoreError> {
+pub(super) fn usage(value: &Value) -> Result<UsageObservation, OptionalObservationStatus> {
+    if !value.is_object() {
+        return Err(OptionalObservationStatus::InvalidValue);
+    }
     let prompt = optional_integer(value, "prompt_tokens")?;
     let completion = optional_integer(value, "completion_tokens")?;
     let total = optional_integer(value, "total_tokens")?;
     if matches!((prompt, completion, total), (Some(a), Some(b), Some(c)) if a.checked_add(b) != Some(c))
     {
-        return Err(error::malformed("Chat-compatible usage total was inconsistent"));
+        return Err(OptionalObservationStatus::Inconsistent);
     }
     Ok(UsageObservation::new(
         UsageScope::Cumulative,
@@ -79,13 +84,16 @@ pub(super) fn integer(value: &Value, name: &str) -> Result<u64, ProviderCoreErro
         .ok_or_else(|| error::malformed("Chat-compatible chunk omitted a required integer"))
 }
 
-fn optional_integer(value: &Value, name: &str) -> Result<Option<u64>, ProviderCoreError> {
+fn optional_integer(
+    value: &Value,
+    name: &str,
+) -> Result<Option<u64>, OptionalObservationStatus> {
     match value.get(name) {
         None | Some(Value::Null) => Ok(None),
         Some(value) => value
             .as_u64()
             .map(Some)
-            .ok_or_else(|| error::malformed("Chat-compatible usage counter was invalid")),
+            .ok_or(OptionalObservationStatus::InvalidValue),
     }
 }
 

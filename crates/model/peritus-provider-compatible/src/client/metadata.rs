@@ -2,10 +2,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use peritus_model_protocol::{
     CanonicalJson, ExtensionName, FailureCategory, JsonBounds, ModelEvent, OutcomeCertainty,
-    ProviderExtension, ProviderName, RateLimitObservation, RateLimitWindow, ResetTime, ResponseId,
+    OptionalObservation, OptionalObservationKind, OptionalObservationStatus, ProviderExtension,
+    ProviderName, RateLimitObservation, RateLimitWindow, ResetTime, ResponseId,
     RetryAfterObservation, RetryAfterParseStatus, RetryAfterUnit, Retryability, TransportPhase,
 };
 use peritus_provider_core::{HttpHeaders, ProviderCoreError, RetryFailure, StatusCode};
+use serde_json::Value;
 
 use crate::{
     CompatibleConfig, CompatibleResetUnit, CompatibleResponseHeaders, CompatibleRetryStatuses,
@@ -15,40 +17,90 @@ use crate::{
 pub(super) fn success(
     config: &CompatibleConfig,
     headers: &HttpHeaders,
-) -> Result<Vec<ModelEvent>, ProviderCoreError> {
+) -> Vec<ModelEvent> {
     let mut events = Vec::new();
     let mappings = config.response_headers();
-    if let Some(name) = mappings.request_id()
-        && let Some(value) = text_header(headers, name.as_str(), headers.byte_count())?
-    {
-        events.push(provider_text_event("compatible.request_id", &value)?);
+    match mapped_request_id(mappings, headers) {
+        MappedRequestId::Missing => {}
+        MappedRequestId::Accepted(value) => events.push(provider_text_event(
+            "compatible.request_id",
+            value.expose_for_wire(),
+            config.protocol_limits(),
+        )),
+        MappedRequestId::Rejected(observation) => {
+            events.push(ModelEvent::OptionalObservation(observation));
+        }
     }
     let mut windows = Vec::new();
     for mapping in mappings.rate_limits() {
-        let limit = integer_header(headers, mapping.limit().as_str())?;
-        let remaining = integer_header(headers, mapping.remaining().as_str())?;
-        let reset = match integer_header(headers, mapping.reset().as_str())? {
-            Some(value) => Some(match mapping.reset_unit() {
-                CompatibleResetUnit::Milliseconds => value,
-                CompatibleResetUnit::Seconds => value
-                    .checked_mul(1_000)
-                    .ok_or_else(|| error::limit("compatible rate-limit reset overflowed"))?,
-            }),
-            None => None,
+        let mut trusted = true;
+        let (limit, limit_raw) = integer_value(
+            integer_header(
+                headers,
+                mapping.limit().as_str(),
+                OptionalObservationKind::RateLimitLimit,
+            ),
+            &mut events,
+            &mut trusted,
+        );
+        let (remaining, remaining_raw) = integer_value(
+            integer_header(
+                headers,
+                mapping.remaining().as_str(),
+                OptionalObservationKind::RateLimitRemaining,
+            ),
+            &mut events,
+            &mut trusted,
+        );
+        let (reset_value, reset_raw) = integer_value(
+            integer_header(
+                headers,
+                mapping.reset().as_str(),
+                OptionalObservationKind::RateLimitReset,
+            ),
+            &mut events,
+            &mut trusted,
+        );
+        if !trusted {
+            continue;
         }
-        .map(ResetTime::AfterMillis);
+        let reset = match reset_value {
+            Some(value) => {
+                let normalized = match mapping.reset_unit() {
+                    CompatibleResetUnit::Milliseconds => Some(value),
+                    CompatibleResetUnit::Seconds => value.checked_mul(1_000),
+                };
+                let Some(normalized) = normalized else {
+                    events.push(ModelEvent::OptionalObservation(OptionalObservation::new(
+                        OptionalObservationKind::RateLimitReset,
+                        OptionalObservationStatus::Unrepresentable,
+                        reset_raw.unwrap_or(&[]),
+                    )));
+                    continue;
+                };
+                Some(ResetTime::AfterMillis(normalized))
+            }
+            None => None,
+        };
         if limit.is_some() || remaining.is_some() || reset.is_some() {
-            let window = RateLimitWindow::new(mapping.dimension().clone(), limit, remaining, reset)
-                .map_err(|_| error::malformed("compatible rate-limit headers were inconsistent"))?;
-            windows.push(window);
+            match RateLimitWindow::new(mapping.dimension().clone(), limit, remaining, reset) {
+                Ok(window) => windows.push(window),
+                Err(_) => events.push(ModelEvent::OptionalObservation(
+                    OptionalObservation::new(
+                        OptionalObservationKind::RateLimitWindow,
+                        OptionalObservationStatus::Inconsistent,
+                        &rate_limit_evidence([limit_raw, remaining_raw, reset_raw]),
+                    ),
+                )),
+            }
         }
     }
     if !windows.is_empty() {
-        let observation = RateLimitObservation::new(windows)
-            .map_err(|_| error::malformed("compatible rate-limit observation was invalid"))?;
-        events.push(ModelEvent::RateLimit(observation));
+        if let Ok(observation) = RateLimitObservation::new(windows) {
+            events.push(ModelEvent::RateLimit(observation));
+        }
     }
-    Ok(events)
+    events
 }
 
 pub(super) fn http_failure(
@@ -61,7 +113,12 @@ pub(super) fn http_failure(
     let status_number = status.as_u16();
     let (category, certainty, retryability, code) =
         classify(status_number, config.retry_statuses());
-    let request_id = mapped_request_id(config.response_headers(), headers)?;
+    let mapped_request_id = mapped_request_id(config.response_headers(), headers);
+    let (request_id, rejected_request_id) = match mapped_request_id {
+        MappedRequestId::Missing => (None, None),
+        MappedRequestId::Accepted(value) => (Some(value), None),
+        MappedRequestId::Rejected(observation) => (None, Some(observation)),
+    };
     let mut failure = error::failure(
         provider,
         category,
@@ -77,6 +134,9 @@ pub(super) fn http_failure(
         failure = failure.with_retry_after_observation(observation).map_err(|_| {
             error::malformed("compatible retry-after observation was inconsistent")
         })?;
+    }
+    if let Some(observation) = rejected_request_id {
+        failure = failure.with_optional_observation(observation);
     }
     Ok(ModelEvent::ResponseFailed(failure))
 }
@@ -338,52 +398,135 @@ const fn classify(
     }
 }
 
+const MAX_MAPPED_REQUEST_ID_BYTES: usize = 512;
+const MAX_MAPPED_INTEGER_BYTES: usize = 64;
+
+enum MappedRequestId {
+    Missing,
+    Accepted(ResponseId),
+    Rejected(OptionalObservation),
+}
+
+enum MappedInteger<'a> {
+    Missing,
+    Accepted { value: u64, raw: &'a [u8] },
+    Rejected(OptionalObservation),
+}
+
 fn mapped_request_id(
     mappings: &CompatibleResponseHeaders,
     headers: &HttpHeaders,
-) -> Result<Option<ResponseId>, ProviderCoreError> {
-    let Some(name) = mappings.request_id() else { return Ok(None) };
-    text_header(headers, name.as_str(), headers.byte_count())?
-        .map(|value| {
-            ResponseId::new(value)
-                .map_err(|_| error::malformed("mapped compatible request identity was invalid"))
-        })
-        .transpose()
-}
-
-fn integer_header(headers: &HttpHeaders, name: &str) -> Result<Option<u64>, ProviderCoreError> {
-    let Some(value) = text_header(headers, name, 64)? else { return Ok(None) };
-    value
-        .parse::<u64>()
-        .map(Some)
-        .map_err(|_| error::malformed("mapped compatible integer header was malformed"))
-}
-
-fn text_header(
-    headers: &HttpHeaders,
-    name: &str,
-    maximum: usize,
-) -> Result<Option<String>, ProviderCoreError> {
-    let Some(value) = headers.first(name) else { return Ok(None) };
-    let Some(bytes) = value.nonsensitive_bytes() else { return Ok(None) };
-    if bytes.len() > maximum {
-        return Err(error::limit("mapped compatible response header exceeded its bound"));
+) -> MappedRequestId {
+    let Some(name) = mappings.request_id() else { return MappedRequestId::Missing };
+    let Some(value) = headers.first(name.as_str()) else { return MappedRequestId::Missing };
+    let Some(bytes) = value.nonsensitive_bytes() else { return MappedRequestId::Missing };
+    if bytes.len() > MAX_MAPPED_REQUEST_ID_BYTES {
+        return MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::ExceededBound,
+            bytes,
+        ));
     }
-    core::str::from_utf8(bytes)
-        .map(str::to_owned)
-        .map(Some)
-        .map_err(|_| error::malformed("mapped compatible response header was not UTF-8"))
+    let Ok(text) = core::str::from_utf8(bytes) else {
+        return MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidEncoding,
+            bytes,
+        ));
+    };
+    match ResponseId::new(text.to_owned()) {
+        Ok(value) => MappedRequestId::Accepted(value),
+        Err(_) => MappedRequestId::Rejected(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidValue,
+            bytes,
+        )),
+    }
 }
 
-fn provider_text_event(name: &str, value: &str) -> Result<ModelEvent, ProviderCoreError> {
-    let name = ExtensionName::new(name.to_owned())
-        .map_err(|_| error::malformed("static compatible extension name was invalid"))?;
-    let encoded = serde_json::to_string(value)
-        .map_err(|_| error::malformed("compatible observation serialization failed"))?;
-    let value = CanonicalJson::parse(
-        &encoded,
-        JsonBounds::value(peritus_model_protocol::ProtocolLimits::PRODUCTION),
-    )
-    .map_err(|_| error::malformed("compatible provider observation exceeded bounds"))?;
-    Ok(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)))
+fn integer_header<'a>(
+    headers: &'a HttpHeaders,
+    name: &str,
+    kind: OptionalObservationKind,
+) -> MappedInteger<'a> {
+    let Some(value) = headers.first(name) else { return MappedInteger::Missing };
+    let Some(bytes) = value.nonsensitive_bytes() else { return MappedInteger::Missing };
+    if bytes.len() > MAX_MAPPED_INTEGER_BYTES {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::ExceededBound,
+            bytes,
+        ));
+    }
+    let Ok(text) = core::str::from_utf8(bytes) else {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::InvalidEncoding,
+            bytes,
+        ));
+    };
+    if text.is_empty() || !text.bytes().all(|byte| byte.is_ascii_digit()) {
+        return MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::InvalidValue,
+            bytes,
+        ));
+    }
+    match text.parse::<u64>() {
+        Ok(value) => MappedInteger::Accepted { value, raw: bytes },
+        Err(_) => MappedInteger::Rejected(OptionalObservation::new(
+            kind,
+            OptionalObservationStatus::Unrepresentable,
+            bytes,
+        )),
+    }
+}
+
+fn integer_value<'a>(
+    value: MappedInteger<'a>,
+    events: &mut Vec<ModelEvent>,
+    trusted: &mut bool,
+) -> (Option<u64>, Option<&'a [u8]>) {
+    match value {
+        MappedInteger::Missing => (None, None),
+        MappedInteger::Accepted { value, raw } => (Some(value), Some(raw)),
+        MappedInteger::Rejected(observation) => {
+            *trusted = false;
+            events.push(ModelEvent::OptionalObservation(observation));
+            (None, None)
+        }
+    }
+}
+
+fn rate_limit_evidence(values: [Option<&[u8]>; 3]) -> Vec<u8> {
+    let mut evidence = Vec::new();
+    for value in values {
+        let value = value.unwrap_or(&[]);
+        evidence.extend_from_slice(&u64::try_from(value.len()).unwrap_or(u64::MAX).to_le_bytes());
+        evidence.extend_from_slice(value);
+    }
+    evidence
+}
+
+fn provider_text_event(
+    name: &str,
+    value: &str,
+    limits: peritus_model_protocol::ProtocolLimits,
+) -> ModelEvent {
+    let encoded = Value::String(value.to_owned()).to_string();
+    let Ok(value_json) = CanonicalJson::parse(&encoded, JsonBounds::extension(limits)) else {
+        return ModelEvent::OptionalObservation(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::ExceededBound,
+            value.as_bytes(),
+        ));
+    };
+    let Ok(name) = ExtensionName::new(name.to_owned()) else {
+        return ModelEvent::OptionalObservation(OptionalObservation::new(
+            OptionalObservationKind::MappedRequestId,
+            OptionalObservationStatus::InvalidValue,
+            value.as_bytes(),
+        ));
+    };
+    ModelEvent::ProviderEvent(ProviderExtension::new(name, value_json))
 }
