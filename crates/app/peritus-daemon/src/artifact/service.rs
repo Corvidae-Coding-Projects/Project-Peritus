@@ -298,12 +298,20 @@ impl ArtifactAuthority {
                     store.metadata(digest).map_err(store_error)
                 })?;
                 if let Some(durable) = durable {
-                    if durable.digest() != digest || durable.size() != artifact.byte_size() {
-                        return Err(corrupt(
-                            "restart artifact metadata disagrees with the application catalog",
+                    if durable.digest() != digest
+                        || durable.size() != artifact.byte_size()
+                        || durable.encryption().is_encrypted()
+                    {
+                        crate::diagnostic::report(&format!(
+                            "application artifact remains unresolved after restart because immutable store metadata is incompatible: artifact_id={} catalog_digest={} store_digest={} catalog_size={} store_size={} encryption={:?}",
+                            hex(artifact.artifact_id().as_bytes()),
+                            digest.to_hex(),
+                            durable.digest().to_hex(),
+                            artifact.byte_size(),
+                            durable.size(),
+                            durable.encryption(),
                         ));
-                    }
-                    if durable.is_referenceable() {
+                    } else if durable.is_referenceable() {
                         let event = publication::event_id_for(
                             artifact.artifact_id(),
                             artifact.byte_size(),
@@ -390,7 +398,10 @@ impl ArtifactAuthority {
         let reader = self
             .store
             .with_foreground(|store| store.open_read(digest).map_err(store_error))?;
-        if reader.metadata().size() != catalog.byte_size() || reader.metadata().digest() != digest {
+        if reader.metadata().size() != catalog.byte_size()
+            || reader.metadata().digest() != digest
+            || reader.metadata().encryption().is_encrypted()
+        {
             return Err(corrupt("artifact store metadata disagrees with application catalog"));
         }
         let media = CanonicalMediaType::new(

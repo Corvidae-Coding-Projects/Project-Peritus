@@ -42,13 +42,16 @@ impl ArtifactAuthority {
         if catalog.byte_size() > maximum_bytes {
             return Err(resource_limit("attachment exceeds the requested read limit"));
         }
-        let mut reader = self
-            .store
-            .open_read(ArtifactDigest::from_sha256(catalog.digest()))
-            .map_err(store_error)?;
+        let mut reader = self.store.with_foreground(|store| {
+            store
+                .open_read(ArtifactDigest::from_sha256(catalog.digest()))
+                .map_err(store_error)
+        })?;
         // The physical object is shared by digest. Its first publisher's media label is
         // not the logical attachment's label; scope authorization binds that separately.
-        if reader.metadata().size() != catalog.byte_size() {
+        if reader.metadata().size() != catalog.byte_size()
+            || reader.metadata().encryption().is_encrypted()
+        {
             return Err(invalid("attachment metadata disagrees with immutable store"));
         }
         let mut bytes = Vec::with_capacity(
@@ -75,5 +78,47 @@ impl ArtifactAuthority {
             return Err(invalid("attachment content does not match its immutable receipt"));
         }
         Ok((catalog, bytes))
+    }
+
+    /// Authorizes one completed scoped artifact for out-of-owner text validation.
+    ///
+    /// This serialized owner path performs only journal/scope checks. The caller opens, hashes,
+    /// and scans the immutable object on an owned blocking worker.
+    pub(crate) fn authorize_scoped_text(
+        &self,
+        journal: &SqliteJournal,
+        scope: ArtifactScope,
+        artifact: ArtifactId,
+    ) -> Result<ApplicationArtifact, DaemonError> {
+        let catalog = journal
+            .application_artifact(artifact)
+            .map_err(journal_error)?
+            .ok_or_else(|| invalid("request-source artifact is unavailable"))?;
+        scope::authorize(journal, scope, &catalog)?;
+        if catalog.state() != ApplicationArtifactState::Available {
+            return Err(invalid("request-source upload is not complete"));
+        }
+        if !matches!(catalog.media_type(), "text/plain" | "application/octet-stream") {
+            return Err(invalid("request source is not plain text"));
+        }
+        Ok(catalog)
+    }
+
+    /// Authorizes one completed scoped artifact without assigning media semantics.
+    pub(crate) fn authorize_scoped_artifact(
+        &self,
+        journal: &SqliteJournal,
+        scope: ArtifactScope,
+        artifact: ArtifactId,
+    ) -> Result<ApplicationArtifact, DaemonError> {
+        let catalog = journal
+            .application_artifact(artifact)
+            .map_err(journal_error)?
+            .ok_or_else(|| invalid("attachment artifact is unavailable"))?;
+        scope::authorize(journal, scope, &catalog)?;
+        if catalog.state() != ApplicationArtifactState::Available {
+            return Err(invalid("attachment upload is not complete"));
+        }
+        Ok(catalog)
     }
 }
