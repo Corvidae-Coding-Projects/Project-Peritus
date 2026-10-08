@@ -35,9 +35,9 @@ COMMANDS:
                  --idempotency-key <KEY> [--no-expected-revision] [--receipt <FILE>]
   events watch --topic <TOPIC>... [--after <CURSOR>] [--window <N>]
                [--count <N>] [--snapshot-acceptable] [--receipt <FILE>]
-  artifact get --artifact <ID> --output <FILE> [--force]
+  artifact get --artifact <ID> --output <FILE> [--force] [--receipt <FILE>]
   artifact put --artifact <ID> --input <FILE> --media-type <TYPE>
-               [--chunk-size <BYTES>]
+               [--chunk-size <BYTES>] [--receipt <FILE>]
   artifact cancel --transfer <ID> --artifact <ID>
   prompt answer --binding <FILE> (--signed-decision <FILE> | --text <TEXT> |
                 --selection <ID> | --confirm <true|false> | --secret-reference <REF>)
@@ -135,6 +135,7 @@ pub struct ArtifactGetArgs {
     pub(crate) artifact: [u8; 16],
     pub(crate) output: PathBuf,
     pub(crate) force: bool,
+    pub(crate) receipt: Option<PathBuf>,
 }
 
 pub struct ArtifactPutArgs {
@@ -142,6 +143,7 @@ pub struct ArtifactPutArgs {
     pub(crate) input: PathBuf,
     pub(crate) media_type: String,
     pub(crate) chunk_size: u32,
+    pub(crate) receipt: Option<PathBuf>,
 }
 
 pub struct ArtifactCancelArgs {

@@ -43,6 +43,7 @@ fn parse_get(parser: &mut Parser) -> Result<Command, CliError> {
     let mut artifact = None;
     let mut output = None;
     let mut force = false;
+    let mut receipt = None;
     while let Some(option) = parser.peek_utf8()? {
         match option {
             "--artifact" => {
@@ -61,6 +62,10 @@ fn parse_get(parser: &mut Parser) -> Result<Command, CliError> {
                 }
                 force = true;
             }
+            "--receipt" => {
+                parser.pop();
+                set_once(&mut receipt, parser.value_path("--receipt")?, "--receipt")?;
+            }
             _ => return Err(CliError::usage(format!("unknown artifact get option: {option}"))),
         }
     }
@@ -68,6 +73,7 @@ fn parse_get(parser: &mut Parser) -> Result<Command, CliError> {
         artifact: required(artifact, "--artifact")?,
         output: required(output, "--output")?,
         force,
+        receipt,
     }))
 }
 
@@ -76,6 +82,7 @@ fn parse_put(parser: &mut Parser) -> Result<Command, CliError> {
     let mut input = None;
     let mut media_type = None;
     let mut chunk_size = 64 * 1024;
+    let mut receipt = None;
     while let Some(option) = parser.peek_utf8()? {
         match option {
             "--artifact" => {
@@ -95,6 +102,10 @@ fn parse_put(parser: &mut Parser) -> Result<Command, CliError> {
                 parser.pop();
                 chunk_size = positive_u32(&parser.value_utf8("--chunk-size")?, "--chunk-size")?;
             }
+            "--receipt" => {
+                parser.pop();
+                set_once(&mut receipt, parser.value_path("--receipt")?, "--receipt")?;
+            }
             _ => return Err(CliError::usage(format!("unknown artifact put option: {option}"))),
         }
     }
@@ -103,5 +114,6 @@ fn parse_put(parser: &mut Parser) -> Result<Command, CliError> {
         input: required(input, "--input")?,
         media_type: required(media_type, "--media-type")?,
         chunk_size,
+        receipt,
     }))
 }

@@ -152,6 +152,34 @@ pub(crate) async fn replace<T: Serialize>(path: &Path, value: &T) -> Result<(), 
     result
 }
 
+pub(crate) async fn publish_replace(candidate: &Path, destination: &Path) -> Result<(), CliError> {
+    replace_file(candidate, destination)
+        .await
+        .map_err(|error| CliError::local_io("replace artifact output", Some(destination.to_path_buf()), error))
+}
+
+pub(crate) async fn publish_new(candidate: &Path, destination: &Path) -> Result<(), CliError> {
+    publish_new_file(candidate, destination)
+        .await
+        .map_err(|error| CliError::local_io("publish artifact output", Some(destination.to_path_buf()), error))
+}
+
+pub(crate) async fn sync_directory(path: &Path) -> Result<(), CliError> {
+    sync_parent(path).await
+}
+
+pub(crate) async fn remove_durable(path: &Path) -> Result<(), CliError> {
+    match tokio::fs::remove_file(path).await {
+        Ok(()) => sync_parent(path).await,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(CliError::local_io(
+            "remove published artifact temporary",
+            Some(path.to_path_buf()),
+            error,
+        )),
+    }
+}
+
 fn encode<T: Serialize>(path: &Path, value: &T) -> Result<Vec<u8>, CliError> {
     let mut bytes = serde_json::to_vec_pretty(value).map_err(|error| {
         CliError::runtime(
@@ -184,10 +212,9 @@ fn sidecar_path(path: &Path, suffix: &str) -> PathBuf {
 
 #[cfg(not(windows))]
 async fn replace_path(temporary: &Path, destination: &Path) -> Result<(), CliError> {
-    tokio::fs::rename(temporary, destination).await.map_err(|error| {
+    replace_file(temporary, destination).await.map_err(|error| {
         CliError::local_io("publish receipt checkpoint", Some(destination.to_path_buf()), error)
-    })?;
-    sync_parent(destination).await
+    })
 }
 
 #[cfg(windows)]
@@ -196,6 +223,41 @@ async fn replace_path(temporary: &Path, destination: &Path) -> Result<(), CliErr
     reason = "atomic receipt replacement uses the documented Windows move primitive"
 )]
 async fn replace_path(temporary: &Path, destination: &Path) -> Result<(), CliError> {
+    replace_file(temporary, destination).await.map_err(|error| {
+        CliError::local_io("publish receipt checkpoint", Some(destination.to_path_buf()), error)
+    })
+}
+
+#[cfg(not(windows))]
+async fn replace_file(temporary: &Path, destination: &Path) -> std::io::Result<()> {
+    tokio::fs::rename(temporary, destination).await?;
+    sync_parent_io(destination).await
+}
+
+#[cfg(windows)]
+async fn replace_file(temporary: &Path, destination: &Path) -> std::io::Result<()> {
+    atomic_move(temporary, destination, true)
+}
+
+#[cfg(not(windows))]
+async fn publish_new_file(candidate: &Path, destination: &Path) -> std::io::Result<()> {
+    tokio::fs::hard_link(candidate, destination).await?;
+    sync_parent_io(destination).await?;
+    tokio::fs::remove_file(candidate).await?;
+    sync_parent_io(destination).await
+}
+
+#[cfg(windows)]
+async fn publish_new_file(candidate: &Path, destination: &Path) -> std::io::Result<()> {
+    atomic_move(candidate, destination, false)
+}
+
+#[cfg(windows)]
+#[allow(
+    unsafe_code,
+    reason = "atomic receipt and artifact publication use the documented Windows move primitive"
+)]
+fn atomic_move(temporary: &Path, destination: &Path, replace: bool) -> std::io::Result<()> {
     use std::os::windows::ffi::OsStrExt as _;
     use windows_sys::Win32::Storage::FileSystem::{
         MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH, MoveFileExW,
@@ -212,19 +274,16 @@ async fn replace_path(temporary: &Path, destination: &Path) -> Result<(), CliErr
         .chain(Some(0))
         .collect::<Vec<_>>();
     // SAFETY: both encoded paths are NUL-terminated and remain live for this synchronous call.
+    let flags = MOVEFILE_WRITE_THROUGH | if replace { MOVEFILE_REPLACE_EXISTING } else { 0 };
     if unsafe {
         MoveFileExW(
             temporary.as_ptr(),
             destination.as_ptr(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            flags,
         )
     } == 0
     {
-        Err(CliError::local_io(
-            "publish receipt checkpoint",
-            None,
-            std::io::Error::last_os_error(),
-        ))
+        Err(std::io::Error::last_os_error())
     } else {
         Ok(())
     }
@@ -232,16 +291,23 @@ async fn replace_path(temporary: &Path, destination: &Path) -> Result<(), CliErr
 
 #[cfg(not(windows))]
 async fn sync_parent(path: &Path) -> Result<(), CliError> {
+    sync_parent_io(path).await.map_err(|error| {
+        let parent = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        CliError::local_io("sync receipt directory", Some(parent.to_path_buf()), error)
+    })
+}
+
+#[cfg(not(windows))]
+async fn sync_parent_io(path: &Path) -> std::io::Result<()> {
     let parent = path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    let directory = tokio::fs::File::open(parent).await.map_err(|error| {
-        CliError::local_io("open receipt directory", Some(parent.to_path_buf()), error)
-    })?;
-    directory.sync_all().await.map_err(|error| {
-        CliError::local_io("sync receipt directory", Some(parent.to_path_buf()), error)
-    })
+    let directory = tokio::fs::File::open(parent).await?;
+    directory.sync_all().await
 }
 
 #[cfg(windows)]
