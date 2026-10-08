@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4107,
-        "tip_oid": "74977def456bc6d43ad1aef995aa2281ae576622",
-        "prefix_sha256": "ed8f26dc1ba1c7c39ba427ca047d98907629611bb8d97e1d42d7ef36106f4ee1"
+        "sequence": 4108,
+        "tip_oid": "eb55c33a8bb92b927a3354c593796ae1a1227e71",
+        "prefix_sha256": "cded8392006de9ab5d9bc4c17f5a2c86ebf5b62fc87a1c921f39a91f8e65451e"
       },
       "NWAR": {
         "sequence": 39,
@@ -22217,12 +22217,13 @@
       "display_id": 550,
       "title": "[L472] Compatible Retry-After parsing silently loses provider scheduling information",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L472.\n\n- Evidence: `crates/model/peritus-provider-compatible/src/client/metadata.rs:66,72-82,166-172,183-196`, `src/client.rs:211-228`, `src/config.rs:196-200` in the same crate.\n- Behavior: Retry-After must fit 64 bytes and parse as an integer number of seconds no greater than 86,400. Larger integers or any other representation, including an HTTP-date, become None rather than a retained unsupported scheduling observation. A retained delay above the default two-second policy causes RetryPolicy::plan to return an error before the already-built normalized HTTP failure can be emitted.\n- Consequence: one response can cause an immediate default backoff after its provider-required wait was discarded; another can become generic InvalidRetry instead of preserving RateLimited/status/acceptance facts. This is independent of an elapsed horizon and can drive repeated rejections or prevent automatic recovery. Actual HTTP-date/provider behavior was not queried; this is a parser/policy finding from source.\n- Repair direction: retain provider scheduling data with explicit units/parse status, support its documented forms, and schedule cancellable recovery without throwing away the normalized rejection when local policy cannot schedule it. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.704319259Z",
-      "updated_at": "2026-10-08T06:10:31.124053533Z",
+      "updated_at": "2026-10-08T06:11:47.678479852Z",
+      "closed_at": "2026-10-08T06:11:47.675702828Z",
       "labels": [
         "daily-driving-limiter"
       ],
