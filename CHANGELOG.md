@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L620] Evidence storage retains a five-second contention timer and fixed SQLite representation bounds (#675)
 - [L618] Windows helper narrows target status and hides post-activation failure causes (#674)
 - [L454] F0 wraps complete growing checkpoints in a fixed eight-MiB opaque payload (#533)
 - [L617] Windows session observations and release predicates assume unmeasured native facts (#673)
