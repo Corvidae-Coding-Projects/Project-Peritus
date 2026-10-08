@@ -6,6 +6,7 @@ use crate::{
     UnsupportedConclusion,
 };
 use peritus_harness::domain::ComponentKind;
+use sha2::{Digest, Sha256};
 
 const CLAIM_ID_DOMAIN: &[u8] = b"peritus-e2-report-claim-id-v1\0";
 
@@ -58,7 +59,7 @@ impl ReportClaim {
     ///
     /// # Errors
     ///
-    /// Rejects missing/noncanonical support or inferential/recommendation language.
+    /// Rejects missing or noncanonical supporting provenance.
     pub fn observation(
         statement: DiagnosticText,
         support: Vec<EvidenceCitation>,
@@ -67,15 +68,6 @@ impl ReportClaim {
             &support,
             "observation support must be canonical and nonempty",
         )?;
-        let lower = statement.as_str().to_ascii_lowercase();
-        if [" might ", " likely ", " probably ", " recommend", " should "]
-            .iter()
-            .any(|marker| lower.contains(marker))
-        {
-            return Err(claim_error(
-                "observation statement contains an unsupported language marker",
-            ));
-        }
         Self::derive(ClaimContent::Observation { statement, support })
     }
 
@@ -227,10 +219,102 @@ impl ReportClaim {
     }
 
     fn derive(content: ClaimContent) -> Result<Self, DebuggerError> {
-        let mut bytes = Vec::new();
-        super::canonical::encode_claim_content(&mut bytes, &content);
-        Ok(Self { id: ClaimId::derive(CLAIM_ID_DOMAIN, &bytes)?, content })
+        let id = derive_claim_id(&content)?;
+        Ok(Self { id, content })
     }
+}
+
+fn derive_claim_id(content: &ClaimContent) -> Result<ClaimId, DebuggerError> {
+    let mut hash = Sha256::new();
+    hash.update(CLAIM_ID_DOMAIN);
+    match content {
+        ClaimContent::Observation { statement, support } => {
+            hash.update([1]);
+            encode_text(&mut hash, statement);
+            encode_citations(&mut hash, support);
+        }
+        ClaimContent::Inference {
+            statement,
+            support,
+            contrary,
+            alternatives,
+            confidence,
+            category,
+        } => {
+            hash.update([2]);
+            encode_text(&mut hash, statement);
+            encode_citations(&mut hash, support);
+            encode_citations(&mut hash, contrary);
+            encode_alternatives(&mut hash, alternatives);
+            hash.update(confidence.value().to_be_bytes());
+            encode_confidence_basis(&mut hash, confidence.basis());
+            hash.update(category.tag().to_be_bytes());
+        }
+        ClaimContent::Recommendation { statement, support, parent, affected_components } => {
+            hash.update([3]);
+            encode_text(&mut hash, statement);
+            encode_citations(&mut hash, support);
+            hash.update(parent.as_bytes());
+            encode_len(&mut hash, affected_components.len());
+            for component in affected_components {
+                hash.update([component.tag()]);
+            }
+        }
+        ClaimContent::Unsupported(value) => {
+            hash.update([4]);
+            hash.update(value.proposal_digest().as_bytes());
+            hash.update([value.reason() as u8]);
+        }
+    }
+    let digest: [u8; 32] = hash.finalize().into();
+    let mut identity = [0_u8; 16];
+    identity.copy_from_slice(&digest[..16]);
+    ClaimId::new(identity)
+}
+
+fn encode_text(hash: &mut Sha256, text: &DiagnosticText) {
+    encode_blob(hash, text.as_str().as_bytes());
+}
+
+fn encode_citations(hash: &mut Sha256, values: &[EvidenceCitation]) {
+    encode_len(hash, values.len());
+    for value in values {
+        value.encode_to(|part| hash.update(part));
+    }
+}
+
+fn encode_alternatives(hash: &mut Sha256, value: &AlternativeCauses) {
+    match value {
+        AlternativeCauses::NoneKnown => hash.update([0]),
+        AlternativeCauses::Categories(values) => {
+            hash.update([1]);
+            encode_len(hash, values.len());
+            for value in values {
+                hash.update(value.tag().to_be_bytes());
+            }
+        }
+    }
+}
+
+fn encode_confidence_basis(hash: &mut Sha256, value: crate::ConfidenceBasis) {
+    for count in [
+        value.support_count(),
+        value.contrary_count(),
+        value.ambiguity_count(),
+        value.recurrence_count(),
+        value.maximum_causal_distance(),
+    ] {
+        hash.update(count.to_be_bytes());
+    }
+}
+
+fn encode_len(hash: &mut Sha256, length: usize) {
+    hash.update(u64::try_from(length).unwrap_or(u64::MAX).to_be_bytes());
+}
+
+fn encode_blob(hash: &mut Sha256, value: &[u8]) {
+    encode_len(hash, value.len());
+    hash.update(value);
 }
 
 fn validate_nonempty_canonical(

@@ -11,37 +11,115 @@ use std::sync::Arc;
 use super::ConfidenceMillionths;
 
 const CAUSE_ID_DOMAIN: &[u8] = b"peritus-e2-root-cause-id-v1\0";
+const DIAGNOSTIC_TEXT_DOMAIN: &[u8] = b"peritus-e2-diagnostic-text-v1\0";
 
-/// Validated bounded diagnostic prose.
+/// Validated complete diagnostic prose.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct DiagnosticText(String);
+pub struct DiagnosticText {
+    value: String,
+    display_digest: Sha256Digest,
+}
+
+/// Exact continuation cursor for bounded diagnostic-text display.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct DiagnosticTextCursor {
+    text_digest: Sha256Digest,
+    byte_offset: u64,
+}
+
+impl DiagnosticTextCursor {
+    /// Returns the complete-text digest binding this cursor.
+    #[must_use]
+    pub const fn text_digest(self) -> Sha256Digest {
+        self.text_digest
+    }
+    /// Returns the exact UTF-8 byte offset of the next display page.
+    #[must_use]
+    pub const fn byte_offset(self) -> u64 {
+        self.byte_offset
+    }
+}
+
+/// One bounded, lossless UTF-8 display page.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DiagnosticTextPage<'a> {
+    text: &'a str,
+    next: Option<DiagnosticTextCursor>,
+}
+
+impl<'a> DiagnosticTextPage<'a> {
+    /// Borrows this page without allocating or truncating a character.
+    #[must_use]
+    pub const fn text(self) -> &'a str {
+        self.text
+    }
+    /// Returns the exact cursor for the remaining complete text.
+    #[must_use]
+    pub const fn next(self) -> Option<DiagnosticTextCursor> {
+        self.next
+    }
+}
 
 impl DiagnosticText {
-    /// Maximum UTF-8 bytes retained by one statement.
-    pub const MAX_BYTES: usize = 4_096;
+    /// Maximum UTF-8 bytes returned by one display-page read.
+    pub const DISPLAY_PAGE_BYTES: usize = 4_096;
 
-    /// Validates nonempty, bounded text without NUL or non-whitespace controls.
+    /// Validates complete nonempty text without NUL or non-whitespace controls.
     ///
     /// # Errors
     ///
-    /// Rejects empty, oversized, or control-bearing text.
+    /// Rejects empty or control-bearing text without truncating accepted prose.
     pub fn new(value: impl Into<String>) -> Result<Self, DebuggerError> {
         let value = value.into();
         if value.is_empty()
-            || value.len() > Self::MAX_BYTES
             || value.chars().any(|character| {
                 character == '\0' || (character.is_control() && !character.is_whitespace())
             })
         {
-            Err(report_error("diagnostic text is empty, excessive, or contains controls"))
+            Err(report_error("diagnostic text is empty or contains invalid controls"))
         } else {
-            Ok(Self(value))
+            let mut hash = Sha256::new();
+            hash.update(DIAGNOSTIC_TEXT_DOMAIN);
+            hash.update(value.as_bytes());
+            Ok(Self {
+                value,
+                display_digest: Sha256Digest::new(hash.finalize().into()),
+            })
         }
     }
     /// Borrows validated text.
     #[must_use]
     pub fn as_str(&self) -> &str {
-        &self.0
+        &self.value
+    }
+    /// Returns the first exact cursor for bounded display.
+    #[must_use]
+    pub const fn display_cursor(&self) -> DiagnosticTextCursor {
+        DiagnosticTextCursor { text_digest: self.display_digest, byte_offset: 0 }
+    }
+    /// Reads one UTF-8 safe display page while retaining the complete statement.
+    #[must_use]
+    pub fn display_page(
+        &self,
+        cursor: DiagnosticTextCursor,
+    ) -> Option<DiagnosticTextPage<'_>> {
+        if cursor.text_digest != self.display_digest {
+            return None;
+        }
+        let start = usize::try_from(cursor.byte_offset).ok()?;
+        if start >= self.value.len() || !self.value.is_char_boundary(start) {
+            return None;
+        }
+        let mut end = start.saturating_add(Self::DISPLAY_PAGE_BYTES).min(self.value.len());
+        while end > start && !self.value.is_char_boundary(end) {
+            end -= 1;
+        }
+        let text = self.value.get(start..end)?;
+        let next = (end < self.value.len()).then_some(DiagnosticTextCursor {
+            text_digest: self.display_digest,
+            byte_offset: u64::try_from(end).unwrap_or(u64::MAX),
+        });
+        Some(DiagnosticTextPage { text, next })
     }
 }
 
