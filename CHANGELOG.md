@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L040] Build concurrency heuristic is enforced as an execution ceiling (#139)
 - [L612] Windows secret reader rejects material exactly at its advertised one-MiB boundary (#668)
 - [L443] F0 silently evicts rollback targets from the long-lived production pointer (#522)
 - [L039] Tool authority and mode gates can suppress process work (#138)
