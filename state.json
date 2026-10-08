@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3892,
-        "tip_oid": "87b7ae621c140bd07308099ff0f5c84ff3513148",
-        "prefix_sha256": "d9e77e35dc1b5f94853f966f7ab55feae17673612b16725fa61b91915b6028e2"
+        "sequence": 3893,
+        "tip_oid": "423ff5074c457f797a3f35df86a38fa558bcd325",
+        "prefix_sha256": "d423cea8ce6297cd5b9f4d27715d8cf17538310aae34abfdc62804c33bdb53b1"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3149,
+  "next_comment_id": 3150,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23222,7 +23222,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.490380676Z",
-      "updated_at": "2026-10-06T13:27:50.492808193Z",
+      "updated_at": "2026-10-08T00:09:58.171176152Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -23233,6 +23233,15 @@
           "content": "Systemic repair plan for L424: E2 complete-report caps make long or recurrent evidence unanalyzable without lossless partitioning.\n\nOwning contract and implementation boundary: crates/analysis/peritus-debugger/src/clustering/engine.rs:146-249; src/causal/analyzer.rs:112-138,223-264; src/causal/rules.rs:141-148; src/report/validation.rs:159-187,210-273,299-326. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPreserve every citation in durable indexed evidence and represent large patterns/reports with lossless partitions and continuation cursors. Distinguish a display/work-page bound from rejection of the complete diagnosis. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "af1fb8ee-3bd8-400e-a7ff-c581336bc84f": {
+          "display_id": 3149,
+          "author": "6ME5",
+          "content": "Code complete in commit 50e79a773. Removed cumulative diagnosis rejection caps through lossless deterministic pattern partitioning, complete report continuation pages and bounded content-addressed page/index artifacts. Preserved environment/revision/provider provenance and canonical report identity; publication/recovery covers the full dependency tree. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:09:58.162007908Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/DRQJJZquZ7lG1DPrd/c4g40dnYONqZMWOmm/2UZUPyL8MO9BlfdGKVneBfaSIQxUG8PEVb32OQtqoIim6ZzAw=="
         }
       }
     },
