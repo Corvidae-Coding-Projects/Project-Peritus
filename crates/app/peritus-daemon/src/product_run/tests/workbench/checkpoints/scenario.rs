@@ -2,21 +2,16 @@
 
 use super::*;
 
+mod defaults;
 mod restart;
+pub(super) use defaults::{checkpoint_scenario, checkpoint_scenario_with_selection};
 
-pub(super) async fn checkpoint_scenario(
-    user_conflict: bool,
-    crash: Option<crate::product_run::workbench::RewindFaultPoint>,
-    mode: WorkbenchRewindMode,
-) {
-    checkpoint_scenario_with_selection(user_conflict, crash, mode, WorkbenchFileRange::All).await;
-}
-
-pub(super) async fn checkpoint_scenario_with_selection(
+pub(super) async fn checkpoint_scenario_with_name(
     user_conflict: bool,
     crash: Option<crate::product_run::workbench::RewindFaultPoint>,
     mode: WorkbenchRewindMode,
     selection: WorkbenchFileRange,
+    name: String,
 ) {
     let container = tempfile::tempdir().expect("container");
     let folder = container.path().join("folder");
@@ -93,10 +88,9 @@ pub(super) async fn checkpoint_scenario_with_selection(
         workspace,
         9,
         4,
-        WorkbenchIntent::CreateCheckpoint(
-            WorkbenchCheckpointName::new("before Peritus edit".to_owned()).expect("name"),
-        ),
+        WorkbenchIntent::CreateCheckpoint(WorkbenchCheckpointName::new(name).expect("name")),
     );
+    restart::assert_legacy_manifest_admission(&service, &checkpoint_command, &folder).await;
     let AppResponsePayload::WorkbenchCheckpoint(checkpoint_receipt) =
         restart::create_checkpoint_compatible(&service, &checkpoint_command, selection).await
     else {
@@ -390,7 +384,7 @@ pub(super) async fn checkpoint_scenario_with_selection(
         assert_eq!(fs::read(folder.join("note.txt")).unwrap(), b"Peritus owned edit\n");
     }
 
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
     drop(service);
     restart::verify(&state, child, mode, expected_status, &checkpoint_receipt);
 }

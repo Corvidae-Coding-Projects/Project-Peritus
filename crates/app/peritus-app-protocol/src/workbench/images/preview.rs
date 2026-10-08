@@ -34,7 +34,7 @@ impl WorkbenchImagePreview {
     pub const fn request(&self) -> &WorkbenchImageRequest {
         &self.request
     }
-    /// Returns original encoded metadata and decoded dimensions/frame count.
+    /// Returns original encoded metadata, structural dimensions/frame count, and evidence strength.
     #[must_use]
     pub const fn image(&self) -> WorkbenchImageMetadata {
         self.image

@@ -262,6 +262,14 @@ pub(super) const FILE_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
+        name: "WorkbenchAttachFileSourceIntent",
+        rust_type: "WorkbenchIntent",
+        fields: &[
+            kind("WorkbenchIntent", "\"attachFileSource\"", &["attachFileSource"]),
+            nested("preview", "WorkbenchFileImportPreview"),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchContextFileSource",
         rust_type: "WorkbenchContextSource",
         fields: &[

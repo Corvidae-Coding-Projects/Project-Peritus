@@ -4,7 +4,7 @@ use super::{
     AppModel, AppRequestPayload, Effect, NoticeLevel, PendingRequest, WorkbenchIntent,
     WorkbenchMode,
 };
-use crate::image_import::{ImageBytes, UploadStep};
+use crate::image_import::{ImageBytes, ImageUploadStep};
 use peritus_app_protocol::{
     ArtifactMetadata, ControlOperationId, ProductModelChoice, WellKnownProtocolFeature,
     WorkbenchImagePreview, WorkbenchImageRequest, WorkbenchInputText, WorkbenchQuery,
@@ -68,7 +68,7 @@ pub(super) struct ReadBinding {
 struct Upload {
     image: ImageBytes,
     metadata: ArtifactMetadata,
-    awaiting: UploadStep,
+    awaiting: ImageUploadStep,
 }
 
 impl AppModel {

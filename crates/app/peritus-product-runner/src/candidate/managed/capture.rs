@@ -134,10 +134,9 @@ fn retain_objects(root: &Path, tree: &str, index: &str) -> Result<(), ProductRun
 }
 
 pub(super) fn nested_head(root: &Path) -> Result<Option<String>, ProductRunnerError> {
-    let output = super::repository_command(root)?
-        .args(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"])
-        .output()
-        .map_err(failure)?;
+    let mut command = super::repository_command(root)?;
+    command.args(["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
+    let output = command_output(command)?;
     if output.status.success() {
         return text(output.stdout).map(Some);
     }
@@ -147,14 +146,34 @@ pub(super) fn nested_head(root: &Path) -> Result<Option<String>, ProductRunnerEr
     // Only a symbolic HEAD whose branch does not exist is an unborn repository.
     // Corruption, detached invalid HEADs and repository access errors still surface.
     let reference = text(git(root, &["symbolic-ref", "--quiet", "HEAD"], None)?)?;
-    let branch = super::repository_command(root)?
-        .args(["show-ref", "--verify", "--quiet", &reference])
-        .output()
-        .map_err(failure)?;
+    let mut command = super::repository_command(root)?;
+    command.args(["show-ref", "--verify", "--quiet", &reference]);
+    let branch = command_output(command)?;
     if branch.status.code() == Some(1) {
         return Ok(None);
     }
     Err(failure("nested repository HEAD does not resolve to a valid object"))
+}
+
+struct CommandOutput {
+    status: std::process::ExitStatus,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
+fn command_output(command: std::process::Command) -> Result<CommandOutput, ProductRunnerError> {
+    let mut stdout = Vec::new();
+    let completed = crate::candidate::process::stream_current(
+        command,
+        None,
+        &mut stdout,
+        "inspect nested candidate repository",
+    )?;
+    Ok(CommandOutput {
+        status: completed.status,
+        stdout,
+        stderr: completed.stderr,
+    })
 }
 
 pub(super) fn build_tree(
@@ -178,28 +197,20 @@ pub(super) fn private_git(
     arguments: &[&str],
     input: Option<&[u8]>,
 ) -> Result<Vec<u8>, ProductRunnerError> {
-    use std::io::Write as _;
-    use std::process::Stdio;
-    let mut child = super::repository_command(root)?
+    let mut command = super::repository_command(root)?;
+    command
         .args(arguments)
         .env("GIT_INDEX_FILE", index)
-        .env("GIT_LITERAL_PATHSPECS", "1")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(failure)?;
-    if let Some(bytes) = input {
-        child
-            .stdin
-            .take()
-            .ok_or_else(|| failure("missing private Git input"))?
-            .write_all(bytes)
-            .map_err(failure)?;
+        .env("GIT_LITERAL_PATHSPECS", "1");
+    let mut stdout = Vec::new();
+    let completed = crate::candidate::process::stream_current(
+        command,
+        input,
+        &mut stdout,
+        "capture candidate with a private Git index",
+    )?;
+    if !completed.status.success() {
+        return Err(failure(String::from_utf8_lossy(&completed.stderr)));
     }
-    let output = child.wait_with_output().map_err(failure)?;
-    if !output.status.success() {
-        return Err(failure(String::from_utf8_lossy(&output.stderr)));
-    }
-    Ok(output.stdout)
+    Ok(stdout)
 }

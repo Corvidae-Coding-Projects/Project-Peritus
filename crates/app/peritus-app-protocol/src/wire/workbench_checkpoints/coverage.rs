@@ -79,9 +79,15 @@ pub(super) fn write_captured(
                 w.write_u64(end)?;
             }
             WorkbenchFileRange::Lines { first, last } => {
-                w.write_u16(2)?;
-                w.write_u32(first)?;
-                w.write_u32(last)?;
+                if let (Ok(first), Ok(last)) = (u32::try_from(first), u32::try_from(last)) {
+                    w.write_u16(2)?;
+                    w.write_u32(first)?;
+                    w.write_u32(last)?;
+                } else {
+                    w.write_u16(3)?;
+                    w.write_u64(first)?;
+                    w.write_u64(last)?;
+                }
             }
             WorkbenchFileRange::All => {
                 return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, w.len()));
@@ -110,10 +116,25 @@ pub(super) fn read_captured(
     }
     let mut ranges = Vec::with_capacity(count);
     for _ in 0..count {
+        let range_offset = r.offset();
         let selection = match r.read_u16()? {
             1 => WorkbenchFileRange::Bytes { start: r.read_u64()?, end: r.read_u64()? },
-            2 => WorkbenchFileRange::Lines { first: r.read_u32()?, last: r.read_u32()? },
-            _ => return unknown(offset),
+            2 => WorkbenchFileRange::Lines {
+                first: u64::from(r.read_u32()?),
+                last: u64::from(r.read_u32()?),
+            },
+            3 => {
+                let first = r.read_u64()?;
+                let last = r.read_u64()?;
+                if u32::try_from(first).is_ok() && u32::try_from(last).is_ok() {
+                    return Err(CodecError::at(
+                        CodecErrorKind::InvalidDomainValue,
+                        range_offset,
+                    ));
+                }
+                WorkbenchFileRange::Lines { first, last }
+            }
+            _ => return unknown(range_offset),
         };
         ranges.push(invalid(
             offset,

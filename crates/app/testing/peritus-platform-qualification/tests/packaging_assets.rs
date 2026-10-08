@@ -72,13 +72,35 @@ fn windows_supervisor_template_keeps_exact_direct_command_placeholders() {
 
     for required in [
         "<Command>@PERITUSD@</Command>",
-        "<Arguments>serve --config &quot;@CONFIG_FILE@&quot;</Arguments>",
-        "<RestartOnFailure>",
+        "<Arguments>supervise --config &quot;@CONFIG_FILE@&quot;</Arguments>",
+        "<AllowHardTerminate>false</AllowHardTerminate>",
+        "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>",
     ] {
         assert!(xml.contains(required), "missing Windows supervisor control: {required}");
     }
     assert!(!xml.contains("cmd.exe /c"));
     assert!(!xml.contains("powershell -Command"));
+    assert!(!xml.contains("<RestartOnFailure>"));
+    assert!(!xml.contains("<Count>"));
+    assert!(!xml.contains("<AllowHardTerminate>true</AllowHardTerminate>"));
+
+    let uninstall = windows_script(bundled_packaging_assets(), "Uninstall-Peritus.ps1");
+    assert!(uninstall.contains("& $daemon package-handoff --config $configuration"));
+    assert!(uninstall.contains("if ($LASTEXITCODE -ne 0)"));
+}
+
+#[test]
+fn supervisor_templates_have_no_restart_exhaustion_or_forced_stop_deadline() {
+    let assets = bundled_packaging_assets();
+    let linux = asset_text(assets, "linux/peritus.service");
+    assert!(linux.contains("StartLimitIntervalSec=0"));
+    assert!(linux.contains("Restart=on-failure"));
+    assert!(linux.contains("TimeoutStopSec=infinity"));
+    assert!(!linux.contains("StartLimitBurst="));
+
+    let macos = asset_text(assets, "macos/com.corvidae.peritus.plist.in");
+    assert!(macos.contains("<key>SuccessfulExit</key>\n        <false/>"));
+    assert!(macos.contains("<key>ExitTimeOut</key>\n    <integer>0</integer>"));
 }
 
 fn windows_script<'a>(
@@ -91,4 +113,15 @@ fn windows_script<'a>(
         .find(|asset| asset.relative_path() == relative_path)
         .expect("Windows lifecycle asset must be embedded");
     str::from_utf8(asset.bytes()).expect("Windows lifecycle asset must be UTF-8")
+}
+
+fn asset_text<'a>(
+    assets: &'a [peritus_platform_qualification::BundledPackagingAsset],
+    relative_path: &str,
+) -> &'a str {
+    let asset = assets
+        .iter()
+        .find(|asset| asset.relative_path() == relative_path)
+        .expect("packaging asset must be embedded");
+    str::from_utf8(asset.bytes()).expect("packaging asset must be UTF-8")
 }

@@ -1,5 +1,29 @@
 use super::*;
 
+fn options(root: &std::path::Path) -> Options {
+    Options {
+        port: 4173,
+        root: root.to_owned(),
+        assets: root.join("assets"),
+        config_file: root.join("config/webui.toml"),
+        state_file: root.join("state/workspace.json"),
+        daemon_config_root: root.join("config"),
+        product_state_root: root.join("product-state"),
+        daemon_config: None,
+        endpoint: None,
+        cli: PathBuf::from("peritus"),
+    }
+}
+
+fn only_entry(directory: &std::path::Path) -> PathBuf {
+    let entries = std::fs::read_dir(directory)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect::<Vec<_>>();
+    assert_eq!(entries.len(), 1, "expected one operation-store entry");
+    entries.into_iter().next().unwrap()
+}
+
 #[test]
 fn nesting_rejects_other_roots_and_cycles() {
     let a = tempfile::tempdir().unwrap();
@@ -25,6 +49,7 @@ fn nesting_rejects_other_roots_and_cycles() {
         id: "one".into(),
         conversation: "conversation-one".into(),
         run: "run-one".into(),
+        native: None,
         project: "a".into(),
         parent: None,
         title: "one".into(),
@@ -43,168 +68,197 @@ fn nesting_rejects_other_roots_and_cycles() {
 }
 
 #[test]
-fn operation_ledger_retires_completed_records_before_pending_records() {
-    let mut workspace = Workspace::default();
-    for index in 0..=MAX_OPERATION_RECORDS {
-        workspace.operations.insert(
-            format!("operation-{index:05}"),
-            Operation {
-                input: serde_json::json!({"command":"test"}),
-                prepared: None,
-                result: (index == 0).then(|| serde_json::json!({"ok":true})),
-            },
-        );
-    }
+fn operation_records_are_namespaced_and_first_publication_never_clobbers() {
+    let root = tempfile::tempdir().expect("root");
+    let state_file = root.path().join("state/workspace.json");
+    let first = operation_store::OperationStore::open(&state_file, "workspace-one").unwrap();
+    let second = operation_store::OperationStore::open(&state_file, "workspace-two").unwrap();
+    first
+        .owner("same-operation")
+        .unwrap()
+        .insert(serde_json::json!({"command":"first"}))
+        .unwrap();
+    second
+        .owner("same-operation")
+        .unwrap()
+        .insert(serde_json::json!({"command":"second"}))
+        .unwrap();
 
-    prune_operations(&mut workspace);
-
-    assert_eq!(workspace.operations.len(), MAX_OPERATION_RECORDS);
-    assert!(!workspace.operations.contains_key("operation-00000"));
-    assert!(workspace.operations.contains_key("operation-00001"));
-}
-
-#[test]
-fn operation_ledger_never_discards_an_unresolved_outcome() {
-    let mut workspace = Workspace::default();
-    for index in 0..MAX_OPERATION_RECORDS {
-        workspace.operations.insert(
-            format!("operation-{index:05}"),
-            Operation {
-                input: serde_json::json!({"command":"test"}),
-                prepared: None,
-                result: None,
-            },
-        );
-    }
-
+    assert_eq!(first.get("same-operation").unwrap().unwrap().input["command"], "first");
+    assert_eq!(second.get("same-operation").unwrap().unwrap().input["command"], "second");
     assert!(
-        insert_operation(
-            &mut workspace,
-            "one-too-many".into(),
-            serde_json::json!({"command":"test"}),
-        )
-        .is_err()
+        first
+            .owner("same-operation")
+            .unwrap()
+            .insert(serde_json::json!({"command":"conflict"}))
+            .is_err()
     );
-    prune_operations(&mut workspace);
-
-    assert_eq!(workspace.operations.len(), MAX_OPERATION_RECORDS);
-    assert!(workspace.operations.values().all(|record| record.result.is_none()));
-    assert!(!workspace.operations.contains_key("one-too-many"));
 }
 
 #[test]
-fn completed_native_stage_remains_while_its_parent_outcome_is_unresolved() {
-    let mut workspace = Workspace::default();
-    workspace.operations.insert(
-        "original".into(),
-        Operation {
-            input: serde_json::json!({"command":"send"}),
-            prepared: Some(serde_json::json!({"version":1})),
-            result: None,
-        },
-    );
-    workspace.operations.insert(
-        "daemon:original:workbench:create".into(),
-        Operation {
-            input: serde_json::json!({"command":"daemon-request"}),
-            prepared: None,
-            result: Some(serde_json::json!({"accepted":true})),
-        },
+fn pending_pages_are_physically_bounded_by_an_immutable_highwater() {
+    let root = tempfile::tempdir().expect("root");
+    let store = operation_store::OperationStore::open(
+        &root.path().join("state/workspace.json"),
+        "workspace",
+    )
+    .unwrap();
+    for index in 0..=operation_store::PAGE_RECORDS {
+        store
+            .owner(&format!("operation-{index}"))
+            .unwrap()
+            .insert(serde_json::json!({"command":"test","index":index}))
+            .unwrap();
+    }
+    let first = store.pending_page(None, None).unwrap();
+    assert_eq!(first.operations.len(), operation_store::PAGE_RECORDS);
+    assert!(first.cursor.is_some());
+    store
+        .owner("later-operation")
+        .unwrap()
+        .insert(serde_json::json!({"command":"test"}))
+        .unwrap();
+    let second = store
+        .pending_page(first.cursor.as_deref(), Some(&first.snapshot))
+        .unwrap();
+    assert_eq!(second.operations.len(), 1);
+    assert_eq!(second.operations[0].0, "operation-128");
+    assert!(second.cursor.is_none());
+
+    let stable = operation_store::OperationStore::open(
+        &root.path().join("state/workspace.json"),
+        "workspace",
+    )
+    .unwrap();
+    assert!(
+        stable
+            .pending_page(first.cursor.as_deref(), Some(&first.snapshot))
+            .is_ok(),
+        "ordinary reconciliation must retain the index generation"
     );
 
-    assert!(has_unresolved_native_parent(&workspace, "daemon:original:workbench:create"));
-    workspace.operations.get_mut("original").unwrap().result =
-        Some(serde_json::json!({"done":true}));
-    assert!(!has_unresolved_native_parent(&workspace, "daemon:original:workbench:create"));
+    let namespace = only_entry(&root.path().join("state/workspace.operations"));
+    std::fs::remove_file(namespace.join("pending-index.sqlite3")).unwrap();
+    let rebuilt = operation_store::OperationStore::open(
+        &root.path().join("state/workspace.json"),
+        "workspace",
+    )
+    .unwrap();
+    let error = rebuilt
+        .pending_page(first.cursor.as_deref(), Some(&first.snapshot))
+        .err()
+        .expect("a rebuilt index rejects its old continuation");
+    assert!(error.0.contains("obsolete index generation"));
 }
 
 #[test]
-fn startup_recovers_native_operations_that_never_reached_submission() {
-    let mut workspace = Workspace::default();
-    workspace.operations.insert(
-        "send-one".into(),
-        Operation { input: serde_json::json!({"command":"send"}), prepared: None, result: None },
-    );
-    workspace.operations.insert(
-        "send-two".into(),
-        Operation { input: serde_json::json!({"command":"send"}), prepared: None, result: None },
-    );
-    workspace.operations.insert(
-        "daemon:send-two".into(),
-        Operation {
-            input: serde_json::json!({"command":"daemon-request"}),
-            prepared: None,
-            result: None,
-        },
-    );
-
-    assert!(recover_unsubmitted_native_operations(&mut workspace));
-    let recovered = workspace.operations["send-one"].result.as_ref().expect("recovered");
-    assert_eq!(recovered["submitted"], false);
-    assert_eq!(recovered["retryable"], true);
-    assert!(workspace.operations["send-two"].result.is_none());
-}
-
-#[test]
-fn malformed_workspace_state_is_quarantined_and_does_not_block_open() {
+fn index_only_operation_identity_remains_reviewable_without_inventing_input() {
     let root = tempfile::tempdir().expect("root");
     let state_file = root.path().join("state/workspace.json");
-    std::fs::create_dir_all(state_file.parent().unwrap()).expect("state directory");
-    std::fs::write(&state_file, b"{malformed").expect("malformed state");
-    let options = Options {
-        port: 4173,
-        root: root.path().to_owned(),
-        assets: root.path().join("assets"),
-        config_file: root.path().join("config/webui.toml"),
-        state_file: state_file.clone(),
-        daemon_config_root: root.path().join("config"),
-        product_state_root: root.path().join("product-state"),
-        daemon_config: None,
-        endpoint: None,
-        cli: PathBuf::from("peritus"),
-    };
+    let store = operation_store::OperationStore::open(&state_file, "workspace").unwrap();
+    store
+        .owner("lost-operation")
+        .unwrap()
+        .insert(serde_json::json!({"command":"send","text":"lost"}))
+        .unwrap();
+    let namespace = only_entry(&root.path().join("state/workspace.operations"));
+    let pending = only_entry(&namespace.join("pending"));
+    std::fs::remove_file(pending).unwrap();
 
-    let app = App::open(options, 4173).expect("fresh web workspace");
+    let reopened = operation_store::OperationStore::open(&state_file, "workspace").unwrap();
+    let page = reopened.pending_page(None, None).unwrap();
+    assert_eq!(page.operations.len(), 1);
+    assert_eq!(page.operations[0].0, "lost-operation");
+    assert_eq!(page.operations[0].1["command"], "recovery-unknown");
+    assert!(page.operations[0].1.get("text").is_none());
 
-    assert_eq!(app.snapshot().expect("workspace").projects.len(), 1);
-    assert!(state_file.parent().unwrap().join(".quarantine/workspace.json.corrupt-0").is_file());
+    reopened
+        .owner("lost-operation")
+        .unwrap()
+        .acknowledge_missing_evidence(serde_json::json!({
+            "reviewed":true,
+            "acceptance":null
+        }))
+        .unwrap();
+    let receipt = reopened.get("lost-operation").unwrap().unwrap();
+    assert_eq!(receipt.input["command"], "recovery-unknown");
+    assert_eq!(receipt.result.unwrap()["acceptance"], serde_json::Value::Null);
+    assert!(reopened.pending_page(None, None).unwrap().operations.is_empty());
 }
 
 #[test]
-fn prior_workspace_without_durable_ownership_is_quarantined() {
+fn legacy_operations_migrate_before_metadata_drops_the_embedded_ledger() {
     let root = tempfile::tempdir().expect("root");
-    let state_file = root.path().join("state/workspace.json");
-    std::fs::create_dir_all(state_file.parent().unwrap()).expect("state directory");
-    let prior = serde_json::json!({
-        "projects":[{
-            "id":"project", "root":root.path(), "name":"project",
-            "repository":root.path(), "closed":false
-        }],
-        "sessions":[{
-            "settings":{}, "id":"former-run", "project":"project", "parent":null,
-            "title":"Former conversation", "closed":false
-        }],
-        "operations":{},
+    let options = options(root.path());
+    let state_file = options.state_file.clone();
+    std::fs::create_dir_all(options.state_file.parent().unwrap()).unwrap();
+    let legacy = serde_json::json!({
+        "identity":"workspace",
+        "projects":[],
+        "sessions":[],
+        "operations":{
+            "retained":{"input":{"command":"config"},"prepared":null,"result":null}
+        },
         "attachments":{}
     });
-    std::fs::write(&state_file, serde_json::to_vec(&prior).unwrap()).expect("prior state");
-    let options = Options {
-        port: 4173,
-        root: root.path().to_owned(),
-        assets: root.path().join("assets"),
-        config_file: root.path().join("config/webui.toml"),
-        state_file: state_file.clone(),
-        daemon_config_root: root.path().join("config"),
-        product_state_root: root.path().join("product-state"),
-        daemon_config: None,
-        endpoint: None,
-        cli: PathBuf::from("peritus"),
-    };
+    let bytes = serde_json::to_vec(&legacy).unwrap();
+    std::fs::write(&options.state_file, &bytes).unwrap();
 
-    let app = App::open(options, 4173).expect("fresh web workspace");
+    let app = App::open(options, 4173).expect("migrated workspace");
 
-    let workspace = app.snapshot().expect("workspace");
-    assert_eq!(workspace.sessions.len(), 1);
-    assert_ne!(workspace.sessions[0].id, "former-run");
-    assert!(state_file.parent().unwrap().join(".quarantine/workspace.json.corrupt-0").is_file());
+    assert_eq!(app.operation("retained").unwrap().unwrap().input["command"], "config");
+    let published: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&state_file).unwrap()).unwrap();
+    assert_eq!(published["schema_version"], 2);
+    assert!(published["workspace"].get("operations").is_none());
+    let legacy_digest = crate::files::revision(&bytes);
+    assert!(
+        state_file
+            .parent()
+            .unwrap()
+            .join(format!("workspace-migrations/{legacy_digest}.legacy.json"))
+            .is_file()
+    );
+}
+
+#[test]
+fn malformed_workspace_state_blocks_open_without_replacing_the_original() {
+    let root = tempfile::tempdir().expect("root");
+    let options = options(root.path());
+    let state_file = options.state_file.clone();
+    std::fs::create_dir_all(options.state_file.parent().unwrap()).unwrap();
+    let original = b"{malformed";
+    std::fs::write(&options.state_file, original).unwrap();
+
+    assert!(App::open(options, 4173).is_err());
+    assert_eq!(std::fs::read(state_file).unwrap(), original);
+}
+
+#[test]
+fn startup_settles_only_native_operations_that_never_reached_submission() {
+    let root = tempfile::tempdir().expect("root");
+    let app = App::open(options(root.path()), 4173).unwrap();
+    app.record_operation(
+        "send-one".into(),
+        serde_json::json!({"command":"send"}),
+    )
+    .unwrap();
+    app.record_operation(
+        "send-two".into(),
+        serde_json::json!({"command":"send"}),
+    )
+    .unwrap();
+    app.record_operation(
+        "daemon:send-two:workbench:queue".into(),
+        serde_json::json!({"command":"daemon-request"}),
+    )
+    .unwrap();
+    drop(app);
+
+    let reopened = App::open(options(root.path()), 4173).unwrap();
+
+    let recovered = reopened.operation("send-one").unwrap().unwrap().result.unwrap();
+    assert_eq!(recovered["submitted"], false);
+    assert_eq!(recovered["retryable"], true);
+    assert!(reopened.operation("send-two").unwrap().unwrap().result.is_none());
 }

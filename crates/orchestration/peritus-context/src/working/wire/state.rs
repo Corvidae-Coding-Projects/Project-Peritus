@@ -2,7 +2,9 @@
 
 use peritus_codec::{CanonicalReader, CanonicalWriter};
 use super::{WorkingCodecError, count, entry, fields, reader, writer};
-use super::super::{WorkingBinding, WorkingEntryStatus, WorkingError, WorkingLimits, WorkingState};
+use super::super::{
+    ObservationSource, WorkingBinding, WorkingEntryStatus, WorkingError, WorkingLimits, WorkingState,
+};
 use super::super::validation::{invalidate_entries, validate_graph, validate_references};
 
 /// Encodes exact retained state, including counterevidence and invalidation boundaries.
@@ -18,6 +20,24 @@ pub fn encode_working_state(state: &WorkingState) -> Result<Vec<u8>, WorkingCode
     for source in &state.observations { fields::write_source(&mut w, *source)?; }
     w.write_collection_len(state.entries.len())?;
     for record in &state.entries { entry::write_entry(&mut w, record)?; }
+    super::protocol::write_protocol(&mut w, &state.protocol)?;
+    Ok(w.into_bytes())
+}
+
+/// Encodes the bounded mutable model while an external verified index owns the observation prefix.
+///
+/// # Errors
+/// Rejects model fields wider than the canonical allocation envelope.
+pub fn encode_working_state_core(state: &WorkingState) -> Result<Vec<u8>, WorkingCodecError> {
+    let mut w = writer(*b"PWMC")?;
+    write_limits(&mut w, state.limits())?;
+    fields::write_environment(&mut w, state.environment())?;
+    w.write_u64(state.revision())?;
+    w.write_u64(state.through_observation())?;
+    w.write_collection_len(state.entries.len())?;
+    for record in &state.entries {
+        entry::write_entry(&mut w, record)?;
+    }
     super::protocol::write_protocol(&mut w, &state.protocol)?;
     Ok(w.into_bytes())
 }
@@ -57,7 +77,52 @@ pub fn decode_working_state(bytes: &[u8], expected: WorkingBinding, maximum: Wor
     Ok(state)
 }
 
-fn validate_snapshot(state: &WorkingState) -> Result<(), WorkingCodecError> {
+/// Restores a bounded mutable model against an independently verified contiguous source index.
+///
+/// # Errors
+/// Rejects mismatched source counts, unsupported bytes, invalid graphs, or cross-lineage state.
+pub fn decode_working_state_core(
+    bytes: &[u8],
+    observations: &[ObservationSource],
+    expected: WorkingBinding,
+    maximum: WorkingLimits,
+) -> Result<WorkingState, WorkingCodecError> {
+    let mut r = reader(bytes, *b"PWMC")?;
+    let limits = read_limits(&mut r, maximum)?;
+    let environment = fields::read_environment(&mut r, limits)?;
+    if !expected.same_lineage(environment.binding()) {
+        return Err(WorkingError::BindingMismatch.into());
+    }
+    let mut state = WorkingState::new(environment, limits)?;
+    state.revision = r.read_u64()?;
+    let through = r.read_u64()?;
+    if through != observations.len() as u64 {
+        return Err(WorkingCodecError::InvalidValue);
+    }
+    state.observations.try_reserve_exact(observations.len()).map_err(|_| {
+        WorkingCodecError::State(WorkingError::Capacity)
+    })?;
+    for (index, source) in observations.iter().copied().enumerate() {
+        if source.id().get() != index as u64 + 1 {
+            return Err(WorkingError::SourceSequence.into());
+        }
+        state.observations.push(source);
+    }
+    let entries = count(&mut r, limits.entries(), entry::MINIMUM_ENTRY_BYTES)?;
+    for _ in 0..entries {
+        let record = entry::read_entry(&mut r, limits)?;
+        if state.entries.last().is_some_and(|old| old.id() >= record.id()) {
+            return Err(WorkingError::NonCanonicalOrder.into());
+        }
+        state.entries.push(record);
+    }
+    state.protocol = super::protocol::read_protocol(&mut r, limits)?;
+    r.finish()?;
+    validate_snapshot(&state)?;
+    Ok(state)
+}
+
+pub(super) fn validate_snapshot(state: &WorkingState) -> Result<(), WorkingCodecError> {
     if state.revision < state.through_observation()
         || (!state.entries.is_empty() && state.revision == state.through_observation())
     { return Err(WorkingCodecError::InvalidValue); }
@@ -78,13 +143,13 @@ fn validate_snapshot(state: &WorkingState) -> Result<(), WorkingCodecError> {
     Ok(())
 }
 
-fn write_limits(w: &mut CanonicalWriter, limits: WorkingLimits) -> Result<(), WorkingCodecError> {
+pub(super) fn write_limits(w: &mut CanonicalWriter, limits: WorkingLimits) -> Result<(), WorkingCodecError> {
     for value in [limits.observations(), limits.entries(), limits.entry_bytes(), limits.links(), limits.operations()] {
         w.write_collection_len(value)?;
     }
     Ok(())
 }
-fn read_limits(r: &mut CanonicalReader<'_>, maximum: WorkingLimits) -> Result<WorkingLimits, WorkingCodecError> {
+pub(super) fn read_limits(r: &mut CanonicalReader<'_>, maximum: WorkingLimits) -> Result<WorkingLimits, WorkingCodecError> {
     // These five values advertise ceilings rather than declaring following collections.
     Ok(WorkingLimits::new(count(r, maximum.observations(), 0)?, count(r, maximum.entries(), 0)?, count(r, maximum.entry_bytes(), 0)?, count(r, maximum.links(), 0)?, count(r, maximum.operations(), 0)?)?)
 }

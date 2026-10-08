@@ -46,6 +46,73 @@ fn restart_preserves_exact_frames_and_command_resolution() {
 }
 
 #[test]
+fn lost_acknowledgement_resolves_then_later_progress_and_reopen_keep_exact_receipts() {
+    let temp = TempDir::new().expect("temporary directory");
+    let mut journal = open(&temp);
+    let aggregate = key(AggregateKind::Approval, 14);
+    let command_id = command(50);
+    let digest = Sha256Digest::new([50; 32]);
+    let make_plan = || {
+        plan(
+            command_id,
+            digest,
+            HeadExpectation::Absent(aggregate),
+            vec![draft(aggregate, 1, event(50), None, 4)],
+        )
+    };
+    assert_eq!(
+        journal
+            .append_losing_acknowledgement(make_plan())
+            .expect_err("simulated lost acknowledgement")
+            .kind(),
+        JournalErrorKind::IndeterminateCommit
+    );
+    let resolved = journal.resolve_command(command_id, digest).expect("resolve command");
+    assert!(matches!(resolved, CommandResolution::Committed(_)));
+    let replay = journal.append(make_plan()).expect("exact replay");
+    assert_eq!(replay.first_position(), 1);
+    assert_eq!(replay.last_position(), 1);
+
+    let head = journal.head(aggregate).expect("head after replay").expect("committed head");
+    journal
+        .append(plan(
+            command(52),
+            Sha256Digest::new([52; 32]),
+            HeadExpectation::Present(head),
+            vec![draft(aggregate, 2, event(52), Some(event(50)), 6)],
+        ))
+        .expect("later command progresses after lost acknowledgement");
+
+    let conflict = plan(
+        command_id,
+        Sha256Digest::new([51; 32]),
+        HeadExpectation::Absent(key(AggregateKind::Kernel, 15)),
+        vec![draft(key(AggregateKind::Kernel, 15), 1, event(51), None, 5)],
+    );
+    assert_eq!(
+        journal.append(conflict).expect_err("digest conflict").kind(),
+        JournalErrorKind::IdempotencyConflict
+    );
+    assert_eq!(journal.integrity_scan().expect("integrity").event_count(), 2);
+    drop(journal);
+
+    let reopened = open(&temp);
+    let CommandResolution::Committed(original) =
+        reopened.resolve_command(command_id, digest).expect("original receipt after reopen")
+    else {
+        panic!("original lost acknowledgement must remain exactly resolvable");
+    };
+    assert_eq!((original.first_position(), original.last_position()), (1, 1));
+    let CommandResolution::Committed(later) = reopened
+        .resolve_command(command(52), Sha256Digest::new([52; 32]))
+        .expect("later receipt after reopen")
+    else {
+        panic!("later command must remain exactly resolvable");
+    };
+    assert_eq!((later.first_position(), later.last_position()), (2, 2));
+}
+
+#[test]
 fn corruption_in_payload_or_head_is_detected() {
     let temp = TempDir::new().expect("temporary directory");
     let mut journal = open(&temp);

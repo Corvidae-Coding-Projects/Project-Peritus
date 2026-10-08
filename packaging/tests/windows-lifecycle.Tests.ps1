@@ -88,11 +88,37 @@ function Test-TaskOwnership {
     $script:taskCalls = @()
     Stop-PeritusPackage -ProgramRoot $program -RemoveTask
     Assert-That (($script:taskCalls -join ';') -eq "stop:$daemon;remove:$daemon") 'Uninstall task routing was not scoped to the installation.'
+
+    New-Item -ItemType Directory -Path (Split-Path -Parent $daemon) -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $bundle 'bin/peritusd.exe') -Destination $daemon
+    $stopRecord = Join-Path $temporary 'supervise-stop.record'
+    $script:testTasks = @(
+        [pscustomobject]@{
+            TaskName = 'Peritus'
+            Actions = @([pscustomobject]@{
+                Execute = $daemon
+                Arguments = "supervise --config `"$stopRecord`""
+            })
+        }
+    )
+    $script:taskCalls = @()
+    Stop-PeritusPackage -ProgramRoot $program -RemoveTask
+    Assert-That (($script:taskCalls -join ';') -eq "stop:$daemon;remove:$daemon") 'Supervised task stop did not cancel task start before unregistering.'
+    Assert-That (Test-Path -LiteralPath $stopRecord) 'Supervised task stop did not invoke the cooperative daemon command.'
+
+    $failedStop = Join-Path $temporary 'supervise-stop.fail'
+    $script:testTasks[0].Actions[0].Arguments = "supervise --config `"$failedStop`""
+    $script:taskCalls = @()
+    $rejected = $false
+    try { Stop-PeritusPackage -ProgramRoot $program -RemoveTask } catch { $rejected = $true }
+    Assert-That $rejected 'A failed cooperative daemon stop was accepted.'
+    Assert-That (($script:taskCalls -join ';') -eq "stop:$daemon") 'A failed cooperative daemon stop unregistered the task.'
+
     $script:queryFails = $true
     $rejected = $false
     try { Stop-PeritusPackage -ProgramRoot $program } catch { $rejected = $true }
     Assert-That $rejected 'Task query failure was silently ignored.'
-    Write-Output 'PASS scheduled-task ownership and query failure'
+    Write-Output 'PASS scheduled-task ownership, cooperative stop, and query failure'
 }
 
 try {
@@ -100,11 +126,47 @@ try {
     $source = Join-Path $temporary 'Fixture.cs'
     [IO.File]::WriteAllText($source, @'
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Threading;
 public static class Fixture {
+    private static string Quote(string value) {
+        return "\"" + value.Replace("\"", "\\\"") + "\"";
+    }
+
     public static void Main(string[] args) {
         if (args.Length == 1 && args[0] == "--version") { Console.WriteLine("Peritus lifecycle fixture"); return; }
+        if (args.Length >= 5 && args[0] == "package-lock" && args[1] == "--lock" && args[3] == "--") {
+            var arguments = new StringBuilder();
+            for (var index = 5; index < args.Length; index++) {
+                if (arguments.Length != 0) { arguments.Append(' '); }
+                arguments.Append(Quote(args[index]));
+            }
+            var start = new ProcessStartInfo(args[4], arguments.ToString());
+            start.UseShellExecute = false;
+            start.EnvironmentVariables["PERITUS_INSTALL_LOCKED"] = "1";
+            using (var child = Process.Start(start)) {
+                child.WaitForExit();
+                Environment.Exit(child.ExitCode);
+            }
+        }
+        if (args.Length >= 7 && args[0] == "package-adopt" && args[1] == "--store" && args[3] == "--candidate" && args[5] == "--current") {
+            if (Directory.Exists(args[6])) { Directory.Delete(args[6]); }
+            Directory.Move(args[4], args[6]);
+            return;
+        }
+        if (args.Length >= 7 && args[0] == "package-remove" && args[1] == "--store" && args[3] == "--current" && args[5] == "--expected") {
+            if (Directory.Exists(args[4])) { Directory.Delete(args[4]); }
+            return;
+        }
+        if (args.Length == 3 && (args[0] == "package-handoff" || args[0] == "package-handoff-legacy") && args[1] == "--config") {
+            if (args[2].EndsWith(".fail", StringComparison.Ordinal)) { Environment.Exit(17); }
+            File.WriteAllText(args[2], "stopped");
+            Console.WriteLine("peritus-package-handoff-v1");
+            Console.WriteLine("status=already-stopped");
+            return;
+        }
         File.WriteAllText(args[0], "ready");
         Thread.Sleep(300000);
     }
@@ -140,14 +202,16 @@ public static class Fixture {
                 $locked = [IO.File]::Open((Join-Path $program 'bin/peritusd.exe'), 'Open', 'Read', 'Read')
                 try {
                     $pathBefore = [Environment]::GetEnvironmentVariable('Path', 'User')
-                    $rejected = $false
-                    try {
-                        if ($scenario -eq 'locked-install') { & $install -BundleRoot $bundle -InstallRoot $program }
-                        else { & $uninstall -InstallRoot $program -DataRoot $data }
-                    } catch { $rejected = $true }
-                    Assert-That $rejected 'Lifecycle action reported success while package files remained locked.'
-                    Assert-That ([Environment]::GetEnvironmentVariable('Path', 'User') -eq $pathBefore) 'Failed lifecycle action changed PATH.'
-                    Assert-That (@(Get-ChildItem -LiteralPath $program -Filter '*.new.*' -Recurse).Count -eq 0) 'Failed publication left staged files.'
+                    if ($scenario -eq 'locked-install') {
+                        & $install -BundleRoot $bundle -InstallRoot $program
+                        Assert-That ([Environment]::GetEnvironmentVariable('Path', 'User') -eq $pathBefore) 'Idempotent generation adoption changed PATH.'
+                    } else {
+                        $rejected = $false
+                        try { & $uninstall -InstallRoot $program -DataRoot $data } catch { $rejected = $true }
+                        Assert-That $rejected 'Uninstall reported success while retained generation files remained locked.'
+                        Assert-That ([Environment]::GetEnvironmentVariable('Path', 'User') -eq $pathBefore) 'Failed uninstall changed PATH.'
+                    }
+                    Assert-That (@(Get-ChildItem -LiteralPath $program -Filter '*.new.*' -Recurse).Count -eq 0) 'Lifecycle action left temporary receipt files.'
                 } finally { $locked.Dispose() }
                 & $install -BundleRoot $bundle -InstallRoot $program
             } else {
@@ -157,8 +221,15 @@ public static class Fixture {
                 if ($scenario -in @('repeat-install', 'running-upgrade')) {
                     $action = if ($scenario -eq 'running-upgrade') { Join-Path $bundle 'Upgrade-Peritus.ps1' } else { $install }
                     & $action -BundleRoot $bundle -InstallRoot $program
-                    foreach ($child in $running) { Assert-That $child.HasExited 'Reinstall left an installed process running.' }
+                    foreach ($child in $running) { Assert-That (-not $child.HasExited) 'Idempotent publication interrupted an installed process.' }
                     Assert-That ((Get-FixtureSha256Hex -Path (Join-Path $program 'bin/peritusd.exe')) -eq (Get-FixtureSha256Hex -Path (Join-Path $bundle 'bin/peritusd.exe'))) 'Reinstall published different bytes.'
+                } else {
+                    $rejected = $false
+                    try { & $uninstall -InstallRoot $program -DataRoot $data } catch { $rejected = $true }
+                    Assert-That $rejected 'Uninstall reported success while installed processes still owned package files.'
+                }
+                foreach ($child in $running) {
+                    if (-not $child.HasExited) { $child.Kill(); $child.WaitForExit() }
                 }
             }
             & $uninstall -InstallRoot $program -DataRoot $data

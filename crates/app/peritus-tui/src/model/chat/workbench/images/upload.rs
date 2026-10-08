@@ -2,7 +2,7 @@
 
 use super::{
     AppModel, AppRequestPayload, ArtifactMetadata, ControlOperationId, Effect, ImageBytes,
-    NoticeLevel, PendingRequest, Upload, UploadStep, WorkbenchImageRequest,
+    ImageUploadStep, NoticeLevel, PendingRequest, Upload, WorkbenchImageRequest,
 };
 use peritus_app_protocol::{
     ArtifactChunk, ArtifactCompletion, CanonicalMediaType, TransferId, WorkbenchImageUpload,
@@ -45,7 +45,7 @@ impl AppModel {
             let metadata = ArtifactMetadata::new(
                 transfer,
                 artifact,
-                image.bytes.len() as u64,
+                image.byte_len,
                 CanonicalMediaType::new("application/octet-stream".to_owned(), 128).ok()?,
                 image.digest,
                 u32::try_from(preferred).ok()?,
@@ -77,15 +77,15 @@ impl AppModel {
             AppRequestPayload::BeginWorkbenchImageUpload(upload),
             PendingRequest::WorkbenchImageUpload {
                 transfer: metadata.transfer_id(),
-                step: UploadStep::Begin,
+                step: ImageUploadStep::Begin,
             },
         ) else {
             return Vec::new();
         };
-        self.chat.workbench.images.expected = Some((image.digest, image.bytes.len() as u64));
+        self.chat.workbench.images.expected = Some((image.digest, image.byte_len));
         self.chat.workbench.images.request = Some(request);
         self.chat.workbench.images.upload =
-            Some(Upload { image, metadata, awaiting: UploadStep::Begin });
+            Some(Upload { image, metadata, awaiting: ImageUploadStep::Begin });
         "Uploading exact bytes to the local daemon for validation; not to a provider."
             .clone_into(&mut self.chat.workbench.message);
         vec![effect]
@@ -94,16 +94,21 @@ impl AppModel {
     pub(in crate::model) fn image_upload_ack(
         &mut self,
         transfer: TransferId,
-        step: UploadStep,
+        step: ImageUploadStep,
     ) -> Vec<Effect> {
-        let Some(upload) =
-            self.chat.workbench.images.upload.as_ref().filter(|upload| {
+        let matches = self
+            .chat
+            .workbench
+            .images
+            .upload
+            .as_ref()
+            .is_some_and(|upload| {
                 upload.metadata.transfer_id() == transfer && upload.awaiting == step
-            })
-        else {
+            });
+        if !matches {
             return Vec::new();
-        };
-        if step == UploadStep::Complete {
+        }
+        if step == ImageUploadStep::Complete {
             self.chat.workbench.images.upload = None;
             let Some(request) = self.chat.workbench.images.request.clone() else {
                 return Vec::new();
@@ -119,34 +124,53 @@ impl AppModel {
                 .collect();
         }
         let offset = match step {
-            UploadStep::Chunk { end } => end,
-            UploadStep::Begin | UploadStep::Complete => 0,
+            ImageUploadStep::Chunk { end } => end,
+            ImageUploadStep::Begin | ImageUploadStep::Complete => 0,
         };
-        let (payload, next) = if offset == upload.image.bytes.len() {
-            (
-                AppRequestPayload::CompleteArtifactUpload(ArtifactCompletion::new(
+        let maximum_chunk_bytes = self.limits.max_artifact_chunk_bytes();
+        let prepared: Result<_, &'static str> = (|| {
+            let upload = self
+                .chat
+                .workbench
+                .images
+                .upload
+                .as_mut()
+                .expect("matched image upload");
+            if offset == upload.image.byte_len {
+                Ok((
+                    AppRequestPayload::CompleteArtifactUpload(ArtifactCompletion::new(
+                        transfer,
+                        upload.metadata.artifact_id(),
+                        upload.metadata.byte_size(),
+                        upload.metadata.digest(),
+                    )),
+                    ImageUploadStep::Complete,
+                ))
+            } else {
+                let length = upload.metadata.preferred_chunk_size() as usize;
+                let bytes = upload.image.read_chunk(offset, length)?;
+                let byte_count =
+                    u64::try_from(bytes.len()).map_err(|_| "Image chunk is too large.")?;
+                let end =
+                    offset.checked_add(byte_count).ok_or("Image upload offset overflow.")?;
+                let chunk = ArtifactChunk::new(
                     transfer,
                     upload.metadata.artifact_id(),
-                    upload.metadata.byte_size(),
-                    upload.metadata.digest(),
-                )),
-                UploadStep::Complete,
-            )
-        } else {
-            let length = upload.metadata.preferred_chunk_size() as usize;
-            let end = offset.saturating_add(length).min(upload.image.bytes.len());
-            let Ok(chunk) = ArtifactChunk::new(
-                transfer,
-                upload.metadata.artifact_id(),
-                (offset / length) as u64,
-                offset as u64,
-                upload.image.bytes[offset..end].to_vec(),
-                self.limits.max_artifact_chunk_bytes(),
-            ) else {
-                self.interrupt_image_import();
-                return Vec::new();
-            };
-            (AppRequestPayload::UploadArtifactChunk(chunk), UploadStep::Chunk { end })
+                    offset / u64::from(upload.metadata.preferred_chunk_size()),
+                    offset,
+                    bytes,
+                    maximum_chunk_bytes,
+                )
+                .map_err(|_| "Image upload chunk is invalid.")?;
+                Ok((
+                    AppRequestPayload::UploadArtifactChunk(chunk),
+                    ImageUploadStep::Chunk { end },
+                ))
+            }
+        })();
+        let Ok((payload, next)) = prepared else {
+            self.interrupt_image_import();
+            return Vec::new();
         };
         let effect =
             self.request(payload, PendingRequest::WorkbenchImageUpload { transfer, step: next });
@@ -182,10 +206,10 @@ impl AppModel {
                     "Selected provider/model/effort is unavailable or lacks image input; choose a compatible provider."
                 }
                 peritus_app_protocol::AppErrorCode::MalformedFrame => {
-                    "Invalid image/MIME or decoding limit exceeded: PNG/JPEG/GIF/WebP, 8192 per side, 16 megapixels, 64 frames, 128 MiB decoded."
+                    "Invalid image/MIME or decoding exceeds the bounded physical working set: PNG/JPEG/GIF/WebP."
                 }
                 peritus_app_protocol::AppErrorCode::LimitExceeded => {
-                    "Image exceeds host/provider byte or selection limits; nothing was truncated."
+                    "Image exceeds the selected provider or configured artifact-storage limit; nothing was truncated."
                 }
                 peritus_app_protocol::AppErrorCode::StaleRevision => {
                     "Conversation or provider changed; refresh before previewing again."

@@ -1,6 +1,6 @@
 //! Inert canonical path/range descriptors. The accepting host owns all read authorization.
 
-use super::{ControlError, ControlText, Sha256Digest};
+use super::{ControlError, ControlText, FileSourceLabel, Sha256Digest};
 use peritus_patch::WorkspacePath;
 use serde::Deserialize;
 use serde::Serialize;
@@ -32,9 +32,9 @@ pub enum FileRange {
     /// One-based inclusive complete lines, retaining original terminators.
     Lines {
         /// Included first line number.
-        first: u32,
+        first: u64,
         /// Included last line number.
-        last: u32,
+        last: u64,
     },
 }
 impl FileRange {
@@ -66,7 +66,7 @@ pub struct FileSource {
 enum Origin {
     Workspace { folder: [u8; 32], path: String },
     NativeWorkspace { folder: [u8; 32], path: String, platform: u8 },
-    Import { label: ControlText<1024> },
+    Import { label: FileSourceLabel },
 }
 impl FileSource {
     /// Describes one exact selected-workspace path; the conversation supplies workspace ID.
@@ -97,6 +97,16 @@ impl FileSource {
     /// # Errors
     /// Rejects malformed ranges; caller still must validate and confirm imported bytes.
     pub fn imported(label: ControlText<1024>, range: FileRange) -> Result<Self, ControlError> {
+        Self::imported_label(FileSourceLabel::new(label.as_str().to_owned())?, range)
+    }
+    /// Describes an explicitly imported snapshot with an uncapped inert semantic label.
+    ///
+    /// # Errors
+    /// Rejects malformed ranges; caller still must validate and confirm imported bytes.
+    pub fn imported_label(
+        label: FileSourceLabel,
+        range: FileRange,
+    ) -> Result<Self, ControlError> {
         let value = Self { origin: Origin::Import { label }, range, mode: FileMode::Snapshot };
         value.validate()?;
         Ok(value)

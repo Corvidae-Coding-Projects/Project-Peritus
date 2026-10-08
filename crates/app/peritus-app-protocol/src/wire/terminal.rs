@@ -3,7 +3,7 @@
 use crate::{
     AppProtocolLimits, CorrelationId, RequestId, TerminalAttachmentId, TerminalBinding,
     TerminalCancellation, TerminalDetach, TerminalExit, TerminalExitDisposition, TerminalInput,
-    TerminalOutput, TerminalResize, TerminalStream,
+    TerminalOutput, TerminalOutputGap, TerminalResize, TerminalStream,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::ProcessId;
@@ -72,6 +72,44 @@ pub(super) fn read_terminal_output(
             stream,
             bytes,
             limits.max_terminal_chunk_bytes(),
+        ),
+    )
+}
+
+pub(super) fn write_terminal_output_gap(
+    writer: &mut CanonicalWriter,
+    value: TerminalOutputGap,
+) -> Result<(), CodecError> {
+    write_terminal_binding(writer, value.binding())?;
+    writer.write_u64(value.sequence())?;
+    writer.write_u64(value.offset())?;
+    writer.write_u64(value.resume_offset())?;
+    writer.write_u64(value.stream_offset(TerminalStream::Stdout))?;
+    writer.write_u64(value.stream_offset(TerminalStream::Stderr))?;
+    writer.write_u64(value.stream_offset(TerminalStream::Terminal))
+}
+
+pub(super) fn read_terminal_output_gap(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<TerminalOutputGap, CodecError> {
+    let offset = reader.offset();
+    let binding = read_terminal_binding(reader)?;
+    let sequence = reader.read_u64()?;
+    let byte_offset = reader.read_u64()?;
+    let resume_offset = reader.read_u64()?;
+    let stdout_offset = reader.read_u64()?;
+    let stderr_offset = reader.read_u64()?;
+    let terminal_offset = reader.read_u64()?;
+    invalid(
+        offset,
+        TerminalOutputGap::new(
+            binding,
+            sequence,
+            byte_offset,
+            resume_offset,
+            stdout_offset,
+            stderr_offset,
+            terminal_offset,
         ),
     )
 }

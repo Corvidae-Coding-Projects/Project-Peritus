@@ -92,5 +92,5 @@ async fn image_scenario(supported: bool) {
             "failed capability must not consume inputs"
         );
     }
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }

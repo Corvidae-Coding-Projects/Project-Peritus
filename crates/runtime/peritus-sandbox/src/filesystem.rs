@@ -2,7 +2,6 @@
 
 use crate::{SandboxError, SandboxFeature};
 
-const MAX_PATH_BYTES: usize = 4_096;
 const MAX_RULES: usize = 256;
 
 /// A normalized, platform-neutral absolute path.
@@ -13,10 +12,10 @@ impl SandboxPath {
     /// Validates and stores an absolute logical path.
     ///
     /// # Errors
-    /// Returns an input error for relative paths, traversal, backslashes, NUL, or excessive size.
+    /// Returns an input error for relative paths, traversal, backslashes, or NUL.
     pub fn new(value: impl Into<String>) -> Result<Self, SandboxError> {
         let mut value = value.into();
-        if value.is_empty() || value.len() > MAX_PATH_BYTES || value.contains(['\0', '\\']) {
+        if value.is_empty() || value.contains(['\0', '\\']) {
             return Err(crate::error::invalid("invalid sandbox path representation"));
         }
         let drive_absolute = value.len() >= 3

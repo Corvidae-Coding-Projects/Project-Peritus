@@ -31,12 +31,9 @@ pub(super) fn usable(session: &ModelSession) -> bool {
 
 pub(super) fn terminal_error(terminal: Option<&TerminalOutcome>) -> DeveloperLoopError {
     match terminal {
-        Some(TerminalOutcome::Failed(failure)) => DeveloperLoopError::ProviderTerminal {
-            provider: failure.provider().as_str().to_owned(),
-            category: failure.category(),
-            diagnostic_code: failure.diagnostic().code().to_owned(),
-            http_status: failure.http_status(),
-        },
+        Some(TerminalOutcome::Failed(failure)) => {
+            DeveloperLoopError::ProviderFailure(Box::new(failure.clone()))
+        }
         Some(TerminalOutcome::Refused { .. }) => DeveloperLoopError::Refused,
         Some(TerminalOutcome::Cancelled) => DeveloperLoopError::Cancelled,
         Some(

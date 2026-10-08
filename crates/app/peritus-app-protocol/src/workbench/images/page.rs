@@ -17,7 +17,7 @@ pub struct WorkbenchImageQuery {
     offset: u32,
 }
 impl WorkbenchImageQuery {
-    /// Checks pagination bounds and rejects an unfenced continuation page.
+    /// Checks that a continuation page is revision-fenced.
     ///
     /// # Errors
     /// Rejects a nonzero offset at revision zero.
@@ -26,7 +26,7 @@ impl WorkbenchImageQuery {
         revision: u64,
         offset: u32,
     ) -> Result<Self, AppProtocolError> {
-        if offset > 256 || (revision == 0 && offset != 0) {
+        if revision == 0 && offset != 0 {
             return Err(invalid());
         }
         Ok(Self { query, revision, offset })
@@ -107,7 +107,7 @@ impl WorkbenchImageRow {
     pub const fn label(&self) -> &WorkbenchImageLabel {
         &self.label
     }
-    /// Returns exact decoded original-image metadata.
+    /// Returns exact original-image metadata and local evidence strength.
     #[must_use]
     pub const fn image(&self) -> WorkbenchImageMetadata {
         self.image
@@ -147,7 +147,6 @@ impl WorkbenchImagePage {
         rows: Vec<WorkbenchImageRow>,
     ) -> Result<Self, AppProtocolError> {
         if query.revision() == 0
-            || total > 256
             || query.offset() > total
             || rows.len()
                 != usize::try_from(total - query.offset())

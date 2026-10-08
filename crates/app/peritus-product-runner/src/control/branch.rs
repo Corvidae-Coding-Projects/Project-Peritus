@@ -1,6 +1,6 @@
 //! Durable conversation-branch lineage.
 
-use super::{ControlError, ControlText, ConversationId, GoalCriterion, OperationId};
+use super::{ControlError, ControlText, ControlTitle, ConversationId, GoalCriterion, OperationId};
 use peritus_types::WorkspaceId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -30,7 +30,7 @@ pub struct ConversationBranch {
     child: ConversationId,
     child_workspace: [u8; 16],
     mode: ConversationBranchMode,
-    title: ControlText<256>,
+    title: ControlTitle,
     objective: Option<ControlText<8192>>,
     criteria: Vec<GoalCriterion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

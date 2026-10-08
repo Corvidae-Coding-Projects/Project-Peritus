@@ -11,8 +11,8 @@ pub enum ProductRunMessageError {
     TooLong,
     /// A conversation exceeds its retained message limit.
     TooManyMessages,
-    /// A deliverable contains too many paths or commands, lacks changed paths, or an accepted E0
-    /// deliverable lacks a successful command.
+    /// A deliverable lacks changed paths, or an accepted historical E0 deliverable lacks a
+    /// successful command.
     TooManyDeliverableItems,
     /// A deliverable path is absolute, traversing, or targets Git metadata.
     InvalidDeliverablePath,
@@ -20,6 +20,8 @@ pub enum ProductRunMessageError {
     InvalidSettlement,
     /// A durable conversation binding belongs to a different workspace than its run.
     InvalidConversationBinding,
+    /// A run-page store, key boundary, or continuation is inconsistent.
+    InvalidPage,
 }
 
 impl fmt::Display for ProductRunMessageError {
@@ -36,6 +38,7 @@ impl fmt::Display for ProductRunMessageError {
             Self::InvalidConversationBinding => {
                 "conversation binding disagrees with the run workspace"
             }
+            Self::InvalidPage => "product run page or cursor is inconsistent",
         })
     }
 }

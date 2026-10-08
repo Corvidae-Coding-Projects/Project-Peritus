@@ -107,6 +107,9 @@ impl AppModel {
             );
             return Vec::new();
         }
+        if matches!(command.intent(), WorkbenchIntent::ContinueExecution(_)) {
+            return self.observe_continuation_receipt(command, receipt);
+        }
         self.complete_receipted_draft(command);
         self.chat.workbench.rejected_control = None;
         if let WorkbenchIntent::ForkConversation(fork) = command.intent()
@@ -169,6 +172,74 @@ impl AppModel {
             return self.refresh_brief();
         }
         self.refresh_workbench()
+    }
+
+    pub(super) fn observe_continuation_receipt(
+        &mut self,
+        command: &WorkbenchCommand,
+        receipt: &WorkbenchReceipt,
+    ) -> Vec<Effect> {
+        if !matches!(command.intent(), WorkbenchIntent::ContinueExecution(_))
+            || !self.workbench_receipt_matches(command, receipt)
+        {
+            self.notice(
+                NoticeLevel::Error,
+                "Mismatched continuation receipt; launch state remains unresolved.",
+            );
+            return Vec::new();
+        }
+        self.chat.workbench.rejected_control = None;
+        self.chat.workbench.receipted_revision = self
+            .chat
+            .workbench
+            .receipted_revision
+            .max(receipt.accepted_revision());
+        self.chat.workbench.message = format!(
+            "Continuation accepted at revision {}; checking durable launch ownership.",
+            receipt.accepted_revision(),
+        );
+        self.request(
+            AppRequestPayload::QueryWorkbenchContinuationAdmission(command.clone()),
+            PendingRequest::WorkbenchContinuationAdmission(command.clone()),
+        )
+        .into_iter()
+        .collect()
+    }
+
+    pub(in crate::model) fn accept_workbench_continuation_admission(
+        &mut self,
+        command: &WorkbenchCommand,
+        admission: peritus_app_protocol::WorkbenchContinuationAdmission,
+    ) -> Vec<Effect> {
+        let WorkbenchIntent::ContinueExecution(settings) = command.intent() else {
+            return Vec::new();
+        };
+        if admission.operation() != command.operation()
+            || admission.query() != command.query()
+            || admission.run() != settings.run()
+        {
+            self.notice(
+                NoticeLevel::Error,
+                "Mismatched continuation admission; original operation remains unresolved.",
+            );
+            return Vec::new();
+        }
+        match admission.state() {
+            peritus_app_protocol::WorkbenchContinuationAdmissionState::AcceptedPendingLaunch => {
+                self.chat.workbench.message = "Continuation receipt is durable, but launch ownership is still pending. /sessions retry replays the exact original command; draft retained.".to_owned();
+                self.notice(
+                    NoticeLevel::Info,
+                    "Continuation accepted without a live or settled owner; use /sessions retry to recover the exact operation.",
+                );
+                Vec::new()
+            }
+            peritus_app_protocol::WorkbenchContinuationAdmissionState::LaunchOwned => {
+                self.complete_receipted_draft(command);
+                "Session continuation has a live or durably settled owner."
+                    .clone_into(&mut self.chat.workbench.message);
+                self.settle_workbench_continuation(admission.run())
+            }
+        }
     }
 
     fn complete_receipted_draft(&mut self, command: &WorkbenchCommand) {
@@ -240,6 +311,7 @@ impl AppModel {
             intent,
             WorkbenchIntent::AttachFile { .. }
                 | WorkbenchIntent::AttachFileImport { .. }
+                | WorkbenchIntent::AttachFileSource { .. }
                 | WorkbenchIntent::SelectFile { .. }
         ) {
             self.chat.workbench.files.discard_preview();

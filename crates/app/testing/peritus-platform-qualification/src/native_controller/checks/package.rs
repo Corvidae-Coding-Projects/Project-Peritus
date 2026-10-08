@@ -59,7 +59,7 @@ fn release_layout(
     let layout = HostLayout::new(paths, request)?;
     with_install(paths, || {
         for path in layout.package_files() {
-            if !fs::symlink_metadata(path).is_ok_and(|metadata| metadata.file_type().is_file()) {
+            if !fs::metadata(path).is_ok_and(|metadata| metadata.file_type().is_file()) {
                 return Ok(Observation::failed(format!(
                     "installed package entry is missing or not a regular file: {}",
                     path.display()
@@ -125,24 +125,29 @@ fn service_template(
     let layout = HostLayout::new(paths, request)?;
     with_install(paths, || {
         let text = fs::read_to_string(&layout.service)?;
-        let required = match layout.platform {
-            Platform::Linux => [
+        let required: &[&str] = match layout.platform {
+            Platform::Linux => &[
                 "ExecStart=%h/.local/bin/peritusd serve --config",
                 "Restart=on-failure",
-                "KillMode=mixed",
+                "StartLimitIntervalSec=0",
+                "TimeoutStopSec=infinity",
             ],
-            Platform::Macos => {
-                ["<string>serve</string>", "<key>KeepAlive</key>", "<key>ThrottleInterval</key>"]
-            }
-            Platform::Windows => [
+            Platform::Macos => &[
+                "<string>serve</string>",
+                "<key>KeepAlive</key>",
+                "<key>ExitTimeOut</key>\n    <integer>0</integer>",
+                "<key>ThrottleInterval</key>",
+            ],
+            Platform::Windows => &[
                 "<Command>@PERITUSD@</Command>",
-                "<Arguments>serve --config &quot;@CONFIG_FILE@&quot;</Arguments>",
-                "<RestartOnFailure>",
+                "<Arguments>supervise --config &quot;@CONFIG_FILE@&quot;</Arguments>",
+                "<AllowHardTerminate>false</AllowHardTerminate>",
+                "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>",
             ],
         };
         if required.iter().any(|needle| !text.contains(needle)) {
             return Ok(Observation::failed(
-                "native supervisor template omitted direct foreground or restart controls",
+                "native supervisor template omitted daemon ownership or restart controls",
             ));
         }
         if text.contains("sh -c")
@@ -153,8 +158,13 @@ fn service_template(
                 "native supervisor template introduced a shell parsing layer",
             ));
         }
+        if text.contains("StartLimitBurst=") || text.contains("<RestartOnFailure>") {
+            return Ok(Observation::failed(
+                "native supervisor template retained bounded restart accounting",
+            ));
+        }
         Ok(Observation::passed(
-            "inactive native supervisor template uses the exact foreground daemon contract",
+            "inactive native supervisor template uses the exact daemon ownership contract",
         )
         .count("native.supervisor-controls", required.len() as u64)
         .fact("native.shell-wrapper-absent", true))

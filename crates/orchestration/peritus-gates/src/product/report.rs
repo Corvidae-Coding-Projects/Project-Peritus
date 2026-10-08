@@ -1,8 +1,9 @@
 //! Fail-closed aggregation of exact command observations.
 
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 
 use super::TargetGatePlan;
+use crate::{GateError, GateRejection, reject};
 
 /// One completed target gate command.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -65,6 +66,43 @@ impl TargetGateReport {
         }
     }
 
+    /// Restores an exact retained report after its outer candidate and execution binding has been
+    /// verified by the product-run continuation reader.
+    ///
+    /// # Errors
+    ///
+    /// Rejects noncanonical or unsafe paths and any positive outcome that its retained evidence
+    /// cannot justify. A negative outcome remains negative even when every retained command
+    /// passed because the original plan may have lacked complete coverage.
+    pub fn from_retained(
+        changed_paths: Vec<PathBuf>,
+        uncovered_paths: Vec<PathBuf>,
+        records: Vec<GateExecutionRecord>,
+        passed: bool,
+    ) -> Result<Self, GateError> {
+        if !canonical_paths(&changed_paths)
+            || !canonical_paths(&uncovered_paths)
+            || uncovered_paths.iter().any(|path| changed_paths.binary_search(path).is_err())
+        {
+            return Err(reject(
+                GateRejection::EvidenceInvalid,
+                "retained gate report paths are unsafe or noncanonical",
+            ));
+        }
+        if passed
+            && (changed_paths.is_empty()
+                || !uncovered_paths.is_empty()
+                || records.is_empty()
+                || records.iter().any(|record| !record.passed()))
+        {
+            return Err(reject(
+                GateRejection::EvidenceInvalid,
+                "retained passing gate report is not supported by complete positive evidence",
+            ));
+        }
+        Ok(Self { changed_paths, uncovered_paths, records, passed })
+    }
+
     /// Candidate acceptance is impossible unless coverage is complete and all commands pass.
     #[must_use]
     pub const fn passed(&self) -> bool {
@@ -88,6 +126,14 @@ impl TargetGateReport {
     pub fn records(&self) -> &[GateExecutionRecord] {
         &self.records
     }
+}
+
+fn canonical_paths(paths: &[PathBuf]) -> bool {
+    paths.windows(2).all(|pair| pair[0] < pair[1])
+        && paths.iter().all(|path| {
+            !path.as_os_str().is_empty()
+                && path.components().all(|component| matches!(component, Component::Normal(_)))
+        })
 }
 
 #[cfg(test)]

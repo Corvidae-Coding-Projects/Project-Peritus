@@ -167,13 +167,34 @@ impl TerminalLimits {
         event_count: ResourceQuantity,
         output_bytes: ResourceQuantity,
     ) -> Result<Self, SandboxError> {
+        Self::with_optional_output(maximum_initial_size, event_count, Some(output_bytes))
+    }
+
+    /// Creates terminal bounds with optional cumulative output accounting.
+    ///
+    /// Event retention remains a selected physical capacity.
+    ///
+    /// # Errors
+    /// Rejects fewer than five lifecycle events or a selected zero output bound.
+    pub const fn with_optional_output(
+        maximum_initial_size: Option<TerminalSize>,
+        event_count: ResourceQuantity,
+        output_bytes: Option<ResourceQuantity>,
+    ) -> Result<Self, SandboxError> {
         if event_count.get() < REQUIRED_LIFECYCLE_EVENTS {
             return Err(crate::error::invalid("terminal event bound cannot retain lifecycle"));
         }
-        if output_bytes.get() == 0 {
-            return Err(crate::error::invalid("terminal output bound must be nonzero"));
+        if matches!(output_bytes, Some(value) if value.get() == 0) {
+            return Err(crate::error::invalid("selected terminal output bound must be nonzero"));
         }
-        Ok(Self { maximum_initial_size, event_count, output_bytes })
+        Ok(Self {
+            maximum_initial_size,
+            event_count,
+            output_bytes: match output_bytes {
+                Some(value) => value,
+                None => ResourceQuantity::zero(),
+            },
+        })
     }
 
     /// Returns the maximum allowed initial PTY dimensions.
@@ -190,6 +211,16 @@ impl TerminalLimits {
     #[must_use]
     pub const fn output_bytes(self) -> ResourceQuantity {
         self.output_bytes
+    }
+
+    /// Returns the optional cumulative terminal output ceiling.
+    #[must_use]
+    pub const fn output_limit(self) -> Option<ResourceQuantity> {
+        if self.output_bytes.get() == 0 { None } else { Some(self.output_bytes) }
+    }
+
+    pub(crate) const fn uses_legacy_encoding(self) -> bool {
+        self.output_limit().is_some()
     }
 }
 
@@ -279,16 +310,55 @@ impl TerminalRequirements {
         event_count: ResourceQuantity,
         output_bytes: ResourceQuantity,
     ) -> Result<Self, SandboxError> {
+        Self::with_optional_output(
+            mode,
+            input,
+            resize,
+            signals,
+            initial_size,
+            event_count,
+            Some(output_bytes),
+        )
+    }
+
+    /// Creates terminal requirements with optional cumulative output accounting.
+    ///
+    /// # Errors
+    /// Rejects invalid pipe/PTY dimension or resize combinations, fewer than five events, or a
+    /// selected zero output request.
+    #[allow(clippy::too_many_arguments)]
+    pub const fn with_optional_output(
+        mode: TerminalMode,
+        input: InputPermission,
+        resize: ResizePermission,
+        signals: TerminalSignalPermission,
+        initial_size: Option<TerminalSize>,
+        event_count: ResourceQuantity,
+        output_bytes: Option<ResourceQuantity>,
+    ) -> Result<Self, SandboxError> {
         if matches!(mode, TerminalMode::Pipes) && initial_size.is_some() {
             return Err(crate::error::invalid("initial terminal dimensions require PTY mode"));
         }
         if matches!(mode, TerminalMode::Pipes) && matches!(resize, ResizePermission::Allowed) {
             return Err(crate::error::invalid("terminal resize requires PTY mode"));
         }
-        if event_count.get() < REQUIRED_LIFECYCLE_EVENTS || output_bytes.get() == 0 {
+        if event_count.get() < REQUIRED_LIFECYCLE_EVENTS
+            || matches!(output_bytes, Some(value) if value.get() == 0)
+        {
             return Err(crate::error::invalid("invalid terminal event or output requirement"));
         }
-        Ok(Self { mode, input, resize, signals, initial_size, event_count, output_bytes })
+        Ok(Self {
+            mode,
+            input,
+            resize,
+            signals,
+            initial_size,
+            event_count,
+            output_bytes: match output_bytes {
+                Some(value) => value,
+                None => ResourceQuantity::zero(),
+            },
+        })
     }
     /// Returns the required mode.
     #[must_use]
@@ -326,6 +396,16 @@ impl TerminalRequirements {
         self.output_bytes
     }
 
+    /// Returns the optional cumulative terminal output request.
+    #[must_use]
+    pub const fn output_limit(self) -> Option<ResourceQuantity> {
+        if self.output_bytes.get() == 0 { None } else { Some(self.output_bytes) }
+    }
+
+    pub(crate) const fn uses_legacy_encoding(self) -> bool {
+        self.output_limit().is_some()
+    }
+
     pub(crate) const fn is_allowed_by(self, contract: TerminalContract) -> bool {
         contract.modes.contains(self.mode)
             && !(matches!(self.input, InputPermission::Allowed)
@@ -335,7 +415,11 @@ impl TerminalRequirements {
             && !(matches!(self.signals, TerminalSignalPermission::Allowed)
                 && matches!(contract.signals, TerminalSignalPermission::Denied))
             && self.event_count.get() <= contract.limits.event_count.get()
-            && self.output_bytes.get() <= contract.limits.output_bytes.get()
+            && match (self.output_limit(), contract.limits.output_limit()) {
+                (_, None) => true,
+                (Some(requested), Some(maximum)) => requested.get() <= maximum.get(),
+                (None, Some(_)) => false,
+            }
             && match (self.initial_size, contract.limits.maximum_initial_size) {
                 (None, _) => true,
                 (Some(_), None) => false,

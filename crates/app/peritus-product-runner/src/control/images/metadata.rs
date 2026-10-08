@@ -1,11 +1,10 @@
-//! Claimed image metadata is bounded but never substitutes for decoded original bytes.
+//! Claimed image metadata never substitutes for inspecting original bytes.
 
-use super::{
-    ControlError, ImageFormat, MAX_IMAGE_BYTES, MAX_IMAGE_FRAMES, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE,
-};
+use super::{ControlError, ImageFormat};
+use crate::attachment::ImageValidation;
 use peritus_types::Sha256Digest;
 
-/// Bounded immutable raster metadata, without an assertion that bytes were decoded or imported.
+/// Immutable raster metadata, without an assertion that bytes were decoded or imported.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ImageMetadata {
     digest: Sha256Digest,
@@ -13,12 +12,13 @@ pub struct ImageMetadata {
     format: ImageFormat,
     dimensions: (u32, u32),
     frames: u32,
+    validation: ImageValidation,
 }
 impl ImageMetadata {
-    /// Validates host metadata ceilings only; the accepting host must also verify actual bytes.
+    /// Validates historical complete-pixel metadata; the accepting host must verify actual bytes.
     ///
     /// # Errors
-    /// Rejects zero or excessive byte, canvas, pixel and frame counts.
+    /// Rejects an empty byte, canvas, or frame count.
     pub fn new(
         digest: Sha256Digest,
         bytes: u64,
@@ -26,19 +26,35 @@ impl ImageMetadata {
         dimensions: (u32, u32),
         frames: u32,
     ) -> Result<Self, ControlError> {
+        Self::new_with_validation(
+            digest,
+            bytes,
+            format,
+            dimensions,
+            frames,
+            ImageValidation::CompletePixels,
+        )
+    }
+    /// Validates representable nonempty metadata with explicit local validation strength.
+    ///
+    /// # Errors
+    /// Rejects an empty byte, canvas, or frame count.
+    pub fn new_with_validation(
+        digest: Sha256Digest,
+        bytes: u64,
+        format: ImageFormat,
+        dimensions: (u32, u32),
+        frames: u32,
+        validation: ImageValidation,
+    ) -> Result<Self, ControlError> {
         if bytes == 0
-            || bytes > MAX_IMAGE_BYTES
             || frames == 0
-            || frames > MAX_IMAGE_FRAMES
             || dimensions.0 == 0
             || dimensions.1 == 0
-            || dimensions.0 > MAX_IMAGE_SIDE
-            || dimensions.1 > MAX_IMAGE_SIDE
-            || u64::from(dimensions.0) * u64::from(dimensions.1) > MAX_IMAGE_PIXELS
         {
             return Err(ControlError::InvalidInput);
         }
-        Ok(Self { digest, bytes, format, dimensions, frames })
+        Ok(Self { digest, bytes, format, dimensions, frames, validation })
     }
     /// Returns exact original encoded digest.
     #[must_use]
@@ -55,14 +71,19 @@ impl ImageMetadata {
     pub const fn format(self) -> ImageFormat {
         self.format
     }
-    /// Returns canvas dimensions.
+    /// Returns structurally verified canvas dimensions.
     #[must_use]
     pub const fn dimensions(self) -> (u32, u32) {
         self.dimensions
     }
-    /// Returns complete frame count.
+    /// Returns structurally verified complete frame-record count.
     #[must_use]
     pub const fn frames(self) -> u32 {
         self.frames
+    }
+    /// Returns the local evidence retained for these exact bytes.
+    #[must_use]
+    pub const fn validation(self) -> ImageValidation {
+        self.validation
     }
 }

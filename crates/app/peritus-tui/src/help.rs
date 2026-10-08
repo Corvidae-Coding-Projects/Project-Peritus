@@ -16,6 +16,8 @@ const LINES: &[&str] = &[
     "  x/r            cancel / retry selected coding run (Runs)",
     "  PageUp/Down    scroll Diff, Review, Preview, or selected approval details",
     "  Home/End       beginning/end of those details",
+    "  Alt+PgUp/Down  page through the complete wrapped status and recovery message",
+    "  Alt+Home/End   beginning/end of the status and recovery message",
     "",
     "Live connection",
     "  Ctrl-R         reconnect with drafts retained (unless terminal input is captured)",

@@ -133,7 +133,152 @@ fn pending_input_waits_for_unknown_command_reconciliation_before_provider_resume
                     .any(|bytes| { bytes == b"CONTINUE_AFTER_RECONCILIATION" })
             );
         }
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
+    });
+}
+
+#[test]
+fn exact_continuation_reclaims_its_sealed_attempt_after_spawn_refusal() {
+    interaction::block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = scripted(
+            0x41,
+            "chat",
+            vec![
+                support::text_response(b"Initial answer."),
+                support::text_response(b"Sealed continuation answer."),
+                support::text_response(b"Later correction answer."),
+            ],
+        );
+        let reviewer = scripted(0x42, "review", Vec::new());
+        let fixer = scripted(0x43, "fix", Vec::new());
+        let workspace = WorkspaceId::new([0x44; 16]).expect("workspace");
+        let run = RunId::new([0x45; 16]).expect("run");
+        let service =
+            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+        queue(&service, workspace).await;
+        let initial = start(workspace, run, [&writer, &reviewer, &fixer]);
+        assert!(matches!(
+            service.workbench_command(actor(), &initial).await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
+        wait_for_terminal(&service, run).await;
+
+        let AppResponsePayload::WorkbenchExecution(observed) =
+            service.workbench_execution(actor(), query(workspace))
+        else {
+            panic!("execution binding")
+        };
+        let follow_up = command(
+            workspace,
+            88,
+            observed.snapshot().revision(),
+            WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(
+                WorkbenchNewInput::new(
+                    WorkbenchInputId::new([88; 16]).expect("input"),
+                    WorkbenchInputText::new("SEALED_FOLLOW_UP".to_owned()).expect("text"),
+                    WorkbenchInputOrder::new(Vec::new()).expect("dependencies"),
+                )
+                .expect("input"),
+            )),
+        );
+        let AppResponsePayload::WorkbenchReceipt(follow_up_receipt) =
+            service.workbench_command(actor(), &follow_up).await
+        else {
+            panic!("follow-up receipt")
+        };
+        let settings = WorkbenchExecutionSettings::new(
+            run,
+            ProductProviderSelection::new(
+                writer.profile.profile_id(),
+                reviewer.profile.profile_id(),
+                fixer.profile.profile_id(),
+            ),
+            ProductInteractionMode::Chat,
+            ProductRoleModels::default(),
+        );
+        let continuation = command(
+            workspace,
+            89,
+            follow_up_receipt.accepted_revision(),
+            WorkbenchIntent::ContinueExecution(settings),
+        );
+
+        service.inner.tasks.lock().await.accepting = false;
+        let receipt = service.workbench_command(actor(), &continuation).await;
+        assert!(matches!(receipt, AppResponsePayload::WorkbenchReceipt(_)));
+        let AppResponsePayload::WorkbenchContinuationAdmission(pending) =
+            service.workbench_continuation_admission(actor(), &continuation)
+        else {
+            panic!("pending continuation admission")
+        };
+        assert_eq!(
+            pending.state(),
+            peritus_app_protocol::WorkbenchContinuationAdmissionState::AcceptedPendingLaunch,
+            "a persisted source without a task owner must remain explicitly replayable"
+        );
+
+        let correction = command(
+            workspace,
+            90,
+            match &receipt {
+                AppResponsePayload::WorkbenchReceipt(receipt) => receipt.accepted_revision(),
+                _ => unreachable!(),
+            },
+            WorkbenchIntent::Queue(WorkbenchQueueIntent::Correct {
+                original: WorkbenchInputSelection::new(
+                    WorkbenchInputId::new([4; 16]).expect("original"),
+                    2,
+                )
+                .expect("selection"),
+                id: WorkbenchInputId::new([90; 16]).expect("correction"),
+                text: WorkbenchInputText::new("LATER_CORRECTION".to_owned()).expect("text"),
+            }),
+        );
+        assert!(matches!(
+            service.workbench_command(actor(), &correction).await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
+
+        drop(service);
+        let service = super::service(
+            state.path(),
+            repository.path(),
+            workspace,
+            [&writer, &reviewer, &fixer],
+        );
+        let AppResponsePayload::WorkbenchContinuationAdmission(recovered_pending) =
+            service.workbench_continuation_admission(actor(), &continuation)
+        else {
+            panic!("recovered pending continuation admission")
+        };
+        assert_eq!(
+            recovered_pending.state(),
+            peritus_app_protocol::WorkbenchContinuationAdmissionState::AcceptedPendingLaunch,
+        );
+        let barrier = crate::product_run::execution::inject_finish_barrier(run);
+        assert_eq!(service.workbench_command(actor(), &continuation).await, receipt);
+        barrier.reached().await;
+        let AppResponsePayload::WorkbenchContinuationAdmission(owned) =
+            service.workbench_continuation_admission(actor(), &continuation)
+        else {
+            panic!("owned continuation admission")
+        };
+        assert_eq!(
+            owned.state(),
+            peritus_app_protocol::WorkbenchContinuationAdmissionState::LaunchOwned
+        );
+        {
+            let requests = writer.requests.lock().expect("requests");
+            assert_eq!(requests.len(), 2);
+            let sealed = requests[1].canonical_bytes().expect("request bytes");
+            assert!(sealed.windows(b"SEALED_FOLLOW_UP".len()).any(|v| v == b"SEALED_FOLLOW_UP"));
+            assert!(!sealed.windows(b"LATER_CORRECTION".len()).any(|v| v == b"LATER_CORRECTION"));
+        }
+        barrier.release();
+        wait_for_terminal(&service, run).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -291,6 +436,6 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
                 .phase(),
             ProductRunPhase::Cancelled
         );
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

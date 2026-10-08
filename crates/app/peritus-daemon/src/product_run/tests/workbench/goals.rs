@@ -119,7 +119,7 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
         assert_eq!(waiting.state(), WorkbenchGoalState::WaitingForUser);
         assert_eq!(waiting.usage().requests(), 2);
         assert_eq!(writer.requests.lock().expect("requests").len(), 2);
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         drop(service);
         let controls = crate::product_control::ControlStore::open(
             &state.path().join("workbench-v1"),
@@ -162,8 +162,12 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
             workspace,
             [&writer, &reviewer, &fixer],
         );
-        *restored.inner.controls.lock().expect("owner") = Some(controls);
-        *restored.inner.records.write().expect("records") = records;
+        {
+            let cancellation = peritus_journal::JournalCancellation::new();
+            let _permit = restored.inner.controls.acquire(&cancellation).expect("queue owner");
+            *restored.inner.controls.owner.lock().expect("owner") = Some(controls);
+            *restored.inner.records.write().expect("records") = records;
+        }
         assert!(
             restored.inner.records.read().expect("records").contains_key(&run),
             "a durable goal run must survive daemon restart"
@@ -175,7 +179,7 @@ fn persistent_goal_starts_real_provider_work_pauses_durably_and_resumes_same_run
         };
         assert_eq!(reopened.state(), waiting.state());
         assert_eq!(reopened.usage().requests(), waiting.usage().requests());
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -256,6 +260,6 @@ fn goal_continues_after_the_first_provider_request_without_a_budget() {
         assert_eq!(goal.usage().requests(), 2);
         assert_eq!(goal.usage().tool_calls(), 1);
         assert_eq!(writer.requests.lock().expect("requests").len(), 2);
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

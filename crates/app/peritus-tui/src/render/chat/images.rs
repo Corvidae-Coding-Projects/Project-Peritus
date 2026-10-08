@@ -86,6 +86,7 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
                 metadata.frames()
             ),
             format!("SHA-256 {}", format_digest(metadata.digest().as_bytes())),
+            format!("Validation: {}", metadata.validation().description()),
             format!(
                 "Provider: {} · revision {}",
                 provider.map_or("Selected profile", crate::runtime::ProductProviderOption::label),
@@ -113,7 +114,9 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
         ),
         panel.message.clone(),
         String::from("l retained images · x discard preview · r refresh · PgUp/PgDn scroll"),
-        String::from("PNG/JPEG/GIF/WebP · at most 4 MiB · no truncation or clipboard scanning"),
+        String::from(
+            "PNG/JPEG/GIF/WebP · selected-provider byte limit · no truncation or clipboard scanning",
+        ),
         String::from(
             "Absolute external paths are imported only as this snapshot. Relative/.. paths reject.",
         ),

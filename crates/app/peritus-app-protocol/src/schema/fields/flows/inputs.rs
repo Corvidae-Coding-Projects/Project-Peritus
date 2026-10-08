@@ -45,6 +45,15 @@ const DEPENDENCIES: AppFieldDescriptor = field(
     J::IdentifierArray,
     true,
 );
+const SOURCE: AppFieldDescriptor = field(
+    "source",
+    W::Struct,
+    &[],
+    "WorkbenchInputSource",
+    "WorkbenchInputSource",
+    J::Ref("WorkbenchInputSource"),
+    true,
+);
 const fn kind(name: &'static str, values: &'static [&'static str]) -> AppFieldDescriptor {
     field("kind", W::U16, &[], "WorkbenchQueueIntent", name, J::Enum(values), true)
 }
@@ -62,6 +71,23 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
         name: "WorkbenchNewInput",
         rust_type: "WorkbenchNewInput",
         fields: &[input_id("id"), TEXT, DEPENDENCIES],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchInputSource",
+        rust_type: "WorkbenchInputSource",
+        fields: &[
+            field(
+                "artifact",
+                W::Identifier,
+                &[B::NonZero],
+                "ArtifactId",
+                "ArtifactId",
+                J::Identifier,
+                true,
+            ),
+            field("digest", W::Digest, &[], "Sha256Digest", "Sha256Digest", J::Digest, true),
+            field("bytes", W::U64, &[B::NonZero], "u64", "UInt64", J::U64String, true),
+        ],
     },
     AppTypeDescriptor {
         name: "WorkbenchEnqueueIntent",
@@ -104,6 +130,15 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
         fields: &[kind("\"withdraw\"", &["withdraw"]), selected("selected")],
     },
     AppTypeDescriptor {
+        name: "WorkbenchMoveInputIntent",
+        rust_type: "WorkbenchQueueIntent",
+        fields: &[
+            kind("\"move\"", &["move"]),
+            selected("selected"),
+            field("position", W::U64, &[], "u64", "UInt64", J::U64String, true),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchReorderInputIntent",
         rust_type: "WorkbenchQueueIntent",
         fields: &[
@@ -120,6 +155,35 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
+        name: "WorkbenchEnqueueSourceIntent",
+        rust_type: "WorkbenchQueueIntent",
+        fields: &[
+            kind("\"enqueueSource\"", &["enqueueSource"]),
+            input_id("id"),
+            SOURCE,
+            DEPENDENCIES,
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchEditSourceIntent",
+        rust_type: "WorkbenchQueueIntent",
+        fields: &[
+            kind("\"editSource\"", &["editSource"]),
+            selected("selected"),
+            SOURCE,
+        ],
+    },
+    AppTypeDescriptor {
+        name: "WorkbenchCorrectSourceIntent",
+        rust_type: "WorkbenchQueueIntent",
+        fields: &[
+            kind("\"correctSource\"", &["correctSource"]),
+            selected("original"),
+            input_id("id"),
+            SOURCE,
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchQueueControlIntent",
         rust_type: "WorkbenchIntent",
         fields: &[
@@ -129,14 +193,18 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
                 W::Struct,
                 &[],
                 "WorkbenchQueueIntent",
-                "WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchReorderInputIntent",
+                "WorkbenchEnqueueIntent | WorkbenchEditInputIntent | WorkbenchCorrectInputIntent | WorkbenchHoldInputIntent | WorkbenchWithdrawInputIntent | WorkbenchMoveInputIntent | WorkbenchReorderInputIntent | WorkbenchEnqueueSourceIntent | WorkbenchEditSourceIntent | WorkbenchCorrectSourceIntent",
                 J::OneOfRef(&[
                     "WorkbenchEnqueueIntent",
                     "WorkbenchEditInputIntent",
                     "WorkbenchCorrectInputIntent",
                     "WorkbenchHoldInputIntent",
                     "WorkbenchWithdrawInputIntent",
+                    "WorkbenchMoveInputIntent",
                     "WorkbenchReorderInputIntent",
+                    "WorkbenchEnqueueSourceIntent",
+                    "WorkbenchEditSourceIntent",
+                    "WorkbenchCorrectSourceIntent",
                 ]),
                 true,
             ),
@@ -156,6 +224,15 @@ pub(super) const INPUT_TYPES: &[AppTypeDescriptor] = &[
                 "\"queued\" | \"held\" | \"incorporated\" | \"superseded\" | \"withdrawn\"",
                 J::Enum(&["queued", "held", "incorporated", "superseded", "withdrawn"]),
                 true,
+            ),
+            field(
+                "source",
+                W::Conditional,
+                &[],
+                "Option<WorkbenchInputSource>",
+                "WorkbenchInputSource",
+                J::Ref("WorkbenchInputSource"),
+                false,
             ),
             DEPENDENCIES,
         ],

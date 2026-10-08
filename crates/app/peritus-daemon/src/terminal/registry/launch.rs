@@ -125,7 +125,7 @@ fn wait_for_birth_identity(
             }
         }
         if let Some(last) = events.last() {
-            cursor = ProcessCursor::after(last.sequence());
+            cursor = ProcessCursor::after_event(last);
         }
     }
 }

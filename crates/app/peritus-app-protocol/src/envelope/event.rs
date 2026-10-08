@@ -3,7 +3,7 @@
 use crate::{
     AppDiagnostic, ArtifactChunk, ArtifactMetadata, DaemonHeartbeat, Delivery, EventCursor,
     PromptBinding, ShutdownComplete, ShutdownProgress, SubscriptionGap, SubscriptionId,
-    TerminalExit, TerminalOutput, TransferId,
+    TerminalExit, TerminalOutput, TerminalOutputGap, TransferId,
 };
 use peritus_types::{ArtifactId, Sha256Digest};
 
@@ -117,6 +117,9 @@ pub enum AppEventPayload {
     PromptRequested(PromptBinding),
     /// One ordered terminal output chunk.
     TerminalOutput(TerminalOutput),
+    /// One explicit unavailable output range and its exact retained resume frontier.
+    /// Sent only when `app.terminal-output-gaps` was negotiated.
+    TerminalOutputGap(TerminalOutputGap),
     /// One final terminal exit observation.
     TerminalExited(TerminalExit),
     /// This exact attachment can no longer deliver output; the process may still be running.

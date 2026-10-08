@@ -40,7 +40,7 @@ pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
     let regions = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
+        .constraints([Constraint::Length(3), Constraint::Min(4), Constraint::Length(3)])
         .split(frame.area());
     render_tabs(frame, regions[0], model);
     match model.view {
@@ -62,16 +62,20 @@ pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
 }
 
+pub fn prompt_scroll_limit(model: &AppModel) -> usize {
+    let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
+    let regions =
+        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(3)])
+            .split(area);
+    prompts::scroll_limit(model, regions[1])
+}
+
 pub fn inspection_scroll_limit(model: &AppModel) -> u16 {
     let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
     let regions =
-        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
+        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(3)])
             .split(area);
-    if model.view == View::Approvals {
-        prompts::scroll_limit(model, regions[1])
-    } else {
-        product::scroll_limit(model, regions[1])
-    }
+    product::scroll_limit(model, regions[1])
 }
 
 pub fn inspection_scroll_page(model: &AppModel) -> u16 {
@@ -80,9 +84,20 @@ pub fn inspection_scroll_page(model: &AppModel) -> u16 {
     }
     let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
     let regions =
-        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
+        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(3)])
             .split(area);
     product::scroll_page(regions[1])
+}
+
+pub fn status_scroll_metrics(model: &AppModel) -> (usize, usize) {
+    let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
+    if model.view == View::Conversation {
+        return chat::status_scroll_metrics(model, area);
+    }
+    let regions =
+        Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(3)])
+            .split(area);
+    status::scroll_metrics(model, regions[2])
 }
 
 fn render_event_view(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {

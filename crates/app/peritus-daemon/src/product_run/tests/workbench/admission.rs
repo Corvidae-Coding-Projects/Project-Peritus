@@ -48,7 +48,7 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
             );
             requests[0].fingerprint().expect("fingerprint").digest()
         };
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         drop(service);
         assert!(
             fs::read_dir(state.path().join("product-runs"))
@@ -72,8 +72,12 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
         .expect("restart runs");
         let restored =
             self::service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
-        *restored.inner.controls.lock().expect("owner") = Some(controls);
-        *restored.inner.records.write().expect("records") = records;
+        {
+            let cancellation = peritus_journal::JournalCancellation::new();
+            let _permit = restored.inner.controls.acquire(&cancellation).expect("queue owner");
+            *restored.inner.controls.owner.lock().expect("owner") = Some(controls);
+            *restored.inner.records.write().expect("records") = records;
+        }
         assert_eq!(restored.workbench_command(actor(), &start).await, accepted);
         let record = restored
             .with_controls(false, |store| {
@@ -116,7 +120,7 @@ fn governed_queue_reaches_real_runner_and_exact_binding_survives_fenced_restart(
             1,
             "opening, receipt replay and an illegal retry cannot start work"
         );
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -150,7 +154,7 @@ fn failed_run_staging_preserves_the_pending_queue_and_does_not_call_a_provider()
         assert!(record.execution().is_none());
         assert_eq!(record.inputs().capture().expect("capture").pending().len(), 1);
         assert!(writer.requests.lock().expect("requests").is_empty());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -218,6 +222,6 @@ fn governed_textual_image_mentions_do_not_discover_or_cache_ambient_workspace_im
                 .flat_map(peritus_model_protocol::Message::content)
                 .any(|block| matches!(block, peritus_model_protocol::ContentBlock::Image(_)))
         );
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

@@ -199,7 +199,12 @@ impl AppModel {
         query: WorkbenchQuery,
         revision: u64,
     ) -> Vec<Effect> {
-        let Ok(operation) = ControlOperationId::new(self.ids.bytes(b"workbench-operation")) else {
+        let operation_label = if matches!(intent, WorkbenchIntent::ContinueExecution(_)) {
+            b"workbench-continuation".as_slice()
+        } else {
+            b"workbench-operation".as_slice()
+        };
+        let Ok(operation) = ControlOperationId::new(self.ids.bytes(operation_label)) else {
             return Vec::new();
         };
         let command = WorkbenchCommand::new(operation, query, revision, intent);

@@ -15,16 +15,7 @@ pub(in crate::wire) fn write_observations(
     }
     writer.write_collection_len(values.len())?;
     for value in values {
-        writer.write_option_tag(value.settlement().is_some())?;
-        if let Some(settlement) = value.settlement() {
-            let settled = invalid(
-                writer.len(),
-                crate::ProductRunSettlementSnapshot::new(value.snapshot().clone(), settlement),
-            )?;
-            write_settlement_snapshot(writer, &settled)?;
-        } else {
-            write_snapshot(writer, value.snapshot())?;
-        }
+        write_observation(writer, value)?;
     }
     Ok(())
 }
@@ -41,13 +32,36 @@ pub(in crate::wire) fn read_observations(
     }
     let mut observations = reader.reserve_collection(count)?;
     for _ in 0..count {
-        let (snapshot, settlement) = if reader.read_option_tag()? {
-            let value = read_settlement_snapshot(reader)?;
-            (value.snapshot().clone(), Some(*value.settlement()))
-        } else {
-            (read_snapshot(reader)?, None)
-        };
-        observations.push(invalid(offset, ProductRunObservation::new(snapshot, settlement))?);
+        observations.push(read_observation(reader, offset)?);
     }
     Ok(observations)
+}
+
+pub(in crate::wire) fn write_observation(
+    writer: &mut CanonicalWriter,
+    value: &ProductRunObservation,
+) -> Result<(), CodecError> {
+    writer.write_option_tag(value.settlement().is_some())?;
+    if let Some(settlement) = value.settlement() {
+        let settled = invalid(
+            writer.len(),
+            crate::ProductRunSettlementSnapshot::new(value.snapshot().clone(), settlement),
+        )?;
+        write_settlement_snapshot(writer, &settled)
+    } else {
+        write_snapshot(writer, value.snapshot())
+    }
+}
+
+pub(in crate::wire) fn read_observation(
+    reader: &mut CanonicalReader<'_>,
+    offset: usize,
+) -> Result<ProductRunObservation, CodecError> {
+    let (snapshot, settlement) = if reader.read_option_tag()? {
+        let value = read_settlement_snapshot(reader)?;
+        (value.snapshot().clone(), Some(*value.settlement()))
+    } else {
+        (read_snapshot(reader)?, None)
+    };
+    invalid(offset, ProductRunObservation::new(snapshot, settlement))
 }

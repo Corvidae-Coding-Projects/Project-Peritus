@@ -7,7 +7,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>@PERITUSD@</string>
-        <string>serve</string>
+        <string>supervise</string>
         <string>--config</string>
         <string>@CONFIG_FILE@</string>
     </array>
@@ -20,6 +20,8 @@
     </dict>
     <key>ThrottleInterval</key>
     <integer>5</integer>
+    <key>ExitTimeOut</key>
+    <integer>0</integer>
     <key>ProcessType</key>
     <string>Background</string>
     <key>Umask</key>

@@ -45,8 +45,11 @@ impl ProductRunService {
             .parent()
             .ok_or(ProductRunServiceError::Unavailable)?
             .join("workbench-v1");
+        let cancellation = peritus_journal::JournalCancellation::new();
+        let _permit =
+            self.inner.controls.acquire(&cancellation).map_err(ProductRunServiceError::from)?;
         let mut owner =
-            self.inner.controls.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
+            self.inner.controls.owner.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
         if owner.is_none() {
             *owner = Some(
                 crate::product_control::ControlStore::open(&root, self.inner.control_store)

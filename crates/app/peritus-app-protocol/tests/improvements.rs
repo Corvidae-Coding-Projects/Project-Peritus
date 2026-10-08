@@ -34,7 +34,11 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
     let provider = ProviderProfileId::new([6; 16]).expect("provider");
     for request in [
         ImprovementRequest::List(workspace),
-        ImprovementRequest::Suggest { workspace, run, proposal: text("Investigate context loss") },
+        ImprovementRequest::Suggest {
+            workspace,
+            run,
+            proposal: text(&"Investigate context loss ".repeat(256)),
+        },
         ImprovementRequest::Dismiss { workspace, candidate },
         ImprovementRequest::Evaluate {
             workspace,
@@ -94,7 +98,7 @@ fn all_inbox_operations_round_trip_and_require_explicit_capability() {
     );
     assert!(ImprovementCandidate::new(candidate, text("Suggestion"), vec![], None, false).is_err());
     assert!(ImprovementText::new("\u{1b}[31m".into()).is_err());
-    assert!(ImprovementText::new("x".repeat(4097)).is_err());
+    assert!(ImprovementText::new("x".repeat(4097)).is_ok());
 }
 
 #[test]

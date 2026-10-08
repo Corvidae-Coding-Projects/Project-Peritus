@@ -155,6 +155,10 @@ fn project_live(
             }
         }
         (
+            AppResponsePayload::WorkbenchContinuationAdmission(admission),
+            Some(PendingRequest::WorkbenchContinuationAdmission(command)),
+        ) => return model.accept_workbench_continuation_admission(&command, *admission),
+        (
             AppResponsePayload::WorkbenchReceipt(receipt),
             Some(PendingRequest::WorkbenchControl(command)),
         ) => return model.accept_workbench_receipt(&command, receipt),

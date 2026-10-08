@@ -10,6 +10,7 @@ publish = false
 readme = "README.md"
 
 [dependencies]
+getrandom.workspace = true
 peritus-budget = { version = "=0.0.5", path = "../../foundation/peritus-budget" }
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-journal = { version = "=0.0.5", path = "../../state/peritus-journal" }

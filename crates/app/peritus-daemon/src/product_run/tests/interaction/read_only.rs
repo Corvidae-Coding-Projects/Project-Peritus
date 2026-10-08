@@ -58,5 +58,5 @@ async fn read_only_write_attempt(mode: ProductInteractionMode) {
     assert!(
         snapshot.activities().iter().all(|activity| !activity.detail().contains("unauthorized"))
     );
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }

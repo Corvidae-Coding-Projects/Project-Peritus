@@ -28,8 +28,8 @@ impl DraftLayout {
 
 /// The modal editor's outer bounds, shared by rendering and keyboard navigation.
 pub fn modal_area(area: Rect) -> Rect {
-    // Keep the global submission/error status visible even in a very short terminal.
-    let area = Rect { height: area.height.saturating_sub(1), ..area };
+    // Keep the scrollable submission/error status visible while an editor owns input.
+    let area = Rect { height: area.height.saturating_sub(4), ..area };
     let [_, middle, _] = Layout::vertical([
         Constraint::Length(area.height.saturating_sub(9) / 2),
         Constraint::Length(9.min(area.height)),
@@ -55,7 +55,7 @@ pub fn vertical_cursor(text: &str, cursor: usize, down: bool, width: usize) -> u
 
 pub fn regions(area: Rect, lines: usize, working: bool) -> [Rect; 5] {
     Layout::vertical([
-        Constraint::Length(2),
+        Constraint::Length(4),
         Constraint::Min(3),
         Constraint::Length(u16::from(working) * 5),
         Constraint::Length(u16::try_from(lines.clamp(1, 6)).unwrap_or(6) + 2),

@@ -11,6 +11,9 @@ use crate::{
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 use peritus_types::{RunId, WorkspaceId};
 
+mod paging;
+pub(super) use paging::{read_page, read_evidence_page, read_text_page, write_page, write_evidence_page, write_text_page};
+
 pub(super) fn write_request(
     w: &mut CanonicalWriter,
     value: &ImprovementRequest,
@@ -18,6 +21,20 @@ pub(super) fn write_request(
     write_id(w, value.workspace().as_bytes())?;
     match value {
         ImprovementRequest::List(_) => w.write_u16(1),
+        ImprovementRequest::ListPage { after, .. } => {
+            w.write_u16(5)?;
+            paging::write_cursor_option(w, *after)
+        }
+        ImprovementRequest::EvidencePage { candidate, revision, after, .. } => {
+            w.write_u16(6)?;
+            write_digest(w, *candidate)?;
+            w.write_u64(*revision)?;
+            paging::write_cursor_option(w, *after)
+        }
+        ImprovementRequest::ReadText(query) => {
+            w.write_u16(7)?;
+            paging::write_query_body(w, *query)
+        }
         ImprovementRequest::Suggest { run, proposal, .. } => {
             w.write_u16(2)?;
             write_id(w, run.as_bytes())?;
@@ -41,6 +58,14 @@ pub(super) fn read_request(r: &mut CanonicalReader<'_>) -> Result<ImprovementReq
     let workspace = read_id(r, WorkspaceId::new)?;
     Ok(match r.read_u16()? {
         1 => ImprovementRequest::List(workspace),
+        5 => ImprovementRequest::ListPage { workspace, after: paging::read_cursor_option(r)? },
+        6 => ImprovementRequest::EvidencePage {
+            workspace,
+            candidate: read_digest(r)?,
+            revision: r.read_u64()?,
+            after: paging::read_cursor_option(r)?,
+        },
+        7 => ImprovementRequest::ReadText(paging::read_query_body(r, workspace)?),
         2 => ImprovementRequest::Suggest {
             workspace,
             run: read_id(r, RunId::new)?,
@@ -132,8 +157,5 @@ fn read_count(r: &mut CanonicalReader<'_>) -> Result<usize, CodecError> {
 
 fn read_text(r: &mut CanonicalReader<'_>) -> Result<ImprovementText, CodecError> {
     let text = r.read_str()?;
-    if text.len() > crate::MAX_IMPROVEMENT_TEXT {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, r.offset()));
-    }
     invalid(r.offset(), ImprovementText::new(text.to_owned()))
 }

@@ -1,8 +1,8 @@
 //! Durable restore outcome and exact transaction bindings.
 
 use super::{
-    CheckpointFileVersion, CheckpointId, CheckpointPath, ControlError, ControlText, RestoreId,
-    Sha256Digest,
+    CheckpointFileVersion, CheckpointId, CheckpointPath, CheckpointText, CheckpointTextIter,
+    ControlError, RestoreId, Sha256Digest,
 };
 use serde::Deserialize;
 use serde::Serialize;
@@ -31,7 +31,7 @@ pub struct RestoreOperation {
     patch_digest: [u8; 32],
     recovery_checkpoint: CheckpointId,
     status: RestoreStatus,
-    conflicts: Vec<ControlText<4096>>,
+    conflicts: Vec<CheckpointText>,
     transaction_manifest_digest: Option<[u8; 32]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     branch: Option<Box<crate::control::ConversationBranch>>,
@@ -198,8 +198,8 @@ impl RestoreOperation {
         }
     }
     /// Borrows exact paths that blocked the restore.
-    pub fn conflicts(&self) -> crate::control::ControlTextIter<'_, 4096> {
-        self.conflicts.iter().map(ControlText::as_str)
+    pub fn conflicts(&self) -> CheckpointTextIter<'_> {
+        self.conflicts.iter().map(CheckpointText::as_str)
     }
     pub(in crate::control) fn settle(
         &mut self,
@@ -210,13 +210,13 @@ impl RestoreOperation {
         if self.status != RestoreStatus::Prepared || status == RestoreStatus::Prepared {
             return Err(ControlError::InvalidInput);
         }
-        if u16::try_from(conflicts.len()).is_err()
-            || (status == RestoreStatus::Conflict) == conflicts.is_empty()
+        if (status == RestoreStatus::Conflict) == conflicts.is_empty()
             || status == RestoreStatus::Applied && transaction_manifest_digest.is_none()
         {
             return Err(ControlError::InvalidInput);
         }
-        self.conflicts = conflicts.into_iter().map(ControlText::new).collect::<Result<_, _>>()?;
+        self.conflicts =
+            conflicts.into_iter().map(CheckpointText::new).collect::<Result<_, _>>()?;
         self.status = status;
         self.transaction_manifest_digest =
             transaction_manifest_digest.map(Sha256Digest::into_bytes);

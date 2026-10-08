@@ -7,7 +7,7 @@ use std::{
     os::unix::process::CommandExt as _,
     path::Path,
     process::{Child, Command, Stdio},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use crate::{ErrorCode, ProcessError, ProcessOperation, RecoveryClass};
@@ -15,7 +15,7 @@ use crate::{ErrorCode, ProcessError, ProcessOperation, RecoveryClass};
 use super::{PlatformProcess, ProcessTreeIdentity};
 
 const DISARM: u8 = 1;
-const REAP_LIMIT: Duration = Duration::from_secs(1);
+const REAP_POLL_INTERVAL: Duration = Duration::from_millis(5);
 
 pub(super) fn attach(
     mut process: Box<dyn PlatformProcess>,
@@ -42,7 +42,7 @@ impl PlatformProcess for WatchedProcess {
         self.process.identity()
     }
 
-    fn take_input(&mut self) -> Option<Box<dyn std::io::Write + Send>> {
+    fn take_input(&mut self) -> Option<super::ProcessInput> {
         self.process.take_input()
     }
 
@@ -140,18 +140,12 @@ impl CrashWatchdog {
     }
 
     fn reap(&mut self, require_success: bool) -> Result<(), ProcessError> {
-        let began = Instant::now();
         loop {
             match self.child.try_wait() {
                 Ok(Some(status)) if !require_success || status.success() => return Ok(()),
                 Ok(Some(_)) => return Err(watchdog_error("process crash watchdog failed")),
-                Ok(None) if began.elapsed() < REAP_LIMIT => {
-                    std::thread::sleep(Duration::from_millis(5));
-                }
                 Ok(None) => {
-                    let _ = self.child.kill();
-                    let _ = self.child.wait();
-                    return Err(watchdog_error("process crash watchdog did not exit"));
+                    std::thread::sleep(REAP_POLL_INTERVAL);
                 }
                 Err(_) => return Err(watchdog_error("process crash watchdog cannot be reaped")),
             }
@@ -161,9 +155,8 @@ impl CrashWatchdog {
 
 impl Drop for CrashWatchdog {
     fn drop(&mut self) {
-        if self.owner.take().is_some() {
-            let _ = self.reap(false);
-        }
+        self.owner.take();
+        let _ = self.reap(false);
     }
 }
 

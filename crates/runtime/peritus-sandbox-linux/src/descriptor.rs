@@ -143,12 +143,12 @@ fn supported_features(probe: &LinuxProbe, managed_proxy: bool) -> FeatureSet {
         if managed_proxy {
             features.insert(SandboxFeature::NetworkEgress);
         }
-        if probe.cgroup().delegated() {
-            for feature in
-                [SandboxFeature::CpuTime, SandboxFeature::Memory, SandboxFeature::ProcessCount]
-            {
-                features.insert(feature);
-            }
+        features.insert(SandboxFeature::CpuTime);
+        if probe.cgroup().controller_delegated("memory") {
+            features.insert(SandboxFeature::Memory);
+        }
+        if probe.cgroup().controller_delegated("pids") {
+            features.insert(SandboxFeature::ProcessCount);
         }
     }
     features

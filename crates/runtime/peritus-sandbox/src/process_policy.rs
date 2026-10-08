@@ -2,8 +2,6 @@
 
 use crate::{SandboxError, SandboxPath};
 
-const MAX_ROOT_PROGRAMS: usize = 128;
-
 /// Descendant creation policy.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum DescendantPolicy {
@@ -11,6 +9,8 @@ pub enum DescendantPolicy {
     Denied,
     /// At most the stated number of descendants may exist.
     Bounded(u32),
+    /// Descendant creation is allowed without a synthetic cumulative count.
+    Allowed,
 }
 
 /// Signal delivery policy.
@@ -59,34 +59,58 @@ pub struct ProcessContract {
     descendants: DescendantPolicy,
     signals: SignalPolicy,
     containment: TreeContainment,
-    maximum_processes: u32,
+    maximum_processes: Option<u32>,
 }
 
 impl ProcessContract {
     /// Creates a process contract.
     ///
     /// # Errors
-    /// Rejects an empty/oversized root set or a zero/inconsistent process bound.
+    /// Rejects an empty root set or a zero/inconsistent process bound.
     pub fn new(
-        mut root_programs: Vec<SandboxPath>,
+        root_programs: Vec<SandboxPath>,
         descendants: DescendantPolicy,
         signals: SignalPolicy,
         containment: TreeContainment,
         maximum_processes: u32,
     ) -> Result<Self, SandboxError> {
+        Self::with_optional_process_limit(
+            root_programs,
+            descendants,
+            signals,
+            containment,
+            Some(maximum_processes),
+        )
+    }
+
+    /// Creates a process contract with an explicit optional simultaneous-process ceiling.
+    ///
+    /// # Errors
+    /// Rejects an empty root set, a selected zero/inconsistent process ceiling, or an
+    /// unbounded descendant policy paired with a finite process ceiling.
+    pub fn with_optional_process_limit(
+        mut root_programs: Vec<SandboxPath>,
+        descendants: DescendantPolicy,
+        signals: SignalPolicy,
+        containment: TreeContainment,
+        maximum_processes: Option<u32>,
+    ) -> Result<Self, SandboxError> {
         root_programs.sort();
         root_programs.dedup();
-        if root_programs.is_empty() || root_programs.len() > MAX_ROOT_PROGRAMS {
+        if root_programs.is_empty() {
             return Err(crate::error::bound("invalid root program count"));
         }
-        if maximum_processes == 0 {
-            return Err(crate::error::invalid("process limit must be nonzero"));
+        if maximum_processes == Some(0) {
+            return Err(crate::error::invalid("selected process limit must be nonzero"));
         }
         let needed = match descendants {
-            DescendantPolicy::Denied => 1,
-            DescendantPolicy::Bounded(n) => n.saturating_add(1),
+            DescendantPolicy::Denied => Some(1),
+            DescendantPolicy::Bounded(n) => n.checked_add(1),
+            DescendantPolicy::Allowed => None,
         };
-        if maximum_processes < needed {
+        if matches!((needed, maximum_processes), (Some(required), Some(maximum)) if maximum < required)
+            || needed.is_some() != maximum_processes.is_some()
+        {
             return Err(crate::error::invalid("process limit is below descendant allowance"));
         }
         Ok(Self { root_programs, descendants, signals, containment, maximum_processes })
@@ -115,7 +139,20 @@ impl ProcessContract {
     /// Returns maximum simultaneous owned processes, including the root.
     #[must_use]
     pub const fn maximum_processes(&self) -> u32 {
+        match self.maximum_processes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional simultaneous owned-process ceiling, including the root.
+    #[must_use]
+    pub const fn maximum_process_limit(&self) -> Option<u32> {
         self.maximum_processes
+    }
+
+    pub(crate) const fn uses_legacy_encoding(&self) -> bool {
+        !matches!(self.descendants, DescendantPolicy::Allowed)
+            && self.maximum_processes.is_some()
     }
 }
 
@@ -159,6 +196,7 @@ impl ProcessRequirements {
             && match contract.descendants {
                 DescendantPolicy::Denied => self.descendant_count == 0,
                 DescendantPolicy::Bounded(limit) => self.descendant_count <= limit,
+                DescendantPolicy::Allowed => true,
             }
             && (!self.requires_forced_termination
                 || contract.signals == SignalPolicy::GracefulAndForced)

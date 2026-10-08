@@ -5,7 +5,9 @@ use peritus_run_settlement::CandidateStage;
 fn canonical_record_rejects_omitted_current_fields() {
     let record = PersistedRecord {
         format_version: 6,
-        goal_resume: None,
+        attempt_admission: None,
+        continuation_admissions: Vec::new(),
+        continuation_sources: Vec::new(),
         interaction: interaction::PersistedInteraction::capture(
             &crate::product_run::interaction::InteractionOptions::test(
                 peritus_app_protocol::ProductInteractionMode::Build,

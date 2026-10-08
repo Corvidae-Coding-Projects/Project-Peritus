@@ -1,21 +1,24 @@
-//! Bounded pixel validation; metadata alone is not acceptance evidence.
+//! Streamed container validation with optional bounded complete-pixel evidence.
 
-use std::io::Cursor;
+use std::io::{BufReader, Read, Seek, SeekFrom};
 
 use image::{AnimationDecoder, ImageDecoder, ImageFormat, ImageReader, Limits};
 
-use super::{MAX_IMAGE_DECODED_BYTES, MAX_IMAGE_FRAMES, MAX_IMAGE_PIXELS, MAX_IMAGE_SIDE, invalid};
+use super::{ImageValidation, MAX_IMAGE_DECODE_ALLOCATION_BYTES, invalid};
 use crate::ProductRunnerError;
+
+mod structure;
 
 pub(super) struct Decoded {
     pub mime: &'static str,
     pub width: u32,
     pub height: u32,
     pub frames: u32,
+    pub validation: ImageValidation,
 }
 
-pub(super) fn validate(bytes: &[u8]) -> Result<Decoded, ProductRunnerError> {
-    let format = image::guess_format(bytes).map_err(|error| decode_error(&error))?;
+pub(super) fn validate<R: Read + Seek>(reader: &mut R) -> Result<Decoded, ProductRunnerError> {
+    let format = detected_format(reader)?;
     let mime = match format {
         ImageFormat::Png => "image/png",
         ImageFormat::Jpeg => "image/jpeg",
@@ -23,111 +26,174 @@ pub(super) fn validate(bytes: &[u8]) -> Result<Decoded, ProductRunnerError> {
         ImageFormat::WebP => "image/webp",
         _ => return Err(invalid("unsupported image format; expected PNG, JPEG, GIF, or WebP")),
     };
-    let mut reader = ImageReader::with_format(Cursor::new(bytes), format);
-    reader.limits(limits());
-    let (width, height) = reader.into_dimensions().map_err(|error| decode_error(&error))?;
-    check_dimensions(width, height)?;
-    let frames = match format {
+    let inspected = structure::inspect(reader, format)?;
+    let validation = if pixel_window_fits(inspected.width, inspected.height) {
+        match validate_pixels(reader, format) {
+            Ok(decoded)
+                if decoded
+                    == (inspected.width, inspected.height, inspected.frames) =>
+            {
+                ImageValidation::CompletePixels
+            }
+            Ok(_) => return Err(invalid("decoded pixels differ from the inspected image structure")),
+            Err(PixelFailure::Unavailable) => ImageValidation::ContainerStructure,
+            Err(PixelFailure::Invalid(error)) => return Err(error),
+        }
+    } else {
+        ImageValidation::ContainerStructure
+    };
+    Ok(Decoded {
+        mime,
+        width: inspected.width,
+        height: inspected.height,
+        frames: inspected.frames,
+        validation,
+    })
+}
+
+fn validate_pixels<R: Read + Seek>(
+    reader: &mut R,
+    format: ImageFormat,
+) -> Result<(u32, u32, u32), PixelFailure> {
+    let (width, height, frames) = match format {
         ImageFormat::Gif => {
-            let mut decoder = image::codecs::gif::GifDecoder::new(Cursor::new(bytes))
-                .map_err(|error| decode_error(&error))?;
-            decoder.set_limits(limits()).map_err(|error| decode_error(&error))?;
-            validate_frames(decoder.into_frames(), 0)?
+            rewind_pixels(reader)?;
+            let mut decoder = image::codecs::gif::GifDecoder::new(BufReader::new(&mut *reader))
+                .map_err(pixel_error)?;
+            decoder.set_limits(limits()).map_err(pixel_error)?;
+            let dimensions = decoder.dimensions();
+            (dimensions.0, dimensions.1, validate_frames(decoder.into_frames())?)
         }
         ImageFormat::Png => {
-            let decoder = image::codecs::png::PngDecoder::with_limits(Cursor::new(bytes), limits())
-                .map_err(|error| decode_error(&error))?;
-            // Validate the default image too: APNG may have a separate, hidden default image.
-            let default_bytes = validate_still(bytes, format)?;
-            if decoder.is_apng().map_err(|error| decode_error(&error))? {
-                validate_frames(
-                    decoder.apng().map_err(|error| decode_error(&error))?.into_frames(),
-                    default_bytes,
-                )?
+            // Validate the default image too: APNG may carry it separately from animation frames.
+            let dimensions = validate_still(reader, format)?;
+            rewind_pixels(reader)?;
+            let decoder = image::codecs::png::PngDecoder::with_limits(
+                BufReader::new(&mut *reader),
+                limits(),
+            )
+            .map_err(pixel_error)?;
+            let frames = if decoder.is_apng().map_err(pixel_error)? {
+                validate_frames(decoder.apng().map_err(pixel_error)?.into_frames())?
             } else {
                 1
-            }
+            };
+            (dimensions.0, dimensions.1, frames)
         }
         ImageFormat::WebP => {
-            let mut decoder = image::codecs::webp::WebPDecoder::new(Cursor::new(bytes))
-                .map_err(|error| decode_error(&error))?;
-            decoder.set_limits(limits()).map_err(|error| decode_error(&error))?;
+            rewind_pixels(reader)?;
+            let mut decoder =
+                image::codecs::webp::WebPDecoder::new(BufReader::new(&mut *reader))
+                    .map_err(pixel_error)?;
+            decoder.set_limits(limits()).map_err(pixel_error)?;
+            let dimensions = decoder.dimensions();
             if decoder.has_animation() {
-                validate_frames(decoder.into_frames(), 0)?
+                (dimensions.0, dimensions.1, validate_frames(decoder.into_frames())?)
             } else {
-                validate_still(bytes, format)?;
-                1
+                drop(decoder);
+                let dimensions = validate_still(reader, format)?;
+                (dimensions.0, dimensions.1, 1)
             }
         }
         _ => {
-            validate_still(bytes, format)?;
-            1
+            let dimensions = validate_still(reader, format)?;
+            (dimensions.0, dimensions.1, 1)
         }
     };
-    Ok(Decoded { mime, width, height, frames })
+    Ok((width, height, frames))
+}
+
+fn detected_format<R: Read + Seek>(reader: &mut R) -> Result<ImageFormat, ProductRunnerError> {
+    rewind(reader)?;
+    let mut header = [0_u8; 32];
+    let mut length = 0_usize;
+    while length < header.len() {
+        let count = reader.read(&mut header[length..]).map_err(io_error)?;
+        if count == 0 {
+            break;
+        }
+        length += count;
+    }
+    rewind(reader)?;
+    image::guess_format(&header[..length]).map_err(|error| decode_error(&error))
 }
 
 fn limits() -> Limits {
     let mut limits = Limits::default();
-    limits.max_image_width = Some(MAX_IMAGE_SIDE);
-    limits.max_image_height = Some(MAX_IMAGE_SIDE);
-    // The decoder API's allocation limit is best-effort. Strict dimension/pixel/output checks
-    // are separate; this value is not advertised as a hard total process-memory limit.
-    limits.max_alloc = Some(MAX_IMAGE_DECODED_BYTES);
+    // This governs optional evidence only. A limit result preserves complete container evidence;
+    // it never rejects an attachment or becomes a logical image-shape allowance.
+    limits.max_alloc = Some(MAX_IMAGE_DECODE_ALLOCATION_BYTES);
     limits
 }
 
-fn check_dimensions(width: u32, height: u32) -> Result<(), ProductRunnerError> {
-    if width == 0
-        || height == 0
-        || width > MAX_IMAGE_SIDE
-        || height > MAX_IMAGE_SIDE
-        || u64::from(width) * u64::from(height) > MAX_IMAGE_PIXELS
-    {
-        return Err(invalid("image dimensions exceed the canvas or pixel limit, or are empty"));
-    }
-    Ok(())
+fn pixel_window_fits(width: u32, height: u32) -> bool {
+    u64::from(width)
+        .checked_mul(u64::from(height))
+        // PNG can carry 16-bit RGBA output. This conservative bound also protects image 0.25's
+        // WebP paths that do not consistently consult Limits before creating output buffers.
+        .and_then(|pixels| pixels.checked_mul(8))
+        .is_some_and(|bytes| bytes <= MAX_IMAGE_DECODE_ALLOCATION_BYTES)
 }
 
-fn validate_still(bytes: &[u8], format: ImageFormat) -> Result<u64, ProductRunnerError> {
-    let mut reader = ImageReader::with_format(Cursor::new(bytes), format);
-    reader.limits(limits());
-    // ImageReader reserves the output allocation before decoding; from_decoder alone does not.
-    let decoded = reader.decode().map_err(|error| decode_error(&error))?;
-    check_dimensions(decoded.width(), decoded.height())?;
-    let byte_len = u64::try_from(decoded.as_bytes().len())
-        .map_err(|_| invalid("decoded image length overflow"))?;
-    if byte_len > MAX_IMAGE_DECODED_BYTES {
-        return Err(invalid("decoded image exceeds the output byte limit"));
-    }
-    Ok(byte_len)
+fn validate_still<R: Read + Seek>(
+    reader: &mut R,
+    format: ImageFormat,
+) -> Result<(u32, u32), PixelFailure> {
+    rewind_pixels(reader)?;
+    let mut image = ImageReader::with_format(BufReader::new(&mut *reader), format);
+    image.limits(limits());
+    let decoded = image.decode().map_err(pixel_error)?;
+    Ok((decoded.width(), decoded.height()))
 }
 
-fn validate_frames(frames: image::Frames<'_>, mut total: u64) -> Result<u32, ProductRunnerError> {
+fn validate_frames(frames: image::Frames<'_>) -> Result<u32, PixelFailure> {
     let mut count = 0_u32;
     for frame in frames {
-        count += 1;
-        if count > MAX_IMAGE_FRAMES {
-            return Err(invalid("image exceeds the animation frame limit"));
+        let frame = frame.map_err(pixel_error)?;
+        if frame.buffer().width() == 0 || frame.buffer().height() == 0 {
+            return Err(PixelFailure::Invalid(invalid("decoded image frame is empty")));
         }
-        let frame = frame.map_err(|error| decode_error(&error))?;
-        check_dimensions(frame.buffer().width(), frame.buffer().height())?;
-        let bytes = u64::try_from(frame.buffer().as_raw().len())
-            .map_err(|_| invalid("decoded frame length overflow"))?;
-        total =
-            total.checked_add(bytes).ok_or_else(|| invalid("decoded animation length overflow"))?;
-        if total > MAX_IMAGE_DECODED_BYTES {
-            return Err(invalid("animation exceeds the decoded output byte limit"));
-        }
+        count = count
+            .checked_add(1)
+            .ok_or_else(|| PixelFailure::Invalid(invalid("animation frame count is not representable")))?;
+        drop(frame);
     }
     if count == 0 {
-        return Err(invalid("image contains no complete frames"));
+        return Err(PixelFailure::Invalid(invalid("image contains no complete pixel frames")));
     }
     Ok(count)
 }
 
+fn rewind<R: Seek>(reader: &mut R) -> Result<(), ProductRunnerError> {
+    reader.seek(SeekFrom::Start(0)).map(|_| ()).map_err(io_error)
+}
+
+fn rewind_pixels<R: Seek>(reader: &mut R) -> Result<(), PixelFailure> {
+    rewind(reader).map_err(PixelFailure::Invalid)
+}
+
+fn io_error(error: std::io::Error) -> ProductRunnerError {
+    invalid(format!("image source read failed: {error}"))
+}
+
 fn decode_error(error: &image::ImageError) -> ProductRunnerError {
     invalid(format!("image pixel validation failed: {error}"))
+}
+
+enum PixelFailure {
+    Unavailable,
+    Invalid(ProductRunnerError),
+}
+
+fn pixel_error(error: image::ImageError) -> PixelFailure {
+    if matches!(
+        &error,
+        image::ImageError::Limits(_) | image::ImageError::Unsupported(_)
+    ) {
+        PixelFailure::Unavailable
+    } else {
+        PixelFailure::Invalid(decode_error(&error))
+    }
 }
 
 #[cfg(test)]

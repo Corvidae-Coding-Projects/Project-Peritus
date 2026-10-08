@@ -30,6 +30,40 @@ impl Client {
         identity: RequestIdentity,
         payload: AppRequestPayload,
     ) -> Result<AppResponseEnvelope, ClientError> {
+        if let Some(required) = payload.required_workbench_feature()
+            && !self.supports(required)
+        {
+            return Err(ClientError::protocol(
+                "encode application request",
+                format!(
+                    "daemon has not negotiated required capability: {}",
+                    required.as_str()
+                ),
+            ));
+        }
+        if let AppRequestPayload::WorkbenchCommand(command)
+        | AppRequestPayload::QueryWorkbenchReceipt(command) = &payload
+        {
+            let wide = match command.intent() {
+                peritus_app_protocol::WorkbenchIntent::CreateCheckpoint(name) => {
+                    name.requires_manifest_feature()
+                }
+                peritus_app_protocol::WorkbenchIntent::ApplyRewind(preview) => {
+                    preview.requires_manifest_feature()
+                }
+                _ => false,
+            };
+            if wide
+                && !self.supports(
+                    peritus_app_protocol::WellKnownProtocolFeature::WorkbenchCheckpointManifests,
+                )
+            {
+                return Err(ClientError::protocol(
+                    "encode checkpoint command",
+                    "daemon has not negotiated complete checkpoint manifests",
+                ));
+            }
+        }
         let request = AppRequestEnvelope::new(
             self.context,
             identity.request_id,

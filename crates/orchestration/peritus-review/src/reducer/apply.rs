@@ -227,10 +227,15 @@ fn assign(
         state.cycles().len().checked_add(1).ok_or_else(|| {
             reject(ReviewErrorKind::LimitExceeded, "review cycle ordinal overflowed")
         })?;
+    let ordinal_invalid = if state.binding().uses_paged_history() {
+        state.cycles().iter().any(|cycle| cycle.ordinal() == assignment.ordinal())
+    } else {
+        usize::from(assignment.ordinal().get()) != expected
+    };
     if state.cycles().len() >= usize::from(state.limits().assignments())
         || state.cycles().len() >= usize::from(state.limits().cycles())
         || state.cycles().len() >= usize::from(state.binding().maximum_cycles())
-        || usize::from(assignment.ordinal().get()) != expected
+        || ordinal_invalid
         || state.cycle(assignment.cycle_id()).is_some()
     {
         return Err(reject(
@@ -342,8 +347,11 @@ fn finalize(state: &mut ReviewRunState) -> Result<ReviewEventKind, ReviewError> 
 
 fn terminate(state: &mut ReviewRunState, kind: ReviewTerminalKind, cause: Sha256Digest) {
     let terminal = mutation::make_terminal(
+        state.binding().uses_paged_history(),
         kind,
         state.unconserved_current_findings(),
+        state.unconserved_current_count(),
+        state.unconserved_current_xor(),
         state.quorum().clone(),
         state.oscillation().clone(),
         cause,

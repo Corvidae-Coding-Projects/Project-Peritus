@@ -1,8 +1,8 @@
 //! Terminal attachment transcript and A3 ordering state.
 
 use peritus_app_protocol::{
-    TerminalBinding, TerminalError, TerminalExit, TerminalInput, TerminalOutput, TerminalPhase,
-    TerminalResize, TerminalState,
+    TerminalBinding, TerminalError, TerminalExit, TerminalInput, TerminalOutput, TerminalOutputGap,
+    TerminalPhase, TerminalResize, TerminalState,
 };
 
 mod line_input;
@@ -172,6 +172,23 @@ impl TerminalSession {
             self.transcript.push(&line.display_bytes(output.bytes()));
         } else {
             self.transcript.push(output.bytes());
+        }
+        self.scroll = 0;
+        Ok(())
+    }
+
+    pub(crate) fn accept_output_gap(
+        &mut self,
+        gap: TerminalOutputGap,
+    ) -> Result<(), TerminalError> {
+        self.state.accept_output_gap(gap)?;
+        self.transcript.discontinuity();
+        let marker = format!("\n[{} terminal output bytes unavailable]\n", gap.missing_bytes());
+        if let Some(line) = &mut self.line_input {
+            line.discontinuity();
+            self.transcript.push(&line.display_bytes(marker.as_bytes()));
+        } else {
+            self.transcript.push(marker.replace('\n', "\r\n").as_bytes());
         }
         self.scroll = 0;
         Ok(())

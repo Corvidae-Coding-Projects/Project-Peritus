@@ -4,9 +4,6 @@ use peritus_types::{EventId, Sha256Digest};
 
 use crate::{ArtifactDigest, ArtifactStoreError, ErrorCode, RecoveryClass};
 
-const MAX_MEDIA_TYPE_BYTES: usize = 255;
-const MAX_ENCRYPTION_ALGORITHM_BYTES: usize = 64;
-
 /// Validated Internet media type text.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct MediaType(String);
@@ -19,17 +16,17 @@ impl MediaType {
     ///
     /// # Errors
     ///
-    /// Returns an error when the value is empty, too long, non-ASCII, or structurally invalid.
+    /// Returns an error when the value is empty, non-ASCII, or structurally invalid.
     pub fn new(value: impl Into<String>) -> Result<Self, ArtifactStoreError> {
         let value = value.into();
         let bytes = value.as_bytes();
-        let valid_length = !bytes.is_empty() && bytes.len() <= MAX_MEDIA_TYPE_BYTES;
+        let is_present = !bytes.is_empty();
         let valid_bytes = bytes.iter().all(u8::is_ascii_graphic);
         let essence = value.split(';').next().unwrap_or_default();
         let valid_essence = essence
             .split_once('/')
             .is_some_and(|(kind, subtype)| !kind.is_empty() && !subtype.is_empty());
-        if !valid_length || !valid_bytes || !valid_essence {
+        if !is_present || !valid_bytes || !valid_essence {
             return Err(invalid_metadata("invalid artifact media type"));
         }
         Ok(Self(value))
@@ -67,7 +64,7 @@ impl EncryptionMetadata {
     ///
     /// # Errors
     ///
-    /// Returns an error when the algorithm token is empty, too long, or contains non-token bytes.
+    /// Returns an error when the algorithm token is empty or contains non-token bytes.
     pub fn envelope(
         algorithm: impl Into<String>,
         key_reference: Sha256Digest,
@@ -75,7 +72,6 @@ impl EncryptionMetadata {
     ) -> Result<Self, ArtifactStoreError> {
         let algorithm = algorithm.into();
         let valid = !algorithm.is_empty()
-            && algorithm.len() <= MAX_ENCRYPTION_ALGORITHM_BYTES
             && algorithm.bytes().all(|byte| {
                 byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'/')
             });

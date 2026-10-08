@@ -1,6 +1,6 @@
 //! Typed checkpoint coverage, selected intervals and exact owned versions.
 
-use super::{CheckpointFileVersion, ControlError, ControlText};
+use super::{CheckpointFileVersion, ControlError, text::CheckpointPathText};
 use crate::control::FileRange;
 use peritus_patch::WorkspacePath;
 use serde::{Deserialize, Serialize};
@@ -71,7 +71,7 @@ pub enum CheckpointCoverage<'a> {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CheckpointPath {
-    path: ControlText<4096>,
+    path: CheckpointPathText,
     checkpoint: CheckpointFileVersion,
     owned_postchange: Option<CheckpointFileVersion>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -85,9 +85,8 @@ impl CheckpointPath {
     /// # Errors
     /// Rejects non-canonical workspace-relative paths.
     pub fn new(path: String, checkpoint: CheckpointFileVersion) -> Result<Self, ControlError> {
-        WorkspacePath::new(&path).map_err(|_| ControlError::InvalidInput)?;
         let value = Self {
-            path: ControlText::new(path)?,
+            path: CheckpointPathText::new(path)?,
             checkpoint,
             owned_postchange: None,
             coverage_schema: if matches!(checkpoint, CheckpointFileVersion::EmptyDirectory { .. }) {
@@ -133,6 +132,16 @@ impl CheckpointPath {
     #[must_use]
     pub fn path(&self) -> &str {
         self.path.as_str()
+    }
+    /// Returns the stable exact path identity used by paged snapshot coverage.
+    /// A version or page position does not change the identity of the covered target.
+    #[must_use]
+    pub fn path_id(&self) -> peritus_types::Sha256Digest {
+        use sha2::{Digest as _, Sha256};
+        let mut digest = Sha256::new();
+        digest.update(b"peritus-checkpoint-path-v1\0");
+        digest.update(self.path().as_bytes());
+        peritus_types::Sha256Digest::new(digest.finalize().into())
     }
     /// Returns the version restored by rewind.
     #[must_use]

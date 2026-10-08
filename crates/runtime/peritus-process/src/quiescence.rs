@@ -19,6 +19,8 @@ pub enum QuiescenceBlocker {
     UnresolvedProcess(ProcessId),
     /// A record for the correlated holder contains a different exact lease claim.
     ClaimMismatch(ProcessId),
+    /// The complete durable registry frontier cannot currently be inspected.
+    RegistryUnavailable,
 }
 
 impl fmt::Display for QuiescenceBlocker {
@@ -32,6 +34,7 @@ impl fmt::Display for QuiescenceBlocker {
             Self::ClaimMismatch(_) => {
                 formatter.write_str("a correlated process has a different claim")
             }
+            Self::RegistryUnavailable => formatter.write_str("durable process registry is unavailable"),
         }
     }
 }
@@ -111,9 +114,22 @@ impl ProcessStore {
             return Err(QuiescenceBlocker::CorrelationMismatch);
         }
 
-        let manifests = self.manifests();
-        for manifest in &manifests {
-            let Some(ownership) = manifest.lease else { continue };
+        if !self.quarantined_records().is_empty() {
+            return Err(QuiescenceBlocker::RegistryUnavailable);
+        }
+
+        let mut inspected_records = 0_u64;
+        let mut blocker = None;
+        self.visit_registry(|record| {
+            let Some(manifest) = record.manifest else {
+                blocker.get_or_insert(QuiescenceBlocker::UnresolvedProcess(record.process_id));
+                return Ok(());
+            };
+            inspected_records = inspected_records.checked_add(1).ok_or_else(|| {
+                crate::ProcessError::new(crate::ErrorCode::Persistence, crate::ProcessOperation::Reconcile,
+                    crate::RecoveryClass::ReopenAndReconcile, "quiescence record count overflow")
+            })?;
+            let Some(ownership) = manifest.lease else { return Ok(()); };
             let same_correlation = ownership.workspace_id() == correlation.scope().workspace_id()
                 && ownership.resource_id() == correlation.scope().resource_id()
                 && ownership.environment_id() == correlation.scope().environment_id()
@@ -121,11 +137,14 @@ impl ProcessStore {
                 && ownership.session_id() == correlation.prior_holder().session_id()
                 && ownership.generation() == correlation.fenced_generation();
             if !same_correlation {
-                continue;
+                return Ok(());
             }
             let process_id = manifest.identity.process_id();
-            if !ownership.matches_claim(claim) {
-                return Err(QuiescenceBlocker::ClaimMismatch(process_id));
+            if !ownership.matches_claim(claim)
+                || !record.claim.is_some_and(|claim| claim.matches_manifest(&manifest))
+            {
+                blocker.get_or_insert(QuiescenceBlocker::ClaimMismatch(process_id));
+                return Ok(());
             }
             if matches!(
                 manifest.phase,
@@ -134,14 +153,15 @@ impl ProcessStore {
                     | LifecyclePhase::Running
                     | LifecyclePhase::Stopping
             ) {
-                return Err(QuiescenceBlocker::LiveProcess(process_id));
+                blocker.get_or_insert(QuiescenceBlocker::LiveProcess(process_id));
+                return Ok(());
             }
             if !manifest.ownership_settled() {
-                return Err(QuiescenceBlocker::UnresolvedProcess(process_id));
+                blocker.get_or_insert(QuiescenceBlocker::UnresolvedProcess(process_id));
             }
-        }
-
-        let inspected_records = u64::try_from(manifests.len()).unwrap_or(u64::MAX);
+            Ok(())
+        }).map_err(|_| QuiescenceBlocker::RegistryUnavailable)?;
+        if let Some(blocker) = blocker { return Err(blocker); }
         if !holder_quiescence_exact(true, true, 0, 0, true, true) {
             return Err(QuiescenceBlocker::CorrelationMismatch);
         }

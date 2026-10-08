@@ -345,7 +345,7 @@ impl Stores {
         let journal = SqliteJournal::open(
             &database,
             StoreId::new(bytes(1)).expect("store"),
-            SqliteJournalOptions { busy_timeout: Duration::from_millis(500) },
+            SqliteJournalOptions::with_timeout(Duration::from_millis(500)),
         )
         .expect("journal");
         let artifacts = ArtifactStore::open(

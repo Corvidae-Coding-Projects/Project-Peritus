@@ -2,12 +2,16 @@
 
 mod command;
 mod event;
+pub(crate) mod index;
 mod state;
 
 #[cfg(test)]
 mod fixture_tests;
 
-use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
+use peritus_codec::{
+    CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits, decode_frame_header,
+    decode_message,
+};
 use peritus_quality_policy::ReviewerIdentity;
 use peritus_role::ReviewIndependenceView;
 use peritus_spec::{
@@ -20,11 +24,35 @@ use peritus_types::{
     RevisionTuple, RunId, Sha256Digest, WorkspaceId,
 };
 
-use crate::{ReviewBinding, ReviewLimits};
+use crate::{ReviewBinding, ReviewBindingVersion, ReviewLimits};
 
 pub use command::ReviewCommandFrame;
 pub use event::ReviewEventFrame;
 pub use state::ReviewStateFrame;
+
+pub(super) fn encode_state_frame(
+    state: &crate::ReviewRunState,
+    limits: CodecLimits,
+) -> Result<Vec<u8>, CodecError> {
+    if state.binding().uses_paged_history() {
+        peritus_codec::encode_message(&state::PagedReviewStateFrame::from_state(state), limits)
+    } else {
+        peritus_codec::encode_message(&ReviewStateFrame::from_state(state), limits)
+    }
+}
+
+pub(super) fn decode_state_frame(
+    bytes: &[u8],
+    limits: CodecLimits,
+) -> Result<ReviewStateFrame, CodecError> {
+    match decode_frame_header(bytes, limits)?.schema_version() {
+        1 => decode_message::<ReviewStateFrame>(bytes, limits),
+        2 => decode_message::<state::PagedReviewStateFrame>(bytes, limits)
+            .map(state::PagedReviewStateFrame::into_state)
+            .map(ReviewStateFrame::from_owned),
+        _ => Err(CodecError::at(CodecErrorKind::WrongSchemaVersion, 8)),
+    }
+}
 
 const fn invalid(reader: &CanonicalReader<'_>) -> CodecError {
     CodecError::at(CodecErrorKind::InvalidDomainValue, reader.offset())
@@ -263,7 +291,10 @@ const fn production_limits() -> ReviewLimits {
     )
 }
 
-fn write_binding(writer: &mut CanonicalWriter, value: &ReviewBinding) -> Result<(), CodecError> {
+fn write_binding_v1(
+    writer: &mut CanonicalWriter,
+    value: &ReviewBinding,
+) -> Result<(), CodecError> {
     write_id(writer, value.contract_id().as_bytes())?;
     write_digest(writer, value.contract_digest())?;
     write_revision(writer, value.revision())?;
@@ -296,7 +327,57 @@ fn write_binding(writer: &mut CanonicalWriter, value: &ReviewBinding) -> Result<
     write_digest(writer, value.digest())
 }
 
-fn read_binding(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, CodecError> {
+fn read_binding_v1(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, CodecError> {
+    read_binding_fields(reader, ReviewBindingVersion::LegacyCumulativeV1)
+}
+
+fn write_binding_v2(
+    writer: &mut CanonicalWriter,
+    value: &ReviewBinding,
+) -> Result<(), CodecError> {
+    if value.version() != ReviewBindingVersion::PagedHistoryV2 {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len()));
+    }
+    writer.write_u8(2)?;
+    write_binding_v1(writer, value)
+}
+
+fn read_binding_v2(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, CodecError> {
+    let offset = reader.offset();
+    if reader.read_u8()? != 2 {
+        return Err(CodecError::at(CodecErrorKind::UnknownTag, offset));
+    }
+    read_binding_fields(reader, ReviewBindingVersion::PagedHistoryV2)
+}
+
+fn write_binding_versioned(
+    writer: &mut CanonicalWriter,
+    value: &ReviewBinding,
+) -> Result<(), CodecError> {
+    match value.version() {
+        ReviewBindingVersion::LegacyCumulativeV1 => {
+            writer.write_u8(1)?;
+            write_binding_v1(writer, value)
+        }
+        ReviewBindingVersion::PagedHistoryV2 => write_binding_v2(writer, value),
+    }
+}
+
+fn read_binding_versioned(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<ReviewBinding, CodecError> {
+    let offset = reader.offset();
+    match reader.read_u8()? {
+        1 => read_binding_fields(reader, ReviewBindingVersion::LegacyCumulativeV1),
+        2 => read_binding_fields(reader, ReviewBindingVersion::PagedHistoryV2),
+        _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
+    }
+}
+
+fn read_binding_fields(
+    reader: &mut CanonicalReader<'_>,
+    version: ReviewBindingVersion,
+) -> Result<ReviewBinding, CodecError> {
     let contract_id = read_acceptance_id(reader)?;
     let contract_digest = read_digest(reader)?;
     let revision = read_revision(reader)?;
@@ -328,7 +409,8 @@ fn read_binding(reader: &mut CanonicalReader<'_>) -> Result<ReviewBinding, Codec
     for _ in 0..ancestry_count {
         ancestries.push(read_digest(reader)?);
     }
-    let value = ReviewBinding::from_wire(
+    let value = ReviewBinding::from_wire_version(
+        version,
         contract_id,
         contract_digest,
         revision,

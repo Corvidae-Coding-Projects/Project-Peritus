@@ -1,10 +1,11 @@
 //! Revisioned conversation metadata and exact idempotent intents.
 
-use super::{CONTROL_SCHEMA, ControlError, ControlText, ConversationId, OperationId};
+use super::{CONTROL_SCHEMA, ControlError, ConversationId, OperationId};
 use peritus_codec::sha256;
 use peritus_types::{ActorId, WorkspaceId};
 use serde::Deserialize;
 use serde::Serialize;
+mod checkpoint_codec;
 mod codec;
 mod intent;
 mod projection;
@@ -92,14 +93,14 @@ impl ControlOperation {
     /// Rejects unsupported schemas, reserved identities, or a bound/encoding failure.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, ControlError> {
         self.validate()?;
-        encode(self)
+        checkpoint_codec::encode_operation(self)
     }
-    /// Decodes and validates bounded exact immutable operation bytes.
+    /// Decodes exact immutable operation bytes, with checkpoint metadata separate from the core.
     ///
     /// # Errors
-    /// Rejects malformed, unsupported, oversized, or noncanonical operation payloads.
+    /// Rejects malformed, unsupported, noncanonical payloads or an oversized control core.
     pub fn parse(bytes: &[u8]) -> Result<Self, ControlError> {
-        let value: Self = decode(bytes)?;
+        let value: Self = serde_json::from_slice(bytes).map_err(|_| ControlError::InvalidInput)?;
         if value.canonical_bytes()? != bytes {
             return Err(ControlError::InvalidInput);
         }
@@ -135,7 +136,7 @@ impl ControlOperation {
     }
 }
 
-/// Current bounded public metadata; prior versions remain in the immutable control journal.
+/// Current public metadata; checkpoint manifests are independent of the bounded control core.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConversationRecord {
@@ -145,7 +146,7 @@ pub struct ConversationRecord {
     owner: [u8; 16],
     workspace: [u8; 16],
     revision: u64,
-    title: ControlText<256>,
+    title: super::ControlTitle,
     pinned: bool,
     archived: bool,
     #[serde(default, skip_serializing_if = "super::InputLedger::is_empty")]

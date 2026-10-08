@@ -12,6 +12,7 @@ pub struct StorePaths {
     objects_sha256: PathBuf,
     temporary: PathBuf,
     quarantine_sha256: PathBuf,
+    recovery: PathBuf,
     database: PathBuf,
 }
 
@@ -47,7 +48,8 @@ impl StorePaths {
         {
             return Err(layout_escape());
         }
-        Ok(Self { root, objects_sha256, temporary, quarantine_sha256, database })
+        let recovery = root.join("recovery");
+        Ok(Self { root, objects_sha256, temporary, quarantine_sha256, recovery, database })
     }
 
     pub(crate) fn initialize(
@@ -69,6 +71,7 @@ impl StorePaths {
         let temporary = fixed_directory(&root, "temporary")?;
         let quarantine = fixed_directory(&root, "quarantine")?;
         let quarantine_sha256 = fixed_directory(&quarantine, "sha256")?;
+        let recovery = fixed_directory(&root, "recovery")?;
         let database =
             configured_database.map_or_else(|| root.join("metadata.sqlite3"), Path::to_path_buf);
         match fs::symlink_metadata(&database) {
@@ -78,7 +81,7 @@ impl StorePaths {
             Err(error) => return Err(io(StoreOperation::Initialize, error)),
         }
         sync_directory(&root)?;
-        Ok(Self { root, objects_sha256, temporary, quarantine_sha256, database })
+        Ok(Self { root, objects_sha256, temporary, quarantine_sha256, recovery, database })
     }
 
     pub(crate) fn root(&self) -> &Path {
@@ -95,6 +98,9 @@ impl StorePaths {
     }
     pub(crate) fn objects_root(&self) -> &Path {
         &self.objects_sha256
+    }
+    pub(crate) fn recovery(&self) -> &Path {
+        &self.recovery
     }
 
     pub(crate) fn object(&self, digest: ArtifactDigest) -> PathBuf {

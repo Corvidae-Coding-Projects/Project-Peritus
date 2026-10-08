@@ -185,7 +185,7 @@ fn restart_keeps_original_partial_discard_binding_and_only_exact_discard_can_res
             .unwrap();
         assert!(restored_index.status.success());
         assert_eq!(restored_index.stdout, fixture.original);
-        fixture.running.shutdown(Duration::from_secs(5)).await;
+        fixture.running.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -228,7 +228,7 @@ fn lost_final_acknowledgement_recovers_from_completed_backend_without_touching_n
             fs::read(fixture.repository.path().join("src/lib.rs")).unwrap(),
             b"later human draft\n"
         );
-        fixture.running.shutdown(Duration::from_secs(5)).await;
+        fixture.running.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -261,6 +261,6 @@ fn incomplete_backend_and_foreign_receipt_never_acknowledge_or_change_candidate(
                 .is_err()
         );
         assert_eq!(ProductRunner::candidate_digest(fixture.repository.path()).unwrap(), before);
-        fixture.running.shutdown(Duration::from_secs(5)).await;
+        fixture.running.shutdown().await.expect("shutdown product runs");
     });
 }

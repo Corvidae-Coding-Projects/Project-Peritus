@@ -1,10 +1,12 @@
-//! Explicit A3/domain image mapping. Checked metadata never substitutes for a decoded proof.
+//! Explicit A3/domain image mapping. Checked metadata never substitutes for inspection evidence.
 
 use super::{AppProtocolError, Code, WorkbenchCommand, WorkbenchImagePreview, error};
 use crate::product_control::ControlStoreError;
-use peritus_app_protocol::{WorkbenchImageFormat as F, WorkbenchImageMetadata};
+use peritus_app_protocol::{
+    WorkbenchImageFormat as F, WorkbenchImageMetadata, WorkbenchImageValidation as V,
+};
 use peritus_product_runner::{
-    attachment::ValidatedImage,
+    attachment::{ImageValidation, ValidatedImage},
     control::{
         ControlError, ControlText, ImageAttachment, ImageFormat, ImageMetadata, OperationId,
     },
@@ -18,12 +20,13 @@ pub(super) fn metadata(image: &ValidatedImage) -> Result<WorkbenchImageMetadata,
         "image/webp" => F::Webp,
         _ => return Err(error(Code::MalformedFrame)),
     };
-    WorkbenchImageMetadata::new(
+    WorkbenchImageMetadata::new_with_validation(
         image.digest(),
         image.byte_len(),
         format,
         image.dimensions(),
         image.frames(),
+        validation(image.validation()),
     )
 }
 
@@ -43,12 +46,16 @@ pub(in crate::product_run::workbench) fn domain_image(
         F::Gif => ImageFormat::Gif,
         F::Webp => ImageFormat::Webp,
     };
-    let metadata = ImageMetadata::new(
+    let metadata = ImageMetadata::new_with_validation(
         image.digest(),
         image.bytes(),
         format,
         image.dimensions(),
         image.frames(),
+        match image.validation() {
+            V::CompletePixels => ImageValidation::CompletePixels,
+            V::ContainerStructure => ImageValidation::ContainerStructure,
+        },
     )?;
     Ok(ImageAttachment::from_metadata(
         OperationId::new(command.operation().into_bytes())?,
@@ -57,4 +64,11 @@ pub(in crate::product_run::workbench) fn domain_image(
         metadata,
     )?
     .with_preview_digest(preview.fingerprint().map_err(|_| ControlError::InvalidInput)?))
+}
+
+const fn validation(value: ImageValidation) -> V {
+    match value {
+        ImageValidation::CompletePixels => V::CompletePixels,
+        ImageValidation::ContainerStructure => V::ContainerStructure,
+    }
 }

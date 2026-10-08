@@ -71,7 +71,11 @@ impl AppModel {
         let Ok(child) = ConversationId::new(self.ids.bytes(b"workbench-fork-conversation")) else {
             return Vec::new();
         };
-        let Ok(title) = ConversationTitle::new(fork_title(source.title())) else {
+        let Ok(title) = ConversationTitle::derived_label(
+            "Fork of ",
+            source.title().as_str(),
+            peritus_app_protocol::CONVERSATION_TITLE_LABEL_BYTES,
+        ) else {
             return Vec::new();
         };
         let Ok(request) = WorkbenchForkRequest::new(
@@ -91,16 +95,4 @@ impl AppModel {
             source.query().workspace(),
         )
     }
-}
-
-fn fork_title(source: &ConversationTitle) -> String {
-    let mut title = format!("Fork of {}", source.as_str());
-    if title.len() > peritus_app_protocol::MAX_CONVERSATION_TITLE_BYTES {
-        let end = title.floor_char_boundary(
-            peritus_app_protocol::MAX_CONVERSATION_TITLE_BYTES - '…'.len_utf8(),
-        );
-        title.truncate(end);
-        title.push('…');
-    }
-    title
 }

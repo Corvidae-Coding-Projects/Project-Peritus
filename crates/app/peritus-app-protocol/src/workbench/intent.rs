@@ -29,6 +29,10 @@ pub enum WorkbenchIntent {
     Queue(WorkbenchQueueIntent),
     /// Explicitly admits execution over the selected conversation's eligible durable inputs.
     StartExecution(WorkbenchExecutionSettings),
+    /// Explicitly continues the existing execution over newly eligible durable inputs.
+    ///
+    /// The enclosing command supplies reconnect-stable operation identity and revision fencing.
+    ContinueExecution(WorkbenchExecutionSettings),
     /// Revises one explicitly user-confirmed requirement without starting execution.
     SetBrief {
         /// Exact field selected by the user.
@@ -81,6 +85,11 @@ pub enum WorkbenchIntent {
         preview: WorkbenchFileImportPreview,
         /// User-confirmed caption and queue instruction.
         text: WorkbenchInputText,
+    },
+    /// Confirms one exact client-imported text source without manufacturing a queue message.
+    AttachFileSource {
+        /// Exact validated uploaded-text preview and inert source label.
+        preview: WorkbenchFileImportPreview,
     },
     /// Revises only future file inclusion.
     SelectFile {

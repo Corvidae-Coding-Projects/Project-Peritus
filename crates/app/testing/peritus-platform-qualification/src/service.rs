@@ -27,28 +27,20 @@ impl SupervisorKind {
     }
 }
 
-/// Failure restart behavior owned by the external supervisor.
+/// Failure restart behavior owned by the service supervision stack.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct RestartPolicy {
     on_failure: bool,
     maximum_attempts: Option<u16>,
-    window_seconds: u32,
+    window_seconds: Option<u32>,
     delay_seconds: u16,
 }
 
 impl RestartPolicy {
     /// Returns platform-native production restart behavior.
     #[must_use]
-    pub const fn production(platform: Platform) -> Self {
-        Self {
-            on_failure: true,
-            maximum_attempts: match platform {
-                Platform::Linux | Platform::Windows => Some(5),
-                Platform::Macos => None,
-            },
-            window_seconds: 300,
-            delay_seconds: 5,
-        }
+    pub const fn production(_platform: Platform) -> Self {
+        Self { on_failure: true, maximum_attempts: None, window_seconds: None, delay_seconds: 5 }
     }
 
     /// Reports whether a nonzero daemon exit is restarted.
@@ -57,15 +49,15 @@ impl RestartPolicy {
         self.on_failure
     }
 
-    /// Returns the maximum attempts in one restart window.
+    /// Returns the maximum attempts in one restart window, or `None` when unbounded.
     #[must_use]
     pub const fn maximum_attempts(self) -> Option<u16> {
         self.maximum_attempts
     }
 
-    /// Returns the restart accounting window.
+    /// Returns the restart accounting window, or `None` when accounting is disabled.
     #[must_use]
-    pub const fn window_seconds(self) -> u32 {
+    pub const fn window_seconds(self) -> Option<u32> {
         self.window_seconds
     }
 
@@ -73,6 +65,33 @@ impl RestartPolicy {
     #[must_use]
     pub const fn delay_seconds(self) -> u16 {
         self.delay_seconds
+    }
+}
+
+/// Stop behavior owned by the service supervision stack.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct StopPolicy {
+    maximum_grace_seconds: Option<u32>,
+    hard_termination: bool,
+}
+
+impl StopPolicy {
+    /// Returns the production stop policy with no elapsed deadline.
+    #[must_use]
+    pub const fn production(_platform: Platform) -> Self {
+        Self { maximum_grace_seconds: None, hard_termination: false }
+    }
+
+    /// Returns the maximum graceful-stop duration, or `None` for no elapsed deadline.
+    #[must_use]
+    pub const fn maximum_grace_seconds(self) -> Option<u32> {
+        self.maximum_grace_seconds
+    }
+
+    /// Reports whether the supervisor may forcibly terminate a draining daemon.
+    #[must_use]
+    pub const fn hard_termination(self) -> bool {
+        self.hard_termination
     }
 }
 
@@ -93,7 +112,7 @@ pub enum ServiceLogContract {
     WindowsTaskSchedulerLog,
 }
 
-/// Exact foreground daemon invocation available to a future always-on runner mode.
+/// Exact daemon invocation owned by the installed per-user service.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ServiceContract {
     platform: Platform,
@@ -103,6 +122,7 @@ pub struct ServiceContract {
     definition: InstallPath,
     logs: ServiceLogContract,
     restart: RestartPolicy,
+    stop: StopPolicy,
     user_scoped: bool,
     shell_wrapped: bool,
     autostart: bool,
@@ -131,13 +151,14 @@ impl ServiceContract {
             supervisor: SupervisorKind::for_platform(platform),
             executable,
             arguments: [
-                "serve".to_owned(),
+                if platform == Platform::Windows { "supervise" } else { "serve" }.to_owned(),
                 "--config".to_owned(),
                 layout.config_file().as_str().to_owned(),
             ],
             definition: layout.service_definition().clone(),
             logs,
             restart: RestartPolicy::production(platform),
+            stop: StopPolicy::production(platform),
             user_scoped: true,
             shell_wrapped: false,
             autostart: true,
@@ -182,10 +203,16 @@ impl ServiceContract {
         &self.logs
     }
 
-    /// Returns the bounded restart policy.
+    /// Returns the restart policy.
     #[must_use]
     pub const fn restart(&self) -> RestartPolicy {
         self.restart
+    }
+
+    /// Returns the native supervisor's graceful-stop policy.
+    #[must_use]
+    pub const fn stop(&self) -> StopPolicy {
+        self.stop
     }
 
     /// Reports whether the service runs as the installing user.
@@ -208,7 +235,8 @@ impl ServiceContract {
 
     fn validate(&self) -> Result<(), QualificationError> {
         if self.supervisor != SupervisorKind::for_platform(self.platform)
-            || self.arguments[0] != "serve"
+            || self.arguments[0]
+                != if self.platform == Platform::Windows { "supervise" } else { "serve" }
             || self.arguments[1] != "--config"
             || self.arguments[2].is_empty()
             || !self.user_scoped
@@ -216,7 +244,7 @@ impl ServiceContract {
             || !self.autostart
         {
             return Err(service_error(
-                "service must directly supervise `peritusd serve --config <absolute-file>` as the installing user",
+                "service must own the platform daemon command and absolute configuration as the installing user",
             ));
         }
         Ok(())

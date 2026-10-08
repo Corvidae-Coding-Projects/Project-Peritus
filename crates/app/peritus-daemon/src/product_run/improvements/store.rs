@@ -3,23 +3,84 @@
 use super::{Error, digest};
 use peritus_app_protocol::{
     ConversationId, ImprovementCandidate, ImprovementEvaluation, ImprovementEvidence,
-    ImprovementInbox, ImprovementText,
+    ImprovementInbox, ImprovementText, ImprovementTextReference,
 };
 use peritus_types::{ActorId, RunId, Sha256Digest, WorkspaceId};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::{
+    cell::RefCell,
     fs,
     path::{Path, PathBuf},
 };
 
-const CURRENT_SCHEMA: u32 = 2;
+std::thread_local! {
+    static ACTIVE_CONTENTION: RefCell<Vec<ActiveContention>> = const {
+        RefCell::new(Vec::new())
+    };
+}
+
+mod schema;
+mod paging;
+mod chunks;
+mod backfill;
+mod sources;
+mod reservations;
+
+pub(super) use sources::{EvaluationSource, EvaluationSourcePage};
+
+const CURRENT_SCHEMA: u32 = 5;
 const PRE_RELEASE_SCHEMA: u32 = 1;
 const SQLITE_SIDECARS: [&str; 3] = ["-wal", "-shm", "-journal"];
 
 pub(in crate::product_run) struct Store(Connection);
 
-#[derive(Clone, Serialize, Deserialize)]
+struct ActiveContention {
+    cancellation: peritus_journal::JournalCancellation,
+    interrupted: bool,
+}
+
+/// Outcome of one startup operation under exact improvement-database contention cancellation.
+pub(in crate::product_run) enum StartupContention<T> {
+    /// The operation completed without an observed cancellation interrupt.
+    Completed(T),
+    /// The active startup token caused the busy callback to stop `SQLite`.
+    Cancelled,
+}
+
+/// Runs startup work and reports cancellation only when its busy callback stopped `SQLite`.
+pub(in crate::product_run) fn with_startup_cancellation<T>(
+    cancellation: &peritus_journal::JournalCancellation,
+    operation: impl FnOnce() -> Result<T, Error>,
+) -> Result<StartupContention<T>, Error> {
+    struct Restore;
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            ACTIVE_CONTENTION.with(|active| {
+                active.borrow_mut().pop();
+            });
+        }
+    }
+
+    ACTIVE_CONTENTION.with(|active| {
+        active.borrow_mut().push(ActiveContention {
+            cancellation: cancellation.clone(),
+            interrupted: false,
+        });
+    });
+    let restore = Restore;
+    let result = operation();
+    let interrupted = ACTIVE_CONTENTION.with(|active| {
+        active.borrow().last().is_some_and(|owner| owner.interrupted)
+    });
+    drop(restore);
+    match result {
+        Err(_) if interrupted => Ok(StartupContention::Cancelled),
+        result => result.map(StartupContention::Completed),
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Evaluation {
     pub(super) actor: [u8; 16],
@@ -27,6 +88,29 @@ pub(super) struct Evaluation {
     pub(super) run: [u8; 16],
     pub(super) target: [u8; 16],
     pub(super) providers: [[u8; 16]; 3],
+}
+
+/// The exact durable evaluation reservation without eagerly materializing its retained bodies.
+pub(super) struct Reservation {
+    pub(super) id: [u8; 32],
+    pub(super) workspace: WorkspaceId,
+    pub(super) proposal: ImprovementTextReference,
+    pub(super) evidence_count: u64,
+    pub(super) evaluation: Evaluation,
+}
+
+impl Evaluation {
+    fn project(&self, workspace: [u8; 16], id: [u8; 32]) -> Result<ImprovementEvaluation, Error> {
+        let actor = ActorId::new(self.actor).map_err(|_| problem("invalid evaluation actor"))?;
+        let conversation = ConversationId::new(self.conversation).map_err(|_| problem("invalid evaluation conversation"))?;
+        let run = RunId::new(self.run).map_err(|_| problem("invalid evaluation run"))?;
+        let target = WorkspaceId::new(self.target).map_err(|_| problem("invalid evaluation workspace"))?;
+        let source = WorkspaceId::new(workspace).map_err(|_| problem("invalid source workspace"))?;
+        if super::evaluation::derived_conversation(actor, source, id, run)? != conversation {
+            return Err(problem("evaluation conversation identity mismatch"));
+        }
+        Ok(ImprovementEvaluation::new(conversation, run, target))
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -50,8 +134,7 @@ pub(super) struct Candidate {
 
 impl Candidate {
     fn project(&self) -> Result<ImprovementCandidate, Error> {
-        let normalized =
-            self.proposal.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
+        let normalized = backfill::normalize(&self.proposal);
         if self.id != digest(&[b"peritus.improvement.v1", &self.workspace, normalized.as_bytes()])
             || self.evidence.iter().any(|e| {
                 e.digest
@@ -67,23 +150,7 @@ impl Candidate {
         let evaluation = self
             .evaluation
             .as_ref()
-            .map(|e| {
-                let actor =
-                    ActorId::new(e.actor).map_err(|_| problem("invalid evaluation actor"))?;
-                let conversation = ConversationId::new(e.conversation)
-                    .map_err(|_| problem("invalid evaluation conversation"))?;
-                let run = RunId::new(e.run).map_err(|_| problem("invalid evaluation run"))?;
-                let target = WorkspaceId::new(e.target)
-                    .map_err(|_| problem("invalid evaluation workspace"))?;
-                let source = WorkspaceId::new(self.workspace)
-                    .map_err(|_| problem("invalid source workspace"))?;
-                if super::evaluation::derived_conversation(actor, source, self.id, run)?
-                    != conversation
-                {
-                    return Err(problem("evaluation conversation identity mismatch"));
-                }
-                Ok(ImprovementEvaluation::new(conversation, run, target))
-            })
+            .map(|e| e.project(self.workspace, self.id))
             .transpose()?;
         ImprovementCandidate::new(
             Sha256Digest::new(self.id),
@@ -103,19 +170,6 @@ impl Candidate {
         )
         .map_err(problem)
     }
-    pub(super) fn evaluation_evidence_inputs(&self) -> Vec<String> {
-        self.evidence
-            .iter()
-            .map(|e| {
-                format!(
-                    "UNTRUSTED RUN OBSERVATION\nSource run: {}\nObservation digest: {}\n\n{}",
-                    hex(&e.run),
-                    hex(&e.digest),
-                    e.summary
-                )
-            })
-            .collect()
-    }
 }
 
 impl Store {
@@ -128,7 +182,12 @@ impl Store {
             quarantine_pre_release(path)?;
             return initialize(connection(path)?);
         }
-        if version != 0 && version != CURRENT_SCHEMA {
+        if version != 0
+            && version != 2
+            && version != 3
+            && version != 4
+            && version != CURRENT_SCHEMA
+        {
             return Err(problem(
                 "unsupported improvement inbox schema; use the Peritus version that owns this state",
             ));
@@ -142,37 +201,14 @@ impl Store {
         run: RunId,
         proposal: &str,
         summary: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<[u8; 32], Error> {
         text(proposal)?;
         text(summary)?;
-        let normalized = proposal.split_whitespace().collect::<Vec<_>>().join(" ").to_lowercase();
-        let id = digest(&[b"peritus.improvement.v1", workspace.as_bytes(), normalized.as_bytes()]);
-        let mut item = if let Some(item) = self.get(workspace, id)? {
-            item
-        } else {
-            Candidate {
-                id,
-                workspace: workspace.into_bytes(),
-                proposal: proposal.into(),
-                evidence: Vec::new(),
-                evaluation: None,
-                dismissed: false,
-            }
-        };
-        // Once evaluated, its evidence is frozen. Dismissal also survives later observations.
-        if item.evaluation.is_some() || item.evidence.iter().any(|e| e.run == run.into_bytes()) {
-            return Ok(());
-        }
-        item.evidence.push(Evidence {
-            run: run.into_bytes(),
-            digest: digest(&[
-                b"peritus.improvement.observation.v1",
-                run.as_bytes(),
-                summary.as_bytes(),
-            ]),
-            summary: summary.into(),
-        });
-        self.save(&item)
+        let transaction = self.0.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(problem)?;
+        let id = backfill::collect_candidate(&transaction, workspace, run, proposal, summary)?;
+        transaction.commit().map_err(problem)?;
+        Ok(id)
     }
 
     pub(super) fn get(
@@ -180,24 +216,31 @@ impl Store {
         workspace: WorkspaceId,
         id: [u8; 32],
     ) -> Result<Option<Candidate>, Error> {
-        let value: Option<String> = self
+        let value: Option<(String, [u8; 32], Option<String>, bool)> = self
             .0
             .query_row(
-                "SELECT record FROM improvements WHERE workspace=?1 AND id=?2",
+                "SELECT proposal,proposal_digest,evaluation,dismissed FROM improvement_candidates WHERE workspace=?1 AND id=?2",
                 params![workspace.as_bytes(), id],
-                |r| r.get(0),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
             )
             .optional()
             .map_err(problem)?;
         value
-            .map(|value| {
-                if value.len() > peritus_journal::MAX_STATE_BYTES {
-                    return Err(problem("oversized improvement record"));
+            .map(|(proposal, proposal_digest, evaluation, dismissed)| {
+                if proposal_digest != digest(&[b"peritus.improvement.proposal.v1", proposal.as_bytes()]) {
+                    return Err(problem("improvement proposal body digest mismatch"));
                 }
-                let item: Candidate = serde_json::from_str(&value).map_err(problem)?;
-                if item.id != id || item.workspace != workspace.into_bytes() {
-                    return Err(problem("improvement record scope mismatch"));
-                }
+                let mut statement = self.0.prepare(
+                    "SELECT run,digest,summary FROM improvement_evidence WHERE workspace=?1 AND candidate=?2 ORDER BY sequence",
+                ).map_err(problem)?;
+                let evidence = statement.query_map(params![workspace.as_bytes(), id], |r| {
+                    Ok(Evidence { run: r.get(0)?, digest: r.get(1)?, summary: r.get(2)? })
+                }).map_err(problem)?.collect::<Result<Vec<_>, _>>().map_err(problem)?;
+                let item = Candidate {
+                    id, workspace: workspace.into_bytes(), proposal, evidence,
+                    evaluation: evaluation.map(|value| serde_json::from_str(&value).map_err(problem)).transpose()?,
+                    dismissed,
+                };
                 item.project()?;
                 Ok(item)
             })
@@ -207,7 +250,7 @@ impl Store {
     pub(super) fn inbox(&self, workspace: WorkspaceId) -> Result<ImprovementInbox, Error> {
         let mut statement = self
             .0
-            .prepare("SELECT id FROM improvements WHERE workspace=?1 ORDER BY json_extract(record, '$.dismissed'), rowid DESC")
+            .prepare("SELECT id FROM improvement_candidates WHERE workspace=?1 ORDER BY dismissed, sequence DESC")
             .map_err(problem)?;
         let ids = statement
             .query_map([workspace.as_bytes()], |row| row.get::<_, [u8; 32]>(0))
@@ -222,9 +265,21 @@ impl Store {
     }
 
     pub(super) fn dismiss(&mut self, workspace: WorkspaceId, id: [u8; 32]) -> Result<(), Error> {
-        let mut item = self.get(workspace, id)?.ok_or(Error::NotFound)?;
-        item.dismissed = true;
-        self.save(&item)
+        let transaction = self.0.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(problem)?;
+        let exists: Option<bool> = transaction.query_row(
+            "SELECT dismissed FROM improvement_candidates WHERE workspace=?1 AND id=?2",
+            params![workspace.as_bytes(), id], |r| r.get(0),
+        ).optional().map_err(problem)?;
+        let dismissed = exists.ok_or(Error::NotFound)?;
+        if !dismissed {
+            transaction.execute(
+                "UPDATE improvement_candidates SET dismissed=1 WHERE workspace=?1 AND id=?2",
+                params![workspace.as_bytes(), id],
+            ).map_err(problem)?;
+            schema::advance(&transaction, workspace.as_bytes())?;
+        }
+        transaction.commit().map_err(problem)
     }
 
     pub(super) fn reserve(
@@ -252,31 +307,64 @@ impl Store {
             }
         } else {
             item.evaluation = Some(evaluation);
-            self.save(&item)?;
+            item.project()?;
+            let value = serde_json::to_string(&item.evaluation).map_err(problem)?;
+            let transaction = self.0.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(problem)?;
+            let changed = transaction.execute(
+                "UPDATE improvement_candidates SET evaluation=?3 WHERE workspace=?1 AND id=?2 AND evaluation IS NULL AND dismissed=0",
+                params![workspace.as_bytes(), id, value],
+            ).map_err(problem)?;
+            if changed != 1 { return Err(Error::InvalidState); }
+            schema::advance(&transaction, workspace.as_bytes())?;
+            transaction.commit().map_err(problem)?;
         }
-        Ok(item)
+        // Read after the durable freeze so an observation committed just before reservation is
+        // included in the original evaluation, including with another process using this store.
+        self.get(workspace, id)?.ok_or(Error::NotFound)
     }
 
-    fn save(&mut self, item: &Candidate) -> Result<(), Error> {
-        item.project()?;
-        let value = serde_json::to_string(item).map_err(problem)?;
-        if value.len() > peritus_journal::MAX_STATE_BYTES {
-            return Err(problem("oversized improvement record"));
-        }
-        let transaction = self.0.transaction().map_err(problem)?;
-        transaction.execute("INSERT INTO improvements(workspace,id,record) VALUES (?1,?2,?3) ON CONFLICT(workspace,id) DO UPDATE SET record=excluded.record", params![item.workspace, item.id, value]).map_err(problem)?;
-        transaction.commit().map_err(problem)
+    pub(super) fn evaluation_runs(&self, workspace: WorkspaceId) -> Result<std::collections::BTreeSet<[u8; 16]>, Error> {
+        let mut statement = self.0.prepare(
+            "SELECT evaluation FROM improvement_candidates WHERE workspace=?1 AND evaluation IS NOT NULL",
+        ).map_err(problem)?;
+        statement.query_map([workspace.as_bytes()], |r| r.get::<_, String>(0))
+            .map_err(problem)?
+            .map(|value| {
+                let value: Evaluation = serde_json::from_str(&value.map_err(problem)?).map_err(problem)?;
+                RunId::new(value.run).map_err(problem)?;
+                Ok(value.run)
+            }).collect()
     }
 }
 
 fn connection(path: &Path) -> Result<Connection, Error> {
     let connection = Connection::open(path).map_err(problem)?;
-    connection.busy_timeout(std::time::Duration::from_secs(5)).map_err(problem)?;
+    connection.busy_handler(Some(wait_for_contention)).map_err(problem)?;
     Ok(connection)
 }
 
-fn initialize(connection: Connection) -> Result<Store, Error> {
-    connection.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS improvements (workspace BLOB NOT NULL, id BLOB NOT NULL, record TEXT NOT NULL, PRIMARY KEY(workspace,id)); PRAGMA user_version=2;").map_err(problem)?;
+fn wait_for_contention(_prior_attempts: i32) -> bool {
+    let cancelled = ACTIVE_CONTENTION.with(|active| {
+        let mut active = active.borrow_mut();
+        active.last_mut().is_some_and(|owner| {
+            if owner.cancellation.is_cancelled() {
+                owner.interrupted = true;
+                true
+            } else {
+                false
+            }
+        })
+    });
+    if cancelled {
+        return false;
+    }
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    true
+}
+
+fn initialize(mut connection: Connection) -> Result<Store, Error> {
+    schema::initialize(&mut connection)?;
     Ok(Store(connection))
 }
 
@@ -336,6 +424,8 @@ const fn sync_directory(_path: &Path) -> Result<(), Error> {
 }
 
 fn text(value: &str) -> Result<ImprovementText, Error> {
+    // The enclosing codec and SQLite record retain physical bounds; inert domain text does not
+    // impose a smaller cumulative work allowance.
     ImprovementText::new(value.to_owned()).map_err(problem)
 }
 fn problem(error: impl std::fmt::Display) -> Error {

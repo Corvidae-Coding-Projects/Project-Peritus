@@ -84,7 +84,7 @@ fn mixed_active_and_candidate_queries_encode_with_exact_evidence() {
         assert!(exact[0].snapshot().deliverable().is_some());
         assert!(exact[0].settlement().is_some());
         encode(AppResponsePayload::ProductRunObservations(exact));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -210,6 +210,6 @@ fn uncertain_command_requires_explicit_review_and_never_admits_blind_retry() {
             peritus_product_runner::UncertainEffectState::Reviewed
         );
         assert_eq!(reviewed_effects[0].requirements_revision(), Some(1));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

@@ -63,7 +63,12 @@ pub(super) fn write_environment(w: &mut CanonicalWriter, env: &WorkingEnvironmen
 pub(super) fn read_environment(r: &mut CanonicalReader<'_>, limits: WorkingLimits) -> Result<WorkingEnvironment, WorkingCodecError> {
     let binding = read_binding(r)?;
     let candidate = Sha256Digest::new(r.read_fixed()?);
-    Ok(WorkingEnvironment::new(binding, candidate, read_files(r, limits.entries())?, limits)?)
+    Ok(WorkingEnvironment::new(
+        binding,
+        candidate,
+        read_files(r, limits.environment_files())?,
+        limits,
+    )?)
 }
 pub(super) fn write_validity(w: &mut CanonicalWriter, valid: &WorkingValidity) -> Result<(), WorkingCodecError> {
     w.write_bool(valid.requires_recheck())?;

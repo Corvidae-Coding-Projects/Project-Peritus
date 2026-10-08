@@ -68,10 +68,11 @@ impl WorkingProtocol {
             result.spec_requirements().len() == 0,
             result.spec_pending().len() == 0,
     { Self { requirements: Vec::new(), pending: Vec::new() } }
-    /// Validates canonical order and allocation bounds for host-owned pins.
+    /// Validates canonical order for host-owned pins.
     ///
     /// # Errors
-    /// Rejects excessive, repeated, or noncanonically ordered references.
+    /// Rejects repeated or noncanonically ordered references. Physical codecs page this logical
+    /// projection; its length is not a cumulative work allowance.
     pub fn new(requirements: Vec<ObservationId>, pending: Vec<WorkingPendingOperation>, limits: WorkingLimits) -> (result: Result<Self, WorkingError>)
         ensures match result {
             Ok(protocol) => {
@@ -81,7 +82,7 @@ impl WorkingProtocol {
             Err(_) => true,
         },
     {
-        if requirements.len() > limits.entries() || pending.len() > limits.entries() { return Err(WorkingError::Capacity); }
+        let _ = limits;
         let mut index = 1;
         while index < requirements.len()
             invariant index >= 1,
@@ -204,7 +205,6 @@ pub(super) fn validate_protocol(
 ) -> (result: Result<(), WorkingError>)
     ensures result.is_err() ==> result.unwrap_err().spec_is_protocol_error(),
 {
-    if protocol.requirements.len() > state.limits.entries() || protocol.pending.len() > state.limits.entries() { return Err(WorkingError::Capacity); }
     let mut index = 0;
     while index < protocol.requirements.len()
         invariant index <= protocol.requirements.len(),

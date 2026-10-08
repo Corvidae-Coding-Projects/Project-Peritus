@@ -1,6 +1,7 @@
 //! Actual `SQLite` exhaustion leaves the live task queryable, resumable and cancellable.
 
 use super::*;
+use crate::product_control::ControlStoreError;
 use peritus_product_runner::{
     WorkspaceMutationKind,
     control::{ControlIntent, ControlOperation, ControlText, OperationId},
@@ -14,6 +15,71 @@ fn checkpoint_storage_wait_keeps_the_same_run_and_provider_request_until_space_r
 #[test]
 fn checkpoint_storage_wait_accepts_public_cancellation_without_waiting_for_space() {
     interaction::block_on(scenario(true));
+}
+
+#[test]
+fn authenticated_cancel_interrupts_the_same_runs_sqlite_contention_wait() {
+    interaction::block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().unwrap();
+        let writer = stalled(0xc1, "checkpoint-contention-wait");
+        let workspace = WorkspaceId::new([0xc2; 16]).unwrap();
+        let run = RunId::new([0xc3; 16]).unwrap();
+        let service =
+            service(state.path(), repository.path(), workspace, [&writer, &writer, &writer]);
+        queue(&service, workspace).await;
+        assert!(matches!(
+            service
+                .workbench_command(actor(), &start(workspace, run, [&writer, &writer, &writer]))
+                .await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
+        tokio::time::timeout(Duration::from_secs(5), async {
+            while writer.requests.lock().unwrap().is_empty() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+
+        let blocker = rusqlite::Connection::open(state.path().join("workbench-v1/control.sqlite3"))
+            .expect("contention connection");
+        blocker.execute_batch("BEGIN IMMEDIATE;").expect("hold SQLite writer ownership");
+        let start_record =
+            service.inner.records.read().unwrap().get(&run).unwrap().interaction.workbench.clone();
+        let pending_service = service.clone();
+        let pending = tokio::task::spawn_blocking(move || {
+            pending_service.capture_automatic_checkpoint(
+                &start_record,
+                run,
+                std::path::Path::new("src/lib.rs"),
+                WorkspaceMutationKind::File,
+            )
+        });
+        tokio::time::sleep(Duration::from_millis(350)).await;
+        assert!(!pending.is_finished(), "capture must still own the original wait");
+
+        service
+            .control(ProductRunControl::new(run, ProductRunControlAction::Cancel))
+            .await
+            .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(5), pending)
+            .await
+            .expect("run cancellation releases the contention wait")
+            .expect("capture worker");
+        assert!(matches!(result, Err(ControlStoreError::ContentionCancelled)));
+        blocker.execute_batch("ROLLBACK;").expect("release SQLite writer ownership");
+
+        let conversation = DomainConversationId::new([2; 16]).unwrap();
+        let checkpoint = automatic::automatic_checkpoint_id(run, "src/lib.rs");
+        assert!(
+            service
+                .with_controls(false, |store| store.load_checkpoint(conversation, checkpoint))
+                .unwrap()
+                .is_none()
+        );
+        service.shutdown().await.expect("shutdown product runs");
+    });
 }
 
 async fn scenario(cancel: bool) {
@@ -162,5 +228,5 @@ async fn scenario(cancel: bool) {
     service
         .with_controls(false, |store| store.limit_storage_pages_for_test(original_limit))
         .unwrap();
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }

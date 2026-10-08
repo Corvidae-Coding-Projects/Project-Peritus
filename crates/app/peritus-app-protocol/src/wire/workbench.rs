@@ -86,9 +86,6 @@ pub(super) fn read_receipt(r: &mut CanonicalReader<'_>) -> Result<WorkbenchRecei
 pub(super) fn read_title(r: &mut CanonicalReader<'_>) -> Result<ConversationTitle, CodecError> {
     let offset = r.offset();
     let text = r.read_str()?;
-    if text.len() > crate::MAX_CONVERSATION_TITLE_BYTES {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
     invalid(offset, ConversationTitle::new(text.to_owned()))
 }
 
@@ -183,4 +180,25 @@ pub(super) fn read_continuation(
     let mode = crate::ProductInteractionMode::from_tag(r.read_u16()?)
         .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
     Ok(crate::WorkbenchContinuation::new(query, mode))
+}
+pub(super) fn write_continuation_admission(
+    w: &mut CanonicalWriter,
+    value: crate::WorkbenchContinuationAdmission,
+) -> Result<(), CodecError> {
+    write_id(w, value.operation().as_bytes())?;
+    write_query(w, value.query())?;
+    write_id(w, value.run().as_bytes())?;
+    w.write_u16(value.state().tag())
+}
+
+pub(super) fn read_continuation_admission(
+    r: &mut CanonicalReader<'_>,
+) -> Result<crate::WorkbenchContinuationAdmission, CodecError> {
+    let operation = read_id(r, ControlOperationId::new)?;
+    let query = read_query(r)?;
+    let run = read_id(r, peritus_types::RunId::new)?;
+    let offset = r.offset();
+    let state = crate::WorkbenchContinuationAdmissionState::from_tag(r.read_u16()?)
+        .ok_or_else(|| CodecError::at(CodecErrorKind::UnknownTag, offset))?;
+    Ok(crate::WorkbenchContinuationAdmission::new(operation, query, run, state))
 }

@@ -50,7 +50,7 @@ pub(super) fn inspect(
         || audited_direct_verification(tokens)
         || audited_ghost_documentation(tokens)
         || audited_repr(tokens)
-        || deserialize_imported && serde::audited(tokens, serialize_imported)
+        || audited_serde_metadata(tokens, deserialize_imported, serialize_imported)
         || name.as_deref() == Some("default") && tokens.len() == 1
         || name.as_deref() == Some("ignore")
             && tokens.len() == 3
@@ -62,6 +62,23 @@ pub(super) fn inspect(
     if !allowed {
         violations.push(unsupported(line, name.as_deref().unwrap_or("<malformed>")));
     }
+}
+
+fn audited_serde_metadata(
+    tokens: &[Token],
+    deserialize_imported: bool,
+    serialize_imported: bool,
+) -> bool {
+    if !serde::audited(tokens, serialize_imported) {
+        return false;
+    }
+    deserialize_imported
+        || serialize_imported
+            && tokens[2..tokens.len() - 1].split(|token| punctuation_is(token, ',')).all(|clause| {
+                clause.first().and_then(identifier).is_some_and(|name| {
+                    matches!(name, "rename_all" | "rename" | "tag" | "skip_serializing_if")
+                })
+            })
 }
 
 pub(super) fn audited_deserialize_declaration(tokens: &[Token]) -> bool {

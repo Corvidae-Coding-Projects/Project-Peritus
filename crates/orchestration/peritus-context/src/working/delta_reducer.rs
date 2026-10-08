@@ -12,11 +12,7 @@ verus! {
 pub(super) fn upsert_entry(
     entries: &mut Vec<WorkingEntry>,
     entry: &WorkingEntry,
-    maximum: usize,
-) -> (result: Result<(), WorkingError>)
-    ensures
-        result.is_ok() ==> spec_one_upsert(old(entries)@, entry, final(entries)@),
-        result.is_err() ==> result.unwrap_err().spec_is_delta_error(),
+) ensures spec_one_upsert(old(entries)@, entry, final(entries)@)
 {
     let ghost before = entries@;
     if let Some(position) = find_entry(entries, entry.id()) {
@@ -30,11 +26,9 @@ pub(super) fn upsert_entry(
                 WorkingEntry::clone_reflexive(&before[index]);
             }
         }
-        return Ok(());
+        return;
     }
-    if entries.len() >= maximum { return Err(WorkingError::Capacity); }
     insert_entry(entries, entry);
-    Ok(())
 }
 
 pub(super) fn apply_supersession(

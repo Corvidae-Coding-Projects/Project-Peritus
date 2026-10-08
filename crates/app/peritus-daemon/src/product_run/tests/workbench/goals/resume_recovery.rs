@@ -33,7 +33,7 @@ fn saved_resume_launch_without_worker_is_recovered_by_explicit_replay() {
         {
             let mut records = original.inner.records.write().unwrap();
             let record = records.get_mut(&run).unwrap();
-            record.goal_resume = Some(
+            record.attempt_admission = Some(
                 peritus_product_runner::control::OperationId::new(resume.operation().into_bytes())
                     .unwrap(),
             );
@@ -73,7 +73,7 @@ fn saved_resume_launch_without_worker_is_recovered_by_explicit_replay() {
         );
         assert_eq!(restored.workbench_command(actor(), &resume).await, response);
         assert_eq!(writer.requests.lock().unwrap().len(), 2);
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -112,10 +112,10 @@ fn failed_resume_projection_does_not_publish_an_in_memory_launch_or_call_provide
         {
             let records = original.inner.records.read().unwrap();
             assert_eq!(records[&run].snapshot.phase(), ProductRunPhase::WaitingForUser);
-            assert_eq!(records[&run].goal_resume, None);
+            assert_eq!(records[&run].attempt_admission, None);
         }
         assert_eq!(writer.requests.lock().unwrap().len(), 1);
-        original.shutdown(Duration::from_secs(5)).await;
+        original.shutdown().await.expect("shutdown product runs");
         drop(original);
         let restored =
             restore(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
@@ -140,7 +140,7 @@ fn failed_resume_projection_does_not_publish_an_in_memory_launch_or_call_provide
             (goal(&restored, workspace).attempt(), writer.requests.lock().unwrap().len()),
             (2, 2)
         );
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -172,7 +172,7 @@ fn resume_projection_requires_current_format_and_exact_receipt() {
             AppResponsePayload::WorkbenchReceipt(_)
         ));
         wait_for_terminal(&original, run).await;
-        original.shutdown(Duration::from_secs(5)).await;
+        original.shutdown().await.expect("shutdown product runs");
         drop(original);
         let root = state.path().join("workbench-v1");
         let path = fs::read_dir(root.join("runs"))

@@ -122,7 +122,7 @@ async fn scenario(refresh: bool, name: &str) {
     let reopened = peritus_product_runner::control::ConversationRecord::parse(&bytes).unwrap();
     assert_eq!(reopened, record);
     assert_eq!(reopened.canonical_bytes().unwrap(), bytes);
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 fn pad_source_above_former_inspection_ceiling(path: &std::path::Path) {

@@ -2,13 +2,15 @@
 
 use super::directory::same_directory;
 use super::{
-    FolderIdentity, FolderInspection, NativeEntryName, WorkspaceError, changed, invalid,
-    reject_cap_reparse, snapshot_io,
+    ErrorCode, FolderIdentity, FolderInspection, NativeEntryName, RecoveryClass, WorkspaceError,
+    WorkspaceOperation, changed, invalid, reject_cap_reparse, snapshot_io,
 };
 use crate::{WorkspaceEntryKind, WorkspaceMetadata};
 use cap_fs_ext::MetadataExt as _;
 use cap_std::fs::{Dir, Metadata};
 use peritus_patch::WorkspacePath;
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 mod membership;
 mod record;
@@ -88,6 +90,12 @@ impl DirectoryItem {
 pub struct DirectoryListing {
     path: Option<WorkspacePath>,
     items: Vec<DirectoryItem>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct DirectorySequence {
+    count: u64,
+    digest: Sha256Digest,
 }
 impl DirectoryListing {
     /// Returns the observed relative directory; `None` means the bound root.
@@ -210,6 +218,88 @@ impl FolderInspection {
         }
         Ok(())
     }
+
+    /// Streams one directory pass without retaining its membership in memory. The returned
+    /// sequence binds exact exposed native names and their observed order. Owners compare two
+    /// complete passes before publishing a retained body; a changed order fails closed rather
+    /// than weakening the accepted listing identity.
+    pub(super) fn stream_directory(
+        &self,
+        path: Option<&WorkspacePath>,
+        storage: Option<&Metadata>,
+        should_cancel: &mut impl FnMut() -> bool,
+        mut accept: impl FnMut(DirectoryItem) -> Result<(), WorkspaceError>,
+    ) -> Result<DirectorySequence, WorkspaceError> {
+        if should_cancel() {
+            return Err(cancelled());
+        }
+        let directory = self.listing_directory(path)?;
+        let before = directory.dir_metadata().map_err(snapshot_io)?;
+        reject_cap_reparse(&before)?;
+        let mut entries = directory.entries().map_err(snapshot_io)?;
+        let mut count = 0_u64;
+        let mut hasher = Sha256::new();
+        loop {
+            if should_cancel() {
+                return Err(cancelled());
+            }
+            let Some(entry) = entries.next() else { break };
+            let entry = entry.map_err(snapshot_io)?;
+            let name = NativeEntryName::observed(&entry.file_name())?;
+            if name.protected() {
+                continue;
+            }
+            let native = name.native_name()?;
+            if should_cancel() {
+                return Err(cancelled());
+            }
+            let observed = directory.symlink_metadata(&native);
+            let observed = if let Some(storage) = storage {
+                let metadata = observed.map_err(snapshot_io)?;
+                if metadata.dev() == storage.dev() && metadata.ino() == storage.ino() {
+                    return Err(invalid("directory observation storage aliases a child"));
+                }
+                Ok(metadata)
+            } else {
+                observed
+            };
+            let observation = observed
+                .map_or(Err(DirectoryExclusionReason::MetadataUnavailable), |metadata| {
+                    observe_child(&directory, path, &name, &native, &metadata)
+                });
+            if should_cancel() {
+                return Err(cancelled());
+            }
+            hasher.update(count.to_be_bytes());
+            hasher.update([name.tag()]);
+            hasher.update((name.encoded_bytes().len() as u64).to_be_bytes());
+            hasher.update(name.encoded_bytes());
+            accept(DirectoryItem { name, observation })?;
+            count = count.checked_add(1).ok_or_else(changed)?;
+        }
+        if should_cancel() {
+            return Err(cancelled());
+        }
+        let reopened_directory = self.listing_directory(path)?;
+        let after = directory.dir_metadata().map_err(snapshot_io)?;
+        let reopened = reopened_directory.dir_metadata().map_err(snapshot_io)?;
+        if !same_directory(&before, &after)?
+            || !same_directory(&before, &reopened)?
+            || FolderIdentity::observe(self.identity.root()).map_err(snapshot_io)? != self.identity
+        {
+            return Err(changed());
+        }
+        Ok(DirectorySequence { count, digest: Sha256Digest::new(hasher.finalize().into()) })
+    }
+}
+
+const fn cancelled() -> WorkspaceError {
+    WorkspaceError::new(
+        ErrorCode::Indeterminate,
+        WorkspaceOperation::Inspect,
+        RecoveryClass::Reobserve,
+        "directory observation was cancelled before publication",
+    )
 }
 
 fn observe_child(

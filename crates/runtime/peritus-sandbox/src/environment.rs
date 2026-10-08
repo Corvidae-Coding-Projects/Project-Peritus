@@ -2,9 +2,6 @@
 
 use crate::SandboxError;
 
-const MAX_NAMES: usize = 256;
-const MAX_NAME_BYTES: usize = 128;
-
 /// A portable environment variable name.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct EnvironmentName(String);
@@ -13,10 +10,10 @@ impl EnvironmentName {
     /// Validates and canonicalizes an environment name to uppercase ASCII.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or non-portable names.
+    /// Rejects empty or non-portable names.
     pub fn new(value: impl Into<String>) -> Result<Self, SandboxError> {
         let mut value = value.into();
-        if value.is_empty() || value.len() > MAX_NAME_BYTES || !value.is_ascii() {
+        if value.is_empty() || !value.is_ascii() {
             return Err(crate::error::invalid("invalid environment name"));
         }
         if !value.as_bytes()[0].is_ascii_alphabetic() && value.as_bytes()[0] != b'_' {
@@ -56,7 +53,7 @@ impl EnvironmentContract {
     /// Validates and canonicalizes the environment contract.
     ///
     /// # Errors
-    /// Returns a limit error for more than 256 names in either category.
+    /// Returns an error when supplied names violate their native constructors.
     pub fn new(
         mode: EnvironmentMode,
         mut literal_names: Vec<EnvironmentName>,
@@ -64,17 +61,11 @@ impl EnvironmentContract {
         let mode = match mode {
             EnvironmentMode::Cleared => EnvironmentMode::Cleared,
             EnvironmentMode::AllowListed(mut names) => {
-                if names.len() > MAX_NAMES {
-                    return Err(crate::error::bound("too many inherited environment names"));
-                }
                 names.sort();
                 names.dedup();
                 EnvironmentMode::AllowListed(names)
             }
         };
-        if literal_names.len() > MAX_NAMES {
-            return Err(crate::error::bound("too many literal environment names"));
-        }
         literal_names.sort();
         literal_names.dedup();
         Ok(Self { mode, literal_names })

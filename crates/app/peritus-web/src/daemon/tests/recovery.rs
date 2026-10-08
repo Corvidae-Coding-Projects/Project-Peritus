@@ -98,8 +98,8 @@ async fn lost_control_response_is_reconciled_without_reissuing_the_mutation() {
     let recovered = receipts::observed(&reopened, "original").await.unwrap().unwrap();
     assert_eq!(recovered["run"]["phase"], "Cancelled");
     assert_eq!(recovered["recovered"], true);
-    let retained = reopened.snapshot().unwrap();
-    assert!(retained.operations["daemon:original"].input["frame"].as_str().unwrap().len() > 64);
+    let retained = reopened.operation("daemon:original").unwrap().unwrap();
+    assert!(retained.input["frame"].as_str().unwrap().len() > 64);
     assert!(receipts::recorded(&reopened, "original", payload).await.unwrap_err().1);
     server.await.unwrap();
 }
@@ -153,6 +153,6 @@ async fn lost_workbench_response_is_reconciled_from_the_exact_domain_receipt() {
     let recovered = receipts::workbench_command(&reopened, "workbench", command).await.unwrap();
     assert!(matches!(recovered, AppResponsePayload::WorkbenchReceipt(receipt)
         if receipt.operation() == expected.operation() && receipt.accepted_revision() == 1));
-    assert!(reopened.snapshot().unwrap().operations["daemon:workbench"].result.is_some());
+    assert!(reopened.operation("daemon:workbench").unwrap().unwrap().result.is_some());
     server.await.unwrap();
 }

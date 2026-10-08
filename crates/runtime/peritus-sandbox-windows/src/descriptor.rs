@@ -10,7 +10,7 @@ use crate::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsProbe, Wind
 /// Stable C2 backend name.
 pub const BACKEND_NAME: &str = "peritus-windows-appcontainer";
 /// Native backend implementation/schema version.
-pub const BACKEND_VERSION: &str = "1";
+pub const BACKEND_VERSION: &str = "2";
 
 /// Exact helper/probe/filter identity paired with the descriptor.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -26,6 +26,12 @@ impl Transcript {
         self.parser.process(bytes);
     }
 
+    pub(super) fn discontinuity(&mut self) {
+        // CAN is the VTE "anywhere" transition to ground. It preserves the screen while
+        // terminating partial escape state and renders any incomplete UTF-8 prefix inert.
+        self.parser.process(b"\x18");
+    }
+
     pub(super) fn resize(&mut self, rows: u16, columns: u16) {
         self.parser.screen_mut().set_size(rows.clamp(1, 256), columns.clamp(1, 4096));
     }

@@ -36,6 +36,7 @@ fn features() -> Vec<ProtocolFeatureName> {
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchExecution,
         WellKnownProtocolFeature::WorkbenchConversation,
+        WellKnownProtocolFeature::WorkbenchContinuationReceipts,
         WellKnownProtocolFeature::ConversationLibrary,
     ]
     .into_iter()

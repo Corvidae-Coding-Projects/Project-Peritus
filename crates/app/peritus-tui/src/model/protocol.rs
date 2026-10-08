@@ -129,6 +129,22 @@ impl AppModel {
                 }
                 Vec::new()
             }
+            AppEventPayload::TerminalOutputGap(gap) => {
+                if let Some(terminal) = &mut self.terminal {
+                    if let Err(error) = terminal.accept_output_gap(*gap) {
+                        self.notice(NoticeLevel::Error, format!("terminal gap error: {error}"));
+                    } else {
+                        self.notice(
+                            NoticeLevel::Warning,
+                            format!(
+                                "terminal output resumed after {} unavailable bytes",
+                                gap.missing_bytes()
+                            ),
+                        );
+                    }
+                }
+                Vec::new()
+            }
             AppEventPayload::TerminalExited(exit) => {
                 if let Some(terminal) = &mut self.terminal {
                     if let Err(error) = terminal.accept_exit(*exit) {
@@ -246,6 +262,7 @@ impl AppModel {
             AppEventPayload::DomainEvent(_)
             | AppEventPayload::PromptRequested(_)
             | AppEventPayload::TerminalOutput(_)
+            | AppEventPayload::TerminalOutputGap(_)
             | AppEventPayload::TerminalUnavailable(_)
             | AppEventPayload::TerminalExited(_) => Vec::new(),
         }

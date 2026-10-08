@@ -1,8 +1,9 @@
 //! Exact immutable snapshot readers and retained-root integrity verification.
 
+use super::manifest::DecodedBodyRoots;
 use super::{
-    ArtifactDigest, BodyRoots, CHUNK_BYTES, ChunkRoot, ControlError, ControlStore, Error,
-    NODE_MAGIC, SNAPSHOT_NAMESPACE, artifact, mode,
+    ArtifactDigest, CHUNK_BYTES, ChunkRoot, ControlError, ControlStore, Error, NODE_MAGIC,
+    SNAPSHOT_NAMESPACE, artifact, mode,
 };
 use peritus_artifact_store::{ArtifactStore, StoreConfig};
 use peritus_patch::{SnapshotFile, SnapshotSource};
@@ -13,6 +14,53 @@ use std::{
     io::{self, Read, Write as _},
     sync::Arc,
 };
+
+/// One immutable checkpoint manifest opened for all paths in a restore or coverage check.
+pub struct CheckpointSnapshots<'a> {
+    store: &'a ControlStore,
+    checkpoint: CheckpointId,
+    roots: Option<DecodedBodyRoots>,
+}
+
+impl CheckpointSnapshots<'_> {
+    pub(crate) fn snapshot(
+        &self,
+        index: usize,
+        version: CheckpointFileVersion,
+    ) -> Result<Option<SnapshotFile>, Error> {
+        let CheckpointFileVersion::Present { .. } = version else {
+            return Ok(None);
+        };
+        let source: Arc<dyn SnapshotSource> = if let Some(roots) = &self.roots {
+            if roots.captured.as_ref().is_some_and(|captured| {
+                captured.paths().get(index).is_none_or(|path| path.checkpoint() != version)
+            }) {
+                return Err(Error::Corrupt("requested snapshot version differs from its path"));
+            }
+            let root = roots
+                .bodies
+                .get(index)
+                .copied()
+                .flatten()
+                .ok_or(Error::Corrupt("present checkpoint has no chunk root"))?;
+            Arc::new(self.store.snapshot_source(root, version)?)
+        } else {
+            let bytes = self
+                .store
+                .checkpoint_body(self.checkpoint, index, version)?
+                .ok_or(Error::Corrupt("legacy checkpoint body missing"))?;
+            let mut file = tempfile::NamedTempFile::new()?;
+            file.write_all(&bytes)?;
+            Arc::new(LegacySource(file.into_temp_path()))
+        };
+        Ok(Some(SnapshotFile::from_source(
+            source,
+            version.digest().ok_or(ControlError::InvalidInput)?,
+            version.bytes().ok_or(ControlError::InvalidInput)?,
+            mode(version)?,
+        )))
+    }
+}
 
 impl ControlStore {
     pub(super) fn verify_stream(
@@ -41,40 +89,18 @@ impl ControlStore {
         Ok(())
     }
 
-    pub(crate) fn checkpoint_snapshot(
+    pub(crate) fn checkpoint_snapshots(
         &self,
         checkpoint: CheckpointId,
-        index: usize,
-        version: CheckpointFileVersion,
-    ) -> Result<Option<SnapshotFile>, Error> {
-        let CheckpointFileVersion::Present { .. } = version else {
-            return Ok(None);
-        };
-        let source: Arc<dyn SnapshotSource> = if let Some(record) =
+    ) -> Result<CheckpointSnapshots<'_>, Error> {
+        let roots = if let Some(record) =
             self.journal.state_record(SNAPSHOT_NAMESPACE, checkpoint.as_bytes())?
         {
-            let roots = decode_roots(record.bytes())?;
-            let root = roots
-                .bodies
-                .get(index)
-                .copied()
-                .flatten()
-                .ok_or(Error::Corrupt("present checkpoint has no chunk root"))?;
-            Arc::new(self.snapshot_source(root, version)?)
+            Some(self.decode_body_roots(checkpoint, record.bytes())?)
         } else {
-            let bytes = self
-                .checkpoint_body(checkpoint, index, version)?
-                .ok_or(Error::Corrupt("legacy checkpoint body missing"))?;
-            let mut file = tempfile::NamedTempFile::new()?;
-            file.write_all(&bytes)?;
-            Arc::new(LegacySource(file.into_temp_path()))
+            None
         };
-        Ok(Some(SnapshotFile::from_source(
-            source,
-            version.digest().ok_or(ControlError::InvalidInput)?,
-            version.bytes().ok_or(ControlError::InvalidInput)?,
-            mode(version)?,
-        )))
+        Ok(CheckpointSnapshots { store: self, checkpoint, roots })
     }
 
     pub(in crate::product_control::storage::checkpoints) fn verify_snapshot_bodies(
@@ -90,7 +116,10 @@ impl ControlStore {
         if record.revision() != 1 || record.producing_position() != position {
             return Err(Error::Corrupt("checkpoint chunk roots were not published atomically"));
         }
-        let roots = decode_roots(record.bytes())?;
+        let roots = self.decode_body_roots(checkpoint.id(), record.bytes())?;
+        if roots.captured.as_ref().is_some_and(|captured| captured != checkpoint) {
+            return Err(Error::Corrupt("checkpoint manifest differs from its accepted capture"));
+        }
         if roots.bodies.len() != checkpoint.paths().len() {
             return Err(Error::Corrupt("checkpoint chunk root coverage differs"));
         }
@@ -142,14 +171,6 @@ impl ControlStore {
     }
 }
 
-fn decode_roots(bytes: &[u8]) -> Result<BodyRoots, Error> {
-    let roots: BodyRoots = serde_json::from_slice(bytes)
-        .map_err(|_| Error::Corrupt("checkpoint chunk roots invalid"))?;
-    if roots.schema != 1 {
-        return Err(Error::Corrupt("unsupported checkpoint chunk root generation"));
-    }
-    Ok(roots)
-}
 #[derive(Debug)]
 struct LegacySource(tempfile::TempPath);
 impl SnapshotSource for LegacySource {

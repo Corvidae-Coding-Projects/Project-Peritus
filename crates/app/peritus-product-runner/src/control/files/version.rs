@@ -1,7 +1,7 @@
 //! Exact immutable observation metadata, distinct from a claim that authorization occurred.
 
 use super::{ControlError, FileRange, FileSource, OperationId, Sha256Digest};
-use crate::attachment::{MAX_FILE_BYTES, ValidatedFileText};
+use crate::attachment::ValidatedFileText;
 use peritus_types::ArtifactId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -20,7 +20,7 @@ impl FileObservation {
     /// Checks metadata bounds. The host must match these claims to the actual authorized read.
     ///
     /// # Errors
-    /// Rejects impossible ranges or selected bytes exceeding the attachment policy.
+    /// Rejects impossible ranges or inconsistent whole-source identities.
     pub fn new(
         source_digest: Sha256Digest,
         source_bytes: u64,
@@ -65,12 +65,16 @@ impl FileObservation {
     /// Checks exact included bytes, without claiming to validate the unselected source.
     #[must_use]
     pub fn matches(self, text: &ValidatedFileText) -> bool {
-        self.bytes() == text.bytes() && self.digest() == text.digest()
+        self.matches_identity(text.digest(), text.bytes())
+    }
+    /// Checks exact included-byte identity from a fixed-memory validated source.
+    #[must_use]
+    pub fn matches_identity(self, digest: Sha256Digest, bytes: u64) -> bool {
+        self.bytes() == bytes && self.digest() == digest
     }
     fn validate(self) -> Result<(), ControlError> {
         if self.start > self.end
             || self.end > self.source_bytes
-            || self.bytes() > MAX_FILE_BYTES
             || (self.start == 0
                 && self.end == self.source_bytes
                 && self.source_digest != self.digest)
@@ -89,6 +93,8 @@ pub struct FileVersion {
     artifact: [u8; 16],
     observation: FileObservation,
     consent_digest: [u8; 32],
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    external_artifact: bool,
 }
 impl FileVersion {
     /// Binds an observation to its own publication operation and exact preview/admission proof.
@@ -107,7 +113,22 @@ impl FileVersion {
             artifact: artifact.into_bytes(),
             observation,
             consent_digest: consent_digest.into_bytes(),
+            external_artifact: false,
         })
+    }
+    /// Binds a source to an already-authorized immutable artifact outside the control journal.
+    ///
+    /// # Errors
+    /// Rejects structurally invalid observation metadata.
+    pub fn external(
+        operation: OperationId,
+        artifact: ArtifactId,
+        observation: FileObservation,
+        consent_digest: Sha256Digest,
+    ) -> Result<Self, ControlError> {
+        let mut value = Self::new(operation, artifact, observation, consent_digest)?;
+        value.external_artifact = true;
+        Ok(value)
     }
     /// Returns this version's immutable publication operation.
     #[must_use]
@@ -128,6 +149,11 @@ impl FileVersion {
     #[must_use]
     pub const fn consent_digest(&self) -> Sha256Digest {
         Sha256Digest::new(self.consent_digest)
+    }
+    /// Returns whether exact bytes remain in the shared immutable artifact store.
+    #[must_use]
+    pub const fn external_artifact(&self) -> bool {
+        self.external_artifact
     }
     pub(super) fn validate(&self, source: &FileSource) -> Result<(), ControlError> {
         self.observation.validate()?;

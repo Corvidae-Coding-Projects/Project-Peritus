@@ -64,6 +64,12 @@ fn import_cases(
             text: WorkbenchInputText::new("Use this immutable import".to_owned()).expect("caption"),
         },
     );
+    let source_command = WorkbenchCommand::new(
+        ControlOperationId::new(artifact.into_bytes()).expect("source operation"),
+        scope,
+        9,
+        WorkbenchIntent::AttachFileSource { preview: preview.clone() },
+    );
     Ok(vec![
         encoded(
             "minimal-workbench-file-import-upload",
@@ -94,6 +100,18 @@ fn import_cases(
             "realistic-workbench-file-import-confirm",
             FixtureClass::Realistic,
             &request(AppRequestPayload::WorkbenchCommand(command.clone())),
+            limits,
+        )?,
+        encoded(
+            "realistic-workbench-file-source-confirm",
+            FixtureClass::Realistic,
+            &request(AppRequestPayload::WorkbenchCommand(source_command.clone())),
+            limits,
+        )?,
+        encoded(
+            "realistic-workbench-file-source-receipt-query",
+            FixtureClass::Realistic,
+            &request(AppRequestPayload::QueryWorkbenchReceipt(source_command)),
             limits,
         )?,
         encoded(

@@ -1,10 +1,7 @@
 //! Bounded immutable version history and explicit future-request selection.
 
 use super::{ControlError, ControlText, FileAttachment, FileMode, FileVersion, OperationId};
-use crate::{
-    attachment::{MAX_FILE_COUNT, MAX_FILE_SELECTION_BYTES},
-    control::{InputLedger, InputSelection, QueueIntent},
-};
+use crate::control::{InputLedger, InputSelection, QueueIntent};
 use peritus_types::ActorId;
 use serde::Deserialize;
 use serde::Serialize;
@@ -18,6 +15,8 @@ pub struct FileSelection {
     refreshes: Vec<FileVersion>,
     #[serde(default)]
     frozen: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    source_only: bool,
 }
 impl FileSelection {
     /// Returns effective read behavior; historical branches retain snapshots, never refresh grants.
@@ -35,6 +34,11 @@ impl FileSelection {
     pub const fn selected(&self) -> bool {
         self.selected
     }
+    /// Returns whether this attachment contributes context without a synthetic caption input.
+    #[must_use]
+    pub const fn source_only(&self) -> bool {
+        self.source_only
+    }
     /// Borrows the current immutable version; prior versions remain available.
     #[must_use]
     pub fn current(&self) -> &FileVersion {
@@ -47,7 +51,7 @@ impl FileSelection {
     }
 }
 
-/// Bounded file history; mutations are proposals until atomically committed by the host.
+/// Immutable file history; mutations are proposals until atomically committed by the host.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FileAttachments {
@@ -79,7 +83,9 @@ impl FileAttachments {
         self.entries
             .iter()
             .filter(|entry| {
-                entry.selected && included.iter().any(|input| input.id() == entry.file.input())
+                entry.selected
+                    && (entry.source_only
+                        || included.iter().any(|input| input.id() == entry.file.input()))
             })
             .collect()
     }
@@ -104,6 +110,26 @@ impl FileAttachments {
             selected: true,
             refreshes: Vec::new(),
             frozen: false,
+            source_only: false,
+        });
+        self.validate(inputs)
+    }
+    pub(in crate::control) fn attach_source(
+        &mut self,
+        inputs: &mut InputLedger,
+        file: &FileAttachment,
+    ) -> Result<(), ControlError> {
+        file.validate()?;
+        if !file.initial().external_artifact() {
+            return Err(ControlError::InvalidInput);
+        }
+        *inputs = inputs.context_changed()?;
+        self.entries.push(FileSelection {
+            file: file.clone(),
+            selected: true,
+            refreshes: Vec::new(),
+            frozen: false,
+            source_only: true,
         });
         self.validate(inputs)
     }
@@ -153,7 +179,8 @@ impl FileAttachments {
         let mut operations = std::collections::BTreeSet::new();
         for entry in &self.entries {
             entry.file.validate()?;
-            if inputs.latest(entry.file.input()).is_none()
+            if (!entry.source_only && inputs.latest(entry.file.input()).is_none())
+                || (entry.source_only && !entry.file.initial().external_artifact())
                 || !operations.insert(entry.file.operation())
                 || (!entry.refreshes.is_empty()
                     && entry.file.source().mode() != FileMode::RefreshOnRequest)
@@ -167,14 +194,7 @@ impl FileAttachments {
                 }
             }
         }
-        let capture = inputs.capture()?;
-        let eligible = self.eligible(capture.included());
-        let bytes = eligible.iter().try_fold(0_u64, |bytes, entry| {
-            bytes.checked_add(entry.current().observation().bytes()).ok_or(ControlError::Capacity)
-        })?;
-        if eligible.len() > MAX_FILE_COUNT || bytes > MAX_FILE_SELECTION_BYTES {
-            return Err(ControlError::Capacity);
-        }
+        inputs.capture()?;
         Ok(())
     }
 }

@@ -600,7 +600,7 @@ fn open(temp: &TempDir) -> SqliteJournal {
     SqliteJournal::open(
         temp.path().join("agent.sqlite3"),
         StoreId::new([210; 16]).expect("store"),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("journal")
 }

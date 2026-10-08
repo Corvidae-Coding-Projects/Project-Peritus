@@ -24,9 +24,9 @@ impl ProductModelChoice {
     /// Selects a discovered model, or an explicitly labeled manual identifier.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or control-bearing identifiers.
+    /// Rejects empty or control-bearing identifiers. The enclosing codec owns frame limits.
     pub fn new(id: String, manual: bool) -> Result<Self, ProductRunMessageError> {
-        bounded_text(&id, 512)?;
+        bounded_text(&id, usize::MAX)?;
         if id.chars().any(char::is_control) || id.trim() != id {
             return Err(ProductRunMessageError::InvalidSettlement);
         }

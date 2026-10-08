@@ -2,8 +2,12 @@
 
 use std::{
     collections::BTreeSet,
+    ffi::OsStr,
     path::{Path, PathBuf},
 };
+
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 use crate::GateError;
 
@@ -27,6 +31,48 @@ pub enum ProjectKind {
     Sqlite,
     /// Go module.
     Go,
+}
+
+/// Network authority required by one exact gate command.
+///
+/// A denied command still runs in a native sandbox: this value describes the contract that the
+/// backend must enforce, not a promise inferred from the executable name or script contents.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum GateNetworkPolicy {
+    /// The complete process tree must have no network access.
+    Denied,
+    /// The gate is an explicitly network-dependent check and requires live Network capability.
+    ExplicitAuthority,
+    /// The trusted service host selected one exact managed-egress grant.
+    ManagedAuthority {
+        /// Canonical identity of the complete host grant.
+        grant_digest: Sha256Digest,
+    },
+}
+
+impl GateNetworkPolicy {
+    const fn tag(self) -> u8 {
+        match self {
+            Self::Denied => 1,
+            Self::ExplicitAuthority => 2,
+            Self::ManagedAuthority { .. } => 3,
+        }
+    }
+
+    /// Whether this command requires the host's live Network capability.
+    #[must_use]
+    pub const fn requires_authority(self) -> bool {
+        matches!(self, Self::ExplicitAuthority | Self::ManagedAuthority { .. })
+    }
+
+    /// Returns the exact managed grant identity, when the host selected one.
+    #[must_use]
+    pub const fn managed_grant(self) -> Option<Sha256Digest> {
+        match self {
+            Self::ManagedAuthority { grant_digest } => Some(grant_digest),
+            Self::Denied | Self::ExplicitAuthority => None,
+        }
+    }
 }
 
 /// One exact project implicated by candidate paths.
@@ -67,6 +113,7 @@ pub struct GateCommandSpec {
     pub(super) arguments: Vec<String>,
     pub(super) current_dir: PathBuf,
     pub(super) project: AffectedProject,
+    pub(super) network: GateNetworkPolicy,
 }
 
 impl GateCommandSpec {
@@ -100,6 +147,67 @@ impl GateCommandSpec {
         &self.project
     }
 
+    /// Native network contract required for this command and all of its descendants.
+    #[must_use]
+    pub const fn network_policy(&self) -> GateNetworkPolicy {
+        self.network
+    }
+
+    /// Canonical identity used by the trusted host to select optional managed egress.
+    ///
+    /// This is exactly the legacy denied-network command identity. Selecting a grant therefore
+    /// cannot change what command the grant was configured for, while commands that remain
+    /// deny-all retain their accepted version-two identity byte-for-byte.
+    #[must_use]
+    pub fn base_identity(&self) -> Sha256Digest {
+        self.legacy_identity(GateNetworkPolicy::Denied)
+    }
+
+    /// Binds one trusted managed-network grant to this exact structured command.
+    #[must_use]
+    pub fn with_managed_network(mut self, grant_digest: Sha256Digest) -> Self {
+        self.network = GateNetworkPolicy::ManagedAuthority { grant_digest };
+        self
+    }
+
+    /// Canonical identity of the exact structured command and its declared authority policy.
+    ///
+    /// The product runner combines this with the candidate and requirement identities before
+    /// reserving a retained gate operation.
+    #[must_use]
+    pub fn identity(&self) -> Sha256Digest {
+        if let GateNetworkPolicy::ManagedAuthority { grant_digest } = self.network {
+            let mut hasher = Sha256::new();
+            hasher.update(b"peritus-target-gate-command-v3\0");
+            hasher.update(self.base_identity().as_bytes());
+            hasher.update(grant_digest.as_bytes());
+            return Sha256Digest::new(hasher.finalize().into());
+        }
+        self.legacy_identity(self.network)
+    }
+
+    fn legacy_identity(&self, network: GateNetworkPolicy) -> Sha256Digest {
+        let mut hasher = Sha256::new();
+        hasher.update(b"peritus-target-gate-command-v2\0");
+        hash_bytes(&mut hasher, self.label.as_bytes());
+        hash_bytes(&mut hasher, self.program.as_bytes());
+        hasher.update(u64::try_from(self.arguments.len()).unwrap_or(u64::MAX).to_le_bytes());
+        for argument in &self.arguments {
+            hash_bytes(&mut hasher, argument.as_bytes());
+        }
+        hash_native_os_str(&mut hasher, self.current_dir.as_os_str());
+        hasher.update([project_kind_tag(self.project.kind), network.tag()]);
+        hash_native_os_str(&mut hasher, self.project.root.as_os_str());
+        match &self.project.manifest {
+            Some(manifest) => {
+                hasher.update([1]);
+                hash_native_os_str(&mut hasher, manifest.as_os_str());
+            }
+            None => hasher.update([0]),
+        }
+        Sha256Digest::new(hasher.finalize().into())
+    }
+
     /// Shell-like display form for user evidence. Execution still uses structured argv.
     #[must_use]
     pub fn display(&self) -> String {
@@ -112,6 +220,43 @@ impl GateCommandSpec {
             command
         } else {
             format!("(cd {} && {command})", quote_argument(&self.current_dir.to_string_lossy()))
+        }
+    }
+}
+
+const fn project_kind_tag(kind: ProjectKind) -> u8 {
+    match kind {
+        ProjectKind::Artifact => 1,
+        ProjectKind::Rust => 2,
+        ProjectKind::Node => 3,
+        ProjectKind::Python => 4,
+        ProjectKind::Sqlite => 5,
+        ProjectKind::Go => 6,
+    }
+}
+
+fn hash_bytes(hasher: &mut Sha256, bytes: &[u8]) {
+    hasher.update(u64::try_from(bytes.len()).unwrap_or(u64::MAX).to_le_bytes());
+    hasher.update(bytes);
+}
+
+fn hash_native_os_str(hasher: &mut Sha256, value: &OsStr) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt as _;
+
+        hasher.update([1]);
+        hash_bytes(hasher, value.as_bytes());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::ffi::OsStrExt as _;
+
+        hasher.update([2]);
+        let units = value.encode_wide().collect::<Vec<_>>();
+        hasher.update(u64::try_from(units.len()).unwrap_or(u64::MAX).to_le_bytes());
+        for unit in units {
+            hasher.update(unit.to_be_bytes());
         }
     }
 }

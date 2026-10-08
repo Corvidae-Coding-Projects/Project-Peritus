@@ -174,7 +174,7 @@ fn saved_guidance_enters_future_provider_request_and_restart_tombstone_excludes_
             initial.workbench_command(actor(), &forget).await,
             AppResponsePayload::WorkbenchReceipt(_)
         ));
-        initial.shutdown(Duration::from_secs(5)).await;
+        initial.shutdown().await.expect("shutdown product runs");
         drop(initial);
 
         let restarted =
@@ -184,7 +184,11 @@ fn saved_guidance_enters_future_provider_request_and_restart_tombstone_excludes_
             peritus_journal::StoreId::new([0x7f; 16]).expect("control store"),
         )
         .expect("recover control store");
-        *restarted.inner.controls.lock().expect("control owner") = Some(recovered);
+        {
+            let cancellation = peritus_journal::JournalCancellation::new();
+            let _permit = restarted.inner.controls.acquire(&cancellation).expect("queue owner");
+            *restarted.inner.controls.owner.lock().expect("control owner") = Some(recovered);
+        }
         let history_response = restarted.workbench_memory(
             actor(),
             WorkbenchMemoryQuery::new(admin, 0, 0, true).expect("history query"),
@@ -210,6 +214,6 @@ fn saved_guidance_enters_future_provider_request_and_restart_tombstone_excludes_
             assert!(!request_contains(&requests[1], GUIDANCE));
             assert!(!request_contains(&requests[1], "PERITUS_PROJECT_GUIDANCE_V1"));
         }
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }

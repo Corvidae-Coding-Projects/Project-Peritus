@@ -65,3 +65,72 @@ impl WorkbenchContinuation {
         self.mode
     }
 }
+/// Durable relationship between an accepted continuation and owned launch preparation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WorkbenchContinuationAdmissionState {
+    /// The control journal accepted the exact command, but no live or settled owner currently
+    /// proves launch. Replaying the same command recovers its sealed admitted source.
+    AcceptedPendingLaunch,
+    /// A live owner names this exact operation, or its terminal ownership was durably settled.
+    LaunchOwned,
+}
+impl WorkbenchContinuationAdmissionState {
+    /// Stable canonical wire tag.
+    #[must_use]
+    pub const fn tag(self) -> u16 {
+        match self {
+            Self::AcceptedPendingLaunch => 1,
+            Self::LaunchOwned => 2,
+        }
+    }
+    /// Parses one stable canonical wire tag.
+    #[must_use]
+    pub const fn from_tag(tag: u16) -> Option<Self> {
+        match tag {
+            1 => Some(Self::AcceptedPendingLaunch),
+            2 => Some(Self::LaunchOwned),
+            _ => None,
+        }
+    }
+}
+
+/// Read-only exact continuation launch-admission observation.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkbenchContinuationAdmission {
+    operation: crate::ControlOperationId,
+    query: crate::WorkbenchQuery,
+    run: RunId,
+    state: WorkbenchContinuationAdmissionState,
+}
+impl WorkbenchContinuationAdmission {
+    /// Binds the exact accepted operation to its run-owned launch marker.
+    #[must_use]
+    pub const fn new(
+        operation: crate::ControlOperationId,
+        query: crate::WorkbenchQuery,
+        run: RunId,
+        state: WorkbenchContinuationAdmissionState,
+    ) -> Self {
+        Self { operation, query, run, state }
+    }
+    /// Original continuation operation identity.
+    #[must_use]
+    pub const fn operation(self) -> crate::ControlOperationId {
+        self.operation
+    }
+    /// Exact conversation and workspace scope.
+    #[must_use]
+    pub const fn query(self) -> crate::WorkbenchQuery {
+        self.query
+    }
+    /// Existing execution lineage.
+    #[must_use]
+    pub const fn run(self) -> RunId {
+        self.run
+    }
+    /// Whether durable run ownership has been recorded.
+    #[must_use]
+    pub const fn state(self) -> WorkbenchContinuationAdmissionState {
+        self.state
+    }
+}

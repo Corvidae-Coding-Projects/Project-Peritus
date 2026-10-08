@@ -122,7 +122,7 @@ fn execution_cases(
     for (name, payload) in [
         ("minimal-workbench-execution-query", AppRequestPayload::QueryWorkbenchExecution(query)),
         (
-            "minimal-workbench-execution-continue",
+            "legacy-workbench-execution-continue",
             AppRequestPayload::ContinueWorkbenchExecution(crate::WorkbenchContinuation::new(
                 query,
                 crate::ProductInteractionMode::Chat,
@@ -131,6 +131,52 @@ fn execution_cases(
     ] {
         cases.push(encoded(name, FixtureClass::Minimal, &request(payload), limits)?);
     }
+    let run = id(31, peritus_types::RunId::new);
+    let continue_operation = id(44, ControlOperationId::new);
+    let continue_command = WorkbenchCommand::new(
+        continue_operation,
+        query,
+        7,
+        WorkbenchIntent::ContinueExecution(crate::WorkbenchExecutionSettings::new(
+            run,
+            crate::ProductProviderSelection::new(
+                id(33, peritus_types::ProviderProfileId::new),
+                id(33, peritus_types::ProviderProfileId::new),
+                id(33, peritus_types::ProviderProfileId::new),
+            ),
+            crate::ProductInteractionMode::Chat,
+            crate::ProductRoleModels::default(),
+        )),
+    );
+    for (name, payload) in [
+        (
+            "realistic-workbench-continuation-command",
+            AppRequestPayload::WorkbenchCommand(continue_command.clone()),
+        ),
+        (
+            "realistic-workbench-continuation-admission-query",
+            AppRequestPayload::QueryWorkbenchContinuationAdmission(continue_command),
+        ),
+    ] {
+        cases.push(encoded(name, FixtureClass::Realistic, &request(payload), limits)?);
+    }
+    let admission = crate::WorkbenchContinuationAdmission::new(
+        continue_operation,
+        query,
+        run,
+        crate::WorkbenchContinuationAdmissionState::AcceptedPendingLaunch,
+    );
+    cases.push(encoded(
+        "realistic-workbench-continuation-admission",
+        FixtureClass::Realistic,
+        &AppResponseEnvelope::new(
+            context(),
+            id(10, crate::RequestId::new),
+            id(11, crate::CorrelationId::new),
+            AppResponsePayload::WorkbenchContinuationAdmission(admission),
+        ),
+        limits,
+    )?);
     for (name, payload) in [
         (
             "minimal-workbench-execution-empty",

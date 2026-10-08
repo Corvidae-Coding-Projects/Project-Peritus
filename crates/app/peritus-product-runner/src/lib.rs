@@ -11,6 +11,7 @@ pub(crate) mod bundle;
 #[cfg(not(verus_only))]
 mod candidate;
 mod context_config;
+mod context_sources;
 pub mod control;
 mod conversation_mode;
 #[cfg(not(verus_only))]

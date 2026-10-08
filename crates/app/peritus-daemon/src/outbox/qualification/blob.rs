@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use peritus_artifact_store::{
     ArtifactDigest, ArtifactStore, ArtifactStoreError, ArtifactWriteHandle, EncryptionMetadata,
-    MediaType, ReferenceOwner, StoreConfig, WriteRequest,
+    MediaType, ReferenceOwner, WriteRequest,
 };
 use peritus_codec::sha256;
 use peritus_types::{EventId, Sha256Digest};
@@ -212,13 +212,11 @@ fn open_store(
         EncryptionMetadata::unencrypted(),
         event_id(digest.sha256())?,
     );
-    let store_config = StoreConfig::new(
-        config.paths().artifact_root(),
-        config.limits().maximum_artifact_bytes(),
-        config.limits().artifact_quota_bytes(),
-    )
-    .and_then(|value| value.with_database_path(config.paths().database()))
-    .map_err(store_error)?;
+    let store_config = config
+        .limits()
+        .artifact_store_config(config.paths().artifact_root())
+        .and_then(|value| value.with_database_path(config.paths().database()))
+        .map_err(store_error)?;
     let store = ArtifactStore::open(store_config).map_err(store_error)?;
     Ok((store, digest, request))
 }

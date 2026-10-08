@@ -29,6 +29,8 @@ pub enum RecoveryOutcome {
     Active(crate::ExecutionUpdate),
     /// Exact terminal envelope was accepted and cached.
     Completed(peritus_tool_protocol::ToolResult),
+    /// Exact V2 terminal update and its durable progress-page receipt were accepted and cached.
+    CompletedUpdate(crate::ExecutionUpdate),
     /// Outcome is unsafe to infer or retry.
     Indeterminate(crate::DispatchFailure),
 }

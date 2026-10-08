@@ -118,7 +118,8 @@ fn partial_restore_cold_reopens_before_and_after_c1_and_replays_the_same_receipt
                 .with_controls(false, |store| {
                     let identity = peritus_workspace::FolderIdentity::observe(workspace.path())?;
                     let observed = crate::product_run::workbench::checkpoints::capture::observe_path(&identity, "note.txt")?;
-                    assert_eq!(selected_coverage_matches(store, checkpoint.id(), 0,
+                    let snapshots = store.checkpoint_snapshots(checkpoint.id())?;
+                    assert_eq!(selected_coverage_matches(&snapshots, 0,
                         &checkpoint.paths()[0], &observed).is_ok(), applied,
                         "writable fork coverage follows selected content without claiming surrounding bytes");
                     let record = store.load(conversation)?.unwrap();

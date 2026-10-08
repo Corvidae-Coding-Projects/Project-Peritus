@@ -50,7 +50,7 @@ impl SandboxResourceKind {
     }
 }
 
-/// Complete nonzero upper bounds for every sandbox resource dimension.
+/// Explicit upper bounds for sandbox resource dimensions.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ResourceLimits {
     values: [ResourceQuantity; 8],
@@ -95,39 +95,66 @@ impl ResourceLimits {
         processes: ResourceQuantity,
         concurrency: ResourceQuantity,
     ) -> Result<Self, SandboxError> {
-        if wall_time.is_some_and(|value| value.get() == 0)
-            || cpu_time.is_some_and(|value| value.get() == 0)
-            || [memory, disk, output, open_handles, processes, concurrency]
-                .iter()
-                .any(|value| value.get() == 0)
-        {
-            return Err(crate::error::invalid("configured resource limits must be nonzero"));
+        Self::with_optional_limits(
+            wall_time,
+            cpu_time,
+            Some(memory),
+            Some(disk),
+            Some(output),
+            Some(open_handles),
+            Some(processes),
+            Some(concurrency),
+        )
+    }
+
+    /// Creates explicit optional resource ceilings.
+    ///
+    /// A missing ceiling authorizes observation without inventing a cumulative maximum. Zero is
+    /// reserved as the canonical representation of absence.
+    ///
+    /// # Errors
+    /// Rejects a selected zero ceiling.
+    #[allow(clippy::too_many_arguments, reason = "one typed value per closed resource dimension")]
+    pub fn with_optional_limits(
+        wall_time: Option<ResourceQuantity>,
+        cpu_time: Option<ResourceQuantity>,
+        memory: Option<ResourceQuantity>,
+        disk: Option<ResourceQuantity>,
+        output: Option<ResourceQuantity>,
+        open_handles: Option<ResourceQuantity>,
+        processes: Option<ResourceQuantity>,
+        concurrency: Option<ResourceQuantity>,
+    ) -> Result<Self, SandboxError> {
+        let selected = [
+            wall_time,
+            cpu_time,
+            memory,
+            disk,
+            output,
+            open_handles,
+            processes,
+            concurrency,
+        ];
+        if selected.into_iter().flatten().any(|value| value.get() == 0) {
+            return Err(crate::error::invalid("selected resource limits must be nonzero"));
         }
-        Ok(Self {
-            values: [
-                wall_time.unwrap_or(ResourceQuantity::zero()),
-                cpu_time.unwrap_or(ResourceQuantity::zero()),
-                memory,
-                disk,
-                output,
-                open_handles,
-                processes,
-                concurrency,
-            ],
-        })
+        Ok(Self { values: selected.map(|value| value.unwrap_or(ResourceQuantity::zero())) })
     }
 
     /// Returns an optional time bound; zero in the canonical wire denotes its absence.
     #[must_use]
     pub const fn time_limit(&self, kind: SandboxResourceKind) -> Option<ResourceQuantity> {
-        match kind {
-            SandboxResourceKind::WallTime | SandboxResourceKind::CpuTime
-                if self.limit(kind).get() == 0 =>
-            {
-                None
-            }
-            _ => Some(self.limit(kind)),
-        }
+        self.selected_limit(kind)
+    }
+
+    /// Returns a selected ceiling, or `None` when that dimension is observed without a maximum.
+    #[must_use]
+    pub const fn selected_limit(
+        &self,
+        kind: SandboxResourceKind,
+    ) -> Option<ResourceQuantity> {
+        let value = self.limit(kind);
+        if value.get() == 0 { None } else { Some(value) }
     }
 
     /// Returns the bound for one dimension.
@@ -140,10 +167,19 @@ impl ResourceLimits {
     #[must_use]
     pub fn first_exceeded_by(&self, requested: &Self) -> Option<SandboxResourceKind> {
         SandboxResourceKind::ALL.into_iter().find(|kind| {
-            self.time_limit(*kind).is_some_and(|maximum| {
-                requested.time_limit(*kind).is_none_or(|value| value > maximum)
+            self.selected_limit(*kind).is_some_and(|maximum| {
+                requested.selected_limit(*kind).is_none_or(|value| value > maximum)
             })
         })
+    }
+
+    pub(crate) const fn uses_legacy_encoding(&self) -> bool {
+        self.selected_limit(SandboxResourceKind::Memory).is_some()
+            && self.selected_limit(SandboxResourceKind::Disk).is_some()
+            && self.selected_limit(SandboxResourceKind::Output).is_some()
+            && self.selected_limit(SandboxResourceKind::OpenHandles).is_some()
+            && self.selected_limit(SandboxResourceKind::Processes).is_some()
+            && self.selected_limit(SandboxResourceKind::Concurrency).is_some()
     }
 }
 
@@ -175,13 +211,13 @@ impl ResourceUsage {
         quantity: ResourceQuantity,
         limits: &ResourceLimits,
     ) -> Result<(), SandboxError> {
-        if limits.time_limit(kind).is_some()
-            && !crate::verified::resource_charge_allowed(
+        if limits.selected_limit(kind).is_some_and(|maximum| {
+            !crate::verified::resource_charge_allowed(
                 self.get(kind).get(),
                 quantity.get(),
-                limits.limit(kind).get(),
+                maximum.get(),
             )
-        {
+        }) {
             return Err(SandboxError::new(
                 SandboxErrorKind::ResourceLimit,
                 SandboxOperation::Account,

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {ui,attempt,dispatch,session,refresh,notify,observeConversation} from '../workspace.svelte';
+  import {ui,attempt,dispatch,session,refresh,notify,observeConversation,beginConversationEffect,endConversationEffect} from '../workspace.svelte';
   import {query,action} from '../api';
   import type {ModelChoice,Session,Conversation} from '../types';
   const id=ui.sessionId;
@@ -11,12 +11,13 @@
   let loading=$state(false),saving=$state(false);
   async function load(role:string){const profile=providers[role]||ui.facts?.providers[0]?.id;if(!profile)return;loading=true;try{catalogs[role]=await query('models',{profile});}finally{loading=false;}}
   async function save(){
-    saving=true;
+    const epoch=beginConversationEffect(id);saving=true;
     try {
       const value=await action<{session:Session;conversation:Conversation|null}>('session-settings',{session:id,settings:{models,providers},existing:!!ui.conversations[id]?.run});
-      if(value.conversation)observeConversation(id,value.conversation);
+      if(value.conversation)observeConversation(id,value.conversation,epoch);
+      endConversationEffect(id,epoch);
       await refresh();ui.overlay='';notify('Model choices saved for this conversation.');
-    }finally{saving=false;}
+    }finally{endConversationEffect(id,epoch);saving=false;}
   }
 </script>
 <p class="dialog-description">Save model and effort choices for this conversation. Existing conversations also update the daemon, so the CLI sees the same selection.</p>

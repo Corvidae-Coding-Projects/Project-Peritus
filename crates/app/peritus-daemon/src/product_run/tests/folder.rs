@@ -111,7 +111,7 @@ fn greeting_in_a_non_git_home_shaped_folder_needs_no_baseline_or_scan() {
         assert_eq!(snapshot.incorporated(), 1);
         let records = service.load_test_records().expect("restore");
         assert_eq!(records.get(&id).expect("restored conversation").interaction.incorporated, 1);
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -173,7 +173,7 @@ fn requested_edits_land_in_the_original_folder_and_cannot_overwrite_private_stat
         );
         assert!(!root.path().join(".git").exists());
         assert!(result.deliverable().is_none());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -207,7 +207,7 @@ fn folder_trust_and_read_only_modes_are_enforced_in_the_daemon() {
                 fs::read_to_string(root.path().join("note.txt")).expect("unchanged"),
                 "original"
             );
-            service.shutdown(Duration::from_secs(5)).await;
+            service.shutdown().await.expect("shutdown product runs");
         }
     });
 }
@@ -284,6 +284,6 @@ fn requested_command_runs_in_the_original_folder_with_daemon_owned_processes() {
             "requested"
         );
         assert!(!root.path().join(".git").exists());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

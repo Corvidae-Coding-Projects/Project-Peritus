@@ -1,6 +1,10 @@
 //! Embed validated task preimages before publishing any managed candidate handoff.
-use super::{ProductRunPhase, ProductRunService, launch, persist_record, replace_snapshot};
+use super::{ProductRunPhase, ProductRunService, launch, replace_snapshot};
 impl ProductRunService {
+    /// Captures the baseline into the caller's unpublished record projection.
+    ///
+    /// The terminal owner publishes that projection atomically with the completed outcome. This
+    /// helper must not persist a partial record on its own.
     pub(super) fn retain_task_baseline(&self, record: &mut crate::product_run::RunRecord) -> bool {
         if record.candidate_actionable && record.task_baseline_required {
             let trace = self
@@ -19,7 +23,6 @@ impl ProductRunService {
                     ) {
                         record.snapshot = snapshot;
                     }
-                    let _ = persist_record(&self.inner.directory, record);
                     return false;
                 }
             }

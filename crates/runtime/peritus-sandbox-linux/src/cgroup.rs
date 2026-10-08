@@ -28,8 +28,7 @@ impl CgroupSupport {
         let available_controllers = read_words(&root.join("cgroup.controllers"));
         let delegated_controllers = read_words(&root.join("cgroup.subtree_control"));
         let unified = root.join("cgroup.type").exists() || root.join("cgroup.controllers").exists();
-        let writable = can_open_write(&root.join("cgroup.procs"))
-            && can_open_write(&root.join("cgroup.subtree_control"));
+        let writable = can_open_write(&root.join("cgroup.procs"));
         Self {
             root: root.to_path_buf(),
             unified,
@@ -70,6 +69,24 @@ impl CgroupSupport {
                     && self.delegated_controllers.contains(*name)
             })
     }
+
+    /// Reports whether the parent can own an exact descendant leaf.
+    #[must_use]
+    pub(crate) const fn writable_containment(&self) -> bool {
+        self.unified && self.writable
+    }
+
+    /// Reports whether one named controller is available and delegated to the parent.
+    #[must_use]
+    pub(crate) fn controller_delegated(&self, name: &str) -> bool {
+        self.available_controllers.contains(name) && self.delegated_controllers.contains(name)
+    }
+
+    fn supports(&self, resources: ResourcePlan) -> bool {
+        self.writable_containment()
+            && (resources.memory_bytes() == 0 || self.controller_delegated("memory"))
+            && (resources.processes() == 0 || self.controller_delegated("pids"))
+    }
 }
 
 /// Deterministic exact cgroup leaf and controller values.
@@ -77,26 +94,25 @@ impl CgroupSupport {
 pub struct CgroupPlan {
     root: PathBuf,
     leaf: PathBuf,
-    memory_max: u64,
-    pids_max: u64,
-    cpu_max: String,
+    memory_max: Option<u64>,
+    pids_max: Option<u64>,
 }
 
 impl CgroupPlan {
     /// Creates one exact digest-named leaf below a proved delegated parent.
     ///
     /// # Errors
-    /// Returns unsupported if the parent does not delegate all required controllers.
+    /// Returns unsupported if the parent cannot own a leaf or lacks a selected controller.
     pub fn new(
         support: &CgroupSupport,
         preparation_digest: Sha256Digest,
         resources: ResourcePlan,
     ) -> Result<Self, LinuxError> {
-        if !support.delegated() {
+        if !support.supports(resources) {
             return Err(cgroup_error(
                 LinuxOperation::Prepare,
                 LinuxRecovery::ConfigureHost,
-                "cgroup v2 parent lacks writable cpu, memory, and pids delegation",
+                "cgroup v2 parent lacks writable containment or a selected controller",
             ));
         }
         let suffix = &crate::canonical::digest_hex(preparation_digest)[..24];
@@ -111,9 +127,8 @@ impl CgroupPlan {
         Ok(Self {
             root: support.root.clone(),
             leaf,
-            memory_max: resources.memory_bytes(),
-            pids_max: resources.processes(),
-            cpu_max: "100000 100000".to_owned(),
+            memory_max: (resources.memory_bytes() != 0).then_some(resources.memory_bytes()),
+            pids_max: (resources.processes() != 0).then_some(resources.processes()),
         })
     }
     /// Returns the exact leaf path.
@@ -131,9 +146,12 @@ impl CgroupPlan {
             LinuxError::io(LinuxOperation::Install, "create exact cgroup leaf", &error)
         })?;
         let result = (|| {
-            write_value(&self.leaf.join("memory.max"), &self.memory_max.to_string())?;
-            write_value(&self.leaf.join("pids.max"), &self.pids_max.to_string())?;
-            write_value(&self.leaf.join("cpu.max"), &self.cpu_max)?;
+            if let Some(memory_max) = self.memory_max {
+                write_value(&self.leaf.join("memory.max"), &memory_max.to_string())?;
+            }
+            if let Some(pids_max) = self.pids_max {
+                write_value(&self.leaf.join("pids.max"), &pids_max.to_string())?;
+            }
             Ok(())
         })();
         if let Err(error) = result {

@@ -8,24 +8,12 @@ use crate::{
     hash_chain::batch_hash,
 };
 use peritus_types::{CommandId, Sha256Digest};
+use sha2::{Digest, Sha256};
 
 use validation::{
-    validate_and_hash_events, validate_artifacts, validate_bounds, validate_heads, validate_outbox,
-    validate_outbox_acknowledgements, validate_state_installs,
+    validate_and_hash_events, validate_artifacts, validate_heads, validate_outbox,
+    validate_outbox_acknowledgements, validate_request_shape, validate_state_installs,
 };
-
-/// Maximum immutable events in one atomic batch.
-pub const MAX_BATCH_EVENTS: usize = 4_096;
-/// Maximum aggregate heads in one atomic batch.
-pub const MAX_BATCH_AGGREGATES: usize = 1_024;
-/// Maximum state installs in one atomic batch.
-pub const MAX_STATE_INSTALLS: usize = 4_096;
-/// Maximum outbox rows in one atomic batch.
-pub const MAX_OUTBOX_ENTRIES: usize = 4_096;
-/// Maximum existing outbox rows acknowledged in one atomic batch.
-pub const MAX_OUTBOX_ACKNOWLEDGEMENTS: usize = 4_096;
-/// Maximum artifact dependencies in one atomic batch.
-pub const MAX_ARTIFACT_DEPENDENCIES: usize = 4_096;
 
 /// Exact aggregate-head precondition.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -109,7 +97,7 @@ impl AppendRequest {
     ///
     /// # Errors
     ///
-    /// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
+    /// Rejects duplicate or noncanonical acknowledgement collections.
     pub fn with_outbox_acknowledgements(
         mut self,
         acknowledgements: Vec<OutboxAcknowledgement>,
@@ -127,9 +115,10 @@ impl AppendRequest {
     ///
     /// # Errors
     ///
-    /// Returns a stable typed validation error for every rejected precondition or bound.
+    /// Returns a stable typed validation error for every rejected precondition or canonical
+    /// representation.
     pub fn plan(self) -> Result<AppendPlan, JournalError> {
-        validate_bounds(&self)?;
+        let (event_count, artifact_count) = validate_request_shape(&self)?;
         validate_heads(&self.heads)?;
         validate_state_installs(&self.state_installs)?;
         validate_artifacts(&self.artifact_dependencies)?;
@@ -141,9 +130,9 @@ impl AppendRequest {
             self.command_id,
             self.request_digest,
             planned_events.iter().map(|event| event.event_hash),
-            planned_events.len(),
+            event_count,
             self.artifact_dependencies.iter().map(|dependency| dependency.digest()),
-            self.artifact_dependencies.len(),
+            artifact_count,
         );
         Ok(AppendPlan {
             store_id: self.store_id,
@@ -222,28 +211,28 @@ impl AppendRequest {
 ///
 /// # Errors
 ///
-/// Rejects duplicate, noncanonical, or excessive acknowledgement collections.
+/// Rejects duplicate, noncanonical, or canonically unrepresentable acknowledgement collections.
 pub fn bind_outbox_acknowledgements_digest(
     request_digest: Sha256Digest,
     acknowledgements: &[OutboxAcknowledgement],
 ) -> Result<Sha256Digest, JournalError> {
     validate_outbox_acknowledgements(acknowledgements)?;
-    if acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS {
-        return Err(JournalError::new(
+    let count = u64::try_from(acknowledgements.len()).map_err(|_| {
+        JournalError::new(
             JournalErrorKind::InvalidInput,
             "plan append",
-            "outbox acknowledgement bound exceeded",
-        ));
-    }
-    let mut binding = Vec::with_capacity(64 + acknowledgements.len() * 24);
-    binding.extend_from_slice(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
-    binding.extend_from_slice(request_digest.as_bytes());
-    binding.extend_from_slice(&(acknowledgements.len() as u64).to_be_bytes());
+            "outbox acknowledgement count exceeds its canonical representation",
+        )
+    })?;
+    let mut binding = Sha256::new();
+    binding.update(b"PERITUS-C0-OUTBOX-ACKNOWLEDGEMENTS\0");
+    binding.update(request_digest.as_bytes());
+    binding.update(count.to_be_bytes());
     for acknowledgement in acknowledgements {
-        binding.extend_from_slice(acknowledgement.id().as_bytes());
-        binding.extend_from_slice(&acknowledgement.fence().to_be_bytes());
+        binding.update(acknowledgement.id().as_bytes());
+        binding.update(acknowledgement.fence().to_be_bytes());
     }
-    Ok(peritus_codec::sha256(&binding))
+    Ok(Sha256Digest::new(binding.finalize().into()))
 }
 
 pub fn bind_registry_current_digest(
@@ -270,27 +259,48 @@ pub fn bind_domain_state_digest(
         (left.namespace(), left.key()).cmp(&(right.namespace(), right.key()))
     });
     validate_state_installs(installs)?;
-    let mut binding = Vec::with_capacity(64 + domain.len() + installs.len() * 90);
-    binding.extend_from_slice(b"PERITUS-C0-DOMAIN-STATE\0");
-    binding.extend_from_slice(&(domain.len() as u64).to_be_bytes());
-    binding.extend_from_slice(domain);
-    binding.extend_from_slice(request_digest.as_bytes());
-    binding.extend_from_slice(&(installs.len() as u64).to_be_bytes());
+    let domain_len = u64::try_from(domain.len()).map_err(|_| {
+        JournalError::new(
+            JournalErrorKind::InvalidInput,
+            "bind domain state",
+            "domain length exceeds its canonical representation",
+        )
+    })?;
+    let install_count = u64::try_from(installs.len()).map_err(|_| {
+        JournalError::new(
+            JournalErrorKind::InvalidInput,
+            "bind domain state",
+            "state install count exceeds its canonical representation",
+        )
+    })?;
+    let mut binding = Sha256::new();
+    binding.update(b"PERITUS-C0-DOMAIN-STATE\0");
+    binding.update(domain_len.to_be_bytes());
+    binding.update(domain);
+    binding.update(request_digest.as_bytes());
+    binding.update(install_count.to_be_bytes());
     for install in installs {
-        binding.extend_from_slice(&install.namespace().to_be_bytes());
-        binding.extend_from_slice(&(install.key().len() as u64).to_be_bytes());
-        binding.extend_from_slice(install.key());
+        binding.update(install.namespace().to_be_bytes());
+        let key_len = u64::try_from(install.key().len()).map_err(|_| {
+            JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "bind domain state",
+                "state key length exceeds its canonical representation",
+            )
+        })?;
+        binding.update(key_len.to_be_bytes());
+        binding.update(install.key());
         match install.expected_revision() {
             Some(revision) => {
-                binding.push(1);
-                binding.extend_from_slice(&revision.to_be_bytes());
+                binding.update([1]);
+                binding.update(revision.to_be_bytes());
             }
-            None => binding.push(0),
+            None => binding.update([0]),
         }
-        binding.extend_from_slice(&install.revision().to_be_bytes());
-        binding.extend_from_slice(install.digest().as_bytes());
+        binding.update(install.revision().to_be_bytes());
+        binding.update(install.digest().as_bytes());
     }
-    Ok(peritus_codec::sha256(&binding))
+    Ok(Sha256Digest::new(binding.finalize().into()))
 }
 
 /// Complete validated effect-free append plan accepted by the `SQLite` boundary.

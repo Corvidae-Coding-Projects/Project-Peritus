@@ -6,11 +6,13 @@ use serde::Deserialize;
 use serde::Serialize;
 
 mod ledger;
+mod label;
 mod source;
 #[cfg(test)]
 mod tests;
 mod version;
 pub use ledger::{FileAttachments, FileSelection};
+pub use label::FileSourceLabel;
 pub use source::{FileMode, FileRange, FileSource};
 pub use version::{FileObservation, FileVersion};
 

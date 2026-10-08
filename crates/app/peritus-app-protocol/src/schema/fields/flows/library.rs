@@ -55,7 +55,7 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "title",
                 W::Utf8,
-                &[B::ConversationTitleBytes],
+                &[B::CodecStringBytes],
                 "ConversationTitle",
                 "string",
                 J::String,
@@ -237,7 +237,7 @@ pub(super) const LIBRARY_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "title",
                 W::Utf8,
-                &[B::ConversationTitleBytes],
+                &[B::CodecStringBytes],
                 "ConversationTitle",
                 "string",
                 J::String,

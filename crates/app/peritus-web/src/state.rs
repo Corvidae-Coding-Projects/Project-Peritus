@@ -1,9 +1,14 @@
 //! Durable browser workspace and original operation outcomes.
 
+mod document;
+mod operation_store;
+
+pub(crate) use operation_store::{OperationOwner, PendingPage, Publication};
+
 use crate::{
     config::{Options, Preferences},
     error::{Result, problem},
-    terminal::Terminal,
+    terminal::TerminalRegistry,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -13,8 +18,6 @@ use std::{
     path::{Path, PathBuf},
     sync::{Arc, Mutex, Weak},
 };
-
-const MAX_OPERATION_RECORDS: usize = 4_096;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -30,8 +33,12 @@ pub struct Project {
 pub struct Session {
     pub(crate) settings: crate::sessions::Settings,
     pub(crate) id: String,
+    #[serde(default)]
     pub(crate) conversation: String,
+    #[serde(default)]
     pub(crate) run: String,
+    #[serde(default)]
+    pub(crate) native: Option<crate::daemon::NativeOwner>,
     pub(crate) project: String,
     pub(crate) parent: Option<String>,
     pub(crate) title: String,
@@ -47,9 +54,10 @@ pub struct Operation {
 #[derive(Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
+    #[serde(default)]
+    pub(crate) identity: String,
     pub(crate) projects: Vec<Project>,
     pub(crate) sessions: Vec<Session>,
-    pub(crate) operations: BTreeMap<String, Operation>,
     pub(crate) attachments: BTreeMap<String, crate::files::attachments::Attachment>,
 }
 pub struct App {
@@ -57,7 +65,8 @@ pub struct App {
     pub(crate) port: u16,
     pub(crate) token: String,
     pub(crate) workspace: Mutex<Workspace>,
-    pub(crate) terminals: Mutex<BTreeMap<String, Arc<Terminal>>>,
+    operations: operation_store::OperationStore,
+    pub(crate) terminals: Arc<TerminalRegistry>,
     locks: Mutex<BTreeMap<String, Weak<tokio::sync::Mutex<()>>>>,
 }
 pub fn hex(bytes: &[u8]) -> String {
@@ -81,29 +90,39 @@ pub fn save(path: &Path, bytes: &[u8]) -> Result<()> {
     temporary.write_all(bytes)?;
     temporary.as_file().sync_all()?;
     temporary.persist(path).map_err(problem)?;
+    #[cfg(unix)]
+    std::fs::File::open(parent).and_then(|directory| directory.sync_all())
+        .map_err(crate::error::uncertain)?;
     Ok(())
 }
 impl App {
     pub(crate) fn open(options: Options, port: u16) -> Result<Self> {
-        let mut workspace = match std::fs::read(&options.state_file) {
-            Ok(bytes) => match serde_json::from_slice(&bytes) {
-                Ok(workspace) => workspace,
-                Err(error) => {
-                    quarantine_malformed_state(&options.state_file);
-                    eprintln!(
-                        "peritus web: quarantined malformed workspace state and started with a fresh workspace: {error}"
-                    );
-                    Workspace::default()
+        let decoded = match std::fs::read(&options.state_file) {
+            Ok(bytes) => {
+                let decoded = document::decode(&options.state_file, &bytes)?;
+                if decoded.migration {
+                    document::preserve_legacy(&options.state_file, &bytes)?;
                 }
+                decoded
             },
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Workspace::default(),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => document::Decoded {
+                workspace: Workspace::default(),
+                operations: BTreeMap::new(),
+                migration: true,
+            },
             Err(error) => return Err(error.into()),
         };
-        let recovered_operations = recover_unsubmitted_native_operations(&mut workspace);
-        let original_operation_count = workspace.operations.len();
-        prune_operations(&mut workspace);
-        if recovered_operations || workspace.operations.len() != original_operation_count {
-            save(&options.state_file, &serde_json::to_vec_pretty(&workspace)?)?;
+        let mut workspace = decoded.workspace;
+        let new_identity = workspace.identity.is_empty();
+        if new_identity { workspace.identity = id()?; }
+        let operations = operation_store::OperationStore::open(
+            &options.state_file,
+            &workspace.identity,
+        )?;
+        operations.import(&decoded.operations)?;
+        let recovered_operations = recover_unsubmitted_native_operations(&operations)?;
+        if decoded.migration || new_identity || recovered_operations {
+            save(&options.state_file, &document::encode(&workspace)?)?;
         }
         if !options.config_file.exists() {
             save(
@@ -111,12 +130,17 @@ impl App {
                 toml::to_string_pretty(&Preferences::default()).map_err(problem)?.as_bytes(),
             )?;
         }
+        let terminals = Arc::new(TerminalRegistry::open(
+            &options.state_file,
+            &workspace.identity,
+        )?);
         let app = Self {
             options,
             port,
             token: id()?,
             workspace: Mutex::new(workspace),
-            terminals: Mutex::new(BTreeMap::new()),
+            operations,
+            terminals,
             locks: Mutex::new(BTreeMap::new()),
         };
         if app.snapshot()?.projects.is_empty() {
@@ -142,27 +166,45 @@ impl App {
         let mut locked = self.workspace.lock().map_err(problem)?;
         let mut next = locked.clone();
         let result = change(&mut next)?;
-        prune_operations(&mut next);
-        save(&self.options.state_file, &serde_json::to_vec_pretty(&next)?)?;
-        *locked = next;
+        let published = save(&self.options.state_file, &document::encode(&next)?);
+        // A directory-sync failure follows successful replacement. Retain that exact visible
+        // ledger in memory while reporting uncertain durability; stale memory must not admit
+        // the same original effect again after its identity was published on disk.
+        if published.is_ok() || published.as_ref().is_err_and(|error| error.1) {
+            *locked = next;
+        }
         drop(locked);
+        published?;
         Ok(result)
     }
     pub(crate) fn record_operation(&self, operation: String, input: Value) -> Result<()> {
-        self.update(|workspace| insert_operation(workspace, operation, input))
+        self.operations.owner(&operation)?.insert(input).map(|_| ())
     }
     pub(crate) fn retain_prepared_operation(&self, operation: &str, prepared: Value) -> Result<()> {
-        self.update(|workspace| {
-            let record = workspace
-                .operations
-                .get_mut(operation)
-                .ok_or_else(|| problem("Original operation record missing"))?;
-            if record.prepared.as_ref().is_some_and(|existing| existing != &prepared) {
-                return Err(problem("Original operation execution context changed"));
-            }
-            record.prepared = Some(prepared);
-            Ok(())
-        })
+        self.operations.owner(operation)?.retain_prepared(prepared)
+    }
+    pub(crate) fn operation(&self, operation: &str) -> Result<Option<Operation>> {
+        self.operations.get(operation)
+    }
+    pub(crate) async fn own_operation(&self, operation: &str) -> Result<OperationOwner> {
+        let store = self.operations.clone();
+        let operation = operation.to_owned();
+        tokio::task::spawn_blocking(move || store.owner(&operation)).await.map_err(problem)?
+    }
+    pub(crate) async fn try_own_operation(&self, operation: &str) -> Result<Option<OperationOwner>> {
+        let store = self.operations.clone();
+        let operation = operation.to_owned();
+        tokio::task::spawn_blocking(move || store.try_owner(&operation)).await.map_err(problem)?
+    }
+    pub(crate) fn settle_operation(&self, operation: &str, result: Value) -> Result<()> {
+        self.operations.owner(operation)?.settle(result)
+    }
+    pub(crate) fn pending_operations(
+        &self,
+        after: Option<&str>,
+        snapshot: Option<&str>,
+    ) -> Result<PendingPage> {
+        self.operations.pending_page(after, snapshot)
     }
     pub(crate) fn project(&self, id: &str) -> Result<Project> {
         self.snapshot()?
@@ -177,6 +219,49 @@ impl App {
             .into_iter()
             .find(|s| s.id == id)
             .ok_or_else(|| problem("Session not found"))
+    }
+    pub(crate) fn session_owner(&self, id: &str) -> Result<Option<crate::daemon::NativeOwner>> {
+        let workspace = self.snapshot()?;
+        let mut cursor = Some(id);
+        let mut visited = std::collections::BTreeSet::new();
+        let mut selected = None;
+        while let Some(id) = cursor {
+            if !visited.insert(id) {
+                return Err(problem("Retained session ancestry contains a cycle"));
+            }
+            let session = workspace
+                .sessions
+                .iter()
+                .find(|session| session.id == id)
+                .ok_or_else(|| problem("Retained session ancestry references an unknown parent"))?;
+            if let Some(owner) = &session.native {
+                if selected.as_ref().is_some_and(|selected| selected != owner) {
+                    return Err(problem("Retained session ancestry belongs to different native owners"));
+                }
+                selected = Some(owner.clone());
+            }
+            cursor = session.parent.as_deref();
+        }
+        Ok(selected)
+    }
+    pub(crate) fn bind_session_owner(
+        &self,
+        id: &str,
+        owner: crate::daemon::NativeOwner,
+    ) -> Result<()> {
+        owner.validate_shape()?;
+        self.update(|workspace| {
+            let session = workspace
+                .sessions
+                .iter_mut()
+                .find(|session| session.id == id)
+                .ok_or_else(|| problem("Session not found"))?;
+            if session.native.as_ref().is_some_and(|retained| retained != &owner) {
+                return Err(problem("The browser session already belongs to another native owner"));
+            }
+            session.native = Some(owner);
+            Ok(())
+        })
     }
     pub(crate) fn open_project(&self, root: &Path) -> Result<Project> {
         let root = root.canonicalize()?;
@@ -200,11 +285,34 @@ impl App {
                 id: id()?,
                 conversation: id()?,
                 run: id()?,
+                native: None,
                 project: project.id.clone(),
                 parent: None,
                 title: "New conversation".into(),
                 closed: false,
             });
+            workspace.projects.push(project.clone());
+            Ok(project)
+        })
+    }
+    pub(crate) fn adopt_project(&self, root: &Path) -> Result<Project> {
+        let root = root.canonicalize()?;
+        if !root.is_dir() {
+            return Err(problem("The retained run project is no longer available"));
+        }
+        self.update(|workspace| {
+            if let Some(project) = workspace.projects.iter_mut().find(|project| project.root == root)
+            {
+                project.closed = false;
+                return Ok(project.clone());
+            }
+            let project = Project {
+                id: id()?,
+                name: root.file_name().unwrap_or_default().to_string_lossy().into_owned(),
+                repository: root.clone(),
+                closed: false,
+                root,
+            };
             workspace.projects.push(project.clone());
             Ok(project)
         })
@@ -233,8 +341,9 @@ impl App {
             .ok_or_else(|| problem("Unknown project"))?
             .root
             .canonicalize()?;
+        let mut visited = std::collections::BTreeSet::new();
         while let Some(id) = cursor {
-            if id == session.id {
+            if id == session.id || !visited.insert(id) {
                 return Err(problem("A session cannot be nested inside itself or its descendants"));
             }
             let ancestor = workspace
@@ -242,6 +351,16 @@ impl App {
                 .iter()
                 .find(|s| s.id == id)
                 .ok_or_else(|| problem("Parent session not found"))?;
+            if session
+                .native
+                .as_ref()
+                .zip(ancestor.native.as_ref())
+                .is_some_and(|(session, ancestor)| session != ancestor)
+            {
+                return Err(problem(
+                    "Nested sessions cannot belong to different native owners",
+                ));
+            }
             let parent_root = workspace
                 .projects
                 .iter()
@@ -258,96 +377,54 @@ impl App {
     }
 }
 
-fn prune_operations(workspace: &mut Workspace) {
-    while workspace.operations.len() > MAX_OPERATION_RECORDS {
-        let Some(completed) = removable_completed_operation(workspace) else {
-            break;
-        };
-        workspace.operations.remove(&completed);
-    }
-}
-
-fn removable_completed_operation(workspace: &Workspace) -> Option<String> {
-    workspace.operations.iter().find_map(|(id, record)| {
-        (record.result.is_some() && !has_unresolved_native_parent(workspace, id))
-            .then(|| id.clone())
-    })
-}
-
-fn has_unresolved_native_parent(workspace: &Workspace, key: &str) -> bool {
-    let Some(native) = key.strip_prefix("daemon:") else { return false };
-    let parent = native.split(':').next().unwrap_or(native);
-    workspace.operations.get(parent).is_some_and(|record| record.result.is_none())
-}
-
 pub fn native_operation_belongs_to(key: &str, operation: &str) -> bool {
     let transport = format!("daemon:{operation}");
     key == transport || key.starts_with(&format!("{transport}:"))
 }
 
-fn insert_operation(workspace: &mut Workspace, operation: String, input: Value) -> Result<()> {
-    if workspace.operations.len() >= MAX_OPERATION_RECORDS
-        && removable_completed_operation(workspace).is_none()
-    {
-        return Err(problem(
-            "The operation ledger is full of unresolved actions. Resolve an original operation before starting another action.",
-        ));
+fn recover_unsubmitted_native_operations(
+    operations: &operation_store::OperationStore,
+) -> Result<bool> {
+    let mut after = None;
+    let mut snapshot = None;
+    let mut orphaned = Vec::new();
+    loop {
+        let page = operations.pending_page(after.as_deref(), snapshot.as_deref())?;
+        snapshot.get_or_insert_with(|| page.snapshot.clone());
+        for (id, input) in page.operations {
+            let Some(command) = input["command"].as_str() else { continue };
+            if !["send", "control", "session-settings", "improvements"].contains(&command) {
+                continue;
+            }
+            let mut submitted = false;
+            for candidate in [
+                format!("daemon:{id}"),
+                format!("daemon:{id}:workbench:create"),
+                format!("daemon:{id}:workbench:queue"),
+                format!("daemon:{id}:workbench:start"),
+                format!("daemon:{id}:workbench:continue"),
+            ] {
+                if operations.get(&candidate)?.is_some() {
+                    submitted = true;
+                    break;
+                }
+            }
+            if !submitted {
+                orphaned.push(id);
+            }
+        }
+        let Some(cursor) = page.cursor else { break };
+        after = Some(cursor);
     }
-    workspace.operations.insert(operation, Operation { input, prepared: None, result: None });
-    Ok(())
-}
-
-fn recover_unsubmitted_native_operations(workspace: &mut Workspace) -> bool {
-    let orphaned = workspace
-        .operations
-        .iter()
-        .filter_map(|(id, record)| {
-            let command = record.input["command"].as_str()?;
-            let submitted =
-                workspace.operations.keys().any(|key| native_operation_belongs_to(key, id));
-            (record.result.is_none()
-                && ["send", "control", "session-settings", "improvements"].contains(&command)
-                && !submitted)
-                .then(|| id.clone())
-        })
-        .collect::<Vec<_>>();
     for id in &orphaned {
-        if let Some(record) = workspace.operations.get_mut(id) {
-            record.result = Some(serde_json::json!({
-                "error":"The operation stopped before native submission. It is safe to retry.",
-                "recovered":true,
-                "retryable":true,
-                "submitted":false
-            }));
-        }
+        operations.owner(id)?.settle(serde_json::json!({
+            "error":"The operation stopped before native submission. It is safe to retry.",
+            "recovered":true,
+            "retryable":true,
+            "submitted":false
+        }))?;
     }
-    !orphaned.is_empty()
-}
-
-fn quarantine_malformed_state(path: &Path) {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
-    let quarantine = parent.join(".quarantine");
-    if let Err(error) = std::fs::create_dir_all(&quarantine) {
-        eprintln!(
-            "peritus web: could not create workspace quarantine {}: {error}",
-            quarantine.display()
-        );
-        return;
-    }
-    let file_name = path.file_name().unwrap_or_default().to_string_lossy();
-    for suffix in 0_u32..=u32::MAX {
-        let candidate = quarantine.join(format!("{file_name}.corrupt-{suffix}"));
-        if candidate.exists() {
-            continue;
-        }
-        if let Err(error) = std::fs::rename(path, &candidate) {
-            eprintln!(
-                "peritus web: could not quarantine malformed workspace state {}: {error}",
-                path.display()
-            );
-        }
-        return;
-    }
+    Ok(!orphaned.is_empty())
 }
 
 #[cfg(test)]

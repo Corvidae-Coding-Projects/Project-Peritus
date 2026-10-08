@@ -1,0 +1,13 @@
+schema = 1
+surface = "app-protocol"
+surface_version = "v1"
+case = "realistic-workbench-checkpoint-manifest"
+kind = "realistic"
+
+[[files]]
+path = "expectation.toml"
+sha256 = "d7497bded63faea3a1b2009ef6f12f94073036b962d873728ec080a12ad0d019"
+
+[[files]]
+path = "payload.hex"
+sha256 = "55a0d876d74aa53183c478d1292f076af3ce87cdd63d27d4e06f223f883daa04"

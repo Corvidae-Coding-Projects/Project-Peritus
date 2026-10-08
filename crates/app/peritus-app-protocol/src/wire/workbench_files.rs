@@ -15,13 +15,8 @@ pub(super) use import::{
 };
 pub(super) use page::{read_page, read_query, write_page, write_query};
 
-fn read_string(r: &mut CanonicalReader<'_>, maximum: usize) -> Result<String, CodecError> {
-    let offset = r.offset();
-    let text = r.read_str()?;
-    if text.len() > maximum {
-        return Err(CodecError::at(CodecErrorKind::LimitExceeded, offset));
-    }
-    Ok(text.to_owned())
+fn read_string(r: &mut CanonicalReader<'_>) -> Result<String, CodecError> {
+    Ok(r.read_str()?.to_owned())
 }
 fn write_mode(w: &mut CanonicalWriter, mode: M) -> Result<(), CodecError> {
     w.write_u16(match mode {
@@ -52,9 +47,16 @@ pub(super) fn write_request(
             w.write_u64(end)?;
         }
         R::Lines { first, last } => {
-            w.write_u16(3)?;
-            w.write_u32(first)?;
-            w.write_u32(last)?;
+            if let (Ok(first), Ok(last)) = (u32::try_from(first), u32::try_from(last)) {
+                // Preserve every historical preview and receipt byte exactly.
+                w.write_u16(3)?;
+                w.write_u32(first)?;
+                w.write_u32(last)?;
+            } else {
+                w.write_u16(4)?;
+                w.write_u64(first)?;
+                w.write_u64(last)?;
+            }
         }
     }
     write_mode(w, value.mode())?;
@@ -70,11 +72,20 @@ pub(super) fn read_request(
     let query = super::workbench::read_query(r)?;
     let revision = r.read_u64()?;
     let path = r.read_str()?.to_owned();
+    let range_offset = r.offset();
     let range = match r.read_u16()? {
         1 => R::All,
         2 => R::Bytes { start: r.read_u64()?, end: r.read_u64()? },
-        3 => R::Lines { first: r.read_u32()?, last: r.read_u32()? },
-        _ => return unknown(offset),
+        3 => R::Lines { first: u64::from(r.read_u32()?), last: u64::from(r.read_u32()?) },
+        4 => {
+            let first = r.read_u64()?;
+            let last = r.read_u64()?;
+            if u32::try_from(first).is_ok() && u32::try_from(last).is_ok() {
+                return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, range_offset));
+            }
+            R::Lines { first, last }
+        }
+        _ => return unknown(range_offset),
     };
     let mode = read_mode(r)?;
     let provider = read_id(r, peritus_types::ProviderProfileId::new)?;
@@ -113,7 +124,7 @@ pub(super) fn read_preview(
     let folder = read_digest(r)?;
     let file = read_metadata(r)?;
     let revision = r.read_u64()?;
-    let model = read_string(r, 512)?;
+    let model = read_string(r)?;
     invalid(offset, WorkbenchFilePreview::new(request, folder, file, revision, model))
 }
 impl WorkbenchFilePreview {

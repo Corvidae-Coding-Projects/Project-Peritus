@@ -68,7 +68,7 @@ fn narrowing_network_blocks_the_actual_provider_boundary_and_survives_restart() 
         assert_eq!(terminal.phase(), ProductRunPhase::Failed, "{}", terminal.summary());
         assert!(writer.requests.lock().expect("requests").is_empty());
 
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         drop(service);
         let controls = crate::product_control::ControlStore::open(
             &state.path().join("workbench-v1"),
@@ -164,7 +164,7 @@ fn narrowing_process_blocks_a_direct_preview_before_receipt_or_launch() {
             let records = service.inner.records.read().expect("run records");
             assert!(records.get(&run).expect("run").preview.operations.is_empty());
         }
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -213,6 +213,6 @@ fn ordinary_chat_enforces_the_workspace_overlay_without_a_workbench_binding() {
         assert_eq!(terminal.phase(), ProductRunPhase::Failed);
         assert!(writer.requests.lock().unwrap().is_empty());
         assert!(!service.effective_permissions(run).unwrap().allows(PermissionCapability::Network));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

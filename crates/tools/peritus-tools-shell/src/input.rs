@@ -1,6 +1,8 @@
 //! Checked structured argv and separately classified script inputs.
 
-use peritus_process::CommandSpec;
+use peritus_process::{
+    CommandSpec, is_native_executable_reference, native_executable_reference_matches,
+};
 use peritus_tool_protocol::BoundedJson;
 
 use crate::{ShellError, ShellErrorKind};
@@ -22,8 +24,14 @@ impl ExecInput {
     /// through the structured-argv operation.
     pub fn new(executable: impl Into<String>, arguments: Vec<String>) -> Result<Self, ShellError> {
         let executable = executable.into();
-        CommandSpec::new(executable.clone(), arguments.clone())?;
-        if is_shell_command_mode(&executable, &arguments) {
+        if is_native_executable_reference(&executable) {
+            CommandSpec::new("peritus-native-reference", arguments.clone())?;
+        } else {
+            CommandSpec::new(executable.clone(), arguments.clone())?;
+        }
+        if !is_native_executable_reference(&executable)
+            && is_shell_command_mode(&executable, &arguments)
+        {
             return Err(ShellError::new(
                 ShellErrorKind::InvalidInput,
                 "shell command-string flags require the separately authorized shell.script tool",
@@ -80,7 +88,41 @@ impl ExecInput {
     }
 
     pub(crate) fn command(&self) -> Result<CommandSpec, ShellError> {
+        if is_native_executable_reference(&self.executable) {
+            return Err(ShellError::new(
+                ShellErrorKind::InvalidInput,
+                "native executable reference requires an independently bound exact C2 plan",
+            ));
+        }
         CommandSpec::new(self.executable.clone(), self.arguments.clone()).map_err(Into::into)
+    }
+
+    pub(crate) fn matches_command(&self, command: &CommandSpec) -> Result<bool, ShellError> {
+        if !is_native_executable_reference(&self.executable) {
+            return Ok(&self.command()? == command);
+        }
+        let arguments_exact = self.arguments.len() == command.arguments().len()
+            && self
+                .arguments
+                .iter()
+                .zip(command.arguments())
+                .all(|(expected, actual)| actual.as_os_str() == std::ffi::OsStr::new(expected));
+        if !arguments_exact
+            || !native_executable_reference_matches(&self.executable, command.executable())
+        {
+            return Ok(false);
+        }
+        let executable = std::path::Path::new(command.executable())
+            .file_name()
+            .and_then(std::ffi::OsStr::to_str)
+            .unwrap_or_default();
+        if is_shell_command_mode(executable, &self.arguments) {
+            return Err(ShellError::new(
+                ShellErrorKind::InvalidInput,
+                "shell command-string flags require the separately authorized shell.script tool",
+            ));
+        }
+        Ok(true)
     }
 }
 

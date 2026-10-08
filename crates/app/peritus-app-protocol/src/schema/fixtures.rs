@@ -13,6 +13,7 @@ mod doctor;
 mod files;
 mod goal;
 mod images;
+mod improvements;
 mod init;
 mod inputs;
 mod interaction;
@@ -114,6 +115,7 @@ pub fn generated_fixture_cases() -> Result<Vec<GeneratedFixtureCase>, CodecError
     cases.extend(brief::cases(limits)?);
     cases.extend(compaction::cases(limits)?);
     cases.extend(images::cases(limits)?);
+    cases.extend(improvements::cases(limits)?);
     cases.extend(files::cases(limits)?);
     cases.extend(goal::cases(limits)?);
     cases.extend(review::cases(limits)?);

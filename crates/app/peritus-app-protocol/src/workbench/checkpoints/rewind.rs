@@ -227,10 +227,19 @@ pub struct WorkbenchRewindPreview {
     accounting_preserved: bool,
 }
 impl WorkbenchRewindPreview {
-    /// Constructs a bounded truthful preview of the explicitly selected scope.
+    /// Reports whether the complete confirmation facts require the additive wide wire form.
+    #[must_use]
+    pub fn requires_manifest_feature(&self) -> bool {
+        crate::wire::workbench_checkpoints::wide_lists(
+            self.paths.iter().map(WorkbenchRewindPath::path),
+            &self.exclusions,
+            &self.external_effects,
+        )
+    }
+    /// Constructs a complete truthful preview of the explicitly selected scope.
     ///
     /// # Errors
-    /// Rejects duplicate targets, count/text bounds, or preservation claims set false.
+    /// Rejects duplicate targets, non-inert metadata, or inconsistent scope.
     pub fn new(
         request: WorkbenchRewindRequest,
         paths: Vec<WorkbenchRewindPath>,

@@ -6,7 +6,7 @@ use std::{
     time::Instant,
 };
 
-use crate::{ConnectionAccount, NetworkError, RedirectChain, RedirectTarget};
+use crate::{ConnectionAccount, NetworkError, RedirectChain};
 
 use super::{connect, http, owner::SharedWorkerConfig};
 
@@ -14,19 +14,15 @@ pub(super) fn successor(
     request: &http::RequestHead,
     response: &http::ResponseHead,
     chain: &mut RedirectChain<'_>,
-) -> Result<Option<RedirectTarget>, NetworkError> {
+) -> Result<Option<http::RedirectCandidate>, NetworkError> {
     if !(300..400).contains(&response.status) {
         return Ok(None);
     }
-    let Some(location) = response.location.as_deref() else {
+    let Some(candidate) = response.redirect_candidate(&request.destination)? else {
         return Ok(None);
     };
-    let target = if location.starts_with('/') {
-        RedirectTarget::relative(request.destination.clone(), location)?
-    } else {
-        RedirectTarget::parse(location)?
-    };
-    chain.follow(target).map(Some)
+    chain.follow_request(candidate.request())?;
+    Ok(Some(candidate))
 }
 
 pub(super) fn copy_final_body(

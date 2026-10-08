@@ -15,20 +15,20 @@ pub(super) fn resolve_ranges(
     for selection in selections {
         match *selection {
             FileRange::Lines { first, last } if first > 0 && first <= last => {
-                boundaries.insert(u64::from(first), None);
-                boundaries.insert(u64::from(last) + 1, None);
+                boundaries.insert(u128::from(first), None);
+                boundaries.insert(u128::from(last) + 1, None);
             }
             FileRange::Bytes { start, end } if start < end && end <= size => {}
             FileRange::All => {}
             _ => return Err(ControlError::InvalidInput.into()),
         }
     }
-    let mut last_seen = 0;
+    let mut last_seen = 0_u128;
     if !boundaries.is_empty() {
-        if let Some(start) = boundaries.get_mut(&1) {
+        if let Some(start) = boundaries.get_mut(&1_u128) {
             *start = Some(0);
         }
-        let mut line = 1_u64;
+        let mut line = 1_u128;
         let mut offset = 0_u64;
         let mut chunk = vec![0_u8; 64 * 1024];
         loop {
@@ -40,7 +40,7 @@ pub(super) fn resolve_ranges(
                 offset = offset.checked_add(1).ok_or(ControlError::Capacity)?;
                 last_seen = line;
                 if *byte == b'\n' {
-                    line = line.checked_add(1).ok_or(ControlError::Capacity)?;
+                    line += 1;
                     if let Some(start) = boundaries.get_mut(&line) {
                         *start = Some(offset);
                     }
@@ -59,13 +59,17 @@ pub(super) fn resolve_ranges(
         .map(|selection| match *selection {
             FileRange::All => Ok((0, size)),
             FileRange::Bytes { start, end } => Ok((start, end)),
-            FileRange::Lines { first, last } if u64::from(last) <= last_seen => {
+            FileRange::Lines { first, last } if u128::from(last) <= last_seen => {
                 let start = boundaries
-                    .get(&u64::from(first))
+                    .get(&u128::from(first))
                     .copied()
                     .flatten()
                     .ok_or(ControlError::InvalidInput)?;
-                let end = boundaries.get(&(u64::from(last) + 1)).copied().flatten().unwrap_or(size);
+                let end = boundaries
+                    .get(&(u128::from(last) + 1))
+                    .copied()
+                    .flatten()
+                    .unwrap_or(size);
                 if start >= end {
                     return Err(ControlError::InvalidInput.into());
                 }

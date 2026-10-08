@@ -76,7 +76,7 @@ async fn selected_explanation_produces_a_reviewer_reply_without_writer_work() {
         activity.kind() == peritus_app_protocol::ProductActivityKind::Assistant
             && activity.text().contains("selected hunk defines the public answer")
     }));
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 async fn selected_revision_runs_the_qualified_pipeline() {
@@ -148,7 +148,7 @@ async fn selected_revision_runs_the_qualified_pipeline() {
         }));
     }
     assert!(reviewer.requests.lock().expect("reviewer requests").len() > reviewer_before);
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 #[test]
@@ -295,7 +295,7 @@ fn review_service_rejects_stale_add_then_projects_and_rebinds_a_persisted_stale_
         assert_eq!(rebound_page.comments()[0].state(), WorkbenchReviewCommentState::Open);
         assert_eq!(rebound_page.comments()[0].anchor(), &rebound);
 
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         drop(service);
         let controls = crate::product_control::ControlStore::open(
             &state.path().join("workbench-v1"),

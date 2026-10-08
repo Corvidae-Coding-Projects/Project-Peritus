@@ -106,7 +106,7 @@ impl AppModel {
             let metadata = ArtifactMetadata::new(
                 transfer,
                 artifact,
-                file.bytes.len() as u64,
+                file.byte_len(),
                 CanonicalMediaType::new("text/plain".to_owned(), 128).ok()?,
                 file.file.digest(),
                 u32::try_from(preferred).ok()?,
@@ -159,13 +159,18 @@ impl AppModel {
         transfer: TransferId,
         step: UploadStep,
     ) -> Vec<Effect> {
-        let Some(upload) =
-            self.chat.workbench.files.upload.as_ref().filter(|upload| {
+        let upload_matches = self
+            .chat
+            .workbench
+            .files
+            .upload
+            .as_ref()
+            .is_some_and(|upload| {
                 upload.metadata.transfer_id() == transfer && upload.awaiting == step
-            })
-        else {
+            });
+        if !upload_matches {
             return Vec::new();
-        };
+        }
         if step == UploadStep::Complete {
             self.chat.workbench.files.upload = None;
             let Some(request) = self.chat.workbench.files.import_request.clone() else {
@@ -181,35 +186,43 @@ impl AppModel {
                 .into_iter()
                 .collect();
         }
-        let offset = match step {
-            UploadStep::Chunk { end } => end,
-            UploadStep::Begin | UploadStep::Complete => 0,
-        };
-        let (payload, next) = if offset == upload.file.bytes.len() {
-            (
-                AppRequestPayload::CompleteArtifactUpload(ArtifactCompletion::new(
-                    transfer,
-                    upload.metadata.artifact_id(),
-                    upload.metadata.byte_size(),
-                    upload.metadata.digest(),
-                )),
-                UploadStep::Complete,
-            )
-        } else {
-            let length = upload.metadata.preferred_chunk_size() as usize;
-            let end = offset.saturating_add(length).min(upload.file.bytes.len());
-            let Ok(chunk) = ArtifactChunk::new(
+        let maximum_chunk_bytes = self.limits.max_artifact_chunk_bytes();
+        let prepared = (|| {
+            let upload = self.chat.workbench.files.upload.as_mut()?;
+            let offset = match step {
+                UploadStep::Chunk { end } => end,
+                UploadStep::Begin | UploadStep::Complete => 0,
+            };
+            if offset == upload.file.byte_len() {
+                return Some((
+                    AppRequestPayload::CompleteArtifactUpload(ArtifactCompletion::new(
+                        transfer,
+                        upload.metadata.artifact_id(),
+                        upload.metadata.byte_size(),
+                        upload.metadata.digest(),
+                    )),
+                    UploadStep::Complete,
+                ));
+            }
+            let length = usize::try_from(upload.metadata.preferred_chunk_size())
+                .ok()
+                .filter(|length| *length > 0)?;
+            let bytes = upload.file.read_chunk(offset, length).ok()?;
+            let end = offset.checked_add(u64::try_from(bytes.len()).ok()?)?;
+            let chunk = ArtifactChunk::new(
                 transfer,
                 upload.metadata.artifact_id(),
-                (offset / length) as u64,
-                offset as u64,
-                upload.file.bytes[offset..end].to_vec(),
-                self.limits.max_artifact_chunk_bytes(),
-            ) else {
-                self.interrupt_file_import();
-                return Vec::new();
-            };
-            (AppRequestPayload::UploadArtifactChunk(chunk), UploadStep::Chunk { end })
+                offset / u64::try_from(length).ok()?,
+                offset,
+                bytes,
+                maximum_chunk_bytes,
+            )
+            .ok()?;
+            Some((AppRequestPayload::UploadArtifactChunk(chunk), UploadStep::Chunk { end }))
+        })();
+        let Some((payload, next)) = prepared else {
+            self.interrupt_file_import();
+            return Vec::new();
         };
         let effect =
             self.request(payload, PendingRequest::WorkbenchFileUpload { transfer, step: next });

@@ -2,7 +2,8 @@
 
 use peritus_app_protocol::{TerminalExitDisposition, TerminalStream};
 use peritus_process::{
-    OsExitObservation, OutputStream, ProcessCursor, ProcessEvent, ProcessEventKind, TerminalResult,
+    OsExitObservation, OutputStream, ProcessCursor, ProcessEvent, ProcessEventKind,
+    ProcessEventLoss, TerminalResult,
 };
 
 use super::{ObservedOutput, TerminalBridge};
@@ -55,7 +56,7 @@ impl TerminalBridge {
                     self.fail(error.kind(), "live process event stream became unobservable");
                     return Err(error);
                 }
-                self.process_cursor = ProcessCursor::after(event.sequence());
+                self.process_cursor = ProcessCursor::after_event(&event);
             }
             if page_is_short {
                 drained = true;
@@ -82,10 +83,12 @@ impl TerminalBridge {
                 "process event identity does not match its live registration",
             ));
         }
-        if event.sequence() != self.process_cursor.sequence().saturating_add(1) {
+        if let Some(loss) = event.loss() {
+            self.accept_process_loss(loss, event.sequence(), limits)?;
+        } else if event.sequence() != self.process_cursor.sequence().saturating_add(1) {
             return Err(rejected(
                 TerminalBridgeErrorKind::ReplayUnavailable,
-                "the bounded C2 process event window contains a sequence gap",
+                "the bounded C2 process event window contains an unmarked sequence gap",
             ));
         }
         match event.kind() {
@@ -102,6 +105,69 @@ impl TerminalBridge {
             }
             _ => Ok(()),
         }
+    }
+
+    fn accept_process_loss(
+        &mut self,
+        loss: ProcessEventLoss,
+        resume_sequence: u64,
+        limits: TerminalRegistryLimits,
+    ) -> Result<(), TerminalBridgeError> {
+        if loss.cursor_sequence() != self.process_cursor.sequence()
+            || loss.through_sequence().checked_add(1) != Some(resume_sequence)
+        {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ReplayUnavailable,
+                "the bounded C2 process loss marker does not continue the requested cursor",
+            ));
+        }
+        if !loss.output_offsets_exact() {
+            return Err(rejected(
+                TerminalBridgeErrorKind::ReplayUnavailable,
+                "the bounded C2 process loss marker lacks exact output offsets",
+            ));
+        }
+
+        let mut stream_offsets = self.stream_offsets;
+        let mut missing_output_bytes = 0_u64;
+        for stream in [OutputStream::Stdout, OutputStream::Stderr, OutputStream::Terminal] {
+            let Some((start, end)) = loss.output_range(stream) else { continue };
+            let index = stream_index(stream);
+            if start != stream_offsets[index] || end <= start {
+                return Err(rejected(
+                    TerminalBridgeErrorKind::ReplayUnavailable,
+                    "the bounded C2 process loss marker has inconsistent output offsets",
+                ));
+            }
+            stream_offsets[index] = end;
+            missing_output_bytes = missing_output_bytes.checked_add(end - start).ok_or_else(|| {
+                rejected(
+                    TerminalBridgeErrorKind::ReplayUnavailable,
+                    "lost process output length overflow",
+                )
+            })?;
+        }
+
+        if missing_output_bytes == 0 {
+            return Ok(());
+        }
+        let next_output_offset =
+            self.next_output_offset.checked_add(missing_output_bytes).ok_or_else(|| {
+                rejected(
+                    TerminalBridgeErrorKind::ReplayUnavailable,
+                    "terminal output loss offset overflow",
+                )
+            })?;
+        self.stream_offsets = stream_offsets;
+        self.next_output_offset = next_output_offset;
+        self.replay.clear();
+        self.replay_bytes = 0;
+        self.replay_start_offset = next_output_offset;
+        self.replay_start_stream_offsets = stream_offsets;
+        for attachment in self.attachments.values_mut() {
+            attachment.enqueue_gap(next_output_offset, stream_offsets, limits);
+        }
+        Ok(())
     }
 
     fn accept_output(
@@ -136,8 +202,13 @@ impl TerminalBridge {
         let next_output_offset = self.next_output_offset.checked_add(length).ok_or_else(|| {
             rejected(TerminalBridgeErrorKind::ReplayUnavailable, "terminal output offset overflow")
         })?;
+        let mut stream_offsets_after = self.stream_offsets;
+        stream_offsets_after[stream_index] = next_stream_offset;
         let observed = ObservedOutput {
             offset: self.next_output_offset,
+            next_offset: next_output_offset,
+            stream_offsets_before: self.stream_offsets,
+            stream_offsets_after,
             stream: terminal_stream(stream),
             bytes: bytes.to_vec(),
         };
@@ -158,7 +229,8 @@ impl TerminalBridge {
         {
             let Some(removed) = self.replay.pop_front() else { break };
             self.replay_bytes = self.replay_bytes.saturating_sub(removed.bytes.len());
-            self.replay_complete = false;
+            self.replay_start_offset = removed.next_offset;
+            self.replay_start_stream_offsets = removed.stream_offsets_after;
         }
     }
 

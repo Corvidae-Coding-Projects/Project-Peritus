@@ -137,7 +137,6 @@ impl CredentialLease {
             || uses == 0
             || expires_epoch_millis == 0
             || header_name.is_empty()
-            || header_name.len() > 128
             || !header_name.bytes().all(is_header_name_byte)
         {
             return Err(credential_error("credential lease fields are invalid"));
@@ -254,10 +253,9 @@ impl ScopedCredential {
     /// Validates an HTTP field value without CR/LF or control bytes.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or injection-capable material.
+    /// Rejects empty or injection-capable material.
     pub fn new(value: Vec<u8>) -> Result<Self, NetworkError> {
         if value.is_empty()
-            || value.len() > 16 * 1_024
             || value.iter().any(|byte| {
                 *byte == b'\r'
                     || *byte == b'\n'
@@ -266,7 +264,7 @@ impl ScopedCredential {
             })
         {
             return Err(credential_error(
-                "upstream credential is empty, excessive, or not a safe field value",
+                "upstream credential is empty or not a safe field value",
             ));
         }
         Ok(Self(value))

@@ -30,6 +30,40 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
+        name: "WorkbenchContinuationAdmission",
+        rust_type: "WorkbenchContinuationAdmission",
+        fields: &[
+            field(
+                "operation",
+                W::Identifier,
+                &[B::NonZero],
+                "ControlOperationId",
+                "ControlOperationId",
+                J::Identifier,
+                true,
+            ),
+            field(
+                "query",
+                W::Struct,
+                &[],
+                "WorkbenchQuery",
+                "WorkbenchQuery",
+                J::Ref("WorkbenchQuery"),
+                true,
+            ),
+            field("run", W::Identifier, &[B::NonZero], "RunId", "RunId", J::Identifier, true),
+            field(
+                "state",
+                W::U16,
+                &[],
+                "WorkbenchContinuationAdmissionState",
+                "\"acceptedPendingLaunch\" | \"launchOwned\"",
+                J::Enum(&["acceptedPendingLaunch", "launchOwned"]),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchExecutionState",
         rust_type: "WorkbenchExecutionState",
         fields: &[
@@ -106,6 +140,30 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
         ],
     },
     AppTypeDescriptor {
+        name: "WorkbenchContinueIntent",
+        rust_type: "WorkbenchIntent",
+        fields: &[
+            field(
+                "kind",
+                W::U16,
+                &[],
+                "WorkbenchIntent",
+                "\"continueExecution\"",
+                J::Enum(&["continueExecution"]),
+                true,
+            ),
+            field(
+                "settings",
+                W::Struct,
+                &[],
+                "WorkbenchExecutionSettings",
+                "WorkbenchExecutionSettings",
+                J::Ref("WorkbenchExecutionSettings"),
+                true,
+            ),
+        ],
+    },
+    AppTypeDescriptor {
         name: "WorkbenchQuery",
         rust_type: "WorkbenchQuery",
         fields: &[
@@ -145,7 +203,7 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "title",
                 W::Utf8,
-                &[B::ConversationTitleBytes],
+                &[B::CodecStringBytes],
                 "ConversationTitle",
                 "string",
                 J::String,
@@ -197,13 +255,14 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
                 W::Struct,
                 &[],
                 "WorkbenchIntent",
-                "WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent",
+                "WorkbenchTitleIntent | WorkbenchFlagIntent | WorkbenchForkIntent | WorkbenchQueueControlIntent | WorkbenchStartIntent | WorkbenchContinueIntent | WorkbenchBriefIntent | WorkbenchBriefAcceptIntent | WorkbenchSetContextIntent | WorkbenchCreateCheckpointIntent | WorkbenchApplyRewindIntent | WorkbenchApplyCompactionIntent | WorkbenchAttachImageIntent | WorkbenchSelectImageIntent | WorkbenchAttachFileIntent | WorkbenchAttachFileImportIntent | WorkbenchAttachFileSourceIntent | WorkbenchSelectFileIntent | WorkbenchStartGoalIntent | WorkbenchPauseGoalIntent | WorkbenchResumeOrClearGoalIntent | WorkbenchAddReviewIntent | WorkbenchRebindReviewIntent | WorkbenchDismissReviewIntent | WorkbenchStartPreviewIntent | WorkbenchInteractPreviewIntent | WorkbenchCapturePreviewIntent | WorkbenchStopPreviewIntent | WorkbenchCheckPreviewIntent | WorkbenchArtifactFeedbackIntent | WorkbenchPermissionIntent | WorkbenchSaveGuidanceIntent | WorkbenchReviseGuidanceIntent | WorkbenchPinGuidanceIntent | WorkbenchScopeGuidanceIntent | WorkbenchForgetGuidanceIntent | WorkbenchInitApplyIntent",
                 J::OneOfRef(&[
                     "WorkbenchTitleIntent",
                     "WorkbenchFlagIntent",
                     "WorkbenchForkIntent",
                     "WorkbenchQueueControlIntent",
                     "WorkbenchStartIntent",
+                    "WorkbenchContinueIntent",
                     "WorkbenchBriefIntent",
                     "WorkbenchBriefAcceptIntent",
                     "WorkbenchSetContextIntent",
@@ -214,6 +273,7 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
                     "WorkbenchSelectImageIntent",
                     "WorkbenchAttachFileIntent",
                     "WorkbenchAttachFileImportIntent",
+                    "WorkbenchAttachFileSourceIntent",
                     "WorkbenchSelectFileIntent",
                     "WorkbenchStartGoalIntent",
                     "WorkbenchPauseGoalIntent",
@@ -256,7 +316,7 @@ pub(super) const WORKBENCH_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "title",
                 W::Utf8,
-                &[B::ConversationTitleBytes],
+                &[B::CodecStringBytes],
                 "ConversationTitle",
                 "string",
                 J::String,

@@ -39,6 +39,26 @@ impl AppModel {
         if !is_active_key(key) {
             return Vec::new();
         }
+        let terminal_captures_input = self.view == View::Terminal
+            && self.editor.is_none()
+            && self.terminal.as_ref().is_some_and(TerminalSession::capture_input);
+        if !terminal_captures_input
+            && key.modifiers.contains(KeyModifiers::ALT)
+            && matches!(
+                key.code,
+                KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End
+            )
+        {
+            let (maximum, page) = crate::render::status_scroll_metrics(self);
+            let current = self.status_scroll.min(maximum);
+            self.status_scroll = match key.code {
+                KeyCode::PageUp => current.saturating_sub(page),
+                KeyCode::PageDown => current.saturating_add(page).min(maximum),
+                KeyCode::End => maximum,
+                _ => 0,
+            };
+            return Vec::new();
+        }
         if self.view == View::Conversation && self.editor.is_none() {
             return self.handle_chat_key(key);
         }
@@ -86,7 +106,7 @@ impl AppModel {
                 KeyCode::PageUp | KeyCode::PageDown | KeyCode::Home | KeyCode::End
             )
         {
-            let maximum = crate::render::inspection_scroll_limit(self);
+            let maximum = crate::render::prompt_scroll_limit(self);
             let current = self.prompt_scroll.min(maximum);
             self.prompt_scroll = match key.code {
                 KeyCode::PageUp => current.saturating_sub(12),
@@ -280,6 +300,7 @@ impl AppModel {
             }
             text.truncate(end);
         }
-        self.notice = Some(Notice { level, text, ticks_remaining: NOTICE_TICKS });
+        self.notice = Some(Notice { level, text });
+        self.status_scroll = 0;
     }
 }

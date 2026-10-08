@@ -13,7 +13,10 @@ use super::{
     ProductRunResume,
     hashing::{digest, digest_pair},
 };
-use crate::{ProductRunnerError, ProductRunnerErrorKind, execution::ProductRunPhase};
+use crate::{
+    ProductRunnerError, ProductRunnerErrorKind, ProductRunnerFailureCause,
+    execution::ProductRunPhase,
+};
 
 const INVENTORY_SECTION: u8 = 1;
 const FILE_MAP_SECTION: u8 = 2;
@@ -60,25 +63,37 @@ impl ProductRunResume {
         current: CandidateIdentity,
         transcript: &str,
     ) -> Result<ProductRunPhase, ProductRunnerError> {
+        let Some(design) = self.design.as_ref() else {
+            return Ok(ProductRunPhase::Designing);
+        };
+        let knowledge = self.knowledge.as_ref().ok_or_else(|| {
+            ProductRunnerError::new(
+                ProductRunnerErrorKind::InternalInvariant,
+                "plan retained product-run continuation",
+                "the retained run owns complete continuation values but its derived role-knowledge index is unavailable",
+            )
+            .with_failure_cause(ProductRunnerFailureCause::ContextPreparation)
+        })?;
+        let findings = self.findings.knowledge_projection()?;
         let knowledge_identity = knowledge_candidate(current)?;
         let sources = sources(
             current.content_digest(),
             transcript,
-            &self.design_markdown,
-            &self.finding_state,
+            design.markdown(),
+            &findings,
         )?;
         let change = knowledge_change(self.checkpoint.identity(), &current);
         let state =
             CurrentKnowledgeState::new(knowledge_identity, sources, limits()).map_err(invariant)?;
         let request = InvalidationRequest::new(state, change, Vec::new()).map_err(invariant)?;
-        let writer = plan_invalidation(&self.knowledge.writer, &request).map_err(invariant)?;
+        let writer = plan_invalidation(&knowledge.writer, &request).map_err(invariant)?;
         if !writer.is_reused(section_id(DESIGN_SECTION)?) {
             return Ok(ProductRunPhase::Designing);
         }
         let phase_snapshot = match self.next_phase {
-            ProductRunPhase::Reviewing => &self.knowledge.reviewer,
-            ProductRunPhase::Fixing => &self.knowledge.fixer,
-            _ => &self.knowledge.writer,
+            ProductRunPhase::Reviewing => &knowledge.reviewer,
+            ProductRunPhase::Fixing => &knowledge.fixer,
+            _ => &knowledge.writer,
         };
         let phase_plan = plan_invalidation(phase_snapshot, &request).map_err(invariant)?;
         if phase_plan.accounting().invalidated() == 0 {

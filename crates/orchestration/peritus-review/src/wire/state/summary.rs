@@ -90,11 +90,22 @@ pub(super) fn read_oscillation(
 pub(super) fn write_terminal(
     writer: &mut CanonicalWriter,
     value: &ReviewTerminal,
+    versioned: bool,
 ) -> Result<(), CodecError> {
+    if value.uses_paged_history() != versioned {
+        return Err(CodecError::at(
+            peritus_codec::CodecErrorKind::InvalidDomainValue,
+            writer.len(),
+        ));
+    }
     writer.write_u8(crate::canonical::terminal_kind_tag(value.kind()))?;
     writer.write_collection_len(value.unconserved_findings().len())?;
     for finding in value.unconserved_findings() {
         super::super::write_id(writer, finding.as_bytes())?;
+    }
+    if versioned {
+        writer.write_u64(value.unconserved_count())?;
+        super::super::write_digest(writer, value.unconserved_xor())?;
     }
     write_quorum(writer, value.quorum())?;
     write_oscillation(writer, value.oscillation())?;
@@ -104,6 +115,7 @@ pub(super) fn write_terminal(
 
 pub(super) fn read_terminal(
     reader: &mut CanonicalReader<'_>,
+    versioned: bool,
 ) -> Result<ReviewTerminal, CodecError> {
     let offset = reader.offset();
     let kind = match reader.read_u8()? {
@@ -121,12 +133,30 @@ pub(super) fn read_terminal(
     if findings.windows(2).any(|pair| pair[0] >= pair[1]) {
         return Err(super::super::invalid(reader));
     }
-    Ok(ReviewTerminal::from_wire(
-        kind,
-        findings,
-        read_quorum(reader)?,
-        read_oscillation(reader)?,
-        super::super::read_digest(reader)?,
-        super::super::read_digest(reader)?,
-    ))
+    let (count, xor) = if versioned {
+        (reader.read_u64()?, super::super::read_digest(reader)?)
+    } else {
+        (
+            findings.len() as u64,
+            crate::state::mutation::finding_xor(&findings),
+        )
+    };
+    let quorum = read_quorum(reader)?;
+    let oscillation = read_oscillation(reader)?;
+    let cause = super::super::read_digest(reader)?;
+    let digest = super::super::read_digest(reader)?;
+    Ok(if versioned {
+        ReviewTerminal::from_wire_v2(
+            kind,
+            findings,
+            count,
+            xor,
+            quorum,
+            oscillation,
+            cause,
+            digest,
+        )
+    } else {
+        ReviewTerminal::from_wire(kind, findings, quorum, oscillation, cause, digest)
+    })
 }

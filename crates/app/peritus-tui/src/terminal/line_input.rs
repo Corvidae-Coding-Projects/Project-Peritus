@@ -62,6 +62,10 @@ impl LineInput {
         self.pending = false;
     }
 
+    pub(super) const fn discontinuity(&mut self) {
+        self.last_output_cr = false;
+    }
+
     pub(super) fn display_bytes(&mut self, bytes: &[u8]) -> Vec<u8> {
         let mut display = Vec::with_capacity(bytes.len());
         for byte in bytes {

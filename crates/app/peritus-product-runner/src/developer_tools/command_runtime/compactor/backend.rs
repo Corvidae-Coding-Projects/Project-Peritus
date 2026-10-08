@@ -3,13 +3,27 @@
 use super::detail;
 use crate::{LocalCompactorSandbox, LocalProcessConfig};
 use peritus_process::NativeSandboxBackend;
+use peritus_provider_core::CancellationToken;
 use std::path::Path;
+
+#[cfg(target_os = "linux")]
+pub(super) type LocalBackend = peritus_sandbox_linux::LinuxBackend;
+#[cfg(target_os = "macos")]
+pub(super) type LocalBackend = peritus_sandbox_macos::MacosBackend;
+#[cfg(target_os = "windows")]
+pub(super) type LocalBackend = peritus_sandbox_windows::WindowsBackend;
 
 #[cfg(target_os = "linux")]
 pub(super) fn open(
     config: &LocalProcessConfig,
     directory: &Path,
-) -> Result<impl NativeSandboxBackend, String> {
+    executable: &Path,
+    weights: &Path,
+    executable_snapshot: &Path,
+    weights_snapshot: &Path,
+    bind_snapshots: bool,
+    cancellation: &CancellationToken,
+) -> Result<LocalBackend, String> {
     let LocalCompactorSandbox::Linux { bubblewrap, helper, cgroup_root } = &config.sandbox else {
         return Err("local compactor sandbox does not match Linux host".to_owned());
     };
@@ -22,25 +36,45 @@ pub(super) fn open(
         None,
     )
     .map_err(detail)?;
-    peritus_sandbox_linux::LinuxBackend::new(config.with_private_filesystem()).map_err(detail)
+    let config = config.with_private_filesystem();
+    let config = if bind_snapshots {
+        config
+            .with_read_only_replacements(vec![
+                (executable_snapshot.to_path_buf(), executable.to_path_buf()),
+                (weights_snapshot.to_path_buf(), weights.to_path_buf()),
+            ])
+            .map_err(detail)?
+    } else {
+        config
+    };
+    let cancellation = cancellation.clone();
+    peritus_sandbox_linux::LinuxBackend::new_cancellable(config, move || {
+        !cancellation.is_cancelled()
+    })
+    .map_err(detail)
 }
 
 #[cfg(target_os = "macos")]
 pub(super) fn open(
     config: &LocalProcessConfig,
     _directory: &Path,
-) -> Result<impl NativeSandboxBackend, String> {
+    _executable: &Path,
+    _weights: &Path,
+    _executable_snapshot: &Path,
+    _weights_snapshot: &Path,
+    _bind_snapshots: bool,
+    cancellation: &CancellationToken,
+) -> Result<LocalBackend, String> {
     let LocalCompactorSandbox::Macos { helper, seatbelt } = &config.sandbox else {
         return Err("local compactor sandbox does not match macOS host".to_owned());
     };
-    let request = peritus_sandbox_macos::ProbeRequest::new(
-        helper.clone(),
-        seatbelt.clone(),
-        None,
-        std::time::Duration::from_millis(250),
-    )
+    let request =
+        peritus_sandbox_macos::ProbeRequest::without_proxy(helper.clone(), seatbelt.clone())
+            .map_err(detail)?;
+    let probe = peritus_sandbox_macos::SystemProbe::run_cancellable(&request, || {
+        !cancellation.is_cancelled()
+    })
     .map_err(detail)?;
-    let probe = peritus_sandbox_macos::SystemProbe::run(&request).map_err(detail)?;
     let config = peritus_sandbox_macos::PreparationConfig::new(
         helper.clone(),
         seatbelt.clone(),
@@ -49,14 +83,24 @@ pub(super) fn open(
         None,
     )
     .map_err(detail)?;
-    peritus_sandbox_macos::MacosBackend::new(&probe, config).map_err(detail)
+    let cancellation = cancellation.clone();
+    peritus_sandbox_macos::MacosBackend::new_cancellable(&probe, config, move || {
+        !cancellation.is_cancelled()
+    })
+    .map_err(detail)
 }
 
 #[cfg(target_os = "windows")]
 pub(super) fn open(
     config: &LocalProcessConfig,
     directory: &Path,
-) -> Result<impl NativeSandboxBackend, String> {
+    executable: &Path,
+    weights: &Path,
+    _executable_snapshot: &Path,
+    _weights_snapshot: &Path,
+    _bind_snapshots: bool,
+    cancellation: &CancellationToken,
+) -> Result<LocalBackend, String> {
     let LocalCompactorSandbox::Windows { helper } = &config.sandbox else {
         return Err("local compactor sandbox does not match Windows host".to_owned());
     };
@@ -70,15 +114,12 @@ pub(super) fn open(
         "peritus-local-compactor-{name}"
     ))
     .map_err(detail)?;
-    let workspace =
-        peritus_sandbox_windows::WindowsPath::new(super::sandbox::normalized_path(directory)?)
-            .map_err(detail)?;
-    let inputs = [&config.executable, &config.model_path]
+    let workspace = peritus_sandbox_windows::WindowsPath::from_canonicalized(directory)
+        .map_err(detail)?;
+    let inputs = [executable, weights]
         .into_iter()
         .map(|input| {
-            let input = input.canonicalize().map_err(|_| "resolve installed inference input")?;
-            peritus_sandbox_windows::WindowsPath::new(super::sandbox::normalized_path(&input)?)
-                .map_err(detail)
+            peritus_sandbox_windows::WindowsPath::from_canonicalized(input).map_err(detail)
         })
         .collect::<Result<Vec<_>, String>>()?;
     let config = peritus_sandbox_windows::WindowsBackendConfig::new(
@@ -94,5 +135,9 @@ pub(super) fn open(
     .map_err(detail)?
     .with_read_only_inputs(inputs)
     .map_err(detail)?;
-    peritus_sandbox_windows::WindowsBackend::new(config).map_err(detail)
+    let cancellation = cancellation.clone();
+    peritus_sandbox_windows::WindowsBackend::new_cancellable(config, move || {
+        !cancellation.is_cancelled()
+    })
+    .map_err(detail)
 }

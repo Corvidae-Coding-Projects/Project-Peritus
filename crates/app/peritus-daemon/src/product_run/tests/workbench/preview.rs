@@ -294,7 +294,7 @@ root.mainloop()
             .expect("published capture bytes");
         assert_eq!(catalog.digest(), result.captures()[0].image_digest().expect("digest"));
         assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         authority.stop().await.expect("stop authority");
         authority_task.await.expect("authority task").expect("authority shutdown");
         xvfb.kill().expect("stop Xvfb");

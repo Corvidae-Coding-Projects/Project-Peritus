@@ -116,20 +116,20 @@ fn review(
     ) {
         return binding_rejection();
     }
-    let replay = peritus_review::load_review_replay(journal, command.run_id())
-        .map_err(|error| domain_failure("load review aggregate", error))?;
-    let prior =
-        replay.rebuild().map_err(|error| domain_failure("rebuild review aggregate", error))?;
-    let transition = match prior.as_ref() {
-        Some(state) => peritus_review::decide(state, &command),
-        None => peritus_review::start(&command),
-    };
-    let Ok(transition) = transition else {
-        return semantic_rejection();
-    };
-    peritus_review::commit_review_transition(journal, &command, &transition)
-        .map(DomainOutcome::Committed)
-        .map_err(|error| domain_failure("commit review transition", error))
+    match peritus_review::commit_review_command(journal, &command) {
+        Ok(batch) => Ok(DomainOutcome::Committed(batch)),
+        Err(error)
+            if !matches!(
+                error.kind(),
+                peritus_review::ReviewErrorKind::Codec
+                    | peritus_review::ReviewErrorKind::Journal
+                    | peritus_review::ReviewErrorKind::ReplayMismatch
+            ) =>
+        {
+            semantic_rejection()
+        }
+        Err(error) => Err(domain_failure("admit durable review command", error)),
+    }
 }
 
 fn scheduler(

@@ -1,7 +1,6 @@
 //! One authenticated, plan-bound proxy connection.
 
 use std::{
-    io::Write,
     net::TcpStream,
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -16,10 +15,11 @@ use crate::{
 
 use super::{connect, http, owner::SharedWorkerConfig};
 
+const CANCELLATION_POLL: Duration = Duration::from_millis(250);
+
 pub(super) fn run(mut client: TcpStream, config: &SharedWorkerConfig) -> Result<(), NetworkError> {
-    let timeout = Duration::from_millis(config.plan.options().bounds().connection_millis());
-    client.set_read_timeout(Some(timeout)).map_err(|_| stream_error())?;
-    client.set_write_timeout(Some(timeout)).map_err(|_| stream_error())?;
+    client.set_read_timeout(Some(CANCELLATION_POLL)).map_err(|_| stream_error())?;
+    client.set_write_timeout(Some(CANCELLATION_POLL)).map_err(|_| stream_error())?;
     let bounds = config.plan.options().bounds();
     let account = Arc::new(Mutex::new(ConnectionAccount::new(
         bounds.connection_bytes(),
@@ -28,8 +28,13 @@ pub(super) fn run(mut client: TcpStream, config: &SharedWorkerConfig) -> Result<
     let mut destination = None;
     let result = execute(&mut client, config, &account, &mut destination);
     let account_value = *account.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-    observe_closed(config, destination.as_ref(), &result, account_value);
-    result
+    let observation = observe_closed(config, destination.as_ref(), &result, account_value);
+    match (result, observation) {
+        (Err(error), Err(_)) if error.is_storage() => Err(error),
+        (_, Err(observation_error)) => Err(observation_error),
+        (Err(error), Ok(())) => Err(error),
+        (Ok(()), Ok(())) => Ok(()),
+    }
 }
 
 fn execute(
@@ -38,24 +43,36 @@ fn execute(
     account: &Arc<Mutex<ConnectionAccount>>,
     destination: &mut Option<DestinationRequest>,
 ) -> Result<(), NetworkError> {
-    let mut request = http::read_request(client, config.plan.options().bounds().header_bytes())?;
-    if !config.token.verifies_authorization(request.routing_authorization()) {
+    let bounds = config.plan.options().bounds();
+    let began = Instant::now();
+    let mut request = http::read_request(
+        client,
+        bounds.header_bytes(),
+        &config.cancellation,
+        bounds.connection_millis(),
+        began,
+    )?;
+    if !request.verifies_routing(&config.token)? {
         return Err(credential_error());
     }
     *destination = Some(request.destination.clone());
-    let began = Instant::now();
     admit_request(config, &request.destination)?;
-    let (mut upstream, selected) = connect::open(config, &request.destination)?;
-    observe_connected(config, &request.destination, selected.address());
-    if request.method == "CONNECT" {
+    let (mut upstream, selected) = connect::open(config, &request.destination, began)?;
+    observe_connected(config, &request.destination, selected.address())?;
+    if request.is_connect() {
         let response = b"HTTP/1.1 200 Connection Established\r\n\r\n";
-        client.write_all(response).map_err(|_| stream_error())?;
-        charge_download(account, config, response.len())?;
+        charge_download(
+            account,
+            config,
+            u64::try_from(response.len()).map_err(|_| accounting_error())?,
+        )?;
+        connect::write_all_owned(client, response, config, began)?;
         return connect::tunnel(
             client.try_clone().map_err(|_| stream_error())?,
             upstream,
             account,
             config,
+            began,
         );
     }
     let mut redirects = RedirectChain::new(&config.plan);
@@ -64,18 +81,25 @@ fn execute(
         account
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .check_elapsed(elapsed(began))?;
+            .check_elapsed(elapsed(began)?)?;
         let credential = acquire_credential(config, &request.destination)?;
-        let encoded = match &credential {
+        match &credential {
             Some((name, material)) => {
-                material.expose(|bytes| request.encode(Some((name, bytes))))?
+                material.expose(|bytes| {
+                    write_request(
+                        &request,
+                        &mut upstream,
+                        Some((name, bytes)),
+                        account,
+                        config,
+                        began,
+                    )
+                })?
             }
-            None => request.encode(None)?,
-        };
-        upstream.write_all(&encoded).map_err(|_| stream_error())?;
-        charge_upload(account, config, encoded.len())?;
+            None => write_request(&request, &mut upstream, None, account, config, began)?,
+        }
         if credential.is_some() {
-            observe_credential(config, &request.destination);
+            observe_credential(config, &request.destination)?;
         }
         if forward_body && request.content_length > 0 {
             connect::copy_exact_bounded(
@@ -88,12 +112,17 @@ fn execute(
                 began,
             )?;
         }
-        let response =
-            http::read_response(&mut upstream, config.plan.options().bounds().header_bytes())?;
+        let response = http::read_response(
+            &mut upstream,
+            bounds.header_bytes(),
+            &config.cancellation,
+            bounds.connection_millis(),
+            began,
+        )?;
         let successor = super::redirect_worker::successor(&request, &response, &mut redirects)?;
         let Some(successor) = successor else {
-            client.write_all(&response.bytes).map_err(|_| stream_error())?;
-            charge_download(account, config, response.bytes.len())?;
+            charge_download(account, config, response.encoded_len())?;
+            response.write_to(|bytes| connect::write_all_owned(client, bytes, config, began))?;
             return super::redirect_worker::copy_final_body(
                 &mut upstream,
                 client,
@@ -103,19 +132,39 @@ fn execute(
                 began,
             );
         };
-        if !matches!(request.method.as_str(), "GET" | "HEAD") || request.content_length != 0 {
+        if !request.supports_redirect_replay() || request.content_length != 0 {
             return Err(redirect_error("redirect replay requires a body-free GET or HEAD request"));
         }
         super::redirect_worker::discard_body(&mut upstream, &response, account, config, began)?;
-        observe_redirect(config, successor.request(), redirects.depth());
-        request.follow(&successor);
+        observe_redirect(config, successor.request(), redirects.depth())?;
+        request.follow(&successor, &response)?;
         *destination = Some(request.destination.clone());
         admit_request(config, &request.destination)?;
-        let (next_upstream, next_selected) = connect::open(config, &request.destination)?;
+        let (next_upstream, next_selected) =
+            connect::open(config, &request.destination, began)?;
         upstream = next_upstream;
-        observe_connected(config, &request.destination, next_selected.address());
+        observe_connected(config, &request.destination, next_selected.address())?;
         forward_body = false;
     }
+}
+
+fn write_request(
+    request: &http::RequestHead,
+    upstream: &mut TcpStream,
+    credential: Option<(&str, &[u8])>,
+    account: &Arc<Mutex<ConnectionAccount>>,
+    config: &SharedWorkerConfig,
+    began: Instant,
+) -> Result<(), NetworkError> {
+    let length = request.encoded_len(credential)?;
+    charge_upload(account, config, length)?;
+    let written = request.write_to(credential, |bytes| {
+        connect::write_all_owned(upstream, bytes, config, began)
+    })?;
+    if written != length {
+        return Err(accounting_error());
+    }
+    Ok(())
 }
 
 fn admit_request(
@@ -131,7 +180,7 @@ fn admit_request(
         } else {
             ConnectionDecision::Denied
         },
-    );
+    )?;
     if decision == crate::DestinationDecision::Allowed {
         Ok(())
     } else {
@@ -148,7 +197,8 @@ fn acquire_credential(
     };
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_or(0, |value| u64::try_from(value.as_millis()).unwrap_or(u64::MAX));
+        .map_err(|_| credential_clock_error())?;
+    let now = u64::try_from(now.as_millis()).map_err(|_| credential_clock_error())?;
     let mut lease = credential.lease.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     if lease.consume(destination, config.plan.digest(), config.plan.owner(), now).is_err() {
         return Ok(None);
@@ -160,8 +210,8 @@ fn acquire_credential(
     Ok(Some((name, material)))
 }
 
-fn elapsed(began: Instant) -> u64 {
-    u64::try_from(began.elapsed().as_millis()).unwrap_or(u64::MAX)
+fn elapsed(began: Instant) -> Result<u64, NetworkError> {
+    u64::try_from(began.elapsed().as_millis()).map_err(|_| accounting_error())
 }
 
 const fn redirect_error(detail: &'static str) -> NetworkError {
@@ -176,28 +226,28 @@ const fn redirect_error(detail: &'static str) -> NetworkError {
 fn charge_upload(
     account: &Arc<Mutex<ConnectionAccount>>,
     config: &SharedWorkerConfig,
-    bytes: usize,
+    bytes: u64,
 ) -> Result<(), NetworkError> {
-    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
-    account.lock().unwrap_or_else(std::sync::PoisonError::into_inner).charge_upload(bytes)?;
-    super::owner::charge_total(
+    super::owner::charge(
+        &mut account.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
         &config.total_bytes,
         bytes,
         config.plan.options().bounds().total_bytes(),
+        true,
     )
 }
 
 fn charge_download(
     account: &Arc<Mutex<ConnectionAccount>>,
     config: &SharedWorkerConfig,
-    bytes: usize,
+    bytes: u64,
 ) -> Result<(), NetworkError> {
-    let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
-    account.lock().unwrap_or_else(std::sync::PoisonError::into_inner).charge_download(bytes)?;
-    super::owner::charge_total(
+    super::owner::charge(
+        &mut account.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
         &config.total_bytes,
         bytes,
         config.plan.options().bounds().total_bytes(),
+        false,
     )
 }
 
@@ -205,15 +255,15 @@ fn observe_request(
     config: &SharedWorkerConfig,
     request: &DestinationRequest,
     decision: ConnectionDecision,
-) {
-    push(config, NetworkObservationKind::Requested, request, None, decision, 0, 0, 0);
+) -> Result<(), NetworkError> {
+    push(config, NetworkObservationKind::Requested, request, None, decision, 0, 0, 0)
 }
 
 fn observe_connected(
     config: &SharedWorkerConfig,
     request: &DestinationRequest,
     address: std::net::IpAddr,
-) {
+) -> Result<(), NetworkError> {
     push(
         config,
         NetworkObservationKind::Resolved,
@@ -223,7 +273,7 @@ fn observe_connected(
         0,
         0,
         0,
-    );
+    )?;
     push(
         config,
         NetworkObservationKind::Connected,
@@ -233,10 +283,13 @@ fn observe_connected(
         0,
         0,
         0,
-    );
+    )
 }
 
-fn observe_credential(config: &SharedWorkerConfig, request: &DestinationRequest) {
+fn observe_credential(
+    config: &SharedWorkerConfig,
+    request: &DestinationRequest,
+) -> Result<(), NetworkError> {
     push(
         config,
         NetworkObservationKind::CredentialInjected,
@@ -246,10 +299,14 @@ fn observe_credential(config: &SharedWorkerConfig, request: &DestinationRequest)
         0,
         0,
         0,
-    );
+    )
 }
 
-fn observe_redirect(config: &SharedWorkerConfig, request: &DestinationRequest, depth: u8) {
+fn observe_redirect(
+    config: &SharedWorkerConfig,
+    request: &DestinationRequest,
+    depth: u8,
+) -> Result<(), NetworkError> {
     push(
         config,
         NetworkObservationKind::Redirected,
@@ -259,7 +316,7 @@ fn observe_redirect(config: &SharedWorkerConfig, request: &DestinationRequest, d
         depth,
         0,
         0,
-    );
+    )
 }
 
 fn observe_closed(
@@ -267,7 +324,7 @@ fn observe_closed(
     request: Option<&DestinationRequest>,
     result: &Result<(), NetworkError>,
     account: ConnectionAccount,
-) {
+) -> Result<(), NetworkError> {
     let decision = match result {
         Ok(()) => ConnectionDecision::Allowed,
         Err(error) if error.kind() == NetworkErrorKind::Denied => ConnectionDecision::Denied,
@@ -285,7 +342,7 @@ fn observe_closed(
             0,
             account.uploaded(),
             account.downloaded(),
-        );
+        )
     } else {
         config.observations.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(
             NetworkObservationKind::Closed,
@@ -297,7 +354,7 @@ fn observe_closed(
             0,
             0,
             0,
-        );
+        )
     }
 }
 
@@ -311,7 +368,7 @@ fn push(
     depth: u8,
     uploaded: u64,
     downloaded: u64,
-) {
+) -> Result<(), NetworkError> {
     config.observations.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(
         kind,
         request_name(request),
@@ -322,7 +379,7 @@ fn push(
         depth,
         uploaded,
         downloaded,
-    );
+    )
 }
 
 fn request_name(request: &DestinationRequest) -> Option<DnsName> {
@@ -347,5 +404,23 @@ const fn stream_error() -> NetworkError {
         crate::NetworkOperation::Relay,
         crate::RecoveryClass::CancelAndJoin,
         "proxy stream configuration or write failed",
+    )
+}
+
+const fn accounting_error() -> NetworkError {
+    NetworkError::new(
+        NetworkErrorKind::Limit,
+        crate::NetworkOperation::Relay,
+        crate::RecoveryClass::CancelAndJoin,
+        "managed proxy accounting is not representable",
+    )
+}
+
+const fn credential_clock_error() -> NetworkError {
+    NetworkError::new(
+        NetworkErrorKind::Credential,
+        crate::NetworkOperation::Credential,
+        crate::RecoveryClass::ReacquireCredential,
+        "credential clock observation is not representable",
     )
 }

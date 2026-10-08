@@ -1,30 +1,39 @@
 //! Explicit local image reads. No shell expansion, clipboard polling, or provider operations.
 
-use peritus_app_protocol::{MAX_WORKBENCH_IMAGE_BYTES, WorkbenchImageLabel};
+use peritus_app_protocol::WorkbenchImageLabel;
 use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 use std::{
     fmt,
     fs::{File, OpenOptions},
-    io::Read as _,
+    io::{Read as _, Seek as _, SeekFrom},
     path::{Component, Path},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UploadStep {
     Begin,
-    Chunk { end: usize },
+    Chunk { end: u64 },
+    Complete,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ImageUploadStep {
+    Begin,
+    Chunk { end: u64 },
     Complete,
 }
 
 pub struct ImageBytes {
-    pub(super) bytes: Vec<u8>,
+    file: File,
+    pub(super) byte_len: u64,
     pub(super) digest: Sha256Digest,
     pub(super) label: WorkbenchImageLabel,
 }
 impl fmt::Debug for ImageBytes {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ImageBytes")
-            .field("size", &self.bytes.len())
+            .field("size", &self.byte_len)
             .field("digest", &self.digest)
             .finish_non_exhaustive()
     }
@@ -45,20 +54,63 @@ pub fn read(path: &Path) -> Result<ImageBytes, &'static str> {
     }
     let mut file = open_regular(path)?;
     let metadata = file.metadata().map_err(|_| "Cannot inspect the opened file.")?;
-    if !metadata.is_file() || metadata.len() == 0 || metadata.len() > MAX_WORKBENCH_IMAGE_BYTES {
-        return Err(
-            "Image must be a nonempty regular file of at most 4 MiB; nothing was truncated.",
-        );
+    if !metadata.is_file() || metadata.len() == 0 {
+        return Err("Image must be a nonempty regular file.");
     }
-    let mut bytes = Vec::new();
-    (&mut file)
-        .take(MAX_WORKBENCH_IMAGE_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|_| "Could not read the selected file completely.")?;
-    if bytes.len() as u64 != metadata.len() || bytes.len() as u64 > MAX_WORKBENCH_IMAGE_BYTES {
-        return Err("The file changed size while reading or exceeds 4 MiB; select it again.");
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    let mut observed = 0_u64;
+    loop {
+        let count = file
+            .read(&mut buffer)
+            .map_err(|_| "Could not read the selected file completely.")?;
+        if count == 0 {
+            break;
+        }
+        observed = observed
+            .checked_add(u64::try_from(count).map_err(|_| "Image size is not representable.")?)
+            .ok_or("Image size is not representable.")?;
+        if observed > metadata.len() {
+            return Err("The file changed size while reading; select it again.");
+        }
+        digest.update(&buffer[..count]);
     }
-    Ok(ImageBytes { digest: peritus_codec::sha256(&bytes), bytes, label })
+    if observed != metadata.len() {
+        return Err("The file changed size while reading; select it again.");
+    }
+    file.seek(SeekFrom::Start(0))
+        .map_err(|_| "Could not rewind the selected file.")?;
+    Ok(ImageBytes {
+        file,
+        byte_len: observed,
+        digest: Sha256Digest::new(digest.finalize().into()),
+        label,
+    })
+}
+
+impl ImageBytes {
+    pub(super) fn read_chunk(
+        &mut self,
+        offset: u64,
+        maximum_bytes: usize,
+    ) -> Result<Vec<u8>, &'static str> {
+        if maximum_bytes == 0 || offset >= self.byte_len {
+            return Err("Image upload chunk selection is invalid.");
+        }
+        self.file
+            .seek(SeekFrom::Start(offset))
+            .map_err(|_| "Could not seek the selected image.")?;
+        let remaining = self.byte_len - offset;
+        let maximum =
+            u64::try_from(maximum_bytes).map_err(|_| "Image chunk length is not representable.")?;
+        let length = usize::try_from(remaining.min(maximum))
+            .map_err(|_| "Image chunk length is not representable.")?;
+        let mut bytes = vec![0_u8; length];
+        self.file
+            .read_exact(&mut bytes)
+            .map_err(|_| "The selected image changed while uploading.")?;
+        Ok(bytes)
+    }
 }
 
 pub fn validate_explicit_path(path: &Path) -> Result<(), &'static str> {

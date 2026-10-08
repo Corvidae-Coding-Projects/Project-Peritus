@@ -4,17 +4,15 @@ use std::collections::HashSet;
 
 use peritus_types::{CommandId, EventId, Sha256Digest};
 
-use super::{
-    AppendRequest, HeadExpectation, MAX_ARTIFACT_DEPENDENCIES, MAX_BATCH_AGGREGATES,
-    MAX_BATCH_EVENTS, MAX_OUTBOX_ACKNOWLEDGEMENTS, MAX_OUTBOX_ENTRIES, MAX_STATE_INSTALLS,
-    PlannedEvent,
-};
+use super::{AppendRequest, HeadExpectation, PlannedEvent};
 use crate::{
     ArtifactDependency, EventDraft, JournalError, JournalErrorKind, OutboxAcknowledgement,
     OutboxDraft, StateInstall, hash_chain::event_hash,
 };
 
-pub(super) const fn validate_bounds(request: &AppendRequest) -> Result<(), JournalError> {
+pub(super) fn validate_request_shape(
+    request: &AppendRequest,
+) -> Result<(u32, u32), JournalError> {
     if request.events.is_empty() {
         return Err(JournalError::new(
             JournalErrorKind::EmptyBatch,
@@ -22,21 +20,28 @@ pub(super) const fn validate_bounds(request: &AppendRequest) -> Result<(), Journ
             "an append must contain at least one event",
         ));
     }
-    if request.events.len() > MAX_BATCH_EVENTS
-        || request.heads.is_empty()
-        || request.heads.len() > MAX_BATCH_AGGREGATES
-        || request.state_installs.len() > MAX_STATE_INSTALLS
-        || request.outbox.len() > MAX_OUTBOX_ENTRIES
-        || request.outbox_acknowledgements.len() > MAX_OUTBOX_ACKNOWLEDGEMENTS
-        || request.artifact_dependencies.len() > MAX_ARTIFACT_DEPENDENCIES
-    {
+    if request.heads.is_empty() {
         return Err(JournalError::new(
             JournalErrorKind::InvalidInput,
             "plan append",
-            "append collection bound exceeded or no aggregate precondition supplied",
+            "an append must contain at least one aggregate head precondition",
         ));
     }
-    Ok(())
+    let event_count = u32::try_from(request.events.len()).map_err(|_| {
+        JournalError::new(
+            JournalErrorKind::InvalidInput,
+            "plan append",
+            "event count exceeds the batch-hash representation",
+        )
+    })?;
+    let artifact_count = u32::try_from(request.artifact_dependencies.len()).map_err(|_| {
+        JournalError::new(
+            JournalErrorKind::InvalidInput,
+            "plan append",
+            "artifact dependency count exceeds the batch-hash representation",
+        )
+    })?;
+    Ok((event_count, artifact_count))
 }
 
 pub(super) fn validate_heads(heads: &[HeadExpectation]) -> Result<(), JournalError> {

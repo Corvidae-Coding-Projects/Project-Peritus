@@ -9,9 +9,11 @@ use serde_json::Value;
 
 mod failure;
 mod selection;
+pub(super) mod usage;
 
 use failure::reported_failure;
 use selection::select_turn;
+use usage::decode as decode_usage;
 
 const MAX_JSONL_LINES: usize = 100_000;
 const MAX_JSONL_LINE_BYTES: usize = 4 * 1024 * 1024;
@@ -153,6 +155,24 @@ impl<'de> Visitor<'de> for StructuredToolCallVisitor {
 pub struct RuntimeDecoded {
     pub turn: Result<RuntimeTurn, DecodeFailure>,
     pub usage: UsageCounters,
+}
+
+impl RuntimeDecoded {
+    pub fn relative_to(mut self, previous: UsageCounters) -> Self {
+        match usage::relative(self.usage, previous) {
+            Ok(usage) => {
+                self.usage = usage;
+                if let Ok(turn) = &mut self.turn {
+                    turn.usage = usage;
+                }
+            }
+            Err(error) => {
+                self.turn = Err(error);
+                self.usage = UsageCounters::default();
+            }
+        }
+        self
+    }
 }
 
 pub fn decode_with_usage(
@@ -331,26 +351,6 @@ fn validate_turn(
         #[cfg(test)]
         duplicates: state.duplicates,
     })
-}
-
-fn decode_usage(value: Option<&Value>) -> Result<UsageCounters, DecodeFailure> {
-    let Some(value) = value else {
-        return Ok(UsageCounters::new(None, None, None, None, None, None, None, None));
-    };
-    let object = value.as_object().ok_or(DecodeFailure::InvalidUsage)?;
-    let input = optional_u64(object.get("input_tokens"))?;
-    let cached = optional_u64(object.get("cached_input_tokens"))?;
-    let output = optional_u64(object.get("output_tokens"))?;
-    let total = optional_u64(object.get("total_tokens"))?;
-    if matches!((input, output, total), (Some(left), Some(right), Some(sum)) if left.checked_add(right) != Some(sum))
-    {
-        return Err(DecodeFailure::InvalidUsage);
-    }
-    Ok(UsageCounters::new(input, cached, None, output, None, None, total, None))
-}
-
-fn optional_u64(value: Option<&Value>) -> Result<Option<u64>, DecodeFailure> {
-    value.map_or(Ok(None), |value| value.as_u64().map(Some).ok_or(DecodeFailure::InvalidUsage))
 }
 
 fn string<'a>(value: &'a Value, field: &str) -> Result<&'a str, DecodeFailure> {

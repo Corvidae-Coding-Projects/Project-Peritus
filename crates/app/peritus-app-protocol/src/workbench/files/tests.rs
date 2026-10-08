@@ -159,7 +159,7 @@ fn large_source_preview_and_ranges_keep_existing_wire_representation_and_integri
             (0, crate::MAX_WORKBENCH_FILE_BYTES + 1),
             metadata.digest()
         )
-        .is_err()
+        .is_ok()
     );
 }
 
@@ -177,10 +177,14 @@ fn file_compatibility_frames_roundtrip_and_require_independent_feature() {
         if let AppMessage::Request(request) = message {
             assert_eq!(
                 request.payload().required_workbench_feature(),
-                Some(WellKnownProtocolFeature::WorkbenchFiles)
+                Some(if case.case.contains("workbench-file-source-") {
+                    WellKnownProtocolFeature::WorkbenchFileSources
+                } else {
+                    WellKnownProtocolFeature::WorkbenchFiles
+                })
             );
         }
         count += 1;
     }
-    assert_eq!(count, 14);
+    assert_eq!(count, 16);
 }

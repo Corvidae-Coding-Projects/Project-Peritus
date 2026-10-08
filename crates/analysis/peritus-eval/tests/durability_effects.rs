@@ -139,7 +139,7 @@ fn cancellation_settlement_atomically_acknowledges_the_existing_effect_and_resta
     let journal = SqliteJournal::open(
         temporary.path().join("shared.sqlite3"),
         StoreId::new(bytes(160)).expect("store"),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(500) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(500)),
     )
     .expect("reopen journal");
     let rebuilt = load_evaluation_replay(&journal, campaign_id())
@@ -196,7 +196,7 @@ impl Stores {
         let journal = SqliteJournal::open(
             &database,
             StoreId::new(bytes(160)).expect("store"),
-            SqliteJournalOptions { busy_timeout: Duration::from_millis(500) },
+            SqliteJournalOptions::with_timeout(Duration::from_millis(500)),
         )
         .expect("journal");
         let artifacts = ArtifactStore::open(

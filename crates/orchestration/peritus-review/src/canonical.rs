@@ -8,8 +8,8 @@ use peritus_types::Sha256Digest;
 use crate::{
     DispositionKind, DispositionRecord, Finding, OscillationKind, OscillationReport,
     QuorumDimension, QuorumReport, ReviewAssignment, ReviewBinding, ReviewCycle, ReviewCyclePhase,
-    ReviewLimits, ReviewRunPhase, ReviewRunState, ReviewSubmission, ReviewTerminal,
-    ReviewTerminalKind,
+    ReviewBindingVersion, ReviewHistoryFrontier, ReviewLimits, ReviewRunPhase, ReviewRunState,
+    ReviewSubmission, ReviewTerminal, ReviewTerminalKind,
 };
 
 use encoder::Encoder;
@@ -17,7 +17,14 @@ use encoder::Encoder;
 /// Hashes every immutable review-binding field except the digest itself.
 #[must_use]
 pub fn binding_digest(binding: &ReviewBinding) -> Sha256Digest {
-    let mut out = Encoder::new(b"peritus-d2-review-binding-v1\0");
+    let domain: &[u8] = match binding.version() {
+        ReviewBindingVersion::LegacyCumulativeV1 => b"peritus-d2-review-binding-v1\0",
+        ReviewBindingVersion::PagedHistoryV2 => b"peritus-d2-review-binding-v2\0",
+    };
+    let mut out = Encoder::new(domain);
+    if binding.version() == ReviewBindingVersion::PagedHistoryV2 {
+        out.u8(2);
+    }
     out.raw(binding.contract_id().as_bytes());
     out.digest(binding.contract_digest());
     out.revision(binding.revision());
@@ -76,13 +83,21 @@ pub fn submission_digest(submission: &ReviewSubmission) -> Sha256Digest {
 /// Hashes every complete state field while logically zeroing the state-digest field.
 #[must_use]
 pub fn state_digest(state: &ReviewRunState) -> Sha256Digest {
-    let mut out = Encoder::new(b"peritus-d2-review-state-v1\0");
+    let domain: &[u8] = if state.binding().uses_paged_history() {
+        b"peritus-d2-review-state-v2\0"
+    } else {
+        b"peritus-d2-review-state-v1\0"
+    };
+    let mut out = Encoder::new(domain);
     out.raw(state.run_id().as_bytes());
     encode_limits(&mut out, state.limits());
     encode_binding(&mut out, state.binding());
     out.u8(run_phase_tag(state.phase()));
     out.u64(state.sequence().get());
     out.raw(state.last_event_id().as_bytes());
+    if state.binding().uses_paged_history() {
+        encode_history_frontier(&mut out, state.history());
+    }
     out.len(state.cycles().len());
     for cycle in state.cycles() {
         encode_cycle(&mut out, cycle);
@@ -105,10 +120,23 @@ pub fn state_digest(state: &ReviewRunState) -> Sha256Digest {
     out.hash()
 }
 
+/// Hashes one immutable-history frontier except its digest field.
+#[must_use]
+pub fn history_frontier_digest(frontier: ReviewHistoryFrontier) -> Sha256Digest {
+    let mut out = Encoder::new(b"peritus-d2-review-history-frontier-v2\0");
+    encode_history_frontier_fields(&mut out, frontier);
+    out.hash()
+}
+
 /// Hashes one terminal summary except its digest field.
 #[must_use]
 pub fn terminal_digest(terminal: &ReviewTerminal) -> Sha256Digest {
-    let mut out = Encoder::new(b"peritus-d2-review-terminal-v1\0");
+    let domain: &[u8] = if terminal.uses_paged_history() {
+        b"peritus-d2-review-terminal-v2\0"
+    } else {
+        b"peritus-d2-review-terminal-v1\0"
+    };
+    let mut out = Encoder::new(domain);
     encode_terminal_fields(&mut out, terminal);
     out.hash()
 }
@@ -188,6 +216,9 @@ fn encode_limits(out: &mut Encoder, value: ReviewLimits) {
 }
 
 fn encode_binding(out: &mut Encoder, value: &ReviewBinding) {
+    if value.version() == ReviewBindingVersion::PagedHistoryV2 {
+        out.u8(2);
+    }
     out.raw(value.contract_id().as_bytes());
     out.digest(value.contract_digest());
     out.revision(value.revision());
@@ -218,6 +249,27 @@ fn encode_binding(out: &mut Encoder, value: &ReviewBinding) {
         out.digest(*ancestry);
     }
     out.digest(value.digest());
+}
+
+fn encode_history_frontier(out: &mut Encoder, value: ReviewHistoryFrontier) {
+    encode_history_frontier_fields(out, value);
+    out.digest(value.digest());
+}
+
+fn encode_history_frontier_fields(out: &mut Encoder, value: ReviewHistoryFrontier) {
+    out.u64(value.through_sequence());
+    out.option(value.through_event(), |out, event| out.raw(event.as_bytes()));
+    out.digest(value.through_state_digest());
+    out.digest(value.parent_digest());
+    out.u64(value.page_count());
+    out.u64(value.cycle_count());
+    out.u64(value.submission_count());
+    out.u64(value.finding_count());
+    out.u64(value.disposition_count());
+    out.u64(value.waiver_count());
+    out.digest(value.current_binding_digest());
+    out.u64(value.current_unconserved_count());
+    out.digest(value.current_unconserved_xor());
 }
 
 fn encode_independence(out: &mut Encoder, value: peritus_role::ReviewIndependenceView) {
@@ -309,6 +361,10 @@ fn encode_terminal_fields(out: &mut Encoder, value: &ReviewTerminal) {
     out.len(value.unconserved_findings().len());
     for finding in value.unconserved_findings() {
         out.raw(finding.as_bytes());
+    }
+    if value.uses_paged_history() {
+        out.u64(value.unconserved_count());
+        out.digest(value.unconserved_xor());
     }
     encode_quorum(out, value.quorum());
     encode_oscillation(out, value.oscillation());

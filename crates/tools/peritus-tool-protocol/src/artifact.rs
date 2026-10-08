@@ -51,11 +51,11 @@ pub struct ArtifactReference {
 }
 
 impl ArtifactReference {
-    /// Creates a nonempty artifact reference.
+    /// Creates a content-addressed artifact reference, including an exact empty object.
     ///
     /// # Errors
     ///
-    /// Rejects zero-byte artifacts; empty output belongs in the structured result.
+    /// Rejects a zero-byte object whose digest does not name the empty byte stream.
     pub fn new(
         digest: Sha256Digest,
         size: u64,
@@ -64,11 +64,11 @@ impl ArtifactReference {
         completeness: ArtifactCompleteness,
         provenance: ArtifactProvenance,
     ) -> Result<Self, ProtocolError> {
-        if size == 0 {
+        if size == 0 && digest != peritus_codec::sha256(b"") {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::InvalidEnvelope,
                 "artifact.size",
-                "artifact size must be nonzero",
+                "an empty artifact must have the exact empty-content digest",
             ));
         }
         Ok(Self { digest, size, media_type, label, completeness, provenance })

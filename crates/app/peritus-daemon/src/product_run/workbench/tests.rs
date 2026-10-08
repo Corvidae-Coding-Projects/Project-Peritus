@@ -6,6 +6,40 @@ use peritus_product_runner::control::{
 use peritus_types::WorkspaceId;
 
 #[test]
+fn cancelled_control_owner_wait_is_removed_without_blocking_the_next_caller() {
+    let queue = Arc::new(ControlOwnerQueue::new(None));
+    let active_cancellation = peritus_journal::JournalCancellation::new();
+    let active = queue.acquire(&active_cancellation).expect("active owner");
+    let queued_cancellation = peritus_journal::JournalCancellation::new();
+    let waiter_cancellation = queued_cancellation.clone();
+    let waiter_queue = Arc::clone(&queue);
+    let (completed, completion) = std::sync::mpsc::sync_channel(1);
+    let waiter = std::thread::spawn(move || {
+        let result = waiter_queue.acquire(&waiter_cancellation).map(|_| ());
+        completed.send(result).expect("report queued acquisition");
+    });
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        let queued = queue.order.lock().expect("queue state").waiters.len();
+        if queued == 1 {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "waiter did not enter the owner queue");
+        std::thread::yield_now();
+    }
+    queued_cancellation.cancel();
+    assert!(matches!(
+        completion.recv_timeout(Duration::from_secs(5)),
+        Ok(Err(Error::ContentionCancelled))
+    ));
+    waiter.join().expect("cancelled waiter");
+    drop(active);
+    queue
+        .acquire(&peritus_journal::JournalCancellation::new())
+        .expect("next caller acquires after cancelled waiter");
+}
+
+#[test]
 fn accepting_an_exact_public_reply_creates_a_user_confirmed_brief_revision() {
     let root = tempfile::tempdir().expect("root");
     let store_id = peritus_journal::StoreId::new([1; 16]).expect("store");

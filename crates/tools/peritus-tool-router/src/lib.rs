@@ -17,15 +17,23 @@ mod verified;
 
 pub use authorization::ToolAuthorizationRequest;
 pub use dispatch::{
-    AuthorizedInvocation, AuthorizedToolBinding, DispatchOutcome, InvocationHandle,
+    AuthorizedInvocation, AuthorizedToolBinding, DispatchOutcome, InterruptedDispatch,
+    InvocationHandle,
+    ReservedDispatchError,
 };
 pub use dispatcher::{
-    DispatchFailure, ExecutionUpdate, RecoveryObservation, ToolDispatcher, ToolExecution, ToolStart,
+    ControlRetryability, DispatchFailure, ExecutionUpdate, RecoveryObservation, ToolDispatcher,
+    ToolExecution, ToolStart,
 };
 pub use error::{RouterError, RouterErrorKind};
 pub use exposure::ExposedTools;
 pub use intent::{TOOL_INTENT_MEDIA_TYPE, ToolIntentPayload, tool_action_intent};
 pub use recovery::{RecoveryClassification, RecoveryOutcome, ReplayDisposition};
+pub use replay::{
+    PendingReplayReceipt, ProgressPage, PublishedReplayReceipt, ReplayAppendOutcome, ReplayRecord,
+    ReplayRecordKind, ReplayReservation, ReplayReservationAttempt, ReplayReservationOwner,
+    ReplayStore, ReplayStoreError, ReplayStoreErrorKind, publish_replay_receipt, reserve_replay,
+};
 pub use registry::ToolRegistry;
 pub use router::{RouterLimits, ToolRouter};
 pub use verified::{

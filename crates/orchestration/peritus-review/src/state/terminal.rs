@@ -20,8 +20,11 @@ pub enum ReviewTerminalKind {
 /// Complete terminal review summary; it never claims overall run acceptance.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReviewTerminal {
+    pub(super) paged: bool,
     pub(super) kind: ReviewTerminalKind,
     pub(super) unconserved_findings: Vec<FindingId>,
+    pub(super) unconserved_count: u64,
+    pub(super) unconserved_xor: Sha256Digest,
     pub(super) quorum: QuorumReport,
     pub(super) oscillation: OscillationReport,
     pub(super) cause_digest: Sha256Digest,
@@ -29,7 +32,7 @@ pub struct ReviewTerminal {
 }
 
 impl ReviewTerminal {
-    pub(crate) const fn from_wire(
+    pub(crate) fn from_wire(
         kind: ReviewTerminalKind,
         unconserved_findings: Vec<FindingId>,
         quorum: QuorumReport,
@@ -37,7 +40,43 @@ impl ReviewTerminal {
         cause_digest: Sha256Digest,
         digest: Sha256Digest,
     ) -> Self {
-        Self { kind, unconserved_findings, quorum, oscillation, cause_digest, digest }
+        let unconserved_count = unconserved_findings.len() as u64;
+        let unconserved_xor = crate::state::mutation::finding_xor(&unconserved_findings);
+        Self {
+            paged: false,
+            kind,
+            unconserved_findings,
+            unconserved_count,
+            unconserved_xor,
+            quorum,
+            oscillation,
+            cause_digest,
+            digest,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) const fn from_wire_v2(
+        kind: ReviewTerminalKind,
+        unconserved_findings: Vec<FindingId>,
+        unconserved_count: u64,
+        unconserved_xor: Sha256Digest,
+        quorum: QuorumReport,
+        oscillation: OscillationReport,
+        cause_digest: Sha256Digest,
+        digest: Sha256Digest,
+    ) -> Self {
+        Self {
+            paged: true,
+            kind,
+            unconserved_findings,
+            unconserved_count,
+            unconserved_xor,
+            quorum,
+            oscillation,
+            cause_digest,
+            digest,
+        }
     }
 
     /// Returns the closed terminal kind.
@@ -46,10 +85,26 @@ impl ReviewTerminal {
         self.kind
     }
 
-    /// Returns canonical current findings lacking a permitted closure.
+    /// Returns current unconserved identities materialized in the bounded checkpoint.
     #[must_use]
     pub const fn unconserved_findings(&self) -> &[FindingId] {
         self.unconserved_findings.as_slice()
+    }
+
+    /// Returns the exact current unconserved count, including immutable history pages.
+    #[must_use]
+    pub const fn unconserved_count(&self) -> u64 {
+        self.unconserved_count
+    }
+
+    /// Returns the order-independent identity accumulator for the exact unconserved set.
+    #[must_use]
+    pub const fn unconserved_xor(&self) -> Sha256Digest {
+        self.unconserved_xor
+    }
+
+    pub(crate) const fn uses_paged_history(&self) -> bool {
+        self.paged
     }
 
     /// Returns the terminal quorum snapshot.

@@ -1,13 +1,15 @@
 //! Bounded directory pages and canonical project-confined file access.
 
 use crate::error::{Result, problem};
-use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 pub mod attachments;
 pub mod edit;
 pub mod pdf;
-pub const TEXT_LIMIT: usize = 50 * 1024 * 1024;
+mod listing;
+pub(crate) mod stream;
+pub use listing::list_page;
+pub(crate) use listing::{owner_argument as directory_owner_argument, run_owner as run_directory_owner};
 
 pub fn revision(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
@@ -21,19 +23,24 @@ pub fn read_text(path: &Path) -> Result<Vec<u8>> {
     if !metadata.is_file() {
         return Err(problem("Choose a regular text file"));
     }
-    if metadata.len() > TEXT_LIMIT as u64 {
-        return Err(problem("This file exceeds the 50 MiB text preview limit. Use Download."));
-    }
     let mut bytes = Vec::new();
-    file.take((TEXT_LIMIT + 1) as u64).read_to_end(&mut bytes)?;
+    let mut file = file;
+    let mut window = [0_u8; 8192];
+    loop {
+        let count = match file.read(&mut window) {
+            Ok(0) => break,
+            Ok(count) => count,
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error.into()),
+        };
+        bytes.try_reserve(count).map_err(problem)?;
+        bytes.extend_from_slice(&window[..count]);
+    }
     validate_text(&bytes)?;
     Ok(bytes)
 }
 
 fn validate_text(bytes: &[u8]) -> Result<()> {
-    if bytes.len() > TEXT_LIMIT {
-        return Err(problem("This file exceeds the 50 MiB text limit. Use Download."));
-    }
     if bytes.contains(&0) || std::str::from_utf8(bytes).is_err() {
         return Err(problem(
             "Binary or non-UTF-8 content cannot be viewed or edited as text. Use Download.",
@@ -48,42 +55,6 @@ pub fn resolve(root: &Path, relative: &str) -> Result<PathBuf> {
         return Err(problem("This path resolves outside the project root"));
     }
     Ok(candidate)
-}
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Entry {
-    name: String,
-    path: String,
-    directory: bool,
-    symlink: bool,
-    bytes: u64,
-}
-pub fn list(root: &Path, relative: &str, offset: usize) -> Result<serde_json::Value> {
-    let directory = resolve(root, relative)?;
-    let mut entries = Vec::new();
-    for entry in std::fs::read_dir(directory)? {
-        let entry = entry?;
-        let metadata = entry.metadata()?;
-        let path = entry.path().strip_prefix(root).map_err(problem)?.to_string_lossy().into_owned();
-        entries.push(Entry {
-            name: entry.file_name().to_string_lossy().into_owned(),
-            path,
-            directory: metadata.is_dir(),
-            symlink: entry.file_type()?.is_symlink(),
-            bytes: metadata.len(),
-        });
-    }
-    entries.sort_by(|a, b| {
-        b.directory
-            .cmp(&a.directory)
-            .then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
-            .then(a.name.cmp(&b.name))
-    });
-    let total = entries.len();
-    let next = (offset + 250 < total).then_some(offset + 250);
-    Ok(
-        serde_json::json!({"entries":entries.into_iter().skip(offset).take(250).collect::<Vec<_>>(), "total":total, "next":next}),
-    )
 }
 pub fn text(root: &Path, relative: &str) -> Result<serde_json::Value> {
     let path = resolve(root, relative)?;

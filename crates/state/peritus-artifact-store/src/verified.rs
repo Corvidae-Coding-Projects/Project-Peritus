@@ -43,18 +43,26 @@ pub const fn sweep_is_later(
 pub const fn write_bounds_valid(
     expected_size: u64,
     declared_limit: u64,
-    configured_limit: u64,
+    configured_limit: Option<u64>,
 ) -> (result: bool)
     ensures
         result == (
             declared_limit > 0
                 && expected_size <= declared_limit
-                && declared_limit <= configured_limit
+                && declared_limit <= i64::MAX as u64
+                && match configured_limit {
+                    Some(limit) => declared_limit <= limit,
+                    None => true,
+                }
         ),
 {
     declared_limit > 0
         && expected_size <= declared_limit
-        && declared_limit <= configured_limit
+        && declared_limit <= i64::MAX as u64
+        && match configured_limit {
+            Some(limit) => declared_limit <= limit,
+            None => true,
+        }
 }
 
 } // verus!

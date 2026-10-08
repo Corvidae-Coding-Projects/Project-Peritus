@@ -16,7 +16,7 @@ pub fn open(temp: &TempDir) -> SqliteJournal {
     SqliteJournal::open(
         temp.path().join("authority.sqlite3"),
         store_id(),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("open authority journal")
 }

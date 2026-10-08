@@ -11,7 +11,6 @@ use peritus_types::Sha256Digest;
 use crate::{MacosError, MacosErrorKind, MacosOperation, ProxyRoute, RecoveryAction, error};
 
 const PROFILE_VERSION: u16 = 1;
-const MAX_PROFILE_BYTES: usize = 256 * 1_024;
 const DEFAULT_PROTECTED_NAMES: [&str; 2] = [".git", ".peritus"];
 
 /// Effective deterministic policy decision retained for compiler refinement tests.
@@ -314,16 +313,16 @@ fn encode_string(value: &str) -> Result<String, MacosError> {
 }
 
 fn line(text: &mut String, value: &str) -> Result<(), MacosError> {
-    let next =
-        text.len().checked_add(value.len()).and_then(|length| length.checked_add(1)).ok_or_else(
-            || error::limited(MacosOperation::CompileProfile, "profile size overflow"),
-        )?;
-    if next > MAX_PROFILE_BYTES {
-        return Err(error::limited(
+    let additional = value
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| error::limited(MacosOperation::CompileProfile, "profile size overflow"))?;
+    text.try_reserve(additional).map_err(|_| {
+        error::limited(
             MacosOperation::CompileProfile,
-            "Seatbelt profile exceeds its byte bound",
-        ));
-    }
+            "Seatbelt profile cannot be represented in native memory",
+        )
+    })?;
     text.push_str(value);
     text.push('\n');
     Ok(())

@@ -4,7 +4,7 @@ use super::WorkingError;
 use vstd::prelude::*;
 
 verus! {
-/// Bounded in-memory source index and working model; archived artifact bytes live in C0.
+/// Physical replay, update, prompt, and per-record page limits; archived artifact bytes live in C0.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WorkingLimits {
     observations: usize,
@@ -15,9 +15,9 @@ pub struct WorkingLimits {
 }
 
 impl WorkingLimits {
-    /// Logical observation bound.
+    /// Logical observation replay-page bound.
     pub closed spec fn spec_observations(self) -> nat { self.observations as nat }
-    /// Logical retained-entry bound.
+    /// Logical entry count admitted by one physical request or prompt-selection page.
     pub closed spec fn spec_entries(self) -> nat { self.entries as nat }
     /// Logical per-entry byte bound.
     pub closed spec fn spec_entry_bytes(self) -> nat { self.entry_bytes as nat }
@@ -72,16 +72,22 @@ impl WorkingLimits {
         Ok(Self { observations, entries, entry_bytes, links, operations })
     }
 
-    /// Maximum exact source locators in one lineage.
+    /// Maximum observation events accepted by one bounded replay call.
     #[must_use]
     pub const fn observations(self) -> (result: usize)
         ensures result as nat == self.spec_observations(),
     { self.observations }
-    /// Maximum retained entries, including stale and superseded entries.
+    /// Maximum entries admitted by one physical request or prompt-selection page.
     #[must_use]
     pub const fn entries(self) -> (result: usize)
         ensures result as nat == self.spec_entries(),
     { self.entries }
+    /// Legacy single-frame environment-file envelope. Current paged snapshots do not use this as
+    /// a logical lifetime admission limit.
+    #[must_use]
+    pub const fn environment_files(self) -> usize {
+        self.entries * self.links
+    }
     /// Maximum bytes in one derived entry.
     #[must_use]
     pub const fn entry_bytes(self) -> (result: usize)

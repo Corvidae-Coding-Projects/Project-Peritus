@@ -1,5 +1,7 @@
 //! Non-wrapping connection and aggregate network accounting.
 
+use core::num::NonZeroU64;
+
 use crate::{NetworkError, NetworkErrorKind, NetworkOperation, RecoveryClass};
 
 /// Aggregate managed-network usage.
@@ -32,10 +34,10 @@ impl NetworkUsage {
     pub const fn downloaded_bytes(self) -> u64 {
         self.downloaded_bytes
     }
-    /// Returns bidirectional bytes.
+    /// Returns exact bidirectional bytes when representable.
     #[must_use]
-    pub const fn total_bytes(self) -> u64 {
-        self.uploaded_bytes.saturating_add(self.downloaded_bytes)
+    pub const fn total_bytes(self) -> Option<u64> {
+        self.uploaded_bytes.checked_add(self.downloaded_bytes)
     }
 }
 
@@ -44,14 +46,17 @@ impl NetworkUsage {
 pub struct ConnectionAccount {
     uploaded: u64,
     downloaded: u64,
-    byte_limit: u64,
-    duration_limit_millis: u64,
+    byte_limit: Option<NonZeroU64>,
+    duration_limit_millis: Option<NonZeroU64>,
 }
 
 impl ConnectionAccount {
-    /// Creates an empty bounded connection account.
+    /// Creates an empty connection account with optional caller-selected limits.
     #[must_use]
-    pub const fn new(byte_limit: u64, duration_limit_millis: u64) -> Self {
+    pub const fn new(
+        byte_limit: Option<NonZeroU64>,
+        duration_limit_millis: Option<NonZeroU64>,
+    ) -> Self {
         Self { uploaded: 0, downloaded: 0, byte_limit, duration_limit_millis }
     }
     /// Charges bytes sent to the upstream.
@@ -74,18 +79,18 @@ impl ConnectionAccount {
             .checked_add(self.downloaded)
             .and_then(|value| value.checked_add(bytes))
             .ok_or_else(limit_error)?;
-        if !crate::verified::network_charge_allowed(
-            self.uploaded.saturating_add(self.downloaded),
-            bytes,
-            self.byte_limit,
-        ) || total > self.byte_limit
-        {
-            return Err(limit_error());
+        if let Some(limit) = self.byte_limit {
+            let used = self.uploaded.checked_add(self.downloaded).ok_or_else(limit_error)?;
+            if !crate::verified::network_charge_allowed(used, bytes, limit.get())
+                || total > limit.get()
+            {
+                return Err(limit_error());
+            }
         }
         if upload {
-            self.uploaded = self.uploaded.saturating_add(bytes);
+            self.uploaded = self.uploaded.checked_add(bytes).ok_or_else(limit_error)?;
         } else {
-            self.downloaded = self.downloaded.saturating_add(bytes);
+            self.downloaded = self.downloaded.checked_add(bytes).ok_or_else(limit_error)?;
         }
         Ok(())
     }
@@ -94,7 +99,11 @@ impl ConnectionAccount {
     /// # Errors
     /// Returns a limit failure after the configured duration.
     pub const fn check_elapsed(&self, millis: u64) -> Result<(), NetworkError> {
-        if millis > self.duration_limit_millis { Err(limit_error()) } else { Ok(()) }
+        if matches!(self.duration_limit_millis, Some(limit) if millis > limit.get()) {
+            Err(limit_error())
+        } else {
+            Ok(())
+        }
     }
     /// Returns bytes uploaded.
     #[must_use]

@@ -6,7 +6,7 @@ use std::{
 };
 
 use peritus_app_protocol::{
-    TerminalBinding, TerminalExit, TerminalInput, TerminalOutput, TerminalResize,
+    TerminalBinding, TerminalExit, TerminalInput, TerminalOutput, TerminalOutputGap, TerminalResize,
 };
 use peritus_process::CancellationReason;
 use peritus_types::{ActorId, ProcessId, SessionId};
@@ -42,6 +42,8 @@ pub enum AttachmentDisposition {
 pub enum TerminalBridgeEvent {
     /// Ordered opaque process output.
     Output(TerminalOutput),
+    /// Explicit unavailable bytes followed by an exact retained resume frontier.
+    Gap(TerminalOutputGap),
     /// The unique terminal exit fence.
     Exited(TerminalExit),
 }

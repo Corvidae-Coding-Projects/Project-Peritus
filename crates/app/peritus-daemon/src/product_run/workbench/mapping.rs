@@ -3,7 +3,8 @@
 use super::{ControlStore, Error, brief, files, goal, guidance, images, inputs, review};
 use peritus_app_protocol::{WorkbenchCommand, WorkbenchIntent};
 use peritus_product_runner::control::{
-    ControlError, ControlIntent, ControlOperation, ControlText, ConversationId, OperationId,
+    ControlError, ControlIntent, ControlOperation, ControlText, ControlTitle, ConversationId,
+    OperationId,
 };
 use peritus_types::ActorId;
 
@@ -32,6 +33,20 @@ pub(super) fn equivalent_user_intent(left: &ControlIntent, right: &ControlIntent
             ControlIntent::PauseGoal { goal: a, mode: b, .. },
             ControlIntent::PauseGoal { goal: c, mode: d, .. },
         ) => (a, b) == (c, d),
+        (
+            ControlIntent::ContinueExecution {
+                run: a,
+                start_operation: b,
+                context_generation: c,
+                settings_digest: d,
+            },
+            ControlIntent::ContinueExecution {
+                run: e,
+                start_operation: f,
+                context_generation: g,
+                settings_digest: h,
+            },
+        ) => (a, b, c, d) == (e, f, g, h),
         (ControlIntent::ResumeGoal { goal: a, .. }, ControlIntent::ResumeGoal { goal: b, .. })
         | (ControlIntent::ClearGoal { goal: a, .. }, ControlIntent::ClearGoal { goal: b, .. }) => {
             a == b
@@ -52,6 +67,12 @@ pub(super) fn domain_operation_with_store(
     actor: ActorId,
     command: &WorkbenchCommand,
 ) -> Result<ControlOperation, Error> {
+    if let WorkbenchIntent::AttachFileImport { preview, .. } = command.intent() {
+        return captioned_import_operation(store, actor, command, preview);
+    }
+    if let WorkbenchIntent::ContinueExecution(settings) = command.intent() {
+        return continuation_operation(store, actor, command, settings);
+    }
     let proposal =
         if let WorkbenchIntent::AcceptBriefProposal { proposal, digest, .. } = command.intent() {
             let id = ConversationId::new(command.query().conversation().into_bytes())?;
@@ -90,6 +111,48 @@ pub(super) fn domain_operation_with_store(
     domain_operation_resolved(actor, command, proposal, context, prompt_view)
 }
 
+fn captioned_import_operation(
+    store: &ControlStore,
+    actor: ActorId,
+    command: &WorkbenchCommand,
+    preview: &peritus_app_protocol::WorkbenchFileImportPreview,
+) -> Result<ControlOperation, Error> {
+    let current = domain_operation(actor, command)?;
+    let Some(existing) = store.operation(current.conversation(), current.id())? else {
+        return Ok(current);
+    };
+    if existing != current {
+        let legacy = legacy_captioned_import_operation(actor, command, preview)?;
+        if existing != legacy {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
+    }
+    let consent = preview.canonical_bytes().map_err(|_| ControlError::InvalidInput)?;
+    store.verify_file_import_consent(&existing, &consent)?;
+    Ok(existing)
+}
+
+fn legacy_captioned_import_operation(
+    actor: ActorId,
+    command: &WorkbenchCommand,
+    preview: &peritus_app_protocol::WorkbenchFileImportPreview,
+) -> Result<ControlOperation, Error> {
+    let WorkbenchIntent::AttachFileImport { text, .. } = command.intent() else {
+        return Err(ControlError::InvalidInput.into());
+    };
+    Ok(ControlOperation::new(
+        OperationId::new(command.operation().into_bytes())?,
+        ConversationId::new(command.query().conversation().into_bytes())?,
+        actor,
+        command.query().workspace(),
+        command.expected_revision(),
+        ControlIntent::AttachFile {
+            file: files::domain_legacy_import(command, preview)?,
+            text: ControlText::new(text.as_str().to_owned())?,
+        },
+    ))
+}
+
 fn domain_operation_resolved(
     actor: ActorId,
     command: &WorkbenchCommand,
@@ -102,10 +165,10 @@ fn domain_operation_resolved(
             return Err(ControlError::UnsupportedSchema.into());
         }
         WorkbenchIntent::CreateConversation(title) => ControlIntent::CreateConversation {
-            title: ControlText::new(title.as_str().to_owned())?,
+            title: ControlTitle::new(title.as_str().to_owned())?,
         },
         WorkbenchIntent::RenameConversation(title) => ControlIntent::RenameConversation {
-            title: ControlText::new(title.as_str().to_owned())?,
+            title: ControlTitle::new(title.as_str().to_owned())?,
         },
         WorkbenchIntent::PinConversation(pinned) => {
             ControlIntent::PinConversation { pinned: *pinned }
@@ -152,6 +215,9 @@ fn domain_operation_resolved(
             file: files::domain_import(command, preview)?,
             text: ControlText::new(text.as_str().to_owned())?,
         },
+        WorkbenchIntent::AttachFileSource { preview } => ControlIntent::AttachFileSource {
+            file: files::domain_file_source(command, preview)?,
+        },
         WorkbenchIntent::SelectFile { attachment, selected } => ControlIntent::SelectFile {
             attachment: OperationId::new(attachment.into_bytes())?,
             selected: *selected,
@@ -167,6 +233,9 @@ fn domain_operation_resolved(
         },
         WorkbenchIntent::DismissReview { comment } => {
             ControlIntent::DismissReview { comment: OperationId::new(comment.into_bytes())? }
+        }
+        WorkbenchIntent::ContinueExecution(_) => {
+            return Err(ControlError::UnsupportedSchema.into());
         }
         WorkbenchIntent::StartExecution(settings) => ControlIntent::StartExecution {
             run: settings.run().into_bytes(),
@@ -232,6 +301,55 @@ fn domain_operation_resolved(
         command.query().workspace(),
         command.expected_revision(),
         intent,
+    ))
+}
+
+fn continuation_operation(
+    store: &ControlStore,
+    actor: ActorId,
+    command: &WorkbenchCommand,
+    settings: &peritus_app_protocol::WorkbenchExecutionSettings,
+) -> Result<ControlOperation, Error> {
+    let conversation = ConversationId::new(command.query().conversation().into_bytes())?;
+    let operation_id = OperationId::new(command.operation().into_bytes())?;
+    let settings_digest = settings
+        .fingerprint()
+        .map_err(|_| ControlError::InvalidInput)?
+        .into_bytes();
+    if let Some(existing) = store.operation(conversation, operation_id)? {
+        let matches = existing.conversation() == conversation
+            && existing.actor_bytes() == actor.as_bytes()
+            && existing.workspace_bytes() == command.query().workspace().as_bytes()
+            && existing.expected_revision() == command.expected_revision()
+            && matches!(
+                existing.intent(),
+                ControlIntent::ContinueExecution { run, settings_digest: digest, .. }
+                    if run == settings.run().as_bytes() && digest == &settings_digest
+            );
+        if !matches {
+            return Err(ControlError::IdempotencyConflict.into());
+        }
+        return Ok(existing);
+    }
+    let record = store.load(conversation)?.ok_or(ControlError::NotFound)?;
+    if record.owner_bytes() != actor.as_bytes()
+        || record.workspace_bytes() != command.query().workspace().as_bytes()
+    {
+        return Err(ControlError::ScopeMismatch.into());
+    }
+    let execution = record.execution().ok_or(ControlError::NotFound)?;
+    Ok(ControlOperation::new(
+        operation_id,
+        conversation,
+        actor,
+        command.query().workspace(),
+        command.expected_revision(),
+        ControlIntent::ContinueExecution {
+            run: settings.run().into_bytes(),
+            start_operation: execution.start_operation(),
+            context_generation: record.inputs().generation(),
+            settings_digest,
+        },
     ))
 }
 

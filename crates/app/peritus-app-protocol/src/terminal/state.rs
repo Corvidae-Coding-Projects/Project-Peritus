@@ -2,7 +2,8 @@
 
 use super::{
     TerminalBinding, TerminalCancellation, TerminalDetach, TerminalError, TerminalErrorKind,
-    TerminalExit, TerminalInput, TerminalOutput, TerminalResize, error::reject,
+    TerminalExit, TerminalInput, TerminalOutput, TerminalOutputGap, TerminalResize, TerminalStream,
+    error::reject,
     output_is_contiguous,
 };
 
@@ -35,6 +36,7 @@ pub struct TerminalState {
     maximum_chunk_bytes: usize,
     next_output_sequence: u64,
     next_output_offset: u64,
+    stream_offsets: [u64; 3],
     phase: TerminalPhase,
 }
 
@@ -56,6 +58,7 @@ impl TerminalState {
             maximum_chunk_bytes,
             next_output_sequence: 0,
             next_output_offset: 0,
+            stream_offsets: [0; 3],
             phase: TerminalPhase::Attached,
         })
     }
@@ -74,6 +77,11 @@ impl TerminalState {
     #[must_use]
     pub const fn next_output_offset(&self) -> u64 {
         self.next_output_offset
+    }
+    /// Returns stdout, stderr, and combined-terminal byte frontiers in stable order.
+    #[must_use]
+    pub const fn stream_offsets(&self) -> [u64; 3] {
+        self.stream_offsets
     }
     /// Returns the observable phase.
     #[must_use]
@@ -128,8 +136,58 @@ impl TerminalState {
         let next_output_sequence = self.next_output_sequence.checked_add(1).ok_or_else(|| {
             reject(TerminalErrorKind::ArithmeticOverflow, "output sequence overflow")
         })?;
+        let stream = stream_index(output.stream());
+        let next_stream_offset = self.stream_offsets[stream].checked_add(length).ok_or_else(|| {
+            reject(TerminalErrorKind::ArithmeticOverflow, "stream offset overflow")
+        })?;
         self.next_output_offset = next_output_offset;
         self.next_output_sequence = next_output_sequence;
+        self.stream_offsets[stream] = next_stream_offset;
+        Ok(())
+    }
+
+    /// Admits one explicit unavailable range and advances to its exact retained frontier.
+    ///
+    /// # Errors
+    ///
+    /// Rejects terminal state, binding/sequence/offset mismatch, regressing stream frontiers,
+    /// nonconserved global and per-stream byte deltas, or arithmetic overflow.
+    pub fn accept_output_gap(&mut self, gap: TerminalOutputGap) -> Result<(), TerminalError> {
+        self.require_attached(gap.binding())?;
+        if gap.sequence() != self.next_output_sequence {
+            return Err(reject(
+                TerminalErrorKind::UnexpectedSequence,
+                "output gap sequence is not the exact expected sequence",
+            ));
+        }
+        if gap.offset() != self.next_output_offset {
+            return Err(reject(
+                TerminalErrorKind::UnexpectedOffset,
+                "output gap does not start at the exact conserved offset",
+            ));
+        }
+        let resumed = gap.stream_offsets();
+        let mut missing = 0_u64;
+        for (before, after) in self.stream_offsets.into_iter().zip(resumed) {
+            let delta = after.checked_sub(before).ok_or_else(|| {
+                reject(TerminalErrorKind::UnexpectedOffset, "output gap regresses a stream offset")
+            })?;
+            missing = missing.checked_add(delta).ok_or_else(|| {
+                reject(TerminalErrorKind::ArithmeticOverflow, "output gap length overflow")
+            })?;
+        }
+        if missing != gap.missing_bytes() {
+            return Err(reject(
+                TerminalErrorKind::UnexpectedOffset,
+                "output gap stream ranges do not conserve its global byte range",
+            ));
+        }
+        let next_output_sequence = self.next_output_sequence.checked_add(1).ok_or_else(|| {
+            reject(TerminalErrorKind::ArithmeticOverflow, "output sequence overflow")
+        })?;
+        self.next_output_sequence = next_output_sequence;
+        self.next_output_offset = gap.resume_offset();
+        self.stream_offsets = resumed;
         Ok(())
     }
 
@@ -256,5 +314,13 @@ impl TerminalState {
             ));
         }
         Ok(())
+    }
+}
+
+const fn stream_index(stream: TerminalStream) -> usize {
+    match stream {
+        TerminalStream::Stdout => 0,
+        TerminalStream::Stderr => 1,
+        TerminalStream::Terminal => 2,
     }
 }

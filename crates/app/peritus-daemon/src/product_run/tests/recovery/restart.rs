@@ -40,7 +40,7 @@ fn qualified_restart_reacquires_gates_without_replaying_a_provider() {
         assert_eq!(completed.phase(), ProductRunPhase::Complete);
         let writer_requests = writer.requests.lock().expect("writer requests").len();
         let reviewer_requests = reviewer.requests.lock().expect("reviewer requests").len();
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
         drop(running);
 
         let restarted =
@@ -83,7 +83,7 @@ fn qualified_restart_reacquires_gates_without_replaying_a_provider() {
             assert_eq!(progress.model_requests, model_requests);
             assert_eq!(progress.tool_calls, tool_calls);
         }
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -137,7 +137,7 @@ async fn restart_scenario(user_cancelled: bool) {
         running.cancel(run_id).expect("explicit user stop");
         assert_eq!(wait_for_terminal(&running, run_id).await.phase(), ProductRunPhase::Cancelled);
     }
-    running.shutdown(Duration::from_secs(5)).await;
+    running.shutdown().await.expect("shutdown product runs");
     let after_shutdown =
         running.inner.records.read().expect("run ownership")[&run_id].snapshot.clone();
     let expected_after_shutdown =
@@ -205,5 +205,5 @@ async fn restart_scenario(user_cancelled: bool) {
             CandidateStage::Qualified
         );
     }
-    restarted.shutdown(Duration::from_secs(5)).await;
+    restarted.shutdown().await.expect("shutdown product runs");
 }

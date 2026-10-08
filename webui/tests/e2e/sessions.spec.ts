@@ -45,7 +45,7 @@ test('model choices survive reload and restart and remain session-local',async({
   await page.getByRole('button',{name:'Close panel',exact:true}).click();
   await stopServer();await startServer();
   const saved=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-  expect(saved.sessions.find((item:{id:string})=>item.id===session).settings.models.writer).toEqual({id:'fixture-model',manual:false,effort:'high'});
+  expect(saved.workspace.sessions.find((item:{id:string})=>item.id===session).settings.models.writer).toEqual({id:'fixture-model',manual:false,effort:'high'});
 });
 
 test('retained terminal output can be reopened and terminated after browser reload',async({page,request})=>{

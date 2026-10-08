@@ -13,6 +13,7 @@ categories = ["development-tools", "network-programming"]
 
 [dependencies]
 base64.workspace = true
+mio.workspace = true
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-sandbox = { version = "=0.0.5", path = "../peritus-sandbox" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }

@@ -8,6 +8,9 @@ impl AppModel {
         command: &WorkbenchCommand,
         receipt: &WorkbenchReceipt,
     ) -> Vec<Effect> {
+        if matches!(command.intent(), WorkbenchIntent::ContinueExecution(_)) {
+            return self.observe_continuation_receipt(command, receipt);
+        }
         if !matches!(command.intent(), WorkbenchIntent::ResumeGoal { .. }) {
             return self.accept_workbench_receipt(command, receipt);
         }

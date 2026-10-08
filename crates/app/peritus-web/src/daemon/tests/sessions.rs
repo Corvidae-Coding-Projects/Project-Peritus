@@ -146,13 +146,10 @@ async fn model_update_and_recovered_local_save_retain_the_same_native_selection(
     // Simulate loss between the durable native response and the presentation save.
     app.update(|state| {
         state.sessions[0].settings = sessions::Settings::default();
-        state.operations.insert(
-            "models-op".into(),
-            crate::state::Operation { input: input.clone(), prepared: None, result: None },
-        );
         Ok(())
     })
     .unwrap();
+    app.record_operation("models-op".into(), input.clone()).unwrap();
     let recovered = crate::operations::observe(&app, "models-op").await.unwrap();
     assert_eq!(recovered["result"], result);
     assert_eq!(app.session(&session.id).unwrap().settings.models["writer"].id, "selected");

@@ -18,6 +18,7 @@ pub(super) fn evaluate(contract: &SandboxContract, probe: &ReferenceProbe) -> Pr
         ReferenceProbe::DescendantCount(count) => match contract.process().descendants() {
             DescendantPolicy::Denied => *count == 0,
             DescendantPolicy::Bounded(limit) => *count <= limit,
+            DescendantPolicy::Allowed => true,
         },
         ReferenceProbe::ProcessSignal(signal) => matches!(
             (contract.process().signals(), signal),

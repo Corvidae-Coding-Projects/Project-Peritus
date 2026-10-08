@@ -79,13 +79,23 @@ impl CanonicalDecode for ReviewCommandFrame {
 fn write_kind(writer: &mut CanonicalWriter, kind: &ReviewCommandKind) -> Result<(), CodecError> {
     match kind {
         ReviewCommandKind::StartRun { binding, limits } => {
-            writer.write_u8(1)?;
-            super::write_binding(writer, binding)?;
+            if binding.uses_paged_history() {
+                writer.write_u8(19)?;
+                super::write_binding_v2(writer, binding)?;
+            } else {
+                writer.write_u8(1)?;
+                super::write_binding_v1(writer, binding)?;
+            }
             super::write_limits(writer, *limits)?;
         }
         ReviewCommandKind::AdvanceRevision { binding } => {
-            writer.write_u8(2)?;
-            super::write_binding(writer, binding)?;
+            if binding.uses_paged_history() {
+                writer.write_u8(20)?;
+                super::write_binding_v2(writer, binding)?;
+            } else {
+                writer.write_u8(2)?;
+                super::write_binding_v1(writer, binding)?;
+            }
         }
         ReviewCommandKind::AssignReviewer { assignment } => {
             writer.write_u8(3)?;
@@ -189,10 +199,10 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<ReviewCommandKind, Code
     let offset = reader.offset();
     match reader.read_u8()? {
         1 => Ok(ReviewCommandKind::StartRun {
-            binding: super::read_binding(reader)?,
+            binding: super::read_binding_v1(reader)?,
             limits: super::read_limits(reader)?,
         }),
-        2 => Ok(ReviewCommandKind::AdvanceRevision { binding: super::read_binding(reader)? }),
+        2 => Ok(ReviewCommandKind::AdvanceRevision { binding: super::read_binding_v1(reader)? }),
         3 => Ok(ReviewCommandKind::AssignReviewer {
             assignment: super::state::read_assignment(reader)?,
         }),
@@ -250,6 +260,11 @@ fn read_kind(reader: &mut CanonicalReader<'_>) -> Result<ReviewCommandKind, Code
         16 => Ok(ReviewCommandKind::FinalizeRun),
         17 => Ok(ReviewCommandKind::PauseRun),
         18 => Ok(ReviewCommandKind::ResumeRun),
+        19 => Ok(ReviewCommandKind::StartRun {
+            binding: super::read_binding_v2(reader)?,
+            limits: super::read_limits(reader)?,
+        }),
+        20 => Ok(ReviewCommandKind::AdvanceRevision { binding: super::read_binding_v2(reader)? }),
         _ => Err(CodecError::at(CodecErrorKind::UnknownTag, offset)),
     }
 }

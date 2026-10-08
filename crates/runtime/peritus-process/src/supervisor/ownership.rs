@@ -6,19 +6,16 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{
-    ExecutionPlan, ProcessError, ProcessEventKind, control::SharedObservation,
-    platform::PlatformProcess,
-};
+use crate::{ProcessError, ProcessEventKind, control::SharedObservation, platform::PlatformProcess};
 
-use super::{POLL_MILLIS, elapsed_millis, emit};
+use super::{POLL_MILLIS, SupervisorPlan, elapsed_millis, emit};
 
 pub(super) fn ensure_tree_quiescent(
     process: &mut dyn PlatformProcess,
-    reap_millis: u64,
+    reap_millis: Option<u64>,
     forced: &mut bool,
     shared: &Arc<SharedObservation>,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
 ) -> Result<bool, ProcessError> {
     if process.tree_quiescent()? {
         return Ok(true);
@@ -34,7 +31,7 @@ pub(super) fn ensure_tree_quiescent(
         emit(shared, plan, None, ProcessEventKind::Escalated, Vec::new());
     }
     let began = Instant::now();
-    while elapsed_millis(began) < reap_millis {
+    while reap_millis.is_none_or(|maximum| elapsed_millis(began) < maximum) {
         if process.tree_quiescent()? {
             return Ok(true);
         }

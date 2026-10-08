@@ -1,4 +1,4 @@
-//! Immutable observation prefix and bounded investigation model.
+//! Immutable observation prefix and paged investigation model.
 
 use super::validation::invalidate_entries;
 use super::state_revision::next_revision;
@@ -109,8 +109,8 @@ impl WorkingState {
     /// Opens an empty working model under an explicit host-observed environment.
     ///
     /// # Errors
-    /// Rejects an environment built under wider limits than the state allows.
-    pub fn new(environment: WorkingEnvironment, limits: WorkingLimits) -> (result: Result<Self, WorkingError>)
+    /// Rejects an invalid environment.
+    pub const fn new(environment: WorkingEnvironment, limits: WorkingLimits) -> (result: Result<Self, WorkingError>)
         ensures match result {
             Ok(state) => {
                 &&& state.spec_environment() == environment
@@ -124,7 +124,6 @@ impl WorkingState {
             Err(_) => true,
         },
     {
-        if environment.files().len() > limits.entries() { return Err(WorkingError::Capacity); }
         let state = Self { environment, revision: 0, observations: Vec::new(), entries: Vec::new(), limits, protocol: super::WorkingProtocol::empty() };
         proof {
             reveal(WorkingState::spec_environment);
@@ -254,7 +253,7 @@ impl WorkingState {
 /// Idempotently incorporates one verified observation from a contiguous host archive.
 ///
 /// # Errors
-/// Rejects scope mismatch, skipped sequence, conflicting reuse, capacity, or revision overflow.
+/// Rejects scope mismatch, skipped sequence, conflicting reuse, or revision overflow.
 /// An exact already-ingested observation returns the unchanged revision.
 pub fn ingest_working_observation(
     state: &WorkingState,
@@ -280,7 +279,6 @@ pub fn ingest_working_observation(
         }
         return Err(WorkingError::SourceConflict);
     }
-    if state.observations.len() >= state.limits.observations() { return Err(WorkingError::Capacity); }
     let expected = next_revision(state.through_observation())?;
     if source.id().get() != expected { return Err(WorkingError::SourceSequence); }
     let revision = next_revision(state.revision)?;
@@ -302,7 +300,7 @@ pub fn ingest_working_observation(
 /// unaffected file dependencies, even when the complete candidate digest changes.
 ///
 /// # Errors
-/// Rejects another lineage, stale base revision, backwards conversation revision, or capacity.
+/// Rejects another lineage, stale base revision, or backwards conversation revision.
 pub fn refresh_working_state(
     state: &WorkingState,
     expected_revision: u64,
@@ -347,7 +345,6 @@ pub fn refresh_working_state(
     if environment.binding().conversation_revision() < state.binding().conversation_revision() {
         return Err(WorkingError::StaleConversation);
     }
-    if environment.files().len() > state.limits.entries() { return Err(WorkingError::Capacity); }
     if environment == state.environment {
         let mut next = state.clone();
         next.environment = environment;

@@ -25,7 +25,7 @@ pub enum JournalErrorKind {
     StaleAuthorityEpoch,
     /// The credential-registry revision precondition was stale.
     StaleRegistry,
-    /// A `SQLite` operation exhausted the configured busy timeout.
+    /// A `SQLite` operation encountered transient busy or locked contention.
     Busy,
     /// The store is read-only.
     ReadOnly,
@@ -103,7 +103,10 @@ impl JournalError {
     pub(crate) fn sqlite(operation: &'static str, source: rusqlite::Error) -> Self {
         let kind = match &source {
             rusqlite::Error::SqliteFailure(error, _)
-                if error.code == rusqlite::ErrorCode::DatabaseBusy =>
+                if matches!(
+                    error.code,
+                    rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
+                ) =>
             {
                 JournalErrorKind::Busy
             }
@@ -165,6 +168,12 @@ impl JournalError {
             | JournalErrorKind::CorruptJournal
             | JournalErrorKind::UnsupportedSchema => RecoveryClass::Terminal,
         }
+    }
+
+    /// Returns whether the operation is waiting on transient database ownership.
+    #[must_use]
+    pub const fn is_contention(&self) -> bool {
+        matches!(self.kind, JournalErrorKind::Busy)
     }
 
     /// Returns whether `SQLite` reported deterministic database or disk exhaustion.

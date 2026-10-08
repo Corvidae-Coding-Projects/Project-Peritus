@@ -11,6 +11,7 @@ use crate::control::PermissionCapability;
 use peritus_agent::{
     DeveloperLoopError, DeveloperToolEffect, DeveloperToolExecutor, DeveloperToolObservation,
 };
+use peritus_context::ContextNodeId;
 use peritus_model_protocol::{
     CanonicalJson, CompletedToolCall, JsonBounds, Message, ProtocolLimits,
 };
@@ -35,6 +36,13 @@ impl<'a> MemoryTools<'a> {
 }
 
 impl DeveloperToolExecutor for MemoryTools<'_> {
+    fn observe_provider_profile(
+        &mut self,
+        profile: &peritus_model_protocol::ProviderProfile,
+    ) -> Result<(), DeveloperLoopError> {
+        self.base.observe_provider_profile(profile)
+    }
+
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
         self.base.observe_model_context(messages)
     }
@@ -92,7 +100,7 @@ impl DeveloperToolExecutor for MemoryTools<'_> {
         let mut memory = self.memory.lock()?;
         let value = match name {
             "context_read" => read::execute(&mut memory, call.arguments().canonical_bytes())?,
-            _ => update::execute(&mut memory, call.arguments().canonical_bytes())?,
+            _ => update::execute_call(&mut memory, call)?,
         };
         drop(memory);
         let is_error = value.get("rejected").is_some();
@@ -146,6 +154,25 @@ fn sequence(memory: &LocalMemory, handle: &str) -> Result<u64, DeveloperLoopErro
     let sequence = number.parse().map_err(|_| error("invalid observation number"))?;
     memory.archived(sequence)?;
     Ok(sequence)
+}
+
+fn entry_id(handle: &str) -> Result<ContextNodeId, DeveloperLoopError> {
+    let encoded = handle
+        .strip_prefix("entry:")
+        .ok_or_else(|| error("invalid working-entry handle"))?;
+    if encoded.len() != 32
+        || !encoded.bytes().all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err(error("invalid working-entry handle"));
+    }
+    let mut bytes = [0_u8; 16];
+    for (index, pair) in encoded.as_bytes().chunks_exact(2).enumerate() {
+        let pair = std::str::from_utf8(pair)
+            .map_err(|_| error("invalid working-entry handle"))?;
+        bytes[index] = u8::from_str_radix(pair, 16)
+            .map_err(|_| error("invalid working-entry handle"))?;
+    }
+    ContextNodeId::new(bytes).map_err(|_| error("invalid working-entry handle"))
 }
 
 fn rejected(memory: &LocalMemory, reason: &str) -> Value {

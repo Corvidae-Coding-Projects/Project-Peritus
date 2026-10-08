@@ -5,14 +5,9 @@ use std::fmt::Write as _;
 use sha2::{Digest as _, Sha256};
 
 const TOKEN_ESTIMATE_BYTES: u64 = 3;
-const REVIEW_INPUT_SHARE_PERCENT: u64 = 50;
-// Initial evidence must leave space for independently requested workspace observations, in
-// addition to the system policy and tool catalog charged by the request estimator.
-const REVIEW_REQUEST_SHARE_PERCENT: u64 = 75;
-const MAX_REVIEW_EVIDENCE_BYTES: usize = 384 * 1024;
-const BASE_SECTION_CAPS: [usize; 6] =
-    [64 * 1024, 144 * 1024, 48 * 1024, 80 * 1024, 32 * 1024, 16 * 1024];
-const BASE_TOTAL_BYTES: usize = 384 * 1024;
+// Preferences divide actual headroom; no preference is an evidence admission ceiling.
+const SECTION_WEIGHTS: [usize; 6] = [64, 144, 48, 80, 32, 16];
+const TOTAL_WEIGHT: usize = 384;
 const EXTRA_PRIORITY: [usize; 6] = [0, 1, 3, 2, 4, 5];
 
 pub struct ReviewerPrompt<'a> {
@@ -42,28 +37,30 @@ pub(super) fn project(
     framing_tokens: u64,
     values: [&str; 6],
 ) -> ReviewerEvidence {
-    let allocations = allocations(&values, evidence_budget(max_input_tokens, framing_tokens));
+    project_bytes(evidence_budget(max_input_tokens, framing_tokens), values)
+}
+
+pub(super) fn project_bytes(budget: usize, values: [&str; 6]) -> ReviewerEvidence {
+    let allocations = allocations(&values, budget);
     let [transcript, diff, gates, developer, prior, correction] =
         std::array::from_fn(|index| bounded(values[index], allocations[index]));
     ReviewerEvidence { transcript, diff, gates, developer, prior, correction }
 }
 
 pub(super) const fn request_target(max_input_tokens: u64) -> u64 {
-    max_input_tokens.saturating_mul(REVIEW_REQUEST_SHARE_PERCENT) / 100
+    max_input_tokens
 }
 
 fn evidence_budget(max_input_tokens: u64, framing_tokens: u64) -> usize {
-    let evidence_tokens = max_input_tokens.saturating_mul(REVIEW_INPUT_SHARE_PERCENT) / 100;
     let request_tokens = request_target(max_input_tokens);
-    let bytes = evidence_tokens
-        .min(request_tokens.saturating_sub(framing_tokens))
+    let bytes = request_tokens.saturating_sub(framing_tokens)
         .saturating_mul(TOKEN_ESTIMATE_BYTES);
-    usize::try_from(bytes).unwrap_or(usize::MAX).min(MAX_REVIEW_EVIDENCE_BYTES)
+    usize::try_from(bytes).unwrap_or(usize::MAX)
 }
 
 fn allocations(values: &[&str; 6], budget: usize) -> [usize; 6] {
     let mut allocated = std::array::from_fn(|index| {
-        let weighted = budget.saturating_mul(BASE_SECTION_CAPS[index]) / BASE_TOTAL_BYTES;
+        let weighted = budget.saturating_mul(SECTION_WEIGHTS[index]) / TOTAL_WEIGHT;
         values[index].len().min(weighted)
     });
     let mut remaining = budget.saturating_sub(allocated.iter().sum());
@@ -82,16 +79,26 @@ fn bounded(value: &str, maximum: usize) -> String {
     }
     let digest = digest_hex(value);
     let marker = format!(
-        "\n[Peritus bounded reviewer evidence: original_bytes={} sha256={digest}; middle omitted. Use fresh read-only workspace tools for authoritative current detail.]\n",
+        "\n[Peritus reviewer preview: original_bytes={} sha256={digest}; visible_head=0..{:020} visible_tail={:020}..{}; middle omitted. Retrieve exact omitted bytes through the review evidence handle catalog.]\n",
+        value.len(),
+        0,
+        0,
         value.len(),
     );
     if maximum <= marker.len() {
-        return marker[..maximum].to_owned();
+        // The exact catalog outside this preview still declares the complete source. Never emit
+        // a partial marker that appears to be a complete omission/identity receipt.
+        return String::new();
     }
     let retained = maximum - marker.len();
-    let head_end = value.floor_char_boundary(retained.saturating_mul(2) / 3);
+    let head_end = value.floor_char_boundary(retained.saturating_sub(retained / 3));
     let tail_bytes = retained - head_end;
     let tail_start = suffix_boundary(value, tail_bytes);
+    let marker = format!(
+        "\n[Peritus reviewer preview: original_bytes={} sha256={digest}; visible_head=0..{head_end:020} visible_tail={tail_start:020}..{}; middle omitted. Retrieve exact omitted bytes through the review evidence handle catalog.]\n",
+        value.len(),
+        value.len(),
+    );
     format!("{}{marker}{}", &value[..head_end], &value[tail_start..])
 }
 

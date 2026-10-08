@@ -69,7 +69,7 @@ pub(super) const IMAGE_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "bytes",
                 W::U64,
-                &[B::NonZero, B::WorkbenchImageBytes],
+                &[B::NonZero],
                 "u64",
                 "UInt64",
                 J::U64String,
@@ -85,9 +85,18 @@ pub(super) const IMAGE_TYPES: &[AppTypeDescriptor] = &[
                 true,
             ),
             field(
+                "validation",
+                W::Conditional,
+                &[],
+                "WorkbenchImageValidation",
+                "\"completePixels\" | \"containerStructure\"",
+                J::Enum(&["completePixels", "containerStructure"]),
+                true,
+            ),
+            field(
                 "width",
                 W::U32,
-                &[B::NonZero, B::WorkbenchImageSide],
+                &[B::NonZero],
                 "u32",
                 "number",
                 J::U32,
@@ -96,7 +105,7 @@ pub(super) const IMAGE_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "height",
                 W::U32,
-                &[B::NonZero, B::WorkbenchImageSide],
+                &[B::NonZero],
                 "u32",
                 "number",
                 J::U32,
@@ -105,7 +114,7 @@ pub(super) const IMAGE_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "frames",
                 W::U32,
-                &[B::NonZero, B::WorkbenchImageFrames],
+                &[B::NonZero],
                 "u32",
                 "number",
                 J::U32,

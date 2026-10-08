@@ -1,11 +1,13 @@
 //! Explicit-path-only media for direct folders: no recursive discovery or private-state reads.
 
 use super::{
-    MAX_IMAGES, ProductRunnerError, ProviderProfile, WorkspaceImages, attach, supported_extension,
+    MediaContext, ProductRunnerError, ProviderProfile, WorkspaceImages, attach,
+    supported_extension,
 };
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
+    sync::atomic::AtomicBool,
 };
 
 pub fn discover_explicit(
@@ -14,7 +16,45 @@ pub fn discover_explicit(
     profile: &ProviderProfile,
     protected: &[PathBuf],
 ) -> Result<WorkspaceImages, ProductRunnerError> {
-    let paths = task
+    discover_explicit_with_context(
+        root,
+        task,
+        profile,
+        protected,
+        MediaContext::compatibility(),
+    )
+}
+
+pub(crate) fn discover_explicit_retained(
+    root: &Path,
+    task: &str,
+    profile: &ProviderProfile,
+    protected: &[PathBuf],
+    retention_root: &Path,
+    cancelled: &AtomicBool,
+) -> Result<WorkspaceImages, ProductRunnerError> {
+    discover_explicit_with_context(
+        root,
+        task,
+        profile,
+        protected,
+        MediaContext { retention_root: Some(retention_root), cancelled: Some(cancelled) },
+    )
+}
+
+fn discover_explicit_with_context(
+    root: &Path,
+    task: &str,
+    profile: &ProviderProfile,
+    protected: &[PathBuf],
+    context: MediaContext<'_>,
+) -> Result<WorkspaceImages, ProductRunnerError> {
+    let paths = explicit_paths(root, task, protected);
+    attach(root, paths, profile, super::requests_visual_inspection(task), context)
+}
+
+pub(super) fn explicit_paths(root: &Path, task: &str, protected: &[PathBuf]) -> Vec<PathBuf> {
+    task
         .split_whitespace()
         .chain(task.split(['`', '"', '\n']))
         .filter_map(|token| {
@@ -33,11 +73,9 @@ pub fn discover_explicit(
             .ok()
         })
         .filter(|path| path.is_file())
-        .take(MAX_IMAGES)
         .collect::<BTreeSet<_>>()
         .into_iter()
-        .collect();
-    attach(root, paths, profile, super::requests_visual_inspection(task))
+        .collect()
 }
 
 #[cfg(test)]

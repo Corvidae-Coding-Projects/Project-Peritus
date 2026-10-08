@@ -1,11 +1,11 @@
 //! Stable lower-boundary failure normalization.
 
-use peritus_process::{ProcessError, RecoveryClass};
+use peritus_process::{ControlRejection, ProcessError, RecoveryClass};
 use peritus_tool_protocol::{
     BoundedText, FailureCategory, RecoveryRoute, ResponsibleSubsystem, ResultStatus, Retryability,
     ToolFailure,
 };
-use peritus_tool_router::DispatchFailure;
+use peritus_tool_router::{ControlRetryability, DispatchFailure};
 
 use crate::error::truncate_utf8;
 
@@ -64,6 +64,68 @@ pub fn adapter(code: &str, detail: &str) -> DispatchFailure {
         ResponsibleSubsystem::Tool,
         Retryability::Never,
         RecoveryRoute::None,
+        detail,
+    )
+}
+
+/// A native control admission error is scoped to this request, never a fresh process action.
+pub fn control(error: &ProcessError) -> DispatchFailure {
+    let retryability = match error.control_rejection() {
+        Some(ControlRejection::Backpressure) => ControlRetryability::WhenReady,
+        Some(ControlRejection::InvalidRequest) => ControlRetryability::CorrectRequest,
+        Some(ControlRejection::AdmissionClosed) => ControlRetryability::ObserveOnly,
+        None if error.recovery() == RecoveryClass::CorrectRequest => {
+            ControlRetryability::CorrectRequest
+        }
+        None => ControlRetryability::ObserveOnly,
+    };
+    let source = process(error);
+    let typed = source.failure();
+    failure(
+        source.status(),
+        typed.category(),
+        typed.code().as_str(),
+        typed.subsystem(),
+        Retryability::AfterRecovery,
+        RecoveryRoute::ReconcileProcess,
+        typed.detail().as_str(),
+    )
+    .rejecting_control(retryability)
+}
+
+pub fn invalid_control(code: &str, detail: &str) -> DispatchFailure {
+    failure(
+        ResultStatus::Failed,
+        FailureCategory::Protocol,
+        code,
+        ResponsibleSubsystem::Tool,
+        Retryability::AfterRecovery,
+        RecoveryRoute::ReconcileProcess,
+        detail,
+    )
+    .rejecting_control(ControlRetryability::CorrectRequest)
+}
+
+pub fn settlement_projection(source: &DispatchFailure) -> DispatchFailure {
+    failure(
+        source.status(),
+        source.failure().category(),
+        source.failure().code().as_str(),
+        source.failure().subsystem(),
+        Retryability::AfterRecovery,
+        RecoveryRoute::HumanReview,
+        source.failure().detail().as_str(),
+    )
+}
+
+pub fn settlement_invariant(code: &str, detail: &str) -> DispatchFailure {
+    failure(
+        ResultStatus::Indeterminate,
+        FailureCategory::Indeterminate,
+        code,
+        ResponsibleSubsystem::Tool,
+        Retryability::AfterRecovery,
+        RecoveryRoute::HumanReview,
         detail,
     )
 }

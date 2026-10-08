@@ -89,7 +89,7 @@ async fn candidate_retry_scenario() {
         writer.responses.lock().expect("writer scripts").is_empty(),
         "phase-preserving retry must not invoke the writer again",
     );
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 #[test]
@@ -133,7 +133,7 @@ async fn candidate_cancellation_scenario() {
         cancelled.deliverable().expect("candidate deliverable").qualification(),
         CandidateStage::ReviewPending,
     );
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 fn service(
@@ -159,7 +159,9 @@ fn service(
                     .expect("inbox"),
             ),
             improvement_launch: tokio::sync::Mutex::new(()),
-            controls: std::sync::Mutex::new(None),
+            controls: super::workbench::ControlOwnerQueue::new(None),
+            control_shutdown: peritus_journal::JournalCancellation::new(),
+            control_reconciliation: peritus_journal::JournalCancellation::new(),
             control_store: peritus_journal::StoreId::new([0x7f; 16]).expect("control store"),
             directory,
             records: std::sync::RwLock::new(BTreeMap::new()),
@@ -169,7 +171,7 @@ fn service(
             workspaces: BTreeMap::from([(workspace_id, workspace.to_owned())]),
             folders: BTreeMap::new(),
             processes,
-            tasks: tokio::sync::Mutex::new(Vec::new()),
+            tasks: tokio::sync::Mutex::new(super::ProductRunTasks::new()),
             model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
@@ -179,6 +181,23 @@ fn service(
                 [workspace_id],
                 network,
             ),
+            request_source_artifacts: peritus_artifact_store::StoreConfig::new(
+                state.join("artifacts"),
+                1024 * 1024,
+                16 * 1024 * 1024,
+            )
+            .expect("request-source artifact config"),
+            request_source_readers: std::sync::Mutex::new(
+                super::RequestSourceReaders::default(),
+            ),
+            reply_artifacts: crate::product_control::ControlStore::reply_artifact_config(
+                &state.join("workbench-v1"),
+            )
+            .expect("reply artifact config"),
+            reply_readers: std::sync::Mutex::new(
+                super::RequestSourceReaders::default(),
+            ),
+            retained_reply_owners: std::sync::Mutex::new(std::collections::BTreeSet::new()),
         }),
     }
 }

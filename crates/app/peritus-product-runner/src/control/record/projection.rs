@@ -1,9 +1,6 @@
 //! Conversation aggregate inspection, encoding, and invariant validation.
 
-use super::{
-    CONTROL_SCHEMA, ControlError, ControlExecution, ConversationId, ConversationRecord, decode,
-    encode,
-};
+use super::{CONTROL_SCHEMA, ControlError, ControlExecution, ConversationId, ConversationRecord};
 
 impl ConversationRecord {
     /// Returns stable conversation identity.
@@ -108,7 +105,8 @@ impl ConversationRecord {
             .filter(|entry| {
                 let target = crate::control::ContextTarget::File(entry.file().operation());
                 let preference = self.context.preference(target);
-                included.iter().any(|input| input.id() == entry.file().input())
+                (entry.source_only()
+                    || included.iter().any(|input| input.id() == entry.file().input()))
                     && preference != Some(crate::control::ContextPreference::Excluded)
                     && (entry.selected()
                         || preference == Some(crate::control::ContextPreference::Pinned))
@@ -131,6 +129,79 @@ impl ConversationRecord {
         replies: &std::collections::BTreeMap<crate::control::InvocationId, String>,
         include_pending: bool,
     ) -> Result<crate::control::InputCapture, ControlError> {
+        let (pinned, excluded, replacements) = self.reply_context();
+        self.inputs
+            .capture_with_reply_view(replies, include_pending, &pinned, &excluded, &replacements)?
+            .with_brief(&self.brief, &self.inputs)
+    }
+
+    /// Selects only public reply artifacts whose exact bodies fit the fixed request prompt.
+    /// Older and oversized replies remain available as typed assistant-history sources.
+    pub fn inline_reply_sources(
+        &self,
+        reply_bytes: &std::collections::BTreeMap<crate::control::InvocationId, u64>,
+        include_pending: bool,
+    ) -> Result<Vec<crate::control::InvocationId>, ControlError> {
+        let (pinned, excluded, replacements) = self.reply_context();
+        self.inputs.inline_reply_sources(
+            reply_bytes,
+            include_pending,
+            &pinned,
+            &excluded,
+            &replacements,
+        )
+    }
+
+    /// Projects exact eligible and out-of-line reply identities without loading their bodies.
+    pub fn reply_source_projection(
+        &self,
+        reply_bytes: &std::collections::BTreeMap<crate::control::InvocationId, u64>,
+        include_pending: bool,
+    ) -> Result<
+        (
+            Vec<crate::control::InvocationId>,
+            Vec<crate::control::InvocationId>,
+            Vec<crate::control::InputSelection>,
+        ),
+        ControlError,
+    > {
+        let (pinned, excluded, replacements) = self.reply_context();
+        self.inputs.reply_source_projection(
+            reply_bytes,
+            include_pending,
+            &pinned,
+            &excluded,
+            &replacements,
+        )
+    }
+
+    /// Captures reply descriptors with bodies only for the bounded fixed-prompt subset.
+    pub fn capture_with_reply_sources(
+        &self,
+        reply_bytes: &std::collections::BTreeMap<crate::control::InvocationId, u64>,
+        replies: &std::collections::BTreeMap<crate::control::InvocationId, String>,
+        include_pending: bool,
+    ) -> Result<crate::control::InputCapture, ControlError> {
+        let (pinned, excluded, replacements) = self.reply_context();
+        self.inputs
+            .capture_with_reply_sources(
+                reply_bytes,
+                replies,
+                include_pending,
+                &pinned,
+                &excluded,
+                &replacements,
+            )?
+            .with_brief(&self.brief, &self.inputs)
+    }
+
+    fn reply_context(
+        &self,
+    ) -> (
+        std::collections::BTreeSet<crate::control::InvocationId>,
+        std::collections::BTreeSet<crate::control::InvocationId>,
+        std::collections::BTreeMap<crate::control::InvocationId, String>,
+    ) {
         let pinned: std::collections::BTreeSet<crate::control::InvocationId> = self
             .context
             .entries()
@@ -143,7 +214,7 @@ impl ConversationRecord {
                 _ => None,
             })
             .collect();
-        let excluded: std::collections::BTreeSet<crate::control::InvocationId> = self
+        let excluded = self
             .context
             .entries()
             .iter()
@@ -155,16 +226,14 @@ impl ConversationRecord {
                 _ => None,
             })
             .collect();
-        let replacements: std::collections::BTreeMap<crate::control::InvocationId, String> = self
+        let replacements = self
             .prompt_view
             .entries()
             .iter()
             .filter(|entry| !pinned.contains(&entry.invocation()))
             .map(|entry| (entry.invocation(), entry.replacement().to_owned()))
             .collect();
-        self.inputs
-            .capture_with_reply_view(replies, include_pending, &pinned, &excluded, &replacements)?
-            .with_brief(&self.brief, &self.inputs)
+        (pinned, excluded, replacements)
     }
     /// Borrows the governed execution lineage, if explicitly admitted.
     #[must_use]
@@ -186,22 +255,24 @@ impl ConversationRecord {
     pub const fn workspace_bytes(&self) -> &[u8; 16] {
         &self.workspace
     }
-    /// Decodes a bounded current-state root, rejecting invalid generations and identities.
+    /// Decodes current state, validating identities and the independently bounded control core.
     ///
     /// # Errors
-    /// Rejects oversized, malformed, or unsupported state without changing any prior state.
+    /// Rejects a malformed or unsupported state or an oversized noncheckpoint core.
     pub fn parse(bytes: &[u8]) -> Result<Self, ControlError> {
-        let value: Self = decode(bytes)?;
+        let value: Self = serde_json::from_slice(bytes).map_err(|_| ControlError::InvalidInput)?;
         value.validate()?;
+        value.canonical_core_bytes()?;
         Ok(value)
     }
     /// Encodes the exact validated current projection for atomic journal publication.
     ///
     /// # Errors
-    /// Rejects invalid state or a byte/encoding limit.
+    /// Rejects invalid state, encoding failure, or an oversized noncheckpoint core.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, ControlError> {
         self.validate()?;
-        encode(self)
+        self.canonical_core_bytes()?;
+        serde_json::to_vec(self).map_err(|_| ControlError::InvalidInput)
     }
     pub(super) fn validate(&self) -> Result<(), ControlError> {
         self.inputs.validate()?;

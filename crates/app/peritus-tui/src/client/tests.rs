@@ -92,11 +92,12 @@ impl ClientSession {
     }
 }
 
-const COMMAND_FEATURES: [WellKnownProtocolFeature; 6] = [
+const COMMAND_FEATURES: [WellKnownProtocolFeature; 7] = [
     WellKnownProtocolFeature::ConversationLibrary,
     WellKnownProtocolFeature::ConversationForks,
     WellKnownProtocolFeature::WorkbenchExecution,
     WellKnownProtocolFeature::WorkbenchConversation,
+    WellKnownProtocolFeature::WorkbenchContinuationReceipts,
     WellKnownProtocolFeature::WorkbenchRunBinding,
     WellKnownProtocolFeature::WorkbenchPreviewOutput,
 ];

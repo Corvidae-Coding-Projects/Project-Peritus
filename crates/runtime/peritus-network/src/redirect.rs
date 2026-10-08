@@ -1,4 +1,4 @@
-//! Bounded redirect-chain revalidation.
+//! Caller-selected redirect-chain revalidation.
 
 use peritus_sandbox::{DnsName, NetworkHost, Transport};
 
@@ -12,13 +12,13 @@ pub struct RedirectTarget {
 }
 
 impl RedirectTarget {
-    /// Parses an absolute `http://` or `https://` URI without accepting user-info or fragments.
+    /// Parses an absolute `http://` URI without accepting user-info or fragments.
     ///
     /// # Errors
-    /// Rejects malformed, oversized, non-HTTP, or ambiguous authority.
+    /// Rejects malformed, non-HTTP, or ambiguous authority.
     pub fn parse(value: &str) -> Result<Self, NetworkError> {
-        if value.len() > 8_192 || value.contains('#') || value.contains('@') {
-            return Err(redirect_error("redirect URI is malformed or exceeds its bound"));
+        if value.contains('#') || value.contains('@') {
+            return Err(redirect_error("redirect URI is malformed"));
         }
         let (remainder, default_port) = if let Some(rest) = value.strip_prefix("http://") {
             (rest, 80)
@@ -43,13 +43,13 @@ impl RedirectTarget {
     /// Creates a same-authority successor for one origin-form location.
     ///
     /// # Errors
-    /// Rejects an empty, oversized, or non-origin-form path.
+    /// Rejects an empty or non-origin-form path.
     pub fn relative(
         request: DestinationRequest,
         path_and_query: &str,
     ) -> Result<Self, NetworkError> {
-        if !path_and_query.starts_with('/') || path_and_query.len() > 8_192 {
-            return Err(redirect_error("relative redirect path is malformed or exceeds its bound"));
+        if !path_and_query.starts_with('/') {
+            return Err(redirect_error("relative redirect path is malformed"));
         }
         Ok(Self { request, path_and_query: path_and_query.to_owned() })
     }
@@ -83,6 +83,14 @@ impl<'a> RedirectChain<'a> {
     /// # Errors
     /// Rejects redirects disabled by plan, a crossed count, or a denied successor.
     pub fn follow(&mut self, target: RedirectTarget) -> Result<RedirectTarget, NetworkError> {
+        self.follow_request(target.request())?;
+        Ok(target)
+    }
+
+    pub(crate) fn follow_request(
+        &mut self,
+        request: &DestinationRequest,
+    ) -> Result<(), NetworkError> {
         let maximum = match self.plan.options().redirects() {
             RedirectMode::Deny => return Err(redirect_error("redirects are disabled")),
             RedirectMode::Follow { maximum } => maximum,
@@ -92,11 +100,11 @@ impl<'a> RedirectChain<'a> {
         if next > maximum {
             return Err(redirect_error("redirect count exceeds its bound"));
         }
-        if self.plan.decide_request(target.request())? != crate::DestinationDecision::Allowed {
+        if self.plan.decide_request(request)? != crate::DestinationDecision::Allowed {
             return Err(redirect_error("redirect successor is outside checked authority"));
         }
         self.depth = next;
-        Ok(target)
+        Ok(())
     }
     /// Returns current depth.
     #[must_use]
@@ -113,6 +121,9 @@ fn parse_authority(authority: &str, default_port: u16) -> Result<(&str, u16), Ne
         let close =
             rest.find(']').ok_or_else(|| redirect_error("redirect IPv6 authority is malformed"))?;
         let host = &rest[..close];
+        if host.parse::<std::net::Ipv6Addr>().is_err() {
+            return Err(redirect_error("redirect bracketed authority is not IPv6"));
+        }
         let suffix = &rest[close + 1..];
         let port = if suffix.is_empty() {
             default_port
@@ -137,6 +148,7 @@ fn parse_authority(authority: &str, default_port: u16) -> Result<(&str, u16), Ne
             }
             Ok((host, port))
         }
+        Some(_) => Err(redirect_error("redirect IPv6 authority must be bracketed")),
         _ => Ok((authority, default_port)),
     }
 }

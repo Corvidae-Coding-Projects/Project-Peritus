@@ -2,7 +2,7 @@
 
 use super::{
     ControlError, InputId, InputLedger, InputRevision, InputSelection, InputState,
-    InvocationInputs, QueueIntent,
+    InvocationInputs, QueueIntent, RequestSource, SOURCE_BACKED_INPUT_NOTICE,
 };
 use std::collections::BTreeSet;
 
@@ -50,14 +50,37 @@ impl InputLedger {
     fn apply_inner(&mut self, author: [u8; 16], intent: &QueueIntent) -> Result<(), ControlError> {
         match intent {
             QueueIntent::Enqueue { id, text, dependencies } => {
-                self.enqueue(*id, author, text.clone(), dependencies.clone(), None)
+                self.enqueue(*id, author, text.clone(), None, dependencies.clone(), None)
+            }
+            QueueIntent::EnqueueSource { id, source, dependencies } => {
+                self.enqueue_source(*id, author, *source, dependencies.clone(), None)
             }
             QueueIntent::Correct { original, id, text } => {
                 let item = self.exact(*original)?;
                 if item.state != InputState::Incorporated {
                     return Err(ControlError::InvalidInput);
                 }
-                self.enqueue(*id, author, text.clone(), vec![original.id], Some(*original))
+                self.enqueue(
+                    *id,
+                    author,
+                    text.clone(),
+                    None,
+                    vec![original.id],
+                    Some(*original),
+                )
+            }
+            QueueIntent::CorrectSource { original, id, source } => {
+                let item = self.exact(*original)?;
+                if item.state != InputState::Incorporated {
+                    return Err(ControlError::InvalidInput);
+                }
+                self.enqueue_source(
+                    *id,
+                    author,
+                    *source,
+                    vec![original.id],
+                    Some(*original),
+                )
             }
             QueueIntent::Edit { selected, text } => {
                 let item = self.pending_mut(*selected)?;
@@ -65,6 +88,19 @@ impl InputLedger {
                 replacement.selection.revision =
                     replacement.selection.revision.checked_add(1).ok_or(ControlError::Capacity)?;
                 replacement.text = text.clone();
+                replacement.source = None;
+                replacement.author = author;
+                item.state = InputState::Superseded;
+                self.revisions.push(replacement);
+                Ok(())
+            }
+            QueueIntent::EditSource { selected, source } => {
+                let item = self.pending_mut(*selected)?;
+                let mut replacement = item.clone();
+                replacement.selection.revision =
+                    replacement.selection.revision.checked_add(1).ok_or(ControlError::Capacity)?;
+                replacement.text = super::ControlText::new(SOURCE_BACKED_INPUT_NOTICE.to_owned())?;
+                replacement.source = Some(*source);
                 replacement.author = author;
                 item.state = InputState::Superseded;
                 self.revisions.push(replacement);
@@ -83,6 +119,21 @@ impl InputLedger {
                 }
                 self.pending_mut(*selected)?.state = InputState::Withdrawn;
                 self.order.retain(|id| *id != selected.id);
+                Ok(())
+            }
+            QueueIntent::Move { selected, position } => {
+                self.pending_mut(*selected)?;
+                let current = self
+                    .order
+                    .iter()
+                    .position(|id| *id == selected.id)
+                    .ok_or(ControlError::InvalidInput)?;
+                let position = usize::try_from(*position).map_err(|_| ControlError::Capacity)?;
+                if position >= self.order.len() {
+                    return Err(ControlError::InvalidInput);
+                }
+                let id = self.order.remove(current);
+                self.order.insert(position, id);
                 Ok(())
             }
             QueueIntent::Reorder(order) => {
@@ -130,6 +181,7 @@ impl InputLedger {
         id: InputId,
         author: [u8; 16],
         text: super::ControlText<8192>,
+        source: Option<RequestSource>,
         dependencies: Vec<InputId>,
         correction_of: Option<InputSelection>,
     ) -> Result<(), ControlError> {
@@ -140,6 +192,7 @@ impl InputLedger {
             selection: InputSelection::new(id, 1)?,
             author,
             text,
+            source,
             dependencies,
             state: InputState::Queued,
             correction_of,
@@ -147,6 +200,24 @@ impl InputLedger {
         });
         self.order.push(id);
         Ok(())
+    }
+
+    fn enqueue_source(
+        &mut self,
+        id: InputId,
+        author: [u8; 16],
+        source: RequestSource,
+        dependencies: Vec<InputId>,
+        correction_of: Option<InputSelection>,
+    ) -> Result<(), ControlError> {
+        self.enqueue(
+            id,
+            author,
+            super::ControlText::new(SOURCE_BACKED_INPUT_NOTICE.to_owned())?,
+            Some(source),
+            dependencies,
+            correction_of,
+        )
     }
 
     fn exact(&self, selected: InputSelection) -> Result<&InputRevision, ControlError> {
@@ -189,6 +260,10 @@ impl InputLedger {
         let earlier = &self.revisions[..index];
         let previous = earlier.iter().rev().find(|prior| prior.selection.id == item.selection.id);
         if item.author == [0; 16]
+            || (item.source.is_some() && item.text.as_str() != SOURCE_BACKED_INPUT_NOTICE)
+            || item.source.is_some_and(|source| {
+                source.artifact_bytes() == [0; 16] || source.bytes() == 0
+            })
             || item.selection.revision
                 != previous
                     .map_or(Some(1), |prior| prior.selection.revision.checked_add(1))

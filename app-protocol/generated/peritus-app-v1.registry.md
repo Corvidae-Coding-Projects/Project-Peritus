@@ -9,7 +9,7 @@ Generated from Rust metadata. Numeric and semantic allocations are append-only.
 | 94 | `app-client-hello` | 1 | `1:client-hello` |
 | 95 | `app-server-hello` | 1 | `1:compatible`, `2:downgraded`, `3:incompatible` |
 | 96 | `app-request` | 1 | `180:harness-improvements`, `1:submit-command`, `2:subscribe`, `3:open-artifact`, `4:cancel-artifact`, `5:answer-prompt`, `6:cancel-prompt`, `7:attach-terminal`, `8:terminal-input`, `9:terminal-resize`, `10:detach-terminal`, `11:cancel-terminal`, `12:daemon-status`, `13:shutdown`, `14:begin-artifact-upload`, `15:upload-artifact-chunk`, `16:complete-artifact-upload`, `17:start-product-run`, `18:control-product-run`, `20:continue-product-run`, `21:query-product-run-conversation`, `22:interact`, `23:query-interaction`, `24:query-models`, `25:update-models`, `26:interact-with-effort`, `27:update-models-with-effort`, `28:doctor`, `29:workbench-command`, `30:query-workbench`, `31:query-workbench-receipt`, `32:query-workbench-queue`, `33:query-workbench-context`, `34:query-workbench-brief`, `35:begin-workbench-image-upload`, `36:preview-workbench-image`, `37:query-workbench-images`, `38:preview-workbench-file`, `39:query-workbench-files`, `40:begin-workbench-file-upload`, `41:preview-workbench-file-import`, `42:preview-workbench-compaction`, `43:query-workbench-execution`, `44:continue-workbench-execution`, `45:query-interaction-binding`, `60:query-workbench-goal`, `80:query-workbench-review`, `100:query-workbench-result`, `101:query-workbench-preview`, `102:query-product-run-observations`, `120:preview-workbench-rewind`, `121:inspect-workbench-checkpoint`, `140:query-conversation-library`, `160:query-workbench-permissions`, `161:query-workbench-memory`, `162:discover-init` |
-| 97 | `app-response` | 1 | `180:harness-improvements`, `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `181:terminal-pipe-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `12:product-run-conversation`, `13:product-run-settled`, `15:interaction`, `16:models`, `17:interaction-with-effort`, `18:doctor-report`, `19:workbench-snapshot`, `20:workbench-receipt`, `21:workbench-queue`, `22:workbench-context`, `23:workbench-brief`, `24:workbench-image-preview`, `25:workbench-images`, `26:workbench-file-preview`, `27:workbench-files`, `28:workbench-file-import-preview`, `29:workbench-compaction-preview`, `43:workbench-execution`, `44:interaction-binding`, `60:workbench-goal`, `80:workbench-review`, `100:workbench-result`, `101:workbench-preview`, `102:product-run-observations`, `120:workbench-checkpoint`, `121:workbench-rewind-preview`, `122:workbench-restore`, `140:conversation-library`, `160:workbench-permissions`, `161:workbench-memory`, `162:init-proposal` |
+| 97 | `app-response` | 1 | `180:harness-improvements`, `1:command-result`, `2:subscription-started`, `3:artifact-opened`, `4:prompt-accepted`, `5:terminal-attached`, `181:terminal-pipe-attached`, `6:acknowledged`, `7:daemon-status`, `8:shutdown-accepted`, `9:error`, `10:product-run-accepted`, `12:product-run-conversation`, `13:product-run-settled`, `15:interaction`, `16:models`, `17:interaction-with-effort`, `18:doctor-report`, `19:workbench-snapshot`, `20:workbench-receipt`, `21:workbench-queue`, `22:workbench-context`, `23:workbench-brief`, `24:workbench-image-preview`, `25:workbench-images`, `26:workbench-file-preview`, `27:workbench-files`, `28:workbench-file-import-preview`, `29:workbench-compaction-preview`, `43:workbench-execution`, `44:interaction-binding`, `60:workbench-goal`, `80:workbench-review`, `100:workbench-result`, `101:workbench-preview`, `102:product-run-observations`, `120:workbench-checkpoint`, `121:workbench-rewind-preview`, `122:workbench-restore`, `123:workbench-checkpoint-manifest`, `124:workbench-rewind-manifest`, `125:workbench-restore-manifest`, `140:conversation-library`, `160:workbench-permissions`, `161:workbench-memory`, `162:init-proposal` |
 | 98 | `app-event` | 1 | `1:domain-event`, `2:subscription-gap`, `3:backpressure`, `4:artifact-metadata`, `5:artifact-chunk`, `6:artifact-complete`, `7:prompt-requested`, `8:terminal-output`, `9:terminal-exited`, `10:readiness-changed`, `11:diagnostic`, `12:heartbeat`, `13:shutdown-progress`, `14:shutdown-complete`, `15:terminal-unavailable` |
 | 99 | `app-control` | 1 | `1:acknowledge`, `2:cancel-subscription`, `3:cancel-artifact`, `4:cancel-prompt`, `5:cancel-terminal`, `6:subscription`, `7:heartbeat-reply` |
 
@@ -1657,7 +1657,7 @@ Rust type: `WorkbenchCheckpointPath`
 
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
-| `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
+| `path` | yes | `len+utf8` | `String` | `string` | `codec.max-string-bytes` |
 | `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
 | `hasExpectedCurrent` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
@@ -1672,11 +1672,11 @@ Rust type: `WorkbenchCheckpointReceipt`
 | `checkpoint` | yes | `fixed[16]` | `ControlOperationId` | `ControlOperationId` | `nonzero` |
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
-| `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `workbench.max-checkpoint-name-bytes (256)` |
+| `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `codec.max-string-bytes` |
 | `references` | yes | `ordered-fields` | `WorkbenchCheckpointReferences` | `WorkbenchCheckpointReferences` | — |
-| `paths` | yes | `len+items` | `Vec<WorkbenchCheckpointPath>` | `readonly WorkbenchCheckpointPath[]` | `workbench.max-checkpoint-paths (64)`, `strictly-sorted-unique` |
-| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `paths` | yes | `len+items` | `Vec<WorkbenchCheckpointPath>` | `readonly WorkbenchCheckpointPath[]` | `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
 
 ### `WorkbenchRewindRequest`
 
@@ -1696,7 +1696,7 @@ Rust type: `WorkbenchRewindPath`
 
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
-| `path` | yes | `len+utf8` | `String` | `string` | `workbench.max-file-path-bytes (4096)` |
+| `path` | yes | `len+utf8` | `String` | `string` | `codec.max-string-bytes` |
 | `checkpoint` | yes | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
 | `hasExpectedCurrent` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `expectedCurrent` | no | `ordered-fields` | `WorkbenchCheckpointVersion` | `WorkbenchCheckpointAbsentVersion | WorkbenchCheckpointPresentVersion | WorkbenchCheckpointDirectoryVersion` | — |
@@ -1712,9 +1712,9 @@ Rust type: `WorkbenchRewindPreview`
 |---|:---:|---|---|---|---|
 | `request` | yes | `ordered-fields` | `WorkbenchRewindRequest` | `WorkbenchRewindRequest` | — |
 | `previewDigest` | yes | `fixed[32]` | `Sha256Digest` | `Sha256Digest` | — |
-| `paths` | yes | `len+items` | `Vec<WorkbenchRewindPath>` | `readonly WorkbenchRewindPath[]` | `workbench.max-checkpoint-paths (64)`, `strictly-sorted-unique` |
-| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-checkpoint-text-bytes (512)` |
+| `paths` | yes | `len+items` | `Vec<WorkbenchRewindPath>` | `readonly WorkbenchRewindPath[]` | `strictly-sorted-unique` |
+| `exclusions` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
 | `conversationHistoryPreserved` | yes | `bool/u8` | `bool` | `boolean` | — |
 | `accountingPreserved` | yes | `bool/u8` | `bool` | `boolean` | — |
 
@@ -1725,7 +1725,7 @@ Rust type: `WorkbenchIntent`
 | Field | Required | Canonical wire | Rust | TypeScript | Bounds |
 |---|:---:|---|---|---|---|
 | `kind` | yes | `u16-be` | `WorkbenchIntent` | `"createCheckpoint"` | — |
-| `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `workbench.max-checkpoint-name-bytes (256)` |
+| `name` | yes | `len+utf8` | `WorkbenchCheckpointName` | `string` | `codec.max-string-bytes` |
 
 ### `WorkbenchApplyRewindIntent`
 
@@ -1748,9 +1748,9 @@ Rust type: `WorkbenchRestoreReceipt`
 | `query` | yes | `ordered-fields` | `WorkbenchQuery` | `WorkbenchQuery` | — |
 | `acceptedRevision` | yes | `u64-be` | `u64` | `UInt64` | `nonzero` |
 | `status` | yes | `u16-be` | `WorkbenchRestoreStatus` | `"applied" | "conflict" | "recoveryRequired"` | — |
-| `restored` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
-| `conflicts` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
-| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `workbench.max-checkpoint-paths (64)`, `workbench.max-restore-text-bytes (4096)` |
+| `restored` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
+| `conflicts` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
+| `externalEffects` | yes | `len+items` | `Vec<String>` | `readonly string[]` | `codec.max-string-bytes` |
 
 ### `WorkbenchCompactionRequest`
 

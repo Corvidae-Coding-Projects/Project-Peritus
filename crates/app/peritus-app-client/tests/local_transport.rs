@@ -38,12 +38,25 @@ async fn write_message(stream: &mut UnixStream, message: AppMessage) {
 }
 
 async fn handshake(stream: &mut UnixStream) {
+    handshake_with_checkpoint_manifests(stream, false).await;
+}
+
+async fn handshake_with_checkpoint_manifests(stream: &mut UnixStream, supported: bool) {
     let AppMessage::ClientHello(hello) = read_message(stream).await else {
         panic!("expected client negotiation");
     };
     let capabilities = ServerCapabilities::new(
         vec![CURRENT_PROTOCOL_RANGE],
-        Vec::new(),
+        if supported {
+            vec![
+                peritus_app_protocol::ProtocolFeatureName::well_known(
+                    WellKnownProtocolFeature::WorkbenchCheckpointManifests,
+                )
+                .unwrap(),
+            ]
+        } else {
+            Vec::new()
+        },
         AppProtocolLimits::PRODUCTION,
         "independent transport fixture".to_owned(),
     )
@@ -51,6 +64,80 @@ async fn handshake(stream: &mut UnixStream) {
     let session = hello.requested_session().unwrap_or_else(|| SessionId::new([9; 16]).unwrap());
     let answer = negotiate(&hello, &capabilities, session).unwrap();
     write_message(stream, AppMessage::ServerHello(answer)).await;
+}
+
+#[tokio::test]
+async fn complete_checkpoint_negotiation_preserves_the_same_connection_and_operation() {
+    use peritus_app_protocol::{
+        ControlOperationId, ConversationId, WorkbenchCheckpointName, WorkbenchCommand,
+        WorkbenchIntent, WorkbenchQuery,
+    };
+    for supported in [false, true] {
+        let (_directory, path, listener) = endpoint();
+        let command = WorkbenchCommand::new(
+            ControlOperationId::new([3; 16]).unwrap(),
+            WorkbenchQuery::new(
+                ConversationId::new([1; 16]).unwrap(),
+                peritus_types::WorkspaceId::new([2; 16]).unwrap(),
+            ),
+            1,
+            WorkbenchIntent::CreateCheckpoint(
+                WorkbenchCheckpointName::new("é".repeat(129)).unwrap(),
+            ),
+        );
+        let payload = AppRequestPayload::WorkbenchCommand(command);
+        let expected = if supported { payload.clone() } else { AppRequestPayload::DaemonStatus };
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.unwrap();
+            handshake_with_checkpoint_manifests(&mut stream, supported).await;
+            let AppMessage::Request(request) = read_message(&mut stream).await else {
+                panic!("expected the admitted request");
+            };
+            assert_eq!(request.payload(), &expected);
+            write_message(
+                &mut stream,
+                AppMessage::Response(AppResponseEnvelope::new(
+                    request.context(),
+                    request.request_id(),
+                    request.correlation_id(),
+                    AppResponsePayload::Acknowledged(OperationAcknowledgement::new(
+                        request.request_id(),
+                    )),
+                )),
+            )
+            .await;
+        });
+        let session = SessionId::new([7; 16]).unwrap();
+        let mut client =
+            Client::connect(path.as_os_str(), Some(session), DEADLINE, &[]).await.unwrap();
+        assert_eq!(
+            client.supports(WellKnownProtocolFeature::WorkbenchCheckpointManifests),
+            supported
+        );
+        let identity = RequestIdentity::generate().unwrap();
+        if supported {
+            assert_eq!(
+                client.request(identity, payload).await.unwrap().request_id(),
+                identity.request_id
+            );
+        } else {
+            let error = client.request(identity, payload).await.unwrap_err();
+            assert_eq!(error.kind(), ClientErrorKind::Protocol);
+            assert!(client.is_usable());
+            assert_eq!(client.context().session_id(), session);
+            assert_eq!(
+                client
+                    .request(identity, AppRequestPayload::DaemonStatus)
+                    .await
+                    .unwrap()
+                    .request_id(),
+                identity.request_id
+            );
+        }
+        assert!(client.is_usable());
+        assert_eq!(client.context().session_id(), session);
+        tokio::time::timeout(DEADLINE, server).await.unwrap().unwrap();
+    }
 }
 
 fn endpoint() -> (tempfile::TempDir, std::path::PathBuf, UnixListener) {

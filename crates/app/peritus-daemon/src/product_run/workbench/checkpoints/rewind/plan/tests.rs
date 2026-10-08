@@ -179,7 +179,11 @@ fn prepared_legacy_restore_recovers_the_same_identity_before_and_after_c1_apply(
                 std::fs::read(workspace.path().join("note.txt")).unwrap(),
                 if applied { b"saved".as_slice() } else { b"postchange".as_slice() }
             );
-            *service.inner.controls.lock().unwrap() = None;
+            {
+                let cancellation = peritus_journal::JournalCancellation::new();
+                let _permit = service.inner.controls.acquire(&cancellation).unwrap();
+                *service.inner.controls.owner.lock().unwrap() = None;
+            }
             service
                 .with_controls(true, |store| {
                     let record = store.load(conversation)?.unwrap();

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::{GateError, GateErrorKind, GateRecoveryAction};
 
 use super::plan::{
-    AffectedProject, GateCommandSpec, ProjectKind, directory_has_root_python_tests,
+    AffectedProject, GateCommandSpec, GateNetworkPolicy, ProjectKind, directory_has_root_python_tests,
     is_node_test_file,
 };
 
@@ -324,6 +324,7 @@ fn spec(
         arguments,
         current_dir: project.root().to_owned(),
         project: project.clone(),
+        network: GateNetworkPolicy::Denied,
     }
 }
 

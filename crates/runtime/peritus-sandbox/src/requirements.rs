@@ -43,14 +43,15 @@ impl EnvironmentRequirements {
     /// Validates and canonicalizes environment requirements.
     ///
     /// # Errors
-    /// Returns a limit error for more than 256 names in either category.
+    /// Returns canonical native-name requirements.
+    #[allow(
+        clippy::unnecessary_wraps,
+        reason = "preserves the public fallible constructor while legacy synthetic counts are removed"
+    )]
     pub fn new(
         mut inherited_names: Vec<EnvironmentName>,
         mut literal_names: Vec<EnvironmentName>,
     ) -> Result<Self, SandboxError> {
-        if inherited_names.len() > MAX_REQUIREMENTS || literal_names.len() > MAX_REQUIREMENTS {
-            return Err(crate::error::bound("too many environment requirements"));
-        }
         inherited_names.sort();
         inherited_names.dedup();
         literal_names.sort();

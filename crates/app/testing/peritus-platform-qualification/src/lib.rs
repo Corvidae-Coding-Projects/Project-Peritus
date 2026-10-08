@@ -61,6 +61,6 @@ pub use sandbox::{
     SandboxObservation,
 };
 pub use scenario::{ScenarioCategory, ScenarioId, ScenarioSpec};
-pub use service::{RestartPolicy, ServiceContract, ServiceLogContract, SupervisorKind};
+pub use service::{RestartPolicy, ServiceContract, ServiceLogContract, StopPolicy, SupervisorKind};
 pub use transport::{EndpointAddress, EndpointExpectation, StoreIdentity};
 pub use verdict::{NotReadyReason, QualificationReport, ReadinessVerdict, ReadyEvidence};

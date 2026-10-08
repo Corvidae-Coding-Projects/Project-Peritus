@@ -58,7 +58,7 @@ impl InheritedListenerProxy {
         let observations = Arc::new(Mutex::new(owner::ObservationLog::new(
             plan.options().bounds().observations(),
             plan.digest(),
-        )));
+        )?));
         let endpoint = Arc::new(Mutex::new(None));
         let config = owner::OwnerConfig {
             plan: Arc::new(plan),
@@ -106,17 +106,50 @@ impl InheritedListenerProxy {
         &self.token
     }
 
-    /// Returns a snapshot of retained normalized observations.
+    /// Returns a compatibility snapshot of retained normalized observations.
+    ///
+    /// Production consumers should use [`Self::observation_page`] so each transfer remains
+    /// physically bounded. A storage fault makes this compatibility snapshot empty and remains
+    /// latched for [`Self::shutdown`].
     #[must_use]
     pub fn observations(&self) -> Vec<NetworkObservation> {
-        self.observations.lock().unwrap_or_else(std::sync::PoisonError::into_inner).values.clone()
+        self.try_observations().unwrap_or_default()
+    }
+
+    /// Returns a fallible compatibility snapshot of the complete retained history.
+    ///
+    /// # Errors
+    /// Returns a latched storage or selected-ceiling failure.
+    pub fn try_observations(&self) -> Result<Vec<NetworkObservation>, NetworkError> {
+        self.observations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .values()
+    }
+
+    /// Returns one bounded physical page after `after_sequence`.
+    ///
+    /// Pass zero for the first page and then the returned `next_sequence`. The page size does not
+    /// limit retained history.
+    ///
+    /// # Errors
+    /// Rejects an invalid cursor or an unreadable committed record. A later append failure remains
+    /// latched for shutdown without hiding the already committed prefix.
+    pub fn observation_page(
+        &self,
+        after_sequence: u64,
+    ) -> Result<crate::NetworkObservationPage, NetworkError> {
+        self.observations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .page(after_sequence)
     }
 
     /// Cancels the listener and joins every accepted connection worker.
     ///
     /// # Errors
     ///
-    /// Returns a typed failure when the channel, owner, or worker teardown is incomplete.
+    /// Returns a typed channel, owner, storage, policy, or incomplete-worker failure.
     pub fn shutdown(mut self) -> Result<ProxyShutdown, NetworkError> {
         self.join_owner()
     }

@@ -1,6 +1,7 @@
-//! Bounded queue commands and revision-fenced paginated projections.
+//! Atomic queue commands and revision-fenced paginated projections.
 
 use crate::{AppErrorCode, AppProtocolError, WorkbenchInputId, WorkbenchQuery};
+use peritus_types::{ArtifactId, Sha256Digest};
 
 /// Maximum inputs in one queue page; full history is paginated, never silently truncated.
 pub const MAX_WORKBENCH_INPUT_PAGE: usize = 32;
@@ -131,17 +132,69 @@ impl WorkbenchNewInput {
     }
 }
 
+/// Exact complete-body handle for one source-backed input revision.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorkbenchInputSource {
+    artifact: ArtifactId,
+    digest: Sha256Digest,
+    bytes: u64,
+}
+impl WorkbenchInputSource {
+    /// Creates a complete immutable body binding.
+    ///
+    /// # Errors
+    /// Rejects an empty user message.
+    pub const fn new(
+        artifact: ArtifactId,
+        digest: Sha256Digest,
+        bytes: u64,
+    ) -> Result<Self, AppProtocolError> {
+        if bytes == 0 { Err(invalid()) } else { Ok(Self { artifact, digest, bytes }) }
+    }
+    /// Returns the completed scoped artifact identity.
+    #[must_use]
+    pub const fn artifact(self) -> ArtifactId {
+        self.artifact
+    }
+    /// Returns the full-body SHA-256 digest.
+    #[must_use]
+    pub const fn digest(self) -> Sha256Digest {
+        self.digest
+    }
+    /// Returns the exact full-body byte length.
+    #[must_use]
+    pub const fn bytes(self) -> u64 {
+        self.bytes
+    }
+}
+
 /// Closed user queue operations. Incorporation is deliberately absent: only the host can bind it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum WorkbenchQueueIntent {
     /// Accepts a new pending input with exact author-bound receipt.
     Enqueue(WorkbenchNewInput),
+    /// Accepts one complete source-backed input in a single queue revision.
+    EnqueueSource {
+        /// Stable new identity.
+        id: WorkbenchInputId,
+        /// Complete immutable body handle.
+        source: WorkbenchInputSource,
+        /// Required earlier inputs.
+        dependencies: WorkbenchInputOrder,
+    },
     /// Supersedes only an unincorporated revision.
     Edit {
         /// Exact inspected revision.
         selected: WorkbenchInputSelection,
         /// Replacement text.
         text: WorkbenchInputText,
+    },
+    /// Supersedes one pending revision with a complete source-backed body.
+    EditSource {
+        /// Exact inspected revision.
+        selected: WorkbenchInputSelection,
+        /// Complete immutable replacement body.
+        source: WorkbenchInputSource,
     },
     /// Adds a new correction without changing already-incorporated history.
     Correct {
@@ -152,6 +205,15 @@ pub enum WorkbenchQueueIntent {
         /// Corrective text.
         text: WorkbenchInputText,
     },
+    /// Adds one complete source-backed correction to incorporated history.
+    CorrectSource {
+        /// Original incorporated input.
+        original: WorkbenchInputSelection,
+        /// New correction identity.
+        id: WorkbenchInputId,
+        /// Complete immutable corrective body.
+        source: WorkbenchInputSource,
+    },
     /// Holds or releases an unincorporated revision.
     Hold {
         /// Exact inspected revision.
@@ -161,6 +223,13 @@ pub enum WorkbenchQueueIntent {
     },
     /// Withdraws an exact unincorporated input, retaining immutable history.
     Withdraw(WorkbenchInputSelection),
+    /// Moves one exact pending revision to a zero-based position in the resulting queue.
+    Move {
+        /// Exact inspected revision.
+        selected: WorkbenchInputSelection,
+        /// Zero-based position after removing the selected item from its current position.
+        position: u64,
+    },
     /// Reorders the complete pending set subject to dependency checks.
     Reorder(WorkbenchInputOrder),
 }
@@ -185,6 +254,7 @@ pub enum WorkbenchInputState {
 pub struct WorkbenchInputRow {
     selected: WorkbenchInputSelection,
     text: WorkbenchInputText,
+    source: Option<WorkbenchInputSource>,
     state: WorkbenchInputState,
     dependencies: WorkbenchInputOrder,
 }
@@ -200,7 +270,33 @@ impl WorkbenchInputRow {
         dependencies: WorkbenchInputOrder,
     ) -> Result<Self, AppProtocolError> {
         let value = WorkbenchNewInput::new(selected.id(), text, dependencies)?;
-        Ok(Self { selected, text: value.text, state, dependencies: value.dependencies })
+        Ok(Self {
+            selected,
+            text: value.text,
+            source: None,
+            state,
+            dependencies: value.dependencies,
+        })
+    }
+    /// Creates a public projection for a complete source-backed revision.
+    ///
+    /// # Errors
+    /// Rejects excess dependencies or direct self-dependency.
+    pub fn new_source(
+        selected: WorkbenchInputSelection,
+        summary: WorkbenchInputText,
+        source: WorkbenchInputSource,
+        state: WorkbenchInputState,
+        dependencies: WorkbenchInputOrder,
+    ) -> Result<Self, AppProtocolError> {
+        let value = WorkbenchNewInput::new(selected.id(), summary, dependencies)?;
+        Ok(Self {
+            selected,
+            text: value.text,
+            source: Some(source),
+            state,
+            dependencies: value.dependencies,
+        })
     }
     /// Returns the exact input revision.
     #[must_use]
@@ -211,6 +307,11 @@ impl WorkbenchInputRow {
     #[must_use]
     pub const fn text(&self) -> &WorkbenchInputText {
         &self.text
+    }
+    /// Returns the exact out-of-line body handle, when present.
+    #[must_use]
+    pub const fn source(&self) -> Option<WorkbenchInputSource> {
+        self.source
     }
     /// Returns observed lifecycle.
     #[must_use]

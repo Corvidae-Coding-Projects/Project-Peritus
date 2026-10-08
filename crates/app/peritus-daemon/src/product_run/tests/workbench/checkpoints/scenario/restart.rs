@@ -1,6 +1,30 @@
 //! Durable checkpoint and branch assertions after the live service closes.
 use super::*;
 
+pub(super) async fn assert_legacy_manifest_admission(
+    service: &ProductRunService,
+    command: &WorkbenchCommand,
+    folder: &std::path::Path,
+) {
+    if let WorkbenchIntent::CreateCheckpoint(name) = command.intent()
+        && name.requires_manifest_feature()
+    {
+        let AppResponsePayload::Error(error) =
+            service.workbench_command_with_checkpoint_features(actor(), command, true, false).await
+        else {
+            panic!("legacy peer must be rejected before publication");
+        };
+        assert_eq!(error.code(), peritus_app_protocol::AppErrorCode::UnsupportedSchema);
+        let predecessor = service
+            .with_controls(false, |store| store.load(DomainConversationId::new([2; 16])?))
+            .unwrap()
+            .unwrap();
+        assert_eq!(predecessor.revision(), command.expected_revision());
+        assert!(predecessor.checkpoints().is_empty());
+        assert_eq!(fs::read(folder.join("note.txt")).unwrap(), b"checkpoint baseline\n");
+    }
+}
+
 pub(super) async fn create_checkpoint_compatible(
     service: &ProductRunService,
     command: &WorkbenchCommand,

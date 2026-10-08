@@ -254,13 +254,11 @@ fn require_denied(store: &EvidenceStore, id: EvidenceId) -> Result<(), DaemonErr
 }
 
 fn artifact_config(config: &DaemonConfig) -> Result<StoreConfig, DaemonError> {
-    StoreConfig::new(
-        config.paths().artifact_root(),
-        config.limits().maximum_artifact_bytes(),
-        config.limits().artifact_quota_bytes(),
-    )
-    .and_then(|value| value.with_database_path(config.paths().database()))
-    .map_err(artifact_error)
+    config
+        .limits()
+        .artifact_store_config(config.paths().artifact_root())
+        .and_then(|value| value.with_database_path(config.paths().database()))
+        .map_err(artifact_error)
 }
 
 fn revision() -> Result<RevisionTuple, DaemonError> {

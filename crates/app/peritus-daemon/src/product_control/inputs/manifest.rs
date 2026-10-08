@@ -25,14 +25,29 @@ pub(in crate::product_control) struct InputSource {
     pub selection: InputSelection,
     pub digest: [u8; 32],
     pub bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<[u8; 16]>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub out_of_line: bool,
 }
 
 impl InputSource {
-    pub fn from_revision(input: &InputRevision) -> Self {
+    pub fn from_revision(input: &InputRevision, out_of_line: bool) -> Self {
+        if let Some(source) = input.source() {
+            return Self {
+                selection: input.selection(),
+                digest: source.digest(),
+                bytes: source.bytes(),
+                artifact: Some(source.artifact_bytes()),
+                out_of_line: true,
+            };
+        }
         Self {
             selection: input.selection(),
             digest: peritus_codec::sha256(input.text().as_bytes()).into_bytes(),
             bytes: input.text().len() as u64,
+            artifact: None,
+            out_of_line,
         }
     }
 }

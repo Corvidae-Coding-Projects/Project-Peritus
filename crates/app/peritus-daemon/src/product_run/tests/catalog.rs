@@ -113,7 +113,7 @@ async fn cache_scenario() {
         ),
     );
     assert!(service.validate_models(selected, &options.models).await.is_err());
-    service.shutdown(Duration::from_secs(1)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 #[test]
@@ -163,7 +163,7 @@ fn slow_discovery_does_not_block_cached_models_or_another_provider() {
         .await;
         slow.resume.notify_one();
         refresh.await.unwrap().unwrap();
-        service.shutdown(Duration::from_secs(1)).await;
+        service.shutdown().await.expect("shutdown product runs");
         let (cached, fresh, busy) = available.expect("independent model catalogs remain available");
         assert!(cached.cached());
         assert!(!fresh.cached());

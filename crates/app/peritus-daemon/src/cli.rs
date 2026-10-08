@@ -14,6 +14,7 @@ mod gate;
 mod journal_corruption;
 mod lease;
 mod patch;
+mod package;
 #[cfg(target_os = "linux")]
 mod process_watchdog;
 mod projection;
@@ -21,8 +22,10 @@ mod promotion;
 mod promotion_evidence_corruption;
 mod reboot;
 mod server;
+mod service;
 mod snapshot;
 mod snapshot_corruption;
+mod supervisor;
 mod usage;
 
 use std::{ffi::OsString, io::Write, process::ExitCode, time::Duration};
@@ -49,7 +52,7 @@ pub fn run_cli(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
     match command {
         CommandLine::Version => write_output(&format!("peritusd {}", env!("CARGO_PKG_VERSION")))
             .map_or_else(output_failure, |()| ExitCode::SUCCESS),
-        CommandLine::Serve(configuration) => server::run(configuration),
+        CommandLine::Service(command) => service::run(command),
         #[cfg(target_os = "linux")]
         CommandLine::ProcessWatchdog { root, start, group } => {
             process_watchdog::run(root, start, group)

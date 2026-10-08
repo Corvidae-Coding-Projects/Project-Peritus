@@ -4,17 +4,19 @@ mod model;
 
 pub use model::{Architecture, BubblewrapProbe, KernelVersion, NamespaceSupport, ProbeRequest};
 
-use crate::LinuxError;
+use crate::{LinuxError, LinuxErrorKind, LinuxOperation, LinuxRecovery};
 #[cfg(target_os = "linux")]
-use crate::{LinuxErrorKind, LinuxOperation, LinuxRecovery, ProxyRoute};
+use crate::ProxyRoute;
 use peritus_types::Sha256Digest;
+#[cfg(target_os = "linux")]
+use sha2::{Digest as _, Sha256};
 #[cfg(target_os = "linux")]
 use std::path::Path;
 #[cfg(target_os = "linux")]
 use std::{
     fs::{self, File},
     io::Read,
-    process::{Command, Stdio},
+    process::{Command, ExitStatus, Stdio},
 };
 
 /// Truthful bounded runtime capability result.
@@ -41,7 +43,18 @@ impl LinuxProbe {
     /// # Errors
     /// Returns `ProbeFailed` when host facts cannot be encoded safely.
     pub fn run(request: &ProbeRequest) -> Result<Self, LinuxError> {
-        platform_probe(request)
+        Self::run_cancellable(request, || true)
+    }
+
+    /// Executes the host probe while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns `ProbeFailed` when the caller cancels or host facts cannot be encoded safely.
+    pub fn run_cancellable(
+        request: &ProbeRequest,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<Self, LinuxError> {
+        platform_probe(request, &mut should_continue)
     }
     /// Returns the parsed kernel version.
     #[must_use]
@@ -118,7 +131,11 @@ impl LinuxProbe {
 }
 
 #[cfg(target_os = "linux")]
-fn platform_probe(request: &ProbeRequest) -> Result<LinuxProbe, LinuxError> {
+fn platform_probe(
+    request: &ProbeRequest,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<LinuxProbe, LinuxError> {
+    ensure_probe_continues(should_continue)?;
     let kernel = fs::read_to_string("/proc/sys/kernel/osrelease")
         .ok()
         .and_then(|release| KernelVersion::parse(release.trim()).ok());
@@ -127,7 +144,7 @@ fn platform_probe(request: &ProbeRequest) -> Result<LinuxProbe, LinuxError> {
         .ok()
         .and_then(|value| value.trim().parse::<u64>().ok())
         .is_some_and(|value| value > 0);
-    let bubblewrap = probe_bubblewrap(&request.bubblewrap_path);
+    let bubblewrap = probe_bubblewrap(&request.bubblewrap_path, should_continue)?;
     let namespaces = NamespaceSupport {
         user: user_enabled && Path::new("/proc/self/ns/user").exists(),
         mount: Path::new("/proc/self/ns/mnt").exists(),
@@ -137,14 +154,22 @@ fn platform_probe(request: &ProbeRequest) -> Result<LinuxProbe, LinuxError> {
         network: Path::new("/proc/self/ns/net").exists(),
         functional: bubblewrap.functional,
     };
-    let helper_digest = hash_file(&request.helper_path).ok();
-    let landlock_abi = probe_landlock(&request.helper_path);
-    let seccomp = probe_seccomp(&request.helper_path);
+    let helper_digest = hash_file(&request.helper_path, should_continue)?;
+    let landlock_abi = probe_landlock(&request.helper_path, should_continue)?;
+    let seccomp = probe_seccomp(&request.helper_path, should_continue)?;
     let cgroup = crate::CgroupSupport::probe(&request.cgroup_root);
     let pty = File::options().read(true).write(true).open("/dev/ptmx").is_ok();
-    let proxy_reachable = request.proxy_route.is_some_and(|route| {
-        probe_proxy_in_namespace(&request.bubblewrap_path, &request.helper_path, route)
-    });
+    let proxy_reachable = if let Some(route) = request.proxy_route {
+        probe_proxy_in_namespace(
+            &request.bubblewrap_path,
+            &request.helper_path,
+            route,
+            should_continue,
+        )?
+    } else {
+        false
+    };
+    ensure_probe_continues(should_continue)?;
     finish_probe(
         kernel,
         architecture,
@@ -160,7 +185,11 @@ fn platform_probe(request: &ProbeRequest) -> Result<LinuxProbe, LinuxError> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn platform_probe(request: &ProbeRequest) -> Result<LinuxProbe, LinuxError> {
+fn platform_probe(
+    request: &ProbeRequest,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<LinuxProbe, LinuxError> {
+    ensure_probe_continues(should_continue)?;
     finish_probe(
         None,
         Architecture::current(),
@@ -209,7 +238,10 @@ fn finish_probe(
         namespaces.functional,
         bubblewrap.functional,
         seccomp,
-        cgroup.delegated(),
+        cgroup.writable_containment(),
+        cgroup.controller_delegated("cpu"),
+        cgroup.controller_delegated("memory"),
+        cgroup.controller_delegated("pids"),
         pty,
         proxy_reachable,
     ] {
@@ -240,8 +272,11 @@ fn finish_probe(
 }
 
 #[cfg(target_os = "linux")]
-fn probe_bubblewrap(path: &Path) -> BubblewrapProbe {
-    let version = run_probe(path, ["--version"])
+fn probe_bubblewrap(
+    path: &Path,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<BubblewrapProbe, LinuxError> {
+    let version = run_probe(path, ["--version"], true, should_continue)?
         .filter(|output| output.status.success())
         .and_then(|output| bounded_output(&output.stdout));
     let functional = run_probe(
@@ -265,35 +300,51 @@ fn probe_bubblewrap(path: &Path) -> BubblewrapProbe {
             "--",
             "/bin/true",
         ],
-    )
+        false,
+        should_continue,
+    )?
     .is_some_and(|output| output.status.success());
-    BubblewrapProbe {
+    Ok(BubblewrapProbe {
         path: path.to_path_buf(),
         version,
-        executable_digest: hash_file(path).ok(),
+        executable_digest: hash_file(path, should_continue)?,
         functional,
-    }
+    })
 }
 
 #[cfg(target_os = "linux")]
-fn probe_landlock(helper: &Path) -> Option<u8> {
-    let output = run_probe(helper, ["--probe-landlock"])?;
+fn probe_landlock(
+    helper: &Path,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<Option<u8>, LinuxError> {
+    let Some(output) = run_probe(helper, ["--probe-landlock"], true, should_continue)? else {
+        return Ok(None);
+    };
     if !output.status.success() {
-        return None;
+        return Ok(None);
     }
-    core::str::from_utf8(&output.stdout).ok()?.trim().parse().ok()
+    Ok(core::str::from_utf8(&output.stdout).ok().and_then(|value| value.trim().parse().ok()))
 }
 
 #[cfg(target_os = "linux")]
-fn probe_seccomp(helper: &Path) -> bool {
-    run_probe(helper, ["--probe-seccomp"]).is_some_and(|output| output.status.success())
+fn probe_seccomp(
+    helper: &Path,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<bool, LinuxError> {
+    Ok(run_probe(helper, ["--probe-seccomp"], false, should_continue)?
+        .is_some_and(|output| output.status.success()))
 }
 
 #[cfg(target_os = "linux")]
-fn probe_proxy_in_namespace(bwrap: &Path, helper: &Path, route: ProxyRoute) -> bool {
+fn probe_proxy_in_namespace(
+    bwrap: &Path,
+    helper: &Path,
+    route: ProxyRoute,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<bool, LinuxError> {
     let endpoint = route.endpoint().to_string();
     let helper = helper.to_string_lossy().into_owned();
-    run_probe(
+    Ok(run_probe(
         bwrap,
         [
             "--die-with-parent",
@@ -307,19 +358,78 @@ fn probe_proxy_in_namespace(bwrap: &Path, helper: &Path, route: ProxyRoute) -> b
             "--probe-proxy",
             endpoint.as_str(),
         ],
-    )
-    .is_some_and(|output| output.status.success())
+        false,
+        should_continue,
+    )?
+    .is_some_and(|output| output.status.success()))
 }
 
 #[cfg(target_os = "linux")]
-fn run_probe<const N: usize>(program: &Path, args: [&str; N]) -> Option<std::process::Output> {
-    Command::new(program)
+struct ProbeOutput {
+    status: ExitStatus,
+    stdout: Vec<u8>,
+}
+
+#[cfg(target_os = "linux")]
+fn run_probe<const N: usize>(
+    program: &Path,
+    args: [&str; N],
+    capture_stdout: bool,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<Option<ProbeOutput>, LinuxError> {
+    ensure_probe_continues(should_continue)?;
+    let mut command = Command::new(program);
+    command
         .args(args)
         .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .ok()
+        .stdout(if capture_stdout { Stdio::piped() } else { Stdio::null() })
+        .stderr(Stdio::null());
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(_) => return Ok(None),
+    };
+    let output = child.stdout.take().map(|mut stdout| {
+        std::thread::spawn(move || {
+            let mut retained = Vec::with_capacity(257);
+            let mut buffer = [0_u8; 8 * 1_024];
+            loop {
+                let count = stdout.read(&mut buffer)?;
+                if count == 0 {
+                    return Ok::<_, std::io::Error>(retained);
+                }
+                let available = 257_usize.saturating_sub(retained.len()).min(count);
+                retained.extend_from_slice(&buffer[..available]);
+            }
+        })
+    });
+    loop {
+        if !should_continue() {
+            let _ = child.kill();
+            let _ = child.wait();
+            if let Some(output) = output {
+                let _ = output.join();
+            }
+            return Err(probe_cancelled());
+        }
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                let stdout = match output {
+                    Some(output) => output.join().ok().and_then(Result::ok).unwrap_or_default(),
+                    None => Vec::new(),
+                };
+                return Ok(Some(ProbeOutput { status, stdout }));
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(2)),
+            Err(_) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                if let Some(output) = output {
+                    let _ = output.join();
+                }
+                return Ok(None);
+            }
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -332,22 +442,39 @@ fn bounded_output(bytes: &[u8]) -> Option<String> {
 }
 
 #[cfg(target_os = "linux")]
-fn hash_file(path: &Path) -> Result<Sha256Digest, LinuxError> {
-    let mut file = File::open(path)
-        .map_err(|error| LinuxError::io(LinuxOperation::Probe, "open executable", &error))?;
-    let metadata = file
-        .metadata()
-        .map_err(|error| LinuxError::io(LinuxOperation::Probe, "inspect executable", &error))?;
-    if metadata.len() > 128 * 1024 * 1024 {
-        return Err(probe_error("executable exceeds identity hashing bound"));
+fn hash_file(
+    path: &Path,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<Option<Sha256Digest>, LinuxError> {
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(_) => return Ok(None),
+    };
+    let mut digest = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1_024];
+    loop {
+        ensure_probe_continues(should_continue)?;
+        let count = match file.read(&mut buffer) {
+            Ok(count) => count,
+            Err(_) => return Ok(None),
+        };
+        if count == 0 {
+            return Ok(Some(Sha256Digest::new(digest.finalize().into())));
+        }
+        digest.update(&buffer[..count]);
     }
-    let mut bytes = Vec::with_capacity(usize::try_from(metadata.len()).unwrap_or(0));
-    file.read_to_end(&mut bytes)
-        .map_err(|error| LinuxError::io(LinuxOperation::Probe, "hash executable", &error))?;
-    Ok(peritus_codec::sha256(&bytes))
 }
 
-#[cfg(target_os = "linux")]
+fn ensure_probe_continues(
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<(), LinuxError> {
+    if should_continue() { Ok(()) } else { Err(probe_cancelled()) }
+}
+
+fn probe_cancelled() -> LinuxError {
+    probe_error("native capability probe was cancelled by its caller")
+}
+
 fn probe_error(detail: &'static str) -> LinuxError {
     LinuxError::new(
         LinuxErrorKind::ProbeFailed,

@@ -1,22 +1,17 @@
 //! Git operations use argument vectors, exact pathspecs, and an explicit repository binding.
 
 use crate::{
-    error::{Result, problem, uncertain},
+    error::{Result, problem},
     files,
-    state::Project,
+    state::{App, OperationOwner, Project},
 };
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
 mod workflows;
+pub(crate) mod effects;
 
 async fn run(directory: &Path, args: &[String]) -> Result<String> {
-    execute(directory, args, false).await
-}
-async fn run_effect(directory: &Path, args: &[String]) -> Result<String> {
-    execute(directory, args, true).await
-}
-async fn execute(directory: &Path, args: &[String], effect: bool) -> Result<String> {
     let mut command = tokio::process::Command::new("git");
     command
         .current_dir(directory)
@@ -26,23 +21,17 @@ async fn execute(directory: &Path, args: &[String], effect: bool) -> Result<Stri
         .kill_on_drop(true);
     let output = command.output().await?;
     if !output.status.success() {
-        let detail = String::from_utf8_lossy(&output.stderr);
-        // A remote can accept a push before its acknowledgement is lost. Fetch and
-        // pull may also update refs before reporting a later failure.
-        if effect
-            && args.first().is_some_and(|arg| ["fetch", "pull", "push"].contains(&arg.as_str()))
-        {
-            return Err(uncertain(format!(
-                "{detail}\nGit did not confirm completion. Inspect local and remote state before another mutation."
-            )));
-        }
-        return Err(problem(detail));
+        return Err(problem(String::from_utf8_lossy(&output.stderr)));
     }
-    Ok(format!(
-        "{}{}",
-        String::from_utf8_lossy(&output.stdout),
-        if effect { String::from_utf8_lossy(&output.stderr) } else { "".into() }
-    ))
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+async fn run_effect(
+    app: &App,
+    owner: &OperationOwner,
+    directory: &Path,
+    args: &[String],
+) -> Result<Value> {
+    effects::execute(app, owner, directory, args).await
 }
 async fn repository(project: &Project) -> Result<PathBuf> {
     let selected = files::resolve(&project.root, &project.repository.to_string_lossy())?;
@@ -54,13 +43,15 @@ async fn repository(project: &Project) -> Result<PathBuf> {
     }
     Ok(root)
 }
-pub async fn status(project: &Project) -> Result<Value> {
+pub async fn status(app: &App, project: &Project) -> Result<Value> {
     let root = repository(project).await?;
-    let output = run(
-        &root,
-        &["status".into(), "--short".into(), "-z".into(), "--untracked-files=all".into()],
-    )
-    .await?;
+    let status_args = ["status".into(), "--short".into(), "-z".into(), "--untracked-files=all".into()];
+    let branch_args = ["branch".into(), "--show-current".into()];
+    let (output, branch, inventory) = tokio::try_join!(
+        run(&root, &status_args),
+        run(&root, &branch_args),
+        workflows::inventory(app, &root, None, None),
+    )?;
     let mut fields = output.split('\0').filter(|s| !s.is_empty());
     let mut changes = Vec::new();
     while let Some(entry) = fields.next() {
@@ -72,13 +63,28 @@ pub async fn status(project: &Project) -> Result<Value> {
         let from = if code.contains('R') || code.contains('C') { fields.next() } else { None };
         changes.push(json!({"code":code,"path":path,"from":from}));
     }
-    let branch = run(&root, &["branch".into(), "--show-current".into()]).await?;
-    let remotes = run(&root, &["remote".into(), "-v".into()]).await?;
-    let (branches, remote_details) = workflows::inventory(&root).await?;
-    Ok(json!({"root":root,"branch":branch.trim(),"changes":changes,"remotes":remotes,
-        "branches":branches,"remoteDetails":remote_details}))
+    Ok(json!({"root":root,"branch":branch.trim(),"changes":changes,"remotes":inventory.summary,
+        "branches":inventory.branches,"remoteDetails":inventory.remotes,
+        "inventoryCursor":inventory.cursor,"inventorySnapshot":inventory.snapshot}))
+}
+pub async fn inventory(
+    app: &App,
+    project: &Project,
+    cursor: Option<&str>,
+    snapshot: Option<&str>,
+) -> Result<Value> {
+    let root = repository(project).await?;
+    let page = workflows::inventory(app, &root, cursor, snapshot).await?;
+    Ok(json!({
+        "branches":page.branches,
+        "remoteDetails":page.remotes,
+        "cursor":page.cursor,
+        "snapshot":page.snapshot
+    }))
 }
 pub async fn action(
+    app: &App,
+    owner: &OperationOwner,
     project: &Project,
     kind: &str,
     paths: Vec<String>,
@@ -90,7 +96,7 @@ pub async fn action(
         || kind.starts_with("remote-")
         || ["fetch", "pull", "push"].contains(&kind)
     {
-        return Ok(json!({"output":workflows::action(&root, kind, input).await?}));
+        return workflows::action(app, owner, &root, kind, input).await;
     }
     let mut args: Vec<String> = match kind {
         "add" => vec!["--literal-pathspecs".into(), "add".into()],
@@ -122,8 +128,29 @@ pub async fn action(
             }
         }
     }
-    Ok(json!({"output":run_effect(&root, &args).await?}))
+    run_effect(app, owner, &root, &args).await
 }
+
+pub async fn output(
+    app: &App,
+    operation: &str,
+    stream: &str,
+    offset: u64,
+) -> Result<Value> {
+    let record = app
+        .operation(operation)?
+        .ok_or_else(|| problem("The original Git operation is not in this workspace ledger"))?;
+    if record.input["command"] != "git" {
+        return Err(problem("The selected operation does not own Git output"));
+    }
+    effects::output_page(app, operation, record.prepared.as_ref(), stream, offset).await
+}
+
+pub(crate) use effects::{
+    cancel, command_argument, owner_argument, recover, run_command, run_owner, run_watchdog,
+    watchdog_argument,
+};
+pub(crate) use workflows::{inventory_owner_argument, run_inventory_owner};
 fn ignore_pattern(relative: &Path, directory: bool) -> String {
     let text = relative.to_string_lossy().replace('\\', "/");
     let mut escaped = String::from("/");
@@ -177,14 +204,6 @@ pub async fn ignore(project: &Project, path: &str, apply: bool) -> Result<Value>
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[tokio::test]
-    async fn network_effect_errors_are_not_replayed_as_known_failures() {
-        let directory = tempfile::tempdir().unwrap();
-        let error = run_effect(directory.path(), &["push".into()]).await.unwrap_err();
-        assert!(error.1);
-        let query = run(directory.path(), &["status".into()]).await.unwrap_err();
-        assert!(!query.1);
-    }
     #[test]
     fn ignores_literal_names_not_patterns() {
         assert_eq!(ignore_pattern(Path::new("a[1]*.txt"), false), "/a\\[1\\]\\*.txt");

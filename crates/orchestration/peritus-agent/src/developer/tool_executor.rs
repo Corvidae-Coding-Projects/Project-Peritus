@@ -11,6 +11,18 @@ pub type DeveloperToolExecution<'a> = std::pin::Pin<
 
 /// Executes already parsed provider tool calls against one explicitly supplied workspace.
 pub trait DeveloperToolExecutor: Send {
+    /// Supplies the actual receiving provider profile before a model/tool boundary.
+    /// Paged executors can fit an encoded observation without losing its continuation cursor.
+    ///
+    /// # Errors
+    /// Returns an executor preparation failure before provider admission or effects.
+    fn observe_provider_profile(
+        &mut self,
+        _profile: &peritus_model_protocol::ProviderProfile,
+    ) -> Result<(), DeveloperLoopError> {
+        Ok(())
+    }
+
     /// Observes the exact model-visible messages after context assembly and protocol validation.
     ///
     /// This runs for each developer request, including retries, without changing its messages.

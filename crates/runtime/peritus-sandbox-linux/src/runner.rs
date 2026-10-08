@@ -6,6 +6,7 @@ use crate::{
 };
 use peritus_process::CommandSpec;
 use peritus_types::Sha256Digest;
+use std::ffi::OsString;
 use std::path::Path;
 
 /// Protected manifest bytes supplied through inherited standard input by C2.
@@ -50,48 +51,48 @@ impl LinuxLaunchDescription {
     ) -> Result<Self, LinuxError> {
         let bytes = manifest.encode()?;
         let digest = peritus_codec::sha256(&bytes);
-        let mut arguments = vec![
-            "--die-with-parent".to_owned(),
-            "--new-session".to_owned(),
-            "--unshare-user".to_owned(),
-            "--unshare-pid".to_owned(),
-            "--unshare-ipc".to_owned(),
-            "--unshare-uts".to_owned(),
-            "--unshare-net".to_owned(),
-            "--cap-drop".to_owned(),
-            "ALL".to_owned(),
-            "--hostname".to_owned(),
-            "peritus".to_owned(),
+        let mut arguments: Vec<OsString> = vec![
+            "--die-with-parent".into(),
+            "--new-session".into(),
+            "--unshare-user".into(),
+            "--unshare-pid".into(),
+            "--unshare-ipc".into(),
+            "--unshare-uts".into(),
+            "--unshare-net".into(),
+            "--cap-drop".into(),
+            "ALL".into(),
+            "--hostname".into(),
+            "peritus".into(),
         ];
         for action in mounts.actions() {
             append_mount(&mut arguments, action);
         }
         for binding in manifest.protected_payloads() {
             if let peritus_sandbox::SecretDelivery::File(path) = binding.requirement().delivery() {
-                arguments.push("--perms".to_owned());
-                arguments.push("0400".to_owned());
-                arguments.push("--ro-bind-data".to_owned());
-                arguments.push(binding.handle().descriptor().to_string());
-                arguments.push(path.as_str().to_owned());
+                arguments.push("--perms".into());
+                arguments.push("0400".into());
+                arguments.push("--ro-bind-data".into());
+                arguments.push(binding.handle().descriptor().to_string().into());
+                arguments.push(path.as_str().into());
             }
         }
         push_pair(&mut arguments, "--bind", manifest.cgroup_leaf(), manifest.cgroup_leaf());
-        arguments.push("--chdir".to_owned());
-        arguments.push(manifest.working_directory().to_string_lossy().into_owned());
-        arguments.push("--".to_owned());
-        arguments.push(helper.to_string_lossy().into_owned());
-        arguments.push("--run".to_owned());
-        arguments.push("--manifest-digest".to_owned());
-        arguments.push(crate::canonical::digest_hex(digest));
-        arguments.push("--preparation-digest".to_owned());
-        arguments.push(crate::canonical::digest_hex(manifest.preparation_digest()));
-        let command = CommandSpec::new(bubblewrap.to_string_lossy().into_owned(), arguments)
+        arguments.push("--chdir".into());
+        arguments.push(manifest.working_directory().as_os_str().to_owned());
+        arguments.push("--".into());
+        arguments.push(helper.as_os_str().to_owned());
+        arguments.push("--run".into());
+        arguments.push("--manifest-digest".into());
+        arguments.push(crate::canonical::digest_hex(digest).into());
+        arguments.push("--preparation-digest".into());
+        arguments.push(crate::canonical::digest_hex(manifest.preparation_digest()).into());
+        let command = CommandSpec::new(bubblewrap.as_os_str().to_owned(), arguments)
             .map_err(|_| {
                 LinuxError::new(
                     LinuxErrorKind::Helper,
                     LinuxOperation::Prepare,
                     LinuxRecovery::CorrectRequest,
-                    "bubblewrap command exceeds the process gateway bounds",
+                    "bubblewrap command is not a valid literal native command",
                 )
             })?;
         Ok(Self {
@@ -122,7 +123,7 @@ impl LinuxLaunchDescription {
     }
 }
 
-fn append_mount(arguments: &mut Vec<String>, action: &MountAction) {
+fn append_mount(arguments: &mut Vec<OsString>, action: &MountAction) {
     match action {
         MountAction::ReadOnlyBind { source, target } => {
             push_pair(arguments, "--ro-bind", source, target);
@@ -143,13 +144,13 @@ fn append_mount(arguments: &mut Vec<String>, action: &MountAction) {
     }
 }
 
-fn push_pair(arguments: &mut Vec<String>, operation: &str, source: &Path, target: &Path) {
-    arguments.push(operation.to_owned());
-    arguments.push(source.to_string_lossy().into_owned());
-    arguments.push(target.to_string_lossy().into_owned());
+fn push_pair(arguments: &mut Vec<OsString>, operation: &str, source: &Path, target: &Path) {
+    arguments.push(operation.into());
+    arguments.push(source.as_os_str().to_owned());
+    arguments.push(target.as_os_str().to_owned());
 }
 
-fn push_single(arguments: &mut Vec<String>, operation: &str, target: &Path) {
-    arguments.push(operation.to_owned());
-    arguments.push(target.to_string_lossy().into_owned());
+fn push_single(arguments: &mut Vec<OsString>, operation: &str, target: &Path) {
+    arguments.push(operation.into());
+    arguments.push(target.as_os_str().to_owned());
 }

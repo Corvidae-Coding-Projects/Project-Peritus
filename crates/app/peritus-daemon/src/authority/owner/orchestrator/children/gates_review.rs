@@ -4,7 +4,7 @@ use peritus_gates::{GateCommand, GateCommandKind, GateError, GateRecoveryAction}
 use peritus_journal::SqliteJournal;
 use peritus_orchestrator::{ChildHead, DirectiveDestination, DirectiveKind, OrchestratorState};
 use peritus_review::{
-    ReviewCommand, ReviewCommandKind, ReviewError, ReviewRecoveryAction, ReviewTransition,
+    ReviewCommand, ReviewCommandKind, ReviewError, ReviewRecoveryAction,
 };
 use peritus_types::RunId;
 
@@ -74,9 +74,7 @@ fn admit_review_lifecycle(
     head: ChildHead,
 ) -> Result<(), DaemonError> {
     let run_id = orchestrator.binding().run_id();
-    let replay = peritus_review::load_review_replay(journal, run_id)
-        .map_err(|error| review_error("load D2 lifecycle child", error))?;
-    let predecessor = review_predecessor(replay.events(), run_id, claim, head)?;
+    let predecessor = review_predecessor(journal, run_id, claim, head)?;
     let (command_id, event_id) = child_ids(
         REVIEW_COMMAND_DOMAIN,
         REVIEW_EVENT_DOMAIN,
@@ -131,19 +129,25 @@ fn gate_predecessor(
 }
 
 fn review_predecessor(
-    events: &[peritus_review::ReviewEvent],
+    journal: &SqliteJournal,
     run_id: RunId,
     claim: &OrchestratorDirectiveClaim,
     head: ChildHead,
 ) -> Result<ChildPredecessor, DaemonError> {
-    let head_event = exact_review_head(events, run_id, claim, head)?;
+    let head_event = peritus_review::load_review_event(journal, run_id, head.sequence().get())
+        .map_err(|error| review_error("load exact D2 lifecycle head", error))?
+        .ok_or_else(|| child_mismatch("D2 child head is absent"))?;
+    let head_event = exact_review_head(&head_event, run_id, claim, head)?;
     if claim.directive().kind() == DirectiveKind::PauseChildren {
         return Ok(predecessor_from_review(head_event));
     }
-    let pause_index = usize::try_from(head.sequence().get())
-        .map_err(|_| child_mismatch("D2 child sequence cannot address retained history"))?;
-    let pause = events
-        .get(pause_index)
+    let pause_sequence = head
+        .sequence()
+        .get()
+        .checked_add(1)
+        .ok_or_else(|| child_mismatch("D2 child sequence overflowed"))?;
+    let pause = peritus_review::load_review_event(journal, run_id, pause_sequence)
+        .map_err(|error| review_error("load D2 durable pause successor", error))?
         .ok_or_else(|| child_mismatch("D2 resume has no durable pause successor"))?;
     let exact = pause.run_id() == run_id
         && pause.sequence().get() == head.sequence().get().saturating_add(1)
@@ -154,7 +158,7 @@ fn review_predecessor(
     if !exact {
         return Err(child_mismatch("D2 resume predecessor differs from the reconciled pause"));
     }
-    Ok(predecessor_from_review(pause))
+    Ok(predecessor_from_review(&pause))
 }
 
 fn exact_gate_head<'a>(
@@ -177,15 +181,13 @@ fn exact_gate_head<'a>(
 }
 
 fn exact_review_head<'a>(
-    events: &'a [peritus_review::ReviewEvent],
+    event: &'a peritus_review::ReviewEvent,
     run_id: RunId,
     claim: &OrchestratorDirectiveClaim,
     head: ChildHead,
 ) -> Result<&'a peritus_review::ReviewEvent, DaemonError> {
-    let index = usize::try_from(head.sequence().get().saturating_sub(1))
-        .map_err(|_| child_mismatch("D2 child sequence cannot address retained history"))?;
-    let event = events.get(index).ok_or_else(|| child_mismatch("D2 child head is absent"))?;
-    if event.run_id() != run_id
+    if event.sequence() != head.sequence()
+        || event.run_id() != run_id
         || event.id() != head.last_event_id()
         || event.successor_state_digest() != head.state_digest()
         || event.revision() != claim.directive().revision()
@@ -215,45 +217,9 @@ pub(in crate::authority::owner::orchestrator) fn commit_review_lifecycle(
     journal: &mut SqliteJournal,
     command: &ReviewCommand,
 ) -> Result<(), DaemonError> {
-    let replay = peritus_review::load_review_replay(journal, command.run_id())
-        .map_err(|error| review_error("reload D2 lifecycle child", error))?;
-    let current = replay
-        .rebuild()
-        .map_err(|error| review_error("rebuild D2 lifecycle child", error))?
-        .ok_or_else(|| child_mismatch("D2 lifecycle command names an absent run"))?;
-    let transition = if command.expected_sequence() == current.sequence().get()
-        && command.expected_previous_event() == Some(current.last_event_id())
-        && command.prior_state_digest() == current.state_digest()
-    {
-        peritus_review::decide(&current, command)
-            .map_err(|error| review_error("reduce D2 lifecycle command", error))?
-    } else {
-        exact_review_retry(replay.events(), &current, command)?
-    };
-    peritus_review::commit_review_transition(journal, command, &transition)
-        .map_err(|error| review_error("commit D2 lifecycle command", error))?;
+    peritus_review::commit_review_command(journal, command)
+        .map_err(|error| review_error("admit D2 lifecycle command", error))?;
     Ok(())
-}
-
-fn exact_review_retry(
-    events: &[peritus_review::ReviewEvent],
-    current: &peritus_review::ReviewRunState,
-    command: &ReviewCommand,
-) -> Result<ReviewTransition, DaemonError> {
-    let (last, prefix) = events
-        .split_last()
-        .ok_or_else(|| child_mismatch("D2 lifecycle retry has no durable event"))?;
-    if last.id() != command.event_id() || last.command_id() != command.command_id() {
-        return Err(child_mismatch("D2 lifecycle command fence is stale"));
-    }
-    let predecessor = peritus_review::replay(prefix)
-        .map_err(|error| review_error("replay D2 lifecycle predecessor", error))?;
-    let transition = peritus_review::decide(&predecessor, command)
-        .map_err(|error| review_error("reconstruct D2 lifecycle retry", error))?;
-    if transition.event() != last || transition.state() != current {
-        return Err(child_mismatch("D2 lifecycle retry differs from durable state"));
-    }
-    Ok(transition)
 }
 
 fn gate_error(operation: &'static str, error: GateError) -> DaemonError {

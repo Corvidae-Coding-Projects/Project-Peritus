@@ -11,7 +11,7 @@
   <div class="git-workflow-body">
     <label for="git-remote">Remote</label><select id="git-remote" bind:value={selected} onchange={()=>{url='';rename='';pushUrl=false;}}><option value="">Add a remote…</option>{#each ui.git?.remoteDetails??[] as item(item.name)}<option value={item.name}>{item.name}</option>{/each}</select>
     {#if remote}
-      <div class="remote-address"><span>Fetch</span><code>{remote.fetch.join('\n')}</code><span>Push</span><code>{remote.push.join('\n')}</code></div>
+      <div class="remote-address"><span>Fetch</span><code>{remote.fetch.join('\n')}</code><span>Push</span><code>{(remote.push.length?remote.push:remote.fetch).join('\n')}</code></div>
       <button class="key small" disabled={ui.gitBusy} onclick={()=>void attempt(()=>run('fetch',{remote:selected}))}>Fetch & prune {selected}</button>
       <button class="key small" disabled={ui.gitBusy||!ui.git?.branch} onclick={()=>void attempt(()=>run('push',{remote:selected,branch:ui.git?.branch,setUpstream:true}))}>Publish current branch</button>
       <button class="key small" disabled={ui.gitBusy||!ui.git?.branch} onclick={()=>void attempt(()=>run('pull',{remote:selected,branch:ui.git?.branch}))}>Pull current branch</button>

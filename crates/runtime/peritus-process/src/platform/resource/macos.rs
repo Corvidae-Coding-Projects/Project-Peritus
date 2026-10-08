@@ -11,28 +11,46 @@ use super::sample_error;
 pub(crate) fn process_group_count(
     identity: crate::ProcessTreeIdentity,
 ) -> Result<Option<u64>, ProcessError> {
-    use std::{ffi::c_void, mem::size_of_val};
+    use std::{ffi::c_void, mem::size_of};
 
-    const MAX_GROUP_PROCESSES: usize = 16_384;
+    const INITIAL_GROUP_PROCESSES: usize = 256;
 
     let group = identity
         .process_group()
         .and_then(|value| i32::try_from(value).ok())
         .ok_or_else(|| sample_error("process-group identity is unavailable"))?;
-    let mut pids = vec![0_i32; MAX_GROUP_PROCESSES];
-    let buffer_bytes = i32::try_from(size_of_val(pids.as_slice()))
-        .map_err(|_| sample_error("process-group buffer exceeds platform capacity"))?;
-    let count = observe_group(pids.len(), || {
-        // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests process IDs for the
-        // exact C2-owned process group and transfers no ownership.
-        unsafe { libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes) }
-    })?;
-    let Some(count) = count else { return Ok(None) };
-    pids.truncate(count);
-    pids.retain(|pid| *pid > 0);
-    pids.sort_unstable();
-    pids.dedup();
-    Ok(Some(u64::try_from(pids.len()).unwrap_or(u64::MAX)))
+    let platform_capacity = usize::try_from(i32::MAX)
+        .map_err(|_| sample_error("process-group buffer capacity is not representable"))?
+        / size_of::<i32>();
+    let mut pids = vec![0_i32; INITIAL_GROUP_PROCESSES];
+    loop {
+        let buffer_bytes = pids.len().checked_mul(size_of::<i32>())
+            .and_then(|bytes| i32::try_from(bytes).ok())
+            .ok_or_else(|| sample_error("process-group buffer exceeds platform capacity"))?;
+        let count = observe_group(pids.len(), || {
+            // SAFETY: `pids` is writable for `buffer_bytes`; the selector requests process IDs for
+            // the exact C2-owned group and transfers no ownership. A full result is retried with
+            // a larger physical buffer; it is not an execution or admission failure.
+            unsafe { libc::proc_listpgrppids(group, pids.as_mut_ptr().cast::<c_void>(), buffer_bytes) }
+        })?;
+        let Some(count) = count else { return Ok(None) };
+        if count < pids.len() {
+            pids.truncate(count);
+            pids.retain(|pid| *pid > 0);
+            pids.sort_unstable();
+            pids.dedup();
+            return Ok(Some(u64::try_from(pids.len()).unwrap_or(u64::MAX)));
+        }
+        let next_capacity = pids.len().saturating_mul(2).min(platform_capacity);
+        if next_capacity <= pids.len()
+            || pids.try_reserve_exact(next_capacity - pids.len()).is_err()
+        {
+            // Actual allocation or ABI exhaustion means an unavailable optional measurement,
+            // never a sampled partial count or proof that the owned process should be stopped.
+            return Ok(None);
+        }
+        pids.resize(next_capacity, 0);
+    }
 }
 
 fn observe_group(
@@ -51,8 +69,8 @@ fn observe_group(
     }
     let count = usize::try_from(count)
         .map_err(|_| sample_error("process-group count exceeds platform capacity"))?;
-    if count >= capacity {
-        return Err(sample_error("process-group observation exceeded its bounded buffer"));
+    if count > capacity {
+        return Err(sample_error("process-group observation exceeded its supplied allocation"));
     }
     Ok(Some(count))
 }

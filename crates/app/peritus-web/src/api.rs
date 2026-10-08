@@ -1,17 +1,22 @@
 //! Authenticated same-origin HTTP routes; all mutation sources share one dispatcher.
 
 mod file_response;
+mod text_response;
+mod terminal_response;
+mod mutation;
+mod recovery;
 
 use crate::{
+    body,
     config::Preferences,
     daemon,
-    error::{Result, problem},
+    error::{Result, problem, uncertain},
     files, git, operations,
-    state::{App, Session, id, save},
+    state::{App, OperationOwner, Publication, Session, id, save},
 };
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, Path, Query, Request, State},
+    extract::{DefaultBodyLimit, Query, Request, State},
     http::{HeaderValue, StatusCode, header},
     middleware::{self, Next},
     response::{IntoResponse, Response},
@@ -27,15 +32,22 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/query", get(query))
         .route("/api/action", post(action))
-        .route("/api/operation-review", post(operation_review))
-        .route("/api/file", put(files::edit::save).layer(DefaultBodyLimit::max(files::TEXT_LIMIT)))
+        .route("/api/operation-review", post(recovery::review))
+        .route("/api/operation-retry", post(recovery::retry))
+        .route("/api/operation-cancel", post(recovery::cancel))
+        .route("/api/file", put(files::edit::save))
+        .route("/api/text", get(text_response::text))
         .route("/api/raw", get(file_response::raw))
-        .route("/api/terminal/{id}", get(terminal_read).post(terminal_write))
+        .route("/api/terminal/{id}", get(terminal_response::terminal_read))
+        .route("/api/terminal/{id}/input", post(terminal_response::terminal_input))
+        .route("/api/terminal/{id}/input-review", post(terminal_response::terminal_input_review))
+        .route("/api/terminal/{id}/interrupt", post(terminal_response::terminal_interrupt))
+        .route("/api/terminal/{id}/resize", post(terminal_response::terminal_resize))
         .fallback_service(
             ServeDir::new(&app.options.assets)
                 .not_found_service(ServeFile::new(app.options.assets.join("index.html"))),
         )
-        .layer(DefaultBodyLimit::max(4 * 1024 * 1024))
+        .layer(DefaultBodyLimit::disable())
         .layer(middleware::from_fn_with_state(Arc::clone(&app), protect))
         .with_state(app)
 }
@@ -69,7 +81,9 @@ async fn bootstrap(State(app): State<Arc<App>>) -> Result<Response> {
     let config = std::fs::read_to_string(&app.options.config_file)?;
     let parsed = Preferences::parse(&config);
     let workspace = app.snapshot()?;
-    let mut response = Json(json!({"workspace":{"projects":workspace.projects,"sessions":workspace.sessions},"consoles":crate::consoles::list(&app)?,"pendingOperations":operations::pending(&app)?,"preferences":parsed.as_ref().ok(),"config":config,"configError":parsed.err().map(|e|e.0),"configPath":app.options.config_file,"token":app.token})).into_response();
+    let pending = operations::pending_page(&app, None, None)?;
+    let consoles = crate::consoles::list(&app).await?;
+    let mut response = Json(json!({"identity":workspace.identity,"workspace":{"projects":workspace.projects,"sessions":workspace.sessions},"consoles":consoles,"pendingOperations":pending["operations"],"pendingOperationsCursor":pending["cursor"],"pendingOperationsSnapshot":pending["snapshot"],"preferences":parsed.as_ref().ok(),"config":config,"configError":parsed.err().map(|e|e.0),"configPath":app.options.config_file,"token":app.token})).into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,
         HeaderValue::from_str(&format!(
@@ -83,6 +97,8 @@ async fn bootstrap(State(app): State<Arc<App>>) -> Result<Response> {
 #[derive(Default, Deserialize)]
 struct QueryArgs {
     #[serde(default)]
+    workspace: String,
+    #[serde(default)]
     kind: String,
     #[serde(default)]
     project: String,
@@ -91,15 +107,53 @@ struct QueryArgs {
     #[serde(default)]
     path: String,
     #[serde(default)]
-    offset: usize,
+    directory: String,
+    #[serde(default)]
+    offset: u64,
     #[serde(default)]
     profile: String,
     #[serde(default)]
     operation: String,
+    #[serde(default)]
+    filter: String,
+    #[serde(default)]
+    snapshot: String,
+    #[serde(default)]
+    cursor: String,
+    #[serde(default)]
+    candidate: String,
+    #[serde(default)]
+    run: String,
+    #[serde(default)]
+    source: String,
+    #[serde(default)]
+    revision: String,
+    #[serde(default)]
+    stream: String,
 }
 async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Result<Json<Value>> {
+    if args.workspace!=app.snapshot()?.identity {
+        return Err(problem("This observation belongs to another gateway workspace. Refresh the owning workspace before inspecting it."));
+    }
     let value = match args.kind.as_str() {
-        "files" => files::list(&app.project(&args.project)?.root, &args.path, args.offset)?,
+        "files" => {
+            let root = app.project(&args.project)?.root;
+            let state_file = app.options.state_file.clone();
+            let workspace = args.workspace.clone();
+            tokio::task::spawn_blocking(move || {
+                files::list_page(
+                    &state_file,
+                    &workspace,
+                    &root,
+                    &args.path,
+                    &args.directory,
+                    args.offset,
+                    &args.filter,
+                    &args.cursor,
+                    &args.snapshot,
+                )
+            }).await.map_err(problem)??
+        }
         "pdf" => {
             let path = files::resolve(&app.project(&args.project)?.root, &args.path)?;
             let bytes = tokio::task::spawn_blocking(move || files::pdf::inspect(&path))
@@ -113,106 +167,92 @@ async fn query(State(app): State<Arc<App>>, Query(args): Query<QueryArgs>) -> Re
                 .await
                 .map_err(problem)??
         }
-        "git" => git::status(&app.project(&args.project)?).await?,
+        "git" => git::status(&app, &app.project(&args.project)?).await?,
+        "git-inventory" => git::inventory(
+            &app,
+            &app.project(&args.project)?,
+            (!args.cursor.is_empty()).then_some(args.cursor.as_str()),
+            (!args.snapshot.is_empty()).then_some(args.snapshot.as_str()),
+        )
+        .await?,
+        "git-output" => git::output(&app, &args.operation, &args.stream, args.offset).await?,
         "ignore" => git::ignore(&app.project(&args.project)?, &args.path, false).await?,
         "daemon" => daemon::status(&app).await?,
         "facts" => daemon::ready_facts(&app, &app.project(&args.project)?).await?,
         "conversation" => daemon::conversation(&app, &args.session).await?,
         "models" => daemon::models(&app, &args.profile).await?,
-        "runs" => daemon::runs(&app).await?,
-        "improvements" => daemon::improvements::list(&app, &args.project).await?,
-        "consoles" => crate::consoles::list(&app)?,
+        "runs" => daemon::runs(
+            &app,
+            (!args.cursor.is_empty()).then_some(args.cursor.as_str()),
+        )
+        .await?,
+        "improvements" => {
+            daemon::improvements::list(&app, &args.project, &args.cursor).await?
+        }
+        "improvement-evidence" => {
+            daemon::improvements::evidence(
+                &app,
+                &args.project,
+                &args.candidate,
+                &args.revision,
+                &args.cursor,
+            )
+            .await?
+        }
+        "improvement-text" => {
+            daemon::improvements::text(
+                &app,
+                &args.project,
+                &args.candidate,
+                &args.run,
+                &args.source,
+                args.offset,
+            )
+            .await?
+        }
+        "consoles" => crate::consoles::list(&app).await?,
+        "pending-operations" => operations::pending_page(
+            &app,
+            (!args.cursor.is_empty()).then_some(args.cursor.as_str()),
+            (!args.snapshot.is_empty()).then_some(args.snapshot.as_str()),
+        )?,
         "operation" => operations::observe(&app, &args.operation).await?,
         _ => return Err(problem("Unknown query")),
     };
     Ok(Json(value))
 }
-async fn action(State(app): State<Arc<App>>, Json(input): Json<Value>) -> Result<Json<Value>> {
+async fn action(State(app): State<Arc<App>>, body::JsonInput(input): body::JsonInput) -> Result<Json<Value>> {
+    mutation::workspace(&app, &input)?;
     let operation = input["operation"]
         .as_str()
         .ok_or_else(|| problem("An operation identity is required"))?
         .to_owned();
-    if operation.is_empty()
-        || operation.len() > 80
-        || !operation.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
-    {
-        return Err(problem("Invalid operation identity"));
-    }
+    operations::validate_identity(&operation)?;
     let operation_lock = app.lock(format!("operation:{operation}"))?;
     let _guard = operation_lock.lock().await;
-    if let Some(prior) = app.snapshot()?.operations.get(&operation) {
+    let owner = app.own_operation(&operation).await?;
+    if let Some(prior) = owner.get()? {
         if prior.input != input {
             return Err(problem("This operation identity was already used for different input"));
         }
-        return Ok(Json(prior.result.clone().unwrap_or_else(|| json!({"error":"Outcome uncertain. Inspect the original conversation or repository before submitting another action.","uncertain":true}))));
+        return Ok(Json(prior.result.unwrap_or_else(|| json!({"error":"Outcome uncertain. Inspect the original conversation or repository before submitting another action.","uncertain":true}))));
     }
-    let _resource_guard = mutation_guard(&app, &input).await?;
-    app.record_operation(operation.clone(), input.clone())?;
-    let result = match dispatch(&app, &input).await {
+    let _resource_guard = mutation::guard(&app, &input).await?;
+    if owner.insert(input.clone())? == Publication::Existing {
+        let prior = owner.get()?.ok_or_else(|| problem("Operation record missing"))?;
+        return Ok(Json(prior.result.unwrap_or_else(|| json!({"error":"Outcome uncertain. Inspect the original conversation or repository before submitting another action.","uncertain":true}))));
+    }
+    let result = match dispatch(&app, &input, &owner).await {
         Ok(value) => value,
         Err(error) if error.1 => {
             return Ok(Json(json!({"error":error.0,"uncertain":true,"operation":operation})));
         }
         Err(error) => json!({"error":error.0}),
     };
-    app.update(|state| {
-        state
-            .operations
-            .get_mut(&operation)
-            .ok_or_else(|| problem("Operation record missing"))?
-            .result = Some(result.clone());
-        Ok(())
-    })
-    .map_err(|error| crate::error::uncertain(error.0))?;
+    owner.settle(result.clone()).map_err(|error| uncertain(error.0))?;
     Ok(Json(result))
 }
-async fn operation_review(
-    State(app): State<Arc<App>>,
-    Json(input): Json<Value>,
-) -> Result<Json<Value>> {
-    if input["confirmed"] != true {
-        return Err(problem("Confirm that you inspected the original target"));
-    }
-    let id = input["operation"].as_str().ok_or_else(|| problem("Choose the original operation"))?;
-    let lock = app.lock(format!("operation:{id}"))?;
-    let _guard = lock.lock().await;
-    Ok(Json(operations::acknowledge(&app, id).await?))
-}
-async fn mutation_guard(app: &Arc<App>, input: &Value) -> Result<tokio::sync::OwnedMutexGuard<()>> {
-    let string = |key: &str| input[key].as_str().unwrap_or("");
-    // Serialize related Git effects while unrelated projects and agent controls stay live.
-    let resource_key = if ["git", "ignore", "repository"].contains(&string("command")) {
-        format!("git:{}", string("project"))
-    } else if ["send", "control", "session-settings"].contains(&string("command")) {
-        format!("conversation:{}", string("session"))
-    } else {
-        format!("operation:{}", id()?)
-    };
-    let resource_lock = app.lock(resource_key)?;
-    let resource_guard = resource_lock.lock_owned().await;
-    if ["send", "control", "session-settings", "git", "ignore", "repository"]
-        .contains(&string("command"))
-    {
-        let target = if ["send", "control", "session-settings"].contains(&string("command")) {
-            "session"
-        } else {
-            "project"
-        };
-        let snapshot = app.snapshot()?;
-        if let Some((id, _)) = snapshot.operations.iter().find(|(id, r)| {
-            id.as_str() != string("operation")
-                && r.result.is_none()
-                && r.input[target] == input[target]
-                && r.input["command"] != "daemon-request"
-        }) {
-            return Err(problem(format!(
-                "Resolve original operation {id} before another change to this target."
-            )));
-        }
-    }
-    Ok(resource_guard)
-}
-async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
+async fn dispatch(app: &Arc<App>, input: &Value, owner: &OperationOwner) -> Result<Value> {
     let string = |key: &str| input[key].as_str().unwrap_or("");
     match string("command") {
         "improvements" => daemon::improvements::action(app, input).await,
@@ -222,18 +262,23 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             Ok(json!({"closed":true}))
         }
         "new-session" => {
+            let parent = input["parent"].as_str().map(String::from);
+            let native = parent
+                .as_deref()
+                .map(|parent| app.session(parent).map(|session| session.native))
+                .transpose()?
+                .flatten();
             let session = Session {
                 settings: crate::sessions::Settings::default(),
                 id: id()?,
                 conversation: id()?,
                 run: id()?,
+                native,
                 project: app.project(string("project"))?.id,
-                parent: input["parent"].as_str().map(String::from),
-                title: if string("title").is_empty() {
-                    "New conversation".into()
-                } else {
-                    string("title").into()
-                },
+                parent,
+                title: crate::sessions::title(if string("title").is_empty() {
+                    "New conversation"
+                } else { string("title") })?.as_str().to_owned(),
                 closed: false,
             };
             app.update(|state| {
@@ -255,7 +300,7 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             )
             .await
         }
-        "workbench" => crate::consoles::workbench(app, input),
+        "workbench" => crate::consoles::workbench(app, input, owner).await,
         "repository" => {
             let mut project = app.project(string("project"))?;
             project.repository = files::resolve(&project.root, string("path"))?;
@@ -274,6 +319,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
         }
         "git" => {
             git::action(
+                app,
+                owner,
                 &app.project(string("project"))?,
                 string("action"),
                 input["paths"]
@@ -286,8 +333,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             .await
         }
         "ignore" => git::ignore(&app.project(string("project"))?, string("path"), true).await,
-        "attach-file" => files::attachments::stage(app, input),
-        "send" => daemon::send(app, input).await,
+        "attach-file" => files::attachments::stage(app, input).await,
+        "send" => daemon::send_owned(app, input, owner).await,
         "control" => {
             daemon::control(app, string("session"), string("action"), string("operation")).await
         }
@@ -304,11 +351,8 @@ async fn dispatch(app: &Arc<App>, input: &Value) -> Result<Value> {
             save(&app.options.config_file, text.as_bytes())?;
             Ok(json!({"preferences":preferences,"config":text}))
         }
-        "console" => crate::consoles::start(app, input),
-        "close-console" => {
-            app.terminals.lock().map_err(problem)?.remove(string("id"));
-            Ok(json!({"closed":true}))
-        }
+        "console" => crate::consoles::start(app, input, owner).await,
+        "close-console" => crate::consoles::close(app, input).await,
         _ => Err(problem("Unknown command")),
     }
 }
@@ -325,13 +369,32 @@ fn edit_session(app: &App, input: &Value) -> Result<Value> {
             if parent != session.parent {
                 session.parent = parent;
                 App::nest(state, &session, session.parent.as_deref())?;
+                if let Some(parent) = session.parent.as_deref() {
+                    let inherited = state
+                        .sessions
+                        .iter()
+                        .find(|candidate| candidate.id == parent)
+                        .ok_or_else(|| problem("Parent session not found"))?
+                        .native
+                        .clone();
+                    if session
+                        .native
+                        .as_ref()
+                        .zip(inherited.as_ref())
+                        .is_some_and(|(owner, parent)| owner != parent)
+                    {
+                        return Err(problem(
+                            "Nested sessions cannot belong to different native owners",
+                        ));
+                    }
+                    if session.native.is_none() {
+                        session.native = inherited;
+                    }
+                }
             }
         }
         if let Some(title) = input["title"].as_str() {
-            if title.trim().is_empty() || title.len() > 256 {
-                return Err(problem("Use a session title between 1 and 256 characters"));
-            }
-            session.title = title.into();
+            crate::sessions::title(title)?.as_str().clone_into(&mut session.title);
         }
         if let Some(closed) = input["closed"].as_bool() {
             session.closed = closed;
@@ -348,43 +411,4 @@ fn edit_session(app: &App, input: &Value) -> Result<Value> {
         state.sessions[index] = session.clone();
         Ok(json!(session))
     })
-}
-#[derive(Deserialize)]
-struct TerminalQuery {
-    #[serde(default)]
-    after: u64,
-}
-async fn terminal_read(
-    State(app): State<Arc<App>>,
-    Path(id): Path<String>,
-    Query(query): Query<TerminalQuery>,
-) -> Result<Json<Value>> {
-    let terminal = app
-        .terminals
-        .lock()
-        .map_err(problem)?
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| problem("Console ended; open a new console"))?;
-    Ok(Json(terminal.read(query.after)?))
-}
-async fn terminal_write(
-    State(app): State<Arc<App>>,
-    Path(id): Path<String>,
-    Json(value): Json<Value>,
-) -> Result<Json<Value>> {
-    let terminal = app
-        .terminals
-        .lock()
-        .map_err(problem)?
-        .get(&id)
-        .cloned()
-        .ok_or_else(|| problem("Console ended"))?;
-    if let Some(text) = value["text"].as_str() {
-        terminal.input(text)?;
-    }
-    if let (Some(cols), Some(rows)) = (value["cols"].as_u64(), value["rows"].as_u64()) {
-        terminal.resize(cols.min(400) as u16, rows.min(200) as u16)?;
-    }
-    Ok(Json(json!({"ok":true})))
 }

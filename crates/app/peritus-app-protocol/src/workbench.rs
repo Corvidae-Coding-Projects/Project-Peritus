@@ -14,7 +14,10 @@ pub use context::*;
 mod compaction;
 pub use compaction::*;
 mod conversation;
-pub use conversation::{WorkbenchContinuation, WorkbenchExecutionState};
+pub use conversation::{
+    WorkbenchContinuation, WorkbenchContinuationAdmission, WorkbenchContinuationAdmissionState,
+    WorkbenchExecutionState,
+};
 mod execution;
 pub use execution::WorkbenchExecutionSettings;
 mod goal;
@@ -36,26 +39,56 @@ pub use memory::*;
 mod init;
 pub use init::*;
 
-/// Maximum bytes in a user-selected library title.
-pub const MAX_CONVERSATION_TITLE_BYTES: usize = 256;
+/// Default byte target for a derived conversation label shown in bounded presentation surfaces.
+/// Exact user titles are not subject to this target.
+pub const CONVERSATION_TITLE_LABEL_BYTES: usize = 256;
+
+/// Former version-one title ceiling retained for source compatibility.
+///
+/// Conversation titles no longer use this value as an admission quota. New derived-label callers
+/// should use [`CONVERSATION_TITLE_LABEL_BYTES`].
+pub const MAX_CONVERSATION_TITLE_BYTES: usize = CONVERSATION_TITLE_LABEL_BYTES;
 
 /// Checked exact library title; never interpreted as an instruction.
 #[derive(Clone, Eq, PartialEq)]
 pub struct ConversationTitle(String);
 
 impl ConversationTitle {
-    /// Validates a nonempty inert bounded title.
+    /// Validates a nonempty inert title.
     ///
     /// # Errors
-    /// Rejects empty, oversized or terminal-control-containing text.
+    /// Rejects empty or terminal-control-containing text.
     pub fn new(value: String) -> Result<Self, AppProtocolError> {
-        if value.trim().is_empty()
-            || value.len() > MAX_CONVERSATION_TITLE_BYTES
-            || value.chars().any(char::is_control)
-        {
+        if value.trim().is_empty() || value.chars().any(char::is_control) {
             return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
         }
         Ok(Self(value))
+    }
+    /// Builds a bounded presentation label from separately retained authoritative text.
+    ///
+    /// The complete derived value is validated before shortening, so truncation cannot hide
+    /// invalid content. The caller keeps the exact source in its authoritative record and selects
+    /// only a presentation byte target; shortened labels end with an explicit ellipsis.
+    ///
+    /// # Errors
+    /// Rejects empty or terminal-control-containing derived text and targets too small for the
+    /// truncation marker.
+    pub fn derived_label(
+        prefix: &str,
+        source: &str,
+        target_bytes: usize,
+    ) -> Result<Self, AppProtocolError> {
+        const MARKER: &str = "…";
+        let mut value = Self::new(format!("{prefix}{source}"))?.0;
+        if value.len() <= target_bytes {
+            return Ok(Self(value));
+        }
+        let Some(content_bytes) = target_bytes.checked_sub(MARKER.len()) else {
+            return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
+        };
+        value.truncate(value.floor_char_boundary(content_bytes));
+        value.push_str(MARKER);
+        Self::new(value)
     }
     /// Borrows exact title bytes as text.
     #[must_use]

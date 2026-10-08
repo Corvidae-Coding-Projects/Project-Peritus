@@ -172,6 +172,7 @@ impl AppModel {
                         | PendingRequest::WorkbenchQueue(_)
                         | PendingRequest::WorkbenchControl(_)
                         | PendingRequest::WorkbenchReceipt(_)
+                        | PendingRequest::WorkbenchContinuationAdmission(_)
                         | PendingRequest::WorkbenchPermissions(_)
                         | PendingRequest::WorkbenchInit(_)
                         | PendingRequest::WorkbenchMemory(_)

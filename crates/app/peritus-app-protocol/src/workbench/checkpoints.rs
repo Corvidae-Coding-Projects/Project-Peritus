@@ -1,9 +1,9 @@
-//! Public bounded checkpoint coverage, rewind previews, and durable restore receipts.
+//! Complete checkpoint coverage, rewind previews, and durable restore receipts.
 
 use crate::{AppErrorCode, AppProtocolError, ControlOperationId, WorkbenchQuery};
 use peritus_types::Sha256Digest;
 
-/// Maximum checkpoint name length.
+/// Name width understood by the legacy checkpoint wire form; not an admission allowance.
 pub const MAX_WORKBENCH_CHECKPOINT_NAME_BYTES: usize = 256;
 
 /// Checked user-selected checkpoint name.
@@ -13,12 +13,9 @@ impl WorkbenchCheckpointName {
     /// Validates a nonempty inert name.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or control-containing names.
+    /// Rejects empty or non-inert names.
     pub fn new(value: String) -> Result<Self, AppProtocolError> {
-        if value.trim().is_empty()
-            || value.len() > MAX_WORKBENCH_CHECKPOINT_NAME_BYTES
-            || value.chars().any(char::is_control)
-        {
+        if value.trim().is_empty() || !valid_text(&value) {
             return Err(invalid());
         }
         Ok(Self(value))
@@ -27,6 +24,14 @@ impl WorkbenchCheckpointName {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+    /// Reports whether an older peer needs the complete-manifest wire feature.
+    #[must_use]
+    pub fn requires_manifest_feature(&self) -> bool {
+        !crate::wire::workbench_checkpoints::legacy_text(
+            self.as_str(),
+            MAX_WORKBENCH_CHECKPOINT_NAME_BYTES,
+        )
     }
 }
 impl std::fmt::Debug for WorkbenchCheckpointName {
@@ -138,10 +143,20 @@ pub struct WorkbenchCheckpointReceipt {
     external_effects: Vec<String>,
 }
 impl WorkbenchCheckpointReceipt {
-    /// Constructs a wire-representable receipt.
+    /// Reports whether the complete manifest requires the additive wide wire form.
+    #[must_use]
+    pub fn requires_manifest_feature(&self) -> bool {
+        self.name.requires_manifest_feature()
+            || crate::wire::workbench_checkpoints::wide_lists(
+                self.paths.iter().map(WorkbenchCheckpointPath::path),
+                &self.exclusions,
+                &self.external_effects,
+            )
+    }
+    /// Constructs a complete validated receipt.
     ///
     /// # Errors
-    /// Rejects zero revision, duplicate targets, or count/text bounds.
+    /// Rejects zero revision, duplicate targets, or non-inert metadata.
     pub fn new(
         checkpoint: ControlOperationId,
         query: WorkbenchQuery,
@@ -237,7 +252,7 @@ pub struct WorkbenchRestoreReceipt {
     external_effects: Vec<String>,
 }
 impl WorkbenchRestoreReceipt {
-    /// Constructs one bounded truthful receipt.
+    /// Constructs one complete truthful receipt.
     ///
     /// # Errors
     /// Rejects absent revisions, invalid target lists, or inconsistent status.
@@ -257,13 +272,12 @@ impl WorkbenchRestoreReceipt {
         external_effects: Vec<String>,
     ) -> Result<Self, AppProtocolError> {
         if accepted_revision == 0
-            || u16::try_from(restored.len()).is_err()
-            || u16::try_from(conflicts.len()).is_err()
-            || u16::try_from(external_effects.len()).is_err()
             || matches!(status, WorkbenchRestoreStatus::Conflict) == conflicts.is_empty()
-            || restored.iter().chain(&conflicts).chain(&external_effects).any(|text| {
-                text.is_empty() || text.len() > 4096 || text.chars().any(char::is_control)
-            })
+            || restored
+                .iter()
+                .chain(&conflicts)
+                .chain(&external_effects)
+                .any(|text| !valid_text(text))
         {
             return Err(invalid());
         }
@@ -324,6 +338,16 @@ impl WorkbenchRestoreReceipt {
     pub fn external_effects(&self) -> &[String] {
         &self.external_effects
     }
+    /// Reports whether the exact receipt requires the additive wide wire form.
+    #[must_use]
+    pub fn requires_manifest_feature(&self) -> bool {
+        [&self.restored, &self.conflicts, &self.external_effects].into_iter().any(|values| {
+            values.len() > usize::from(u16::MAX)
+                || values
+                    .iter()
+                    .any(|value| !crate::wire::workbench_checkpoints::legacy_text(value, 4096))
+        })
+    }
 }
 
 fn validate_lists<T>(
@@ -336,14 +360,8 @@ where
     T: CheckpointPathName,
 {
     if revision == 0
-        || u16::try_from(paths.len()).is_err()
-        || u16::try_from(exclusions.len()).is_err()
-        || u16::try_from(external_effects.len()).is_err()
         || paths.windows(2).any(|pair| pair[0].path_name() >= pair[1].path_name())
-        || exclusions
-            .iter()
-            .chain(external_effects)
-            .any(|text| text.is_empty() || text.len() > 512 || text.chars().any(char::is_control))
+        || exclusions.iter().chain(external_effects).any(|text| !valid_text(text))
     {
         Err(invalid())
     } else {
@@ -366,11 +384,14 @@ const fn invalid() -> AppProtocolError {
 
 fn valid_path(path: &str) -> bool {
     !path.is_empty()
-        && path.len() <= 4096
         && !path.starts_with('/')
         && !path.contains('\\')
         && !path.chars().any(char::is_control)
         && path
             .split('/')
             .all(|component| !component.is_empty() && component != "." && component != "..")
+}
+
+fn valid_text(text: &str) -> bool {
+    !text.is_empty() && !text.chars().any(|ch| ch.is_control() && ch != '\n' && ch != '\t')
 }

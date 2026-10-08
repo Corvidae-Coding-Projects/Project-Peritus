@@ -7,11 +7,11 @@ use crate::{ProcessError, error::invalid};
 pub struct ProcessResourcePolicy {
     wall_millis: Option<u64>,
     cpu_millis: Option<u64>,
-    memory_bytes: u64,
-    disk_bytes: u64,
-    output_bytes: u64,
-    process_count: u64,
-    file_descriptors: u64,
+    memory_bytes: Option<u64>,
+    disk_bytes: Option<u64>,
+    output_bytes: Option<u64>,
+    process_count: Option<u64>,
+    file_descriptors: Option<u64>,
     concurrent_slots: u64,
 }
 
@@ -59,16 +59,46 @@ impl ProcessResourcePolicy {
         file_descriptors: u64,
         concurrent_slots: u64,
     ) -> Result<Self, ProcessError> {
+        Self::with_optional_limits(
+            wall_millis,
+            cpu_millis,
+            Some(memory_bytes),
+            Some(disk_bytes),
+            Some(output_bytes),
+            Some(process_count),
+            Some(file_descriptors),
+            concurrent_slots,
+        )
+    }
+
+    /// Creates a process policy with explicit optional cumulative allowances.
+    ///
+    /// Concurrency is a selected physical allocation. Every other `None` means that the
+    /// supervisor observes the dimension without enforcing a synthetic total-work ceiling.
+    ///
+    /// # Errors
+    /// Rejects a selected zero ceiling or zero concurrency.
+    #[allow(clippy::too_many_arguments)]
+    pub const fn with_optional_limits(
+        wall_millis: Option<u64>,
+        cpu_millis: Option<u64>,
+        memory_bytes: Option<u64>,
+        disk_bytes: Option<u64>,
+        output_bytes: Option<u64>,
+        process_count: Option<u64>,
+        file_descriptors: Option<u64>,
+        concurrent_slots: u64,
+    ) -> Result<Self, ProcessError> {
         if matches!(wall_millis, Some(0))
             || matches!(cpu_millis, Some(0))
-            || memory_bytes == 0
-            || disk_bytes == 0
-            || output_bytes == 0
-            || process_count == 0
-            || file_descriptors == 0
+            || matches!(memory_bytes, Some(0))
+            || matches!(disk_bytes, Some(0))
+            || matches!(output_bytes, Some(0))
+            || matches!(process_count, Some(0))
+            || matches!(file_descriptors, Some(0))
             || concurrent_slots == 0
         {
-            return Err(invalid("process resource ceilings must all be nonzero"));
+            return Err(invalid("selected process resource ceilings must be nonzero"));
         }
         Ok(Self {
             wall_millis,
@@ -95,32 +125,80 @@ impl ProcessResourcePolicy {
     /// Returns the memory ceiling.
     #[must_use]
     pub const fn memory_bytes(self) -> u64 {
+        match self.memory_bytes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional memory ceiling.
+    #[must_use]
+    pub const fn memory_limit(self) -> Option<u64> {
         self.memory_bytes
     }
     /// Returns the disk ceiling.
     #[must_use]
     pub const fn disk_bytes(self) -> u64 {
+        match self.disk_bytes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional disk ceiling.
+    #[must_use]
+    pub const fn disk_limit(self) -> Option<u64> {
         self.disk_bytes
     }
     /// Returns the output ceiling.
     #[must_use]
     pub const fn output_bytes(self) -> u64 {
+        match self.output_bytes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional cumulative output ceiling.
+    #[must_use]
+    pub const fn output_limit(self) -> Option<u64> {
         self.output_bytes
     }
     /// Returns the process-count ceiling.
     #[must_use]
     pub const fn process_count(self) -> u64 {
+        match self.process_count {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional process-count ceiling.
+    #[must_use]
+    pub const fn process_limit(self) -> Option<u64> {
         self.process_count
     }
     /// Returns the file-descriptor or handle ceiling.
     #[must_use]
     pub const fn file_descriptors(self) -> u64 {
+        match self.file_descriptors {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional file-descriptor or handle ceiling.
+    #[must_use]
+    pub const fn file_descriptor_limit(self) -> Option<u64> {
         self.file_descriptors
     }
     /// Returns the concurrent-slot ceiling.
     #[must_use]
     pub const fn concurrent_slots(self) -> u64 {
         self.concurrent_slots
+    }
+
+    pub(crate) const fn has_selected_native_limits(self) -> bool {
+        self.memory_bytes.is_some()
+            && self.disk_bytes.is_some()
+            && self.output_bytes.is_some()
+            && self.process_count.is_some()
+            && self.file_descriptors.is_some()
     }
 }
 

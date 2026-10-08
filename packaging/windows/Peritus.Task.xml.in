@@ -21,7 +21,7 @@
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-    <AllowHardTerminate>true</AllowHardTerminate>
+    <AllowHardTerminate>false</AllowHardTerminate>
     <StartWhenAvailable>true</StartWhenAvailable>
     <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
     <IdleSettings>
@@ -35,15 +35,13 @@
     <WakeToRun>false</WakeToRun>
     <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
     <Priority>7</Priority>
-    <RestartOnFailure>
-      <Interval>PT5S</Interval>
-      <Count>5</Count>
-    </RestartOnFailure>
+    <!-- Task Scheduler requires a finite restart count, so peritusd owns unbounded recovery. -->
+    <!-- Peritus lifecycle commands use supervise-stop and wait for orderly daemon drain. -->
   </Settings>
   <Actions Context="Author">
     <Exec>
       <Command>@PERITUSD@</Command>
-      <Arguments>serve --config &quot;@CONFIG_FILE@&quot;</Arguments>
+      <Arguments>supervise --config &quot;@CONFIG_FILE@&quot;</Arguments>
       <WorkingDirectory>@WORKING_DIRECTORY@</WorkingDirectory>
     </Exec>
   </Actions>

@@ -8,3 +8,4 @@ mod service;
 
 pub use client::ArtifactClient;
 pub use service::{ArtifactAuthority, ArtifactPoll};
+pub(crate) use service::CompletedArtifactFinalization;

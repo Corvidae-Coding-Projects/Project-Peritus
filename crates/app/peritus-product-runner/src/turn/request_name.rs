@@ -9,7 +9,7 @@ pub(super) fn invocation(
     role: &str,
     cycle: u32,
     revision: u64,
-    invocation: u32,
+    invocation: u64,
 ) -> Result<String, crate::ProductRunnerError> {
     let mut bytes = [0_u8; 16];
     getrandom::fill(&mut bytes).map_err(|error| {
@@ -27,10 +27,14 @@ pub(super) fn invocation(
 }
 
 pub(super) fn format(run_id: RunId, role: &str, cycle: u32) -> String {
+    format!("{}{cycle}", scope(run_id, role))
+}
+
+pub(super) fn scope(run_id: RunId, role: &str) -> String {
     let mut value = String::from("peritus-");
     for byte in run_id.as_bytes() {
         use core::fmt::Write as _;
         let _ = write!(value, "{byte:02x}");
     }
-    format!("{value}-{role}-{cycle}")
+    format!("{value}-{role}-")
 }

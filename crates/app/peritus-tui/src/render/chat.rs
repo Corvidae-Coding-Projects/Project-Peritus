@@ -104,6 +104,21 @@ pub(super) fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
 }
 
+pub(super) fn status_scroll_metrics(model: &AppModel, viewport: Rect) -> (usize, usize) {
+    let draft = composer::layout(
+        &model.chat.buffer,
+        model.chat.cursor,
+        model.chat.selection().as_ref(),
+        usize::from(viewport.width.saturating_sub(2)),
+    );
+    let regions = composer::regions(
+        viewport,
+        draft.lines.len(),
+        model.chat.working.elapsed_seconds().is_some(),
+    );
+    status::scroll_metrics(model, regions[4])
+}
+
 fn title(model: &AppModel) -> String {
     let reviewing = model.chat.mode == peritus_app_protocol::ProductInteractionMode::Review;
     let provider_id = model

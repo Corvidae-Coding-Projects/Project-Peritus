@@ -14,11 +14,11 @@ pub fn normalize_failure(
     failure: &DispatchFailure,
     progress_count: u32,
 ) -> Result<ToolResult, RouterError> {
-    let model = bounded_render(
+    let (model, model_truncation) = bounded_render(
         failure.failure().detail().as_str(),
         prepared.call().limits().model_bytes(),
     )?;
-    let human = bounded_render(
+    let (human, human_truncation) = bounded_render(
         failure.failure().detail().as_str(),
         prepared.call().limits().human_bytes(),
     )?;
@@ -35,16 +35,16 @@ pub fn normalize_failure(
         timing,
         TruncationMetadata {
             output: Truncation::Indeterminate,
-            model: Truncation::Complete,
-            human: Truncation::Complete,
+            model: model_truncation,
+            human: human_truncation,
         },
         progress_count,
     )
     .map_err(|_| invalid("dispatcher failure cannot be normalized into a bounded result"))
 }
 
-fn bounded_render(value: &str, maximum: u32) -> Result<BoundedText, RouterError> {
-    let limit = maximum as usize;
+fn bounded_render(value: &str, maximum: u32) -> Result<(BoundedText, Truncation), RouterError> {
+    let limit = (maximum as usize).min(BoundedText::MAX_BYTES);
     let end = if value.len() <= limit {
         value.len()
     } else {
@@ -55,7 +55,10 @@ fn bounded_render(value: &str, maximum: u32) -> Result<BoundedText, RouterError>
         boundary
     };
     let rendered = if end == 0 { "!" } else { &value[..end] };
-    BoundedText::new(rendered.to_owned()).map_err(|_| invalid("failure rendering is invalid"))
+    let truncation = if end == value.len() { Truncation::Complete } else { Truncation::TailDropped };
+    BoundedText::new(rendered.to_owned())
+        .map(|rendering| (rendering, truncation))
+        .map_err(|_| invalid("failure rendering is invalid"))
 }
 
 const fn invalid(detail: &'static str) -> RouterError {

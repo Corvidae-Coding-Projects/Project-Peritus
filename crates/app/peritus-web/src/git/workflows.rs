@@ -1,50 +1,18 @@
 //! Branch and remote workflows preserve Git's ordinary dirty-worktree protections.
 
 use super::{run, run_effect};
-use crate::error::{Result, problem};
-use serde_json::{Value, json};
+use crate::{
+    error::{Result, problem},
+    state::{App, OperationOwner},
+};
+use serde_json::Value;
 use std::path::Path;
 
-pub(super) async fn inventory(root: &Path) -> Result<(Vec<Value>, Vec<Value>)> {
-    let refs = run(
-        root,
-        &[
-            "for-each-ref".into(),
-            "--sort=refname".into(),
-            "--format=%(refname)%00%(HEAD)%00%(upstream:short)%00%(symref)".into(),
-            "refs/heads".into(),
-            "refs/remotes".into(),
-        ],
-    )
-    .await?;
-    let branches = refs
-        .lines()
-        .filter_map(|line| {
-            let fields = line.split('\0').collect::<Vec<_>>();
-            if fields.len() != 4 || !fields[3].is_empty() {
-                return None;
-            }
-            let remote = fields[0].starts_with("refs/remotes/");
-            let name =
-                fields[0].strip_prefix(if remote { "refs/remotes/" } else { "refs/heads/" })?;
-            Some(json!({"name":name,"ref":fields[0],"remote":remote,
-            "current":fields[1]=="*","upstream":fields[2]}))
-        })
-        .collect();
-    let names = run(root, &["remote".into()]).await?;
-    let mut remotes = Vec::new();
-    for name in names.lines() {
-        let fetch =
-            run(root, &["remote".into(), "get-url".into(), "--all".into(), name.into()]).await?;
-        let push = run(
-            root,
-            &["remote".into(), "get-url".into(), "--push".into(), "--all".into(), name.into()],
-        )
-        .await?;
-        remotes.push(json!({"name":name,"fetch":fetch.lines().collect::<Vec<_>>(),"push":push.lines().collect::<Vec<_>>()}));
-    }
-    Ok((branches, remotes))
-}
+mod inventory;
+
+pub(crate) use inventory::{
+    inventory, owner_argument as inventory_owner_argument, run_owner as run_inventory_owner,
+};
 
 async fn branch_name(root: &Path, name: &str) -> Result<String> {
     if name.is_empty()
@@ -85,7 +53,13 @@ fn remote_url(url: &str) -> Result<String> {
     Ok(url.into())
 }
 
-pub(super) async fn action(root: &Path, kind: &str, input: &Value) -> Result<String> {
+pub(super) async fn action(
+    app: &App,
+    owner: &OperationOwner,
+    root: &Path,
+    kind: &str,
+    input: &Value,
+) -> Result<Value> {
     let field = |key: &str| input[key].as_str().unwrap_or("");
     let args = match kind {
         "branch-create" => {
@@ -182,7 +156,7 @@ pub(super) async fn action(root: &Path, kind: &str, input: &Value) -> Result<Str
         }
         _ => return Err(problem("Unknown Git workflow or missing removal confirmation")),
     };
-    run_effect(root, &args).await
+    run_effect(app, owner, root, &args).await
 }
 
 #[cfg(test)]

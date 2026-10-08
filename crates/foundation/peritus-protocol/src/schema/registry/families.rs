@@ -378,8 +378,8 @@ pub const FAMILIES: &[MessageFamily] = &[
     MessageFamily {
         tag: ARTIFACT_UPLOAD_ACCEPTED_FAMILY,
         name: "application-artifact-upload-accepted",
-        schema_version: 1,
-        supported_schema_versions: &[1],
+        schema_version: 2,
+        supported_schema_versions: &[1, 2],
         inert_only: true,
     },
 ];

@@ -124,8 +124,12 @@ pub(super) fn restore(
     )
     .unwrap();
     let service = service(state, repository, workspace, providers);
-    *service.inner.controls.lock().unwrap() = Some(controls);
-    *service.inner.records.write().unwrap() = records;
+    {
+        let cancellation = peritus_journal::JournalCancellation::new();
+        let _permit = service.inner.controls.acquire(&cancellation).unwrap();
+        *service.inner.controls.owner.lock().unwrap() = Some(controls);
+        *service.inner.records.write().unwrap() = records;
+    }
     service
 }
 
@@ -158,7 +162,7 @@ fn a_goal_paused_at_an_idle_boundary_resumes_after_restart_without_new_input() {
             "idle work cannot silently retry without resume authority"
         );
         pause_idle(&original, workspace).await;
-        original.shutdown(Duration::from_secs(5)).await;
+        original.shutdown().await.expect("shutdown product runs");
         drop(original);
 
         let restored =
@@ -177,7 +181,7 @@ fn a_goal_paused_at_an_idle_boundary_resumes_after_restart_without_new_input() {
         let replay = restored.workbench_command(actor(), &resume).await;
         assert_eq!(replay, response, "an exact resume replay must not admit another attempt");
         assert_eq!(writer.requests.lock().unwrap().len(), 2);
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -209,7 +213,7 @@ fn committed_resume_without_launch_recovers_once_on_exact_replay_after_restart()
         let resume = resume_command(&original, workspace);
         accept_without_launch(&original, &resume);
         assert_eq!(goal(&original, workspace).attempt(), 2);
-        original.shutdown(Duration::from_secs(5)).await;
+        original.shutdown().await.expect("shutdown product runs");
         drop(original);
         assert_eq!(writer.requests.lock().unwrap().len(), 1);
 
@@ -238,14 +242,14 @@ fn committed_resume_without_launch_recovers_once_on_exact_replay_after_restart()
             (goal(&restored, workspace).attempt(), writer.requests.lock().unwrap().len()),
             (2, 2)
         );
-        restored.shutdown(Duration::from_secs(5)).await;
+        restored.shutdown().await.expect("shutdown product runs");
         drop(restored);
 
         let reopened =
             restore(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
         assert_eq!(reopened.workbench_command(actor(), &resume).await, first);
         assert_eq!(writer.requests.lock().unwrap().len(), 2);
-        reopened.shutdown(Duration::from_secs(5)).await;
+        reopened.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -289,6 +293,6 @@ fn replay_of_unlaunched_resume_cannot_override_a_later_goal_clear() {
             service.workbench_command(stranger, &resume).await,
             AppResponsePayload::Error(_)
         ));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

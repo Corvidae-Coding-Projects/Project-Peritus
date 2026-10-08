@@ -9,7 +9,7 @@ use crate::{MacosError, MacosErrorKind, MacosHostProbe, MacosOperation, Recovery
 /// Stable backend implementation identity.
 pub const BACKEND_NAME: &str = "peritus-macos-seatbelt";
 /// Stable backend implementation version.
-pub const BACKEND_VERSION: &str = "1";
+pub const BACKEND_VERSION: &str = "2";
 
 /// A descriptor paired with the exact probe from which its support set was derived.
 #[derive(Clone, Debug, Eq, PartialEq)]

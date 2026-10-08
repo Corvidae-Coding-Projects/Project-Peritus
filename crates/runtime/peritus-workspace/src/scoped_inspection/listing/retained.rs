@@ -82,22 +82,41 @@ impl FolderInspection {
         path: Option<&WorkspacePath>,
         storage: std::fs::File,
     ) -> Result<RetainedDirectory, WorkspaceError> {
+        self.capture_directory_with_cancel(path, storage, || false)
+    }
+
+    /// Captures exact children like [`Self::capture_directory`], while checking an owner-supplied
+    /// cancellation predicate between native directory reads. Cancellation leaves only an
+    /// unaccepted storage prefix and never publishes a cursor or observation.
+    ///
+    /// # Errors
+    /// Rejects cancellation, unsafe/changed directories, nonempty/aliased storage, incomplete
+    /// iteration, observed root changes and original storage/iteration I/O errors.
+    pub fn capture_directory_with_cancel(
+        &self,
+        path: Option<&WorkspacePath>,
+        storage: std::fs::File,
+        mut should_cancel: impl FnMut() -> bool,
+    ) -> Result<RetainedDirectory, WorkspaceError> {
         let mut file = File::from_std(storage);
         let before = file.metadata().map_err(snapshot_io)?;
         if !before.is_file() || before.len() != 0 {
             return Err(invalid("directory storage must be an empty owned regular file"));
         }
-        self.scan_directory(path, Some(&before), |_| Ok(()))?;
+        let expected = self.stream_directory(path, Some(&before), &mut should_cancel, |_| Ok(()))?;
         file.seek(SeekFrom::Start(0)).map_err(snapshot_io)?;
         let mut body = BodyWriter { file: &mut file, position: 0, hasher: Sha256::new() };
         body.write_all(MAGIC).map_err(snapshot_io)?;
         body.write_all(&[platform_tag()]).map_err(snapshot_io)?;
         let mut count = 0_u64;
-        self.scan_directory(path, Some(&before), |item| {
+        let observed = self.stream_directory(path, Some(&before), &mut should_cancel, |item| {
             body.item(&item, count)?;
             count = count.checked_add(1).ok_or_else(changed)?;
             Ok(())
         })?;
+        if observed != expected || observed.count != count {
+            return Err(changed());
+        }
         let bytes = body.position;
         let digest = Sha256Digest::new(body.hasher.finalize().into());
         file.sync_all().map_err(snapshot_io)?;
@@ -108,7 +127,7 @@ impl FolderInspection {
             bytes,
             digest,
         };
-        RetainedDirectory::open(file.into_std(), observation, None)
+        RetainedDirectory::open_with_cancel(file.into_std(), observation, None, should_cancel)
     }
 }
 impl RetainedDirectory {
@@ -123,6 +142,24 @@ impl RetainedDirectory {
         observation: ObservedDirectory,
         resume: Option<DirectoryCursor>,
     ) -> Result<Self, WorkspaceError> {
+        Self::open_with_cancel(storage, observation, resume, || false)
+    }
+
+    /// Reopens and verifies an accepted body while checking cancellation between retained-record
+    /// reads. The accepted body and cursor remain reusable when cancellation interrupts recovery.
+    ///
+    /// # Errors
+    /// Rejects cancellation, changed/corrupt bodies, foreign/malformed cursors, invalid record
+    /// boundaries, unsupported versions/platforms, invalid storage and original I/O failures.
+    pub fn open_with_cancel(
+        storage: std::fs::File,
+        observation: ObservedDirectory,
+        resume: Option<DirectoryCursor>,
+        mut should_cancel: impl FnMut() -> bool,
+    ) -> Result<Self, WorkspaceError> {
+        if should_cancel() {
+            return Err(super::cancelled());
+        }
         let mut file = File::from_std(storage);
         let version = file.metadata().map_err(snapshot_io)?;
         if !version.is_file() || version.len() != observation.bytes {
@@ -151,10 +188,16 @@ impl RetainedDirectory {
         }
         let mut boundary_valid = false;
         for index in 0..observation.count {
+            if should_cancel() {
+                return Err(super::cancelled());
+            }
             if index == cursor.index {
                 boundary_valid = body.position == cursor.offset;
             }
             body.item(&observation, index)?;
+        }
+        if should_cancel() {
+            return Err(super::cancelled());
         }
         if cursor.index == observation.count {
             boundary_valid = body.position == cursor.offset;

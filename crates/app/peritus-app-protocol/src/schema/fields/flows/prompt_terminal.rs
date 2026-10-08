@@ -17,6 +17,7 @@ pub(super) const PROMPT_TERMINAL_TYPES: &[AppTypeDescriptor] = &[
     terminal::TERMINAL_DETACH,
     terminal::TERMINAL_CANCELLATION,
     terminal::TERMINAL_OUTPUT,
+    terminal::TERMINAL_OUTPUT_GAP,
     terminal::TERMINAL_EXIT,
     terminal::TERMINAL_EXIT_DISPOSITION,
 ];

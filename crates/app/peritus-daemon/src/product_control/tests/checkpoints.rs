@@ -10,6 +10,9 @@ const LEGACY_PROJECTION_SIZE: usize = 64;
 #[path = "checkpoints/snapshots.rs"]
 mod snapshots;
 
+#[path = "checkpoints/manifest_pages.rs"]
+mod manifest_pages;
+
 #[test]
 fn full_legacy_automatic_projection_accepts_new_paths_and_a_user_checkpoint_after_restart() {
     let root = tempfile::tempdir().expect("root");

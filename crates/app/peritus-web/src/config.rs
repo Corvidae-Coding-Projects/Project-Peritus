@@ -7,6 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[derive(Clone)]
 pub struct Options {
     pub(crate) port: u16,
     pub(crate) root: PathBuf,
@@ -131,10 +132,10 @@ pub struct Preferences {
     pub(crate) density: String,
     pub(crate) motion: bool,
     pub(crate) sound: bool,
-    pub(crate) font_size: u16,
+    pub(crate) font_size: f64,
     pub(crate) font_family: String,
     pub(crate) mono_family: String,
-    pub(crate) explorer_width: u16,
+    pub(crate) explorer_width: f64,
     pub(crate) controls_visible: bool,
     pub(crate) explorer_visible: bool,
     pub(crate) word_wrap: bool,
@@ -150,10 +151,10 @@ impl Default for Preferences {
             density: "comfortable".into(),
             motion: true,
             sound: false,
-            font_size: 14,
+            font_size: 14.0,
             font_family: "Barlow, sans-serif".into(),
             mono_family: "Iosevka, monospace".into(),
-            explorer_width: 248,
+            explorer_width: 248.0,
             controls_visible: true,
             explorer_visible: true,
             word_wrap: true,
@@ -173,8 +174,10 @@ impl Default for Preferences {
 impl Preferences {
     pub(crate) fn parse(text: &str) -> Result<Self> {
         let value: Self = toml::from_str(text).map_err(problem)?;
-        if !(12..=22).contains(&value.font_size) || !(180..=480).contains(&value.explorer_width) {
-            return Err(problem("font_size must be 12–22; explorer_width must be 180–480"));
+        if !value.font_size.is_finite() || value.font_size <= 0.0
+            || !value.explorer_width.is_finite() || value.explorer_width <= 0.0
+        {
+            return Err(problem("Font size and explorer width must be finite positive pixel values"));
         }
         if !["nixie", "daylight", "blueprint"].contains(&value.theme.as_str()) {
             return Err(problem("theme must be nixie, daylight, or blueprint"));
@@ -193,9 +196,6 @@ impl Preferences {
                     "tokens accepts named color roles with #RGB or #RRGGBB values",
                 ));
             }
-        }
-        if value.aliases.len() > 100 || value.shortcuts.len() > 100 {
-            return Err(problem("At most 100 aliases and shortcuts are supported"));
         }
         for (name, command) in &value.aliases {
             if name.is_empty()

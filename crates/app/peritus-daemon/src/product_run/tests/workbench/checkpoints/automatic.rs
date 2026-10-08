@@ -187,7 +187,7 @@ async fn run(large: bool, use_command: bool) {
     assert_eq!(receipt.status(), WorkbenchRestoreStatus::Applied);
     assert_eq!(fs::read(folder.join("note.txt")).unwrap(), baseline);
 
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
     drop(service);
     let store_id = peritus_journal::StoreId::new([0x7f; 16]).unwrap();
     let journal =

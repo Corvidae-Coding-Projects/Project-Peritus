@@ -10,6 +10,188 @@ use crate::{
     ReviewLimits,
 };
 
+/// Integrity frontier for immutable review facts archived before the active candidate window.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ReviewHistoryFrontier {
+    through_sequence: u64,
+    through_event: Option<EventId>,
+    through_state_digest: Sha256Digest,
+    parent_digest: Sha256Digest,
+    page_count: u64,
+    cycle_count: u64,
+    submission_count: u64,
+    finding_count: u64,
+    disposition_count: u64,
+    waiver_count: u64,
+    current_binding_digest: Sha256Digest,
+    current_unconserved_count: u64,
+    current_unconserved_xor: Sha256Digest,
+    digest: Sha256Digest,
+}
+
+impl ReviewHistoryFrontier {
+    pub(super) const fn empty() -> Self {
+        Self {
+            through_sequence: 0,
+            through_event: None,
+            through_state_digest: Sha256Digest::new([0; 32]),
+            parent_digest: Sha256Digest::new([0; 32]),
+            page_count: 0,
+            cycle_count: 0,
+            submission_count: 0,
+            finding_count: 0,
+            disposition_count: 0,
+            waiver_count: 0,
+            current_binding_digest: Sha256Digest::new([0; 32]),
+            current_unconserved_count: 0,
+            current_unconserved_xor: Sha256Digest::new([0; 32]),
+            digest: Sha256Digest::new([0; 32]),
+        }
+    }
+
+    pub(super) fn for_binding(binding_digest: Sha256Digest) -> Self {
+        let mut value = Self { current_binding_digest: binding_digest, ..Self::empty() };
+        value.digest = crate::canonical::history_frontier_digest(value);
+        value
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) const fn from_wire(
+        through_sequence: u64,
+        through_event: Option<EventId>,
+        through_state_digest: Sha256Digest,
+        parent_digest: Sha256Digest,
+        page_count: u64,
+        cycle_count: u64,
+        submission_count: u64,
+        finding_count: u64,
+        disposition_count: u64,
+        waiver_count: u64,
+        current_binding_digest: Sha256Digest,
+        current_unconserved_count: u64,
+        current_unconserved_xor: Sha256Digest,
+        digest: Sha256Digest,
+    ) -> Self {
+        Self {
+            through_sequence,
+            through_event,
+            through_state_digest,
+            parent_digest,
+            page_count,
+            cycle_count,
+            submission_count,
+            finding_count,
+            disposition_count,
+            waiver_count,
+            current_binding_digest,
+            current_unconserved_count,
+            current_unconserved_xor,
+            digest,
+        }
+    }
+
+    /// Last event sequence whose predecessor state is covered by immutable history.
+    #[must_use]
+    pub const fn through_sequence(self) -> u64 {
+        self.through_sequence
+    }
+    /// Last event identity covered by immutable history.
+    #[must_use]
+    pub const fn through_event(self) -> Option<EventId> {
+        self.through_event
+    }
+    /// Exact state digest at the archived frontier.
+    #[must_use]
+    pub const fn through_state_digest(self) -> Sha256Digest {
+        self.through_state_digest
+    }
+    /// Digest of the preceding immutable-history frontier.
+    #[must_use]
+    pub const fn parent_digest(self) -> Sha256Digest {
+        self.parent_digest
+    }
+    /// Number of immutable candidate-history pages represented by this frontier.
+    #[must_use]
+    pub const fn page_count(self) -> u64 {
+        self.page_count
+    }
+    /// Total archived reviewer cycles; this is an observation, never an allowance.
+    #[must_use]
+    pub const fn cycle_count(self) -> u64 {
+        self.cycle_count
+    }
+    /// Total archived submissions; this is an observation, never an allowance.
+    #[must_use]
+    pub const fn submission_count(self) -> u64 {
+        self.submission_count
+    }
+    /// Total archived findings; this is an observation, never an allowance.
+    #[must_use]
+    pub const fn finding_count(self) -> u64 {
+        self.finding_count
+    }
+    /// Total archived disposition facts; this is an observation, never an allowance.
+    #[must_use]
+    pub const fn disposition_count(self) -> u64 {
+        self.disposition_count
+    }
+    /// Total archived waiver observations; this is an observation, never an allowance.
+    #[must_use]
+    pub const fn waiver_count(self) -> u64 {
+        self.waiver_count
+    }
+    /// Binding whose current conservation accumulator is represented here.
+    #[must_use]
+    pub const fn current_binding_digest(self) -> Sha256Digest {
+        self.current_binding_digest
+    }
+    /// Exact number of archived current findings that still require conservation.
+    #[must_use]
+    pub const fn current_unconserved_count(self) -> u64 {
+        self.current_unconserved_count
+    }
+    /// Order-independent integrity accumulator over archived unconserved finding identities.
+    #[must_use]
+    pub const fn current_unconserved_xor(self) -> Sha256Digest {
+        self.current_unconserved_xor
+    }
+    /// Chained digest binding every archived page frontier.
+    #[must_use]
+    pub const fn digest(self) -> Sha256Digest {
+        self.digest
+    }
+
+    pub(super) fn validate(self) -> Result<(), ReviewError> {
+        let zero = Sha256Digest::new([0; 32]);
+        let legacy_empty = self == Self::empty();
+        let unpaged = self.page_count == 0;
+        let malformed_unpaged = unpaged
+            && (self.through_sequence != 0
+                || self.through_event.is_some()
+                || self.through_state_digest != zero
+                || self.parent_digest != zero
+                || self.cycle_count != 0
+                || self.submission_count != 0
+                || self.finding_count != 0
+                || self.disposition_count != 0
+                || self.waiver_count != 0
+                || self.current_unconserved_count != 0
+                || self.current_unconserved_xor != zero);
+        if (!legacy_empty
+            && (self.current_binding_digest == zero
+                || malformed_unpaged
+                || crate::canonical::history_frontier_digest(self) != self.digest))
+            || (self.current_unconserved_count == 0 && self.current_unconserved_xor != zero)
+        {
+            return Err(reject(
+                ReviewErrorKind::ReplayMismatch,
+                "review history frontier is empty-shaped or digest-inconsistent",
+            ));
+        }
+        Ok(())
+    }
+}
+
 pub mod mutation;
 mod terminal;
 
@@ -37,6 +219,7 @@ pub struct ReviewRunState {
     sequence: EventSequence,
     last_event_id: EventId,
     state_digest: Sha256Digest,
+    history: ReviewHistoryFrontier,
     cycles: Vec<ReviewCycle>,
     findings: Vec<Finding>,
     waivers: Vec<ObservedWaiver>,
@@ -57,6 +240,11 @@ impl ReviewRunState {
     ) -> Self {
         let quorum = QuorumReport::evaluate(&binding, &[]);
         let oscillation = OscillationReport::evaluate(&binding, &[], &[], false);
+        let history = if binding.uses_paged_history() {
+            ReviewHistoryFrontier::for_binding(binding.digest())
+        } else {
+            ReviewHistoryFrontier::empty()
+        };
         Self {
             run_id,
             limits,
@@ -65,6 +253,7 @@ impl ReviewRunState {
             sequence,
             last_event_id: event_id,
             state_digest: Sha256Digest::new([0; 32]),
+            history,
             cycles: Vec::new(),
             findings: Vec::new(),
             waivers: Vec::new(),
@@ -92,6 +281,43 @@ impl ReviewRunState {
         used_commands: Vec<CommandId>,
         terminal: Option<ReviewTerminal>,
     ) -> Self {
+        Self::from_wire_v2(
+            run_id,
+            limits,
+            binding,
+            phase,
+            sequence,
+            last_event_id,
+            state_digest,
+            ReviewHistoryFrontier::empty(),
+            cycles,
+            findings,
+            waivers,
+            quorum,
+            oscillation,
+            used_commands,
+            terminal,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) const fn from_wire_v2(
+        run_id: RunId,
+        limits: ReviewLimits,
+        binding: ReviewBinding,
+        phase: ReviewRunPhase,
+        sequence: EventSequence,
+        last_event_id: EventId,
+        state_digest: Sha256Digest,
+        history: ReviewHistoryFrontier,
+        cycles: Vec<ReviewCycle>,
+        findings: Vec<Finding>,
+        waivers: Vec<ObservedWaiver>,
+        quorum: QuorumReport,
+        oscillation: OscillationReport,
+        used_commands: Vec<CommandId>,
+        terminal: Option<ReviewTerminal>,
+    ) -> Self {
         Self {
             run_id,
             limits,
@@ -100,6 +326,7 @@ impl ReviewRunState {
             sequence,
             last_event_id,
             state_digest,
+            history,
             cycles,
             findings,
             waivers,
@@ -145,17 +372,22 @@ impl ReviewRunState {
     pub const fn state_digest(&self) -> Sha256Digest {
         self.state_digest
     }
-    /// Returns every historical cycle in ordinal order.
+    /// Returns the exact immutable-history integrity frontier.
+    #[must_use]
+    pub const fn history(&self) -> ReviewHistoryFrontier {
+        self.history
+    }
+    /// Returns the bounded active/materialized cycle window in canonical page order.
     #[must_use]
     pub const fn cycles(&self) -> &[ReviewCycle] {
         self.cycles.as_slice()
     }
-    /// Returns every historical finding in stable identity order.
+    /// Returns findings materialized in the bounded checkpoint in stable identity order.
     #[must_use]
     pub const fn findings(&self) -> &[Finding] {
         self.findings.as_slice()
     }
-    /// Returns every consumed external waiver in event order.
+    /// Returns external waivers materialized in the bounded checkpoint in event order.
     #[must_use]
     pub const fn waivers(&self) -> &[ObservedWaiver] {
         self.waivers.as_slice()
@@ -170,7 +402,7 @@ impl ReviewRunState {
     pub const fn oscillation(&self) -> &OscillationReport {
         &self.oscillation
     }
-    /// Returns consumed command identities in event order.
+    /// Returns the bounded recent command-identity cache in event order.
     #[must_use]
     pub const fn used_commands(&self) -> &[CommandId] {
         self.used_commands.as_slice()
@@ -207,9 +439,12 @@ impl ReviewRunState {
     #[must_use]
     pub fn finding_is_current(&self, finding: &Finding) -> bool {
         finding.revision() == self.binding.revision()
-            && self
-                .cycle(finding.origin().cycle_id())
-                .is_some_and(|cycle| cycle.assignment().binding_digest() == self.binding.digest())
+            && (self.binding.uses_paged_history()
+                || self
+                    .cycle(finding.origin().cycle_id())
+                    .is_some_and(|cycle| {
+                        cycle.assignment().binding_digest() == self.binding.digest()
+                    }))
     }
 
     /// Returns canonical identities of unconserved current findings.
@@ -222,10 +457,32 @@ impl ReviewRunState {
             .collect()
     }
 
+    /// Returns the exact count of current findings lacking a permitted closure.
+    #[must_use]
+    pub fn unconserved_current_count(&self) -> u64 {
+        let active = self.unconserved_current_findings().len() as u64;
+        if self.binding.uses_paged_history() {
+            self.history.current_unconserved_count().saturating_add(active)
+        } else {
+            active
+        }
+    }
+
+    /// Returns the integrity accumulator for the exact current unconserved identity set.
+    #[must_use]
+    pub fn unconserved_current_xor(&self) -> Sha256Digest {
+        let active = crate::state::mutation::finding_xor(&self.unconserved_current_findings());
+        if self.binding.uses_paged_history() {
+            crate::state::mutation::xor_digest(self.history.current_unconserved_xor(), active)
+        } else {
+            active
+        }
+    }
+
     /// Returns whether current quorum and finding conservation permit D2 completion.
     #[must_use]
     pub fn completion_ready(&self) -> bool {
-        self.quorum.complete() && self.unconserved_current_findings().is_empty()
+        self.quorum.complete() && self.unconserved_current_count() == 0
     }
 
     /// Conservative deterministic upper estimate used before canonical storage admission.
@@ -276,6 +533,23 @@ impl ReviewRunState {
 
     pub(super) fn validate_inert(&self) -> Result<(), ReviewError> {
         self.binding.validate(self.limits)?;
+        self.history.validate()?;
+        if self.binding.uses_paged_history() {
+            if self.history.current_binding_digest() != self.binding.digest()
+                || (self.history.page_count() > 0
+                    && self.history.through_sequence() >= self.sequence.get())
+            {
+                return Err(reject(
+                    ReviewErrorKind::ReplayMismatch,
+                    "review history frontier does not precede the active checkpoint",
+                ));
+            }
+        } else if self.history != ReviewHistoryFrontier::empty() {
+            return Err(reject(
+                ReviewErrorKind::ReplayMismatch,
+                "legacy review binding contains a paged-history frontier",
+            ));
+        }
         if self.cycles.len() > usize::from(self.limits.cycles())
             || self.cycles.len() > usize::from(self.limits.assignments())
             || self.findings.len() > self.limits.findings() as usize
@@ -288,7 +562,15 @@ impl ReviewRunState {
                 "decoded review state exceeds its immutable bounds",
             ));
         }
-        if self.cycles.windows(2).any(|pair| pair[0].ordinal() >= pair[1].ordinal())
+        let cycles_noncanonical = if self.binding.uses_paged_history() {
+            self.cycles.windows(2).any(|pair| {
+                (pair[0].ordinal().get(), pair[0].id())
+                    >= (pair[1].ordinal().get(), pair[1].id())
+            })
+        } else {
+            self.cycles.windows(2).any(|pair| pair[0].ordinal() >= pair[1].ordinal())
+        };
+        if cycles_noncanonical
             || self.findings.windows(2).any(|pair| pair[0].id() >= pair[1].id())
         {
             return Err(reject(
@@ -301,17 +583,27 @@ impl ReviewRunState {
         }
         for finding in &self.findings {
             finding.validate(self.binding.blocking_severity(), self.limits)?;
-            let source_cycle = self.cycle(finding.origin().cycle_id()).ok_or_else(|| {
-                reject(ReviewErrorKind::UnknownIdentity, "decoded finding origin cycle is absent")
-            })?;
-            if source_cycle.assignment().reviewer().actor_id() != finding.origin().reviewer() {
+            let source_cycle = self.cycle(finding.origin().cycle_id());
+            if source_cycle.is_none() && !self.binding.uses_paged_history() {
+                return Err(reject(
+                    ReviewErrorKind::UnknownIdentity,
+                    "decoded finding origin cycle is absent",
+                ));
+            }
+            if source_cycle.is_some_and(|cycle| {
+                cycle.assignment().reviewer().actor_id() != finding.origin().reviewer()
+            }) {
                 return Err(reject(
                     ReviewErrorKind::BindingMismatch,
                     "decoded finding origin reviewer differs from its cycle",
                 ));
             }
         }
-        let expected_quorum = QuorumReport::evaluate(&self.binding, &self.cycles);
+        let expected_quorum = if self.binding.uses_paged_history() && self.quorum.complete() {
+            self.quorum.clone()
+        } else {
+            QuorumReport::evaluate(&self.binding, &self.cycles)
+        };
         let unconserved = self.unconserved_current_findings();
         let expected_oscillation = OscillationReport::evaluate(
             &self.binding,
@@ -334,13 +626,16 @@ impl ReviewRunState {
             ));
         }
         if let Some(terminal) = &self.terminal
-            && (terminal.digest != crate::canonical::terminal_digest(terminal)
+            && (terminal.uses_paged_history() != self.binding.uses_paged_history()
+                || terminal.digest != crate::canonical::terminal_digest(terminal)
                 || terminal.unconserved_findings != unconserved
+                || terminal.unconserved_count != self.unconserved_current_count()
+                || terminal.unconserved_xor != self.unconserved_current_xor()
                 || terminal.quorum != self.quorum
                 || terminal.oscillation != self.oscillation
                 || (terminal.kind == ReviewTerminalKind::Completed
                     && (!self.quorum.complete()
-                        || !unconserved.is_empty()
+                        || self.unconserved_current_count() != 0
                         || self.oscillation.triggered())))
         {
             return Err(reject(

@@ -33,7 +33,7 @@ fn restored_interrupted_run_remains_idle_without_restart_narration() {
         })
         .await
         .expect("provider boundary");
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
         let records = running.load_test_records().expect("restore runs");
         drop(running);
 
@@ -59,7 +59,7 @@ fn restored_interrupted_run_remains_idle_without_restart_narration() {
             .to_owned();
         assert!(status.contains("explicit retry"), "{status}");
         assert_eq!(writer.requests.lock().expect("writer requests").len(), 1);
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -153,7 +153,7 @@ fn product_record_fault_boundaries_preserve_an_old_or_complete_new_record() {
             let expected =
                 if new_record_visible { "fault-boundary-new-status" } else { &baseline_status };
             assert_eq!(observed["status"].as_str(), Some(expected), "fault point {point:?}");
-            service.shutdown(Duration::from_secs(5)).await;
+            service.shutdown().await.expect("shutdown product runs");
         }
     });
 }
@@ -228,7 +228,7 @@ fn interaction_persistence_failure_is_visible_and_terminal_in_memory() {
         assert_eq!(failure.kind(), ProductActivityKind::Error);
         assert!(failure.detail().contains("write the product-run temporary record"));
         assert!(failure.detail().contains("restart Peritus"));
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -289,7 +289,7 @@ fn persistent_failure_after_effect_does_not_replay_provider_or_tool_on_restart()
             run_id,
             PersistenceFaultPoint::BeforeWrite,
         );
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
         drop(running);
         clear_persistent_persistence_fault(
             &fault_directory,
@@ -323,6 +323,6 @@ fn persistent_failure_after_effect_does_not_replay_provider_or_tool_on_restart()
             CORRECT,
             "startup recovery must not replay the completed tool effect",
         );
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }

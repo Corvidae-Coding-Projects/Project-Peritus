@@ -1,6 +1,7 @@
 //! Hardened authentication and isolated one-turn process projections.
 
 mod sessions;
+mod usage;
 
 use std::fs::OpenOptions;
 use std::io::{Read as _, Write as _};
@@ -22,6 +23,7 @@ mod tests;
 pub(super) struct TurnOutput {
     pub(super) process: peritus_provider_core::ProcessOutput,
     pub(super) final_message: Result<String, DecodeFailure>,
+    pub(super) prior_usage: peritus_model_protocol::UsageCounters,
 }
 
 const DISABLED_NATIVE_FEATURES: &[&str] = &[
@@ -74,6 +76,7 @@ pub(super) async fn run_turn(
     cancellation: &CancellationToken,
 ) -> Result<TurnOutput, ProviderCoreError> {
     let session = sessions::Session::open(request)?;
+    let prior_usage = usage::recover(session.root())?;
     let directory = session.turn_directory()?;
     let mut schema =
         tempfile::NamedTempFile::new_in(directory.path()).map_err(|_| temporary_failure())?;
@@ -110,7 +113,7 @@ pub(super) async fn run_turn(
     let process = transport.run(process, cancellation).await?;
     session.validate_output()?;
     let final_message = read_final(&final_path);
-    Ok(TurnOutput { process, final_message })
+    Ok(TurnOutput { process, final_message, prior_usage })
 }
 
 fn read_final(path: &Path) -> Result<String, DecodeFailure> {

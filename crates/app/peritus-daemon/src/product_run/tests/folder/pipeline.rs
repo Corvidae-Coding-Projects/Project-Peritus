@@ -66,7 +66,7 @@ fn folder_provider_failure_retains_unqualified_effects_and_durable_retry_reuses_
         assert!(writer.responses.lock().expect("scripts").is_empty());
         service.query_interaction(ProductInteractionQuery::new(id)).expect("wire-safe completion");
         assert!(!root.path().join(".git").exists());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -102,7 +102,7 @@ fn unsupported_folder_checks_do_not_become_success_from_clean_reviewer_prose() {
         );
         assert!(!root.path().join("peritus-workspace.toml").exists());
         assert!(!root.path().join(".git").exists());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -152,7 +152,7 @@ fn cancellation_during_folder_review_retains_effects_without_qualification_or_co
             assert!(!record.candidate_actionable);
             assert!(!record.settlement.expect("settlement").is_accepted());
         }
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -220,6 +220,6 @@ fn folder_effort_selection_follows_writer_reviewer_fixer_and_fresh_review() {
             efforts,
             [vec!["low"; 8], vec!["xhigh"; 3], vec!["max"; 4], vec!["xhigh"; 3]].concat()
         );
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

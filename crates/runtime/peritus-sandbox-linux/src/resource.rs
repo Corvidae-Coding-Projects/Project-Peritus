@@ -1,6 +1,6 @@
 //! Dimension-specific Linux resource projection and helper rlimits.
 
-use crate::{EnforcementLevel, LinuxError, LinuxErrorKind, LinuxOperation, LinuxRecovery};
+use crate::{EnforcementLevel, LinuxError};
 use peritus_sandbox::{CheckedSandboxPlan, ResourceLimits, SandboxResourceKind};
 
 /// Complete native and supervisor resource projection.
@@ -120,23 +120,6 @@ impl ResourcePlan {
             processes: reader.u64()?,
             concurrency: reader.u64()?,
         };
-        if [
-            plan.memory_bytes,
-            plan.disk_bytes,
-            plan.output_bytes,
-            plan.open_handles,
-            plan.processes,
-            plan.concurrency,
-        ]
-        .contains(&0)
-        {
-            return Err(LinuxError::new(
-                LinuxErrorKind::Resource,
-                LinuxOperation::Manifest,
-                LinuxRecovery::CorrectRequest,
-                "helper resource limits must be nonzero",
-            ));
-        }
         Ok(plan)
     }
 }

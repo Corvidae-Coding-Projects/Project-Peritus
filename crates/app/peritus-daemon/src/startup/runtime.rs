@@ -89,93 +89,67 @@ impl DaemonRuntime {
     ///
     /// Returns a transport error if the signal source or endpoint server fails.
     pub async fn wait_for_shutdown_signal(&mut self) -> Result<(), DaemonError> {
+        let host = Self::wait_for_host_shutdown_signal();
+        tokio::pin!(host);
+        tokio::select! {
+            result = &mut host => result,
+            result = self.wait_for_runtime_shutdown() => result,
+        }
+    }
+
+    /// Waits for an operating-system shutdown request without requiring a constructed runtime.
+    pub(crate) async fn wait_for_host_shutdown_signal() -> Result<(), DaemonError> {
         #[cfg(unix)]
         {
             let mut terminate =
                 tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
                     .map_err(|error| signal_error("register termination signal", error))?;
-            let action = {
-                let mut interrupt = Box::pin(tokio::signal::ctrl_c());
-                let mut termination = Box::pin(terminate.recv());
-                let mut request = Box::pin(self.shutdown_requests.recv());
-                let server = self.server_task.as_mut().expect("live runtime owns server task");
-                poll_fn(|context| {
-                    if let Poll::Ready(result) = interrupt.as_mut().poll(context) {
-                        return Poll::Ready(ShutdownAction::Interrupt(result));
-                    }
-                    if termination.as_mut().poll(context).is_ready() {
-                        return Poll::Ready(ShutdownAction::Terminate);
-                    }
-                    if let Poll::Ready(request) = request.as_mut().poll(context) {
-                        return Poll::Ready(ShutdownAction::Request(request));
-                    }
-                    if let Poll::Ready(result) =
-                        Future::poll(std::pin::Pin::new(&mut *server), context)
-                    {
-                        return Poll::Ready(ShutdownAction::Server(result));
-                    }
-                    Poll::Pending
-                })
-                .await
-            };
-            match action {
-                ShutdownAction::Interrupt(result) => {
+            tokio::select! {
+                result = tokio::signal::ctrl_c() => {
                     result.map_err(|error| signal_error("wait for interrupt signal", error))
                 }
-                ShutdownAction::Terminate => Ok(()),
-                ShutdownAction::Request(request) => {
-                    self.accepted_shutdown = request;
-                    Ok(())
-                }
-                ShutdownAction::Server(result) => {
-                    self.server_task = None;
-                    server_exit(result)
-                }
+                _ = terminate.recv() => Ok(()),
             }
         }
         #[cfg(windows)]
         {
-            let action = {
-                let mut interrupt = Box::pin(tokio::signal::ctrl_c());
-                let mut request = Box::pin(self.shutdown_requests.recv());
-                let server = self.server_task.as_mut().expect("live runtime owns server task");
-                poll_fn(|context| {
-                    if let Poll::Ready(result) = interrupt.as_mut().poll(context) {
-                        return Poll::Ready(ShutdownAction::Interrupt(result));
-                    }
-                    if let Poll::Ready(request) = request.as_mut().poll(context) {
-                        return Poll::Ready(ShutdownAction::Request(request));
-                    }
-                    if let Poll::Ready(result) =
-                        Future::poll(std::pin::Pin::new(&mut *server), context)
-                    {
-                        return Poll::Ready(ShutdownAction::Server(result));
-                    }
-                    Poll::Pending
-                })
+            tokio::signal::ctrl_c()
                 .await
-            };
-            match action {
-                ShutdownAction::Interrupt(result) => {
-                    result.map_err(|error| signal_error("wait for interrupt signal", error))
+                .map_err(|error| signal_error("wait for interrupt signal", error))
+        }
+    }
+
+    pub(crate) async fn wait_for_runtime_shutdown(&mut self) -> Result<(), DaemonError> {
+        let action = {
+            let mut request = Box::pin(self.shutdown_requests.recv());
+            let server = self.server_task.as_mut().expect("live runtime owns server task");
+            poll_fn(|context| {
+                if let Poll::Ready(request) = request.as_mut().poll(context) {
+                    return Poll::Ready(RuntimeShutdownAction::Request(request));
                 }
-                ShutdownAction::Terminate => Ok(()),
-                ShutdownAction::Request(request) => {
-                    self.accepted_shutdown = request;
-                    Ok(())
+                if let Poll::Ready(result) =
+                    Future::poll(std::pin::Pin::new(&mut *server), context)
+                {
+                    return Poll::Ready(RuntimeShutdownAction::Server(result));
                 }
-                ShutdownAction::Server(result) => {
-                    self.server_task = None;
-                    server_exit(result)
-                }
+                Poll::Pending
+            })
+            .await
+        };
+        match action {
+            RuntimeShutdownAction::Request(request) => {
+                self.accepted_shutdown = request;
+                Ok(())
+            }
+            RuntimeShutdownAction::Server(result) => {
+                self.server_task = None;
+                server_exit(result)
             }
         }
     }
 }
 
-enum ShutdownAction {
-    Interrupt(Result<(), std::io::Error>),
-    Terminate,
+enum RuntimeShutdownAction {
     Request(Option<ShutdownCommand>),
     Server(Result<Result<(), DaemonError>, tokio::task::JoinError>),
 }

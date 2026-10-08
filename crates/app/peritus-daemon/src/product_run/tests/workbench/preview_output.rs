@@ -121,7 +121,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         let terminal = wait_for_output(&running, result_query, "GOODBYE diagnostic", true).await;
         assert!(terminal.outputs()[0].stdout().contains("HELLO Ada"));
         terminal_attachment.finish().await;
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
         drop(running);
         let controls = crate::product_control::ControlStore::open(
             &state.path().join("workbench-v1"),
@@ -136,13 +136,17 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         assert!(records.contains_key(&run), "preview run must restore");
         let restarted =
             service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
-        *restarted.inner.controls.lock().expect("controls") = Some(controls);
-        *restarted.inner.records.write().expect("records") = records;
+        {
+            let cancellation = peritus_journal::JournalCancellation::new();
+            let _permit = restarted.inner.controls.acquire(&cancellation).expect("queue owner");
+            *restarted.inner.controls.owner.lock().expect("controls") = Some(controls);
+            *restarted.inner.records.write().expect("records") = records;
+        }
         let restored = observe(&restarted, result_query);
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
         assert_eq!(restarted.workbench_receipt(actor(), &launch), result);
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }
 

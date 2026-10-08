@@ -5,7 +5,7 @@ use peritus_types::Sha256Digest;
 use serde::Deserialize;
 use serde::Serialize;
 
-/// Immutable public reply artifact reference. Exact bytes belong to the control store.
+/// Immutable public reply artifact reference. Exact bytes live in the control artifact store.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PublicReplyReference {
@@ -16,17 +16,17 @@ pub struct PublicReplyReference {
 }
 
 impl PublicReplyReference {
-    /// Creates a bounded reference; publication must validate and retain the exact text bytes.
+    /// Creates a reference; publication must validate and retain the exact text bytes.
     ///
     /// # Errors
-    /// Rejects empty or oversized public replies.
+    /// Rejects empty public replies.
     pub const fn new(
         operation: OperationId,
         after_invocation: InvocationId,
         digest: [u8; 32],
         bytes: u64,
     ) -> Result<Self, ControlError> {
-        if bytes == 0 || bytes > 1024 * 1024 {
+        if bytes == 0 {
             return Err(ControlError::Capacity);
         }
         Ok(Self { operation, after_invocation, digest, bytes })

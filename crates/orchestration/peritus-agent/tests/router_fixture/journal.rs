@@ -17,7 +17,7 @@ pub fn open_journal(root: &TestRoot) -> SqliteJournal {
     SqliteJournal::open(
         root.path().join("authority.sqlite3"),
         StoreId::new([201; 16]).unwrap(),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .unwrap()
 }

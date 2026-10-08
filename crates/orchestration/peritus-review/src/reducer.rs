@@ -80,6 +80,16 @@ pub fn decide(
     state: &ReviewRunState,
     command: &ReviewCommand,
 ) -> Result<ReviewTransition, ReviewError> {
+    let mut hydration = crate::history::ReviewHistoryHydration::for_command(command);
+    hydration.capture_active(state);
+    decide_hydrated(state, command, hydration)
+}
+
+pub(crate) fn decide_hydrated(
+    state: &ReviewRunState,
+    command: &ReviewCommand,
+    hydration: crate::history::ReviewHistoryHydration,
+) -> Result<ReviewTransition, ReviewError> {
     validate_fences(state, command)?;
     if estimated_payload_bytes(command.kind()) > state.limits().payload_bytes() {
         return Err(reject(
@@ -91,9 +101,27 @@ pub fn decide(
         .sequence()
         .checked_next()
         .map_err(|_| reject(ReviewErrorKind::LimitExceeded, "review event sequence overflowed"))?;
+    let transient_reviewer_cycle = match command.kind() {
+        ReviewCommandKind::ConfirmResolution { reviewer_cycle, .. }
+        | ReviewCommandKind::ConfirmInvalidation { reviewer_cycle, .. }
+        | ReviewCommandKind::ConfirmSupersession { reviewer_cycle, .. }
+            if state.cycle(*reviewer_cycle).is_none() => Some(*reviewer_cycle),
+        _ => None,
+    };
     let mut successor = state.clone();
+    let advance_revision = matches!(command.kind(), ReviewCommandKind::AdvanceRevision { .. });
+    mutation::archive_predecessor(
+        &mut successor,
+        advance_revision,
+        advance_revision || should_archive(state, command),
+    )?;
+    hydration.install(&mut successor)?;
     let kind = apply(&mut successor, command.event_id(), command.kind())?;
+    if let Some(cycle_id) = transient_reviewer_cycle {
+        mutation::remove_cycle(&mut successor, cycle_id);
+    }
     mutation::recompute(&mut successor);
+    mutation::compact_active_dispositions(&mut successor);
     if successor.estimated_encoded_bytes() > successor.limits().state_bytes() {
         return Err(reject(
             ReviewErrorKind::LimitExceeded,
@@ -133,13 +161,18 @@ pub fn replay(events: &[ReviewEvent]) -> Result<ReviewRunState, ReviewError> {
     let mut state = first_transition.into_state();
     let mut event_ids = BTreeSet::from([first.id()]);
     let mut command_ids = BTreeSet::from([first.command_id()]);
-    for event in &events[1..] {
+    for (index, event) in events[1..].iter().enumerate() {
         if !event_ids.insert(event.id()) || !command_ids.insert(event.command_id()) {
             return Err(replay_error("review event or command identity is duplicated"));
         }
         let command =
             command_from_event(event, state.sequence().get(), Some(state.last_event_id()))?;
-        let transition = decide(&state, &command)?;
+        let mut hydration = crate::history::ReviewHistoryHydration::for_command(&command);
+        for historical in &events[..=index] {
+            hydration.observe(historical, &command);
+        }
+        hydration.capture_active(&state);
+        let transition = decide_hydrated(&state, &command, hydration)?;
         if transition.event() != event {
             return Err(replay_error("review event differs from deterministic reduction"));
         }
@@ -152,7 +185,7 @@ fn validate_fences(state: &ReviewRunState, command: &ReviewCommand) -> Result<()
     if state.phase() == ReviewRunPhase::Terminal {
         return Err(illegal("review aggregate is terminal and fenced closed"));
     }
-    if state.used_commands().len() >= 65_535 {
+    if !state.binding().uses_paged_history() && state.used_commands().len() >= 65_535 {
         return Err(reject(
             ReviewErrorKind::LimitExceeded,
             "review command history reached the canonical collection limit",
@@ -163,7 +196,8 @@ fn validate_fences(state: &ReviewRunState, command: &ReviewCommand) -> Result<()
         || state.sequence().get() != command.expected_sequence()
         || command.expected_previous_event() != Some(state.last_event_id())
         || command.prior_state_digest() != state.state_digest()
-        || state.used_commands().contains(&command.command_id())
+        || (!state.binding().uses_paged_history()
+            && state.used_commands().contains(&command.command_id()))
         || matches!(command.kind(), ReviewCommandKind::StartRun { .. })
     {
         return Err(reject(
@@ -174,8 +208,35 @@ fn validate_fences(state: &ReviewRunState, command: &ReviewCommand) -> Result<()
     Ok(())
 }
 
+fn should_archive(state: &ReviewRunState, command: &ReviewCommand) -> bool {
+    if !state.binding().uses_paged_history() {
+        return false;
+    }
+    let command_pressure = state
+        .estimated_encoded_bytes()
+        .saturating_add(estimated_payload_bytes(command.kind()))
+        > state.limits().state_bytes();
+    let command_window_full = state.used_commands().len()
+        >= usize::from(state.limits().assignments().min(state.limits().cycles()));
+    let cycle_window_complete = matches!(command.kind(), ReviewCommandKind::AssignReviewer { .. })
+        && state.quorum().complete()
+        && state
+            .cycles()
+            .iter()
+            .any(|cycle| cycle.phase() != crate::ReviewCyclePhase::Assigned);
+    let finding_window_full = match command.kind() {
+        ReviewCommandKind::SubmitReview { submission } => state
+            .findings()
+            .len()
+            .saturating_add(submission.findings().len())
+            > state.limits().findings() as usize,
+        _ => false,
+    };
+    command_pressure || command_window_full || cycle_window_complete || finding_window_full
+}
+
 #[allow(clippy::too_many_lines)]
-fn command_from_event(
+pub(crate) fn command_from_event(
     event: &ReviewEvent,
     expected_sequence: u64,
     previous: Option<peritus_types::EventId>,

@@ -266,6 +266,13 @@ impl AppModel {
     pub(super) fn chat_work_active(&self) -> bool {
         self.chat.active() || self.workbench_chat_starting()
     }
+    pub(crate) fn chat_control_is_legal(&self, action: ProductRunControlAction) -> bool {
+        let Some(run_id) = self.chat.run_id else { return false };
+        self.product
+            .as_ref()
+            .and_then(|product| product.runs.iter().find(|run| run.run_id() == run_id))
+            .is_some_and(|run| run.operation().legal_controls().allows(action))
+    }
     pub(super) fn chat_submission_pending(&self) -> bool {
         self.chat_mutation_pending()
             || self.pending.values().any(|pending| {

@@ -4,6 +4,7 @@ use super::primitive::{invalid, read_digest, read_id, unknown, write_digest, wri
 use crate::{
     AppProtocolLimits, WorkbenchImageFormat as F, WorkbenchImageLabel, WorkbenchImageMetadata,
     WorkbenchImagePreview, WorkbenchImageRequest, WorkbenchImageUpload,
+    WorkbenchImageValidation as V,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 use peritus_types::{ArtifactId, ProviderProfileId};
@@ -67,11 +68,17 @@ pub(super) fn write_metadata(
 ) -> Result<(), CodecError> {
     write_digest(w, image.digest())?;
     w.write_u64(image.bytes())?;
-    w.write_u16(match image.format() {
-        F::Png => 1,
-        F::Jpeg => 2,
-        F::Gif => 3,
-        F::Webp => 4,
+    // Tags 1..=4 are the byte-identical historical complete-pixel representation. Additive
+    // container-only tags fail closed in an old reader without shifting any following fields.
+    w.write_u16(match (image.format(), image.validation()) {
+        (F::Png, V::CompletePixels) => 1,
+        (F::Jpeg, V::CompletePixels) => 2,
+        (F::Gif, V::CompletePixels) => 3,
+        (F::Webp, V::CompletePixels) => 4,
+        (F::Png, V::ContainerStructure) => 5,
+        (F::Jpeg, V::ContainerStructure) => 6,
+        (F::Gif, V::ContainerStructure) => 7,
+        (F::Webp, V::ContainerStructure) => 8,
     })?;
     w.write_u32(image.dimensions().0)?;
     w.write_u32(image.dimensions().1)?;
@@ -83,16 +90,30 @@ pub(super) fn read_metadata(
     let offset = r.offset();
     let digest = read_digest(r)?;
     let bytes = r.read_u64()?;
-    let format = match r.read_u16()? {
-        1 => F::Png,
-        2 => F::Jpeg,
-        3 => F::Gif,
-        4 => F::Webp,
+    let (format, validation) = match r.read_u16()? {
+        1 => (F::Png, V::CompletePixels),
+        2 => (F::Jpeg, V::CompletePixels),
+        3 => (F::Gif, V::CompletePixels),
+        4 => (F::Webp, V::CompletePixels),
+        5 => (F::Png, V::ContainerStructure),
+        6 => (F::Jpeg, V::ContainerStructure),
+        7 => (F::Gif, V::ContainerStructure),
+        8 => (F::Webp, V::ContainerStructure),
         _ => return unknown(offset),
     };
     let dimensions = (r.read_u32()?, r.read_u32()?);
     let frames = r.read_u32()?;
-    invalid(offset, WorkbenchImageMetadata::new(digest, bytes, format, dimensions, frames))
+    invalid(
+        offset,
+        WorkbenchImageMetadata::new_with_validation(
+            digest,
+            bytes,
+            format,
+            dimensions,
+            frames,
+            validation,
+        ),
+    )
 }
 pub(super) fn write_preview(
     w: &mut CanonicalWriter,

@@ -52,7 +52,7 @@ pub use observation::{
     EnforcementLevel, LinuxObservation, NativeCapability, NativePhase, ObservationOutcome,
     ResourceEnforcement,
 };
-pub use preparation::LinuxBackend;
+pub use preparation::{LinuxBackend, RetainedLinuxBackendFactory};
 pub use probe::{
     Architecture, BubblewrapProbe, KernelVersion, LinuxProbe, NamespaceSupport, ProbeRequest,
 };

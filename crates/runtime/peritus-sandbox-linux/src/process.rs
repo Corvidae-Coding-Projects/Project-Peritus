@@ -3,12 +3,17 @@
 use crate::{LinuxError, LinuxErrorKind, LinuxOperation, LinuxRecovery, TargetCommand};
 use peritus_process::ExecutionPlan;
 use peritus_sandbox::CheckedSandboxPlan;
+use std::ffi::OsStr;
 
 pub fn target_command(
     execution: &ExecutionPlan,
     sandbox: &CheckedSandboxPlan,
 ) -> Result<TargetCommand, LinuxError> {
-    if execution.command().executable() != sandbox.requirements().process().program().as_str() {
+    let authorized = sandbox.native_execution().map_or_else(
+        || OsStr::new(sandbox.requirements().process().program().as_str()),
+        peritus_sandbox::NativeExecutionAuthority::executable,
+    );
+    if execution.command().executable() != authorized {
         return Err(LinuxError::new(
             LinuxErrorKind::PreparationMismatch,
             LinuxOperation::Prepare,

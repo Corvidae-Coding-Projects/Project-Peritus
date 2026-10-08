@@ -179,6 +179,7 @@ fn request_capture_obeys_the_wire_text_resource_bound_without_consuming_inputs()
             selection: InputSelection::new(id, 1).expect("selection"),
             author: [21; 16],
             text: ControlText::new("x".repeat(8192)).expect("bounded text"),
+            source: None,
             dependencies: Vec::new(),
             state: InputState::Queued,
             correction_of: None,

@@ -15,7 +15,7 @@ pub fn open(root: &TestRoot) -> SqliteJournal {
     SqliteJournal::open(
         root.path().join("authority.sqlite3"),
         StoreId::new([201; 16]).expect("store"),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("open authority journal")
 }

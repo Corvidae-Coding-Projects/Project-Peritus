@@ -73,6 +73,17 @@ fn combined_rewind_conflict_never_publishes_a_child() {
 mod scenario;
 use scenario::checkpoint_scenario;
 
+#[test]
+fn complete_checkpoint_metadata_runs_restores_and_reopens_with_exact_original_receipts() {
+    interaction::block_on(scenario::checkpoint_scenario_with_name(
+        false,
+        None,
+        WorkbenchRewindMode::FilesOnly,
+        WorkbenchFileRange::All,
+        "complete checkpoint ".repeat(40),
+    ));
+}
+
 mod automatic;
 mod storage_wait;
 

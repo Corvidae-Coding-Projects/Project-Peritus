@@ -12,7 +12,7 @@ pub use preview::{WorkbenchFileMetadata, WorkbenchFilePreview};
 mod page;
 pub use page::{WorkbenchFilePage, WorkbenchFileQuery, WorkbenchFileRow};
 
-/// Maximum selected UTF-8 file bytes; larger sources require an explicit range.
+/// Legacy compatibility value; selected UTF-8 content has no host admission ceiling.
 pub const MAX_WORKBENCH_FILE_BYTES: u64 = 256 * 1024;
 
 pub(super) const fn invalid() -> AppProtocolError {
@@ -22,7 +22,7 @@ pub(super) const fn invalid() -> AppProtocolError {
 /// Exact source selection, resolved to bytes only by the authorized host.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WorkbenchFileRange {
-    /// Complete source under the inclusion ceiling.
+    /// Complete source.
     All,
     /// Nonempty half-open byte range.
     Bytes {
@@ -34,9 +34,9 @@ pub enum WorkbenchFileRange {
     /// One-based inclusive complete line range.
     Lines {
         /// First included line.
-        first: u32,
+        first: u64,
         /// Last included line.
-        last: u32,
+        last: u64,
     },
 }
 impl WorkbenchFileRange {

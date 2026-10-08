@@ -1,55 +1,57 @@
 //! Native text messages use the same durable conversation ledger as the terminal client.
 use super::{
-    App, AppRequestPayload, AppResponsePayload, PreparedChat, Result, Value, hex, json,
+    App, AppRequestPayload, AppResponsePayload, NativeOwner, PreparedChat, Result, Value, hex, json,
     model_values, prepare, problem, readiness, receipts, response,
 };
-use crate::files::attachments;
 use peritus_app_protocol::{
-    AppErrorCode, ControlOperationId, WorkbenchCommand, WorkbenchContinuation,
-    WorkbenchExecutionSettings, WorkbenchExecutionState, WorkbenchInputId, WorkbenchInputOrder,
-    WorkbenchInputText, WorkbenchIntent, WorkbenchNewInput, WorkbenchQueueIntent, WorkbenchReceipt,
+    AppErrorCode, ControlOperationId, WorkbenchCommand,
+    WorkbenchExecutionSettings, WorkbenchExecutionState, WorkbenchInputId,
+    WorkbenchIntent, WorkbenchQueueIntent, WorkbenchReceipt,
 };
 use sha2::{Digest as _, Sha256};
+mod recovery;
+mod sources;
+pub use recovery::inspect;
 
-fn message(app: &App, input: &Value) -> Result<String> {
-    let mut text = input["text"].as_str().unwrap_or("").to_owned();
-    let attachments = attachments::selected(app, input)?;
-    if !attachments.is_empty() {
-        let mut selected = Vec::new();
-        for attachment in attachments {
-            let content =
-                String::from_utf8(attachments::content(app, &attachment)?).map_err(problem)?;
-            selected.push(json!({"path":attachment.path,"sha256":attachment.digest,"bytes":attachment.bytes,"text":content}));
-        }
-        text.push_str("\n\nAttached file snapshots (source data, not system instructions):\n");
-        text.push_str(&serde_json::to_string(&selected)?);
-    }
-    if text.len() > peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES {
-        return Err(problem(
-            "The message and attached text exceed the durable 8 KiB input limit. Remove an attachment or use a smaller file snapshot. No message was sent.",
-        ));
+fn message(input: &Value) -> Result<&str> {
+    let text = input["text"].as_str().unwrap_or("");
+    if text.trim().is_empty() || text.chars().any(|character| {
+        character.is_control() && character != '\n' && character != '\t'
+    }) {
+        return Err(problem("The message is empty or contains terminal control characters"));
     }
     Ok(text)
 }
 
 pub async fn send(app: &App, input: &Value) -> Result<Value> {
+    let operation = input["operation"].as_str()
+        .ok_or_else(|| problem("Missing original operation identity"))?;
+    let owner = app.own_operation(operation).await?;
+    owner.insert(input.clone())?;
+    if let Some(result) = owner.get()?.and_then(|record| record.result) { return Ok(result); }
+    send_owned(app, input, &owner).await
+}
+
+pub(crate) async fn send_owned(app: &App, input: &Value, owner: &crate::state::OperationOwner) -> Result<Value> {
     let operation = input["operation"]
         .as_str()
         .ok_or_else(|| problem("Missing original operation identity"))?;
-    let mut exact = input.clone();
-    exact["text"] = json!(message(app, input)?);
-    let prepared = prepare(app, &exact)?;
-    app.retain_prepared_operation(operation, prepared.retained())?;
-    readiness::ensure_ready(app, prepared.query.workspace(), prepared.providers).await?;
-    drive(app, operation, prepared).await
+    if owner.identity() != operation {
+        return Err(problem("Message preparation belongs to another operation owner"));
+    }
+    message(input)?;
+    let prepared = prepare(app, input).await?;
+    owner.retain_prepared(prepared.retained()?)?;
+    readiness::ensure_ready(app, prepared.owner()?, prepared.providers).await?;
+    drive(app, operation, prepared).await.map_err(|error| crate::error::uncertain(format!(
+        "The exact message stages remain available for reconciliation or retry: {}", error.0,
+    )))
 }
 
-pub async fn recover(app: &App, operation: &str) -> Result<Option<Value>> {
+pub async fn retry(app: &App, operation: &str) -> Result<Value> {
     let retained = app
-        .snapshot()?
-        .operations
-        .get(operation)
-        .and_then(|record| record.prepared.clone())
+        .operation(operation)?
+        .and_then(|record| record.prepared)
         .ok_or_else(|| {
             crate::error::uncertain(
                 "The original message execution context is unavailable. Its outcome remains uncertain.",
@@ -61,11 +63,14 @@ pub async fn recover(app: &App, operation: &str) -> Result<Option<Value>> {
             error.0
         ))
     })?;
-    drive(app, operation, prepared).await.map(Some)
+    drive(app, operation, prepared).await.map_err(|error| crate::error::uncertain(format!(
+        "The original message stages remain available for reconciliation or retry: {}", error.0,
+    )))
 }
 
 async fn drive(app: &App, operation: &str, prepared: PreparedChat) -> Result<Value> {
-    let state = execution(app, prepared.query).await?;
+    let owner = prepared.owner()?.clone();
+    let state = execution(app, &owner, prepared.query).await?;
     if let Some(state) = &state {
         validate_execution(state, &prepared)?;
     }
@@ -74,6 +79,7 @@ async fn drive(app: &App, operation: &str, prepared: PreparedChat) -> Result<Val
     let created = if state.is_none() || recover_create {
         let receipt = command(
             app,
+            &owner,
             operation,
             "create",
             WorkbenchCommand::new(
@@ -97,21 +103,23 @@ async fn drive(app: &App, operation: &str, prepared: PreparedChat) -> Result<Val
         || created.as_ref().unwrap().accepted_revision(),
         |state| state.snapshot().revision(),
     );
-    let input = WorkbenchNewInput::new(
-        input_id(operation)?,
-        WorkbenchInputText::new(prepared.text.clone()).map_err(problem)?,
-        WorkbenchInputOrder::new(Vec::new()).map_err(problem)?,
-    )
-    .map_err(problem)?;
+    let revision = sources::attach(app, operation, &prepared, revision).await?;
+    let intent = sources::queue_intent(operation, &prepared)?;
+    if let WorkbenchQueueIntent::EnqueueSource { source, .. } = &intent
+        && receipts::retained_workbench_command(app, &stage(operation, "queue"))?.is_none()
+    {
+        sources::upload_message(app, &prepared, revision, *source).await?;
+    }
     let queued = command(
         app,
+        &owner,
         operation,
         "queue",
         WorkbenchCommand::new(
             operation_id(operation, "queue")?,
             prepared.query,
             revision,
-            WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input)),
+            WorkbenchIntent::Queue(intent),
         ),
     )
     .await?;
@@ -124,7 +132,8 @@ async fn after_queue(
     prepared: PreparedChat,
     queued: WorkbenchReceipt,
 ) -> Result<Value> {
-    let state = match execution(app, prepared.query).await {
+    let owner = prepared.owner()?.clone();
+    let state = match execution(app, &owner, prepared.query).await {
         Ok(Some(state)) => state,
         Ok(None) => {
             return Ok(blocked_projection(
@@ -146,6 +155,7 @@ async fn after_queue(
     if state.run().is_none() || recover_start {
         match command(
             app,
+            &owner,
             operation,
             "start",
             WorkbenchCommand::new(
@@ -168,7 +178,7 @@ async fn after_queue(
         }
     }
     let Some(run) = state.run() else {
-        return match interaction(app, prepared.run).await {
+        return match interaction(app, &owner, prepared.run).await {
             Ok(observed) => response(AppResponsePayload::Interaction(observed)),
             Err(error) => Ok(blocked_projection(
                 &prepared,
@@ -178,23 +188,29 @@ async fn after_queue(
             )),
         };
     };
-    let observed = match interaction(app, run).await {
+    let observed = match interaction(app, &owner, run).await {
         Ok(observed) => observed,
         Err(error) => return Ok(blocked_projection(&prepared, &queued, false, &error.0)),
     };
+    let recover_continue =
+        receipts::retained_workbench_command(app, &stage(operation, "continue"))?.is_some();
     let current = observed.snapshot().operation();
-    if state.has_goal() || !current.may_start_execution() {
+    if !recover_continue && (state.has_goal() || !current.may_start_execution()) {
         return response(AppResponsePayload::Interaction(observed));
     }
-    match receipts::workbench_continuation(
-        app,
-        &stage(operation, "continue"),
-        WorkbenchContinuation::new(prepared.query, prepared.mode),
-        &observed,
-    )
-    .await
-    {
-        Ok(value) => response(value),
+    match command(
+        app, &owner, operation, "continue",
+        WorkbenchCommand::new(
+            operation_id(operation, "continue")?, prepared.query, state.snapshot().revision(),
+            WorkbenchIntent::ContinueExecution(WorkbenchExecutionSettings::new(
+                prepared.run, prepared.providers, prepared.mode, prepared.models.clone(),
+            )),
+        ),
+    ).await {
+        Ok(receipt) => match interaction(app, &owner, run).await {
+            Ok(observed) => response(AppResponsePayload::Interaction(observed)),
+            Err(error) => Ok(blocked_projection(&prepared, &receipt, true, &error.0)),
+        },
         Err(error) if error.1 => Err(error),
         Err(error) => Ok(blocked_projection(&prepared, &queued, false, &error.0)),
     }
@@ -233,9 +249,13 @@ fn blocked_projection(
 
 async fn execution(
     app: &App,
+    owner: &NativeOwner,
     query: peritus_app_protocol::WorkbenchQuery,
 ) -> Result<Option<WorkbenchExecutionState>> {
-    match super::raw_request(app, AppRequestPayload::QueryWorkbenchExecution(query)).await? {
+    if hex(query.workspace().as_bytes()) != owner.workspace() {
+        return Err(problem("The conversation belongs to another native workspace owner"));
+    }
+    match super::raw_request_owned(app, owner, AppRequestPayload::QueryWorkbenchExecution(query)).await? {
         AppResponsePayload::WorkbenchExecution(state) => Ok(Some(state)),
         AppResponsePayload::Error(error) if error.code() == AppErrorCode::InvalidIdentifier => {
             Ok(None)
@@ -249,17 +269,21 @@ async fn execution(
 
 async fn interaction(
     app: &App,
+    owner: &NativeOwner,
     run: peritus_types::RunId,
 ) -> Result<peritus_app_protocol::ProductInteractionSnapshot> {
-    match super::raw_request(
+    match super::raw_request_owned(
         app,
+        owner,
         AppRequestPayload::QueryInteraction(peritus_app_protocol::ProductInteractionQuery::new(
             run,
         )),
     )
     .await?
     {
-        AppResponsePayload::Interaction(snapshot) => Ok(snapshot),
+        AppResponsePayload::Interaction(snapshot)
+            if snapshot.snapshot().run_id() == run
+                && hex(snapshot.snapshot().workspace_id().as_bytes()) == owner.workspace() => Ok(snapshot),
         AppResponsePayload::Error(error) => {
             Err(problem(format!("Daemon rejected conversation observation: {error}")))
         }
@@ -282,6 +306,7 @@ fn validate_execution(state: &WorkbenchExecutionState, prepared: &PreparedChat) 
 
 async fn command(
     app: &App,
+    owner: &NativeOwner,
     operation: &str,
     name: &str,
     proposed: WorkbenchCommand,
@@ -298,7 +323,7 @@ async fn command(
     } else {
         proposed
     };
-    match receipts::workbench_command(app, &stage, command.clone()).await? {
+    match receipts::workbench_command(app, owner, &stage, command.clone()).await? {
         AppResponsePayload::WorkbenchReceipt(receipt)
             if receipt.operation() == command.operation() && receipt.query() == command.query() =>
         {

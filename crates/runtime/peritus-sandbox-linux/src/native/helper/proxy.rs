@@ -14,7 +14,11 @@ pub struct PreparedProxy {
 }
 
 impl PreparedProxy {
-    pub fn configure(mut self, command: &mut Command) {
+    pub fn configure(
+        mut self,
+        command: &mut Command,
+        environment: &mut Vec<peritus_process::EnvironmentVariable>,
+    ) -> Result<(), LinuxError> {
         const HEX: &[u8; 16] = b"0123456789abcdef";
 
         let mut token = Zeroizing::new(String::with_capacity(self.token.len() * 2));
@@ -23,11 +27,15 @@ impl PreparedProxy {
             token.push(char::from(HEX[usize::from(byte & 0x0f)]));
         }
         let url = Zeroizing::new(format!("http://peritus:{}@{}", token.as_str(), self.endpoint));
-        command.env("HTTP_PROXY", OsStr::new(url.as_str()));
-        command.env("HTTPS_PROXY", OsStr::new(url.as_str()));
-        command.env("http_proxy", OsStr::new(url.as_str()));
-        command.env("https_proxy", OsStr::new(url.as_str()));
+        for name in ["HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"] {
+            command.env(name, OsStr::new(url.as_str()));
+            environment.push(
+                peritus_process::EnvironmentVariable::new(name, url.as_str())
+                    .map_err(|_| helper_error("managed proxy environment is invalid"))?,
+            );
+        }
         self.token.zeroize();
+        Ok(())
     }
 }
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {ui, attempt, gitAction} from '../workspace.svelte';
+  import {ui, attempt, gitAction,loadMoreGitInventory} from '../workspace.svelte';
   let selected=$state(''), name=$state(''), start=$state(''), rename=$state('');
   let branch=$derived(ui.git?.branches.find(item=>item.ref===selected));
   const run=(kind:string,options:Record<string,unknown>)=>gitAction(kind,[],'',options);
@@ -14,6 +14,7 @@
       <option value="">Choose a branch…</option>
       {#each ui.git?.branches??[] as item(item.ref)}<option value={item.ref}>{item.name}{item.current?' (current)':item.remote?' (remote)':''}</option>{/each}
     </select>
+    {#if ui.git?.inventoryCursor}<button class="flat" disabled={ui.gitBusy} onclick={()=>void attempt(loadMoreGitInventory)}>Load more refs and remotes</button>{/if}
     {#if branch?.upstream}<p>Tracks {branch.upstream}</p>{/if}
     <button class="key small" disabled={ui.gitBusy||!branch||branch.current} onclick={()=>void attempt(()=>run('branch-switch',{branch:selected}))}>{branch?.remote?'Track remote branch':'Switch branch'}</button>
     <form onsubmit={(event)=>{event.preventDefault();void attempt(create);}}>

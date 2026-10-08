@@ -8,7 +8,7 @@ mod verified;
 pub use error::{TerminalError, TerminalErrorKind};
 pub use messages::{
     TerminalBinding, TerminalCancellation, TerminalDetach, TerminalExit, TerminalExitDisposition,
-    TerminalInput, TerminalOutput, TerminalResize, TerminalStream,
+    TerminalInput, TerminalOutput, TerminalOutputGap, TerminalResize, TerminalStream,
 };
 pub use state::{TerminalPhase, TerminalState, TerminalTransitionDisposition};
 pub use verified::{output_is_contiguous, output_position_is_valid};

@@ -1,5 +1,7 @@
 //! Digest-bound runtime projection of a checked C2 network contract.
 
+use core::num::NonZeroU64;
+
 use peritus_sandbox::{CheckedSandboxPlan, NetworkRule, SecretReference, Transport};
 use peritus_types::{ProcessId, Sha256Digest};
 
@@ -31,24 +33,28 @@ pub enum ProxyMode {
     HttpConnect,
 }
 
-/// Complete bounded proxy resource policy.
+/// Optional caller-selected proxy lifetime and work policy.
+///
+/// `None` means that the corresponding logical allowance was not selected. Physical relay
+/// buffers, observation pages, worker backpressure, and cancellation polling are implementation
+/// windows and are deliberately not represented here.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct NetworkBounds {
-    maximum_connections: u16,
-    maximum_workers: u16,
-    connection_bytes: u64,
-    total_bytes: u64,
-    connection_millis: u64,
-    total_millis: u64,
-    observations: u32,
-    header_bytes: u32,
+    maximum_connections: Option<NonZeroU64>,
+    maximum_workers: Option<NonZeroU64>,
+    connection_bytes: Option<NonZeroU64>,
+    total_bytes: Option<NonZeroU64>,
+    connection_millis: Option<NonZeroU64>,
+    total_millis: Option<NonZeroU64>,
+    observations: Option<NonZeroU64>,
+    header_bytes: Option<NonZeroU64>,
 }
 
 impl NetworkBounds {
-    /// Validates connection, worker, byte, duration, observation, and header ceilings.
+    /// Preserves the version-one constructor for callers selecting every legacy policy axis.
     ///
     /// # Errors
-    /// Rejects zero, inconsistent, or operationally excessive ceilings.
+    /// Rejects zero or internally inconsistent selected ceilings.
     #[allow(clippy::too_many_arguments)]
     pub const fn new(
         maximum_connections: u16,
@@ -61,21 +67,69 @@ impl NetworkBounds {
         header_bytes: u32,
     ) -> Result<Self, NetworkError> {
         if maximum_connections == 0
-            || maximum_connections > 1_024
             || maximum_workers == 0
-            || maximum_workers > maximum_connections
             || connection_bytes == 0
-            || total_bytes < connection_bytes
+            || total_bytes == 0
             || connection_millis == 0
-            || total_millis < connection_millis
-            || observations < 4
-            || observations > 65_536
-            || header_bytes < 256
-            || header_bytes > 1024 * 1024
+            || total_millis == 0
+            || observations == 0
+            || header_bytes == 0
         {
-            return Err(crate::error::invalid(
-                "network bounds are zero, inconsistent, or excessive",
-            ));
+            return Err(crate::error::invalid("selected network bounds must be nonzero"));
+        }
+        Self::from_optional(
+            NonZeroU64::new(maximum_connections as u64),
+            NonZeroU64::new(maximum_workers as u64),
+            NonZeroU64::new(connection_bytes),
+            NonZeroU64::new(total_bytes),
+            NonZeroU64::new(connection_millis),
+            NonZeroU64::new(total_millis),
+            NonZeroU64::new(observations as u64),
+            NonZeroU64::new(header_bytes as u64),
+        )
+    }
+
+    /// Creates a policy with no caller-selected logical lifetime or work allowance.
+    #[must_use]
+    pub const fn without_limits() -> Self {
+        Self {
+            maximum_connections: None,
+            maximum_workers: None,
+            connection_bytes: None,
+            total_bytes: None,
+            connection_millis: None,
+            total_millis: None,
+            observations: None,
+            header_bytes: None,
+        }
+    }
+
+    /// Creates a policy from independently optional selected limits.
+    ///
+    /// # Errors
+    /// Rejects only contradictions between selected per-connection and aggregate axes.
+    #[allow(clippy::too_many_arguments)]
+    pub const fn from_optional(
+        maximum_connections: Option<NonZeroU64>,
+        maximum_workers: Option<NonZeroU64>,
+        connection_bytes: Option<NonZeroU64>,
+        total_bytes: Option<NonZeroU64>,
+        connection_millis: Option<NonZeroU64>,
+        total_millis: Option<NonZeroU64>,
+        observations: Option<NonZeroU64>,
+        header_bytes: Option<NonZeroU64>,
+    ) -> Result<Self, NetworkError> {
+        if matches!(
+            (maximum_connections, maximum_workers),
+            (Some(connections), Some(workers)) if workers.get() > connections.get()
+        ) || matches!(
+            (connection_bytes, total_bytes),
+            (Some(connection), Some(total)) if total.get() < connection.get()
+        ) || matches!(
+            (connection_millis, total_millis),
+            (Some(connection), Some(total)) if total.get() < connection.get()
+        ) {
+            return Err(crate::error::invalid("selected network bounds are inconsistent"));
         }
         Ok(Self {
             maximum_connections,
@@ -89,45 +143,77 @@ impl NetworkBounds {
         })
     }
 
-    /// Returns the accepted connection ceiling.
+    /// Returns the selected accepted-connection ceiling.
     #[must_use]
-    pub const fn maximum_connections(self) -> u16 {
+    pub const fn maximum_connections(self) -> Option<NonZeroU64> {
         self.maximum_connections
     }
-    /// Returns the concurrent worker ceiling.
+    /// Returns the selected concurrent-worker ceiling.
     #[must_use]
-    pub const fn maximum_workers(self) -> u16 {
+    pub const fn maximum_workers(self) -> Option<NonZeroU64> {
         self.maximum_workers
     }
-    /// Returns the bidirectional byte ceiling for one connection.
+    /// Returns the selected bidirectional byte ceiling for one connection.
     #[must_use]
-    pub const fn connection_bytes(self) -> u64 {
+    pub const fn connection_bytes(self) -> Option<NonZeroU64> {
         self.connection_bytes
     }
-    /// Returns the aggregate bidirectional byte ceiling.
+    /// Returns the selected aggregate bidirectional byte ceiling.
     #[must_use]
-    pub const fn total_bytes(self) -> u64 {
+    pub const fn total_bytes(self) -> Option<NonZeroU64> {
         self.total_bytes
     }
-    /// Returns the duration ceiling for one connection.
+    /// Returns the selected duration ceiling for one connection.
     #[must_use]
-    pub const fn connection_millis(self) -> u64 {
+    pub const fn connection_millis(self) -> Option<NonZeroU64> {
         self.connection_millis
     }
-    /// Returns the lifetime ceiling for the proxy owner.
+    /// Returns the selected lifetime ceiling for the proxy owner.
     #[must_use]
-    pub const fn total_millis(self) -> u64 {
+    pub const fn total_millis(self) -> Option<NonZeroU64> {
         self.total_millis
     }
-    /// Returns the retained observation ceiling.
+    /// Returns the selected retained-observation ceiling.
     #[must_use]
-    pub const fn observations(self) -> u32 {
+    pub const fn observations(self) -> Option<NonZeroU64> {
         self.observations
     }
-    /// Returns the maximum request-header bytes.
+    /// Returns the selected per-head byte ceiling.
     #[must_use]
-    pub const fn header_bytes(self) -> u32 {
+    pub const fn header_bytes(self) -> Option<NonZeroU64> {
         self.header_bytes
+    }
+
+    pub(crate) const fn uses_legacy_encoding(self) -> bool {
+        match (
+            self.maximum_connections,
+            self.maximum_workers,
+            self.connection_bytes,
+            self.total_bytes,
+            self.connection_millis,
+            self.total_millis,
+            self.observations,
+            self.header_bytes,
+        ) {
+            (
+                Some(connections),
+                Some(workers),
+                Some(_),
+                Some(_),
+                Some(_),
+                Some(_),
+                Some(observations),
+                Some(header_bytes),
+            ) => {
+                connections.get() <= 1_024
+                    && workers.get() <= connections.get()
+                    && observations.get() >= 4
+                    && observations.get() <= 65_536
+                    && header_bytes.get() >= 256
+                    && header_bytes.get() <= 1_024 * 1_024
+            }
+            _ => false,
+        }
     }
 }
 
@@ -197,8 +283,8 @@ impl NetworkPlan {
     /// Projects a checked C2 plan into an equal-or-narrower managed-network plan.
     ///
     /// # Errors
-    /// Rejects UDP requirements because version one has no exact datagram relay, credentials not
-    /// present in the checked secret contract, and over-limit canonical data.
+    /// Rejects UDP requirements because no exact datagram relay is available and credentials not
+    /// present in the checked secret contract.
     pub fn from_checked(
         checked: &CheckedSandboxPlan,
         options: RuntimeNetworkOptions,

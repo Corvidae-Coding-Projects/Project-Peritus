@@ -3,8 +3,8 @@
 use crate::{AppErrorCode, AppProtocolError, ConversationId, ProductProviderSelection};
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
 
-/// Maximum bytes in a proposal or evidence summary.
-pub const MAX_IMPROVEMENT_TEXT: usize = 4096;
+mod paging;
+pub use paging::*;
 
 /// Exact execution identity and target selected for one explicit evaluation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -75,17 +75,17 @@ impl ImprovementEvaluation {
 }
 
 /// Checked inert text; evidence does not become an instruction or permission.
+/// Physical codecs and stores own their representation and allocation bounds.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImprovementText(String);
 
 impl ImprovementText {
-    /// Checks nonempty bounded text, rejecting terminal controls.
+    /// Checks nonempty text, rejecting terminal controls.
     ///
     /// # Errors
-    /// Rejects empty, oversized, or control-containing input.
+    /// Rejects empty or control-containing input.
     pub fn new(value: String) -> Result<Self, AppProtocolError> {
         if value.trim().is_empty()
-            || value.len() > MAX_IMPROVEMENT_TEXT
             || value.chars().any(|c| c.is_control() && !matches!(c, '\n' | '\t'))
         {
             return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
@@ -105,6 +105,26 @@ impl ImprovementText {
 pub enum ImprovementRequest {
     /// Read the durable inbox; this never starts work.
     List(WorkspaceId),
+    /// Read one metadata page; retained text and evidence are independently addressable.
+    ListPage {
+        /// Source workspace.
+        workspace: WorkspaceId,
+        /// Exact scope and revision of the preceding page.
+        after: Option<ImprovementPageCursor>,
+    },
+    /// Read one candidate's evidence metadata without loading its observation bodies.
+    EvidencePage {
+        /// Source workspace.
+        workspace: WorkspaceId,
+        /// Candidate identity.
+        candidate: Sha256Digest,
+        /// Exact revision returned with the owning candidate page.
+        revision: u64,
+        /// Exact scope and revision of the preceding page.
+        after: Option<ImprovementPageCursor>,
+    },
+    /// Read a bounded UTF-8 slice of one immutable, digest-bound retained body.
+    ReadText(ImprovementTextQuery),
     /// Retain a user suggestion backed by a real completed run in this workspace.
     Suggest {
         /// Source workspace.
@@ -138,10 +158,19 @@ impl ImprovementRequest {
     pub const fn workspace(&self) -> WorkspaceId {
         match self {
             Self::List(workspace)
+            | Self::ListPage { workspace, .. }
+            | Self::EvidencePage { workspace, .. }
             | Self::Suggest { workspace, .. }
             | Self::Dismiss { workspace, .. }
             | Self::Evaluate { workspace, .. } => *workspace,
+            Self::ReadText(query) => query.workspace(),
         }
+    }
+
+    /// Returns whether this request requires the independently negotiated paged contract.
+    #[must_use]
+    pub const fn requires_paging(&self) -> bool {
+        matches!(self, Self::ListPage { .. } | Self::EvidencePage { .. } | Self::ReadText(_))
     }
 }
 
@@ -187,10 +216,10 @@ pub struct ImprovementCandidate {
 }
 
 impl ImprovementCandidate {
-    /// Checks bounded, distinct evidence. An evaluation is a patch run, not a promotion.
+    /// Checks nonempty, distinct evidence. An evaluation is a patch run, not a promotion.
     ///
     /// # Errors
-    /// Rejects missing, excessive, or duplicate source runs.
+    /// Rejects missing or duplicate source runs.
     pub fn new(
         id: Sha256Digest,
         proposal: ImprovementText,
@@ -198,13 +227,8 @@ impl ImprovementCandidate {
         evaluation: Option<ImprovementEvaluation>,
         dismissed: bool,
     ) -> Result<Self, AppProtocolError> {
-        if evidence.is_empty()
-            || u16::try_from(evidence.len()).is_err()
-            || evidence
-                .iter()
-                .enumerate()
-                .any(|(i, e)| evidence[..i].iter().any(|other| other.run == e.run))
-        {
+        let mut runs = std::collections::BTreeSet::new();
+        if evidence.is_empty() || evidence.iter().any(|item| !runs.insert(item.run.into_bytes())) {
             return Err(AppProtocolError::new(AppErrorCode::MalformedFrame, None));
         }
         Ok(Self { id, proposal, evidence, evaluation, dismissed })
@@ -219,7 +243,7 @@ impl ImprovementCandidate {
     pub const fn proposal(&self) -> &ImprovementText {
         &self.proposal
     }
-    /// Returns bounded supporting observations.
+    /// Returns supporting observations.
     #[must_use]
     pub fn evidence(&self) -> &[ImprovementEvidence] {
         &self.evidence
@@ -236,7 +260,7 @@ impl ImprovementCandidate {
     }
 }
 
-/// Bounded workspace inbox.
+/// Workspace inbox retained for compatibility; paged transport owns response sizing.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ImprovementInbox {
     workspace: WorkspaceId,
@@ -244,20 +268,16 @@ pub struct ImprovementInbox {
 }
 
 impl ImprovementInbox {
-    /// Checks the inbox bound and distinct candidate identities.
+    /// Checks distinct candidate identities.
     ///
     /// # Errors
-    /// Rejects oversized or duplicate records.
+    /// Rejects duplicate records.
     pub fn new(
         workspace: WorkspaceId,
         candidates: Vec<ImprovementCandidate>,
     ) -> Result<Self, AppProtocolError> {
-        if u16::try_from(candidates.len()).is_err()
-            || candidates
-                .iter()
-                .enumerate()
-                .any(|(i, c)| candidates[..i].iter().any(|other| other.id == c.id))
-        {
+        let mut identities = std::collections::BTreeSet::new();
+        if candidates.iter().any(|item| !identities.insert(item.id.into_bytes())) {
             return Err(AppProtocolError::new(AppErrorCode::LimitExceeded, None));
         }
         Ok(Self { workspace, candidates })

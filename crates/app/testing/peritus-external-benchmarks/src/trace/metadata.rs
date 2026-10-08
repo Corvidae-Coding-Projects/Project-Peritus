@@ -20,6 +20,9 @@ pub(super) fn validate(
     match kind {
         DeveloperTraceFrameKind::ContextCompaction => validate_compaction(path, object),
         DeveloperTraceFrameKind::RetryScheduled => validate_retry(path, object),
+        DeveloperTraceFrameKind::RetryAttempt | DeveloperTraceFrameKind::RetryDisposition => {
+            validate_retry_boundary(path, kind, object)
+        }
         DeveloperTraceFrameKind::ProviderSwitch => validate_provider_switch(path, object),
         DeveloperTraceFrameKind::LocalMemoryCheckpoint => {
             validate_local_memory_checkpoint(path, object)
@@ -126,6 +129,75 @@ fn validate_compaction(path: &Path, object: &Map<String, Value>) -> Result<(), B
 }
 
 fn validate_retry(path: &Path, object: &Map<String, Value>) -> Result<(), BenchmarkError> {
+    if !object.contains_key("schema_version") {
+        return validate_legacy_retry(path, object);
+    }
+    exact_keys(
+        path,
+        object,
+        &[
+            "schema_version",
+            "turn",
+            "attempt",
+            "request_id_sha256",
+            "request_fingerprint_sha256",
+            "provider_profile",
+            "native_session_sha256",
+            "certainty",
+            "max_attempts",
+            "elapsed_millis",
+            "delay_millis",
+            "next_eligible_unix_millis",
+            "retry_after_millis",
+            "reason",
+        ],
+    )?;
+    if object.get("schema_version").and_then(Value::as_u64) != Some(2) {
+        return Err(invalid(path, "schema_version"));
+    }
+    for field in ["elapsed_millis", "next_eligible_unix_millis"] {
+        require_u64(path, object, field)?;
+    }
+    require_positive_bounded(path, object, "turn", u64::from(u16::MAX))?;
+    for field in ["attempt", "delay_millis"] {
+        require_positive_u64(path, object, field)?;
+    }
+    for field in ["request_id_sha256", "request_fingerprint_sha256"] {
+        require_byte_array(path, object, field, 32)?;
+    }
+    require_byte_array(path, object, "provider_profile", 16)?;
+    require_optional_byte_array(path, object, "native_session_sha256", 32)?;
+    if object.get("certainty").and_then(Value::as_str) != Some("definitely_not_accepted") {
+        return Err(invalid(path, "certainty"));
+    }
+    if !object.get("max_attempts").is_some_and(Value::is_null) {
+        return Err(invalid(path, "max_attempts"));
+    }
+    if !object.get("retry_after_millis").is_some_and(|value| value.is_null() || value.is_u64()) {
+        return Err(invalid(path, "retry_after_millis"));
+    }
+    let delay = object.get("delay_millis").and_then(Value::as_u64).unwrap_or(0);
+    if object
+        .get("next_eligible_unix_millis")
+        .and_then(Value::as_u64)
+        .is_none_or(|eligible| eligible < delay)
+        || object
+            .get("retry_after_millis")
+            .and_then(Value::as_u64)
+            .is_some_and(|required| required > delay)
+    {
+        return Err(invalid(path, "retry timing"));
+    }
+    match object.get("reason").and_then(Value::as_str) {
+        Some("retryable_provider_response" | "connection") => Ok(()),
+        _ => Err(invalid(path, "reason")),
+    }
+}
+
+fn validate_legacy_retry(
+    path: &Path,
+    object: &Map<String, Value>,
+) -> Result<(), BenchmarkError> {
     exact_keys(
         path,
         object,
@@ -139,13 +211,80 @@ fn validate_retry(path: &Path, object: &Map<String, Value>) -> Result<(), Benchm
             "reason",
         ],
     )?;
-    for field in ["turn", "attempt", "max_attempts", "elapsed_millis", "delay_millis"] {
-        require_u64(path, object, field)?;
-    }
+    require_positive_bounded(path, object, "turn", u64::from(u16::MAX))?;
+    require_positive_bounded(path, object, "attempt", u64::from(u8::MAX))?;
+    require_positive_bounded(path, object, "max_attempts", u64::from(u8::MAX))?;
+    require_u64(path, object, "elapsed_millis")?;
+    require_positive_u64(path, object, "delay_millis")?;
     if !object.get("retry_after_millis").is_some_and(|value| value.is_null() || value.is_u64()) {
         return Err(invalid(path, "retry_after_millis"));
     }
-    require_text(path, object, "reason", 64)
+    let attempt = object.get("attempt").and_then(Value::as_u64).unwrap_or(0);
+    let maximum = object.get("max_attempts").and_then(Value::as_u64).unwrap_or(0);
+    let delay = object.get("delay_millis").and_then(Value::as_u64).unwrap_or(0);
+    if attempt >= maximum
+        || object
+            .get("retry_after_millis")
+            .and_then(Value::as_u64)
+            .is_some_and(|required| required > delay)
+    {
+        return Err(invalid(path, "legacy retry timing"));
+    }
+    match object.get("reason").and_then(Value::as_str) {
+        Some(
+            "empty_response"
+            | "retryable_provider_response"
+            | "connection"
+            | "transport"
+            | "malformed_stream",
+        ) => Ok(()),
+        _ => Err(invalid(path, "reason")),
+    }
+}
+
+fn validate_retry_boundary(
+    path: &Path,
+    kind: DeveloperTraceFrameKind,
+    object: &Map<String, Value>,
+) -> Result<(), BenchmarkError> {
+    exact_keys(
+        path,
+        object,
+        &[
+            "schema_version",
+            "turn",
+            "attempt",
+            "request_id_sha256",
+            "request_fingerprint_sha256",
+            "provider_profile",
+            "native_session_sha256",
+            "disposition",
+        ],
+    )?;
+    if object.get("schema_version").and_then(Value::as_u64) != Some(2) {
+        return Err(invalid(path, "schema_version"));
+    }
+    require_positive_bounded(path, object, "turn", u64::from(u16::MAX))?;
+    require_positive_u64(path, object, "attempt")?;
+    for field in ["request_id_sha256", "request_fingerprint_sha256"] {
+        require_byte_array(path, object, field, 32)?;
+    }
+    require_byte_array(path, object, "provider_profile", 16)?;
+    require_optional_byte_array(path, object, "native_session_sha256", 32)?;
+    let expected = match kind {
+        DeveloperTraceFrameKind::RetryAttempt => "admitted",
+        DeveloperTraceFrameKind::RetryDisposition => {
+            return match object.get("disposition").and_then(Value::as_str) {
+                Some("settled" | "reconciliation_required" | "superseded") => Ok(()),
+                _ => Err(invalid(path, "disposition")),
+            };
+        }
+        _ => return Err(BenchmarkError::trace(path, "retry boundary tag was not validated")),
+    };
+    if object.get("disposition").and_then(Value::as_str) != Some(expected) {
+        return Err(invalid(path, "disposition"));
+    }
+    Ok(())
 }
 
 fn validate_provider_switch(
@@ -195,6 +334,22 @@ fn require_positive_u64(
     Ok(())
 }
 
+fn require_positive_bounded(
+    path: &Path,
+    object: &Map<String, Value>,
+    field: &'static str,
+    maximum: u64,
+) -> Result<(), BenchmarkError> {
+    if object
+        .get(field)
+        .and_then(Value::as_u64)
+        .is_none_or(|value| value == 0 || value > maximum)
+    {
+        return Err(invalid(path, field));
+    }
+    Ok(())
+}
+
 fn require_text(
     path: &Path,
     object: &Map<String, Value>,
@@ -227,6 +382,18 @@ fn require_byte_array(
         return Err(invalid(path, field));
     }
     Ok(())
+}
+
+fn require_optional_byte_array(
+    path: &Path,
+    object: &Map<String, Value>,
+    field: &'static str,
+    length: usize,
+) -> Result<(), BenchmarkError> {
+    if object.get(field).is_some_and(Value::is_null) {
+        return Ok(());
+    }
+    require_byte_array(path, object, field, length)
 }
 
 fn require_hex(

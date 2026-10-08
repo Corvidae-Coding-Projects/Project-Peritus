@@ -64,7 +64,7 @@ impl ConversationRecord {
         let (title, branch) = match &operation.intent {
             ControlIntent::CreateConversation { title } => (title.clone(), None),
             ControlIntent::CreateFork { branch } => {
-                (crate::control::ControlText::new(branch.title().to_owned())?, Some(branch))
+                (crate::control::ControlTitle::new(branch.title().to_owned())?, Some(branch))
             }
             _ => return Err(ControlError::NotFound),
         };
@@ -141,6 +141,7 @@ impl ConversationRecord {
             | ControlIntent::ApplyPromptView(_)
             | ControlIntent::UpdateGuidance(_)) => self.apply_input(current, operation, intent),
             intent @ (ControlIntent::StartExecution { .. }
+            | ControlIntent::ContinueExecution { .. }
             | ControlIntent::StartGoal { .. }
             | ControlIntent::PauseGoal { .. }
             | ControlIntent::ResumeGoal { .. }
@@ -158,6 +159,7 @@ impl ConversationRecord {
             | ControlIntent::AttachImage { .. }
             | ControlIntent::SelectImage { .. }
             | ControlIntent::AttachFile { .. }
+            | ControlIntent::AttachFileSource { .. }
             | ControlIntent::SelectFile { .. }
             | ControlIntent::RefreshFile { .. }) => self.apply_attachment(operation, intent),
             ControlIntent::SetPermissions { .. } | ControlIntent::RecordInitialization { .. } => {

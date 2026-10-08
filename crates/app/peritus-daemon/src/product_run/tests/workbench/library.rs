@@ -311,6 +311,6 @@ fn isolated_fork_preserves_parent_and_starts_as_an_independent_draft() {
             WorkbenchForkMode::IsolatedWritableWorkspace
         );
         assert!(writer.requests.lock().unwrap().is_empty());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

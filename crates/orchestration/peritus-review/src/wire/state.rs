@@ -11,21 +11,27 @@ use peritus_spec::ReviewCategory;
 use peritus_types::EventSequence;
 
 use crate::{
-    ReviewAssignment, ReviewCycle, ReviewCyclePhase, ReviewLimits, ReviewRunPhase, ReviewRunState,
-    ReviewSubmission,
+    ReviewAssignment, ReviewCycle, ReviewCyclePhase, ReviewHistoryFrontier, ReviewLimits,
+    ReviewRunPhase, ReviewRunState, ReviewSubmission,
 };
 
 pub(super) use disposition::{
     read_evidence, read_fixer, read_waiver, write_evidence, write_fixer, write_waiver,
 };
+pub(super) use finding::{read_finding, write_finding};
+pub(super) use summary::{read_quorum, write_quorum};
 
-/// Canonical family-55 schema-v1 complete review-state checkpoint.
+/// Canonical family-55 schema-v1 complete legacy review-state checkpoint.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReviewStateFrame(ReviewRunState);
 
 impl ReviewStateFrame {
     pub fn from_state(state: &ReviewRunState) -> Self {
         Self(state.clone())
+    }
+
+    pub(super) const fn from_owned(state: ReviewRunState) -> Self {
+        Self(state)
     }
 
     pub fn matches_state(&self, state: &ReviewRunState) -> bool {
@@ -51,6 +57,10 @@ impl ReviewStateFrame {
     pub const fn state_digest(&self) -> peritus_types::Sha256Digest {
         self.0.state_digest()
     }
+
+    pub(crate) fn into_state(self) -> ReviewRunState {
+        self.0
+    }
 }
 
 impl CanonicalEncode for ReviewStateFrame {
@@ -58,37 +68,7 @@ impl CanonicalEncode for ReviewStateFrame {
     const SCHEMA_VERSION: u16 = 1;
 
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
-        let state = &self.0;
-        super::write_id(writer, state.run_id().as_bytes())?;
-        super::write_limits(writer, state.limits())?;
-        super::write_binding(writer, state.binding())?;
-        writer.write_u8(crate::canonical::run_phase_tag(state.phase()))?;
-        writer.write_u64(state.sequence().get())?;
-        super::write_id(writer, state.last_event_id().as_bytes())?;
-        super::write_digest(writer, state.state_digest())?;
-        writer.write_collection_len(state.cycles().len())?;
-        for cycle in state.cycles() {
-            write_cycle(writer, cycle)?;
-        }
-        writer.write_collection_len(state.findings().len())?;
-        for finding in state.findings() {
-            finding::write_finding(writer, finding)?;
-        }
-        writer.write_collection_len(state.waivers().len())?;
-        for waiver in state.waivers() {
-            write_waiver(writer, *waiver)?;
-        }
-        summary::write_quorum(writer, state.quorum())?;
-        summary::write_oscillation(writer, state.oscillation())?;
-        writer.write_collection_len(state.used_commands().len())?;
-        for command in state.used_commands() {
-            super::write_id(writer, command.as_bytes())?;
-        }
-        writer.write_option_tag(state.terminal().is_some())?;
-        if let Some(terminal) = state.terminal() {
-            summary::write_terminal(writer, terminal)?;
-        }
-        Ok(())
+        write_state(writer, &self.0, false)
     }
 }
 
@@ -97,9 +77,98 @@ impl CanonicalDecode for ReviewStateFrame {
     const SCHEMA_VERSION: u16 = 1;
 
     fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        decode_state(reader, false).map(Self)
+    }
+}
+
+pub(super) struct PagedReviewStateFrame(ReviewRunState);
+
+impl PagedReviewStateFrame {
+    pub(super) fn from_state(state: &ReviewRunState) -> Self {
+        Self(state.clone())
+    }
+
+    pub(super) fn into_state(self) -> ReviewRunState {
+        self.0
+    }
+}
+
+impl CanonicalEncode for PagedReviewStateFrame {
+    const FAMILY: u16 = 55;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
+        write_state(writer, &self.0, true)
+    }
+}
+
+impl CanonicalDecode for PagedReviewStateFrame {
+    const FAMILY: u16 = 55;
+    const SCHEMA_VERSION: u16 = 2;
+
+    fn decode_payload(reader: &mut CanonicalReader<'_>) -> Result<Self, CodecError> {
+        decode_state(reader, true).map(Self)
+    }
+}
+
+fn write_state(
+    writer: &mut CanonicalWriter,
+    state: &ReviewRunState,
+    versioned: bool,
+) -> Result<(), CodecError> {
+    if state.binding().uses_paged_history() != versioned {
+        return Err(CodecError::at(CodecErrorKind::InvalidDomainValue, writer.len()));
+    }
+    super::write_id(writer, state.run_id().as_bytes())?;
+    super::write_limits(writer, state.limits())?;
+    if versioned {
+        super::write_binding_versioned(writer, state.binding())?;
+    } else {
+        super::write_binding_v1(writer, state.binding())?;
+    }
+    writer.write_u8(crate::canonical::run_phase_tag(state.phase()))?;
+    writer.write_u64(state.sequence().get())?;
+    super::write_id(writer, state.last_event_id().as_bytes())?;
+    super::write_digest(writer, state.state_digest())?;
+    if versioned {
+        write_history(writer, state.history())?;
+    }
+    writer.write_collection_len(state.cycles().len())?;
+    for cycle in state.cycles() {
+        write_cycle(writer, cycle)?;
+    }
+    writer.write_collection_len(state.findings().len())?;
+    for finding in state.findings() {
+        finding::write_finding(writer, finding)?;
+    }
+    writer.write_collection_len(state.waivers().len())?;
+    for waiver in state.waivers() {
+        write_waiver(writer, *waiver)?;
+    }
+    summary::write_quorum(writer, state.quorum())?;
+    summary::write_oscillation(writer, state.oscillation())?;
+    writer.write_collection_len(state.used_commands().len())?;
+    for command in state.used_commands() {
+        super::write_id(writer, command.as_bytes())?;
+    }
+    writer.write_option_tag(state.terminal().is_some())?;
+    if let Some(terminal) = state.terminal() {
+        summary::write_terminal(writer, terminal, versioned)?;
+    }
+    Ok(())
+}
+
+fn decode_state(
+    reader: &mut CanonicalReader<'_>,
+    versioned: bool,
+) -> Result<ReviewRunState, CodecError> {
         let run_id = super::read_run_id(reader)?;
         let limits = super::read_limits(reader)?;
-        let binding = super::read_binding(reader)?;
+        let binding = if versioned {
+            super::read_binding_versioned(reader)?
+        } else {
+            super::read_binding_v1(reader)?
+        };
         let phase_offset = reader.offset();
         let phase = match reader.read_u8()? {
             1 => ReviewRunPhase::Active,
@@ -112,6 +181,11 @@ impl CanonicalDecode for ReviewStateFrame {
             .map_err(|_| CodecError::at(CodecErrorKind::InvalidDomainValue, sequence_offset))?;
         let last_event_id = super::read_event_id(reader)?;
         let state_digest = super::read_digest(reader)?;
+        let history = if versioned {
+            read_history(reader)?
+        } else {
+            ReviewHistoryFrontier::empty()
+        };
         let cycle_count = super::bounded_len(
             reader,
             usize::from(limits.cycles().min(limits.assignments())),
@@ -140,9 +214,11 @@ impl CanonicalDecode for ReviewStateFrame {
         for _ in 0..command_count {
             used_commands.push(super::read_command_id(reader)?);
         }
-        let terminal =
-            reader.read_option_tag()?.then(|| summary::read_terminal(reader)).transpose()?;
-        let state = ReviewRunState::from_wire(
+        let terminal = reader
+            .read_option_tag()?
+            .then(|| summary::read_terminal(reader, versioned))
+            .transpose()?;
+        let state = ReviewRunState::from_wire_v2(
             run_id,
             limits,
             binding,
@@ -150,6 +226,7 @@ impl CanonicalDecode for ReviewStateFrame {
             sequence,
             last_event_id,
             state_digest,
+            history,
             cycles,
             findings,
             waivers,
@@ -159,8 +236,48 @@ impl CanonicalDecode for ReviewStateFrame {
             terminal,
         );
         state.validate_inert().map_err(|_| super::invalid(reader))?;
-        Ok(Self(state))
-    }
+        Ok(state)
+}
+
+fn write_history(
+    writer: &mut CanonicalWriter,
+    value: ReviewHistoryFrontier,
+) -> Result<(), CodecError> {
+    writer.write_u64(value.through_sequence())?;
+    super::write_option_id(writer, value.through_event(), peritus_types::EventId::into_bytes)?;
+    super::write_digest(writer, value.through_state_digest())?;
+    super::write_digest(writer, value.parent_digest())?;
+    writer.write_u64(value.page_count())?;
+    writer.write_u64(value.cycle_count())?;
+    writer.write_u64(value.submission_count())?;
+    writer.write_u64(value.finding_count())?;
+    writer.write_u64(value.disposition_count())?;
+    writer.write_u64(value.waiver_count())?;
+    super::write_digest(writer, value.current_binding_digest())?;
+    writer.write_u64(value.current_unconserved_count())?;
+    super::write_digest(writer, value.current_unconserved_xor())?;
+    super::write_digest(writer, value.digest())
+}
+
+fn read_history(reader: &mut CanonicalReader<'_>) -> Result<ReviewHistoryFrontier, CodecError> {
+    let value = ReviewHistoryFrontier::from_wire(
+        reader.read_u64()?,
+        reader.read_option_tag()?.then(|| super::read_event_id(reader)).transpose()?,
+        super::read_digest(reader)?,
+        super::read_digest(reader)?,
+        reader.read_u64()?,
+        reader.read_u64()?,
+        reader.read_u64()?,
+        reader.read_u64()?,
+        reader.read_u64()?,
+        reader.read_u64()?,
+        super::read_digest(reader)?,
+        reader.read_u64()?,
+        super::read_digest(reader)?,
+        super::read_digest(reader)?,
+    );
+    value.validate().map_err(|_| super::invalid(reader))?;
+    Ok(value)
 }
 
 pub(super) fn write_assignment(

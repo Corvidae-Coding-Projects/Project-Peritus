@@ -132,6 +132,9 @@ pub struct ReviewProjection {
     submitted_reviews: u16,
     quorum_complete: bool,
     unconserved_findings: Vec<FindingId>,
+    unconserved_finding_count: u64,
+    unconserved_finding_xor: Sha256Digest,
+    history_pages: u64,
     cycles: Vec<ProjectedCycle>,
     findings: Vec<ProjectedFinding>,
 }
@@ -178,6 +181,9 @@ impl ReviewProjection {
             submitted_reviews: state.quorum().submitted_reviews(),
             quorum_complete: state.quorum().complete(),
             unconserved_findings: state.unconserved_current_findings(),
+            unconserved_finding_count: state.unconserved_current_count(),
+            unconserved_finding_xor: state.unconserved_current_xor(),
+            history_pages: state.history().page_count(),
             cycles,
             findings,
         }
@@ -223,10 +229,25 @@ impl ReviewProjection {
     pub const fn quorum_complete(&self) -> bool {
         self.quorum_complete
     }
-    /// Borrows canonical unconserved current finding identities.
+    /// Borrows unconserved identities materialized in the bounded checkpoint.
     #[must_use]
     pub fn unconserved_findings(&self) -> &[FindingId] {
         &self.unconserved_findings
+    }
+    /// Returns the exact unconserved current count across active and immutable pages.
+    #[must_use]
+    pub const fn unconserved_finding_count(&self) -> u64 {
+        self.unconserved_finding_count
+    }
+    /// Returns the integrity accumulator over the exact unconserved identity set.
+    #[must_use]
+    pub const fn unconserved_finding_xor(&self) -> Sha256Digest {
+        self.unconserved_finding_xor
+    }
+    /// Returns the number of immutable history pages sealed before the active checkpoint.
+    #[must_use]
+    pub const fn history_pages(&self) -> u64 {
+        self.history_pages
     }
     /// Borrows every retained cycle row in ordinal order.
     #[must_use]

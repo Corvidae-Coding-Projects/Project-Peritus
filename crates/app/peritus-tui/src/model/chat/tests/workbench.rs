@@ -320,6 +320,7 @@ fn sessions_literal_query_accepts_exact_source_linked_library_page() {
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchExecution,
         WellKnownProtocolFeature::WorkbenchConversation,
+        WellKnownProtocolFeature::WorkbenchContinuationReceipts,
     ] {
         model.features.push(ProtocolFeatureName::well_known(feature).unwrap());
     }

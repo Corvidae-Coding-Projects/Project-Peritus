@@ -51,6 +51,10 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         ("minimal-workbench-hold-input", WorkbenchQueueIntent::Hold { selected, held: true }),
         ("minimal-workbench-withdraw-input", WorkbenchQueueIntent::Withdraw(selected)),
         (
+            "minimal-workbench-move-input",
+            WorkbenchQueueIntent::Move { selected, position: 0 },
+        ),
+        (
             "minimal-workbench-order-inputs",
             WorkbenchQueueIntent::Reorder(WorkbenchInputOrder::new(vec![input]).expect("order")),
         ),

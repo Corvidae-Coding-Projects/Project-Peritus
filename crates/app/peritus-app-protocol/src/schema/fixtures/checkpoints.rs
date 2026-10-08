@@ -15,6 +15,7 @@ use crate::{
 use peritus_codec::{CodecError, CodecLimits};
 use peritus_types::Sha256Digest;
 mod coverage;
+mod manifest;
 
 pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, CodecError> {
     let query =
@@ -58,6 +59,7 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
     .expect("receipt");
 
     let mut cases = branch_cases(minimal, limits)?;
+    cases.extend(manifest::cases(minimal, limits)?);
     cases.extend(coverage::cases(query, checkpoint, restored.external_effects(), limits)?);
     cases.extend([
         encoded(

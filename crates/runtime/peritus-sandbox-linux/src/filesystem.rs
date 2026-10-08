@@ -131,6 +131,8 @@ pub struct MountPolicy {
     workspace_root: PathBuf,
     protected_roots: Vec<PathBuf>,
     private_helper: Option<PathBuf>,
+    read_only_replacements: BTreeMap<PathBuf, PathBuf>,
+    writable_inputs: Vec<PathBuf>,
 }
 
 impl MountPolicy {
@@ -177,7 +179,13 @@ impl MountPolicy {
         }
         protected_roots.sort();
         protected_roots.dedup();
-        Ok(Self { workspace_root, protected_roots, private_helper: None })
+        Ok(Self {
+            workspace_root,
+            protected_roots,
+            private_helper: None,
+            read_only_replacements: BTreeMap::new(),
+            writable_inputs: Vec::new(),
+        })
     }
     /// Selects a private root containing only declared paths and the installed bootstrap helper.
     ///
@@ -192,6 +200,44 @@ impl MountPolicy {
         self.private_helper = Some(helper);
         Ok(self)
     }
+    pub(crate) fn with_read_only_replacements(
+        mut self,
+        replacements: &[(PathBuf, PathBuf)],
+    ) -> Result<Self, LinuxError> {
+        for (source, target) in replacements {
+            if self
+                .read_only_replacements
+                .insert(target.clone(), source.clone())
+                .is_some()
+            {
+                return Err(filesystem_error("read-only replacement target is duplicated"));
+            }
+        }
+        Ok(self)
+    }
+    pub(crate) fn with_writable_inputs(
+        mut self,
+        inputs: &[PathBuf],
+    ) -> Result<Self, LinuxError> {
+        for input in inputs {
+            if !input.is_absolute()
+                || !input.is_dir()
+                || fs::canonicalize(input).ok().as_ref() != Some(input)
+                || input.starts_with(&self.workspace_root)
+                || self.workspace_root.starts_with(input)
+                || self
+                    .protected_roots
+                    .iter()
+                    .any(|protected| protected.starts_with(input) || input.starts_with(protected))
+            {
+                return Err(filesystem_error(
+                    "writable input is not a disjoint canonical host directory",
+                ));
+            }
+        }
+        self.writable_inputs = inputs.to_vec();
+        Ok(self)
+    }
     /// Returns the resolved workspace root.
     #[must_use]
     pub fn workspace_root(&self) -> &Path {
@@ -201,6 +247,15 @@ impl MountPolicy {
     #[must_use]
     pub fn protected_roots(&self) -> &[PathBuf] {
         &self.protected_roots
+    }
+
+    fn read_only_source<'a>(&'a self, target: &'a Path) -> &'a Path {
+        self.read_only_replacements.get(target).map_or(target, PathBuf::as_path)
+    }
+
+    fn admits_writable(&self, path: &Path) -> bool {
+        path.starts_with(&self.workspace_root)
+            || self.writable_inputs.iter().any(|input| path.starts_with(input))
     }
 }
 
@@ -226,14 +281,21 @@ impl MountPlan {
         let mut writable = BTreeSet::<PathBuf>::new();
         let mut creatable = BTreeSet::<PathBuf>::new();
         let mut readable = BTreeSet::<PathBuf>::new();
+        let mut exact_readable = BTreeSet::<PathBuf>::new();
         let mut masks = BTreeSet::<PathBuf>::new();
         for rule in plan.contract().filesystem().rules() {
             let path = native_path(rule.path())?;
-            let canonical = fs::canonicalize(&path).map_err(|error| {
+            let source = policy.read_only_source(&path);
+            let canonical = fs::canonicalize(source).map_err(|error| {
                 LinuxError::io(LinuxOperation::Project, "resolve filesystem rule path", &error)
             })?;
-            if canonical != path {
-                return Err(filesystem_error("filesystem rule contains an alias or symlink"));
+            if canonical != source {
+                return Err(filesystem_error(
+                    "filesystem rule or replacement source contains an alias or symlink",
+                ));
+            }
+            if policy.read_only_replacements.contains_key(&path) && !source_is_read_only(source) {
+                return Err(filesystem_error("read-only replacement source became mutable"));
             }
             if rule.scope() == PathScope::Exact && canonical.is_dir() {
                 return Err(filesystem_error(
@@ -255,10 +317,10 @@ impl MountPlan {
                             "operation-selective filesystem deny is not exactly representable",
                         ));
                     }
-                    masks.insert(canonical);
+                    masks.insert(path);
                 }
                 RuleEffect::Allow => {
-                    let access = access_by_path.entry(canonical.clone()).or_default();
+                    let access = access_by_path.entry(path.clone()).or_default();
                     for operation in [
                         FileOperation::Discover,
                         FileOperation::Metadata,
@@ -271,7 +333,7 @@ impl MountPlan {
                         if rule.operations().contains(operation) {
                             access.insert_operation(operation);
                             if operation == FileOperation::Create {
-                                creatable.insert(canonical.clone());
+                                creatable.insert(path.clone());
                             }
                             if matches!(
                                 operation,
@@ -279,27 +341,40 @@ impl MountPlan {
                                     | FileOperation::Write
                                     | FileOperation::Remove
                             ) {
-                                writable.insert(canonical.clone());
+                                writable.insert(path.clone());
                             } else {
-                                readable.insert(canonical.clone());
+                                readable.insert(path.clone());
                             }
                         }
+                    }
+                    if rule.scope() == PathScope::Exact && readable.contains(&path) {
+                        exact_readable.insert(path);
                     }
                 }
             }
         }
         for requirement in plan.requirements().files() {
             let path = native_path(requirement.path())?;
-            if !path.exists() {
+            let source = policy.read_only_source(&path);
+            if !source.exists() {
                 return Err(filesystem_error(
                     "required filesystem path does not exist at preparation",
                 ));
             }
-            if fs::canonicalize(&path).ok().as_deref() != Some(path.as_path()) {
+            if fs::canonicalize(source).ok().as_deref() != Some(source) {
                 return Err(filesystem_error(
                     "required filesystem path changed or aliases another path",
                 ));
             }
+        }
+        if policy
+            .read_only_replacements
+            .keys()
+            .any(|target| !exact_readable.contains(target) || writable.contains(target))
+        {
+            return Err(filesystem_error(
+                "read-only replacement target is not one exact readable checked path",
+            ));
         }
         for protected in policy.protected_roots() {
             if protected.exists() {
@@ -322,14 +397,19 @@ impl MountPlan {
             MountAction::Tmpfs { target: PathBuf::from("/tmp") },
         ];
         for path in readable.difference(&writable) {
-            actions.push(MountAction::ReadOnlyBind { source: path.clone(), target: path.clone() });
+            actions.push(MountAction::ReadOnlyBind {
+                source: policy.read_only_source(path).to_path_buf(),
+                target: path.clone(),
+            });
         }
         if let Some(helper) = &policy.private_helper {
             private::bootstrap(&mut actions, plan, helper)?;
         }
         for path in writable {
-            if !path.starts_with(policy.workspace_root()) {
-                return Err(filesystem_error("writable mount is outside the resolved workspace"));
+            if !policy.admits_writable(&path) {
+                return Err(filesystem_error(
+                    "writable mount is outside the resolved workspace and explicit inputs",
+                ));
             }
             actions.push(MountAction::WritableBind { source: path.clone(), target: path });
         }
@@ -364,6 +444,17 @@ fn native_path(path: &SandboxPath) -> Result<PathBuf, LinuxError> {
         return Err(filesystem_error("Linux sandbox path is not absolute"));
     }
     Ok(native)
+}
+
+#[cfg(unix)]
+fn source_is_read_only(source: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt as _;
+    fs::metadata(source).is_ok_and(|metadata| metadata.permissions().mode() & 0o222 == 0)
+}
+
+#[cfg(not(unix))]
+fn source_is_read_only(source: &Path) -> bool {
+    fs::metadata(source).is_ok_and(|metadata| metadata.permissions().readonly())
 }
 
 fn filesystem_error(detail: &'static str) -> LinuxError {

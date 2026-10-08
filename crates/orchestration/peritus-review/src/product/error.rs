@@ -9,7 +9,9 @@ pub struct ProductReviewError {
 }
 
 impl ProductReviewError {
-    pub(super) const fn new(detail: &'static str) -> Self {
+    /// Creates a stable redaction-safe product-review failure.
+    #[must_use]
+    pub const fn new(detail: &'static str) -> Self {
         Self { detail }
     }
 

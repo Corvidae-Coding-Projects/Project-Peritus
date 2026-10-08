@@ -183,6 +183,76 @@ pub(super) const TERMINAL_OUTPUT: AppTypeDescriptor = AppTypeDescriptor {
     ],
 };
 
+pub(super) const TERMINAL_OUTPUT_GAP: AppTypeDescriptor = AppTypeDescriptor {
+    name: "TerminalOutputGap",
+    rust_type: "TerminalOutputGap",
+    fields: &[
+        field(
+            "binding",
+            CanonicalWireType::Struct,
+            &[],
+            "TerminalBinding",
+            "TerminalBinding",
+            J::Ref("TerminalBinding"),
+            true,
+        ),
+        field(
+            "sequence",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+        field(
+            "offset",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+        field(
+            "resumeOffset",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+        field(
+            "stdoutOffset",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+        field(
+            "stderrOffset",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+        field(
+            "terminalOffset",
+            CanonicalWireType::U64,
+            &[B::Contiguous],
+            "u64",
+            "UInt64",
+            J::U64String,
+            true,
+        ),
+    ],
+};
+
 pub(super) const TERMINAL_EXIT: AppTypeDescriptor = AppTypeDescriptor {
     name: "TerminalExit",
     rust_type: "TerminalExit",

@@ -69,7 +69,7 @@ fn endpoint_derivation_matches_g0_address_shapes() {
 }
 
 #[test]
-fn services_directly_run_the_only_production_daemon_mode() {
+fn services_own_the_platform_production_daemon_mode() {
     for (platform, home, supervisor) in [
         (Platform::Linux, "/home/alice", SupervisorKind::SystemdUser),
         (Platform::Macos, "/Users/alice", SupervisorKind::LaunchAgent),
@@ -79,11 +79,20 @@ fn services_directly_run_the_only_production_daemon_mode() {
         let layout = ReleaseLayout::production(platform, &home).expect("layout");
         let service = ServiceContract::production(&layout).expect("service");
         assert_eq!(service.supervisor(), supervisor);
-        assert_eq!(service.arguments()[0], "serve");
+        assert_eq!(
+            service.arguments()[0],
+            if platform == Platform::Windows { "supervise" } else { "serve" }
+        );
         assert_eq!(service.arguments()[1], "--config");
         assert_eq!(service.arguments()[2], layout.config_file().as_str());
         assert!(!service.shell_wrapped());
         assert!(service.user_scoped());
+        assert!(service.restart().on_failure());
+        assert_eq!(service.restart().maximum_attempts(), None);
+        assert_eq!(service.restart().window_seconds(), None);
+        assert_eq!(service.restart().delay_seconds(), 5);
+        assert_eq!(service.stop().maximum_grace_seconds(), None);
+        assert!(!service.stop().hard_termination());
     }
 }
 

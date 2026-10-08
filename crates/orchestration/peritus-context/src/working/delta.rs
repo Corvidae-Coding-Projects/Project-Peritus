@@ -166,7 +166,7 @@ pub fn apply_working_delta(
         validate_upsert(state, entry)?;
         let _checked = WorkingEntry::new(entry.id, entry.kind, entry.content.clone(), entry.links.clone(), entry.validity.clone(), state.limits)?;
         let ghost before_upsert = entries@;
-        upsert_entry(&mut entries, entry, state.limits.entries())?;
+        upsert_entry(&mut entries, entry);
         proof {
             assert(spec_upsert_prefix(
                 state.spec_entries(),

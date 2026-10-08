@@ -26,19 +26,41 @@ pub fn publish(
     temporary_parent: &Path,
     digest: ArtifactDigest,
     size: u64,
+    publication: &mut Option<Publication>,
 ) -> Result<Publication, ArtifactStoreError> {
-    let publication = match fs::hard_link(temporary, destination) {
-        Ok(()) => Publication::New,
-        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-            verify_exact(destination, digest, size, ExistingFailure::Corruption)?;
-            Publication::Existing
-        }
-        Err(error) => return Err(io(StoreOperation::Publish, error)),
-    };
+    if let Some(existing) = *publication {
+        verify_exact(destination, digest, size, ExistingFailure::Corruption)?;
+        *publication = Some(existing);
+    } else {
+        let observed = match fs::hard_link(temporary, destination) {
+            Ok(()) => Publication::New,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                verify_exact(destination, digest, size, ExistingFailure::Corruption)?;
+                Publication::Existing
+            }
+            Err(error) => return Err(io(StoreOperation::Publish, error)),
+        };
+        // Retain the no-replace outcome before either directory synchronization can fail. A
+        // retry then verifies and completes this exact publication instead of hard-linking again.
+        *publication = Some(observed);
+    }
+    let observed = (*publication).ok_or_else(|| {
+        ArtifactStoreError::message(
+            ErrorCode::CorruptObject,
+            RecoveryClass::TerminalIntegrity,
+            "artifact publication outcome is unavailable",
+        )
+    })?;
     sync_directory(destination_parent)?;
-    fs::remove_file(temporary).map_err(|error| io(StoreOperation::Remove, error))?;
+    match fs::remove_file(temporary) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            verify_exact(destination, digest, size, ExistingFailure::Corruption)?;
+        }
+        Err(error) => return Err(io(StoreOperation::Remove, error)),
+    }
     sync_directory(temporary_parent)?;
-    Ok(publication)
+    Ok(observed)
 }
 
 pub fn verify_finalized(

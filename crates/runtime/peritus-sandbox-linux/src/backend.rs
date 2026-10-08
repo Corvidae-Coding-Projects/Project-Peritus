@@ -7,7 +7,7 @@ use crate::{LinuxError, LinuxErrorKind};
 /// Stable implementation name used in C2 descriptor selection.
 pub const BACKEND_NAME: &str = "peritus-linux";
 /// Native backend implementation version.
-pub const BACKEND_VERSION: &str = "1";
+pub const BACKEND_VERSION: &str = "2";
 /// Minimum supported Linux kernel release.
 pub const MINIMUM_KERNEL: KernelVersion = KernelVersion::new(6, 6, 0);
 /// Minimum supported Landlock ABI.

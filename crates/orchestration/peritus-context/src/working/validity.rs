@@ -71,10 +71,11 @@ impl WorkingEnvironment {
     /// Logical canonical file/entity revisions.
     pub closed spec fn spec_files(&self) -> Seq<WorkingFileDigest> { self.files@ }
 
-    /// Creates a canonical bounded environment observation.
+    /// Creates a canonical environment observation.
     ///
     /// # Errors
-    /// Rejects unordered, duplicate, or excessive entity keys.
+    /// Rejects unordered or duplicate entity keys. Paged snapshots bound physical file pages;
+    /// this logical index is not limited by the per-request entry budget.
     pub fn new(
         binding: WorkingBinding,
         candidate: Sha256Digest,
@@ -90,7 +91,8 @@ impl WorkingEnvironment {
             Err(_) => true,
         },
     {
-        validate_files(&files, limits.entries())?;
+        let _ = limits;
+        validate_file_order(&files)?;
         Ok(Self { binding, candidate, files })
     }
     /// Current scope and conversation revision.
@@ -176,7 +178,8 @@ impl WorkingValidity {
         files: Vec<WorkingFileDigest>,
         limits: WorkingLimits,
     ) -> Result<Self, WorkingError> {
-        validate_files(&files, limits.links())?;
+        if files.len() > limits.links() { return Err(WorkingError::Capacity); }
+        validate_file_order(&files)?;
         Ok(Self { conversation_revision, candidate, files, requires_recheck: false })
     }
 
@@ -291,8 +294,7 @@ const fn digest_matches(left: Sha256Digest, right: Sha256Digest) -> (matches: bo
     true
 }
 
-fn validate_files(files: &[WorkingFileDigest], maximum: usize) -> Result<(), WorkingError> {
-    if files.len() > maximum { return Err(WorkingError::Capacity); }
+fn validate_file_order(files: &[WorkingFileDigest]) -> Result<(), WorkingError> {
     let mut index = 1;
     while index < files.len()
         invariant index >= 1,

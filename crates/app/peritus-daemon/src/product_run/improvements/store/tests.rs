@@ -34,6 +34,23 @@ fn collection_deduplicates_and_survives_restart_without_evaluation() {
 }
 
 #[test]
+fn proposal_beyond_the_former_text_ceiling_survives_restart() {
+    let temp = tempfile::tempdir().expect("state");
+    let path = temp.path().join("inbox.sqlite3");
+    let proposal = "Non-ASCII evidence é ".repeat(256);
+    assert!(proposal.len() > 4096);
+    {
+        let mut store = Store::open(&path).expect("open");
+        store.collect(workspace(1), run(2), &proposal, "Observation").expect("collect");
+    }
+    let store = Store::open(&path).expect("restart");
+    assert_eq!(
+        store.inbox(workspace(1)).expect("read").candidates()[0].proposal().as_str(),
+        proposal
+    );
+}
+
+#[test]
 fn evaluation_reservation_is_stable_and_freezes_evidence() {
     let temp = tempfile::tempdir().expect("state");
     let path = temp.path().join("inbox.sqlite3");
@@ -117,7 +134,7 @@ fn corrupt_and_future_records_are_not_treated_as_empty_inboxes() {
     let path = temp.path().join("inbox.sqlite3");
     let mut store = Store::open(&path).expect("open");
     store.collect(workspace(1), run(2), "Suggestion", "Observation").expect("collect");
-    store.0.execute("UPDATE improvements SET record='{}'", []).expect("corrupt");
+    store.0.execute("UPDATE improvement_candidates SET proposal='corrupt'", []).expect("corrupt");
     assert!(store.inbox(workspace(1)).is_err());
     store.0.execute_batch("PRAGMA user_version=99").expect("future schema");
     drop(store);
@@ -144,7 +161,7 @@ fn pre_release_schema_is_quarantined_without_migration() {
     assert_eq!(current_version, CURRENT_SCHEMA);
     assert_eq!(
         current
-            .query_row("SELECT count(*) FROM improvements", [], |row| row.get::<_, u32>(0))
+            .query_row("SELECT count(*) FROM improvement_candidates", [], |row| row.get::<_, u32>(0))
             .unwrap(),
         0
     );
@@ -205,6 +222,6 @@ fn changing_retained_evidence_without_its_digest_is_rejected() {
     let temp = tempfile::tempdir().expect("state");
     let mut store = Store::open(&temp.path().join("inbox.sqlite3")).expect("open");
     store.collect(workspace(1), run(2), "Suggestion", "Actual observation").expect("collect");
-    store.0.execute("UPDATE improvements SET record=replace(record, 'Actual observation', 'Forged observation')", []).expect("alter");
+    store.0.execute("UPDATE improvement_evidence SET summary='Forged observation'", []).expect("alter");
     assert!(store.inbox(workspace(1)).is_err());
 }

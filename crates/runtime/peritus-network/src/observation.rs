@@ -1,9 +1,14 @@
-//! Bounded normalized managed-network observations.
+//! Paged normalized managed-network observations.
 
 use std::net::IpAddr;
 
 use peritus_sandbox::{DnsName, Transport};
 use peritus_types::Sha256Digest;
+
+/// Maximum records returned by one physical observation transfer page.
+///
+/// This bounds one allocation only. The cursor can traverse the complete retained history.
+pub const OBSERVATION_PAGE_RECORDS: usize = 256;
 
 /// Connection outcome.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -53,6 +58,42 @@ pub struct NetworkObservation {
     redirect_depth: u8,
     uploaded: u64,
     downloaded: u64,
+}
+
+/// One bounded physical page from the complete retained observation history.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NetworkObservationPage {
+    observations: Vec<NetworkObservation>,
+    next_sequence: u64,
+    complete: bool,
+}
+
+impl NetworkObservationPage {
+    pub(crate) fn new(
+        observations: Vec<NetworkObservation>,
+        next_sequence: u64,
+        complete: bool,
+    ) -> Self {
+        Self { observations, next_sequence, complete }
+    }
+
+    /// Returns the records in this bounded transfer page.
+    #[must_use]
+    pub fn observations(&self) -> &[NetworkObservation] {
+        &self.observations
+    }
+
+    /// Returns the last sequence consumed by this page, or the supplied cursor for an empty page.
+    #[must_use]
+    pub const fn next_sequence(&self) -> u64 {
+        self.next_sequence
+    }
+
+    /// Reports whether the page reaches the currently retained end.
+    #[must_use]
+    pub const fn is_complete(&self) -> bool {
+        self.complete
+    }
 }
 
 impl NetworkObservation {

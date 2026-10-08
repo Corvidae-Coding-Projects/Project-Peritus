@@ -35,6 +35,15 @@ fn live_native_thread_survives_provider_reconstruction() {
         .unwrap();
         assert!(first.process.exit().success(), "first runtime failed");
         assert!(first.final_message.is_ok());
+        let first_usage = super::super::super::output::decode_with_usage(
+            first.process.stdout(),
+            &encoded.allowed_tools,
+            encoded.min_calls..=encoded.max_calls,
+            first.final_message.as_deref().ok(),
+        )
+        .relative_to(first.prior_usage)
+        .usage;
+        assert!(first_usage.input_tokens().unwrap() > 0);
         let thread = sessions::Session::open(&request)
             .unwrap()
             .thread()
@@ -58,6 +67,24 @@ fn live_native_thread_survives_provider_reconstruction() {
         .unwrap();
         assert!(second.process.exit().success(), "resumed runtime failed");
         assert!(second.final_message.is_ok());
+        let decoded = super::super::super::output::decode_with_usage(
+            second.process.stdout(),
+            &encoded.allowed_tools,
+            encoded.min_calls..=encoded.max_calls,
+            second.final_message.as_deref().ok(),
+        );
+        let native_total = decoded.usage;
+        let second_usage = decoded.relative_to(second.prior_usage).usage;
+        assert!(second_usage.input_tokens().unwrap() > 0);
+        assert_eq!(second.prior_usage.input_tokens(), first_usage.input_tokens());
+        assert_eq!(
+            first_usage.input_tokens().unwrap() + second_usage.input_tokens().unwrap(),
+            native_total.input_tokens().unwrap(),
+        );
+        assert_eq!(
+            first_usage.output_tokens().unwrap() + second_usage.output_tokens().unwrap(),
+            native_total.output_tokens().unwrap(),
+        );
         assert_eq!(sessions::Session::open(&next_request).unwrap().thread(), Some(thread.as_str()));
         println!("verified exact native thread across reconstructed providers: {thread}");
     });

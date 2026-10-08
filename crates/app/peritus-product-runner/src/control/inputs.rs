@@ -11,6 +11,9 @@ use super::{ControlError, ControlText, InputId, InvocationId};
 use serde::Deserialize;
 use serde::Serialize;
 
+pub(super) const SOURCE_BACKED_INPUT_NOTICE: &str =
+    "[source-backed user input; read the authoritative request source]";
+
 /// Lifecycle of one immutable content revision.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -54,6 +57,50 @@ impl InputSelection {
     }
 }
 
+/// Immutable body handle for one complete source-backed user input.
+///
+/// The referenced artifact is published and verified before the queue operation can be accepted.
+/// It is data, not a separately executable input or a mutable upload session.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequestSource {
+    artifact: [u8; 16],
+    digest: [u8; 32],
+    bytes: u64,
+}
+impl RequestSource {
+    /// Creates one exact completed-source binding.
+    ///
+    /// # Errors
+    /// Rejects the all-zero artifact identity or an empty body.
+    pub fn new(
+        artifact: [u8; 16],
+        digest: [u8; 32],
+        bytes: u64,
+    ) -> Result<Self, ControlError> {
+        if artifact == [0; 16] || bytes == 0 {
+            Err(ControlError::InvalidInput)
+        } else {
+            Ok(Self { artifact, digest, bytes })
+        }
+    }
+    /// Returns the immutable application-artifact identity.
+    #[must_use]
+    pub const fn artifact_bytes(self) -> [u8; 16] {
+        self.artifact
+    }
+    /// Returns the full-body SHA-256 digest.
+    #[must_use]
+    pub const fn digest(self) -> [u8; 32] {
+        self.digest
+    }
+    /// Returns the exact full-body byte length.
+    #[must_use]
+    pub const fn bytes(self) -> u64 {
+        self.bytes
+    }
+}
+
 /// An accepted input revision; edits never mutate its content or author.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -61,6 +108,8 @@ pub struct InputRevision {
     selection: InputSelection,
     author: [u8; 16],
     text: ControlText<8192>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    source: Option<RequestSource>,
     dependencies: Vec<InputId>,
     state: InputState,
     correction_of: Option<InputSelection>,
@@ -76,6 +125,11 @@ impl InputRevision {
     #[must_use]
     pub fn text(&self) -> &str {
         self.text.as_str()
+    }
+    /// Returns the complete immutable source handle when the body is retained out of line.
+    #[must_use]
+    pub const fn source(&self) -> Option<RequestSource> {
+        self.source
     }
     /// Returns current lifecycle of this immutable content revision.
     #[must_use]
@@ -150,12 +204,28 @@ pub enum QueueIntent {
         /// Required earlier inputs.
         dependencies: Vec<InputId>,
     },
+    /// Atomically accepts one complete user input whose exact body is a completed artifact.
+    EnqueueSource {
+        /// Stable new identity.
+        id: InputId,
+        /// Complete immutable body handle.
+        source: RequestSource,
+        /// Required earlier inputs.
+        dependencies: Vec<InputId>,
+    },
     /// Supersedes only a queued/held exact revision, retaining the old content and state.
     Edit {
         /// Exact revision the user inspected.
         selected: InputSelection,
         /// Replacement content.
         text: ControlText<8192>,
+    },
+    /// Atomically supersedes one pending revision with a complete source-backed body.
+    EditSource {
+        /// Exact revision the user inspected.
+        selected: InputSelection,
+        /// Complete immutable replacement body.
+        source: RequestSource,
     },
     /// Creates a new correction after an incorporated immutable input.
     Correct {
@@ -166,6 +236,15 @@ pub enum QueueIntent {
         /// Corrective content.
         text: ControlText<8192>,
     },
+    /// Creates a complete source-backed correction after an incorporated immutable input.
+    CorrectSource {
+        /// Exact incorporated revision being corrected.
+        original: InputSelection,
+        /// New correction identity.
+        id: InputId,
+        /// Complete immutable corrective body.
+        source: RequestSource,
+    },
     /// Changes only held/queued status of an unincorporated exact revision.
     Hold {
         /// Exact revision selected.
@@ -175,6 +254,13 @@ pub enum QueueIntent {
     },
     /// Withdraws an unincorporated item; dependent pending items must be handled first.
     Withdraw(InputSelection),
+    /// Moves one exact pending revision to a zero-based position in the resulting order.
+    Move {
+        /// Exact pending revision being moved.
+        selected: InputSelection,
+        /// Zero-based position after removing the selected item from its current position.
+        position: u64,
+    },
     /// Reorders the complete current pending identity set without violating dependencies.
     Reorder(Vec<InputId>),
     /// Host transaction captures exact inputs and marks incorporation together.

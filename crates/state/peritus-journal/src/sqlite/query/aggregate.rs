@@ -11,7 +11,10 @@ use peritus_types::EventSequence;
 use rusqlite::{Connection, OptionalExtension, Transaction, params};
 
 use super::{corrupt, digest_from_blob, event_id_from_blob, positive_u64};
-use crate::{AggregateHead, AggregateKey, CommittedRecord, JournalError, SqliteJournal};
+use crate::{
+    AggregateHead, AggregateKey, CommittedRecord, JournalError, JournalErrorKind,
+    MAX_GLOBAL_WINDOW_RECORDS, SqliteJournal,
+};
 
 impl SqliteJournal {
     /// Observes the exact current aggregate head.
@@ -44,6 +47,66 @@ impl SqliteJournal {
         transaction
             .commit()
             .map_err(|error| JournalError::sqlite("complete aggregate replay", error))?;
+        Ok(records)
+    }
+
+    /// Loads one bounded checked aggregate suffix strictly after an event-sequence cursor.
+    ///
+    /// # Errors
+    /// Returns invalid input, storage failure, or a predecessor/head integrity mismatch.
+    pub fn aggregate_events_after(
+        &self,
+        key: AggregateKey,
+        cursor: u64,
+        max_records: usize,
+    ) -> Result<Vec<CommittedRecord>, JournalError> {
+        if max_records == 0 || max_records > MAX_GLOBAL_WINDOW_RECORDS {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "query aggregate events",
+                "aggregate event query bound is outside the production range",
+            ));
+        }
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin aggregate event query", error))?;
+        let head = load_head(&transaction, key)?;
+        let records = super::records::load_aggregate_records_after(
+            &transaction,
+            key,
+            cursor,
+            max_records,
+        )?;
+        let mut previous = if cursor == 0 {
+            None
+        } else {
+            let predecessor = super::records::load_aggregate_records_after(
+                &transaction,
+                key,
+                cursor - 1,
+                1,
+            )?;
+            let predecessor = predecessor
+                .first()
+                .filter(|record| record.sequence().get() == cursor)
+                .ok_or_else(|| corrupt("aggregate event cursor is not retained"))?;
+            Some(AggregateHead::new(
+                key,
+                predecessor.sequence(),
+                predecessor.event_id(),
+                predecessor.event_hash(),
+            ))
+        };
+        for record in &records {
+            previous = Some(AggregateHead::checked_successor(previous, record)?);
+        }
+        if records.len() < max_records && previous != head {
+            return Err(corrupt("aggregate event suffix does not reach its durable head"));
+        }
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete aggregate event query", error))?;
         Ok(records)
     }
 }

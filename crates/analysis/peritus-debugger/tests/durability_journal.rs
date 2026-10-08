@@ -40,7 +40,7 @@ fn open() -> (tempfile::TempDir, SqliteJournal) {
     let journal = SqliteJournal::open(
         temporary.path().join("debugger.sqlite3"),
         StoreId::new(bytes(6)).expect("store identity"),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("open debugger journal");
     (temporary, journal)

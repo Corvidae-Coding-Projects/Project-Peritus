@@ -34,7 +34,7 @@ pub fn open_journal(path: &std::path::Path, store_id: StoreId) -> SqliteJournal 
     SqliteJournal::open(
         path,
         store_id,
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(500) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(500)),
     )
     .expect("journal")
 }

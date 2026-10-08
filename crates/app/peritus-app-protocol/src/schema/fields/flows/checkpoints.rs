@@ -41,17 +41,13 @@ const fn version(name: &'static str, required: bool) -> AppFieldDescriptor {
     )
 }
 const fn path(name: &'static str) -> AppFieldDescriptor {
-    field(name, W::Utf8, &[B::WorkbenchFilePathBytes], "String", "string", J::String, true)
+    field(name, W::Utf8, &[B::CodecStringBytes], "String", "string", J::String, true)
 }
-const fn strings(name: &'static str, restore: bool) -> AppFieldDescriptor {
+const fn strings(name: &'static str) -> AppFieldDescriptor {
     field(
         name,
         W::Sequence,
-        if restore {
-            &[B::WorkbenchCheckpointPaths, B::WorkbenchRestoreTextBytes]
-        } else {
-            &[B::WorkbenchCheckpointPaths, B::WorkbenchCheckpointTextBytes]
-        },
+        &[B::CodecStringBytes],
         "Vec<String>",
         "readonly string[]",
         J::StringArray,
@@ -136,7 +132,7 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "name",
                 W::Utf8,
-                &[B::WorkbenchCheckpointNameBytes],
+                &[B::CodecStringBytes],
                 "WorkbenchCheckpointName",
                 "string",
                 J::String,
@@ -146,14 +142,14 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "paths",
                 W::Sequence,
-                &[B::WorkbenchCheckpointPaths, B::SortedUnique],
+                &[B::SortedUnique],
                 "Vec<WorkbenchCheckpointPath>",
                 "readonly WorkbenchCheckpointPath[]",
                 J::ArrayRef("WorkbenchCheckpointPath"),
                 true,
             ),
-            strings("exclusions", false),
-            strings("externalEffects", false),
+            strings("exclusions"),
+            strings("externalEffects"),
         ],
     },
     AppTypeDescriptor {
@@ -213,14 +209,14 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "paths",
                 W::Sequence,
-                &[B::WorkbenchCheckpointPaths, B::SortedUnique],
+                &[B::SortedUnique],
                 "Vec<WorkbenchRewindPath>",
                 "readonly WorkbenchRewindPath[]",
                 J::ArrayRef("WorkbenchRewindPath"),
                 true,
             ),
-            strings("exclusions", false),
-            strings("externalEffects", false),
+            strings("exclusions"),
+            strings("externalEffects"),
             field(
                 "conversationHistoryPreserved",
                 W::Boolean,
@@ -241,7 +237,7 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
             field(
                 "name",
                 W::Utf8,
-                &[B::WorkbenchCheckpointNameBytes],
+                &[B::CodecStringBytes],
                 "WorkbenchCheckpointName",
                 "string",
                 J::String,
@@ -275,9 +271,9 @@ pub(super) const CHECKPOINT_TYPES: &[AppTypeDescriptor] = &[
                 J::Enum(&["applied", "conflict", "recoveryRequired"]),
                 true,
             ),
-            strings("restored", true),
-            strings("conflicts", true),
-            strings("externalEffects", true),
+            strings("restored"),
+            strings("conflicts"),
+            strings("externalEffects"),
         ],
     },
 ];

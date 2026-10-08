@@ -116,7 +116,7 @@ async fn question_scenario() {
     assert_eq!(restored.mode, ProductInteractionMode::Chat);
     assert_eq!(restored.incorporated, 1);
     assert_eq!(restored.activities, snapshot.activities());
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 #[test]
@@ -177,7 +177,7 @@ fn idle_chat_releases_workspace_ownership_for_a_new_conversation() {
                 .phase(),
             ProductRunPhase::WaitingForUser
         );
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -239,7 +239,7 @@ fn public_start_message_is_visible_before_a_stalled_provider_finishes() {
             .await
             .expect("stop");
         assert_eq!(wait_for_terminal(&service, run_id).await.phase(), ProductRunPhase::Cancelled);
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 

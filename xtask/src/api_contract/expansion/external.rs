@@ -4,10 +4,13 @@
 use super::{identifier, identifier_is, matching_group, punctuation_is};
 use crate::source::reference_lexer::Token;
 
+#[path = "external/thread_local.rs"]
+mod thread_local;
+
 pub(super) fn is_expansion_name(name: &str) -> bool {
     // `pin!` and `select!` are accepted only when fully qualified, so an ordinary function
     // import named `select` cannot shadow either modeled expansion and needs no exception.
-    matches!(name, "json" | "serde_json" | "tokio" | "rusqlite")
+    matches!(name, "json" | "serde_json" | "thread_local" | "tokio" | "rusqlite")
 }
 
 pub(super) fn audited_macro(tokens: &[Token], cursor: usize, local_modules: &[&str]) -> bool {
@@ -28,6 +31,9 @@ pub(super) fn audited_macro(tokens: &[Token], cursor: usize, local_modules: &[&s
         }
         return match (namespace, name) {
             ("serde_json", "json") | ("tokio", "select") | ("rusqlite", "params") => true,
+            ("std", "thread_local") => {
+                thread_local::audited_std_macro(tokens, cursor, local_modules)
+            }
             ("tokio", "pin") => single_pin_identifier(tokens, cursor),
             _ => false,
         };

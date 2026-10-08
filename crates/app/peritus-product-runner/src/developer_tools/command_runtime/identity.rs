@@ -204,6 +204,10 @@ pub(super) fn action_hex(action: ActionId) -> String {
     hex(action.as_bytes())
 }
 
+pub(super) fn process_hex(process: ProcessId) -> String {
+    hex(process.as_bytes())
+}
+
 fn hex(bytes: &[u8]) -> String {
     let mut output = String::with_capacity(bytes.len().saturating_mul(2));
     for byte in bytes {

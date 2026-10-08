@@ -75,6 +75,10 @@ pub(super) fn project(
                 metadata::validate(path, frame.kind, &frame.payload)?;
                 active = None;
             }
+            DeveloperTraceFrameKind::RetryAttempt
+            | DeveloperTraceFrameKind::RetryDisposition => {
+                metadata::validate(path, frame.kind, &frame.payload)?;
+            }
         }
     }
     Ok(ProjectedTrace { rounds, incomplete_response: active.is_some() })

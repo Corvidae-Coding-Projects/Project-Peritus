@@ -39,6 +39,16 @@ pub enum WorkingEntryStatus {
     Superseded,
 }
 
+impl WorkingEntryStatus {
+    /// Whether this status retires a record from the ordinary prompt projection.
+    ///
+    /// Retired records remain in the exact entry index for focused reads and dependency checks.
+    #[must_use]
+    pub const fn is_retired(self) -> bool {
+        matches!(self, Self::Stale | Self::Superseded)
+    }
+}
+
 /// Canonical source and entry references for a proposed record.
 #[derive(Debug, Eq, PartialEq)]
 pub struct WorkingLinks {

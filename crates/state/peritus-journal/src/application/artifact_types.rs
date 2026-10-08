@@ -26,7 +26,7 @@ impl ApplicationArtifactState {
     }
 }
 
-/// New bounded artifact catalog row.
+/// New exact artifact catalog row.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NewApplicationArtifact {
     pub(super) artifact_id: ArtifactId,
@@ -40,14 +40,14 @@ impl NewApplicationArtifact {
     ///
     /// # Errors
     ///
-    /// Returns invalid input for an empty, oversized, or non-ASCII media type.
+    /// Returns invalid input for an empty or non-ASCII media type.
     pub fn new(
         artifact_id: ArtifactId,
         digest: Sha256Digest,
         byte_size: u64,
         media_type: String,
     ) -> Result<Self, JournalError> {
-        if media_type.is_empty() || media_type.len() > 255 || !media_type.is_ascii() {
+        if media_type.is_empty() || !media_type.is_ascii() {
             return Err(invalid("application artifact media type is invalid"));
         }
         if byte_size > i64::MAX as u64 {

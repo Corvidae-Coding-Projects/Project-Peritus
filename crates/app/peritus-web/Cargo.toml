@@ -17,17 +17,35 @@ tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["fs"] }
 peritus-app-client = { version = "=0.0.5", path = "../peritus-app-client" }
 peritus-app-protocol = { version = "=0.0.5", path = "../peritus-app-protocol" }
+peritus-product-state = { version = "=0.0.5", path = "../peritus-product-state" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 peritus-local-socket = { version = "=0.0.5", path = "../../runtime/peritus-local-socket" }
+peritus-process = { version = "=0.0.5", path = "../../runtime/peritus-process" }
 base64.workspace = true
+futures-util.workspace = true
+fs4.workspace = true
 getrandom.workspace = true
 portable-pty.workspace = true
+rusqlite.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["process"] }
 toml.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_JobObjects",
+    "Win32_System_Console",
+    "Win32_System_Threading",
+] }
 
 [dev-dependencies]
 peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }

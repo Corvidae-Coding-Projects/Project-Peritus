@@ -109,6 +109,86 @@ impl TerminalOutput {
     }
 }
 
+/// One explicit unavailable output range followed by an exact resumable frontier.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TerminalOutputGap {
+    binding: TerminalBinding,
+    sequence: u64,
+    offset: u64,
+    resume_offset: u64,
+    stream_offsets: [u64; 3],
+}
+
+impl TerminalOutputGap {
+    /// Creates an exact nonempty gap in one attachment's ordered output.
+    ///
+    /// Stream frontiers name the first retained byte after the gap for stdout, stderr, and the
+    /// combined terminal stream. The attachment state validates their conserved deltas against
+    /// its preceding frontier.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an empty or reversed global output range.
+    pub const fn new(
+        binding: TerminalBinding,
+        sequence: u64,
+        offset: u64,
+        resume_offset: u64,
+        stdout_offset: u64,
+        stderr_offset: u64,
+        terminal_offset: u64,
+    ) -> Result<Self, TerminalError> {
+        if resume_offset <= offset {
+            return Err(reject(
+                TerminalErrorKind::InvalidInput,
+                "terminal output gap is empty or reversed",
+            ));
+        }
+        Ok(Self {
+            binding,
+            sequence,
+            offset,
+            resume_offset,
+            stream_offsets: [stdout_offset, stderr_offset, terminal_offset],
+        })
+    }
+    /// Returns the exact attachment binding.
+    #[must_use]
+    pub const fn binding(self) -> TerminalBinding {
+        self.binding
+    }
+    /// Returns the ordered output-event sequence occupied by this gap.
+    #[must_use]
+    pub const fn sequence(self) -> u64 {
+        self.sequence
+    }
+    /// Returns the first unavailable global byte offset.
+    #[must_use]
+    pub const fn offset(self) -> u64 {
+        self.offset
+    }
+    /// Returns the first retained global byte offset after the gap.
+    #[must_use]
+    pub const fn resume_offset(self) -> u64 {
+        self.resume_offset
+    }
+    /// Returns the exact number of unavailable output bytes.
+    #[must_use]
+    pub const fn missing_bytes(self) -> u64 {
+        self.resume_offset - self.offset
+    }
+    /// Returns the first retained byte offset after the gap for one source stream.
+    #[must_use]
+    pub const fn stream_offset(self, stream: TerminalStream) -> u64 {
+        self.stream_offsets[stream_index(stream)]
+    }
+    /// Returns stdout, stderr, and combined-terminal resume offsets in stable order.
+    #[must_use]
+    pub const fn stream_offsets(self) -> [u64; 3] {
+        self.stream_offsets
+    }
+}
+
 /// One bounded opaque terminal input request.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TerminalInput {
@@ -307,5 +387,13 @@ impl TerminalExit {
     #[must_use]
     pub const fn disposition(self) -> TerminalExitDisposition {
         self.disposition
+    }
+}
+
+const fn stream_index(stream: TerminalStream) -> usize {
+    match stream {
+        TerminalStream::Stdout => 0,
+        TerminalStream::Stderr => 1,
+        TerminalStream::Terminal => 2,
     }
 }

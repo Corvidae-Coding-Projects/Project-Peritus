@@ -124,7 +124,7 @@ fn open(path: &std::path::Path, store_id: StoreId) -> SqliteJournal {
     SqliteJournal::open(
         path,
         store_id,
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("open C0 journal")
 }

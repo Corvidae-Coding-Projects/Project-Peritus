@@ -64,7 +64,7 @@ fn discard_retention_failure_leaves_the_exact_candidate_unchanged() {
             .unwrap();
         assert!(discarded.deliverable().unwrap().discarded());
         assert_eq!(fs::read(repository.path().join("src/lib.rs")).unwrap(), original);
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -129,7 +129,7 @@ fn completed_discard_is_recovered_after_result_persistence_failure_and_restart()
         assert!(
             running.load_test_records().unwrap()[&run].snapshot.deliverable().unwrap().discarded()
         );
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -184,7 +184,7 @@ fn repeated_deliverable_actions_retry_failed_persistence_before_reporting_succes
             let restored = running.load_test_records().unwrap();
             assert_eq!(restored[&run].snapshot.deliverable(), confirmed.deliverable());
         }
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -224,7 +224,7 @@ fn restarted_deliverable_exports_and_discards_from_embedded_preimages() {
             record.task_baseline.clone().expect("embedded preimages")
         };
         let directory = running.inner.directory.clone();
-        running.shutdown(Duration::from_secs(5)).await;
+        running.shutdown().await.expect("shutdown product runs");
         drop(running);
         let sidecars = fs::read_dir(&directory)
             .expect("directory")
@@ -279,6 +279,6 @@ fn restarted_deliverable_exports_and_discards_from_embedded_preimages() {
             fs::read(repository.path().join("user-draft.txt")).expect("draft"),
             b"keep this draft\n"
         );
-        restarted.shutdown(Duration::from_secs(5)).await;
+        restarted.shutdown().await.expect("shutdown product runs");
     });
 }

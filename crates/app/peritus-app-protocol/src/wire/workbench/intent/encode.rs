@@ -27,7 +27,8 @@ pub(super) fn control(
         }
         WorkbenchIntent::ForkConversation(value) => workbench_library::write_fork(writer, value),
         WorkbenchIntent::Queue(value) => workbench_inputs::write_intent(writer, value),
-        WorkbenchIntent::StartExecution(value) => super::super::write_settings(writer, value),
+        WorkbenchIntent::StartExecution(value)
+        | WorkbenchIntent::ContinueExecution(value) => super::super::write_settings(writer, value),
         _ => Err(wrong_domain(writer)),
     }
 }
@@ -76,6 +77,9 @@ pub(super) fn preparation(
         WorkbenchIntent::AttachFileImport { preview, text } => {
             workbench_files::write_import_preview(writer, preview)?;
             writer.write_str(text.as_str())
+        }
+        WorkbenchIntent::AttachFileSource { preview } => {
+            workbench_files::write_import_preview(writer, preview)
         }
         _ => Err(wrong_domain(writer)),
     }

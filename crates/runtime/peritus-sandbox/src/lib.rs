@@ -16,6 +16,7 @@ mod feature;
 mod filesystem;
 mod lifecycle;
 mod network;
+mod native_execution;
 mod observation;
 mod plan;
 mod process_policy;
@@ -47,9 +48,10 @@ pub use network::{
     DnsName, HostMatcher, NetworkContract, NetworkDecision, NetworkHost, NetworkRule,
     NetworkTarget, PortRange, Transport,
 };
+pub use native_execution::NativeExecutionAuthority;
 pub use observation::{
     CapabilityDomain, EnforcementObservation, ObservationDisposition, ObservationKind,
-    TeardownCompleteness, teardown_completeness,
+    ObservationTail, TeardownCompleteness, teardown_completeness,
 };
 pub use plan::{CheckedSandboxPlan, compile_sandbox};
 pub use process_policy::{

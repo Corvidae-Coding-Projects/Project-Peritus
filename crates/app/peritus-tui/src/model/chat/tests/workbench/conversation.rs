@@ -259,10 +259,28 @@ fn stop_while_continuation_acknowledgement_is_pending_cancels_the_bound_run() {
         )
         .expect("interaction"),
     );
-    let continuation = request(&respond(&mut model, &interaction, payload.clone()));
-    assert!(matches!(continuation.payload(), AppRequestPayload::ContinueWorkbenchExecution(_)));
+    let continuation = request(&respond(&mut model, &interaction, payload));
+    let AppRequestPayload::WorkbenchCommand(continued) = continuation.payload() else {
+        panic!("durable continuation")
+    };
+    assert!(matches!(continued.intent(), WorkbenchIntent::ContinueExecution(_)));
     assert!(model.chat_control(ProductRunControlAction::Cancel).is_empty());
-    let cancel = request(&respond(&mut model, &continuation, payload));
+    let admission_query = request(&respond(&mut model, &continuation, receipt(continued)));
+    assert_eq!(
+        admission_query.payload(),
+        &AppRequestPayload::QueryWorkbenchContinuationAdmission(continued.clone()),
+    );
+    let admission = peritus_app_protocol::WorkbenchContinuationAdmission::new(
+        continued.operation(),
+        continued.query(),
+        run,
+        peritus_app_protocol::WorkbenchContinuationAdmissionState::LaunchOwned,
+    );
+    let cancel = request(&respond(
+        &mut model,
+        &admission_query,
+        AppResponsePayload::WorkbenchContinuationAdmission(admission),
+    ));
     assert!(matches!(cancel.payload(), AppRequestPayload::ControlProductRun(control)
         if control.run_id() == run && control.action() == ProductRunControlAction::Cancel));
     assert!(!model.workbench_chat_starting());

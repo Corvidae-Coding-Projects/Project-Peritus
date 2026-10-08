@@ -6,7 +6,7 @@ use peritus_journal::{
     AggregateId, AggregateKey, AggregateKind, AppendRequest, CommandResolution, EventDraft,
     ExactFrame, HeadExpectation, SqliteJournal,
 };
-use peritus_types::{CommandId, EventId, EventSequence, Sha256Digest};
+use peritus_types::{ArtifactId, CommandId, EventId, EventSequence, Sha256Digest};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -60,53 +60,117 @@ pub fn record(
 }
 
 pub fn event_id(metadata: &ArtifactMetadata) -> EventId {
-    EventId::new(id_with_domain(b"peritus/g0/artifact-upload-event/v1\0", metadata))
+    event_id_for(
+        metadata.artifact_id(),
+        metadata.byte_size(),
+        metadata.digest(),
+        metadata.media_type().as_str(),
+    )
+}
+
+pub fn event_id_for(
+    artifact_id: ArtifactId,
+    byte_size: u64,
+    digest: Sha256Digest,
+    media_type: &str,
+) -> EventId {
+    EventId::new(id_with_domain(
+        b"peritus/g0/artifact-upload-event/v1\0",
+        artifact_id,
+        byte_size,
+        digest,
+        media_type,
+    ))
         .expect("domain-separated SHA-256 identifier is nonzero")
 }
 
 fn command_id(metadata: &ArtifactMetadata) -> CommandId {
-    CommandId::new(id_with_domain(b"peritus/g0/artifact-upload-command/v1\0", metadata))
+    CommandId::new(id_with_domain(
+        b"peritus/g0/artifact-upload-command/v1\0",
+        metadata.artifact_id(),
+        metadata.byte_size(),
+        metadata.digest(),
+        metadata.media_type().as_str(),
+    ))
         .expect("domain-separated SHA-256 identifier is nonzero")
 }
 
 fn aggregate_id(metadata: &ArtifactMetadata) -> AggregateId {
-    AggregateId::new(id_with_domain(b"peritus/g0/artifact-upload-aggregate/v1\0", metadata))
+    AggregateId::new(id_with_domain(
+        b"peritus/g0/artifact-upload-aggregate/v1\0",
+        metadata.artifact_id(),
+        metadata.byte_size(),
+        metadata.digest(),
+        metadata.media_type().as_str(),
+    ))
         .expect("domain-separated SHA-256 identifier is nonzero")
 }
 
 fn frame(metadata: &ArtifactMetadata) -> Result<ExactFrame, DaemonError> {
-    let payload = payload(metadata)?;
-    let bytes = encode_frame(ARTIFACT_UPLOAD_ACCEPTED_FAMILY, 1, &payload, CodecLimits::PRODUCTION)
-        .map_err(|_| invalid("artifact publication frame exceeds canonical codec limits"))?;
+    let (schema_version, payload) = payload(metadata)?;
+    let bytes = encode_frame(
+        ARTIFACT_UPLOAD_ACCEPTED_FAMILY,
+        schema_version,
+        &payload,
+        CodecLimits::PRODUCTION,
+    )
+    .map_err(|_| invalid("artifact publication frame exceeds canonical codec limits"))?;
     ExactFrame::new(bytes).map_err(journal_error)
 }
 
-fn payload(metadata: &ArtifactMetadata) -> Result<Vec<u8>, DaemonError> {
+fn payload(metadata: &ArtifactMetadata) -> Result<(u16, Vec<u8>), DaemonError> {
     let media = metadata.media_type().as_str().as_bytes();
-    let media_length = u16::try_from(media.len())
+    let media_length = u64::try_from(media.len())
         .map_err(|_| invalid("artifact media type length cannot be represented"))?;
-    let mut bytes = Vec::with_capacity(16 + 16 + 8 + 32 + 2 + media.len());
+    let capacity = 16_usize
+        .checked_add(16)
+        .and_then(|value| value.checked_add(8 + 32 + 8))
+        .and_then(|value| value.checked_add(media.len()))
+        .ok_or_else(|| invalid("artifact publication payload length overflowed"))?;
+    let mut bytes = Vec::with_capacity(capacity);
     bytes.extend_from_slice(metadata.transfer_id().as_bytes());
     bytes.extend_from_slice(metadata.artifact_id().as_bytes());
     bytes.extend_from_slice(&metadata.byte_size().to_be_bytes());
     bytes.extend_from_slice(metadata.digest().as_bytes());
     bytes.extend_from_slice(&media_length.to_be_bytes());
     bytes.extend_from_slice(media);
-    Ok(bytes)
+    Ok((2, bytes))
 }
 
 fn digest_with_domain(domain: &[u8], metadata: &ArtifactMetadata) -> Sha256Digest {
+    digest_components(
+        domain,
+        metadata.artifact_id(),
+        metadata.byte_size(),
+        metadata.digest(),
+        metadata.media_type().as_str(),
+    )
+}
+
+fn digest_components(
+    domain: &[u8],
+    artifact_id: ArtifactId,
+    byte_size: u64,
+    digest: Sha256Digest,
+    media_type: &str,
+) -> Sha256Digest {
     let mut bytes = Vec::with_capacity(domain.len() + 80);
     bytes.extend_from_slice(domain);
-    bytes.extend_from_slice(metadata.artifact_id().as_bytes());
-    bytes.extend_from_slice(&metadata.byte_size().to_be_bytes());
-    bytes.extend_from_slice(metadata.digest().as_bytes());
-    bytes.extend_from_slice(metadata.media_type().as_str().as_bytes());
+    bytes.extend_from_slice(artifact_id.as_bytes());
+    bytes.extend_from_slice(&byte_size.to_be_bytes());
+    bytes.extend_from_slice(digest.as_bytes());
+    bytes.extend_from_slice(media_type.as_bytes());
     sha256(&bytes)
 }
 
-fn id_with_domain(domain: &[u8], metadata: &ArtifactMetadata) -> [u8; 16] {
-    let digest = digest_with_domain(domain, metadata);
+fn id_with_domain(
+    domain: &[u8],
+    artifact_id: ArtifactId,
+    byte_size: u64,
+    digest: Sha256Digest,
+    media_type: &str,
+) -> [u8; 16] {
+    let digest = digest_components(domain, artifact_id, byte_size, digest, media_type);
     let mut identifier = [0_u8; 16];
     identifier.copy_from_slice(&digest.as_bytes()[..16]);
     identifier

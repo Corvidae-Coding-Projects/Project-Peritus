@@ -36,7 +36,7 @@ fn open(path: &Path) -> SqliteJournal {
     SqliteJournal::open(
         path.join("guidance.sqlite3"),
         store(),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("journal")
 }

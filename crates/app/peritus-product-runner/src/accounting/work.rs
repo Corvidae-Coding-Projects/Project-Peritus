@@ -48,6 +48,9 @@ impl AccountingState {
         && self.progress.workspace_bytes == before.progress.workspace_bytes
         && self.progress.workspace_growth_bytes == before.progress.workspace_growth_bytes
         && self.progress.peak_rss_bytes == before.progress.peak_rss_bytes
+        && self.progress.workspace_measurement == before.progress.workspace_measurement
+        && self.progress.workspace_growth_measurement == before.progress.workspace_growth_measurement
+        && self.progress.peak_rss_measurement == before.progress.peak_rss_measurement
         && match event {
             WorkEvent::ModelRequest { .. } => {
                 self.response_usage.input_tokens == 0

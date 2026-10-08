@@ -40,11 +40,12 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn workbench_conversation_available(&self) -> bool {
-        const REQUIRED: [WellKnownProtocolFeature; 4] = [
+        const REQUIRED: [WellKnownProtocolFeature; 5] = [
             WellKnownProtocolFeature::WorkbenchControl,
             WellKnownProtocolFeature::WorkbenchInputs,
             WellKnownProtocolFeature::WorkbenchExecution,
             WellKnownProtocolFeature::WorkbenchConversation,
+            WellKnownProtocolFeature::WorkbenchContinuationReceipts,
         ];
         self.context.is_some()
             && REQUIRED.into_iter().all(|required| {
@@ -119,9 +120,13 @@ impl AppModel {
         }
         let workspace = self.product.as_ref()?.launch.workspace_id();
         let (query, _) = self.new_conversation_binding(workspace)?;
-        let title =
-            text.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(64).collect();
-        let title = peritus_app_protocol::ConversationTitle::new(title).ok()?;
+        let source = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let title = peritus_app_protocol::ConversationTitle::derived_label(
+            "",
+            &source,
+            peritus_app_protocol::CONVERSATION_TITLE_LABEL_BYTES,
+        )
+        .ok()?;
         self.select_workbench_conversation(Some(query));
         Some((query, title))
     }
@@ -190,10 +195,9 @@ impl AppModel {
         if let Some(run) = state.run() {
             let pending = self.chat.workbench.submission.as_ref().map_or(
                 PendingRequest::ChatOpen { run_id: run },
-                |submission| PendingRequest::WorkbenchChatContinue {
+                |_submission| PendingRequest::WorkbenchChatContinue {
                     run,
                     goal: state.has_goal(),
-                    mode: submission.settings.mode(),
                 },
             );
             self.chat.workbench.open = false;
@@ -269,7 +273,6 @@ impl AppModel {
         &mut self,
         run: RunId,
         goal: bool,
-        mode: peritus_app_protocol::ProductInteractionMode,
     ) -> Vec<Effect> {
         if self.chat.run_id != Some(run) {
             return Vec::new();
@@ -286,15 +289,30 @@ impl AppModel {
         let operation = self.chat.snapshot.as_ref().map(|snapshot| snapshot.snapshot().operation());
         if operation.is_some_and(peritus_app_protocol::ProductRunOperation::may_start_execution) {
             let Some(query) = self.chat.workbench.selected else { return Vec::new() };
-            return self
-                .request(
-                    AppRequestPayload::ContinueWorkbenchExecution(
-                        peritus_app_protocol::WorkbenchContinuation::new(query, mode),
-                    ),
-                    PendingRequest::WorkbenchChatStarted { run },
-                )
-                .into_iter()
-                .collect();
+            let Some(revision) = self
+                .chat
+                .workbench
+                .snapshot
+                .as_ref()
+                .filter(|snapshot| snapshot.query() == query)
+                .map(peritus_app_protocol::WorkbenchSnapshot::revision)
+            else {
+                return self.discover_workbench_execution();
+            };
+            let Some(settings) = self
+                .chat
+                .workbench
+                .submission
+                .as_ref()
+                .map(|submission| submission.settings.clone())
+            else {
+                return Vec::new();
+            };
+            return self.submit_workbench_chat_intent(
+                WorkbenchIntent::ContinueExecution(settings),
+                query,
+                revision,
+            );
         }
         if operation.is_some_and(|operation| {
             operation.kind() != ProductRunOperationKind::Execution
@@ -316,11 +334,27 @@ impl AppModel {
         self.chat.workbench.submission = None;
     }
 
-    pub(in crate::model) fn workbench_chat_started(&mut self, run: RunId) -> Vec<Effect> {
-        if self.chat.workbench.submission.take().is_some_and(|submission| submission.stopped) {
+    pub(in crate::model) fn settle_workbench_continuation(
+        &mut self,
+        run: RunId,
+    ) -> Vec<Effect> {
+        let stopped = self
+            .chat
+            .workbench
+            .submission
+            .take()
+            .is_some_and(|submission| submission.stopped);
+        self.chat.run_id = Some(run);
+        self.chat.workbench.open = false;
+        if stopped {
             return self.cancel_workbench_run(run);
         }
-        Vec::new()
+        self.request(
+            AppRequestPayload::QueryInteraction(ProductInteractionQuery::new(run)),
+            PendingRequest::ChatOpen { run_id: run },
+        )
+        .into_iter()
+        .collect()
     }
 
     fn cancel_workbench_run(&mut self, run: RunId) -> Vec<Effect> {

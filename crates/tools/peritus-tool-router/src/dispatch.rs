@@ -6,7 +6,51 @@ use peritus_types::{
     ActionId, ActorId, EnvironmentId, EventId, ResourceId, RevisionTuple, SessionId, Sha256Digest,
 };
 
-use crate::ReplayDisposition;
+use crate::{ReplayDisposition, ReplayReservation, RouterError};
+
+/// Dispatch failure that returns an unconsumed durable reservation only before any effect.
+#[derive(Debug)]
+pub struct ReservedDispatchError {
+    error: RouterError,
+    reservation: Option<ReplayReservation>,
+}
+
+impl ReservedDispatchError {
+    pub(crate) const fn before_effect(
+        error: RouterError,
+        reservation: ReplayReservation,
+    ) -> Self {
+        Self { error, reservation: Some(reservation) }
+    }
+
+    pub(crate) const fn after_effect(error: RouterError) -> Self {
+        Self { error, reservation: None }
+    }
+
+    /// Borrows the underlying router failure.
+    #[must_use]
+    pub const fn error(&self) -> &RouterError {
+        &self.error
+    }
+
+    /// Returns the failure and a reservation that remains safe to retry, when no effect occurred.
+    #[must_use]
+    pub fn into_parts(self) -> (RouterError, Option<ReplayReservation>) {
+        (self.error, self.reservation)
+    }
+}
+
+impl core::fmt::Display for ReservedDispatchError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.error.fmt(formatter)
+    }
+}
+
+impl std::error::Error for ReservedDispatchError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.error)
+    }
+}
 
 /// Copyable exact actor/role/target binding authenticated by the complete router authority gate.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -152,6 +196,18 @@ impl InvocationHandle {
     pub const fn replay_identity(self) -> ReplayIdentity {
         self.replay_identity
     }
+}
+
+/// Router-owned classification after a dispatch call was interrupted by unwinding.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum InterruptedDispatch {
+    /// The router never adopted the externally durable reservation, so no invocation permit was
+    /// exposed to the dispatcher.
+    Unadopted,
+    /// The dispatcher returned an active execution and the router retains its exact owner.
+    Active(InvocationHandle),
+    /// The adopted attempt is terminal or indeterminate and cannot be dispatched again.
+    Settled,
 }
 
 /// Dispatch/replay observation without effect ambiguity.

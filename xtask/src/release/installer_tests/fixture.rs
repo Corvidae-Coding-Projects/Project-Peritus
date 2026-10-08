@@ -61,7 +61,8 @@ impl Fixture {
     fn prepare_commands(&self) {
         for name in [
             "tar", "sed", "tr", "mktemp", "rm", "sh", "uname", "cp", "mv", "ln", "install",
-            "mkdir", "grep", "dirname", "sleep", "gzip", "rmdir",
+            "mkdir", "grep", "dirname", "sleep", "gzip", "rmdir", "sync", "readlink", "wc",
+            "cat", "cmp",
         ] {
             symlink(system_command(name), self.commands.join(name)).expect("fixture command");
         }
@@ -99,7 +100,39 @@ impl Fixture {
         for path in &paths[3..] {
             let target = self.bundle.join(path);
             fs::create_dir_all(target.parent().expect("parent")).expect("artifact directory");
-            fs::write(&target, "#!/bin/sh\nprintf 'peritus 1.2.3\\n'\n").expect("fixture artifact");
+            let body = if path == "bin/peritusd" {
+                r#"#!/bin/sh
+set -eu
+case "${1:-}" in
+    --version) printf 'peritusd 1.2.3\n' ;;
+    package-lock)
+        [ "$2" = --lock ] && [ "$4" = -- ]
+        shift 4
+        PERITUS_INSTALL_LOCKED=1
+        export PERITUS_INSTALL_LOCKED
+        exec "$@"
+        ;;
+    package-adopt)
+        [ "$2" = --store ] && [ "$4" = --candidate ] && [ "$6" = --current ]
+        candidate=$5
+        current=$7
+        rm -f -- "$current"
+        mv -f "$candidate" "$current"
+        ;;
+    package-remove)
+        [ "$2" = --store ] && [ "$4" = --current ] && [ "$6" = --expected ]
+        rm -f -- "$5"
+        ;;
+    package-handoff|package-handoff-legacy)
+        printf 'peritus-package-handoff-v1\nstatus=already-stopped\n'
+        ;;
+    *) exit 2 ;;
+esac
+"#
+            } else {
+                "#!/bin/sh\nprintf 'peritus 1.2.3\\n'\n"
+            };
+            fs::write(&target, body).expect("fixture artifact");
             executable(&target);
         }
         let mut sums = String::new();

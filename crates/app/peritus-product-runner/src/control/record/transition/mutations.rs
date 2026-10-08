@@ -81,6 +81,7 @@ impl ConversationRecord {
                 self.images.select(&mut self.inputs, *attachment, *selected)
             }
             ControlIntent::AttachFile { .. }
+            | ControlIntent::AttachFileSource { .. }
             | ControlIntent::SelectFile { .. }
             | ControlIntent::RefreshFile { .. } => self.apply_file(operation),
             _ => Err(ControlError::InvalidInput),
@@ -213,6 +214,9 @@ impl ConversationRecord {
                     file,
                     text,
                 )
+            }
+            ControlIntent::AttachFileSource { file } if file.operation() == operation.id => {
+                self.files.attach_source(&mut self.inputs, file)
             }
             ControlIntent::SelectFile { attachment, selected } => {
                 self.files.select(&mut self.inputs, *attachment, *selected)

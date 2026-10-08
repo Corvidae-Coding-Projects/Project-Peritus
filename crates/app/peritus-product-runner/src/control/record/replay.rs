@@ -2,7 +2,19 @@
 
 use super::{ControlError, ControlIntent, ControlOperation, ControlReceipt, ConversationRecord};
 use crate::control::{CheckpointId, UserCheckpoint};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+const REPLAY_CHECKPOINT_SCHEMA: u16 = 1;
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct ReplayCheckpoint {
+    schema: u16,
+    current: Option<ConversationRecord>,
+    edit_revision: u64,
+    automatic_checkpoints: Vec<UserCheckpoint>,
+}
 
 /// Replays a conversation while retaining the last revision that changed user-controlled state.
 /// Background accounting may advance after an inspected revision without invalidating an edit.
@@ -24,6 +36,62 @@ impl ConversationReplay {
     #[must_use]
     pub fn automatic_checkpoint(&self, id: CheckpointId) -> Option<&UserCheckpoint> {
         self.automatic_checkpoints.get(&id)
+    }
+
+    /// Encodes the complete effect-free replay context for a derived durable projection.
+    ///
+    /// # Errors
+    /// Rejects a representation that cannot be encoded canonically.
+    pub fn checkpoint_bytes(&self) -> Result<Vec<u8>, ControlError> {
+        let checkpoint = ReplayCheckpoint {
+            schema: REPLAY_CHECKPOINT_SCHEMA,
+            current: self.current.clone(),
+            edit_revision: self.edit_revision,
+            automatic_checkpoints: self.automatic_checkpoints.values().cloned().collect(),
+        };
+        serde_json::to_vec(&checkpoint).map_err(|_| ControlError::Capacity)
+    }
+
+    /// Restores replay context from exact canonical derived-projection bytes.
+    ///
+    /// # Errors
+    /// Rejects unsupported, noncanonical, duplicate, or internally inconsistent context.
+    pub fn from_checkpoint_bytes(bytes: &[u8]) -> Result<Self, ControlError> {
+        let checkpoint: ReplayCheckpoint =
+            serde_json::from_slice(bytes).map_err(|_| ControlError::InvalidInput)?;
+        let current_revision = checkpoint.current.as_ref().map_or(0, ConversationRecord::revision);
+        if checkpoint.schema != REPLAY_CHECKPOINT_SCHEMA
+            || checkpoint.edit_revision > current_revision
+            || serde_json::to_vec(&checkpoint).map_err(|_| ControlError::InvalidInput)? != bytes
+        {
+            return Err(ControlError::InvalidInput);
+        }
+        if let Some(current) = checkpoint.current.as_ref() {
+            current.canonical_bytes().map_err(|_| ControlError::InvalidInput)?;
+        }
+        let ReplayCheckpoint {
+            current,
+            edit_revision,
+            automatic_checkpoints: encoded_automatic,
+            ..
+        } = checkpoint;
+        let mut automatic_checkpoints = BTreeMap::new();
+        let mut previous = None;
+        for checkpoint in encoded_automatic {
+            let id = checkpoint.id();
+            if checkpoint.automatic_run().is_none()
+                || previous.is_some_and(|previous| previous >= id)
+                || automatic_checkpoints.insert(checkpoint.id(), checkpoint).is_some()
+            {
+                return Err(ControlError::InvalidInput);
+            }
+            previous = Some(id);
+        }
+        if current.is_none() && (edit_revision != 0 || !automatic_checkpoints.is_empty())
+        {
+            return Err(ControlError::InvalidInput);
+        }
+        Ok(Self { current, edit_revision, automatic_checkpoints })
     }
 
     /// Applies one operation, preserving its original identity and inspected revision.
@@ -117,10 +185,14 @@ impl ControlOperation {
             self.intent,
             ControlIntent::Queue(
                 crate::control::QueueIntent::Enqueue { .. }
+                    | crate::control::QueueIntent::EnqueueSource { .. }
                     | crate::control::QueueIntent::Edit { .. }
+                    | crate::control::QueueIntent::EditSource { .. }
                     | crate::control::QueueIntent::Correct { .. }
+                    | crate::control::QueueIntent::CorrectSource { .. }
                     | crate::control::QueueIntent::Hold { .. }
                     | crate::control::QueueIntent::Withdraw(_)
+                    | crate::control::QueueIntent::Move { .. }
                     | crate::control::QueueIntent::Reorder(_)
             ) | ControlIntent::SetBrief { .. }
                 | ControlIntent::ClearGoal { .. }

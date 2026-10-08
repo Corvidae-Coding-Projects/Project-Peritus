@@ -27,7 +27,7 @@ $dataRoot = if ([string]::IsNullOrWhiteSpace($DataRoot)) {
 $taskFile = Join-Path $dataRoot 'supervisor\Peritus.Task.xml'
 
 function Stop-PeritusPackage {
-    param([string]$ProgramRoot, [switch]$RemoveTask)
+    param([string]$ProgramRoot, [string]$DataRoot, [switch]$RemoveTask)
 
     $daemon = Join-Path $ProgramRoot 'bin\peritusd.exe'
     # A missing task is normal for launcher-owned daemons. Query failures are not.
@@ -37,33 +37,59 @@ function Stop-PeritusPackage {
             $_.Execute -and [String]::Equals($_.Execute.Trim('"'), $daemon, [StringComparison]::OrdinalIgnoreCase)
         })
         if ($owned.Count -eq 0) { continue }
-        Stop-ScheduledTask -InputObject $task -ErrorAction Stop
+        $configuration = $null
+        if ($owned.Count -eq 1) {
+            $argumentsProperty = $owned[0].PSObject.Properties['Arguments']
+            if ($null -ne $argumentsProperty -and [string]$argumentsProperty.Value -match '^supervise --config "([^"]+)"$') {
+                $configuration = $Matches[1]
+            }
+        }
+        if ($null -ne $configuration) {
+            & $daemon package-handoff --config $configuration
+            if ($LASTEXITCODE -ne 0) {
+                throw "Peritus daemon refused an exact durable handoff for $configuration."
+            }
+            # A clean daemon exit also ends its supervisor successfully. Stop the registered task
+            # only after that exact owner has issued its receipt, preventing a new manual start.
+            Stop-ScheduledTask -InputObject $task -ErrorAction Stop
+        } else {
+            Stop-ScheduledTask -InputObject $task -ErrorAction Stop
+        }
         if ($RemoveTask) { Unregister-ScheduledTask -InputObject $task -Confirm:$false -ErrorAction Stop }
     }
 
-    # Stop launchers before their daemon/helpers, including processes not owned by a task.
-    # Exact executable paths keep other installations and unrelated same-name processes alive.
-    foreach ($relative in @('bin\peritus.exe', 'bin\peritus-tui.exe', 'bin\peritusd.exe', 'libexec\peritus-windows-sandbox-helper.exe')) {
-        $executable = Join-Path $ProgramRoot $relative
-        $name = [IO.Path]::GetFileNameWithoutExtension($executable)
-        foreach ($process in @(Get-Process | Where-Object { $_.ProcessName -eq $name })) {
-            try {
-                if (-not [String]::Equals($process.Path, $executable, [StringComparison]::OrdinalIgnoreCase)) { continue }
-                if (-not $process.HasExited) {
-                    Write-Output "Stopping installed Peritus process: $($process.Id)"
-                    try { $process.Kill() } catch { if (-not $process.HasExited) { throw } }
-                    if (-not $process.WaitForExit(10000)) { throw "Installed Peritus process $($process.Id) did not stop within 10 seconds." }
-                }
-            } finally { $process.Dispose() }
+    if (-not [string]::IsNullOrWhiteSpace($DataRoot)) {
+        $marker = Join-Path $DataRoot 'State\daemon\applied-configuration'
+        if (Test-Path -LiteralPath $marker -PathType Leaf) {
+            $lines = @(Get-Content -LiteralPath $marker)
+            if ($lines.Count -ne 3 -or $lines[0] -ne 'peritus-applied-daemon-v2' -or -not $lines[1].StartsWith('configuration=', [StringComparison]::Ordinal)) {
+                throw 'Applied daemon configuration marker is malformed.'
+            }
+            $configuration = $lines[1].Substring('configuration='.Length)
+            if (-not (Test-Path -LiteralPath $configuration -PathType Leaf)) {
+                throw "Recorded daemon configuration does not exist: $configuration"
+            }
+            & $daemon package-handoff --config $configuration | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                throw "Peritus daemon refused an exact durable handoff for $configuration."
+            }
         }
     }
 }
 
-Stop-PeritusPackage -ProgramRoot $programRoot -RemoveTask:(-not $StopOnly)
+Stop-PeritusPackage -ProgramRoot $programRoot -DataRoot $dataRoot -RemoveTask:(-not $StopOnly)
 if ($StopOnly) { return }
 
 # Do not remove PATH entries or report success if an external lock or access denial remains.
 if (Test-Path -LiteralPath $taskFile) { Remove-Item -LiteralPath $taskFile -Force -ErrorAction Stop }
+foreach ($path in @((Join-Path $programRoot 'bin'), (Join-Path $programRoot 'libexec'), (Join-Path $programRoot 'share'))) {
+    if (Test-Path -LiteralPath $path) {
+        $item = Get-Item -LiteralPath $path -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+        }
+    }
+}
 if (Test-Path -LiteralPath $programRoot) { Remove-Item -LiteralPath $programRoot -Recurse -Force -ErrorAction Stop }
 if (Test-Path -LiteralPath $programRoot) { throw "Peritus package files remain at $programRoot." }
 

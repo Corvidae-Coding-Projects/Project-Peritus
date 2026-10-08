@@ -63,6 +63,7 @@ fn manual_snapshot_over_1024_paths_and_8_mib_restores_after_reopen() {
         .expect("checkpoint");
     let workspace = tempfile::tempdir().expect("workspace");
     let transactions = tempfile::tempdir().expect("transactions");
+    let snapshots = journal.checkpoint_snapshots(checkpoint.id()).expect("snapshot reader");
     let operations = recovered
         .paths()
         .iter()
@@ -70,10 +71,7 @@ fn manual_snapshot_over_1024_paths_and_8_mib_restores_after_reopen() {
         .map(|(index, path)| {
             peritus_patch::PatchOperation::create_snapshot(
                 peritus_patch::WorkspacePath::new(path.path()).expect("path"),
-                journal
-                    .checkpoint_snapshot(checkpoint.id(), index, path.checkpoint())
-                    .expect("body")
-                    .expect("present"),
+                snapshots.snapshot(index, path.checkpoint()).expect("body").expect("present"),
             )
         })
         .collect();

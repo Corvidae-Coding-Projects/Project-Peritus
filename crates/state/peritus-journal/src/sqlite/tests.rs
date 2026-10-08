@@ -96,7 +96,7 @@ pub(super) fn open(temp: &TempDir) -> SqliteJournal {
     SqliteJournal::open(
         temp.path().join("journal.sqlite3"),
         store_id(),
-        SqliteJournalOptions { busy_timeout: Duration::from_millis(250) },
+        SqliteJournalOptions::with_timeout(Duration::from_millis(250)),
     )
     .expect("open journal")
 }
@@ -351,45 +351,4 @@ fn missing_artifact_fails_before_authoritative_rows_exist() {
         journal.resolve_command(command_id, digest).expect("resolve command"),
         CommandResolution::DefinitelyAbsent
     ));
-}
-
-#[test]
-fn lost_acknowledgement_resolves_and_exact_retry_does_not_append() {
-    let temp = TempDir::new().expect("temporary directory");
-    let mut journal = open(&temp);
-    let aggregate = key(AggregateKind::Approval, 14);
-    let command_id = command(50);
-    let digest = Sha256Digest::new([50; 32]);
-    let make_plan = || {
-        plan(
-            command_id,
-            digest,
-            HeadExpectation::Absent(aggregate),
-            vec![draft(aggregate, 1, event(50), None, 4)],
-        )
-    };
-    assert_eq!(
-        journal
-            .append_losing_acknowledgement(make_plan())
-            .expect_err("simulated lost acknowledgement")
-            .kind(),
-        JournalErrorKind::IndeterminateCommit
-    );
-    let resolved = journal.resolve_command(command_id, digest).expect("resolve command");
-    assert!(matches!(resolved, CommandResolution::Committed(_)));
-    let replay = journal.append(make_plan()).expect("exact replay");
-    assert_eq!(replay.first_position(), 1);
-    assert_eq!(replay.last_position(), 1);
-
-    let conflict = plan(
-        command_id,
-        Sha256Digest::new([51; 32]),
-        HeadExpectation::Absent(key(AggregateKind::Kernel, 15)),
-        vec![draft(key(AggregateKind::Kernel, 15), 1, event(51), None, 5)],
-    );
-    assert_eq!(
-        journal.append(conflict).expect_err("digest conflict").kind(),
-        JournalErrorKind::IdempotencyConflict
-    );
-    assert_eq!(journal.integrity_scan().expect("integrity").event_count(), 1);
 }

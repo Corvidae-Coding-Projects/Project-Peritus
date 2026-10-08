@@ -141,6 +141,20 @@ impl<'a> CanonicalReader<'a> {
             .map_err(|_| CodecError::new(CodecErrorKind::InvalidUtf8, length_offset + 4))
     }
 
+    /// Reads a legacy `u16` collection count under the negotiated collection limit and checks
+    /// its minimum encoded extent before allocation.
+    ///
+    /// `minimum_item_bytes` is a schema fact, not a work allowance. Owned collection decoders
+    /// must supply their elements' positive minimum width before reserving storage.
+    pub fn read_u16_collection_len(
+        &mut self,
+        minimum_item_bytes: usize,
+    ) -> Result<usize, CodecError> {
+        let offset = self.offset();
+        let value = usize::from(self.read_u16()?);
+        self.validate_collection_len(offset, value, minimum_item_bytes)
+    }
+
     /// Reads a collection count and checks its minimum encoded extent before allocation.
     ///
     /// `minimum_item_bytes` is a schema fact, not a work allowance. Use zero only for a
@@ -150,17 +164,25 @@ impl<'a> CanonicalReader<'a> {
         let offset = self.offset();
         let value = usize::try_from(self.read_u32()?)
             .map_err(|_| CodecError::new(CodecErrorKind::LengthOverflow, offset))?;
+        self.validate_collection_len(offset, value, minimum_item_bytes)
+    }
+
+    fn validate_collection_len(
+        &self,
+        offset: usize,
+        value: usize,
+        minimum_item_bytes: usize,
+    ) -> Result<usize, CodecError> {
         if value > self.limits.max_collection_items {
-            Err(CodecError::limited(offset, CodecLimit::CollectionItems))
-        } else {
-            let minimum = value
-                .checked_mul(minimum_item_bytes)
-                .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, offset))?;
-            if minimum > self.remaining() {
-                return Err(CodecError::new(CodecErrorKind::Truncated, self.offset()));
-            }
-            Ok(value)
+            return Err(CodecError::limited(offset, CodecLimit::CollectionItems));
         }
+        let minimum = value
+            .checked_mul(minimum_item_bytes)
+            .ok_or_else(|| CodecError::new(CodecErrorKind::LengthOverflow, offset))?;
+        if minimum > self.remaining() {
+            return Err(CodecError::new(CodecErrorKind::Truncated, self.offset()));
+        }
+        Ok(value)
     }
 
     /// Prepares owned collection storage after checking its count and encoded minimum extent.

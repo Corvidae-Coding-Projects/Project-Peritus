@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { onMount,tick } from 'svelte';
-  import { ui,start,persist,project,session,attempt,dispatch,selectProject,selectSession,newSession,editSession,openFile,closeFile,send,poll,notify,openProjects,closeProject,attachFile,runActive } from './lib/workspace.svelte';
+  import { onMount,tick,untrack } from 'svelte';
+  import { ui,start,cancelStartup,persist,flushPersist,project,session,attempt,dispatch,selectProject,selectSession,newSession,editSession,openFile,closeFile,send,poll,notify,openProjects,closeProject,attachFile,runActive,cancelObservations,recheckObservations } from './lib/workspace.svelte';
   import { commands,matchesShortcut,formatShortcut } from './lib/commands/catalog';
   import type { RunLegalControls,Session,Mode } from './lib/types';
   import Icon from './lib/components/Icon.svelte';
@@ -9,9 +9,11 @@
   import GitPanel from './lib/components/GitPanel.svelte';
   import FileViewer from './lib/components/FileViewer.svelte';
   import Markdown from './lib/components/Markdown.svelte';
+  import ActivityDetails from './lib/components/ActivityDetails.svelte';
   import Palette from './lib/components/Palette.svelte';
   import Overlays from './lib/components/Overlays.svelte';
-  import {protectFileDrafts} from './lib/files/drafts.svelte';
+  import {flushFileDrafts,protectFileDrafts} from './lib/files/drafts.svelte';
+  import {browserStorage} from './lib/storage.svelte';
   import {recovery} from './lib/operations.svelte';
   import Attachments from './lib/components/Attachments.svelte';
   import Recovery from './lib/components/Recovery.svelte';
@@ -34,8 +36,17 @@
   let mode=$derived(ui.modes[ui.sessionId]??'chat');
   let draft=$derived(ui.drafts[ui.sessionId]??'');
   let projects=$derived(openProjects());
-  let opened=$derived(ui.workspace.sessions.filter(s=>!s.closed&&projects.some(p=>p.id===s.project)));
+  const TAB_RENDER_BATCH=16;
+  let projectTabStart=$state(0),fileTabStart=$state(0),railOffsets=$state<Record<string,number>>({});
+  let visibleProjects=$derived(projects.slice(projectTabStart,projectTabStart+TAB_RENDER_BATCH));
+  let projectFocusKey='',sessionFocusKey='',fileFocusKey='';
+  let opened=$derived.by(()=>{const ids=new Set(projects.map(item=>item.id));return ui.workspace.sessions.filter(item=>!item.closed&&ids.has(item.project));});
+  let sessionLookup=$derived(new Map(ui.workspace.sessions.map(item=>[item.id,item])));
   let running=$derived(Object.values(ui.conversations).filter(c=>runActive(c.run)).length);
+  const ACTIVITY_RENDER_BATCH=32;
+  let activityOffsets=$state<Record<string,number|undefined>>({});
+  const activityAnchors=new Map<string,string>();
+  const activityFrontiers=new Map<string,{first:string;length:number}>();
   const operationActions:{control:keyof RunLegalControls;command:string;label:string}[]=[
     {control:'retry',command:'retry',label:'Exact retry'},
     {control:'accept',command:'accept',label:'Accept candidate'},
@@ -45,29 +56,78 @@
     {control:'acknowledge',command:'acknowledge',label:'Acknowledge unknown outcome'},
   ];
   let sessionFiles=$derived(ui.files.filter(f=>f.session===ui.sessionId));
-  let activities=$derived((current?.activities??[]).filter(a=>ui.details||['user','assistant','error'].includes(a.kind)));
+  let visibleFiles=$derived(sessionFiles.slice(fileTabStart,fileTabStart+TAB_RENDER_BATCH));
+  let activitySource=$derived(current?.activities??[]);
+  let activityKey=$derived(JSON.stringify([browserStorage.workspace,ui.sessionId]));
+  let activityStart=$derived(Math.min(activityOffsets[activityKey]??Math.max(0,activitySource.length-ACTIVITY_RENDER_BATCH),Math.max(0,activitySource.length-1)));
+  let activityEnd=$derived(Math.min(activitySource.length,activityStart+ACTIVITY_RENDER_BATCH));
+  let activities=$derived(activitySource.slice(activityStart,activityEnd).filter(a=>ui.details||['user','assistant','error'].includes(a.kind)));
   let suggestions=$derived(draft.startsWith('/')&&!draft.includes(' ')?commands.filter(c=>c.slash.startsWith(draft)).slice(0,7):[]);
   let lineage=$derived.by(()=>{
     const result:Session[]=[];let cursor=activeSession;const seen=new Set<string>();
-    while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);result.unshift(cursor);cursor=ui.workspace.sessions.find(s=>s.id===cursor?.parent);}return result;
+    while(cursor&&!seen.has(cursor.id)){seen.add(cursor.id);result.push(cursor);cursor=cursor.parent?sessionLookup.get(cursor.parent):undefined;}return result.reverse();
   });
   let rows=$derived.by(()=>{
-    const group=(parent:string|null)=>opened.filter(s=>s.project===ui.projectId&&s.parent===parent);
-    const groups=[group(null)];for(const ancestor of lineage){const children=group(ancestor.id);if(children.length)groups.push(children);}return groups;
+    const byParent=new Map<string|null,Session[]>();
+    for(const item of opened){if(item.project!==ui.projectId)continue;let group=byParent.get(item.parent);if(!group){group=[];byParent.set(item.parent,group);}group.push(item);}
+    const groups=[byParent.get(null)??[]];for(const ancestor of lineage){const children=byParent.get(ancestor.id);if(children?.length)groups.push(children);}return groups;
+  });
+  function railKey(depth:number){return JSON.stringify([browserStorage.workspace,ui.projectId,rows[depth]?.[0]?.parent??null]);}
+  let visibleRows=$derived(rows.map((items,depth)=>{
+    const key=railKey(depth),start=Math.min(railOffsets[key]??0,Math.max(0,Math.floor((items.length-1)/TAB_RENDER_BATCH)*TAB_RENDER_BATCH));
+    return {key,start,items,visible:items.slice(start,start+TAB_RENDER_BATCH)};
+  }));
+  $effect(()=>{
+    const key=JSON.stringify([browserStorage.workspace,ui.projectId]),items=projects;
+    if(key!==projectFocusKey){projectFocusKey=key;const index=items.findIndex(item=>item.id===ui.projectId);projectTabStart=Math.max(0,Math.floor(index/TAB_RENDER_BATCH)*TAB_RENDER_BATCH);}
+    if(projectTabStart>=items.length)projectTabStart=Math.max(0,Math.floor((items.length-1)/TAB_RENDER_BATCH)*TAB_RENDER_BATCH);
+  });
+  $effect(()=>{
+    const key=JSON.stringify([browserStorage.workspace,ui.projectId,ui.sessionId]),levels=rows;
+    if(key!==sessionFocusKey){
+      sessionFocusKey=key;const active=new Set(lineage.map(item=>item.id));
+      for(let depth=0;depth<levels.length;depth++){const index=levels[depth]!.findIndex(item=>active.has(item.id));railOffsets[railKey(depth)]=Math.max(0,Math.floor(index/TAB_RENDER_BATCH)*TAB_RENDER_BATCH);}
+    }
+  });
+  $effect(()=>{
+    const key=JSON.stringify([browserStorage.workspace,ui.sessionId,ui.activeFile]),items=sessionFiles;
+    if(key!==fileFocusKey){fileFocusKey=key;const index=items.findIndex(item=>item.path===ui.activeFile);fileTabStart=Math.max(0,Math.floor(index/TAB_RENDER_BATCH)*TAB_RENDER_BATCH);}
+    if(fileTabStart>=items.length)fileTabStart=Math.max(0,Math.floor((items.length-1)/TAB_RENDER_BATCH)*TAB_RENDER_BATCH);
   });
   onMount(()=>{
     apple=/Mac|iPhone|iPad|iPod/.test(navigator.platform);
     void start();let disposed=false,timer:ReturnType<typeof setTimeout>;
-    async function update(){if(!document.hidden&&!ui.loading)await poll();if(!disposed)timer=setTimeout(()=>void update(),3500);}
-    timer=setTimeout(()=>void update(),3500);return()=>{disposed=true;clearTimeout(timer);};
+    function update(){if(!document.hidden&&!ui.loading)poll();if(!disposed)timer=setTimeout(update,3500);}
+    timer=setTimeout(update,3500);return()=>{disposed=true;clearTimeout(timer);cancelStartup();cancelObservations(false);};
   });
   $effect(()=>{if(!ui.loading)persist();});
   $effect(()=>{
     const p=ui.preferences;const root=document.documentElement;root.dataset.theme=p.theme;root.dataset.density=p.density;root.dataset.motion=p.motion?'full':'reduced';
-    root.style.setProperty('--base-font',`${p.font_size}px`);root.style.setProperty('--font-body',p.font_family);root.style.setProperty('--font-mono',p.mono_family);root.style.setProperty('--explorer-width',`${p.explorer_width}px`);
+    root.style.setProperty('--base-font',`${p.font_size}px`);root.style.setProperty('--font-body',p.font_family);root.style.setProperty('--font-mono',p.mono_family);root.style.setProperty('--explorer-width',`min(${p.explorer_width}px, 40vw)`);
     for(const role of ['background','panel','display','text','muted','accent','line']){if(p.tokens[role])root.style.setProperty(`--${role}`,p.tokens[role]!);else root.style.removeProperty(`--${role}`);}
   });
-  $effect(()=>{const count=activities.length;if(following&&count)void tick().then(()=>transcript?.scrollTo({top:transcript.scrollHeight}));});
+  $effect(()=>{const latest=activitySource.at(-1)?.id;if(following&&activityOffsets[activityKey]===undefined&&latest)void tick().then(()=>transcript?.scrollTo({top:transcript.scrollHeight}));});
+  $effect(()=>{
+    const key=activityKey,first=activitySource[0]?.id??'',length=activitySource.length,previous=activityFrontiers.get(key);
+    const offset=untrack(()=>activityOffsets[key]);
+    if(offset!==undefined&&previous&&(length<previous.length||first!==previous.first)){
+      const anchor=activityAnchors.get(key),found=anchor?activitySource.findIndex(activity=>activity.id===anchor):-1;
+      activityOffsets[key]=found>=0?found:Math.min(offset,Math.max(0,length-ACTIVITY_RENDER_BATCH));
+    }
+    activityFrontiers.set(key,{first,length});
+  });
+  async function revealEarlierActivities(){
+    const key=activityKey,start=Math.max(0,activityStart-ACTIVITY_RENDER_BATCH);
+    activityOffsets[key]=start;activityAnchors.set(key,activitySource[start]?.id??'');following=false;
+    await tick();transcript?.scrollTo({top:0});
+  }
+  async function revealLaterActivities(latest=false){
+    const key=activityKey,start=Math.min(activitySource.length,activityStart+ACTIVITY_RENDER_BATCH);
+    if(latest||start+ACTIVITY_RENDER_BATCH>=activitySource.length){activityOffsets[key]=undefined;activityAnchors.delete(key);following=true;}
+    else{activityOffsets[key]=start;activityAnchors.set(key,activitySource[start]?.id??'');following=false;}
+    await tick();transcript?.scrollTo({top:following?transcript.scrollHeight:0});
+  }
+  function flushBrowserState(){flushPersist();flushFileDrafts();}
   function keyboard(event:KeyboardEvent){
     if(event.defaultPrevented)return;
     for(const [command,binding]of Object.entries(ui.preferences.shortcuts)){if(matchesShortcut(event,binding)){event.preventDefault();if(command==='commands')ui.palette=' ';else void attempt(()=>dispatch(command));return;}}
@@ -95,7 +155,7 @@
   }
 </script>
 
-<svelte:window onkeydown={keyboard} onclick={physical} onbeforeunload={protectFileDrafts}/>
+<svelte:window onkeydown={keyboard} onclick={physical} onpagehide={flushBrowserState} onbeforeunload={protectFileDrafts}/>
 <a class="skip-link" href="#conversation-input">Skip to message composer</a>
 <div class="console-shell">
   <header class="top-plate">
@@ -104,10 +164,10 @@
     <div class="header-actions"><button class="command-key key" aria-label="Command directory" onclick={()=>ui.palette=' '}><Icon name="terminal"/><span>Command</span>{#if commandShortcut}<kbd>{commandShortcut}</kbd>{/if}</button><button class="key icon-button" aria-label="Console settings" onclick={()=>void dispatch('settings')}><Icon name="settings"/></button></div>
   </header>
 
-  <nav class="project-rail" aria-label="Open projects"><span class="rail-label">PROJECTS</span><div class="project-tabs">{#each projects as item,index(item.id)}<div class="project-tab-group"><button id={`project-${item.id}`} class="project-tab" class:active={item.id===ui.projectId} aria-current={item.id===ui.projectId?'page':undefined} title={`${item.root} · Alt+${index+1}`} onclick={()=>void attempt(()=>selectProject(item.id))}><span class="channel-number">{String(index+1).padStart(2,'0')}</span><span>{item.name}</span><span class="project-indicator"></span></button><button class="flat icon-button project-close" aria-label={`Close project: ${item.name}`} title="Close project tab; keep sessions and work" onclick={()=>void attempt(()=>closeProjectTab(item.id))}><Icon name="close" size={14}/></button></div>{/each}</div><button class="key small add-project" aria-label="Open project" onclick={()=>ui.overlay='open'}><Icon name="plus" size={16}/><span>Open project</span></button></nav>
+  <nav class="project-rail" aria-label="Open projects"><span class="rail-label">PROJECTS</span>{#if projects.length>TAB_RENDER_BATCH}<button class="flat icon-button" aria-label="Previous projects" disabled={!projectTabStart} onclick={()=>projectTabStart=Math.max(0,projectTabStart-TAB_RENDER_BATCH)}><Icon name="chevron" size={14}/></button>{/if}<div class="project-tabs">{#each visibleProjects as item,index(item.id)}<div class="project-tab-group"><button id={`project-${item.id}`} class="project-tab" class:active={item.id===ui.projectId} aria-current={item.id===ui.projectId?'page':undefined} title={`${item.root}${projectTabStart+index<9?` · Alt+${projectTabStart+index+1}`:''}`} onclick={()=>void attempt(()=>selectProject(item.id))}><span class="channel-number">{String(projectTabStart+index+1).padStart(2,'0')}</span><span>{item.name}</span><span class="project-indicator"></span></button><button class="flat icon-button project-close" aria-label={`Close project: ${item.name}`} title="Close project tab; keep sessions and work" onclick={()=>void attempt(()=>closeProjectTab(item.id))}><Icon name="close" size={14}/></button></div>{/each}</div>{#if projects.length>TAB_RENDER_BATCH}<span class="rail-label">{projectTabStart+1}–{projectTabStart+visibleProjects.length} / {projects.length.toLocaleString()}</span><button class="flat icon-button" aria-label="Next projects" disabled={projectTabStart+visibleProjects.length>=projects.length} onclick={()=>projectTabStart+=TAB_RENDER_BATCH}><Icon name="chevron" size={14}/></button>{/if}<button class="key small add-project" aria-label="Open project" onclick={()=>ui.overlay='open'}><Icon name="plus" size={16}/><span>Open project</span></button></nav>
 
-  {#if ui.fatal}<main class="startup-error"><Icon name="bolt" size={40}/><h1>The console could not connect</h1><p>{ui.fatal}</p><button class="key primary" onclick={()=>{ui.fatal='';void start();}}>Reconnect to gateway</button></main>
-  {:else if ui.loading}<main class="startup-loading"><div class="skeleton-lines" aria-label="Loading workspace"><i></i><i></i><i></i></div><p>Connecting your workspace…</p></main>
+  {#if ui.fatal}<main class="startup-error"><Icon name="bolt" size={40}/><h1>The console could not connect</h1><p>{ui.fatal}</p><button class="key primary" onclick={()=>{ui.fatal='';void start();}}>Reconnect to gateway</button><Recovery showAll/></main>
+  {:else if ui.loading}<main class="startup-loading"><div class="skeleton-lines" aria-label="Loading workspace"><i></i><i></i><i></i></div><p>{ui.startupMessage}</p>{#if ui.startupActive}<button class="key small" onclick={cancelStartup}>Cancel gateway check</button>{:else}<button class="key primary" onclick={()=>void start()}>Reconnect to gateway</button>{/if}<Recovery showAll/></main>
   {:else}
     <nav class="mobile-panel-nav" aria-label="Workspace panels">{#each [['files','Files','folder'],['conversation','Session','chat'],['controls','Controls','settings']] as item}<button class:active={ui.panel===item[0]} onclick={()=>ui.panel=item[0]!}><Icon name={item[2]!} size={16}/>{item[1]}</button>{/each}</nav>
     <main class="workspace" class:no-explorer={!ui.preferences.explorer_visible} class:no-controls={!ui.preferences.controls_visible} data-panel={ui.panel}>
@@ -119,28 +179,28 @@
       <section class="session-chassis" aria-label="Active session" class:file-drop-ready={fileDrag} ondragover={fileOver} ondragleave={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node|null))fileDrag=false;}} ondrop={fileDrop}>
         {#if fileDrag}<div class="file-drop-label">Drop a text file to attach its saved snapshot to the next message</div>{/if}
         <div class="session-rails">
-          {#each rows as row,depth}
-            <div class="session-level" style={`--level:${depth}`}><span class="level-connector">{#if depth===0}<Icon name="layers" size={15}/>{:else}<Icon name="branch" size={15}/>{/if}</span><div class="session-tabs" style:grid-template-columns={row.length?`repeat(${row.length},max-content)`:'none'}>
-              {#if row.length}<div class="session-tab-list" role="tablist" aria-label={depth?`Nested sessions level ${depth}`:'Sessions'}>
-              {#each row as item,index(item.id)}<div class="session-tab" style:grid-column={index+1} class:active={lineage.some(a=>a.id===item.id)} class:current={item.id===ui.sessionId} class:drop-ready={dragged&&dragged!==item.id}>
-                <button id={`session-${item.id}`} role="tab" aria-selected={lineage.some(a=>a.id===item.id)} tabindex={lineage.some(a=>a.id===item.id)?0:-1} title={`${item.title} · Drag onto another session to nest`} draggable="true" ondragstart={(event)=>{dragged=item.id;event.dataTransfer?.setData('text/peritus-session',item.id);}} ondragend={()=>dragged=''} ondragover={(event)=>event.preventDefault()} ondrop={(event)=>{event.preventDefault();const source=event.dataTransfer?.getData('text/peritus-session');if(source)void attempt(()=>editSession(source,{parent:item.id}));dragged='';}} onclick={()=>selectSession(item.id)} onkeydown={(event)=>tabKeys(event,row,index)}><span class="status-dot" class:busy={runActive(ui.conversations[item.id]?.run)}></span><span class="session-tab-title">{item.title}</span></button>
+          {#each visibleRows as rail,depth(rail.key)}
+            <div class="session-level" style={`--level:${depth}`}><span class="level-connector">{#if depth===0}<Icon name="layers" size={15}/>{:else}<Icon name="branch" size={15}/>{/if}</span>{#if rail.items.length>TAB_RENDER_BATCH}<button class="flat icon-button" aria-label={`Previous sessions at level ${depth}`} disabled={!rail.start} onclick={()=>railOffsets[rail.key]=Math.max(0,rail.start-TAB_RENDER_BATCH)}><Icon name="chevron" size={14}/></button>{/if}<div class="session-tabs" style:grid-template-columns={rail.visible.length?`repeat(${rail.visible.length},max-content)`:'none'}>
+              {#if rail.visible.length}<div class="session-tab-list" role="tablist" aria-label={depth?`Nested sessions level ${depth}`:'Sessions'}>
+              {#each rail.visible as item,index(item.id)}<div class="session-tab" style:grid-column={index+1} class:active={lineage.some(a=>a.id===item.id)} class:current={item.id===ui.sessionId} class:drop-ready={dragged&&dragged!==item.id}>
+                <button id={`session-${item.id}`} role="tab" aria-selected={lineage.some(a=>a.id===item.id)} tabindex={lineage.some(a=>a.id===item.id)?0:-1} title={`${item.title} · Drag onto another session to nest`} draggable="true" ondragstart={(event)=>{dragged=item.id;event.dataTransfer?.setData('text/peritus-session',item.id);}} ondragend={()=>dragged=''} ondragover={(event)=>event.preventDefault()} ondrop={(event)=>{event.preventDefault();const source=event.dataTransfer?.getData('text/peritus-session');if(source)void attempt(()=>editSession(source,{parent:item.id}));dragged='';}} onclick={()=>selectSession(item.id)} onkeydown={(event)=>tabKeys(event,rail.items,rail.start+index)}><span class="status-dot" class:busy={runActive(ui.conversations[item.id]?.run)}></span><span class="session-tab-title">{item.title}</span></button>
                </div>{/each}
               </div>
-              {#each row as item,index(item.id)}<button class="flat icon-button session-tab-close" style:grid-column={index+1} aria-label={`Close session: ${item.title}`} title="Close tab; keep work running" onclick={()=>void attempt(()=>closeTab(item.id))}><Icon name="close" size={14}/></button>{/each}{/if}
-            </div><button class="flat icon-button" aria-label={depth?'Add nested session':'Add session'} onclick={()=>void attempt(()=>newSession(depth>0))}><Icon name="plus" size={16}/></button></div>
+              {#each rail.visible as item,index(item.id)}<button class="flat icon-button session-tab-close" style:grid-column={index+1} aria-label={`Close session: ${item.title}`} title="Close tab; keep work running" onclick={()=>void attempt(()=>closeTab(item.id))}><Icon name="close" size={14}/></button>{/each}{/if}
+            </div>{#if rail.items.length>TAB_RENDER_BATCH}<span class="rail-label">{rail.start+1}–{rail.start+rail.visible.length} / {rail.items.length.toLocaleString()}</span><button class="flat icon-button" aria-label={`Next sessions at level ${depth}`} disabled={rail.start+rail.visible.length>=rail.items.length} onclick={()=>railOffsets[rail.key]=rail.start+TAB_RENDER_BATCH}><Icon name="chevron" size={14}/></button>{/if}<button class="flat icon-button" aria-label={depth?'Add nested session':'Add session'} onclick={()=>void attempt(()=>newSession(depth>0))}><Icon name="plus" size={16}/></button></div>
           {/each}
         </div>
         {#if activeSession}
           <div class="session-heading"><div><h1>{activeSession.title}</h1><span class="session-target" title={activeProject?.root}><Icon name="folder" size={13}/>{activeProject?.root}</span></div><div class="button-cluster"><button class="key small nest-button" aria-label="Nest session" onclick={()=>void attempt(()=>newSession(true))}><Icon name="branch" size={15}/>Nest session</button><button class="key icon-button" aria-label="Organize active session" onclick={()=>ui.overlay='session'}><Icon name="more"/></button></div></div>
-          <div class="content-tabs" aria-label="Session content"><button class:active={!ui.activeFile} onclick={()=>ui.activeFile=''}><Icon name="chat" size={15}/>Conversation</button>{#each sessionFiles as file(file.path)}<div class="content-file-tab" class:active={ui.activeFile===file.path}><button title={file.path} onclick={()=>ui.activeFile=file.path}><Icon name="file" size={14}/>{file.path.split('/').pop()}</button><button aria-label={`Close ${file.path}`} onclick={()=>closeFile(file.path)}><Icon name="close" size={12}/></button></div>{/each}</div>
+          <div class="content-tabs" aria-label="Session content"><button class:active={!ui.activeFile} onclick={()=>ui.activeFile=''}><Icon name="chat" size={15}/>Conversation</button>{#if sessionFiles.length>TAB_RENDER_BATCH}<button aria-label="Previous file tabs" disabled={!fileTabStart} onclick={()=>fileTabStart=Math.max(0,fileTabStart-TAB_RENDER_BATCH)}><Icon name="chevron" size={14}/></button>{/if}{#each visibleFiles as file(file.path)}<div class="content-file-tab" class:active={ui.activeFile===file.path}><button title={file.path} onclick={()=>ui.activeFile=file.path}><Icon name="file" size={14}/>{file.path.split('/').pop()}</button><button aria-label={`Close ${file.path}`} onclick={()=>closeFile(file.path)}><Icon name="close" size={12}/></button></div>{/each}{#if sessionFiles.length>TAB_RENDER_BATCH}<span class="rail-label">{fileTabStart+1}–{fileTabStart+visibleFiles.length} / {sessionFiles.length.toLocaleString()}</span><button aria-label="Next file tabs" disabled={fileTabStart+visibleFiles.length>=sessionFiles.length} onclick={()=>fileTabStart+=TAB_RENDER_BATCH}><Icon name="chevron" size={14}/></button>{/if}</div>
           {#if ui.activeFile}<FileViewer path={ui.activeFile} project={ui.projectId}/>
           {:else}
-            {#if !admissionReady}<div class="connection-banner"><span><Icon name="link" size={15}/>{!ui.ready?ui.connectionMessage:ui.facts?.reason||ui.factsError||'Connect this project to start a conversation.'}</span><button class="key small" onclick={()=>void attempt(()=>dispatch('reconnect'))}>Recheck</button><button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Set up project<Icon name="arrow" size={14}/></button></div>{/if}
+            {#if !admissionReady}<div class="connection-banner"><span><Icon name="link" size={15}/>{!ui.ready?ui.connectionMessage:ui.facts?.reason||ui.factsError||'Connect this project to start a conversation.'}</span><button class="key small" onclick={recheckObservations}>{ui.observationsPaused?'Resume checks':'Recheck'}</button>{#if ui.observing}<button class="key small" onclick={()=>cancelObservations()}>Cancel checks</button>{/if}<button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Set up project<Icon name="arrow" size={14}/></button></div>{/if}
             <Recovery/>
             {#if current?.workbench}<div class="connection-banner" role="status"><span><Icon name="terminal" size={15}/><strong>{current.workbench.observation}</strong> {current.workbench.action}<small>{current.workbench.detail}</small></span><button class="key small" onclick={()=>void attempt(()=>dispatch('terminal'))}>Open Workbench<Icon name="arrow" size={14}/></button></div>{/if}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex (the scrollable transcript needs a keyboard focus target) -->
             <div class="transcript" role="region" aria-label="Conversation transcript" tabindex="0" bind:this={transcript} onscroll={()=>following=transcript.scrollHeight-transcript.scrollTop-transcript.clientHeight<80}>
-              {#if !activities.length}
+              {#if !activitySource.length}
                 <div class="ready-state" class:compact={!!draft||!!ui.attachments[ui.sessionId]?.length}>
                   <div class="ready-instrument"><Nixie value={Math.max(1,opened.findIndex(s=>s.id===ui.sessionId)+1)} label="Session channel" digits={3} large/><div class="instrument-legend"><span class="status-dot" class:offline={!messageReady}></span>{recoveryHold?'RECOVERY HOLD':!ui.connected?'AWAITING CONNECTION':messageReady?'CHANNEL READY':'NOT READY'}</div></div>
                   <h2>A clear channel.<br/>A new possibility.</h2><p>Bring a question, a stubborn bug, or your next big idea.<br class="desktop-break"/> Peritus takes it from here, with you at the controls.</p>
@@ -148,7 +208,10 @@
                   {#if !ui.connected&&ui.facts?.workspace}<div class="setup-prompt"><span>Start the harness to connect this channel.</span><button class="flat" onclick={()=>void attempt(()=>dispatch('terminal'))}>Open setup console<Icon name="arrow" size={14}/></button></div>{/if}
                 </div>
               {:else}
-                {#each activities as activity(activity.id)}<article class="message" class:user={activity.kind==='user'} class:system-message={!['user','assistant'].includes(activity.kind)}><div class="message-meta"><span class="message-avatar">{#if activity.kind==='assistant'}<Icon name="bolt" size={15}/>{:else if activity.kind==='user'}Y{:else}<Icon name="terminal" size={14}/>{/if}</span><strong>{activity.kind==='assistant'?'Peritus':activity.kind==='user'?'You':activity.kind}</strong><span class="message-sequence">{activity.id.padStart(3,'0')}</span></div><div class="message-content"><Markdown text={activity.text}/>{#if activity.detail}<details><summary>Details</summary><pre>{activity.detail}</pre></details>{/if}</div></article>{/each}
+                <div class="activity-history">{#if activityStart}<button class="key small" onclick={()=>void revealEarlierActivities()}>Show earlier activity <span>{activityStart.toLocaleString()} retained</span></button>{/if}<span>Activity {(activityStart+1).toLocaleString()}–{activityEnd.toLocaleString()} of {activitySource.length.toLocaleString()}</span></div>
+                {#if !activities.length}<p class="small-empty">This page contains tool or status activity. Enable Activity to view those entries.</p>{/if}
+                {#each activities as activity(activity.id)}<article class="message" class:user={activity.kind==='user'} class:system-message={!['user','assistant'].includes(activity.kind)}><div class="message-meta"><span class="message-avatar">{#if activity.kind==='assistant'}<Icon name="bolt" size={15}/>{:else if activity.kind==='user'}Y{:else}<Icon name="terminal" size={14}/>{/if}</span><strong>{activity.kind==='assistant'?'Peritus':activity.kind==='user'?'You':activity.kind}</strong><span class="message-sequence">{activity.id.padStart(3,'0')}</span></div><div class="message-content"><Markdown text={activity.text}/>{#if activity.detail}<ActivityDetails text={activity.detail}/>{/if}</div></article>{/each}
+                {#if activityEnd<activitySource.length}<div class="activity-history"><button class="key small" onclick={()=>void revealLaterActivities()}>Show later activity</button><button class="key small" onclick={()=>void revealLaterActivities(true)}>Return to latest activity</button></div>{/if}
               {/if}
               {#if runActive(current?.run)}<div class="working-observation"><span class="status-dot busy"></span>Peritus is working<span>{current?.run?.operation.state}</span></div>{/if}
             </div>
@@ -164,7 +227,7 @@
       </section>
 
       <aside class="control-bank" aria-label="Harness controls"><div class="control-heading"><h2>Control bank</h2><span class="engraved-symbol">P / 01</span></div>
-        <div class="connection-module"><span class="status-lamp" class:online={ui.ready}></span><div><strong>{!ui.connected?'Daemon offline':ui.ready?'Daemon ready':'Daemon connected · not ready'}</strong><small>{ui.readiness}</small></div><button class="flat icon-button" aria-label="Reconnect daemon" onclick={()=>void attempt(()=>dispatch('reconnect'))}><Icon name="refresh" size={15}/></button></div>
+        <div class="connection-module"><span class="status-lamp" class:online={ui.ready}></span><div><strong>{!ui.connected?'Daemon offline':ui.ready?'Daemon ready':'Daemon connected · not ready'}</strong><small>{ui.readiness}</small></div><button class="flat icon-button" aria-label={ui.observationsPaused?'Resume daemon observations':ui.observing?'Cancel daemon observations':'Recheck daemon observations'} onclick={()=>ui.observing?cancelObservations():recheckObservations()}><Icon name={ui.observing?'stop':'refresh'} size={15}/></button></div>
         <div class="target-readout"><h3>Execution target</h3><span class="target-type"><Icon name="shield" size={14}/>{ui.facts?.workspace?.trust==='trusted'?'Trusted workspace':'Setup required'}</span><code>{ui.facts?.workspace?.execution||activeProject?.root}</code><button class="flat" onclick={()=>void attempt(()=>dispatch('workspaces'))}>Configure workspace<Icon name="arrow" size={13}/></button></div>
         <div class="run-controls"><div class="control-section-title"><h3>Session controls</h3><Icon name="bolt" size={14}/></div><button class="key stop-key" disabled={!current?.run?.operation.legalControls.stop} onclick={()=>void attempt(()=>dispatch('stop'))}><span class="stop-cap"><Icon name="stop" size={15}/></span>Stop work<kbd>/stop</kbd></button><div class="utility-keys">{#each [['details','Activity','layers'],['diff','Changes','git'],['runs','Runs','clock'],['terminal','Console','terminal']] as item}<button class="key" class:pressed={item[0]==='details'&&ui.details} onclick={()=>void attempt(()=>dispatch(item[0]!))}><Icon name={item[2]!}/>{item[1]}</button>{/each}</div></div>
         {#if current?.run}<div class="operation-observation" class:uncertain={!!current.run.operation.uncertainty}><div class="control-section-title"><h3>Authoritative operation</h3><span>{current.run.operation.kind}</span></div><strong>{current.run.operation.state}</strong><p><b>Known</b>{current.run.operation.known}</p>{#if current.run.operation.uncertainty}<p class="uncertainty"><b>Uncertain</b>{current.run.operation.uncertainty}</p>{/if}<code>{current.run.operation.identity}</code><div class="operation-actions">{#each operationActions.filter(action=>current!.run!.operation.legalControls[action.control]) as action}<button class="key small" onclick={()=>void attempt(()=>dispatch(action.command))}>{action.label}</button>{/each}{#if !Object.values(current.run.operation.legalControls).some(Boolean)}<small>No operation controls are legal at this observation.</small>{/if}</div></div>{/if}

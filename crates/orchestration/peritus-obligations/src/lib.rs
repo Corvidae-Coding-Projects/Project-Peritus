@@ -18,6 +18,8 @@ mod provenance;
 mod qualification;
 mod requirement;
 mod schema;
+#[cfg(not(verus_only))]
+mod source_backed;
 mod verified;
 
 pub use browser::{BrowserEvidence, BrowserImplementation, BrowserRequirement};
@@ -40,6 +42,11 @@ pub use qualification::{EvidenceVerdict, QualificationReport, qualify};
 pub use qualification::{qualification_error, qualification_inputs_valid, qualification_satisfied};
 pub use requirement::{ObligationSpec, RequirementClass, RequirementEntry};
 pub use schema::{SchemaDirection, SchemaEvidence, SchemaField, SchemaRequirement};
+#[cfg(not(verus_only))]
+pub use source_backed::{
+    SourceLedgerError, SourceObligationLedgerRoot, SourceObligationPage,
+    SourceObligationQualification,
+};
 pub use verified::{
     alternative_group_complete, conditional_obligation_active, failure_authorizes_fixer,
     qualification_allowed,

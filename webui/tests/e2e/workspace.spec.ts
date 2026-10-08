@@ -112,6 +112,15 @@ test('text editor saves exact line endings, retains tab drafts, supports undo an
   await editor.press('Control+Shift+z');await expect(editor).toHaveValue('# Quick tweaks\n\nA correction and another correction.\n');
   await page.getByRole('button',{name:'Conversation',exact:true}).click();await page.locator('.content-file-tab').getByRole('button',{name:'edit-me.md',exact:true}).click();
   await expect(editor).toHaveValue('# Quick tweaks\n\nA correction and another correction.\n');
+  await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await expect(editor).toHaveValue('# Quick tweaks\n\nA typo and another typo.\n');
+  await editor.press('Control+Shift+z');await expect(editor).toHaveValue('# Quick tweaks\n\nA correction and another correction.\n');
+  await editor.evaluate(node=>{
+    const field=node as HTMLTextAreaElement;field.value='資料'.repeat(1_000_001);
+    field.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertFromPaste',data:'資料'}));
+  });
+  await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await expect(editor).toHaveValue('# Quick tweaks\n\nA correction and another correction.\n');
   await editor.press('Control+s');await expect(page.getByRole('button',{name:'Save',exact:true})).toBeDisabled();
   expect(await readFile(join(root,'edit-me.md'),'utf8')).toBe('\ufeff# Quick tweaks\r\n\r\nA correction and another correction.\r\n');
   await editor.fill('My unsaved change\n');await writeFile(join(root,'edit-me.md'),'External disk change\n');
@@ -124,6 +133,8 @@ test('text editor saves exact line endings, retains tab drafts, supports undo an
   }
   page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Reload disk version',exact:true}).click();
   await expect(page.getByRole('button',{name:'View',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Edit',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeDisabled();
 });
 test('large previews are paged and file saves can exceed the old 4 MiB body limit',async({request,page})=>{
   await page.goto('/');await page.getByRole('button',{name:'large.txt',exact:true}).click();
@@ -144,7 +155,7 @@ test('explorer preview and drag attachment are distinct, session-bound and persi
   await expect(page.getByRole('button',{name:'Send message',exact:true})).toBeDisabled();
   await page.reload();await expect(page.getByLabel('Attachments for next message')).toContainText('sample.py');
   const retained=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-  const attachment=Object.values(retained.attachments).find((file:any)=>file.path==='sample.py') as {id:string;session:string};
+  const attachment=Object.values(retained.workspace.attachments).find((file:any)=>file.path==='sample.py') as {id:string;session:string};
   expect(await readFile(join(temporary,'attachments',attachment.id),'utf8')).toContain('def hello');
   for(const width of [1440,390]){
     await page.setViewportSize({width,height:900});await page.screenshot({path:resolve(`../.impeccable/review/attachments-${width}.png`),fullPage:true});
@@ -204,8 +215,8 @@ test('each session tab closes after its directory is deleted, including nested a
     await expect(page.getByRole('button',{name:'Add session',exact:true})).toBeFocused();
     await page.reload();await expect(page.getByRole('heading',{name:'Your work is still here.'})).toBeVisible();
     const retained=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-    for(const id of [parent.id,child.id,sibling.id])expect(retained.sessions.find((session:{id:string})=>session.id===id).closed).toBe(true);
-    expect(retained.sessions.find((session:{id:string})=>session.id===child.id).parent).toBe(parent.id);
+    for(const id of [parent.id,child.id,sibling.id])expect(retained.workspace.sessions.find((session:{id:string})=>session.id===id).closed).toBe(true);
+    expect(retained.workspace.sessions.find((session:{id:string})=>session.id===child.id).parent).toBe(parent.id);
     expect((await action(request,'new-session',{project:opened.id})).error).toBeTruthy();
     const reopened=await action(request,'session',{session:child.id,closed:false});expect(reopened.closed).toBe(false);
     await action(request,'session',{session:child.id,closed:true});
@@ -220,7 +231,8 @@ test('gateway restart rotates auth and releases an operation that never reached 
   const composer=page.getByRole('textbox',{name:'Message Peritus or enter a slash command'});await composer.fill('Keep the original draft');
   const oldToken=token,operation=randomUUID();await stopServer();
   const state=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-  state.operations[operation]={input:{operation,command:'send',session:firstSession,text:'Keep the original draft'},prepared:null,result:null};
+  state.schema_version=1;
+  state.workspace.operations={[operation]:{input:{operation,command:'send',session:firstSession,text:'Keep the original draft'},prepared:null,result:null}};
   await writeFile(join(temporary,'workspace.json'),JSON.stringify(state));await startServer();
   expect((await request.get('/api/query',{headers:{'x-peritus-token':oldToken},params:{kind:'files',project}})).status()).toBe(403);
   const boot=await (await request.get('/api/bootstrap')).json();token=boot.token;expect(token).not.toBe(oldToken);
@@ -272,9 +284,109 @@ test('submitted operations remain held when their outcome cannot be proven',asyn
   await expect(page.getByText('Unresolved send operation',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Message Peritus or enter a slash command'})).toHaveValue('Retain the submitted draft');
 });
+test('settings reconcile a delayed acknowledgement without replacing newer drafts',async({page})=>{
+  let admit!:()=>void,release!:()=>void,delivered!:()=>void,mutations=0;
+  const admitted=new Promise<void>(done=>admit=done),released=new Promise<void>(done=>release=done),lateDelivered=new Promise<void>(done=>delivered=done);
+  await page.route('**/api/action',async route=>{
+    const input=route.request().postDataJSON() as {command?:string};
+    if(!['config','preferences'].includes(input.command??''))return route.continue();
+    mutations++;
+    if(mutations!==1||input.command!=='preferences')return route.continue();
+    const response=await route.fetch();admit();await released;await route.fulfill({response});delivered();
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Console settings'}).click();
+  const dialog=page.getByRole('dialog',{name:'Console configuration'});
+  await dialog.getByLabel('Console finish').selectOption('daylight');
+  await dialog.getByRole('button',{name:'Save configuration'}).click();await admitted;
+  await dialog.getByRole('button',{name:'Dotfile'}).click();
+  const source=dialog.getByRole('textbox',{name:'Console TOML configuration'});
+  const oversized=Buffer.alloc(4*1024*1024+1,97);
+  await dialog.locator('input[type="file"]').setInputFiles({name:'oversized.toml',mimeType:'text/plain',buffer:oversized});
+  await expect(page.getByRole('alert')).toContainText('4 MiB action-body limit');
+  const later='theme = "blueprint"\nfont_family = "Café Sans"\n';
+  await dialog.locator('input[type="file"]').setInputFiles({name:'later.toml',mimeType:'text/plain',buffer:Buffer.from(later)});
+  await expect(source).toHaveValue(later);
+  await dialog.getByRole('button',{name:'Reset to defaults'}).click();
+  await expect.poll(()=>mutations).toBe(1);
+  await dialog.getByRole('button',{name:'Dotfile'}).click();await expect(source).toHaveValue(later);
+  await dialog.getByRole('button',{name:'Close panel'}).click();
+  await page.getByRole('button',{name:'Console settings'}).click();
+  const reopened=page.getByRole('dialog',{name:'Console configuration'});
+  await expect(reopened.getByRole('button',{name:'Dotfile'})).toHaveClass(/active/);
+  await expect(reopened.getByRole('textbox',{name:'Console TOML configuration'})).toHaveValue(later);
+  await expect(reopened.getByRole('button',{name:'Saving…'})).toBeDisabled();
+  await reopened.getByRole('button',{name:'Check original outcome'}).click();
+  await expect(reopened.getByRole('button',{name:'Save configuration'})).toBeEnabled();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','nixie');
+  await expect(reopened.getByRole('textbox',{name:'Console TOML configuration'})).toHaveValue(later);
+  expect(await readFile(join(temporary,'webui.toml'),'utf8')).toContain('theme = "daylight"');
+  await reopened.getByRole('button',{name:'Controls'}).click();
+  await expect(reopened.getByLabel('Console finish')).toHaveValue('nixie');
+  await reopened.getByRole('button',{name:'Save configuration'}).click();
+  await expect.poll(()=>mutations).toBe(2);
+  await expect.poll(()=>readFile(join(temporary,'webui.toml'),'utf8')).toContain('theme = "nixie"');
+  await reopened.getByRole('button',{name:'Dotfile'}).click();
+  await expect(reopened.getByRole('textbox',{name:'Console TOML configuration'})).toHaveValue(later);
+  await reopened.getByRole('button',{name:'Save configuration'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','blueprint');
+  expect(await readFile(join(temporary,'webui.toml'),'utf8')).toBe(later);
+  release();await lateDelivered;await page.evaluate(()=>new Promise<void>(done=>requestAnimationFrame(()=>done())));
+  await expect.poll(()=>mutations).toBe(3);
+  await expect(page.locator('html')).toHaveAttribute('data-theme','blueprint');
+  await expect(reopened.getByRole('textbox',{name:'Console TOML configuration'})).toHaveValue(later);
+  expect(await readFile(join(temporary,'webui.toml'),'utf8')).toBe(later);
+});
+test('settings expose and reconcile an accepted operation after response loss',async({page})=>{
+  let operation='',allowReceipt=false,disconnect=true;
+  await page.route('**/api/action',async route=>{
+    const input=route.request().postDataJSON() as {command?:string;operation?:string};
+    if(input.command!=='config'||!disconnect)return route.continue();
+    operation=input.operation??'';disconnect=false;await route.fetch();await route.abort('connectionreset');
+  });
+  await page.route('**/api/query?**',async route=>{
+    const url=new URL(route.request().url());
+    if(url.searchParams.get('kind')!=='operation'||url.searchParams.get('operation')!==operation||allowReceipt)return route.continue();
+    await route.fulfill({json:{input:{command:'config',operation},result:null}});
+  });
+  await page.goto('/');await page.getByRole('button',{name:'Console settings'}).click();
+  const dialog=page.getByRole('dialog',{name:'Console configuration'});await dialog.getByRole('button',{name:'Dotfile'}).click();
+  const source=dialog.getByRole('textbox',{name:'Console TOML configuration'}),submitted='theme = "daylight"\nfont_family = "Résumé"\n';
+  await source.fill(submitted);await dialog.getByRole('button',{name:'Save configuration'}).click();
+  await expect(dialog.getByText('Unresolved config operation',{exact:true})).toBeVisible();
+  await expect(dialog.getByRole('button',{name:'Resolve pending save'})).toBeDisabled();
+  const later='theme = "nixie"\nfont_family = "Later draft"\n';await source.fill(later);
+  allowReceipt=true;await dialog.getByRole('button',{name:'Check original outcome'}).click();
+  await expect(dialog.getByText('Unresolved config operation',{exact:true})).toHaveCount(0);
+  await expect(source).toHaveValue(later);
+  await dialog.getByRole('button',{name:'Save configuration'}).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme','nixie');
+  expect(await readFile(join(temporary,'webui.toml'),'utf8')).toBe(later);
+});
+test('settings preserve a dirty draft in the form that was not submitted',async({page})=>{
+  await page.goto('/');await page.getByRole('button',{name:'Console settings'}).click();
+  const dialog=page.getByRole('dialog',{name:'Console configuration'});
+  await dialog.getByRole('button',{name:'Dotfile'}).click();
+  const source=dialog.getByRole('textbox',{name:'Console TOML configuration'});
+  const dirtySource=`${await source.inputValue()}\n# retained dotfile draft\n`;
+  await source.fill(dirtySource);
+  await dialog.getByRole('button',{name:'Controls'}).click();
+  const finish=dialog.getByLabel('Console finish');await finish.selectOption('daylight');
+  await dialog.getByRole('button',{name:'Save configuration'}).click();
+  await expect(page.getByRole('status').filter({hasText:'Console configuration saved.'})).toBeVisible();
+  await dialog.getByRole('button',{name:'Dotfile'}).click();
+  await expect(source).toHaveValue(dirtySource);
+
+  await dialog.getByRole('button',{name:'Controls'}).click();await finish.selectOption('blueprint');
+  await dialog.getByRole('button',{name:'Dotfile'}).click();await source.fill('theme = "nixie"\n');
+  await dialog.getByRole('button',{name:'Save configuration'}).click();
+  await expect.poll(()=>readFile(join(temporary,'webui.toml'),'utf8')).toBe('theme = "nixie"\n');
+  await dialog.getByRole('button',{name:'Controls'}).click();
+  await expect(finish).toHaveValue('blueprint');
+  expect(await readFile(join(temporary,'webui.toml'),'utf8')).toBe('theme = "nixie"\n');
+});
 test('configuration validates, persists behavioral settings, and aliases share the dispatcher',async({request,page})=>{
   const bad=await action(request,'config',{text:'font_size = 99\ntheme = "nixie"'});expect(bad.error).toContain('12–22');
-  await action(request,'config',{text:'theme = "daylight"\nmotion = false\nword_wrap = false\n[aliases]\nbranch = "/nest"\n[shortcuts]\ncommands = "Mod+Shift+p"\n'});
+  await action(request,'config',{text:'theme = "daylight"\nmotion = false\nword_wrap = false\n[aliases]\nbranch = "/branch-a"\nbranch-a = "/branch-b"\nbranch-b = "/branch-c"\nbranch-c = "/branch-d"\nbranch-d = "/branch-e"\nbranch-e = "/branch-f"\nbranch-f = "/branch-g"\nbranch-g = "/branch-h"\nbranch-h = "/branch-i"\nbranch-i = "/nest"\n[shortcuts]\ncommands = "Mod+Shift+p"\n'});
   await page.goto('/');await expect(page.locator('html')).toHaveAttribute('data-theme','daylight');
   await expect(page.locator('.command-key kbd')).toHaveText(/^(Ctrl|Cmd) Shift P$/);
   await page.keyboard.press('Control+Shift+p');await expect(page.getByRole('dialog',{name:'Command directory'})).toBeVisible();await page.keyboard.press('Escape');
@@ -328,8 +440,8 @@ test('project Xs preserve sessions, work with missing folders, and allow closing
     await page.reload();await expect(page.getByRole('heading',{name:'Open a project to get started.'})).toBeVisible();
     await expect(page.locator('.project-tab')).toHaveCount(0);await expect(page.locator('.file-tree .file-row')).toHaveCount(0);
     const retained=JSON.parse(await readFile(join(temporary,'workspace.json'),'utf8'));
-    expect(retained.projects.every((p:{closed:boolean})=>p.closed)).toBe(true);
-    expect(retained.sessions.find((s:{id:string})=>s.id===child.id).parent).toBe(parent.id);
+    expect(retained.workspace.projects.every((p:{closed:boolean})=>p.closed)).toBe(true);
+    expect(retained.workspace.sessions.find((s:{id:string})=>s.id===child.id).parent).toBe(parent.id);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
     expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa']).analyze()).violations).toEqual([]);
     await action(request,'open-project',{root});

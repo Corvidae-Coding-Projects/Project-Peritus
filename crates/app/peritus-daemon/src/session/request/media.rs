@@ -12,6 +12,7 @@ pub(super) async fn respond(
     product_runs: &ProductRunService,
     actor_id: peritus_types::ActorId,
     limits: AppProtocolLimits,
+    request_sources: bool,
     request: &AppRequestEnvelope,
 ) -> AppResponsePayload {
     match request.payload() {
@@ -54,10 +55,17 @@ pub(super) async fn respond(
             product_runs.preview_workbench_file(actor_id, value).await
         }
         AppRequestPayload::QueryWorkbenchFiles(query) => {
-            product_runs.workbench_files(actor_id, *query)
+            let product_runs = product_runs.clone();
+            let query = *query;
+            super::blocking::response(move || product_runs.workbench_files(actor_id, query)).await
         }
         AppRequestPayload::QueryWorkbenchImages(query) => {
-            product_runs.workbench_images(actor_id, *query)
+            let product_runs = product_runs.clone();
+            let query = *query;
+            super::blocking::response(move || {
+                product_runs.workbench_images_projection(actor_id, query, request_sources)
+            })
+            .await
         }
         AppRequestPayload::BeginWorkbenchImageUpload(value) => {
             match product_runs

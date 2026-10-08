@@ -26,3 +26,11 @@ pub(super) const fn store_error(detail: &'static str) -> ProcessError {
         detail,
     )
 }
+
+pub(crate) fn store_cause(
+    detail: &'static str,
+    source: impl std::error::Error + Send + Sync + 'static,
+) -> ProcessError {
+    ProcessError::with_source(ErrorCode::Persistence, ProcessOperation::Persist,
+        RecoveryClass::ReopenAndReconcile, detail, source)
+}

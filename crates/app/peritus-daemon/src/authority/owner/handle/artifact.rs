@@ -50,6 +50,34 @@ impl AuthorityHandle {
         .await
     }
 
+    /// Authorizes one completed scoped artifact for validation outside the authority owner.
+    pub(crate) async fn authorize_scoped_text(
+        &self,
+        scope: crate::artifact::ArtifactScope,
+        artifact_id: peritus_types::ArtifactId,
+    ) -> Result<peritus_journal::ApplicationArtifact, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(
+            AuthorityMessage::AuthorizeScopedText { scope, artifact_id, respond },
+            receive,
+        )
+        .await
+    }
+
+    /// Authorizes one completed scoped artifact for bounded out-of-owner inspection.
+    pub(crate) async fn authorize_scoped_artifact(
+        &self,
+        scope: crate::artifact::ArtifactScope,
+        artifact_id: peritus_types::ArtifactId,
+    ) -> Result<peritus_journal::ApplicationArtifact, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(
+            AuthorityMessage::AuthorizeScopedArtifact { scope, artifact_id, respond },
+            receive,
+        )
+        .await
+    }
+
     /// Opens one exact actor/session-bound artifact download.
     ///
     /// # Errors
@@ -62,6 +90,25 @@ impl AuthorityHandle {
         request: ArtifactOpenRequest,
         maximum_chunk_bytes: usize,
     ) -> Result<ArtifactMetadata, DaemonError> {
+        self.open_artifact_with_media_type_limit(
+            actor_id,
+            session_id,
+            request,
+            maximum_chunk_bytes,
+            usize::MAX,
+        )
+        .await
+    }
+
+    /// Opens one artifact under the connection's negotiated metadata allocation limit.
+    pub(crate) async fn open_artifact_with_media_type_limit(
+        &self,
+        actor_id: ActorId,
+        session_id: SessionId,
+        request: ArtifactOpenRequest,
+        maximum_chunk_bytes: usize,
+        maximum_media_type_bytes: usize,
+    ) -> Result<ArtifactMetadata, DaemonError> {
         let (respond, receive) = oneshot::channel();
         self.send(
             AuthorityMessage::OpenArtifact {
@@ -69,6 +116,7 @@ impl AuthorityHandle {
                 session_id,
                 request,
                 maximum_chunk_bytes,
+                maximum_media_type_bytes,
                 respond,
             },
             receive,

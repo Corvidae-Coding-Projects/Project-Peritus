@@ -160,7 +160,7 @@ fn v1_image_build_and_controlled_tetris_playtest_preserve_exact_evidence() {
 
         assert_goal(&service, workspace, WorkbenchGoalState::Achieved, true);
         preserve_and_assert_result(&service, &authority, workspace, run, capture, window).await;
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         authority.stop().await.expect("stop authority");
         authority_task.await.expect("authority task").expect("authority shutdown");
         xvfb.kill().expect("stop Xvfb");

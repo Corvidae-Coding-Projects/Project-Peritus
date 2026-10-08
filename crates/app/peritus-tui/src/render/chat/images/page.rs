@@ -50,6 +50,7 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
                     metadata.frames()
                 ),
                 format!("SHA-256 {}", format_digest(metadata.digest().as_bytes())),
+                format!("Validation: {}", metadata.validation().description()),
                 format!("Import {}", format_id(row.operation().as_bytes())),
                 format!("Artifact {}", format_id(row.artifact().as_bytes())),
                 format!(

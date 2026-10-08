@@ -1,6 +1,9 @@
 //! Per-connection transfer ownership and bounded download event pumping.
 
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::Bound::{Excluded, Unbounded},
+};
 
 use peritus_app_protocol::{
     AppEventEnvelope, AppMessage, AppProtocolLimits, ArtifactMetadata, ProtocolContext, TransferId,
@@ -10,6 +13,7 @@ use peritus_types::{ActorId, ArtifactId, SessionId};
 use crate::{AppFrameStream, AuthorityHandle, DaemonError, DaemonErrorCode, DaemonRecovery};
 
 const MAX_DOWNLOAD_POLLS_PER_TICK: usize = 16;
+const MAX_ABANDONMENTS_PER_BATCH: usize = 256;
 
 #[derive(Clone, Copy)]
 enum Direction {
@@ -19,12 +23,17 @@ enum Direction {
 
 pub struct ArtifactClient {
     transfers: BTreeMap<TransferId, (ArtifactId, Direction)>,
-    maximum: usize,
+    downloads: BTreeSet<TransferId>,
+    last_download_polled: Option<TransferId>,
 }
 
 impl ArtifactClient {
-    pub(crate) const fn new(limits: AppProtocolLimits) -> Self {
-        Self { transfers: BTreeMap::new(), maximum: limits.max_idempotency_entries() }
+    pub(crate) const fn new() -> Self {
+        Self {
+            transfers: BTreeMap::new(),
+            downloads: BTreeSet::new(),
+            last_download_polled: None,
+        }
     }
 
     pub(crate) fn register_download(
@@ -43,10 +52,25 @@ impl ArtifactClient {
 
     pub(crate) fn remove(&mut self, transfer_id: TransferId) {
         self.transfers.remove(&transfer_id);
+        self.downloads.remove(&transfer_id);
     }
 
-    pub(crate) fn transfer_ids(&self) -> Vec<TransferId> {
-        self.transfers.keys().copied().collect()
+    pub(crate) fn transfer_batch(&self, after: Option<TransferId>) -> Vec<TransferId> {
+        // This is an authority-message page bound, not a cumulative transfer allowance.
+        match after {
+            Some(after) => self
+                .transfers
+                .range((Excluded(after), Unbounded))
+                .map(|(transfer_id, _)| *transfer_id)
+                .take(MAX_ABANDONMENTS_PER_BATCH)
+                .collect(),
+            None => self
+                .transfers
+                .keys()
+                .copied()
+                .take(MAX_ABANDONMENTS_PER_BATCH)
+                .collect(),
+        }
     }
 
     pub(crate) async fn pump<S>(
@@ -61,21 +85,22 @@ impl ArtifactClient {
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
     {
-        let downloads = self
-            .transfers
-            .iter()
-            .filter_map(|(transfer, (_, direction))| {
-                matches!(direction, Direction::Download).then_some(*transfer)
-            })
-            .take(MAX_DOWNLOAD_POLLS_PER_TICK)
-            .collect::<Vec<_>>();
+        let downloads = self.next_download_batch();
         for transfer_id in downloads {
-            let poll = authority
+            let poll = match authority
                 .poll_artifact(actor_id, session_id, transfer_id, limits.max_artifact_chunk_bytes())
-                .await?;
+                .await
+            {
+                Ok(poll) => poll,
+                // Keep this logical transfer admitted and rotate to the next one. The authority
+                // classifies physical contention as retryable capacity, so a busy old transfer
+                // must not tear down the connection or block a newly eligible transfer.
+                Err(error) if error.code_kind() == DaemonErrorCode::ResourceLimit => continue,
+                Err(error) => return Err(error),
+            };
             frames.write(&AppMessage::Event(AppEventEnvelope::new(context, poll.payload))).await?;
             if poll.terminal {
-                self.transfers.remove(&transfer_id);
+                self.remove(transfer_id);
             }
         }
         Ok(())
@@ -89,16 +114,36 @@ impl ArtifactClient {
         if self.transfers.contains_key(&metadata.transfer_id()) {
             return Err(invalid("artifact transfer identity is already active on this connection"));
         }
-        if self.transfers.len() >= self.maximum {
-            return Err(DaemonError::new(
-                DaemonErrorCode::ResourceLimit,
-                DaemonRecovery::Retry,
-                "register connection artifact transfer",
-                "connection artifact transfer registry is full",
-            ));
-        }
         self.transfers.insert(metadata.transfer_id(), (metadata.artifact_id(), direction));
+        if matches!(direction, Direction::Download) {
+            self.downloads.insert(metadata.transfer_id());
+        }
         Ok(())
+    }
+
+    fn next_download_batch(&mut self) -> Vec<TransferId> {
+        // The disjoint ranges start after the last attempted identity and wrap once. A batch
+        // therefore allocates and polls at most the physical per-tick bound while every admitted
+        // download advances across successive ticks.
+        let downloads = match self.last_download_polled {
+            Some(last) => self
+                .downloads
+                .range((Excluded(last), Unbounded))
+                .chain(self.downloads.range(..=last))
+                .copied()
+                .take(MAX_DOWNLOAD_POLLS_PER_TICK)
+                .collect::<Vec<_>>(),
+            None => self
+                .downloads
+                .iter()
+                .copied()
+                .take(MAX_DOWNLOAD_POLLS_PER_TICK)
+                .collect(),
+        };
+        if let Some(last) = downloads.last() {
+            self.last_download_polled = Some(*last);
+        }
+        downloads
     }
 }
 

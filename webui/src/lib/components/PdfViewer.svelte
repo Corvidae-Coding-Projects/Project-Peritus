@@ -6,11 +6,11 @@
   const supported=typeof navigator!=='undefined'&&navigator.pdfViewerEnabled!==false;
   $effect(()=>{
     const id=project,name=path;void retry;
-    let cancelled=false;checking=true;error='';
-    query<{bytes:number}>('pdf',{project:id,path:name})
-      .catch(reason=>{if(!cancelled)error=reason instanceof Error?reason.message:String(reason);})
+    let cancelled=false;const controller=new AbortController();checking=true;error='';
+    query<{bytes:number}>('pdf',{project:id,path:name},{signal:controller.signal})
+      .catch(reason=>{if(!cancelled&&!(reason instanceof Error&&reason.name==='AbortError'))error=reason instanceof Error?reason.message:String(reason);})
       .finally(()=>{if(!cancelled)checking=false;});
-    return()=>{cancelled=true;};
+    return()=>{cancelled=true;controller.abort();};
   });
 </script>
 <div class="pdf-preview">

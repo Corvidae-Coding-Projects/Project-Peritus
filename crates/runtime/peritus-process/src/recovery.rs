@@ -5,5 +5,6 @@ pub(crate) mod manifest;
 mod reconcile;
 
 pub use reconcile::{
-    ProbeObservation, ProcessProbe, RecoveryDisposition, RecoveryEntry, RecoveryReport,
+    ProbeObservation, ProcessProbe, ProcessTreeQuiescence, RecoveryDisposition, RecoveryEntry, RecoveryObservation,
+    RecoveryReport,
 };

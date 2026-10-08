@@ -67,6 +67,158 @@ fn directory_and_selected_range_encodings_round_trip_and_bind_scope_into_confirm
     assert_eq!(writer.into_bytes(), [0, 2, 1, 232]);
 }
 
+fn response_round_trip(payload: crate::AppResponsePayload) {
+    let context = ProtocolContext::new(
+        ProtocolId::new([5; 16]).unwrap(),
+        ProtocolVersion::new(1, 0).unwrap(),
+        SessionId::new([6; 16]).unwrap(),
+    );
+    let message = AppMessage::Response(crate::AppResponseEnvelope::new(
+        context,
+        RequestId::new([7; 16]).unwrap(),
+        CorrelationId::new([8; 16]).unwrap(),
+        payload,
+    ));
+    let bytes = encode_app_message(&message, AppProtocolLimits::PRODUCTION)
+        .expect("complete public checkpoint message");
+    assert_eq!(decode_app_message(&bytes, AppProtocolLimits::PRODUCTION).unwrap(), message);
+}
+
+#[test]
+fn public_manifest_name_path_and_derived_text_have_no_field_allowance() {
+    let query = preview().request().query();
+    let path = std::iter::repeat_n("component", 470).collect::<Vec<_>>().join("/");
+    let checkpoint = WorkbenchCheckpointReceipt::new(
+        ControlOperationId::new([3; 16]).unwrap(),
+        query,
+        4,
+        WorkbenchCheckpointName::new("é".repeat(129)).expect("258-byte name"),
+        WorkbenchCheckpointReferences::new(1, 0, 0, None),
+        vec![
+            WorkbenchCheckpointPath::new(path, WorkbenchCheckpointVersion::Absent, None)
+                .expect("native-sized path"),
+        ],
+        vec![format!("{}: unselected source", "x".repeat(600))],
+        vec!["effect".repeat(110)],
+    )
+    .expect("complete metadata");
+    response_round_trip(crate::AppResponsePayload::WorkbenchCheckpoint(checkpoint));
+}
+
+#[test]
+fn public_manifest_and_preview_cover_more_than_65535_paths_and_explanations() {
+    let baseline = preview();
+    let paths = (0..=u16::MAX)
+        .map(|index| {
+            WorkbenchRewindPath::new(
+                format!("file-{index:05}"),
+                WorkbenchCheckpointVersion::Absent,
+                None,
+                WorkbenchCheckpointVersion::Absent,
+                WorkbenchRewindDisposition::Unchanged,
+            )
+            .unwrap()
+        })
+        .collect::<Vec<_>>();
+    let exclusions = (0..=u16::MAX).map(|_| "excluded".to_owned()).collect::<Vec<_>>();
+    let external = (0..=u16::MAX).map(|_| "external".to_owned()).collect::<Vec<_>>();
+    let checkpoint = WorkbenchCheckpointReceipt::new(
+        ControlOperationId::new([3; 16]).unwrap(),
+        baseline.request().query(),
+        4,
+        WorkbenchCheckpointName::new("complete".to_owned()).unwrap(),
+        WorkbenchCheckpointReferences::new(1, 0, 0, None),
+        paths
+            .iter()
+            .map(|path| {
+                WorkbenchCheckpointPath::new(path.path().to_owned(), path.checkpoint(), None)
+                    .unwrap()
+            })
+            .collect(),
+        exclusions.clone(),
+        external.clone(),
+    )
+    .expect("65536 public coverage entries");
+    response_round_trip(crate::AppResponsePayload::WorkbenchCheckpoint(checkpoint));
+    let preview = WorkbenchRewindPreview::new(baseline.request(), paths, exclusions, external)
+        .expect("65536 confirmation facts");
+    response_round_trip(crate::AppResponsePayload::WorkbenchRewindPreview(preview));
+}
+
+#[test]
+fn public_restore_conflict_receipt_retains_wide_counts_and_long_paths() {
+    let conflicts = (0..=u16::MAX).map(|index| format!("file-{index:05}")).collect();
+    let receipt = WorkbenchRestoreReceipt::new(
+        ControlOperationId::new([9; 16]).unwrap(),
+        ControlOperationId::new([3; 16]).unwrap(),
+        ControlOperationId::new([10; 16]).unwrap(),
+        preview().request().query(),
+        5,
+        WorkbenchRestoreStatus::Conflict,
+        Vec::new(),
+        conflicts,
+        vec!["long metadata".repeat(400)],
+    )
+    .expect("65536 exact conflicts");
+    response_round_trip(crate::AppResponsePayload::WorkbenchRestore(receipt));
+}
+
+#[test]
+fn wide_counts_reject_unavailable_encoded_entries_before_allocation() {
+    for count in [2, u64::MAX] {
+        let mut bytes = count.to_be_bytes().to_vec();
+        bytes.extend_from_slice(&[0, 0, 0, 1, b'x']);
+        let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+        let error = read_strings(&mut reader, ManifestForm::Wide).unwrap_err();
+        assert!(matches!(error.kind(), CodecErrorKind::Truncated | CodecErrorKind::LengthOverflow));
+    }
+}
+
+#[test]
+fn manifest_forms_are_canonical_and_wide_confirmation_rejects_tampering() {
+    let baseline = preview();
+    let wide = WorkbenchRewindPreview::new(
+        baseline.request(),
+        baseline.paths().to_vec(),
+        vec!["explanation".repeat(60)],
+        Vec::new(),
+    )
+    .unwrap();
+    for (value, form, accepted) in [
+        (&baseline, ManifestForm::Wide, false),
+        (&wide, ManifestForm::Legacy, false),
+        (&wide, ManifestForm::Wide, true),
+    ] {
+        let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+        write_request(&mut writer, value.request()).unwrap();
+        write_digest(&mut writer, value.preview_digest()).unwrap();
+        write_rewind_paths(&mut writer, value.paths(), form).unwrap();
+        write_strings(&mut writer, value.exclusions(), form).unwrap();
+        write_strings(&mut writer, value.external_effects(), form).unwrap();
+        writer.write_bool(true).unwrap();
+        writer.write_bool(true).unwrap();
+        let mut bytes = writer.into_bytes();
+        let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+        if accepted {
+            assert_eq!(read_preview_as(&mut reader, true).unwrap(), wide);
+            reader.finish().unwrap();
+            let digest = wide.preview_digest();
+            let offset = bytes.windows(32).position(|bytes| bytes == digest.as_bytes()).unwrap();
+            bytes[offset] ^= 1;
+            let mut reader = CanonicalReader::new(&bytes, CodecLimits::PRODUCTION);
+            assert_eq!(
+                read_preview_as(&mut reader, true).unwrap_err().kind(),
+                CodecErrorKind::InvalidDomainValue
+            );
+        } else {
+            assert_eq!(
+                read_preview_as(&mut reader, form.is_wide()).unwrap_err().kind(),
+                CodecErrorKind::InvalidDomainValue
+            );
+        }
+    }
+}
+
 #[test]
 fn old_whole_file_encoding_is_retained_exactly_and_empty_range_envelopes_are_rejected() {
     let version = WorkbenchCheckpointVersion::Present {

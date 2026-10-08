@@ -2,10 +2,6 @@
 
 use core::fmt;
 
-const MAX_ERROR_PATH_BYTES: usize = 8 * 1024;
-const MAX_ERROR_DETAIL_BYTES: usize = 4 * 1024;
-const TRUNCATED_PATH_SUFFIX: &str = "...[truncated]";
-
 /// Stable category for a protocol validation failure.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProtocolErrorKind {
@@ -29,7 +25,7 @@ pub enum ProtocolErrorKind {
     InvalidEnvelope,
 }
 
-/// Bounded typed protocol failure.
+/// Exact typed protocol failure, independent of display preview capacities.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProtocolError {
     kind: ProtocolErrorKind,
@@ -43,25 +39,20 @@ impl ProtocolError {
     }
 
     pub(crate) fn at(kind: ProtocolErrorKind, path: &str, detail: &'static str) -> Self {
-        Self { kind, path: bounded_path(path), detail: bounded_detail(detail) }
+        Self { kind, path: path.to_owned(), detail }
     }
 
     /// Creates a typed invalid-envelope error for an adapter constructor.
     ///
     /// # Errors
     ///
-    /// Rejects an empty/oversized path, NUL, or oversized static detail.
+    /// Rejects an empty path or detail, or NUL in the path.
     pub fn invalid_envelope(path: String, detail: &'static str) -> Result<Self, Self> {
-        if path.is_empty()
-            || path.len() > MAX_ERROR_PATH_BYTES
-            || path.contains('\0')
-            || detail.is_empty()
-            || detail.len() > MAX_ERROR_DETAIL_BYTES
-        {
+        if path.is_empty() || path.contains('\0') || detail.is_empty() {
             return Err(Self::new(
                 ProtocolErrorKind::InvalidText,
                 "error".to_owned(),
-                "protocol error path or detail exceeds its bound",
+                "protocol error path or detail is empty, or the path contains NUL",
             ));
         }
         Ok(Self::new(ProtocolErrorKind::InvalidEnvelope, path, detail))
@@ -73,7 +64,7 @@ impl ProtocolError {
         self.kind
     }
 
-    /// Returns the bounded JSON/schema path or field name.
+    /// Returns the exact JSON/schema path or field name.
     #[must_use]
     pub fn path(&self) -> &str {
         &self.path
@@ -113,26 +104,3 @@ impl fmt::Display for ProtocolError {
 }
 
 impl std::error::Error for ProtocolError {}
-
-fn bounded_path(path: &str) -> String {
-    if path.len() <= MAX_ERROR_PATH_BYTES {
-        return path.to_owned();
-    }
-
-    let mut end = MAX_ERROR_PATH_BYTES - TRUNCATED_PATH_SUFFIX.len();
-    while !path.is_char_boundary(end) {
-        end -= 1;
-    }
-    let mut bounded = String::with_capacity(MAX_ERROR_PATH_BYTES);
-    bounded.push_str(&path[..end]);
-    bounded.push_str(TRUNCATED_PATH_SUFFIX);
-    bounded
-}
-
-const fn bounded_detail(detail: &'static str) -> &'static str {
-    if detail.len() <= MAX_ERROR_DETAIL_BYTES {
-        detail
-    } else {
-        "protocol error detail exceeds its bound"
-    }
-}

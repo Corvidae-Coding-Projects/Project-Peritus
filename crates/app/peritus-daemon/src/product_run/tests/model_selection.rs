@@ -238,7 +238,7 @@ async fn effort_scenario(
         "idle selection does not start work"
     );
     assert_failed_persistence_keeps_prior_selection(&service, run, models).await;
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }
 
 async fn assert_failed_persistence_keeps_prior_selection(

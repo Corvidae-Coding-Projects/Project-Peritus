@@ -138,5 +138,5 @@ async fn suggestions_require_real_terminal_evidence_and_only_explicit_evaluation
         .find(|row| row.text().as_str().starts_with("PERITUS HARNESS EVALUATION"))
         .expect("directive");
     assert_eq!(directive.dependencies().ids().len(), 2);
-    service.shutdown(Duration::from_secs(5)).await;
+    service.shutdown().await.expect("shutdown product runs");
 }

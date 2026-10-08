@@ -36,6 +36,14 @@ pub(in crate::product_control) fn request_images(
     text: &str,
     images: &[MediaInput],
 ) -> ModelRequest {
+    request_images_with_id(text, images, "test-request")
+}
+
+fn request_images_with_id(
+    text: &str,
+    images: &[MediaInput],
+    request_id: &str,
+) -> ModelRequest {
     let profile = image_profile(!images.is_empty());
     let required = if images.is_empty() { Vec::new() } else { vec![Capability::ImageInput] };
     let mut content = vec![ContentBlock::Text(
@@ -49,7 +57,7 @@ pub(in crate::product_control) fn request_images(
             RequestedCapabilities::new(&required, &[], profile.limits()).expect("requested"),
         )
         .expect("negotiate"),
-        RequestId::new("test-request".to_owned()).expect("request identity"),
+        RequestId::new(request_id.to_owned()).expect("request identity"),
         vec![Message::new(Role::User, content, ProtocolLimits::PRODUCTION).expect("message")],
         Vec::new(),
         ToolChoice::None,
@@ -295,4 +303,136 @@ fn public_reply_is_immutable_and_enters_only_a_later_user_turn_after_restart() {
         store.load(start.conversation()).expect("verified manifest replay").expect("record");
     assert_eq!(record.replies().len(), 1);
     assert_eq!(record.inputs().invocations().len(), 2);
+}
+
+#[test]
+fn continuation_source_revision_incorporates_exact_input_and_leaves_later_correction_pending() {
+    let root = tempfile::tempdir().expect("root");
+    let store_id = peritus_journal::StoreId::new([0x61; 16]).expect("store");
+    let mut store = ControlStore::open(root.path(), store_id).expect("open");
+    store
+        .accept(&operation(
+            1,
+            0,
+            ControlIntent::CreateConversation {
+                title: ControlText::new("Sealed continuation".to_owned()).expect("title"),
+            },
+        ))
+        .expect("create");
+    let original = InputId::new([5; 16]).expect("original");
+    store
+        .accept(&operation(
+            2,
+            1,
+            ControlIntent::Queue(QueueIntent::Enqueue {
+                id: original,
+                text: ControlText::new("Initial request".to_owned()).expect("text"),
+                dependencies: Vec::new(),
+            }),
+        ))
+        .expect("enqueue initial");
+    let start =
+        operation(3, 2, ControlIntent::StartExecution { run: [9; 16], settings_digest: [10; 32] });
+    store.accept(&start).expect("start");
+    let initial = capture(&store);
+    store
+        .prepare_execution(&start, initial.inputs().generation(), &request(initial.inputs().conversation()))
+        .expect("incorporate initial");
+
+    let admitted = InputId::new([6; 16]).expect("admitted");
+    store
+        .accept(&operation(
+            4,
+            4,
+            ControlIntent::Queue(QueueIntent::Enqueue {
+                id: admitted,
+                text: ControlText::new("Use only this admitted follow-up".to_owned())
+                    .expect("text"),
+                dependencies: Vec::new(),
+            }),
+        ))
+        .expect("enqueue admitted follow-up");
+    let continuation = operation(
+        7,
+        5,
+        ControlIntent::ContinueExecution {
+            run: [9; 16],
+            start_operation: start.id(),
+            context_generation: 2,
+            settings_digest: [10; 32],
+        },
+    );
+    let continuation_receipt = store.accept(&continuation).expect("accept continuation");
+
+    let correction = InputId::new([8; 16]).expect("correction");
+    store
+        .accept(&operation(
+            8,
+            continuation_receipt.accepted_revision(),
+            ControlIntent::Queue(QueueIntent::Correct {
+                original: InputSelection::new(original, 1).expect("original selection"),
+                id: correction,
+                text: ControlText::new("A later correction stays separate".to_owned())
+                    .expect("text"),
+            }),
+        ))
+        .expect("enqueue later correction");
+
+    let sealed = store
+        .capture_execution_revision(&start, continuation_receipt.accepted_revision())
+        .expect("capture admitted source");
+    assert_eq!(sealed.inputs().generation(), 2);
+    assert_eq!(
+        sealed.inputs().pending(),
+        &[InputSelection::new(admitted, 1).expect("admitted selection")]
+    );
+    assert!(!sealed.inputs().conversation().contains("later correction"));
+    let request = request(sealed.inputs().conversation());
+    assert!(matches!(
+        store
+            .prepare_execution_revision(
+                &start,
+                continuation_receipt.accepted_revision(),
+                2,
+                &request,
+            )
+            .expect("admit sealed request"),
+        InputAdmission::Accepted(_)
+    ));
+
+    let sealed_again = store
+        .capture_execution_revision_incorporated(
+            &start,
+            continuation_receipt.accepted_revision(),
+        )
+        .expect("capture incorporated sealed source");
+    assert!(sealed_again.inputs().pending().is_empty());
+    assert!(sealed_again.inputs().conversation().contains("Use only this admitted follow-up"));
+    assert!(!sealed_again.inputs().conversation().contains("later correction"));
+    let later_request = request_images_with_id(
+        sealed_again.inputs().conversation(),
+        &[],
+        "second-sealed-request",
+    );
+    assert!(matches!(
+        store
+            .prepare_execution_revision_incorporated(
+                &start,
+                continuation_receipt.accepted_revision(),
+                2,
+                &later_request,
+            )
+            .expect("admit later request from sealed source"),
+        InputAdmission::Accepted(_)
+    ));
+
+    drop(store);
+    let store = ControlStore::open(root.path(), store_id).expect("restart");
+    let current = store.capture_execution(&start).expect("current capture");
+    assert_eq!(
+        current.inputs().pending(),
+        &[InputSelection::new(correction, 1).expect("correction selection")]
+    );
+    assert!(current.inputs().conversation().contains("Use only this admitted follow-up"));
+    assert!(current.inputs().conversation().contains("A later correction stays separate"));
 }

@@ -3,7 +3,9 @@
 mod spool;
 mod window;
 
-pub(crate) use spool::{BoundedSpool, SpoolSet};
+use crate::ProcessError;
+
+pub(crate) use spool::{SegmentedSpool, SpoolSet, stream_spool_name};
 pub(crate) use window::RetainedWindow;
 
 /// Stable process output stream.
@@ -81,26 +83,89 @@ impl StreamAccounting {
 
 pub(crate) struct OutputAccounting {
     stream: OutputStream,
-    ceiling: u64,
+    ceiling: Option<u64>,
     observed: u64,
     retained: u64,
     dropped: u64,
     failed: bool,
 }
 
+pub(crate) struct OutputReservation {
+    observed: u64,
+    bytes: u64,
+    accepted: usize,
+}
+
+impl OutputReservation {
+    pub(crate) const fn accepted(&self) -> usize {
+        self.accepted
+    }
+}
+
 impl OutputAccounting {
-    pub(crate) const fn new(stream: OutputStream, ceiling: u64) -> Self {
+    pub(crate) const fn new(stream: OutputStream, ceiling: Option<u64>) -> Self {
         Self { stream, ceiling, observed: 0, retained: 0, dropped: 0, failed: false }
     }
 
-    pub(crate) fn observe(&mut self, bytes: usize, external_available: u64) -> usize {
-        let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
-        self.observed = self.observed.saturating_add(bytes);
-        let available = self.ceiling.saturating_sub(self.retained).min(external_available);
-        let accepted = available.min(bytes);
-        self.retained = self.retained.saturating_add(accepted);
-        self.dropped = self.dropped.saturating_add(bytes.saturating_sub(accepted));
-        usize::try_from(accepted).unwrap_or(usize::MAX)
+    pub(crate) fn reserve(
+        &self,
+        bytes: usize,
+        external_available: Option<u64>,
+    ) -> Result<OutputReservation, ProcessError> {
+        let bytes = u64::try_from(bytes)
+            .map_err(|_| output_accounting_error("output chunk length is unrepresentable"))?;
+        let observed = self
+            .observed
+            .checked_add(bytes)
+            .ok_or_else(|| output_accounting_error("observed output accounting overflowed"))?;
+        // A spool failure can leave only an exact known prefix durable. Keep observing later
+        // bytes, but never append a suffix after the failed range: the retained artifact must
+        // remain that exact prefix.
+        let mut accepted = if self.failed { 0 } else { bytes };
+        if let Some(ceiling) = self.ceiling {
+            let available = ceiling
+                .checked_sub(self.retained)
+                .ok_or_else(|| output_accounting_error("retained output exceeds its allowance"))?;
+            accepted = accepted.min(available);
+        }
+        if let Some(available) = external_available {
+            accepted = accepted.min(available);
+        }
+        self
+            .retained
+            .checked_add(accepted)
+            .ok_or_else(|| output_accounting_error("retained output accounting overflowed"))?;
+        self
+            .dropped
+            .checked_add(bytes)
+            .ok_or_else(|| output_accounting_error("dropped output accounting overflowed"))?;
+        let accepted = usize::try_from(accepted)
+            .map_err(|_| output_accounting_error("accepted output length is unrepresentable"))?;
+        Ok(OutputReservation { observed, bytes, accepted })
+    }
+
+    pub(crate) fn commit(
+        &mut self,
+        reservation: OutputReservation,
+        retained: u64,
+    ) -> Result<(), ProcessError> {
+        let accepted = u64::try_from(reservation.accepted)
+            .map_err(|_| output_accounting_error("accepted output length is unrepresentable"))?;
+        if retained > accepted {
+            return Err(output_accounting_error(
+                "persisted output exceeds its reserved prefix",
+            ));
+        }
+        self.observed = reservation.observed;
+        self.retained = self
+            .retained
+            .checked_add(retained)
+            .ok_or_else(|| output_accounting_error("retained output accounting overflowed"))?;
+        self.dropped = self
+            .dropped
+            .checked_add(reservation.bytes - retained)
+            .ok_or_else(|| output_accounting_error("dropped output accounting overflowed"))?;
+        Ok(())
     }
 
     pub(crate) const fn exceeded(&self) -> bool {
@@ -128,4 +193,13 @@ impl OutputAccounting {
             },
         }
     }
+}
+
+const fn output_accounting_error(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        crate::ErrorCode::Output,
+        crate::ProcessOperation::Stream,
+        crate::RecoveryClass::CancelAndReap,
+        detail,
+    )
 }

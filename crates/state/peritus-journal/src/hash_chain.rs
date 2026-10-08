@@ -3,6 +3,7 @@
 use crate::{AggregateKey, EventDraft, StoreId};
 use peritus_codec::sha256;
 use peritus_types::{CommandId, Sha256Digest};
+use sha2::{Digest, Sha256};
 
 const EVENT_HASH_DOMAIN: &[u8] = b"peritus.journal.event.v1\0";
 const BATCH_HASH_DOMAIN: &[u8] = b"peritus.journal.batch.v1\0";
@@ -58,28 +59,24 @@ pub fn batch_hash(
     command_id: CommandId,
     request_digest: Sha256Digest,
     event_hashes: impl IntoIterator<Item = Sha256Digest>,
-    event_count: usize,
+    event_count: u32,
     artifact_digests: impl IntoIterator<Item = Sha256Digest>,
-    artifact_count: usize,
+    artifact_count: u32,
 ) -> Sha256Digest {
-    let mut input = Vec::with_capacity(
-        BATCH_HASH_DOMAIN.len() + 16 + 16 + 32 + 4 + event_count * 32 + 4 + artifact_count * 32,
-    );
-    input.extend_from_slice(BATCH_HASH_DOMAIN);
-    input.extend_from_slice(store_id.as_bytes());
-    input.extend_from_slice(command_id.as_bytes());
-    input.extend_from_slice(request_digest.as_bytes());
-    let event_count = u32::try_from(event_count).expect("validated batch bound fits u32");
-    input.extend_from_slice(&event_count.to_be_bytes());
+    let mut input = Sha256::new();
+    input.update(BATCH_HASH_DOMAIN);
+    input.update(store_id.as_bytes());
+    input.update(command_id.as_bytes());
+    input.update(request_digest.as_bytes());
+    input.update(event_count.to_be_bytes());
     for hash in event_hashes {
-        input.extend_from_slice(hash.as_bytes());
+        input.update(hash.as_bytes());
     }
-    let artifact_count = u32::try_from(artifact_count).expect("validated artifact bound fits u32");
-    input.extend_from_slice(&artifact_count.to_be_bytes());
+    input.update(artifact_count.to_be_bytes());
     for digest in artifact_digests {
-        input.extend_from_slice(digest.as_bytes());
+        input.update(digest.as_bytes());
     }
-    sha256(&input)
+    Sha256Digest::new(input.finalize().into())
 }
 
 pub fn journal_head_hash(

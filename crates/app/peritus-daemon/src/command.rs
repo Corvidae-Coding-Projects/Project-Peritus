@@ -8,4 +8,5 @@ mod service_tests;
 
 pub use facts::{committed_result_digest, rejection_result_digest};
 pub use service::submit;
+pub(crate) use service::submit_with_capacity;
 pub(crate) use recovery::reconcile_record;

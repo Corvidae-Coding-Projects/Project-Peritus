@@ -52,6 +52,7 @@ fn enable_durable_chat(model: &mut AppModel) {
         WellKnownProtocolFeature::WorkbenchInputs,
         WellKnownProtocolFeature::WorkbenchExecution,
         WellKnownProtocolFeature::WorkbenchConversation,
+        WellKnownProtocolFeature::WorkbenchContinuationReceipts,
     ] {
         let feature = ProtocolFeatureName::well_known(feature).expect("feature");
         if !model.features.contains(&feature) {

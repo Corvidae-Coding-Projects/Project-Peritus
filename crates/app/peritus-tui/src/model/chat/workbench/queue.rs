@@ -138,9 +138,9 @@ impl AppModel {
                 |_| "Order contains duplicate IDs or exceeds the queue bound; draft retained.",
             );
         }
-        if !matches!(action, "edit" | "correct" | "hold" | "release" | "withdraw") {
+        if !matches!(action, "edit" | "correct" | "hold" | "release" | "withdraw" | "move") {
             return Err(
-                "Use /queue [add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | order <IDs> | history | pending | next | previous | retry]. Draft retained.",
+                "Use /queue [add <text> | edit <row> <text> | correct <row> <text> | hold <row> | release <row> | withdraw <row> | move <row> <position> | order <IDs> | history | pending | next | previous | retry]. Draft retained.",
             );
         }
         let (row, replacement) = split(text);
@@ -159,7 +159,7 @@ impl AppModel {
                 "This input has not been incorporated. Use /queue edit <row> <text> to change a pending input; corrections apply to incorporated history. Draft retained.",
             );
         }
-        if action == "edit"
+        if matches!(action, "edit" | "move")
             && !matches!(
                 state,
                 Some(
@@ -184,7 +184,13 @@ impl AppModel {
                 Ok(WorkbenchQueueIntent::Hold { selected, held: action == "hold" })
             }
             "withdraw" if replacement.is_empty() => Ok(WorkbenchQueueIntent::Withdraw(selected)),
-            _ => Err("This queue action takes only one inspected row number; draft retained."),
+            "move" => replacement
+                .parse::<u64>()
+                .ok()
+                .and_then(|position| position.checked_sub(1))
+                .map(|position| WorkbenchQueueIntent::Move { selected, position })
+                .ok_or("Use /queue move <row> <one-based position>; draft retained."),
+            _ => Err("This queue action has invalid arguments; draft retained."),
         }
     }
 

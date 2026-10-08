@@ -8,24 +8,43 @@ pub(super) fn write_protocol(w: &mut CanonicalWriter, protocol: &WorkingProtocol
     w.write_collection_len(protocol.requirements().len())?;
     for id in protocol.requirements() { w.write_u64(id.get())?; }
     w.write_collection_len(protocol.pending().len())?;
-    for pending in protocol.pending() {
-        w.write_fixed(pending.id().as_bytes())?;
-        w.write_u64(pending.source().get())?;
-        w.write_u8(match pending.state() { PendingOperationState::Proposed => 0, PendingOperationState::Running => 1, PendingOperationState::Unknown => 2 })?;
-    }
+    for pending in protocol.pending() { write_pending(w, *pending)?; }
     Ok(())
 }
 pub(super) fn read_protocol(r: &mut CanonicalReader<'_>, limits: WorkingLimits) -> Result<WorkingProtocol, WorkingCodecError> {
-    let length = count(r, limits.entries(), 8)?;
+    let length = count(r, limits.observations(), 8)?;
     let mut requirements = r.reserve_collection(length)?;
     for _ in 0..length { requirements.push(ObservationId::new(r.read_u64()?)?); }
-    let length = count(r, limits.entries(), 16 + 8 + 1)?;
+    let length = count(r, limits.observations(), 16 + 8 + 1)?;
     let mut pending = r.reserve_collection(length)?;
-    for _ in 0..length {
-        let id = fields::read_id(r)?;
-        let source = ObservationId::new(r.read_u64()?)?;
-        let state = match r.read_u8()? { 0 => PendingOperationState::Proposed, 1 => PendingOperationState::Running, 2 => PendingOperationState::Unknown, _ => return Err(WorkingCodecError::InvalidValue) };
-        pending.push(WorkingPendingOperation::new(id, source, state));
-    }
+    for _ in 0..length { pending.push(read_pending(r)?); }
     Ok(WorkingProtocol::new(requirements, pending, limits)?)
+}
+
+pub(super) fn write_pending(
+    w: &mut CanonicalWriter,
+    pending: WorkingPendingOperation,
+) -> Result<(), WorkingCodecError> {
+    w.write_fixed(pending.id().as_bytes())?;
+    w.write_u64(pending.source().get())?;
+    w.write_u8(match pending.state() {
+        PendingOperationState::Proposed => 0,
+        PendingOperationState::Running => 1,
+        PendingOperationState::Unknown => 2,
+    })?;
+    Ok(())
+}
+
+pub(super) fn read_pending(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkingPendingOperation, WorkingCodecError> {
+    let id = fields::read_id(r)?;
+    let source = ObservationId::new(r.read_u64()?)?;
+    let state = match r.read_u8()? {
+        0 => PendingOperationState::Proposed,
+        1 => PendingOperationState::Running,
+        2 => PendingOperationState::Unknown,
+        _ => return Err(WorkingCodecError::InvalidValue),
+    };
+    Ok(WorkingPendingOperation::new(id, source, state))
 }

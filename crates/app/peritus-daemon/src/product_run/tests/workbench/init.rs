@@ -72,14 +72,14 @@ fn confirmed_init_preserves_existing_instructions_and_replays_without_scripts_or
         fs::write(folder.path().join("AGENTS.md"), b"later independent edit\n").unwrap();
         assert_eq!(service.workbench_folder_command(actor(), session, &apply).await, receipt);
         assert_eq!(fs::read(folder.path().join("AGENTS.md")).unwrap(), b"later independent edit\n");
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
         drop(service);
         let reopened = init_service(state.path(), folder.path(), workspace, &writer);
         reopened.with_controls(true, |_| Ok(())).unwrap();
         assert_eq!(reopened.workbench_receipt(actor(), &apply), receipt);
         assert_eq!(reopened.workbench_folder_command(actor(), session, &apply).await, receipt);
         assert_eq!(fs::read(folder.path().join("AGENTS.md")).unwrap(), b"later independent edit\n");
-        reopened.shutdown(Duration::from_secs(5)).await;
+        reopened.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -117,7 +117,7 @@ fn initialization_rechecks_effective_write_policy_before_committing_authority() 
         );
         assert!(!folder.path().join("AGENTS.md").exists());
         assert!(writer.requests.lock().unwrap().is_empty());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 
@@ -157,6 +157,6 @@ fn initialization_discovery_rechecks_read_permission_before_inspecting_the_folde
             "PRIVATE_FOLDER_BYTES\n"
         );
         assert!(writer.requests.lock().unwrap().is_empty());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }

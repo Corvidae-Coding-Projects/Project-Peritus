@@ -87,7 +87,7 @@ fn retained_image_pages_cover_more_than_one_page_at_one_exact_revision() {
         };
         assert!(end.rows().is_empty());
         assert!(writer.requests.lock().expect("requests").is_empty());
-        service.shutdown(Duration::from_secs(5)).await;
+        service.shutdown().await.expect("shutdown product runs");
     });
 }
 

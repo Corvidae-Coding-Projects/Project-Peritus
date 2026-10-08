@@ -10,6 +10,7 @@ pub enum ControlStoreError {
     Io(std::io::Error),
     Workspace(peritus_workspace::WorkspaceError),
     Runner(peritus_product_runner::ProductRunnerError),
+    ContentionCancelled,
     PermissionDenied,
     StalePreimage,
     Corrupt(&'static str),
@@ -80,6 +81,9 @@ impl std::fmt::Display for ControlStoreError {
             Self::Io(_) => f.write_str("control storage unavailable or already owned"),
             Self::Workspace(_) => f.write_str("workspace mutation failed; inspect before retrying"),
             Self::Runner(_) => f.write_str("workspace mutation authority unavailable"),
+            Self::ContentionCancelled => {
+                f.write_str("control journal contention wait was cancelled")
+            }
             Self::PermissionDenied => {
                 f.write_str("workspace writes are disabled by effective policy")
             }
@@ -98,7 +102,10 @@ impl std::error::Error for ControlStoreError {
             Self::Io(error) => Some(error),
             Self::Workspace(error) => Some(error),
             Self::Runner(error) => Some(error),
-            Self::Corrupt(_) | Self::PermissionDenied | Self::StalePreimage => None,
+            Self::ContentionCancelled
+            | Self::Corrupt(_)
+            | Self::PermissionDenied
+            | Self::StalePreimage => None,
         }
     }
 }

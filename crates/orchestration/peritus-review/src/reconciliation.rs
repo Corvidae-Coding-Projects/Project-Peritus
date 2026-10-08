@@ -82,9 +82,10 @@ pub fn reconcile_duplicates(
             })
         },
     )?;
-    if source_count > usize::from(state.limits().provenance_sources())
-        || evidence_count > usize::from(state.limits().evidence_references())
-        || disposition_count > usize::from(state.limits().disposition_records())
+    if !state.binding().uses_paged_history()
+        && (source_count > usize::from(state.limits().provenance_sources())
+            || evidence_count > usize::from(state.limits().evidence_references())
+            || disposition_count > usize::from(state.limits().disposition_records()))
     {
         return Err(reject(
             ReviewErrorKind::LimitExceeded,
@@ -92,11 +93,13 @@ pub fn reconcile_duplicates(
         ));
     }
 
-    for snapshot in &snapshots {
-        let target = mutation::finding_mut(state, canonical).ok_or_else(|| {
-            reject(ReviewErrorKind::UnknownIdentity, "canonical finding disappeared")
-        })?;
-        mutation::merge_sources_and_evidence(target, snapshot);
+    if !state.binding().uses_paged_history() {
+        for snapshot in &snapshots {
+            let target = mutation::finding_mut(state, canonical).ok_or_else(|| {
+                reject(ReviewErrorKind::UnknownIdentity, "canonical finding disappeared")
+            })?;
+            mutation::merge_sources_and_evidence(target, snapshot);
+        }
     }
     let target = mutation::finding_mut(state, canonical)
         .ok_or_else(|| reject(ReviewErrorKind::UnknownIdentity, "canonical finding disappeared"))?;
@@ -161,12 +164,17 @@ pub fn confirm_supersession(
             "confirmed supersession is stale, conflicting, or category-mismatched",
         ));
     }
-    if target.sources().len().saturating_add(source.sources().len())
-        > usize::from(state.limits().provenance_sources())
-        || target.evidence().len().saturating_add(source.evidence().len())
-            > usize::from(state.limits().evidence_references())
-        || target.dispositions().len().saturating_add(source.dispositions().len()).saturating_add(1)
-            > usize::from(state.limits().disposition_records())
+    if !state.binding().uses_paged_history()
+        && (target.sources().len().saturating_add(source.sources().len())
+            > usize::from(state.limits().provenance_sources())
+            || target.evidence().len().saturating_add(source.evidence().len())
+                > usize::from(state.limits().evidence_references())
+            || target
+                .dispositions()
+                .len()
+                .saturating_add(source.dispositions().len())
+                .saturating_add(1)
+                > usize::from(state.limits().disposition_records()))
     {
         return Err(reject(
             ReviewErrorKind::LimitExceeded,
@@ -175,10 +183,13 @@ pub fn confirm_supersession(
     }
     let snapshot = source.clone();
     let revision = source.revision();
+    let paged = state.binding().uses_paged_history();
     let target = mutation::finding_mut(state, superseding).ok_or_else(|| {
         reject(ReviewErrorKind::UnknownIdentity, "superseding finding disappeared")
     })?;
-    mutation::merge_sources_and_evidence(target, &snapshot);
+    if !paged {
+        mutation::merge_sources_and_evidence(target, &snapshot);
+    }
     mutation::push_disposition(
         target,
         reconciliation_record(event_id, DispositionKind::Open, revision, Some(finding_id), digest),

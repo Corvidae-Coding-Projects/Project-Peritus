@@ -2,6 +2,57 @@
 
 use peritus_types::Sha256Digest;
 
+/// Bounded diagnostic view of an observation stream.
+///
+/// This tail is never an authority or lifecycle gate. Older entries are discarded only from the
+/// live diagnostic view; an owning runtime can persist and acknowledge the exact stream through
+/// its own durable protocol.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ObservationTail<T> {
+    entries: Vec<T>,
+    capacity: usize,
+    dropped: u64,
+}
+
+impl<T> ObservationTail<T> {
+    /// Creates an empty tail retaining at most `capacity` recent entries.
+    #[must_use]
+    pub fn new(capacity: usize) -> Self {
+        Self { entries: Vec::with_capacity(capacity), capacity, dropped: 0 }
+    }
+
+    /// Appends an entry without ever rejecting the observed lifecycle event.
+    pub fn push(&mut self, entry: T) {
+        if self.capacity == 0 {
+            self.dropped = self.dropped.saturating_add(1);
+            return;
+        }
+        if self.entries.len() == self.capacity {
+            self.entries.remove(0);
+            self.dropped = self.dropped.saturating_add(1);
+        }
+        self.entries.push(entry);
+    }
+
+    /// Returns retained entries in original order.
+    #[must_use]
+    pub fn as_slice(&self) -> &[T] {
+        &self.entries
+    }
+
+    /// Returns the number of entries omitted before the retained tail.
+    #[must_use]
+    pub const fn dropped(&self) -> u64 {
+        self.dropped
+    }
+
+    /// Returns the configured physical retention bound.
+    #[must_use]
+    pub const fn capacity(&self) -> usize {
+        self.capacity
+    }
+}
+
 /// Sandbox capability domain associated with an observation.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CapabilityDomain {

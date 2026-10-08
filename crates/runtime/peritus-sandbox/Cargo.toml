@@ -24,6 +24,9 @@ peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 vstd.workspace = true
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Globalization"] }
+
 [dev-dependencies]
 peritus-conformance = { version = "=0.0.5", path = "../../app/testing/peritus-conformance" }
 

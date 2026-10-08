@@ -7,9 +7,19 @@ use peritus_types::{AcceptanceSpecId, ActorId, RevisionTuple, Sha256Digest};
 use crate::ReviewLimits;
 use crate::error::{ReviewError, ReviewErrorKind, reject};
 
+/// Versioned interpretation of the review-cycle bound carried by a D2 binding.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum ReviewBindingVersion {
+    /// Legacy bindings apply `maximum_cycles` to the complete retained run history.
+    LegacyCumulativeV1,
+    /// Current bindings apply `maximum_cycles` only to one active candidate window.
+    PagedHistoryV2,
+}
+
 /// Complete immutable contract and candidate identity used by every D2 transition.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReviewBinding {
+    version: ReviewBindingVersion,
     contract_id: AcceptanceSpecId,
     contract_digest: Sha256Digest,
     revision: RevisionTuple,
@@ -49,10 +59,7 @@ impl ReviewBinding {
             )
         })?;
         let policy = contract.review_policy();
-        if policy.required_categories().len() > usize::from(limits.categories())
-            || contract.completion_policy().max_review_cycles() > limits.cycles()
-            || contract.completion_policy().max_review_cycles() > limits.assignments()
-        {
+        if policy.required_categories().len() > usize::from(limits.categories()) {
             return Err(reject(
                 ReviewErrorKind::LimitExceeded,
                 "contract review policy exceeds the selected D2 limits",
@@ -68,7 +75,7 @@ impl ReviewBinding {
             policy.reviewer_quorum(),
             ReviewIndependenceView::from_contract(policy.independence()),
             policy.blocking_severity(),
-            contract.completion_policy().max_review_cycles(),
+            limits.cycles().min(limits.assignments()),
             contract.waiver_policy(),
             candidate_digest,
             tree_digest,
@@ -76,6 +83,7 @@ impl ReviewBinding {
             producer_ancestries,
             Sha256Digest::new([0; 32]),
         );
+        binding.version = ReviewBindingVersion::PagedHistoryV2;
         binding.digest = crate::canonical::binding_digest(&binding);
         Ok(binding)
     }
@@ -97,7 +105,45 @@ impl ReviewBinding {
         producer_ancestries: Vec<Sha256Digest>,
         digest: Sha256Digest,
     ) -> Self {
+        Self::from_wire_version(
+            ReviewBindingVersion::LegacyCumulativeV1,
+            contract_id,
+            contract_digest,
+            revision,
+            required_categories,
+            reviewer_quorum,
+            independence,
+            blocking_severity,
+            maximum_cycles,
+            waiver_policy,
+            candidate_digest,
+            tree_digest,
+            producer_actors,
+            producer_ancestries,
+            digest,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) const fn from_wire_version(
+        version: ReviewBindingVersion,
+        contract_id: AcceptanceSpecId,
+        contract_digest: Sha256Digest,
+        revision: RevisionTuple,
+        required_categories: Vec<ReviewCategory>,
+        reviewer_quorum: u16,
+        independence: ReviewIndependenceView,
+        blocking_severity: FindingSeverity,
+        maximum_cycles: u16,
+        waiver_policy: WaiverPolicy,
+        candidate_digest: Sha256Digest,
+        tree_digest: Sha256Digest,
+        producer_actors: Vec<ActorId>,
+        producer_ancestries: Vec<Sha256Digest>,
+        digest: Sha256Digest,
+    ) -> Self {
         Self {
+            version,
             contract_id,
             contract_digest,
             revision,
@@ -113,6 +159,12 @@ impl ReviewBinding {
             producer_ancestries,
             digest,
         }
+    }
+
+    /// Returns the binding semantics used for cycle retention and durable history.
+    #[must_use]
+    pub const fn version(&self) -> ReviewBindingVersion {
+        self.version
     }
 
     /// Returns the checked B2 contract identity copied from `AcceptanceContract::bind`.
@@ -150,10 +202,16 @@ impl ReviewBinding {
     pub const fn blocking_severity(&self) -> FindingSeverity {
         self.blocking_severity
     }
-    /// Returns the immutable contract cycle cap.
+    /// Returns the immutable legacy lifetime cap or V2 active-window capacity.
     #[must_use]
     pub const fn maximum_cycles(&self) -> u16 {
         self.maximum_cycles
+    }
+
+    /// Returns whether completed candidate windows are retained in paged immutable history.
+    #[must_use]
+    pub const fn uses_paged_history(&self) -> bool {
+        matches!(self.version, ReviewBindingVersion::PagedHistoryV2)
     }
     /// Returns the immutable external waiver declaration.
     #[must_use]

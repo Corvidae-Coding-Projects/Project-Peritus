@@ -65,15 +65,17 @@ impl OscillationReport {
         }
 
         let mut kinds = Vec::new();
-        if let [.., previous, current] = groups.as_slice() {
-            if !current.1.is_empty() && previous.1 == current.1 {
-                kinds.push(OscillationKind::RepeatedFindingSet);
-            }
-            if let (Some(previous), Some(current)) = (previous.2, current.2) {
-                if current > previous {
-                    kinds.push(OscillationKind::SeverityRegression);
-                } else if current == previous {
-                    kinds.push(OscillationKind::SeverityStagnation);
+        if !binding.uses_paged_history() {
+            if let [.., previous, current] = groups.as_slice() {
+                if !current.1.is_empty() && previous.1 == current.1 {
+                    kinds.push(OscillationKind::RepeatedFindingSet);
+                }
+                if let (Some(previous), Some(current)) = (previous.2, current.2) {
+                    if current > previous {
+                        kinds.push(OscillationKind::SeverityRegression);
+                    } else if current == previous {
+                        kinds.push(OscillationKind::SeverityStagnation);
+                    }
                 }
             }
         }
@@ -84,7 +86,10 @@ impl OscillationReport {
             kinds.push(OscillationKind::Disagreement);
         }
         let cycles_used = u16::try_from(cycles.len()).unwrap_or(u16::MAX);
-        if !completion_ready && cycles_used >= binding.maximum_cycles() {
+        if !binding.uses_paged_history()
+            && !completion_ready
+            && cycles_used >= binding.maximum_cycles()
+        {
             kinds.push(OscillationKind::ReviewCyclesExhausted);
         }
         kinds.sort_unstable();

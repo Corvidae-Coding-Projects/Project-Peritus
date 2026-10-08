@@ -4,6 +4,8 @@ use peritus_types::{ActorId, WorkspaceId};
 
 #[path = "tests/checkpoints.rs"]
 mod checkpoints;
+#[path = "tests/contention.rs"]
+mod contention;
 #[path = "tests/context.rs"]
 mod context;
 #[path = "tests/files.rs"]
@@ -12,6 +14,8 @@ mod files;
 mod goal;
 #[path = "tests/images.rs"]
 mod images;
+#[path = "tests/recovery.rs"]
+mod recovery;
 #[path = "tests/reservations.rs"]
 mod reservations;
 
@@ -84,32 +88,6 @@ fn stale_revision_and_changed_payload_reject_without_receipt_or_state_change() {
     let record = journal.load(create.conversation()).expect("load").expect("record");
     assert_eq!(record.revision(), 1);
     assert!(!record.pinned());
-}
-
-#[test]
-fn control_store_has_one_owner_and_rejects_wrong_store_identity_after_release() {
-    let root = tempfile::tempdir().expect("root");
-    let first = store(root.path());
-    assert!(ControlStore::open(root.path(), StoreId::new([1; 16]).expect("store")).is_err());
-    drop(first);
-    assert!(ControlStore::open(root.path(), StoreId::new([5; 16]).expect("wrong store")).is_err());
-}
-
-#[test]
-#[allow(
-    clippy::used_underscore_binding,
-    reason = "the regression duplicates the otherwise unread RAII ownership guard to model descriptor inheritance"
-)]
-fn closing_the_store_releases_ownership_even_while_a_duplicated_handle_exists() {
-    let root = tempfile::tempdir().expect("root");
-    let journal = store(root.path());
-    // A concurrent subprocess fork can temporarily inherit this open file description,
-    // even though close-on-exec prevents it from surviving the eventual exec.
-    let inherited = journal._owner.0.try_clone().expect("duplicate owner handle");
-    drop(journal);
-    let reopened = store(root.path());
-    assert!(reopened.load(create().conversation()).expect("empty root").is_none());
-    drop(inherited);
 }
 
 #[test]

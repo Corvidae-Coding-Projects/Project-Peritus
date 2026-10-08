@@ -99,13 +99,17 @@ fn durable_library_search_and_metadata_navigation_never_invoke_a_provider() {
             workspace,
             [&writer, &reviewer, &fixer],
         );
-        *reopened.inner.controls.lock().unwrap() = Some(
-            crate::product_control::ControlStore::open(
-                &state.path().join("workbench-v1"),
-                peritus_journal::StoreId::new([0x7f; 16]).unwrap(),
-            )
-            .unwrap(),
-        );
+        {
+            let cancellation = peritus_journal::JournalCancellation::new();
+            let _permit = reopened.inner.controls.acquire(&cancellation).unwrap();
+            *reopened.inner.controls.owner.lock().unwrap() = Some(
+                crate::product_control::ControlStore::open(
+                    &state.path().join("workbench-v1"),
+                    peritus_journal::StoreId::new([0x7f; 16]).unwrap(),
+                )
+                .unwrap(),
+            );
+        }
         let archived_query = ConversationLibraryQuery::new(workspace, None, true, 0, 16).unwrap();
         let page = match reopened.conversation_library(actor(), &archived_query) {
             AppResponsePayload::ConversationLibrary(page) => page,
@@ -120,6 +124,6 @@ fn durable_library_search_and_metadata_navigation_never_invoke_a_provider() {
             AppResponsePayload::Workbench(_)
         ));
         assert!(writer.requests.lock().unwrap().is_empty());
-        reopened.shutdown(Duration::from_secs(5)).await;
+        reopened.shutdown().await.expect("shutdown product runs");
     });
 }

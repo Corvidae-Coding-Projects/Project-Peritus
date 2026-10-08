@@ -23,8 +23,9 @@ use super::{
         read_backpressure, read_delivery, read_gap, write_backpressure, write_delivery, write_gap,
     },
     terminal::{
-        read_terminal_binding, read_terminal_exit, read_terminal_output, write_terminal_binding,
-        write_terminal_exit, write_terminal_output,
+        read_terminal_binding, read_terminal_exit, read_terminal_output, read_terminal_output_gap,
+        write_terminal_binding, write_terminal_exit, write_terminal_output,
+        write_terminal_output_gap,
     },
 };
 
@@ -101,6 +102,10 @@ impl CanonicalEncode for AppEventEnvelope {
                 writer.write_u16(15)?;
                 write_terminal_binding(writer, *value)
             }
+            AppEventPayload::TerminalOutputGap(value) => {
+                writer.write_u16(16)?;
+                write_terminal_output_gap(writer, *value)
+            }
         }
     }
 }
@@ -148,6 +153,7 @@ pub(super) fn read_event(
         13 => AppEventPayload::ShutdownProgress(read_shutdown_progress(reader, limits)?),
         14 => AppEventPayload::ShutdownComplete(read_shutdown_complete(reader, limits)?),
         15 => AppEventPayload::TerminalUnavailable(read_terminal_binding(reader)?),
+        16 => AppEventPayload::TerminalOutputGap(read_terminal_output_gap(reader)?),
         _ => return unknown(tag_offset),
     };
     if let AppEventPayload::PromptRequested(prompt) = &payload

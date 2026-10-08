@@ -33,6 +33,28 @@ pub struct BackendAdmission {
 }
 
 impl BackendAdmission {
+    /// Restores production admission from a freshly reconstructed trusted descriptor.
+    ///
+    /// # Errors
+    /// Rejects an unsupported/reference descriptor or a preparation digest that differs from the
+    /// exact checked plan, descriptor, and support identities.
+    pub fn restore_exact(
+        plan: &CheckedSandboxPlan,
+        descriptor: BackendDescriptor,
+        preparation_digest: Sha256Digest,
+    ) -> Result<Self, SandboxError> {
+        let admission = admit_backend(plan, &descriptor, AdmissionProfile::Production)?;
+        if admission.preparation_digest != preparation_digest {
+            return Err(SandboxError::new(
+                SandboxErrorKind::BackendMismatch,
+                SandboxOperation::AdmitBackend,
+                RecoveryClass::Replan,
+                "restored backend preparation digest differs from the retained request",
+            ));
+        }
+        Ok(admission)
+    }
+
     /// Returns the admitted descriptor.
     #[must_use]
     pub const fn descriptor(&self) -> &BackendDescriptor {

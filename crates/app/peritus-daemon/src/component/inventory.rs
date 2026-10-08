@@ -15,6 +15,7 @@ use crate::{DaemonConfig, DaemonError, DaemonErrorCode, DaemonRecovery};
 pub struct DaemonComponents {
     providers: ProviderRegistry,
     tools: ToolComponents,
+    managed_gate_network: peritus_product_runner::ManagedGateNetworkCatalog,
 }
 
 impl DaemonComponents {
@@ -58,7 +59,22 @@ impl DaemonComponents {
                 })?;
         let tools =
             ToolComponents::build(config.tools().allowed(), tool_limits).map_err(tool_error)?;
-        Ok(Self { providers, tools })
+        let grants = config
+            .managed_gate_network()
+            .iter()
+            .map(crate::config::ManagedGateNetworkGrantDeclaration::grant)
+            .collect::<Result<Vec<_>, _>>()?;
+        let managed_gate_network =
+            peritus_product_runner::ManagedGateNetworkCatalog::new(grants).map_err(|error| {
+                DaemonError::with_source(
+                    DaemonErrorCode::InvalidInput,
+                    DaemonRecovery::CorrectRequest,
+                    "construct managed gate network catalog",
+                    error.to_string(),
+                    error,
+                )
+            })?;
+        Ok(Self { providers, tools, managed_gate_network })
     }
 
     /// Borrows the exact provider-profile registry.
@@ -89,6 +105,14 @@ impl DaemonComponents {
     #[must_use]
     pub const fn tool_components_mut(&mut self) -> &mut ToolComponents {
         &mut self.tools
+    }
+
+    /// Borrows the immutable trusted managed-network grant catalog.
+    #[must_use]
+    pub const fn managed_gate_network(
+        &self,
+    ) -> &peritus_product_runner::ManagedGateNetworkCatalog {
+        &self.managed_gate_network
     }
 }
 

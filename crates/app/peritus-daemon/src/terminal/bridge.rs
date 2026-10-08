@@ -85,10 +85,13 @@ impl LiveTerminalRegistration {
         plan: &ExecutionPlan,
     ) -> Result<(), TerminalBridgeError> {
         let capabilities = plan.terminal_capabilities();
-        if capabilities.event_count() == 0 || capabilities.output_bytes() == 0 {
+        if capabilities.event_count() == 0
+            || plan.output_policy().chunk_bytes() == 0
+            || plan.output_policy().retained_window_bytes() == 0
+        {
             return Err(rejected(
                 TerminalBridgeErrorKind::NotPty,
-                "terminal observation bounds are not authorized by the checked plan",
+                "terminal live observation capacity is not authorized by the checked plan",
             ));
         }
         Ok(())
@@ -104,6 +107,9 @@ impl LiveTerminalRegistration {
 #[derive(Clone)]
 pub(super) struct ObservedOutput {
     pub(super) offset: u64,
+    pub(super) next_offset: u64,
+    pub(super) stream_offsets_before: [u64; 3],
+    pub(super) stream_offsets_after: [u64; 3],
     pub(super) stream: TerminalStream,
     pub(super) bytes: Vec<u8>,
 }
@@ -122,7 +128,8 @@ pub(super) struct TerminalBridge {
     next_output_offset: u64,
     replay: VecDeque<ObservedOutput>,
     replay_bytes: usize,
-    replay_complete: bool,
+    replay_start_offset: u64,
+    replay_start_stream_offsets: [u64; 3],
     attachments: BTreeMap<TerminalAttachmentId, AttachmentRecord>,
     terminal: Option<TerminalResult>,
     fault: Option<(TerminalBridgeErrorKind, &'static str)>,
@@ -144,7 +151,8 @@ impl TerminalBridge {
             next_output_offset: 0,
             replay: VecDeque::new(),
             replay_bytes: 0,
-            replay_complete: true,
+            replay_start_offset: 0,
+            replay_start_stream_offsets: [0; 3],
             attachments: BTreeMap::new(),
             terminal: None,
             fault: None,
@@ -196,13 +204,12 @@ impl TerminalBridge {
                 ))
             };
         }
-        if !self.replay_complete {
-            return Err(rejected(
-                TerminalBridgeErrorKind::ReplayUnavailable,
-                "the complete ordered output prefix is no longer retained",
-            ));
-        }
         let mut attachment = AttachmentRecord::new(binding, maximum_chunk_bytes)?;
+        attachment.enqueue_gap(
+            self.replay_start_offset,
+            self.replay_start_stream_offsets,
+            limits,
+        );
         for output in &self.replay {
             attachment.enqueue_output(output, limits);
         }

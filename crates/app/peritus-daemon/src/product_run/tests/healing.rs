@@ -109,7 +109,7 @@ fn healed_tool_arguments_keep_schema_validation_and_durable_private_provenance()
                     .any(|window| window == encoded_original.as_bytes()),
                 "original repair input is retained in the private trace"
             );
-            service.shutdown(Duration::from_secs(5)).await;
+            service.shutdown().await.expect("shutdown product runs");
         }
     });
 }

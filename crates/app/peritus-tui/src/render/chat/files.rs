@@ -124,7 +124,7 @@ pub(super) fn content_lines(model: &AppModel) -> Vec<String> {
                 "No preview. Set path/range/caption, then press p. Nothing is included yet.",
             ));
         }
-        lines.push(String::from("UTF-8 text · source ≤64 MiB · selected ≤256 KiB · absolute paths become immutable imports · no inference on confirmation"));
+        lines.push(String::from("UTF-8 text · external source inspection ≤64 MiB · absolute paths become immutable imports · no inference on confirmation"));
     }
     lines
 }

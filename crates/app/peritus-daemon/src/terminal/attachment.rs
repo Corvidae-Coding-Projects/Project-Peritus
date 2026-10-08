@@ -3,8 +3,8 @@
 use std::{collections::VecDeque, num::NonZeroUsize};
 
 use peritus_app_protocol::{
-    TerminalBinding, TerminalExit, TerminalExitDisposition, TerminalOutput, TerminalPhase,
-    TerminalState,
+    TerminalBinding, TerminalExit, TerminalExitDisposition, TerminalOutput, TerminalOutputGap,
+    TerminalPhase, TerminalState,
 };
 
 use super::{
@@ -28,6 +28,7 @@ impl AttachmentFault {
 
 pub(super) struct AttachmentRecord {
     state: TerminalState,
+    delivered: TerminalState,
     maximum_chunk_bytes: NonZeroUsize,
     pending: VecDeque<TerminalBridgeEvent>,
     pending_bytes: usize,
@@ -46,8 +47,10 @@ impl AttachmentRecord {
                 "terminal attachment chunk limit is zero",
             )
         })?;
+        let state = TerminalState::new(binding, maximum_chunk_bytes.get())?;
         Ok(Self {
-            state: TerminalState::new(binding, maximum_chunk_bytes.get())?,
+            delivered: state.clone(),
+            state,
             maximum_chunk_bytes,
             pending: VecDeque::new(),
             pending_bytes: 0,
@@ -84,11 +87,16 @@ impl AttachmentRecord {
         if self.fault.is_some() || self.state.phase() != TerminalPhase::Attached {
             return;
         }
-        if let Err(error) = self.try_enqueue_output(observed, limits) {
-            self.fault = Some(AttachmentFault {
-                kind: error.kind(),
-                detail: "terminal attachment output projection failed",
-            });
+        match self.try_enqueue_output(observed, limits) {
+            Ok(()) => {}
+            Err(error) if error.kind() == TerminalBridgeErrorKind::Backpressure => {
+                if let Err(error) =
+                    self.compact_to_gap(observed.next_offset, observed.stream_offsets_after)
+                {
+                    self.record_fault(error);
+                }
+            }
+            Err(error) => self.record_fault(error),
         }
     }
 
@@ -97,10 +105,12 @@ impl AttachmentRecord {
         observed: &ObservedOutput,
         limits: TerminalRegistryLimits,
     ) -> Result<(), TerminalBridgeError> {
-        if observed.offset != self.state.next_output_offset() {
+        if observed.offset != self.state.next_output_offset()
+            || observed.stream_offsets_before != self.state.stream_offsets()
+        {
             return Err(TerminalBridgeError::rejected(
                 TerminalBridgeErrorKind::ReplayUnavailable,
-                "attachment output does not continue at its exact global offset",
+                "attachment output does not continue at its exact retained frontier",
             ));
         }
         let chunk_bound = self.maximum_chunk_bytes.get();
@@ -128,9 +138,69 @@ impl AttachmentRecord {
             next_state.accept_output(&output)?;
             outputs.push(TerminalBridgeEvent::Output(output));
         }
+        if next_state.next_output_offset() != observed.next_offset
+            || next_state.stream_offsets() != observed.stream_offsets_after
+        {
+            return Err(TerminalBridgeError::rejected(
+                TerminalBridgeErrorKind::ReplayUnavailable,
+                "projected output does not reach its exact retained frontier",
+            ));
+        }
         self.state = next_state;
         self.pending.extend(outputs);
         self.pending_bytes = next_bytes;
+        Ok(())
+    }
+
+    pub(super) fn enqueue_gap(
+        &mut self,
+        resume_offset: u64,
+        stream_offsets: [u64; 3],
+        limits: TerminalRegistryLimits,
+    ) {
+        if self.fault.is_some() || self.state.phase() != TerminalPhase::Attached {
+            return;
+        }
+        if let Err(error) = self.try_enqueue_gap(resume_offset, stream_offsets, limits) {
+            self.record_fault(error);
+        }
+    }
+
+    fn try_enqueue_gap(
+        &mut self,
+        resume_offset: u64,
+        stream_offsets: [u64; 3],
+        limits: TerminalRegistryLimits,
+    ) -> Result<(), TerminalBridgeError> {
+        if resume_offset == self.state.next_output_offset()
+            && stream_offsets == self.state.stream_offsets()
+        {
+            return Ok(());
+        }
+        if self.pending.len() >= limits.maximum_pending_events_per_attachment() {
+            return self.compact_to_gap(resume_offset, stream_offsets);
+        }
+        let mut next_state = self.state.clone();
+        let gap = output_gap(&next_state, resume_offset, stream_offsets)?;
+        next_state.accept_output_gap(gap)?;
+        self.state = next_state;
+        self.pending.push_back(TerminalBridgeEvent::Gap(gap));
+        Ok(())
+    }
+
+    fn compact_to_gap(
+        &mut self,
+        resume_offset: u64,
+        stream_offsets: [u64; 3],
+    ) -> Result<(), TerminalBridgeError> {
+        let mut next_state = self.delivered.clone();
+        let gap = output_gap(&next_state, resume_offset, stream_offsets)?;
+        next_state.accept_output_gap(gap)?;
+        self.pending.clear();
+        self.pending_bytes = 0;
+        self.deferred_exit = None;
+        self.state = next_state;
+        self.pending.push_back(TerminalBridgeEvent::Gap(gap));
         Ok(())
     }
 
@@ -171,21 +241,35 @@ impl AttachmentRecord {
         let count = maximum.min(self.pending.len());
         let mut events = Vec::with_capacity(count);
         for _ in 0..count {
-            if let Some(event) = self.pending.pop_front() {
-                if let TerminalBridgeEvent::Output(output) = &event {
-                    self.pending_bytes = self.pending_bytes.saturating_sub(output.bytes().len());
-                }
-                events.push(event);
+            let Some(event) = self.pending.front().cloned() else { break };
+            self.accept_delivered(&event)?;
+            let _ = self.pending.pop_front();
+            if let TerminalBridgeEvent::Output(output) = &event {
+                self.pending_bytes = self.pending_bytes.saturating_sub(output.bytes().len());
             }
+            events.push(event);
         }
         self.promote_exit(limits);
         Ok(events)
+    }
+
+    fn accept_delivered(
+        &mut self,
+        event: &TerminalBridgeEvent,
+    ) -> Result<(), TerminalBridgeError> {
+        match event {
+            TerminalBridgeEvent::Output(output) => self.delivered.accept_output(output)?,
+            TerminalBridgeEvent::Gap(gap) => self.delivered.accept_output_gap(*gap)?,
+            TerminalBridgeEvent::Exited(exit) => self.delivered.exit(*exit)?,
+        }
+        Ok(())
     }
 
     pub(super) fn clear_pending(&mut self) {
         self.pending.clear();
         self.pending_bytes = 0;
         self.deferred_exit = None;
+        self.delivered = self.state.clone();
     }
 
     pub(super) fn require_healthy(&self) -> Result<(), TerminalBridgeError> {
@@ -202,6 +286,13 @@ impl AttachmentRecord {
         self.fault = Some(AttachmentFault { kind, detail });
     }
 
+    fn record_fault(&mut self, error: TerminalBridgeError) {
+        self.fault = Some(AttachmentFault {
+            kind: error.kind(),
+            detail: "terminal attachment output projection failed",
+        });
+    }
+
     fn promote_exit(&mut self, limits: TerminalRegistryLimits) {
         if self.fault.is_none()
             && self.pending.len() < limits.maximum_pending_events_per_attachment()
@@ -210,6 +301,23 @@ impl AttachmentRecord {
             self.pending.push_back(TerminalBridgeEvent::Exited(exit));
         }
     }
+}
+
+fn output_gap(
+    state: &TerminalState,
+    resume_offset: u64,
+    stream_offsets: [u64; 3],
+) -> Result<TerminalOutputGap, TerminalBridgeError> {
+    TerminalOutputGap::new(
+        state.binding(),
+        state.next_output_sequence(),
+        state.next_output_offset(),
+        resume_offset,
+        stream_offsets[0],
+        stream_offsets[1],
+        stream_offsets[2],
+    )
+    .map_err(Into::into)
 }
 
 const fn backpressure() -> TerminalBridgeError {

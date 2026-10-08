@@ -1,6 +1,6 @@
 //! Real F0 atomic promotion recovery on both sides of its C0 transaction.
 
-use peritus_artifact_store::{ArtifactStore, ArtifactStoreError, StoreConfig};
+use peritus_artifact_store::{ArtifactStore, ArtifactStoreError};
 use peritus_evolution::qualification::{
     CommittedPromotion, PreparedPromotion, PromotionQualificationObservation, observe_promotion,
     prepare_promotion,
@@ -129,13 +129,11 @@ fn recover(
 }
 
 fn open_artifacts(config: &DaemonConfig) -> Result<ArtifactStore, DaemonError> {
-    let store_config = StoreConfig::new(
-        config.paths().artifact_root(),
-        config.limits().maximum_artifact_bytes(),
-        config.limits().artifact_quota_bytes(),
-    )
-    .and_then(|value| value.with_database_path(config.paths().database()))
-    .map_err(artifact_error)?;
+    let store_config = config
+        .limits()
+        .artifact_store_config(config.paths().artifact_root())
+        .and_then(|value| value.with_database_path(config.paths().database()))
+        .map_err(artifact_error)?;
     ArtifactStore::open(store_config).map_err(artifact_error)
 }
 

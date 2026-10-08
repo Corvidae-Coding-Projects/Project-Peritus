@@ -3,12 +3,15 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use peritus_policy::OperationRegistry;
-use peritus_tool_protocol::{ImplementationIdentity, SemanticVersion, ToolDescriptor};
+use peritus_tool_protocol::{
+    ImplementationIdentity, PreparedToolCall, SemanticVersion, ToolCall, ToolDescriptor,
+};
 use peritus_types::CapabilityName;
 
 use crate::{RouterError, RouterErrorKind};
 
 /// Canonical immutable registered descriptor set.
+#[derive(Clone)]
 pub struct ToolRegistry {
     descriptors: Vec<Arc<ToolDescriptor>>,
 }
@@ -73,6 +76,15 @@ impl ToolRegistry {
     #[must_use]
     pub fn descriptors(&self) -> &[Arc<ToolDescriptor>] {
         &self.descriptors
+    }
+
+    /// Performs effect-free lookup, schema validation, and digest-bound preparation.
+    ///
+    /// # Errors
+    ///
+    /// Rejects an unknown tool/version or a schema-invalid call.
+    pub fn prepare(&self, call: ToolCall) -> Result<PreparedToolCall, RouterError> {
+        crate::preparation::prepare(self, call)
     }
 
     /// Returns a descriptor by immutable implementation identity.

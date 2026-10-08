@@ -62,7 +62,7 @@ pub(in crate::wire) fn read_import_preview(
     let offset = r.offset();
     let request = read_import_request(r)?;
     let revision = r.read_u64()?;
-    invalid(offset, WorkbenchFileImportPreview::new(request, revision, read_string(r, 512)?))
+    invalid(offset, WorkbenchFileImportPreview::new(request, revision, read_string(r)?))
 }
 impl WorkbenchFileImportPreview {
     /// Encodes exact immutable consent, without a source path or read capability.

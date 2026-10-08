@@ -15,5 +15,12 @@ pub(super) fn open(
     } else {
         CommandRuntime::open(state, root, run_id, service.inner.processes.clone())
     }?;
-    runtime.with_local_context(service.inner.local_context.clone())
+    runtime
+        .with_local_context(service.inner.local_context.clone())
+        .map(|runtime| {
+            runtime.with_managed_gate_network(
+                request.workspace_id(),
+                service.inner.managed_gate_network.clone(),
+            )
+        })
 }

@@ -1,6 +1,6 @@
 //! Controlled corruption of genuinely published F0 harness-activation evidence.
 
-use peritus_artifact_store::{ArtifactDigest, ArtifactStore, StoreConfig};
+use peritus_artifact_store::{ArtifactDigest, ArtifactStore};
 use peritus_codec::sha256;
 use peritus_evidence::{
     EvidenceError, EvidenceErrorKind, EvidenceRecord, EvidenceStore, EvidenceStoreOptions,
@@ -264,13 +264,11 @@ fn require_denied(store: &EvidenceStore, id: EvidenceId) -> Result<(), DaemonErr
 }
 
 fn open_artifacts(config: &DaemonConfig) -> Result<ArtifactStore, DaemonError> {
-    let store = StoreConfig::new(
-        config.paths().artifact_root(),
-        config.limits().maximum_artifact_bytes(),
-        config.limits().artifact_quota_bytes(),
-    )
-    .and_then(|value| value.with_database_path(config.paths().database()))
-    .map_err(artifact_error)?;
+    let store = config
+        .limits()
+        .artifact_store_config(config.paths().artifact_root())
+        .and_then(|value| value.with_database_path(config.paths().database()))
+        .map_err(artifact_error)?;
     ArtifactStore::open(store).map_err(artifact_error)
 }
 

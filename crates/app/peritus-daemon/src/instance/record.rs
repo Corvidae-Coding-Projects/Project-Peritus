@@ -1,9 +1,15 @@
 //! Canonical durable live-instance record.
 
+use std::path::Path;
+
 use crate::{DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(super) struct InstanceRecord {
     bytes: Vec<u8>,
+    endpoint: String,
+    pid: u32,
+    start_token: u64,
 }
 
 impl InstanceRecord {
@@ -21,12 +27,100 @@ impl InstanceRecord {
             "version=1\nendpoint={}\npid={pid}\nstart_token={start_token}\n",
             identity.endpoint_name(),
         );
-        Ok(Self { bytes: text.into_bytes() })
+        Ok(Self {
+            bytes: text.into_bytes(),
+            endpoint: identity.endpoint_name().to_owned(),
+            pid,
+            start_token,
+        })
+    }
+
+    pub(super) fn read(
+        state_root: &Path,
+        identity: &DaemonIdentity,
+    ) -> Result<Option<Self>, DaemonError> {
+        let path = state_root.join("daemon.instance");
+        let bytes = match std::fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(storage("read daemon instance record", error)),
+        };
+        let text = std::str::from_utf8(&bytes).map_err(|error| {
+            DaemonError::with_source(
+                DaemonErrorCode::CorruptState,
+                DaemonRecovery::Operator,
+                "decode daemon instance record",
+                "daemon instance record is not canonical UTF-8",
+                error,
+            )
+        })?;
+        let mut lines = text.lines();
+        if lines.next() != Some("version=1") {
+            return Err(corrupt("daemon instance record version is unsupported"));
+        }
+        let endpoint = field(lines.next(), "endpoint=")?.to_owned();
+        let pid = field(lines.next(), "pid=")?
+            .parse::<u32>()
+            .map_err(|_| corrupt("daemon instance record PID is malformed"))?;
+        let start_token = field(lines.next(), "start_token=")?
+            .parse::<u64>()
+            .map_err(|_| corrupt("daemon instance record birth token is malformed"))?;
+        if lines.next().is_some() || endpoint != identity.endpoint_name() || pid == 0 {
+            return Err(corrupt("daemon instance record identity is inconsistent"));
+        }
+        let canonical = format!(
+            "version=1\nendpoint={endpoint}\npid={pid}\nstart_token={start_token}\n"
+        );
+        if bytes != canonical.as_bytes() {
+            return Err(corrupt("daemon instance record is not canonical"));
+        }
+        Ok(Some(Self { bytes, endpoint, pid, start_token }))
     }
 
     pub(super) fn bytes(&self) -> &[u8] {
         &self.bytes
     }
+
+    pub(super) fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+
+    pub(super) const fn pid(&self) -> u32 {
+        self.pid
+    }
+
+    pub(super) const fn start_token(&self) -> u64 {
+        self.start_token
+    }
+
+    pub(super) fn is_live(&self) -> bool {
+        current_start_token(self.pid) == Some(self.start_token)
+    }
+}
+
+fn field<'a>(line: Option<&'a str>, prefix: &str) -> Result<&'a str, DaemonError> {
+    line.and_then(|line| line.strip_prefix(prefix))
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| corrupt("daemon instance record is incomplete"))
+}
+
+fn corrupt(detail: &'static str) -> DaemonError {
+    DaemonError::new(
+        DaemonErrorCode::CorruptState,
+        DaemonRecovery::Operator,
+        "validate daemon instance record",
+        detail,
+    )
+}
+
+fn storage(operation: &'static str, error: std::io::Error) -> DaemonError {
+    DaemonError::with_source(
+        DaemonErrorCode::Storage,
+        DaemonRecovery::Retry,
+        operation,
+        "daemon instance record cannot be inspected",
+        error,
+    )
 }
 
 #[cfg(target_os = "linux")]

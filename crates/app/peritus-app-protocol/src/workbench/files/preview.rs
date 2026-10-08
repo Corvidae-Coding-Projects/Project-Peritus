@@ -1,6 +1,6 @@
 //! Content-free exact observation and provider-bound confirmation preview.
 
-use super::{MAX_WORKBENCH_FILE_BYTES, WorkbenchFileRequest, invalid};
+use super::{WorkbenchFileRequest, invalid};
 use crate::AppProtocolError;
 use peritus_types::Sha256Digest;
 
@@ -23,10 +23,7 @@ impl WorkbenchFileMetadata {
         range: (u64, u64),
         digest: Sha256Digest,
     ) -> Result<Self, AppProtocolError> {
-        if range.0 > range.1
-            || range.1 > source_bytes
-            || range.1 - range.0 > MAX_WORKBENCH_FILE_BYTES
-        {
+        if range.0 > range.1 || range.1 > source_bytes {
             return Err(invalid());
         }
         Ok(Self { source_digest, source_bytes, range, digest })
@@ -91,7 +88,6 @@ impl WorkbenchFilePreview {
         if !file.matches(request.range())
             || provider_revision == 0
             || resolved_model.trim().is_empty()
-            || resolved_model.len() > 512
             || resolved_model.chars().any(char::is_control)
         {
             return Err(invalid());

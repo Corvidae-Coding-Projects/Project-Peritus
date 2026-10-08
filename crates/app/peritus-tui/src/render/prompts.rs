@@ -46,22 +46,23 @@ pub(super) fn render(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     );
     let detail = detail_lines(model, sections[1].width);
     let maximum = maximum_scroll(detail.len(), sections[1].height);
+    let offset = model.prompt_scroll.min(maximum);
+    let rows = usize::from(sections[1].height.saturating_sub(2));
     frame.render_widget(
-        Paragraph::new(detail)
-            .block(Block::default().borders(Borders::ALL).title(" Prompt · PgUp/PgDn · Home/End "))
-            .scroll((model.prompt_scroll.min(maximum), 0)),
+        Paragraph::new(detail.into_iter().skip(offset).take(rows).collect::<Vec<_>>())
+            .block(Block::default().borders(Borders::ALL).title(" Prompt · PgUp/PgDn · Home/End ")),
         sections[1],
     );
 }
 
-pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
+pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> usize {
     let sections =
         Layout::horizontal([Constraint::Percentage(38), Constraint::Percentage(62)]).split(area);
     maximum_scroll(detail_lines(model, sections[1].width).len(), sections[1].height)
 }
 
-fn maximum_scroll(lines: usize, height: u16) -> u16 {
-    u16::try_from(lines.saturating_sub(usize::from(height.saturating_sub(2)))).unwrap_or(u16::MAX)
+fn maximum_scroll(lines: usize, height: u16) -> usize {
+    lines.saturating_sub(usize::from(height.saturating_sub(2)))
 }
 
 fn detail_lines(model: &AppModel, width: u16) -> Vec<Line<'static>> {
