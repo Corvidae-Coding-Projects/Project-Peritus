@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3914,
-        "tip_oid": "37c7e3538af378eaaa9a6bb1675fc00b5aa96a3d",
-        "prefix_sha256": "a6100281da380a775c56a7dfa32af3cf6f7572a684fa20611079ed4e342bbe79"
+        "sequence": 3915,
+        "tip_oid": "ec871c1028ee0455d9dad38790faf360d0afdb87",
+        "prefix_sha256": "8c841dac0114cf4af5bea378cb711bcdde1a9b773dc59357a9f93106079830e4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3160,
+  "next_comment_id": 3161,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -16691,7 +16691,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.509461590Z",
-      "updated_at": "2026-10-06T13:27:50.511600581Z",
+      "updated_at": "2026-10-08T00:44:21.556531511Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -16702,6 +16702,15 @@
           "content": "Systemic repair plan for L429: E3 campaigns require six positive finite resource ceilings and a finite retry policy.\n\nOwning contract and implementation boundary: crates/analysis/peritus-eval/src/limits.rs:5-81; src/profile/policy.rs:23-69,127-171; src/profile/binding.rs:250-330; src/dataset/manifest.rs:30-65; src/accounting/ledger.rs:60-100. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nMake workload/retry stopping explicit user policy and page durable task/rollout/attempt storage. Keep statistical methods versioned and their supported confidence parameters explicit rather than confusing them with task longevity. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "ee14401a-f6cd-4a41-bf2e-ca600d723c48": {
+          "display_id": 3160,
+          "author": "6ME5",
+          "content": "Code complete in commit 323fae406. Removed campaign-wide task/rollout ceilings, added explicit finite or persistent retry policy and physical task/attempt pages, and atomically installed paged family87 checkpoints with complete digest/identity verification and accepted legacy decoding. Statistical methods remain unchanged. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:44:21.547483509Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAyhDRiZQOXWvjy8FypWeaaL5s2BBFj2S3gbQ3jhPO64de2rGqv0NebwInA/W0ivkU6lnQF6qCe3ki9ZXv5pRkAQ=="
         }
       }
     },
