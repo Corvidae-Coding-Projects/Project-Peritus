@@ -66,14 +66,14 @@ struct DeferredReplay {
     item_id: ItemId,
     bytes: ReplayBytes,
     digest: peritus_types::Sha256Digest,
-    event_id: Option<String>,
+    event_id: Option<EventId>,
     after: Option<DeferredEmission>,
 }
 
 struct DeferredEmission {
     event: ModelEvent,
     digest: peritus_types::Sha256Digest,
-    event_id: Option<String>,
+    event_id: Option<EventId>,
 }
 
 pub(super) enum Phase {
@@ -121,6 +121,7 @@ pub(super) struct NormalizeState {
     pending: VecDeque<EventEnvelope>,
     staged_terminal: Option<EventEnvelope>,
     replay_index: ExactReplayIndex,
+    active_event_id: Option<EventId>,
     deferred_replay: Option<DeferredReplay>,
     metadata: Vec<ModelEvent>,
     terminal: bool,
@@ -159,6 +160,7 @@ impl NormalizeState {
             pending: VecDeque::new(),
             staged_terminal: None,
             replay_index: ExactReplayIndex::new(limits.max_events(), replay_identity_bytes),
+            active_event_id: None,
             deferred_replay: None,
             metadata: metadata_events(headers, limits)?,
             terminal: false,
@@ -219,6 +221,7 @@ impl NormalizeState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
+        let event_id = self.take_active_event_id(event_id)?;
         self.defer_replay_with_after(item_id, kind, value, digest, event_id, None)
     }
 
@@ -233,11 +236,8 @@ impl NormalizeState {
         event_digest: peritus_types::Sha256Digest,
         event_id_after: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
-        let event_id_after = event_id_after
-            .map(|value| {
-                owned_string(value, "Anthropic deferred event identity capacity is unavailable")
-            })
-            .transpose()?;
+        let event_id = event_id.map(checked_event_id).transpose()?;
+        let event_id_after = self.take_active_event_id(event_id_after)?;
         self.defer_replay_with_after(
             item_id,
             kind,
@@ -254,7 +254,7 @@ impl NormalizeState {
         kind: ReplayKind,
         value: &str,
         digest: peritus_types::Sha256Digest,
-        event_id: Option<&str>,
+        event_id: Option<EventId>,
         after: Option<DeferredEmission>,
     ) -> Result<(), ProviderCoreError> {
         if self.deferred_replay.is_some() {
@@ -270,11 +270,6 @@ impl NormalizeState {
         if future_events > self.limits.max_events().saturating_sub(emitted) {
             return Err(limit("Anthropic reasoning replay exceeded the selected event bound"));
         }
-        let event_id = event_id
-            .map(|value| {
-                owned_string(value, "Anthropic deferred event identity capacity is unavailable")
-            })
-            .transpose()?;
         self.deferred_replay = Some(DeferredReplay { item_id, bytes, digest, event_id, after });
         Ok(())
     }
@@ -283,21 +278,20 @@ impl NormalizeState {
         let Some(mut replay) = self.deferred_replay.take() else { return Ok(false) };
         let Some(bytes) = replay.bytes.next_chunk(self.limits.max_event_bytes())? else {
             if let Some(after) = replay.after.take() {
-                self.push(after.event, after.digest, after.event_id.as_deref())?;
+                self.push(after.event, after.digest, after.event_id)?;
                 return Ok(true);
             }
             return Ok(false);
         };
         let fragment = StreamFragment::new(bytes, self.limits)
             .map_err(|_| invalid("Anthropic reasoning replay fragment is invalid"))?;
-        let event_id = replay.event_id.take();
         self.push(
             ModelEvent::ReasoningReplayDelta {
                 item_id: replay.item_id.clone(),
                 fragment,
             },
             replay.digest,
-            event_id.as_deref(),
+            replay.event_id.take(),
         )?;
         self.deferred_replay = Some(replay);
         Ok(true)
@@ -313,7 +307,18 @@ impl NormalizeState {
         digest: peritus_types::Sha256Digest,
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
-        self.push(event, digest, event_id)
+        let provider_event_id = self.take_active_event_id(event_id)?;
+        self.push(event, digest, provider_event_id)
+    }
+
+    pub(super) fn emit_provenance(
+        &mut self,
+        event: ModelEvent,
+        digest: peritus_types::Sha256Digest,
+        event_id: Option<&str>,
+    ) -> Result<(), ProviderCoreError> {
+        let provider_event_id = event_id.map(checked_event_id).transpose()?;
+        self.push(event, digest, provider_event_id)
     }
 
     pub(super) fn drain_metadata(
@@ -322,7 +327,7 @@ impl NormalizeState {
         event_id: Option<&str>,
     ) -> Result<(), ProviderCoreError> {
         for event in core::mem::take(&mut self.metadata) {
-            self.push(event, digest, event_id)?;
+            self.emit(event, digest, event_id)?;
         }
         Ok(())
     }
@@ -332,10 +337,11 @@ impl NormalizeState {
             return Err(invalid("Anthropic event followed a terminal event"));
         }
         let digest = peritus_codec::sha256(frame.data().as_bytes());
-        if let Some(id) = frame.id()
-            && self.replay_index.observe(id, digest)?
+        let event_id = frame.id().map(checked_event_id).transpose()?;
+        if let Some(id) = &event_id
+            && self.replay_index.observe(id.expose_for_wire(), digest)?
         {
-                return Ok(());
+            return Ok(());
         }
         let value: Value = serde_json::from_str(frame.data())
             .map_err(|_| invalid("Anthropic SSE data is not valid JSON"))?;
@@ -346,20 +352,23 @@ impl NormalizeState {
         if frame.event().is_some_and(|event| event != kind) {
             return Err(invalid("Anthropic SSE event name and payload type disagree"));
         }
-        match kind {
+        self.active_event_id = event_id;
+        let result = match kind {
             "message_start" => super::message::start(self, &value, digest, frame.id()),
             "content_block_start" => super::content::start(self, &value, digest, frame.id()),
             "content_block_delta" => super::content::delta(self, &value, digest, frame.id()),
             "content_block_stop" => super::content::stop(self, &value, digest, frame.id()),
             "message_delta" => super::message::delta(self, &value, digest, frame.id()),
             "message_stop" => super::message::stop(self, &value, digest, frame.id()),
-            "ping" => self.push(ModelEvent::Heartbeat, digest, frame.id()),
+            "ping" => self.emit(ModelEvent::Heartbeat, digest, frame.id()),
             "error" => super::message::error(self, &value, digest, frame.id()),
             unknown if correctness_critical(unknown) => {
                 Err(invalid("Anthropic emitted an unknown correctness-critical event"))
             }
             unknown => self.ancillary(unknown, frame.data(), digest, frame.id()),
-        }
+        };
+        self.active_event_id = None;
+        result
     }
 
     fn ancillary(
@@ -379,14 +388,14 @@ impl NormalizeState {
             .map_err(|_| invalid("Anthropic ancillary event name is invalid"))?;
         let value = CanonicalJson::parse(data, JsonBounds::value(self.limits))
             .map_err(|_| invalid("Anthropic ancillary event exceeds JSON bounds"))?;
-        self.push(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)), digest, event_id)
+        self.emit(ModelEvent::ProviderEvent(ProviderExtension::new(name, value)), digest, event_id)
     }
 
     fn push(
         &mut self,
         event: ModelEvent,
         digest: peritus_types::Sha256Digest,
-        event_id: Option<&str>,
+        provider_event_id: Option<EventId>,
     ) -> Result<(), ProviderCoreError> {
         let terminal = matches!(
             event,
@@ -422,16 +431,6 @@ impl NormalizeState {
         if usize::try_from(sequence).map_or(true, |count| count > self.limits.max_events()) {
             return Err(limit("Anthropic normalized events exceeded the selected event bound"));
         }
-        let provider_event_id = event_id
-            .map(|id| {
-                owned_string(id, "Anthropic event identity capacity is unavailable")
-                    .and_then(|value| {
-                        EventId::new(value)
-                            .map_err(|_| invalid("Anthropic SSE event ID is invalid"))
-                    })
-            })
-            .transpose()
-            ?;
         let observed_semantics = !matches!(event, ModelEvent::Heartbeat);
         let envelope = EventEnvelope::new(sequence, None, provider_event_id, digest, event)
             .map_err(|_| invalid("normalized Anthropic event envelope is invalid"))?;
@@ -455,6 +454,23 @@ impl NormalizeState {
         }
         Ok(())
     }
+
+    fn take_active_event_id(
+        &mut self,
+        event_id: Option<&str>,
+    ) -> Result<Option<EventId>, ProviderCoreError> {
+        if let (Some(raw), Some(active)) = (event_id, &self.active_event_id)
+            && active.expose_for_wire() != raw
+        {
+            return Err(invalid("Anthropic active SSE event identity changed during expansion"));
+        }
+        Ok(event_id.and_then(|_| self.active_event_id.take()))
+    }
+}
+
+fn checked_event_id(value: &str) -> Result<EventId, ProviderCoreError> {
+    let value = owned_string(value, "Anthropic event identity capacity is unavailable")?;
+    EventId::new(value).map_err(|_| invalid("Anthropic SSE event ID is invalid"))
 }
 
 fn correctness_critical(kind: &str) -> bool {

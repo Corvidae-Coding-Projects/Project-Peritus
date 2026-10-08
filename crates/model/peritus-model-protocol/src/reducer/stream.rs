@@ -198,19 +198,22 @@ impl ResponseReducer {
     ) -> Result<Option<ReducerTransition>, ProtocolError> {
         let Some(id) = envelope.provider_event_id() else { return Ok(None) };
         let Some(seen) = self.seen.get(id) else { return Ok(None) };
-        let local_sequence_compatible = envelope.sequence() == seen.local_sequence
-            || crate::verified::next_sequence_legal(self.last_sequence, envelope.sequence());
+        let exact_redelivery = envelope.sequence() == seen.local_sequence;
+        let consecutive_frame_sibling = seen.provider_sequence.is_none()
+            && envelope.provider_sequence().is_none()
+            && seen.local_sequence == self.last_sequence
+            && crate::verified::next_sequence_legal(self.last_sequence, envelope.sequence());
         if !crate::verified::deduplication_legal(crate::verified::DeduplicationFacts {
             identity_matches: true,
             digest_matches: seen.digest == envelope.provider_digest(),
             provider_sequence_matches: seen.provider_sequence == envelope.provider_sequence(),
-            local_sequence_compatible,
+            local_sequence_compatible: exact_redelivery || consecutive_frame_sibling,
         }) {
             return self
                 .reject("provider event identity was reused with different bytes or sequence");
         }
-        if crate::verified::next_sequence_legal(self.last_sequence, envelope.sequence()) {
-            self.last_sequence = envelope.sequence();
+        if consecutive_frame_sibling {
+            return Ok(None);
         }
         Ok(Some(ReducerTransition::DuplicateIgnored))
     }

@@ -178,7 +178,7 @@ pub(super) fn delta(
                 event_id,
             )?;
             if let Some(previous) = previous {
-                state.emit(
+                state.emit_provenance(
                     ModelEvent::Heartbeat,
                     previous.digest,
                     previous.event_id.as_deref(),
