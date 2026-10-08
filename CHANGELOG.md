@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L608] Windows ACL rollback ownership is not durable across owner loss (#664)
 - [L034] Goal continuation requires lifecycle/evidence admission (#133)
 - [L033] Optional run horizon and provider-circuit lifetime (#132)
 - [L437] E3 recovery can request analysis from ReportReady and treats terminal publication as complete without owner checks (#517)
