@@ -141,9 +141,24 @@ impl ToolRouter {
                 prepared.replay_identity(),
             )));
         }
-        let Some(reservation_owner) = self.replay.retained_reservation_owner(prepared)? else {
+        let Some(record) = self.replay.reconnect(prepared)? else {
             return Ok(InterruptedDispatch::Unadopted);
         };
+        if matches!(
+            record.kind(),
+            crate::ReplayRecordKind::NonIdempotentTerminal
+                | crate::ReplayRecordKind::ReplayTerminal
+                | crate::ReplayRecordKind::Indeterminate
+        ) {
+            return Ok(InterruptedDispatch::Settled);
+        }
+        let reservation_owner = record.reservation_owner().ok_or_else(|| {
+            RouterError::new(
+                RouterErrorKind::Durability,
+                "reconcile interrupted tool dispatch",
+                "durable replay reservation has no reconstruction owner",
+            )
+        })?;
         if self.replay.pending_publication(action_id).is_none() {
             self.replay.indeterminate(prepared, reservation_owner);
         }
@@ -168,7 +183,12 @@ impl ToolRouter {
         &mut self,
         published: PublishedReplayReceipt,
     ) -> Result<(), RouterError> {
-        self.replay.acknowledge_publication(published)
+        if let Some((action_id, replay_identity)) =
+            self.replay.acknowledge_publication(published)?
+        {
+            self.retire_settled_active(action_id, replay_identity);
+        }
+        Ok(())
     }
 
     /// Computes canonical role/capability exposure.
@@ -205,7 +225,13 @@ impl ToolRouter {
         request: &ToolAuthorizationRequest<'_>,
         dispatcher: &mut dyn ToolDispatcher,
     ) -> Result<DispatchOutcome, RouterError> {
-        if let Some(outcome) = self.replay.inspect(&prepared)? {
+        if let Some((outcome, settled)) = self.replay.inspect(&prepared)? {
+            if settled && self.replay.pending_publication(prepared.call().action_id()).is_none() {
+                self.retire_settled_active(
+                    prepared.call().action_id(),
+                    prepared.replay_identity().digest(),
+                );
+            }
             authorization::validate(&prepared, request)?;
             return Ok(outcome);
         }
@@ -465,7 +491,9 @@ impl ToolRouter {
                     .cloned()
                     .ok_or_else(|| invalid("completed recovery observation has no terminal result"))?;
                 self.replay.complete(&prepared, reservation_owner, terminal.clone());
-                self.active.remove(&action_id);
+                if self.replay.pending_publication(action_id).is_none() {
+                    self.active.remove(&action_id);
+                }
                 if prepared.call().limits().progress_contract() == ProgressContract::PagedV2 {
                     Ok(RecoveryOutcome::CompletedUpdate(result))
                 } else {
@@ -507,7 +535,9 @@ impl ToolRouter {
         self.accept_update(handle, &prepared, &mut update)?;
         if let Some(result) = update.terminal() {
             self.replay.complete(&prepared, reservation_owner, result.clone());
-            self.active.remove(&action_id);
+            if self.replay.pending_publication(action_id).is_none() {
+                self.active.remove(&action_id);
+            }
         }
         Ok(update)
     }
@@ -560,6 +590,18 @@ impl ToolRouter {
             return Err(replay_mismatch());
         }
         Ok(entry)
+    }
+
+    fn retire_settled_active(
+        &mut self,
+        action_id: ActionId,
+        replay_identity: peritus_types::Sha256Digest,
+    ) {
+        if self.active.get(&action_id).is_some_and(|entry| {
+            entry.prepared().replay_identity().digest() == replay_identity
+        }) {
+            self.active.remove(&action_id);
+        }
     }
 }
 

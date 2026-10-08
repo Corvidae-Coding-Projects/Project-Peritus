@@ -803,17 +803,47 @@ impl ReplayLedger {
     pub(crate) fn inspect(
         &mut self,
         prepared: &PreparedToolCall,
-    ) -> Result<Option<DispatchOutcome>, RouterError> {
+    ) -> Result<Option<(DispatchOutcome, bool)>, RouterError> {
         if let Some(record) = self.entries.get(&prepared.call().action_id()).cloned() {
             self.publish_settled(&record);
-            return record.outcome(prepared).map(Some);
+            return record
+                .outcome(prepared)
+                .map(|outcome| Some((outcome, is_settled(record.kind))));
         }
         self.store
             .lookup(prepared.call().action_id())
             .map_err(|_| durability_error())?
             .as_ref()
-            .map(|record| record.outcome(prepared))
+            .map(|record| {
+                record
+                    .outcome(prepared)
+                    .map(|outcome| (outcome, is_settled(record.kind)))
+            })
             .transpose()
+    }
+
+    pub(crate) fn reconnect(
+        &mut self,
+        prepared: &PreparedToolCall,
+    ) -> Result<Option<ReplayRecord>, RouterError> {
+        let record = match self.entries.get(&prepared.call().action_id()).cloned() {
+            Some(record) => Some(record),
+            None => self
+                .store
+                .lookup(prepared.call().action_id())
+                .map_err(|_| durability_error())?,
+        };
+        if record.as_ref().is_some_and(|record| {
+            record.action_id != prepared.call().action_id()
+                || record.replay_identity != prepared.replay_identity().digest()
+        }) {
+            return Err(RouterError::new(
+                RouterErrorKind::ReplayConflict,
+                "reconnect durable tool invocation",
+                "durable replay receipt differs from the prepared call",
+            ));
+        }
+        Ok(record)
     }
 
     pub(crate) fn active_adoption(
@@ -1048,11 +1078,11 @@ impl ReplayLedger {
     pub(crate) fn acknowledge_publication(
         &mut self,
         published: PublishedReplayReceipt,
-    ) -> Result<(), RouterError> {
+    ) -> Result<Option<(ActionId, Sha256Digest)>, RouterError> {
         let PublishedReplayReceipt { record } = published;
         let record = record.as_ref();
         let Some(retained) = self.entries.get(&record.action_id) else {
-            return Ok(());
+            return Ok(None);
         };
         if retained != record || !is_settled(retained.kind) {
             return Err(RouterError::new(
@@ -1062,7 +1092,7 @@ impl ReplayLedger {
             ));
         }
         self.entries.remove(&record.action_id);
-        Ok(())
+        Ok(Some((record.action_id, record.replay_identity)))
     }
 
     pub(crate) fn reservation_owner(
