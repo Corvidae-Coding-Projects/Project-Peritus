@@ -14,17 +14,12 @@ use peritus_model_protocol::{SchemaDialect, ToolDefinition};
 
 const TOOL_POLICY_MAGIC: &[u8; 4] = b"P4TP";
 const VIEW_BINDING_MAGIC: &[u8; 4] = b"P4VB";
-const MAX_BINDING_BYTES: usize = 128 * 1024 * 1024;
 
 const fn writer() -> CanonicalWriter {
-    CanonicalWriter::new(CodecLimits::new(
-        MAX_BINDING_BYTES,
-        MAX_BINDING_BYTES,
-        1_100_000,
-        32 * 1024 * 1024,
-        32 * 1024 * 1024,
-        16,
-    ))
+    // The view and validation are independently stored artifacts. Their canonical u32 field
+    // widths are the representation limit; this binding must not impose a smaller host-only
+    // ceiling that recovery does not share.
+    CanonicalWriter::new(CodecLimits::PRODUCTION)
 }
 
 fn binding_error(_: peritus_codec::CodecError) -> DeveloperLoopError {

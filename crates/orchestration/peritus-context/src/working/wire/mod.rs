@@ -24,7 +24,10 @@ pub use state::{
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecLimits};
 use super::WorkingError;
 
-const LIMITS: CodecLimits = CodecLimits::new(8 * 1024 * 1024, 8 * 1024 * 1024, 65_535, 2_048, 2_048, 8);
+// This is a bound for one PWMS/PWMC legacy snapshot or one current root, descriptor, or data
+// page. PWP2 logical counts and linked page chains are deliberately not bounded by it.
+const PHYSICAL_FRAME_LIMITS: CodecLimits =
+    CodecLimits::new(8 * 1024 * 1024, 8 * 1024 * 1024, 65_535, 2_048, 2_048, 8);
 const VERSION: u16 = 1;
 
 /// Structural decode/encode rejection, containing no archived text.
@@ -52,15 +55,17 @@ impl core::fmt::Display for WorkingCodecError {
 impl std::error::Error for WorkingCodecError {}
 
 fn writer(magic: [u8; 4]) -> Result<CanonicalWriter, WorkingCodecError> {
-    let mut writer = CanonicalWriter::new(LIMITS);
+    let mut writer = CanonicalWriter::new(PHYSICAL_FRAME_LIMITS);
     writer.write_fixed(&magic)?;
     writer.write_u16(VERSION)?;
     Ok(writer)
 }
 
 fn reader(bytes: &[u8], magic: [u8; 4]) -> Result<CanonicalReader<'_>, WorkingCodecError> {
-    if bytes.len() > LIMITS.max_payload_bytes { return Err(WorkingError::Capacity.into()); }
-    let mut reader = CanonicalReader::new(bytes, LIMITS);
+    if bytes.len() > PHYSICAL_FRAME_LIMITS.max_payload_bytes {
+        return Err(WorkingError::Capacity.into());
+    }
+    let mut reader = CanonicalReader::new(bytes, PHYSICAL_FRAME_LIMITS);
     if reader.read_fixed::<4>()? != magic || reader.read_u16()? != VERSION {
         return Err(WorkingCodecError::InvalidValue);
     }
