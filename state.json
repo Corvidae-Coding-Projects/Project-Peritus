@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3987,
-        "tip_oid": "2f421e0d71f3f5178932db873306b05cfe3c64a2",
-        "prefix_sha256": "627bf302c79e2f4d00cee1e4398283bed6b7d09009d3585b1beec26d1a8d053b"
+        "sequence": 3988,
+        "tip_oid": "1fd7563fee43d53f9d1b1b542d9aa40194c787d9",
+        "prefix_sha256": "303504172c797a7b5e7c58a9ab507a309bce193d4b8e847944d2b104aea64d52"
       },
       "NWAR": {
         "sequence": 39,
@@ -20037,12 +20037,13 @@
       "display_id": 523,
       "title": "[L444] F0 phase progression prevents admitting later diagnosis, variants or replacement evaluations",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L444.\n\n- Evidence: `crates/analysis/peritus-evolution/src/campaign/reducer/transition.rs:70-183,185-205`, `src/campaign/reducer/transition/collection.rs:35-60`, `src/campaign/command.rs:14-76`, `src/campaign/state.rs:13-45` in the same crate.\n- Behavior: SubmitDiagnosis is only legal in BaselineRunning/Diagnosing; the first manifest moves to Proposing. AdmitVariant is only legal in Proposing; the first evaluation moves to VariantsRunning. The first attribution moves to Attributing, where more evaluations are illegal. An evaluation is keyed solely by variant identity and an existing key is rejected even when a later report supersedes the earlier observation. There is no paused state, phase rollback, evidence replacement or scope-amendment command. Cancellation remains legal from nonterminal phases, unlike E3's late-analysis restriction.\n- Consequence: Interleaving discovery, evaluation and attribution or obtaining corrected evidence can require a successor campaign even when the same baseline/candidate work is still useful. A single permanently unevaluated admitted variant also blocks RecordSelection, which requires an assessment for every variant. This is a source-derived lifecycle constraint, not proof of context loss or permission to bypass promotion review.\n- Repair direction: Define durable per-variant/evidence lifecycle and explicit supersession rather than one global phase that closes all earlier admission. Preserve immutable snapshots and completed work when extending or repairing campaign scope. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.579182720Z",
-      "updated_at": "2026-10-08T02:37:57.298110780Z",
+      "updated_at": "2026-10-08T02:39:33.969648093Z",
+      "closed_at": "2026-10-08T02:39:33.966652975Z",
       "labels": [
         "daily-driving-limiter"
       ],
