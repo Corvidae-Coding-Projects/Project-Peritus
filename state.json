@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4050,
-        "tip_oid": "943429d2ccb317963849c9be392835070366870f",
-        "prefix_sha256": "ba5ef77146f42b2671d22479dc6adecf145cb0c0f99b28bacce40b1a8c191fd6"
+        "sequence": 4051,
+        "tip_oid": "c5b95011f27bf6b1aabb1c1f13de7b907fc6a186",
+        "prefix_sha256": "80e6fcc84c802f18c7a6b9bf86dfa7851d2851fac3240fb70269f6203ac02ab4"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3228,
+  "next_comment_id": 3229,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -14423,7 +14423,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.323931599Z",
-      "updated_at": "2026-10-06T13:27:51.326614763Z",
+      "updated_at": "2026-10-08T04:29:19.149371998Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -14434,6 +14434,15 @@
           "content": "Systemic repair plan for L624: Evidence startup holds a write transaction for a full catalog scan and has no quarantine reconciliation operation.\n\nOwning contract and implementation boundary: crates/state/peritus-evidence/src/sqlite/quarantine.rs:49-76,84-106,159-199; src/sqlite/row.rs:56-104,107-155; src/sqlite/store.rs:57-64. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRetain corruption checks and copied evidence, but make verified scan progress durable and bounded per transaction; implement explicit digest-checked reconciliation/rebuild ownership rather than a permanent unusable identity with an operator-only recovery label. Source review only; no tests run.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "bf9b31f0-136a-4198-839d-9d3a2a51c13b": {
+          "display_id": 3228,
+          "author": "6ME5",
+          "content": "Code complete in commit 54c226b32. Startup containment persists raw-identity cursor/high-water progress and bounds each transaction, preserving malformed evidence in append-only digest-keyed quarantine history. Exact digest-authorized reconciliation and canonical same-identity rebuild preserve original indexed content/provenance and copied audit evidence, with idempotent cancellation-aware ownership. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T04:29:19.140484160Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA/gZeXdb9vNy+LROOGcLV+mEu2uOa/mEvtnXYOXtjL0cujFxMO2EK6v9pm996rMYg8irnwGYAQ7KRvEXfyy99Cg=="
         }
       }
     },
