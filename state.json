@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4116,
-        "tip_oid": "f390cb31a31083397e70aa30806f86de1a635c59",
-        "prefix_sha256": "b5527377e9407bb6e8655d7f77fff720b1880ccb91c206e699a75ba6bf88f379"
+        "sequence": 4117,
+        "tip_oid": "a9a779f7d8fbe637b2cd149a190e3f1f380dbbfa",
+        "prefix_sha256": "9171cd6bf12407f35281611b5154adbbbe3b39b3cf102331831189758a4d3ede"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3261,
+  "next_comment_id": 3262,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -25250,7 +25250,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.076642835Z",
-      "updated_at": "2026-10-07T06:29:57.404095269Z",
+      "updated_at": "2026-10-08T06:23:39.849053529Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -25263,6 +25263,15 @@
           "kind": "observation",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAKdOyDsxtjHCp/NWcS58533rD0G8+vXIIXGKrhMzRhX7X01WGdt7puV90UwgWBh7kAvKR95et1fnKrsXDQhMcAQ=="
+        },
+        "4abb8a40-f1c2-4079-b663-b159c7b1e8d3": {
+          "display_id": 3261,
+          "author": "6ME5",
+          "content": "Code complete in commit c7f14238a. Evidence retrieval searches complete eligible history within its own preference and exact provider headroom; working selection removes the synthetic 512-node ceiling. Logical update operation/list counts are paged without cumulative parser caps, including source-authenticated local semantic auxiliary pages; physical reducer and response pages remain explicit. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T06:23:39.840156511Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAhkDZDQcoaXSMKVTiIknXZEMHjpmOYhQguosvcJHi6xBDknqEYpbHwzjWdaJ5vqvNtXpDwOh4mI+eLWL9U1CSDg=="
         },
         "4db8cc0f-e959-47a3-91e3-e3c0f56dcd91": {
           "display_id": 2229,
