@@ -31,7 +31,6 @@ use std::{
 const FRAME_FAMILY: u16 = 3401;
 const STATE_NAMESPACE: u16 = 3401;
 const STATE_KEY: &[u8] = b"local-working-memory/checkpoint/v1";
-pub(super) const MAX_ARTIFACT_BYTES: u64 = i64::MAX as u64;
 
 /// Local artifact handle with exact verified size.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -116,7 +115,7 @@ impl LocalStore {
             &journal_cancellation,
         )
         .map_err(|failure| map_journal_failure(&journal_cancellation, "open C0 journal", failure))?;
-        let config = StoreConfig::for_available_space(root.join("artifacts"), MAX_ARTIFACT_BYTES)
+        let config = StoreConfig::for_available_space_without_artifact_limit(root.join("artifacts"))
             .and_then(|config| config.with_database_path(&database))
             .map_err(|_| error("configure C0 artifact store"))?;
         let artifacts = catalog_cancellation.run(|| ArtifactStore::open(config))
@@ -199,9 +198,6 @@ impl LocalStore {
     pub(super) fn store(&self, bytes: &[u8]) -> Result<StoredArtifact, DeveloperLoopError> {
         self.check_cancelled()?;
         let length = u64::try_from(bytes.len()).map_err(|_| error("artifact size overflow"))?;
-        if length > MAX_ARTIFACT_BYTES {
-            return Err(error("artifact capacity exceeded"));
-        }
         let digest = sha256(bytes);
         let event = self.identity.event(
             self.sequence().checked_add(1).ok_or_else(|| error("event sequence overflow"))?,
@@ -209,7 +205,7 @@ impl LocalStore {
         let request = WriteRequest::new(
             ArtifactDigest::from_sha256(digest),
             length,
-            MAX_ARTIFACT_BYTES,
+            length.max(1),
             MediaType::new("application/octet-stream").map_err(|_| error("artifact media type"))?,
             EncryptionMetadata::unencrypted(),
             event,
@@ -228,12 +224,28 @@ impl LocalStore {
         bytes: &[u8],
         children: &[StoredArtifact],
     ) -> Result<StoredArtifact, DeveloperLoopError> {
+        let mut unique_children: Vec<StoredArtifact> = Vec::new();
+        unique_children
+            .try_reserve_exact(children.len())
+            .map_err(|_| error("allocate artifact dependency index"))?;
+        for child in children {
+            if let Some(known) = unique_children
+                .iter()
+                .find(|known| known.digest == child.digest)
+            {
+                if known.bytes != child.bytes {
+                    return Err(error("artifact dependency length conflict"));
+                }
+            } else {
+                unique_children.push(*child);
+            }
+        }
         let parent = self.store(bytes)?;
         self.check_cancelled()?;
         self.catalog_cancellation.run(|| {
             self.artifacts.bind_dependencies(
                 ArtifactDigest::from_sha256(parent.digest),
-                children.iter().map(|child| {
+                unique_children.iter().map(|child| {
                     (ArtifactDigest::from_sha256(child.digest), child.bytes)
                 }),
             )
@@ -244,9 +256,6 @@ impl LocalStore {
 
     pub(super) fn read(&self, artifact: StoredArtifact) -> Result<Vec<u8>, DeveloperLoopError> {
         self.check_cancelled()?;
-        if artifact.bytes > MAX_ARTIFACT_BYTES {
-            return Err(error("artifact read capacity exceeded"));
-        }
         let bytes = self.catalog_cancellation.run(|| self
             .artifacts
             .read(ArtifactDigest::from_sha256(artifact.digest), artifact.bytes)
@@ -263,9 +272,6 @@ impl LocalStore {
         artifact: StoredArtifact,
     ) -> Result<ArtifactReadHandle, DeveloperLoopError> {
         self.check_cancelled()?;
-        if artifact.bytes > MAX_ARTIFACT_BYTES {
-            return Err(error("artifact read capacity exceeded"));
-        }
         let digest = ArtifactDigest::from_sha256(artifact.digest);
         let handle = self.catalog_cancellation.run(|| self
             .artifacts
@@ -283,9 +289,12 @@ impl LocalStore {
 
     pub(super) fn read_digest(&self, digest: [u8; 32]) -> Result<Vec<u8>, DeveloperLoopError> {
         self.check_cancelled()?;
-        self.catalog_cancellation.run(|| self.artifacts
-            .read(ArtifactDigest::from_sha256(Sha256Digest::new(digest)), MAX_ARTIFACT_BYTES)
-        )
+        let digest = ArtifactDigest::from_sha256(Sha256Digest::new(digest));
+        let bytes = self.catalog_cancellation.run(|| self.artifacts.metadata(digest))
+            .map_err(|failure| self.artifact_failure("read artifact metadata", failure))?
+            .ok_or_else(|| error("artifact unavailable or digest mismatch"))?
+            .size();
+        self.catalog_cancellation.run(|| self.artifacts.read(digest, bytes))
             .map_err(|failure| self.artifact_failure("artifact unavailable or digest mismatch", failure))
     }
 

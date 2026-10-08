@@ -15,7 +15,10 @@ use sha2::{Digest as _, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write as _;
 
-const SOURCE_PAGE_ENTRIES: usize = 256;
+// One predecessor plus these observation artifacts fits the 256-child physical bundle fanout.
+const SOURCE_PAGE_ENTRIES: usize = 255;
+// Schema-one stores already contain pages written before physical dependency binding.
+const LEGACY_SOURCE_PAGE_ENTRIES: usize = 256;
 const TRANSCRIPT_PAGE_ENTRIES: usize = 256;
 
 pub(in crate::local_context) fn read_complete_checkpoint_indexes(
@@ -61,7 +64,7 @@ impl LocalMemory {
             return Err(error("checkpoint source frontier exceeds current archive"));
         }
         let mut source_tail = self.source_index_tail;
-        let mut roots = Vec::new();
+        let mut source_changed = false;
         for observations in self.sources[indexed..].chunks(SOURCE_PAGE_ENTRIES) {
             let first_sequence = observations
                 .first()
@@ -75,9 +78,11 @@ impl LocalMemory {
                 first_sequence,
                 observations: observations.to_vec(),
             };
-            let artifact = self.store.store(&encode(&page)?)?;
-            roots.push(artifact.digest);
+            let mut children = source_tail.into_iter().collect::<Vec<_>>();
+            children.extend(observations.iter().map(|observation| observation.artifact));
+            let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
             source_tail = Some(artifact);
+            source_changed = true;
         }
         if source_tail.is_none() {
             let page = SourceIndexPage {
@@ -86,18 +91,20 @@ impl LocalMemory {
                 first_sequence: 1,
                 observations: Vec::new(),
             };
-            let artifact = self.store.store(&encode(&page)?)?;
-            roots.push(artifact.digest);
+            let artifact = self.store.store_bundle(&encode(&page)?, &[])?;
             source_tail = Some(artifact);
+            source_changed = true;
         }
 
-        let (transcript_tail, transcript_roots) = self.store_transcript_pages()?;
-        roots.extend(transcript_roots);
+        let (transcript_tail, transcript_changed) = self.store_transcript_pages()?;
         let source = source_tail.ok_or_else(|| error("source index tail is missing"))?;
         let transcript =
             transcript_tail.ok_or_else(|| error("transcript index tail is missing"))?;
-        if !roots.is_empty() {
-            self.commit(&MemoryRecord::CheckpointIndex { source, transcript }, &roots)?;
+        if source_changed || transcript_changed {
+            self.commit(
+                &MemoryRecord::CheckpointIndex { source, transcript },
+                &[source.digest, transcript.digest],
+            )?;
         }
         self.source_index_tail = Some(source);
         self.transcript_index_tail = Some(transcript);
@@ -108,12 +115,12 @@ impl LocalMemory {
     }
 
     pub(super) fn publish_transcript_index(&mut self) -> Result<(), DeveloperLoopError> {
-        let (tail, roots) = self.store_transcript_pages()?;
+        let (tail, changed) = self.store_transcript_pages()?;
         let Some(transcript) = tail else {
             return Err(error("transcript index tail is missing"));
         };
-        if !roots.is_empty() {
-            self.commit(&MemoryRecord::TranscriptIndex { transcript }, &roots)?;
+        if changed {
+            self.commit(&MemoryRecord::TranscriptIndex { transcript }, &[transcript.digest])?;
         }
         self.transcript_index_tail = Some(transcript);
         self.indexed_transcript.clone_from(&self.transcript);
@@ -123,10 +130,10 @@ impl LocalMemory {
 
     fn store_transcript_pages(
         &self,
-    ) -> Result<(Option<StoredArtifact>, Vec<peritus_types::Sha256Digest>), DeveloperLoopError> {
+    ) -> Result<(Option<StoredArtifact>, bool), DeveloperLoopError> {
         let mut tail = self.transcript_index_tail;
         let mut current = self.indexed_transcript.clone();
-        let mut roots = Vec::new();
+        let mut changed = false;
         validate_invocation_frontier(
             &self.invocations,
             self.indexed_invocation_count,
@@ -147,25 +154,27 @@ impl LocalMemory {
             marker.current_inputs.clear();
             marker.message_ids.clear();
             let page = transcript_delta(tail, &current, &marker)?;
-            let artifact = self.store.store(&encode(&page)?)?;
-            roots.push(artifact.digest);
+            let children = tail.into_iter().collect::<Vec<_>>();
+            let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
             tail = Some(artifact);
             current = marker;
+            changed = true;
         }
         while let Some(next) = next_transcript_step(&current, &self.transcript)? {
             let page = transcript_delta(tail, &current, &next)?;
-            let artifact = self.store.store(&encode(&page)?)?;
-            roots.push(artifact.digest);
+            let children = tail.into_iter().collect::<Vec<_>>();
+            let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
             tail = Some(artifact);
             current = next;
+            changed = true;
         }
         if tail.is_none() {
             let page = transcript_delta(None, &current, &current)?;
-            let artifact = self.store.store(&encode(&page)?)?;
-            roots.push(artifact.digest);
+            let artifact = self.store.store_bundle(&encode(&page)?, &[])?;
             tail = Some(artifact);
+            changed = true;
         }
-        Ok((tail, roots))
+        Ok((tail, changed))
     }
 
     pub(super) fn restore_checkpoint_indexes(
@@ -675,7 +684,7 @@ fn read_source_chain(
         }
         let page: SourceIndexPage = decode(&read(artifact)?)?;
         if page.schema_version != INDEX_PAGE_SCHEMA_VERSION
-            || page.observations.len() > SOURCE_PAGE_ENTRIES
+            || page.observations.len() > LEGACY_SOURCE_PAGE_ENTRIES
             || (page.observations.is_empty() && page.previous.is_some())
         {
             return Err(error("unsupported source page schema"));
