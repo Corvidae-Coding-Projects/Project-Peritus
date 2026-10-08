@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4026,
-        "tip_oid": "8f21a450e6b9b19aa3a2d6052690b7999bf615e4",
-        "prefix_sha256": "a70791dfcc2a43f11f8626c974e3577ae1d08964d72f8264484145e13452e0c0"
+        "sequence": 4027,
+        "tip_oid": "8a1d4248627786338946c001ae7ade2a766143fa",
+        "prefix_sha256": "1e10329d6e2366b00c7d68ce076e48cdcb27c66a06d38b3a8428aa7bc9c4dc9f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3216,
+  "next_comment_id": 3217,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -13163,7 +13163,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.296506173Z",
-      "updated_at": "2026-10-06T13:27:51.298975524Z",
+      "updated_at": "2026-10-08T03:46:24.546674847Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -13174,6 +13174,15 @@
           "content": "Systemic repair plan for L618: Windows helper narrows target status and hides post-activation failure causes.\n\nOwning contract and implementation boundary: crates/runtime/peritus-sandbox-windows/src/native/launch.rs:108-127; src/helper_process.rs:9-13,34-44; src/runner.rs:139-168. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nCarry exact native target termination and structured post-activation failures through the authenticated status channel and journal independently of helper process exit.\n\nPreserve: exact process birth/tree identity, confined authority, one-use dispatch receipts, monotonic cancel intent, truthful terminal/ownership settlement, complete output accounting and platform OS constraints. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: long-running commands, output and stdin pressure, stalled helper/input readers, control-queue saturation, late start/exit races, parent loss and restart, proving cancellation responsiveness, no PID-reuse adoption and no duplicate process dispatch. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "a3c9feec-5dcc-4af1-a63f-02166fb5c621": {
+          "display_id": 3216,
+          "author": "6ME5",
+          "content": "Code complete in commit 69f0efdcf. Digest-bound authenticated completion carries exact Windows u32 target status and structured post-activation failure independently of helper exit. Native status/failure reaches owner settlement and versioned terminal/manifest records; ordinary legacy bytes and pre-start helper classification remain intact, with no fabricated wide status from lossy legacy receipts. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T03:46:24.537716291Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAfzApav67AJfjXgZnfafiUdMtf+HeDX18Ygf5j4cpo5nh0jRbpb3echeNlFUe8MbXF7p5FH9dW4beniEV1WIgCg=="
         }
       }
     },
