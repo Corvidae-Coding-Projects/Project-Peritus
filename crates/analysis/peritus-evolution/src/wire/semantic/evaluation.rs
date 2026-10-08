@@ -8,8 +8,8 @@ use peritus_eval::{
 use peritus_types::EvidenceId;
 
 use crate::{
-    EvaluationAnalysisSnapshot, EvaluationMetric, EvolutionError, PublishedEvaluationEvidence,
-    TaskPassAtKSnapshot,
+    EvaluationAnalysisSnapshot, EvaluationMetric, EvaluationSupersession, EvolutionError,
+    PublishedEvaluationEvidence, TaskPassAtKSnapshot, VariantId,
 };
 
 use super::super::scalar;
@@ -67,6 +67,52 @@ pub(super) fn read(
         evidence,
         position,
         analysis,
+    )
+}
+
+pub(super) fn write_supersession(
+    writer: &mut CanonicalWriter,
+    value: &EvaluationSupersession,
+) -> Result<(), EvolutionError> {
+    writer.write_fixed(value.variant_id().as_bytes()).map_err(scalar::codec)?;
+    writer
+        .write_fixed(value.predecessor_evaluation_digest().as_bytes())
+        .map_err(scalar::codec)?;
+    writer.write_fixed(value.predecessor_campaign_id().as_bytes()).map_err(scalar::codec)?;
+    writer.write_fixed(value.predecessor_report_id().as_bytes()).map_err(scalar::codec)?;
+    writer.write_fixed(value.predecessor_report_digest().as_bytes()).map_err(scalar::codec)?;
+    writer.write_fixed(value.predecessor_report_artifact().as_bytes()).map_err(scalar::codec)?;
+    writer.write_fixed(value.predecessor_evidence_id().as_bytes()).map_err(scalar::codec)?;
+    writer.write_fixed(value.reconciliation_digest().as_bytes()).map_err(scalar::codec)?;
+    write(writer, value.successor())
+}
+
+pub(super) fn read_supersession(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<EvaluationSupersession, EvolutionError> {
+    let variant_id = VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?;
+    let predecessor_evaluation_digest = scalar::digest(reader)?;
+    let predecessor_campaign_id =
+        EvaluationCampaignId::new(reader.read_fixed().map_err(scalar::codec)?)
+            .map_err(scalar::domain)?;
+    let predecessor_report_id =
+        EvaluationReportId::new(reader.read_fixed().map_err(scalar::codec)?)
+            .map_err(scalar::domain)?;
+    let predecessor_report_digest = scalar::digest(reader)?;
+    let predecessor_report_artifact = scalar::digest(reader)?;
+    let predecessor_evidence_id =
+        EvidenceId::new(reader.read_fixed().map_err(scalar::codec)?).map_err(scalar::domain)?;
+    let reconciliation_digest = scalar::digest(reader)?;
+    EvaluationSupersession::from_exact_parts(
+        variant_id,
+        predecessor_evaluation_digest,
+        predecessor_campaign_id,
+        predecessor_report_id,
+        predecessor_report_digest,
+        predecessor_report_artifact,
+        predecessor_evidence_id,
+        reconciliation_digest,
+        read(reader)?,
     )
 }
 

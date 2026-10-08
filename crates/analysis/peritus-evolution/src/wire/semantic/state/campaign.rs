@@ -3,8 +3,8 @@
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
 
 use crate::{
-    BaselineEvidence, CampaignPhase, CampaignState, CampaignTerminal, EvolutionError, PromotionId,
-    VariantEvaluation, VariantId, identity::digest_parts,
+    BaselineEvidence, CampaignPhase, CampaignState, CampaignTerminal, EvaluationGeneration,
+    EvolutionError, PromotionId, VariantEvaluation, VariantId, identity::digest_parts,
 };
 
 use super::super::{super::scalar, attribution, binding, change, evaluation, proposal, selection};
@@ -59,6 +59,13 @@ pub(crate) fn encode_campaign_state(state: &CampaignState) -> Result<Vec<u8>, Ev
         proposal::write_publication(writer, *value)
     })?;
     write_terminal(&mut writer, state.terminal())?;
+    if let Some(history) = state.evaluation_history() {
+        writer.write_u8(1).map_err(scalar::codec)?;
+        writer.write_collection_len(history.len()).map_err(scalar::codec)?;
+        for generation in history {
+            write_generation(&mut writer, generation)?;
+        }
+    }
     Ok(writer.into_bytes())
 }
 
@@ -113,6 +120,16 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
     let promotion = read_option(&mut reader, proposal::promotion)?;
     let publication = read_option(&mut reader, proposal::publication)?;
     let terminal = terminal(&mut reader)?;
+    let evaluation_history = if reader.remaining() == 0 {
+        None
+    } else {
+        if reader.read_u8().map_err(scalar::codec)? != 1 {
+            return Err(scalar::protocol());
+        }
+        Some(read_vec(&mut reader, usize::MAX, 16 + 8, |reader| {
+            read_generation(reader, limits)
+        })?)
+    };
     reader.finish().map_err(scalar::codec)?;
 
     let binding_digest = digest_parts(
@@ -135,6 +152,9 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
         || evaluations.windows(2).any(|pair| pair[0].variant_id() >= pair[1].variant_id())
         || attributions.windows(2).any(|pair| pair[0].variant_id() >= pair[1].variant_id())
         || assessments.windows(2).any(|pair| pair[0].variant_id() >= pair[1].variant_id())
+        || evaluation_history.as_ref().is_some_and(|history| {
+            !valid_history(history, &evaluations, &attributions, &assessments)
+        })
     {
         return Err(scalar::protocol());
     }
@@ -155,6 +175,7 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
         manifests,
         variants,
         evaluations,
+        evaluation_history,
         attributions,
         assessments,
         selection: selected,
@@ -167,6 +188,99 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
         return Err(scalar::protocol());
     }
     Ok(state)
+}
+
+fn write_generation(
+    writer: &mut CanonicalWriter,
+    value: &EvaluationGeneration,
+) -> Result<(), EvolutionError> {
+    writer.write_fixed(value.variant_id().as_bytes()).map_err(scalar::codec)?;
+    writer.write_u64(value.generation()).map_err(scalar::codec)?;
+    evaluation::write(writer, value.evidence())?;
+    write_option(writer, value.supersession(), evaluation::write_supersession)?;
+    write_option(writer, value.attribution(), attribution::write)?;
+    write_option(writer, value.assessment(), selection::write_assessment)
+}
+
+fn read_generation(
+    reader: &mut CanonicalReader<'_>,
+    limits: crate::EvolutionLimits,
+) -> Result<EvaluationGeneration, EvolutionError> {
+    let variant_id = VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?;
+    let generation = reader.read_u64().map_err(scalar::codec)?;
+    let evidence = evaluation::read(reader)?;
+    let supersession = read_option(reader, evaluation::read_supersession)?;
+    let attribution = read_option(reader, |reader| attribution::read(reader, limits))?;
+    let assessment = read_option(reader, |reader| selection::assessment(reader, limits))?;
+    EvaluationGeneration::from_exact_parts(
+        variant_id,
+        generation,
+        evidence,
+        supersession,
+        attribution,
+        assessment,
+    )
+}
+
+fn valid_history(
+    history: &[EvaluationGeneration],
+    evaluations: &[VariantEvaluation],
+    attributions: &[crate::AttributionRecord],
+    assessments: &[crate::VariantAssessment],
+) -> bool {
+    if history.is_empty() || history.windows(2).any(|pair| {
+        (pair[0].variant_id(), pair[0].generation())
+            >= (pair[1].variant_id(), pair[1].generation())
+    }) {
+        return false;
+    }
+    for (index, generation) in history.iter().enumerate() {
+        let predecessor = index.checked_sub(1).and_then(|value| history.get(value));
+        if predecessor.is_none_or(|value| value.variant_id() != generation.variant_id()) {
+            if generation.generation() != 1 || generation.supersession().is_some() {
+                return false;
+            }
+        } else if predecessor.is_none_or(|value| {
+            generation.generation() != value.generation().saturating_add(1)
+                || generation
+                    .supersession()
+                    .is_none_or(|lineage| !lineage.matches_predecessor(value.evidence()))
+        }) {
+            return false;
+        }
+    }
+    let mut active_generations = 0_usize;
+    for index in 0..history.len() {
+        if history
+            .get(index + 1)
+            .is_none_or(|next| next.variant_id() != history[index].variant_id())
+        {
+            active_generations = active_generations.saturating_add(1);
+        }
+    }
+    if evaluations.len() != active_generations {
+        return false;
+    }
+    evaluations.iter().all(|evaluation| {
+        let Some(latest) = history
+            .iter()
+            .rev()
+            .find(|value| value.variant_id() == evaluation.variant_id())
+        else {
+            return false;
+        };
+        let attribution = attributions
+            .binary_search_by_key(&evaluation.variant_id(), crate::AttributionRecord::variant_id)
+            .ok()
+            .map(|index| &attributions[index]);
+        let assessment = assessments
+            .binary_search_by_key(&evaluation.variant_id(), crate::VariantAssessment::variant_id)
+            .ok()
+            .map(|index| &assessments[index]);
+        latest.evidence() == evaluation.evidence()
+            && latest.attribution() == attribution
+            && latest.assessment() == assessment
+    })
 }
 
 fn write_terminal(

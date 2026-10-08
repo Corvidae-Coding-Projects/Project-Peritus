@@ -2,6 +2,7 @@
 
 mod command;
 mod event;
+mod lifecycle;
 mod projection;
 mod proposal;
 mod reducer;
@@ -9,6 +10,9 @@ mod state;
 
 pub use command::{CampaignCommand, CampaignCommandKind};
 pub use event::{CampaignEvent, CampaignEventKind, CampaignTransition};
+pub use lifecycle::{
+    EvaluationGeneration, EvaluationSupersession, VariantEvidenceLifecycle, VariantEvidenceStage,
+};
 pub use projection::EvolutionProjection;
 pub use proposal::{CampaignPublication, PromotionProposal};
 pub use reducer::{apply_campaign_event, decide_campaign, replay_campaign};

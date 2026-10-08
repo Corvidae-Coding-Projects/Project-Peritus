@@ -175,6 +175,10 @@ pub(super) fn artifact_dependencies(kind: &CampaignCommandKind) -> Vec<ArtifactD
         CampaignCommandKind::AdmitEvaluation { evidence, .. } => {
             vec![ArtifactDependency::new(evidence.report_artifact())]
         }
+        CampaignCommandKind::SupersedeEvaluation(value) => vec![
+            ArtifactDependency::new(value.predecessor_report_artifact()),
+            ArtifactDependency::new(value.successor().report_artifact()),
+        ],
         CampaignCommandKind::RequestPromotion(value) => {
             vec![ArtifactDependency::new(value.evidence_bundle_artifact())]
         }

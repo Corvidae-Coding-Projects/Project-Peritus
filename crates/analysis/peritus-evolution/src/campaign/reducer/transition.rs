@@ -2,8 +2,9 @@
 
 use crate::{
     BaselineEvidence, CampaignCommandKind, CampaignPhase, CampaignState, CampaignTerminal,
-    EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery, SelectionDecision,
-    VariantEvaluation, identity::digest_parts,
+    EvaluationGeneration, EvolutionError, EvolutionErrorKind, EvolutionOperation,
+    EvolutionRecovery, SelectionDecision, VariantEvaluation, identity::digest_parts,
+    select_variant,
 };
 use peritus_types::Sha256Digest;
 
@@ -42,6 +43,7 @@ pub(super) fn apply_kind(
             manifests: Vec::new(),
             variants: Vec::new(),
             evaluations: Vec::new(),
+            evaluation_history: None,
             attributions: Vec::new(),
             assessments: Vec::new(),
             selection: None,
@@ -73,16 +75,16 @@ pub(super) fn apply_kind(
             );
         }
         CampaignCommandKind::RecordBaselineEvidence { artifact_digest, evidence_digest } => {
-            require(&state, &[CampaignPhase::Frozen, CampaignPhase::BaselineRunning])?;
+            require_work_open(&state)?;
             insert_unique(
                 &mut state.baseline_evidence,
                 BaselineEvidence::new(*artifact_digest, *evidence_digest),
                 state.limits.manifests_limit().map(usize::from),
             )?;
-            state.phase = CampaignPhase::BaselineRunning;
+            advance(&mut state, CampaignPhase::BaselineRunning);
         }
         CampaignCommandKind::SubmitDiagnosis(evidence) => {
-            require(&state, &[CampaignPhase::BaselineRunning, CampaignPhase::Diagnosing])?;
+            require_work_open(&state)?;
             if state.baseline_evidence.is_empty()
                 || evidence.revision() != state.baseline.revision()
             {
@@ -94,11 +96,12 @@ pub(super) fn apply_kind(
                 crate::PublishedDebuggerEvidence::digest,
                 state.limits.manifests_limit().map(usize::from),
             )?;
-            state.phase = CampaignPhase::Diagnosing;
+            advance(&mut state, CampaignPhase::Diagnosing);
         }
         CampaignCommandKind::AdmitChangeManifest(manifest) => {
-            require(&state, &[CampaignPhase::Diagnosing, CampaignPhase::Proposing])?;
-            if manifest.baseline() != state.baseline.harness_revision()
+            require_work_open(&state)?;
+            if state.diagnoses.is_empty()
+                || manifest.baseline() != state.baseline.harness_revision()
                 || manifest.diagnoses().iter().any(|value| {
                     state
                         .diagnoses
@@ -119,11 +122,12 @@ pub(super) fn apply_kind(
                 crate::ChangeManifest::id,
                 state.limits.manifests_limit().map(usize::from),
             )?;
-            state.phase = CampaignPhase::Proposing;
+            advance(&mut state, CampaignPhase::Proposing);
         }
         CampaignCommandKind::AdmitVariant(variant) => {
-            require(&state, &[CampaignPhase::Proposing])?;
-            if variant.baseline() != state.baseline
+            require_work_open(&state)?;
+            if state.manifests.is_empty()
+                || variant.baseline() != state.baseline
                 || variant.manifest_ids().iter().any(|id| {
                     state.manifests.binary_search_by_key(id, crate::ChangeManifest::id).is_err()
                 })
@@ -145,7 +149,7 @@ pub(super) fn apply_kind(
             )?;
         }
         CampaignCommandKind::AdmitEvaluation { variant_id, evidence } => {
-            require(&state, &[CampaignPhase::Proposing, CampaignPhase::VariantsRunning])?;
+            require_work_open(&state)?;
             let variant = state
                 .variants
                 .binary_search_by_key(variant_id, crate::VariantDefinition::id)
@@ -163,16 +167,83 @@ pub(super) fn apply_kind(
                 VariantEvaluation::variant_id,
                 state.limits.variants_limit().map(usize::from),
             )?;
-            state.phase = CampaignPhase::VariantsRunning;
+            if let Some(history) = &mut state.evaluation_history {
+                insert_generation(
+                    history,
+                    EvaluationGeneration::initial(*variant_id, evidence.clone(), None, None)?,
+                )?;
+            }
+            advance(&mut state, CampaignPhase::VariantsRunning);
+        }
+        CampaignCommandKind::SupersedeEvaluation(supersession) => {
+            require_work_open(&state)?;
+            let variant_id = supersession.variant_id();
+            let variant = state
+                .variants
+                .binary_search_by_key(&variant_id, crate::VariantDefinition::id)
+                .ok()
+                .map(|index| &state.variants[index])
+                .ok_or_else(|| binding("evaluation successor names an unknown variant"))?;
+            let evaluation_index = state
+                .evaluations
+                .binary_search_by_key(&variant_id, VariantEvaluation::variant_id)
+                .map_err(|_| binding("evaluation successor has no active predecessor"))?;
+            let predecessor = state.evaluations[evaluation_index].evidence();
+            if !supersession.matches_predecessor(predecessor)
+                || supersession.successor().baseline().digest() != arm_digest(variant.baseline())
+                || supersession.successor().candidate().digest() != arm_digest(variant.candidate())
+            {
+                return Err(binding(
+                    "evaluation successor differs from the active predecessor or variant arms",
+                ));
+            }
+            migrate_evaluation_history(&mut state)?;
+            let history = state
+                .evaluation_history
+                .as_mut()
+                .ok_or_else(|| binding("evaluation generation ledger is absent"))?;
+            let generation = history
+                .iter()
+                .rev()
+                .find(|value| value.variant_id() == variant_id)
+                .map(EvaluationGeneration::generation)
+                .ok_or_else(|| binding("active evaluation generation is absent"))?
+                .checked_add(1)
+                .ok_or_else(transition)?;
+            insert_generation(
+                history,
+                EvaluationGeneration::successor(generation, supersession.clone())?,
+            )?;
+            state.evaluations[evaluation_index] =
+                VariantEvaluation::new(variant_id, supersession.successor().clone());
+            if let Ok(index) = state
+                .attributions
+                .binary_search_by_key(&variant_id, crate::AttributionRecord::variant_id)
+            {
+                state.attributions.remove(index);
+            }
+            if let Ok(index) = state
+                .assessments
+                .binary_search_by_key(&variant_id, crate::VariantAssessment::variant_id)
+            {
+                state.assessments.remove(index);
+            }
+            advance(&mut state, CampaignPhase::VariantsRunning);
         }
         CampaignCommandKind::CompleteAttribution { attribution, assessment } => {
-            require(&state, &[CampaignPhase::VariantsRunning, CampaignPhase::Attributing])?;
+            require_work_open(&state)?;
+            let evaluation = state
+                .evaluations
+                .binary_search_by_key(&attribution.variant_id(), VariantEvaluation::variant_id)
+                .ok()
+                .map(|index| &state.evaluations[index]);
             if attribution.variant_id() != assessment.variant_id()
                 || attribution.id() != assessment.attribution_id()
-                || state
-                    .evaluations
-                    .binary_search_by_key(&attribution.variant_id(), VariantEvaluation::variant_id)
-                    .is_err()
+                || assessment.policy_digest() != state.policy.policy().digest()
+                || evaluation.is_none_or(|value| {
+                    attribution.evaluation_digest() != value.evidence().digest()
+                        || assessment.evidence_digest() != value.evidence().digest()
+                })
             {
                 return Err(binding("attribution, assessment, and evaluation differ"));
             }
@@ -188,10 +259,18 @@ pub(super) fn apply_kind(
                 crate::VariantAssessment::variant_id,
                 state.limits.variants_limit().map(usize::from),
             )?;
-            state.phase = CampaignPhase::Attributing;
+            if let Some(history) = &mut state.evaluation_history {
+                let generation = history
+                    .iter_mut()
+                    .rev()
+                    .find(|value| value.variant_id() == attribution.variant_id())
+                    .ok_or_else(|| binding("active evaluation generation is absent"))?;
+                generation.attach(attribution.clone(), assessment.clone())?;
+            }
+            advance(&mut state, CampaignPhase::Attributing);
         }
         CampaignCommandKind::RecordSelection(selection) => {
-            require(&state, &[CampaignPhase::Attributing])?;
+            require_work_open(&state)?;
             if state.assessments.len() != state.variants.len()
                 || selection.policy_digest() != state.policy.policy().digest()
                 || selection.assessment_digests()
@@ -200,6 +279,36 @@ pub(super) fn apply_kind(
                         .iter()
                         .map(crate::VariantAssessment::digest)
                         .collect::<Vec<_>>()
+                || state.assessments.iter().any(|assessment| {
+                    let evaluation_matches = state
+                        .evaluations
+                        .binary_search_by_key(
+                            &assessment.variant_id(),
+                            VariantEvaluation::variant_id,
+                        )
+                        .ok()
+                        .is_some_and(|index| {
+                            state.evaluations[index].evidence().digest()
+                                == assessment.evidence_digest()
+                        });
+                    let attribution_matches = state
+                        .attributions
+                        .binary_search_by_key(
+                            &assessment.variant_id(),
+                            crate::AttributionRecord::variant_id,
+                        )
+                        .ok()
+                        .is_some_and(|index| {
+                            state.attributions[index].id() == assessment.attribution_id()
+                                && state.attributions[index].evaluation_digest()
+                                    == assessment.evidence_digest()
+                        });
+                    !evaluation_matches || !attribution_matches
+                })
+                || !matches!(
+                    select_variant(state.policy.policy(), &state.assessments),
+                    Ok(expected) if &expected == selection
+                )
             {
                 return Err(binding("selection does not cover every admitted variant exactly"));
             }
@@ -294,6 +403,69 @@ fn campaign_binding_digest(
 
 fn require(state: &CampaignState, allowed: &[CampaignPhase]) -> Result<(), EvolutionError> {
     if allowed.contains(&state.phase()) { Ok(()) } else { Err(transition()) }
+}
+
+fn require_work_open(state: &CampaignState) -> Result<(), EvolutionError> {
+    if state.phase() != CampaignPhase::Draft
+        && state.selection.is_none()
+        && state.proposal.is_none()
+        && state.terminal.is_none()
+    {
+        Ok(())
+    } else {
+        Err(transition())
+    }
+}
+
+fn advance(state: &mut CampaignState, phase: CampaignPhase) {
+    if !state.phase.terminal() && phase.tag() > state.phase.tag() {
+        state.phase = phase;
+    }
+}
+
+fn migrate_evaluation_history(state: &mut CampaignState) -> Result<(), EvolutionError> {
+    if state.evaluation_history.is_some() {
+        return Ok(());
+    }
+    let mut history = Vec::new();
+    history
+        .try_reserve_exact(state.evaluations.len())
+        .map_err(|_| transition())?;
+    for evaluation in &state.evaluations {
+        let variant_id = evaluation.variant_id();
+        let attribution = state
+            .attributions
+            .binary_search_by_key(&variant_id, crate::AttributionRecord::variant_id)
+            .ok()
+            .map(|index| state.attributions[index].clone());
+        let assessment = state
+            .assessments
+            .binary_search_by_key(&variant_id, crate::VariantAssessment::variant_id)
+            .ok()
+            .map(|index| state.assessments[index].clone());
+        history.push(EvaluationGeneration::initial(
+            variant_id,
+            evaluation.evidence().clone(),
+            attribution,
+            assessment,
+        )?);
+    }
+    state.evaluation_history = Some(history);
+    Ok(())
+}
+
+fn insert_generation(
+    history: &mut Vec<EvaluationGeneration>,
+    generation: EvaluationGeneration,
+) -> Result<(), EvolutionError> {
+    let key = (generation.variant_id(), generation.generation());
+    match history.binary_search_by_key(&key, |value| (value.variant_id(), value.generation())) {
+        Ok(_) => Err(binding("evaluation generation already has an immutable snapshot")),
+        Err(index) => {
+            history.insert(index, generation);
+            Ok(())
+        }
+    }
 }
 
 pub(super) const fn transition() -> EvolutionError {

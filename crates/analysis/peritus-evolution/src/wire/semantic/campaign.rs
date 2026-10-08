@@ -43,6 +43,10 @@ pub(crate) fn encode_kind(kind: &CampaignCommandKind) -> Result<Vec<u8>, Evoluti
             writer.write_fixed(variant_id.as_bytes()).map_err(scalar::codec)?;
             evaluation::write(&mut writer, evidence)?;
         }
+        CampaignCommandKind::SupersedeEvaluation(value) => {
+            writer.write_u8(16).map_err(scalar::codec)?;
+            evaluation::write_supersession(&mut writer, value)?;
+        }
         CampaignCommandKind::CompleteAttribution { attribution: value, assessment } => {
             writer.write_u8(8).map_err(scalar::codec)?;
             attribution::write(&mut writer, value)?;
@@ -112,6 +116,7 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, Evolution
         13 => CampaignCommandKind::CancelCampaign { reason_digest: scalar::digest(&mut reader)? },
         14 => CampaignCommandKind::FailCampaign { reason_digest: scalar::digest(&mut reader)? },
         15 => CampaignCommandKind::ExpandScope { limits: binding::limits(&mut reader)? },
+        16 => CampaignCommandKind::SupersedeEvaluation(evaluation::read_supersession(&mut reader)?),
         _ => return Err(scalar::protocol()),
     };
     reader.finish().map_err(scalar::codec)?;

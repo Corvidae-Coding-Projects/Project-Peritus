@@ -1,11 +1,11 @@
 //! Closed CAS-fenced evolution-campaign commands.
 
 use crate::{
-    AttributionRecord, CampaignPublication, ChangeManifest, EvolutionCampaignId, EvolutionError,
-    EvolutionErrorKind, EvolutionLimits, EvolutionOperation, EvolutionRecovery,
-    ProductionHarnessBinding, PromotionPolicyBinding, PromotionProposal, PublishedDebuggerEvidence,
-    PublishedEvaluationEvidence, SelectionRecord, VariantAssessment, VariantDefinition, VariantId,
-    identity::digest_parts,
+    AttributionRecord, CampaignPublication, ChangeManifest, EvaluationSupersession,
+    EvolutionCampaignId, EvolutionError, EvolutionErrorKind, EvolutionLimits, EvolutionOperation,
+    EvolutionRecovery, ProductionHarnessBinding, PromotionPolicyBinding, PromotionProposal,
+    PublishedDebuggerEvidence, PublishedEvaluationEvidence, SelectionRecord, VariantAssessment,
+    VariantDefinition, VariantId, identity::digest_parts,
 };
 use peritus_types::{CommandId, EventId, ProjectId, Sha256Digest};
 
@@ -50,6 +50,8 @@ pub enum CampaignCommandKind {
         /// Complete published evaluation evidence.
         evidence: PublishedEvaluationEvidence,
     },
+    /// Replaces one active E3 report through exact immutable predecessor lineage.
+    SupersedeEvaluation(EvaluationSupersession),
     /// Records deterministic attribution and the independent policy assessment.
     CompleteAttribution {
         /// Deterministic prediction-to-observation attribution.
@@ -245,6 +247,7 @@ pub(crate) fn semantic_digest(kind: &CampaignCommandKind) -> Sha256Digest {
             bytes.extend_from_slice(variant_id.as_bytes());
             bytes.extend_from_slice(evidence.digest().as_bytes());
         }
+        CampaignCommandKind::SupersedeEvaluation(value) => append(&mut bytes, 16, value.digest()),
         CampaignCommandKind::CompleteAttribution { attribution, assessment } => {
             bytes.push(8);
             bytes.extend_from_slice(attribution.digest().as_bytes());

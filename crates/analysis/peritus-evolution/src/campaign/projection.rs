@@ -15,6 +15,10 @@ pub struct EvolutionProjection {
     sequence: u64,
     variant_count: u32,
     evaluation_count: u32,
+    evaluation_generation_count: u32,
+    superseded_evaluation_count: u32,
+    attributed_variant_count: u32,
+    assessed_variant_count: u32,
     selected_variant: Option<VariantId>,
     promotion_id: Option<PromotionId>,
     terminal: Option<CampaignTerminal>,
@@ -34,6 +38,21 @@ impl EvolutionProjection {
             sequence: state.sequence(),
             variant_count: u32::try_from(state.variants().len()).unwrap_or(u32::MAX),
             evaluation_count: u32::try_from(state.evaluations().len()).unwrap_or(u32::MAX),
+            evaluation_generation_count: u32::try_from(state.evaluation_history().map_or(
+                state.evaluations().len(),
+                |history| history.len(),
+            ))
+            .unwrap_or(u32::MAX),
+            superseded_evaluation_count: u32::try_from(
+                state
+                    .evaluation_history()
+                    .map_or(0, |history| history.len().saturating_sub(state.evaluations().len())),
+            )
+            .unwrap_or(u32::MAX),
+            attributed_variant_count: u32::try_from(state.attributions().len())
+                .unwrap_or(u32::MAX),
+            assessed_variant_count: u32::try_from(state.assessments().len())
+                .unwrap_or(u32::MAX),
             selected_variant,
             promotion_id: state.proposal().map(crate::PromotionProposal::id),
             terminal: state.terminal(),
@@ -70,6 +89,26 @@ impl EvolutionProjection {
     #[must_use]
     pub const fn evaluation_count(self) -> u32 {
         self.evaluation_count
+    }
+    /// Total immutable evaluation generations, including superseded evidence.
+    #[must_use]
+    pub const fn evaluation_generation_count(self) -> u32 {
+        self.evaluation_generation_count
+    }
+    /// Evaluation generations retained after an explicit successor became active.
+    #[must_use]
+    pub const fn superseded_evaluation_count(self) -> u32 {
+        self.superseded_evaluation_count
+    }
+    /// Variants with attribution bound to their active evaluation generation.
+    #[must_use]
+    pub const fn attributed_variant_count(self) -> u32 {
+        self.attributed_variant_count
+    }
+    /// Variants with an independent assessment bound to their active evaluation generation.
+    #[must_use]
+    pub const fn assessed_variant_count(self) -> u32 {
+        self.assessed_variant_count
     }
     /// Selected variant when a promotion was proposed.
     #[must_use]

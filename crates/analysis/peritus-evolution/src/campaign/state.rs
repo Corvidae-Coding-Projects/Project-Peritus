@@ -1,14 +1,18 @@
 //! Complete pure evolution-campaign checkpoint.
 
 use crate::{
-    AttributionRecord, CampaignPublication, ChangeManifest, EvolutionCampaignId, EvolutionLimits,
-    ProductionHarnessBinding, PromotionPolicyBinding, PromotionProposal, PublishedDebuggerEvidence,
-    PublishedEvaluationEvidence, SelectionRecord, VariantAssessment, VariantDefinition, VariantId,
-    identity::digest_parts,
+    AttributionRecord, CampaignPublication, ChangeManifest, EvaluationGeneration,
+    EvolutionCampaignId, EvolutionLimits, ProductionHarnessBinding, PromotionPolicyBinding,
+    PromotionProposal, PublishedDebuggerEvidence, PublishedEvaluationEvidence, SelectionRecord,
+    VariantAssessment, VariantDefinition, VariantEvidenceLifecycle, VariantEvidenceStage,
+    VariantId, identity::digest_parts,
 };
 use peritus_types::{EventId, ProjectId, Sha256Digest};
 
-/// Durable campaign lifecycle phase.
+/// Durable campaign progress high-water mark.
+///
+/// Evidence admission uses its own prerequisites and per-variant lifecycle. This value remains a
+/// compact projection for operators and compatibility with schema-v1 checkpoints.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CampaignPhase {
     /// Inputs may still be assembled.
@@ -142,6 +146,7 @@ pub struct CampaignState {
     pub(crate) manifests: Vec<ChangeManifest>,
     pub(crate) variants: Vec<VariantDefinition>,
     pub(crate) evaluations: Vec<VariantEvaluation>,
+    pub(crate) evaluation_history: Option<Vec<EvaluationGeneration>>,
     pub(crate) attributions: Vec<AttributionRecord>,
     pub(crate) assessments: Vec<VariantAssessment>,
     pub(crate) selection: Option<SelectionRecord>,
@@ -196,7 +201,7 @@ impl CampaignState {
     pub const fn state_digest(&self) -> Sha256Digest {
         self.state_digest
     }
-    /// Current lifecycle phase.
+    /// Observed campaign progress high-water mark.
     #[must_use]
     pub const fn phase(&self) -> CampaignPhase {
         self.phase
@@ -225,6 +230,63 @@ impl CampaignState {
     #[must_use]
     pub fn evaluations(&self) -> &[VariantEvaluation] {
         &self.evaluations
+    }
+    /// Versioned immutable evaluation snapshots after the first explicit supersession.
+    ///
+    /// Legacy campaigns return `None` until a supersession migrates their active evaluations into
+    /// the generation ledger without changing any earlier checkpoint bytes.
+    #[must_use]
+    pub fn evaluation_history(&self) -> Option<&[EvaluationGeneration]> {
+        self.evaluation_history.as_deref()
+    }
+    /// Projects the active evidence and dependent work for one admitted variant.
+    #[must_use]
+    pub fn variant_lifecycle(&self, variant_id: VariantId) -> Option<VariantEvidenceLifecycle> {
+        self.variants
+            .binary_search_by_key(&variant_id, VariantDefinition::id)
+            .ok()?;
+        let evaluation = self
+            .evaluations
+            .binary_search_by_key(&variant_id, VariantEvaluation::variant_id)
+            .ok()
+            .map(|index| &self.evaluations[index]);
+        let attribution = self
+            .attributions
+            .binary_search_by_key(&variant_id, AttributionRecord::variant_id)
+            .ok()
+            .map(|index| &self.attributions[index]);
+        let assessment = self
+            .assessments
+            .binary_search_by_key(&variant_id, VariantAssessment::variant_id)
+            .ok()
+            .map(|index| &self.assessments[index]);
+        let generation = self.evaluation_history.as_ref().map_or_else(
+            || if evaluation.is_some() { 1 } else { 0 },
+            |history| {
+                history
+                    .iter()
+                    .rev()
+                    .find(|value| value.variant_id() == variant_id)
+                    .map_or(0, EvaluationGeneration::generation)
+            },
+        );
+        let stage = if assessment.is_some() {
+            VariantEvidenceStage::Assessed
+        } else if attribution.is_some() {
+            VariantEvidenceStage::Attributed
+        } else if evaluation.is_some() {
+            VariantEvidenceStage::Evaluated
+        } else {
+            VariantEvidenceStage::Proposed
+        };
+        Some(VariantEvidenceLifecycle::new(
+            variant_id,
+            generation,
+            stage,
+            evaluation.map(|value| value.evidence().digest()),
+            attribution.map(AttributionRecord::digest),
+            assessment.map(VariantAssessment::digest),
+        ))
     }
     /// Deterministic attribution records.
     #[must_use]
@@ -285,7 +347,15 @@ impl CampaignState {
             semantic.extend_from_slice(&value.journal_position().to_be_bytes());
         }
         append_terminal(&mut semantic, self.terminal);
-        self.state_digest = digest_parts(b"peritus.f0.campaign-state.v1\0", &[&semantic]);
+        self.state_digest = if let Some(history) = &self.evaluation_history {
+            let mut lifecycle = Vec::with_capacity(history.len().saturating_mul(32));
+            for generation in history {
+                lifecycle.extend_from_slice(generation.digest().as_bytes());
+            }
+            digest_parts(b"peritus.f0.campaign-state.v2\0", &[&semantic, &lifecycle])
+        } else {
+            digest_parts(b"peritus.f0.campaign-state.v1\0", &[&semantic])
+        };
     }
 }
 
