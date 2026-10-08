@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4146,
-        "tip_oid": "829d0fa1cca89d3d394ea94a6f53b9d403f38c89",
-        "prefix_sha256": "da7c7f13b16fdd84441ce05cf352011b71c79d375e249eb2ec6a514bcd5e9820"
+        "sequence": 4147,
+        "tip_oid": "4618a8178383debb997ecd7fa51c2de32dfe78d7",
+        "prefix_sha256": "5e0b489336de56ea1aa352b744da442185996b67fbc15118c9c95d91343914f7"
       },
       "NWAR": {
         "sequence": 39,
@@ -41676,12 +41676,13 @@
       "display_id": 203,
       "title": "[L104] Tool schemas add fixed property/enum bounds and byte-based exported string cardinality",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L104.\n\n- `schema/validate.rs:8-10,38-79` caps each object schema at **256 properties**, property names at **256 bytes**, each enumeration at **256 values**, and validation depth at **32**. Canonical uniqueness/order and required-field checks are integrity/schema requirements; fixed counts/depth are implementation ceilings.\n- `schema.rs:237-250` permits u32 string/array cardinalities, but actual `BoundedJson` still must fit L103's smaller global envelope/string/member ceilings. Declaring a wider field schema does not widen those parser limits.\n- Internal string cardinality counts UTF-8 **bytes** (`validate.rs:117-123`), while export writes those numbers as JSON Schema `minLength`/`maxLength` (`canonical.rs:140-143`). This unit mismatch can let a provider submit multibyte text it believes fits, then receive a validation refusal. External validators/provider usage are pending; the differing implementation units are verified.\n- Compatibility accepts only exact schemas or added optional object properties (`compatibility.rs:16-40`); other changes are Breaking. This is version-contract admission, not an execution deadline.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.279653769Z",
-      "updated_at": "2026-10-08T10:37:54.471578398Z",
+      "updated_at": "2026-10-08T10:39:22.103280067Z",
+      "closed_at": "2026-10-08T10:39:22.100322151Z",
       "labels": [
         "daily-driving-limiter"
       ],
