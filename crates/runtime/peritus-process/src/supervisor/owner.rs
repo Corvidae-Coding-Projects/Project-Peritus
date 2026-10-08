@@ -412,13 +412,11 @@ impl Drop for SpawnedOwner {
             self.cancellation.close_admission();
             let _ = self.input_task.request_stop();
             let _ = self.process.force_kill();
-            while self.input_task.has_task() && !self.input_task.is_finished() {
-                let _ = self.input_task.wake_blocked_write();
-                self.input_task.discard_results();
-                thread::sleep(Duration::from_millis(POLL_MILLIS));
-            }
+            let _ = self.input_task.wake_blocked_write();
             self.input_task.discard_results();
-            let _ = self.input_task.join(&mut self.failure.owner);
+            if !self.input_task.has_task() || self.input_task.is_finished() {
+                let _ = self.input_task.join(&mut self.failure.owner);
+            }
             if let Some(session) = self.native.as_deref_mut() {
                 let _ = session.release();
                 let _ = crate::native::capture_released_session(

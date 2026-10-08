@@ -43,6 +43,13 @@ impl SpawnedOwner {
             || !self.cleanup.tree_quiescent
             || !self.cleanup.native_released
             || !tasks_joined;
+        self.cleanup.complete =
+            self.cleanup.tree_quiescent && self.cleanup.native_released && tasks_joined;
+        if !self.cleanup.complete {
+            return Err(crate::supervisor::supervisor_error(
+                "process cleanup remains unresolved after the selected observation interval",
+            ));
+        }
         if self.failure.reader {
             self.accounting.fail_all();
         }
@@ -63,8 +70,6 @@ impl SpawnedOwner {
         }
         emit(&self.shared, &self.plan, None, ProcessEventKind::OutputClosed, Vec::new());
         let result = self.terminal_result(stream_accounting, observed, tasks_joined);
-        self.cleanup.complete =
-            self.cleanup.tree_quiescent && self.cleanup.native_released && tasks_joined;
         self.store.record_terminal(self.plan.process_id(), &result)?;
         publish_terminal(&self.shared, &self.plan, &result);
         Ok(result)
