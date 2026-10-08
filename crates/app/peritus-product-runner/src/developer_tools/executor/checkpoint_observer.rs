@@ -9,6 +9,7 @@ use sha2::{Digest as _, Sha256};
 
 use super::WorkspaceDeveloperTools;
 use crate::developer_tools::{
+    executor::literal_patch::inspect_literal_patch,
     path::{checked, tool},
     wire::{required_string, string},
 };
@@ -68,29 +69,29 @@ impl WorkspaceDeveloperTools {
             "workspace_write" if result.get("changed").and_then(Value::as_bool) == Some(true) => {
                 let path = required_string(arguments, "path")?;
                 let content = required_string(arguments, "content")?;
-                let actual = fs::read(checked(&self.root, path, false)?)
-                    .map_err(|error| tool(error.to_string()))?;
-                if actual != content.as_bytes() {
+                let actual = exact_file_receipt(&self.root, path)?;
+                let content_digest = Sha256Digest::new(Sha256::digest(content.as_bytes()).into());
+                if !version_has_content(
+                    actual.owned_postchange,
+                    content_digest,
+                    content.len() as u64,
+                ) || !result_matches_version(result, actual.owned_postchange)
+                {
                     return Err(tool(
                         "workspace changed after the completed write; checkpoint recovery requires reconciliation",
                     ));
                 }
-                self.prepared_mutations.push(prepared_file(path, content.as_bytes()));
+                self.prepared_mutations.push(actual);
             }
             "workspace_patch" => {
                 let path = required_string(arguments, "path")?;
-                let actual = fs::read(checked(&self.root, path, false)?)
-                    .map_err(|error| tool(error.to_string()))?;
-                let expected_bytes = result.get("bytes").and_then(Value::as_u64);
-                let expected_digest = result.get("sha256").and_then(Value::as_str);
-                if expected_bytes != Some(actual.len() as u64)
-                    || expected_digest != Some(digest_hex(&actual).as_str())
-                {
+                let actual = exact_file_receipt(&self.root, path)?;
+                if !result_matches_version(result, actual.owned_postchange) {
                     return Err(tool(
                         "workspace changed after the completed patch; checkpoint recovery requires reconciliation",
                     ));
                 }
-                self.prepared_mutations.push(prepared_file(path, &actual));
+                self.prepared_mutations.push(actual);
             }
             "workspace_remove" => {
                 let path = required_string(arguments, "path")?;
@@ -152,19 +153,17 @@ impl WorkspaceDeveloperTools {
     fn prepare_write_checkpoint(&mut self, arguments: &Value) -> Result<(), DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
-        if content.len() > super::MAX_FILE_BYTES {
-            return Err(tool("write exceeds the per-file byte bound"));
-        }
         let path = checked(&self.root, relative, true)?;
         let existed_before = path.exists();
         self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
-        if path.is_file()
-            && fs::read(path).map_err(|error| tool(error.to_string()))? == content.as_bytes()
-        {
+        let observed = exact_file_receipt(&self.root, relative)?;
+        let mode = observed.owned_postchange.mode().unwrap_or(CheckpointFileMode::Regular);
+        let prepared = prepared_file(relative, content.as_bytes(), mode);
+        if same_file_content(&observed, &prepared) {
             return Ok(());
         }
         self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
-        self.prepared_mutations.push(prepared_file(relative, content.as_bytes()));
+        self.prepared_mutations.push(prepared);
         Ok(())
     }
 
@@ -178,18 +177,13 @@ impl WorkspaceDeveloperTools {
         }
         let path = checked(&self.root, relative, false)?;
         self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
-        let content = fs::read_to_string(path).map_err(|error| tool(error.to_string()))?;
-        let occurrences = content.matches(old).count();
-        if occurrences == 0 || (!replace_all && occurrences != 1) {
-            return Err(tool(format!("patch expected one match but found {occurrences}")));
-        }
-        let replaced =
-            if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
-        if replaced.len() > super::MAX_FILE_BYTES {
-            return Err(tool("patched file exceeds the per-file byte bound"));
-        }
+        let prepared = inspect_literal_patch(&self.root, relative, old, new, replace_all)?;
         self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
-        self.prepared_mutations.push(prepared_file(relative, replaced.as_bytes()));
+        self.prepared_mutations.push(PreparedMutation {
+            path: relative.to_owned(),
+            kind: WorkspaceMutationKind::File,
+            owned_postchange: prepared.version(),
+        });
         Ok(())
     }
 
@@ -280,7 +274,11 @@ impl WorkspaceDeveloperTools {
             && (name == "run_command"
                 || result.get("state").and_then(Value::as_str) == Some("completed"));
         let mutations = if completed_direct_mutation {
-            std::mem::take(&mut self.prepared_mutations)
+            if name == "workspace_remove" {
+                std::mem::take(&mut self.prepared_mutations)
+            } else {
+                self.confirm_direct_file_mutation(arguments, result)?
+            }
         } else if completed_command {
             self.command_mutations()?
         } else {
@@ -316,6 +314,34 @@ impl WorkspaceDeveloperTools {
         Ok(())
     }
 
+    fn confirm_direct_file_mutation(
+        &mut self,
+        arguments: &Value,
+        result: &Value,
+    ) -> Result<Vec<PreparedMutation>, DeveloperLoopError> {
+        let relative = required_string(arguments, "path")?;
+        let actual = exact_file_receipt(&self.root, relative)?;
+        let expected = std::mem::take(&mut self.prepared_mutations);
+        if expected.as_slice() != std::slice::from_ref(&actual)
+            || !result_matches_version(result, actual.owned_postchange)
+        {
+            return Err(tool(
+                "workspace target changed after mutation; checkpoint recovery requires reconciliation",
+            ));
+        }
+        Ok(vec![actual])
+    }
+
+    pub(super) fn file_content_matches(
+        &self,
+        path: &str,
+        content: &[u8],
+    ) -> Result<bool, DeveloperLoopError> {
+        let actual = exact_file_receipt(&self.root, path)?;
+        let digest = Sha256Digest::new(Sha256::digest(content).into());
+        Ok(version_has_content(actual.owned_postchange, digest, content.len() as u64))
+    }
+
     fn command_mutations(&self) -> Result<Vec<PreparedMutation>, DeveloperLoopError> {
         let Some(scope) = &self.in_place_scope else { return Ok(Vec::new()) };
         scope
@@ -330,23 +356,40 @@ impl WorkspaceDeveloperTools {
     }
 }
 
-fn prepared_file(path: &str, content: &[u8]) -> PreparedMutation {
+fn prepared_file(path: &str, content: &[u8], mode: CheckpointFileMode) -> PreparedMutation {
     PreparedMutation {
         path: path.to_owned(),
         kind: WorkspaceMutationKind::File,
         owned_postchange: CheckpointFileVersion::present(
             Sha256Digest::new(Sha256::digest(content).into()),
             content.len() as u64,
-            CheckpointFileMode::Regular,
+            mode,
         ),
     }
 }
 
-fn digest_hex(bytes: &[u8]) -> String {
+fn same_file_content(left: &PreparedMutation, right: &PreparedMutation) -> bool {
+    left.owned_postchange.digest() == right.owned_postchange.digest()
+        && left.owned_postchange.bytes() == right.owned_postchange.bytes()
+}
+
+fn version_has_content(version: CheckpointFileVersion, digest: Sha256Digest, bytes: u64) -> bool {
+    version.digest() == Some(digest) && version.bytes() == Some(bytes)
+}
+
+fn result_matches_version(result: &Value, version: CheckpointFileVersion) -> bool {
+    let (Some(digest), Some(bytes)) = (version.digest(), version.bytes()) else {
+        return false;
+    };
+    result.get("bytes").and_then(Value::as_u64) == Some(bytes)
+        && result.get("sha256").and_then(Value::as_str) == Some(digest_hex(digest).as_str())
+}
+
+fn digest_hex(digest: Sha256Digest) -> String {
     use core::fmt::Write as _;
 
     let mut value = String::with_capacity(64);
-    for byte in Sha256::digest(bytes) {
+    for byte in digest.as_bytes() {
         let _ = write!(value, "{byte:02x}");
     }
     value

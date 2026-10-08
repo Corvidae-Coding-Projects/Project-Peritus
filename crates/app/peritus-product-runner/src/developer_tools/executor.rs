@@ -24,7 +24,6 @@ use super::{
     wire::{object, observation, required_string, string},
 };
 use crate::control::{HostPermissions, PermissionCapability};
-const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 const TOOLS_WITHOUT_DELIVERY_PROGRESS: u16 = 12;
 const MAX_PROGRESS_NUDGES: u8 = 2;
 const PROGRESS_FEEDBACK: &str = "The harness observed a long inspection sequence without a workspace mutation or successful declared external effect. Choose the shortest concrete delivery step now. If a standard capability is missing and the active disposable task authorizes installation, use the available package or runtime manager before hand-writing a substitute. Otherwise write or apply the requested result, then verify it. Continue inspecting only when a specific unresolved requirement still needs evidence.";
@@ -36,6 +35,8 @@ mod construction;
 mod dispatch;
 mod in_place;
 mod inspection_progress;
+mod literal_patch;
+pub(in crate::developer_tools) mod sources;
 
 use active::ActiveCommandLedger;
 use checkpoint_observer::PreparedMutation;
@@ -67,6 +68,8 @@ pub struct WorkspaceDeveloperTools {
     progress_nudges: u8,
     progress_feedback_pending: bool,
     inspection_progress: inspection_progress::InspectionProgress,
+    directory_listings: Option<inspection::DirectoryListingOwner>,
+    request_sources: sources::RequestSourceProgress,
     checkpoint_observer: Option<ToolCheckpointObserver>,
     checkpoint_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
     prepared_mutations: Vec<PreparedMutation>,
@@ -75,6 +78,14 @@ pub struct WorkspaceDeveloperTools {
 }
 
 impl WorkspaceDeveloperTools {
+    pub(crate) fn with_directory_listing_owner(
+        mut self,
+        owner: inspection::DirectoryListingOwner,
+    ) -> Self {
+        self.directory_listings = Some(owner);
+        self
+    }
+
     pub(crate) fn with_in_place_scope(
         mut self,
         scope: Option<crate::workspace_delivery::scope::ScopedBaseline>,
@@ -100,6 +111,13 @@ impl WorkspaceDeveloperTools {
         &self.grounding
     }
 
+    pub(crate) fn with_grounding(mut self, mut grounding: GroundingEvidence) -> Self {
+        grounding.bind_workspace(&self.root);
+        self.grounding = grounding;
+        self.restore_request_source_evidence();
+        self
+    }
+
     pub(crate) const fn ownership(&self) -> &WorkspaceOwnership {
         &self.ownership
     }
@@ -120,6 +138,28 @@ impl WorkspaceDeveloperTools {
                 permission_name(capability)
             )
         })
+    }
+
+    fn request_source_denial(&self, tool_name: &str) -> Option<String> {
+        if matches!(
+            tool_name,
+            "request_sources" | "request_source_read"
+                | "command_poll" | "command_recover" | "command_cancel"
+        ) {
+            return None;
+        }
+        let view = self.protection_view.as_ref()?;
+        match view.request_sources_required() {
+            Ok(false) => None,
+            Ok(true) if self.request_sources.is_complete_at(view.request_source_binding()) => None,
+            Ok(true) => Some(
+                "read every user_request body marked requiresRead through request_sources and request_source_read before using workspace tools"
+                    .to_owned(),
+            ),
+            Err(error) => Some(format!(
+                "authoritative request sources are unavailable: {error}; workspace tools remain disabled"
+            )),
+        }
     }
 
     fn finish_observation(
@@ -153,7 +193,11 @@ fn first_missing_permission(
 fn required_permissions(tool_name: &str) -> Option<&'static [PermissionCapability]> {
     use PermissionCapability::{Process, Read, Write};
     match tool_name {
-        "workspace_list" | "workspace_search" | "workspace_read" => Some(&[Read]),
+        // Governing user messages and retained assistant history are part of the conversation.
+        // Reading them grants no workspace capability and remains possible before permissions.
+        "request_sources" | "request_source_read" => None,
+        "context_sources" | "context_source_read" | "workspace_list" | "workspace_search"
+        | "workspace_read" => Some(&[Read]),
         "workspace_scope" | "workspace_write" | "workspace_patch" | "workspace_remove" => {
             Some(&[Read, Write])
         }
@@ -190,8 +234,11 @@ fn test_command_runtime(root: &std::path::Path) -> crate::CommandRuntime {
 
 impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     fn effect(&self, call: &CompletedToolCall) -> DeveloperToolEffect {
-        if matches!(call.name().as_str(), "workspace_list" | "workspace_search" | "workspace_read")
-        {
+        if matches!(
+            call.name().as_str(),
+            "request_sources" | "request_source_read" | "context_sources" | "context_source_read"
+                | "workspace_list" | "workspace_search" | "workspace_read"
+        ) {
             DeveloperToolEffect::ReadOnly
         } else {
             DeveloperToolEffect::MutationCapable
@@ -199,6 +246,17 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     }
 
     fn required_tool_name(&self) -> Option<&str> {
+        if let Some(view) = &self.protection_view {
+            match view.request_sources_required() {
+                Ok(true) => {
+                    if let Some(tool) = self.request_sources.required_tool_at(view.request_source_binding()) {
+                        return Some(tool);
+                    }
+                }
+                Err(_) => return Some("request_sources"),
+                Ok(false) => {}
+            }
+        }
         self.grounding.required_tool_name()
     }
 
@@ -251,13 +309,15 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                     {
                         return observation(&object(vec![("error", Value::String(detail))]), true);
                     }
-                    self.dispatch_prepared(call, &arguments, effect)
+                    self.dispatch_prepared_async(call, &arguments, effect).await
                 }
             }
         })
     }
 
     fn observe_model_context(&mut self, messages: &[Message]) -> Result<(), DeveloperLoopError> {
+        self.grounding.recover_model_context(messages);
+        self.restore_request_source_evidence();
         self.inspection_progress.observe_model_context(messages);
         Ok(())
     }

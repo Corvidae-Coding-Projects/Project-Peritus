@@ -1,4 +1,4 @@
-//! Exact completed-command postimages; no later observation grants additional ownership.
+//! Exact streamed workspace postimages; no later observation grants additional ownership.
 
 use super::{CheckpointFileVersion, PreparedMutation, WorkspaceMutationKind};
 use crate::{
@@ -27,7 +27,7 @@ pub(super) fn exact_file_receipt(
         Err(error) => return Err(tool(error.to_string())),
     };
     if !before.is_file() || before.file_type().is_symlink() {
-        return Err(tool("completed command scope is not a regular file or absent"));
+        return Err(tool("workspace receipt target is not a regular file or absent"));
     }
     let identity = FolderIdentity::observe(root).map_err(|error| tool(error.to_string()))?;
     let inspection = FolderInspection::open(&identity).map_err(|error| tool(error.to_string()))?;
@@ -43,7 +43,7 @@ pub(super) fn exact_file_receipt(
         || before.permissions() != after.permissions()
         || bytes != after.len()
     {
-        return Err(tool("completed command scope changed while recording its receipt"));
+        return Err(tool("workspace target changed while recording its exact receipt"));
     }
     Ok(PreparedMutation {
         path: path.to_owned(),

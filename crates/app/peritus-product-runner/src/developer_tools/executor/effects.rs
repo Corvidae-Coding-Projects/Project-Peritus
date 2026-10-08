@@ -1,10 +1,10 @@
 //! Effect receipts, delivery progress, and bounded filesystem mutations.
 
 use super::{
-    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_FILE_BYTES,
-    MAX_PROGRESS_NUDGES, ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value,
-    WorkspaceDeveloperTools, WorkspaceToolMode, atomic_write, checked, fs, object, observation,
-    removal, required_string, string, tool,
+    CompletedToolCall, DeveloperLoopError, DeveloperToolObservation, MAX_PROGRESS_NUDGES,
+    ReceiptDecision, TOOLS_WITHOUT_DELIVERY_PROGRESS, Value, WorkspaceDeveloperTools,
+    WorkspaceToolMode, atomic_write, checked, fs, literal_patch::apply_literal_patch, object,
+    observation, removal, required_string, string, tool,
 };
 
 impl WorkspaceDeveloperTools {
@@ -59,11 +59,23 @@ impl WorkspaceDeveloperTools {
         use super::inspection;
         use crate::developer_tools::reference;
         match call.name().as_str() {
+            "request_sources" => self.request_sources(arguments),
+            "request_source_read" => self.request_source_read(arguments),
+            "context_sources" => self.context_sources(arguments),
+            "context_source_read" => self.context_source_read(arguments),
             "workspace_list" if routes_to_reference(&self.root, arguments) => {
                 reference::list(&self.references, arguments)
             }
             "workspace_list" => {
-                inspection::list(&self.root, arguments, self.resources, &self.access_policy)
+                inspection::list(
+                    &self.root,
+                    arguments,
+                    self.resources,
+                    &self.access_policy,
+                    self.directory_listings
+                        .as_ref()
+                        .ok_or_else(|| tool("workspace listing owner is unavailable"))?,
+                )
             }
             "workspace_search" => inspection::search(&self.root, arguments, &self.access_policy),
             "workspace_read" if routes_to_reference(&self.root, arguments) => {
@@ -167,7 +179,10 @@ impl WorkspaceDeveloperTools {
             {
                 self.grounding.record_list(
                     string(arguments, "path").unwrap_or(""),
-                    result.get("entries").and_then(Value::as_array).map_or(0, Vec::len),
+                    result
+                        .get("exact_empty")
+                        .and_then(Value::as_bool)
+                        .map_or(1, |empty| usize::from(!empty)),
                 );
             }
             "workspace_search" => self.grounding.record_search(),
@@ -203,15 +218,10 @@ impl WorkspaceDeveloperTools {
     pub(super) fn write(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
         let relative = required_string(arguments, "path")?;
         let content = required_string(arguments, "content")?;
-        if content.len() > MAX_FILE_BYTES {
-            return Err(tool("write exceeds the per-file byte bound"));
-        }
         let path = checked(&self.root, relative, true)?;
         let existed_before = path.exists();
         self.grounding.ensure_mutation_allowed(relative, existed_before).map_err(tool)?;
-        if path.is_file()
-            && fs::read(&path).map_err(|error| tool(error.to_string()))? == content.as_bytes()
-        {
+        if self.file_content_matches(relative, content.as_bytes())? {
             return Ok(object(vec![
                 ("path", Value::String(relative.to_owned())),
                 ("bytes", Value::from(content.len())),
@@ -241,22 +251,12 @@ impl WorkspaceDeveloperTools {
         }
         let path = checked(&self.root, relative, false)?;
         self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
-        let content = fs::read_to_string(&path).map_err(|error| tool(error.to_string()))?;
-        let occurrences = content.matches(old).count();
-        if occurrences == 0 || (!replace_all && occurrences != 1) {
-            return Err(tool(format!("patch expected one match but found {occurrences}")));
-        }
-        let replaced =
-            if replace_all { content.replace(old, new) } else { content.replacen(old, new, 1) };
-        if replaced.len() > MAX_FILE_BYTES {
-            return Err(tool("patched file exceeds the per-file byte bound"));
-        }
-        atomic_write(&path, replaced.as_bytes())?;
+        let applied = apply_literal_patch(&self.root, relative, &path, old, new, replace_all)?;
         Ok(object(vec![
             ("path", Value::String(relative.to_owned())),
-            ("replacements", Value::from(if replace_all { occurrences } else { 1 })),
-            ("bytes", Value::from(replaced.len())),
-            ("sha256", Value::String(digest_hex(replaced.as_bytes()))),
+            ("replacements", Value::from(applied.replacements())),
+            ("bytes", Value::from(applied.bytes())),
+            ("sha256", Value::String(applied.digest_hex())),
         ]))
     }
 
