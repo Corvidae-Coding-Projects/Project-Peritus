@@ -12,7 +12,7 @@ use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher,
 use crate::execution::failure;
 use crate::{
     ExecInput, ScriptInput, ShellError, ShellErrorKind, ShellExecution, exec_descriptor,
-    script_descriptor,
+    legacy_exec_descriptor, legacy_script_descriptor, script_descriptor,
 };
 
 /// One-use dispatcher bound to exact C2 authority, plan, C3 admission/backend, and artifact store.
@@ -230,15 +230,15 @@ fn bound_descriptor(
     let binding = plan
         .caller_binding()
         .ok_or_else(|| mismatch("shell execution plan has no C4 caller binding"))?;
-    let descriptor = match binding.capability_name().as_str() {
-        "shell.exec" => exec_descriptor()?,
-        "shell.script" => script_descriptor()?,
+    let descriptors = match binding.capability_name().as_str() {
+        "shell.exec" => vec![exec_descriptor()?, legacy_exec_descriptor()?],
+        "shell.script" => vec![script_descriptor()?, legacy_script_descriptor()?],
         _ => return Err(mismatch("shell plan names another tool")),
     };
-    if descriptor.descriptor_digest().get() != binding.descriptor_digest() {
-        return Err(mismatch("shell descriptor differs from the C4 caller binding"));
-    }
-    Ok(descriptor)
+    descriptors
+        .into_iter()
+        .find(|descriptor| descriptor.descriptor_digest().get() == binding.descriptor_digest())
+        .ok_or_else(|| mismatch("shell descriptor differs from the C4 caller binding"))
 }
 
 fn validate_invocation(

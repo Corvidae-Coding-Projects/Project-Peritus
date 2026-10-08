@@ -112,6 +112,14 @@ impl BoundedJson {
         peritus_codec::sha256(&self.canonical)
     }
 
+    /// Validates this already-canonical value against one negotiated physical frame contract.
+    ///
+    /// # Errors
+    /// Returns a JSON-limit error when the value cannot be written or read within the frame.
+    pub fn validate_limits(&self, limits: JsonLimits) -> Result<(), ProtocolError> {
+        canonical::validate_limits(&self.value, self.canonical.len(), limits)
+    }
+
     /// Returns an object property when this value is an object.
     #[must_use]
     pub fn property(&self, name: &str) -> Option<Self> {

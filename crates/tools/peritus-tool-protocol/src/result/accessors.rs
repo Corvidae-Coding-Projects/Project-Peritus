@@ -2,7 +2,8 @@
 
 use super::{ToolResult, ToolTiming, TruncationMetadata, wire};
 use crate::{
-    ArtifactReference, BoundedJson, BoundedText, ReplayIdentity, SchemaDigest, ToolFailure,
+    ArtifactReference, BoundedJson, BoundedText, JsonLimits, ReplayIdentity, SchemaDigest,
+    ToolFailure,
 };
 use peritus_types::{ActionId, Sha256Digest};
 
@@ -67,13 +68,23 @@ impl ToolResult {
     pub const fn truncation(&self) -> TruncationMetadata {
         self.truncation
     }
-    /// Returns the observed progress count.
+    /// Returns the structured JSON frame contract carried by this result.
     #[must_use]
-    pub const fn progress_count(&self) -> u32 {
-        self.progress_count
+    pub const fn json_limits(&self) -> JsonLimits {
+        self.json_limits
+    }
+    /// Returns the accepted progress frontier.
+    #[must_use]
+    pub const fn progress_count(&self) -> u64 {
+        self.progress_frontier
+    }
+    /// Returns the accepted progress frontier.
+    #[must_use]
+    pub const fn progress_frontier(&self) -> u64 {
+        self.progress_frontier
     }
 
-    /// Returns stable version-one canonical terminal-result bytes.
+    /// Returns canonical terminal-result bytes in the admitted progress-contract version.
     #[must_use]
     pub fn canonical_bytes(&self) -> Vec<u8> {
         wire::result(self)

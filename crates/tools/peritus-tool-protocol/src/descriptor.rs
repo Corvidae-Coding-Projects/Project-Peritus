@@ -3,8 +3,8 @@
 mod encoding;
 
 use crate::{
-    BoundedText, ControlSet, ImplementationIdentity, ProtocolError, ProtocolErrorKind, Schema,
-    SchemaDigest, SemanticVersion,
+    BoundedText, ControlSet, ImplementationIdentity, JsonLimits, ProgressContract, ProtocolError,
+    ProtocolErrorKind, Schema, SchemaDigest, SemanticVersion,
 };
 use peritus_policy::{OperationClass, OperationDescriptor};
 use peritus_types::CapabilityName;
@@ -51,6 +51,12 @@ impl ProtocolCompatibility {
     /// Version-one protocol compatibility.
     pub const V1: Self = Self { minimum: 1, maximum: 1 };
 
+    /// Version-two paged-progress protocol compatibility.
+    pub const V2: Self = Self { minimum: 2, maximum: 2 };
+
+    /// Version-three negotiated-JSON protocol compatibility.
+    pub const V3: Self = Self { minimum: 3, maximum: 3 };
+
     /// Creates an inclusive, nonzero compatibility range.
     ///
     /// # Errors
@@ -84,12 +90,15 @@ impl ProtocolCompatibility {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ToolLimits {
     timeout_millis: Option<u64>,
-    output_bytes: u64,
+    output_bytes: Option<u64>,
     model_bytes: u32,
     human_bytes: u32,
     progress_events: u32,
+    progress_contract: ProgressContract,
     artifacts: u16,
     control_bytes: u32,
+    json_limits: JsonLimits,
+    protocol_version: u16,
 }
 
 impl ToolLimits {
@@ -133,8 +142,35 @@ impl ToolLimits {
         artifacts: u16,
         control_bytes: u32,
     ) -> Result<Self, ProtocolError> {
+        Self::with_optional_output(
+            timeout_millis,
+            Some(output_bytes),
+            model_bytes,
+            human_bytes,
+            progress_events,
+            artifacts,
+            control_bytes,
+        )
+    }
+
+    /// Creates descriptor limits with optional wall-time and cumulative output ceilings.
+    ///
+    /// Rendering, event, artifact, and control sizes remain selected physical capacities.
+    ///
+    /// # Errors
+    /// Rejects selected zero ceilings or zero physical capacities.
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_optional_output(
+        timeout_millis: Option<u64>,
+        output_bytes: Option<u64>,
+        model_bytes: u32,
+        human_bytes: u32,
+        progress_events: u32,
+        artifacts: u16,
+        control_bytes: u32,
+    ) -> Result<Self, ProtocolError> {
         if timeout_millis == Some(0)
-            || output_bytes == 0
+            || output_bytes == Some(0)
             || model_bytes == 0
             || human_bytes == 0
             || progress_events == 0
@@ -153,9 +189,33 @@ impl ToolLimits {
             model_bytes,
             human_bytes,
             progress_events,
+            progress_contract: ProgressContract::LifetimeV1,
             artifacts,
             control_bytes,
+            json_limits: JsonLimits::PRODUCTION,
+            protocol_version: 1,
         })
+    }
+
+    /// Selects version-two paged progress for newly advertised work.
+    ///
+    /// The progress value is a per-update physical page capacity rather than a lifetime quota.
+    #[must_use]
+    pub const fn with_paged_progress(mut self) -> Self {
+        self.progress_contract = ProgressContract::PagedV2;
+        if self.protocol_version < 2 {
+            self.protocol_version = 2;
+        }
+        self
+    }
+
+    /// Selects the version-three per-frame JSON contract advertised by this descriptor.
+    #[must_use]
+    pub const fn with_json_limits(mut self, limits: JsonLimits) -> Self {
+        self.progress_contract = ProgressContract::PagedV2;
+        self.json_limits = limits;
+        self.protocol_version = 3;
+        self
     }
 
     /// Returns the wall-time ceiling.
@@ -163,9 +223,19 @@ impl ToolLimits {
     pub const fn timeout_millis(self) -> Option<u64> {
         self.timeout_millis
     }
-    /// Returns the complete output ceiling.
+    /// Returns the output ceiling, or zero when absent.
+    ///
+    /// Process settlement metadata has its own JSON envelope bound and is not stream output.
     #[must_use]
     pub const fn output_bytes(self) -> u64 {
+        match self.output_bytes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+    /// Returns the optional cumulative output ceiling.
+    #[must_use]
+    pub const fn output_limit(self) -> Option<u64> {
         self.output_bytes
     }
     /// Returns the model rendering ceiling.
@@ -178,10 +248,15 @@ impl ToolLimits {
     pub const fn human_bytes(self) -> u32 {
         self.human_bytes
     }
-    /// Returns the progress-event ceiling.
+    /// Returns the progress capacity selected by [`Self::progress_contract`].
     #[must_use]
     pub const fn progress_events(self) -> u32 {
         self.progress_events
+    }
+    /// Returns whether progress is lifetime-bounded V1 or page-bounded V2.
+    #[must_use]
+    pub const fn progress_contract(self) -> ProgressContract {
+        self.progress_contract
     }
     /// Returns the artifact-reference ceiling.
     #[must_use]
@@ -192,6 +267,18 @@ impl ToolLimits {
     #[must_use]
     pub const fn control_bytes(self) -> u32 {
         self.control_bytes
+    }
+
+    /// Returns the maximum JSON frame contract admitted by this descriptor.
+    #[must_use]
+    pub const fn json_limits(self) -> JsonLimits {
+        self.json_limits
+    }
+
+    /// Returns the canonical protocol version selected by these limits.
+    #[must_use]
+    pub const fn protocol_version(self) -> u16 {
+        self.protocol_version
     }
 }
 
@@ -237,6 +324,8 @@ impl ToolDescriptor {
     ) -> Result<Self, ProtocolError> {
         if operation.name() != &name
             || !effect_refines(side_effect, lease, operation.operation_class())
+            || compatibility.minimum() > limits.protocol_version()
+            || compatibility.maximum() < limits.protocol_version()
         {
             return Err(ProtocolError::at(
                 ProtocolErrorKind::DescriptorMismatch,

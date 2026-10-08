@@ -2,9 +2,9 @@
 
 use peritus_policy::{OperationClass, OperationDescriptor, RiskClass, RiskSet};
 use peritus_tool_protocol::{
-    BoundedText, ControlSet, IdempotencySemantics, ImplementationIdentity, LeaseRequirement,
-    ProtocolCompatibility, Schema, SchemaProperty, SemanticVersion, SideEffectClass,
-    ToolDescriptor, ToolLimits,
+    BoundedText, ControlSet, IdempotencySemantics, ImplementationIdentity, JsonLimits,
+    LeaseRequirement, ProtocolCompatibility, Schema, SchemaProperty, SemanticVersion,
+    SideEffectClass, ToolDescriptor, ToolLimits,
 };
 use peritus_types::CapabilityName;
 
@@ -12,6 +12,7 @@ use crate::{ShellError, ShellErrorKind};
 
 const MAX_TOKEN_BYTES: u32 = 64 * 1_024;
 const MAX_ARGUMENTS: u32 = 4_096;
+const JSON_FRAME_BYTES: usize = 16 * 1_024 * 1_024;
 
 /// Builds the canonical `shell.exec` structured-argv descriptor.
 ///
@@ -22,7 +23,9 @@ pub fn exec_descriptor() -> Result<ToolDescriptor, ShellError> {
         "shell.exec",
         exec_schema()?,
         vec![RiskClass::Execution],
-        "peritus-tools-shell/shell.exec/v1",
+        3,
+        "peritus-tools-shell/shell.exec/v3",
+        current_limits()?,
         "Execute literal structured argv through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
     )
 }
@@ -36,7 +39,41 @@ pub fn script_descriptor() -> Result<ToolDescriptor, ShellError> {
         "shell.script",
         script_schema()?,
         vec![RiskClass::Execution, RiskClass::ExternalSideEffect],
-        "peritus-tools-shell/shell.script/v1",
+        3,
+        "peritus-tools-shell/shell.script/v3",
+        current_limits()?,
+        "Execute explicit interpreter and script text through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+    )
+}
+
+/// Reconstructs the frozen version-two `shell.exec` descriptor for retained executions.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_exec_descriptor() -> Result<ToolDescriptor, ShellError> {
+    descriptor(
+        "shell.exec",
+        exec_schema()?,
+        vec![RiskClass::Execution],
+        2,
+        "peritus-tools-shell/shell.exec/v2",
+        legacy_limits()?,
+        "Execute literal structured argv through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
+    )
+}
+
+/// Reconstructs the frozen version-two `shell.script` descriptor for retained executions.
+///
+/// # Errors
+/// Returns a typed error only if a frozen descriptor constant violates the protocol contract.
+pub fn legacy_script_descriptor() -> Result<ToolDescriptor, ShellError> {
+    descriptor(
+        "shell.script",
+        script_schema()?,
+        vec![RiskClass::Execution, RiskClass::ExternalSideEffect],
+        2,
+        "peritus-tools-shell/shell.script/v2",
+        legacy_limits()?,
         "Execute explicit interpreter and script text through authorized C2 process ownership. Production callers select either an admitted restricted native sandbox or an explicit raw-effect boundary.",
     )
 }
@@ -69,7 +106,9 @@ fn descriptor(
     name: &str,
     schema: Schema,
     risks: Vec<RiskClass>,
+    version: u16,
     implementation: &str,
+    limits: ToolLimits,
     description: &str,
 ) -> Result<ToolDescriptor, ShellError> {
     let name = CapabilityName::new(name.to_owned())
@@ -79,27 +118,37 @@ fn descriptor(
         .map_err(|error| internal(format!("{error:?}")))?;
     ToolDescriptor::new(
         name,
-        SemanticVersion::new(1, 0, 0)?,
+        SemanticVersion::new(version, 0, 0)?,
         schema,
         operation,
         SideEffectClass::Process,
         LeaseRequirement::None,
         IdempotencySemantics::ReportPriorOutcome,
         ImplementationIdentity::new(implementation.to_owned())?,
-        ToolLimits::with_optional_timeout(
-            None,
-            8 * 1_024 * 1_024,
-            16_384,
-            16_384,
-            4_096,
-            3,
-            65_536,
-        )?,
+        limits,
         ControlSet::new(true, true, true, true, true),
-        ProtocolCompatibility::V1,
+        if version >= 3 { ProtocolCompatibility::V3 } else { ProtocolCompatibility::V2 },
         BoundedText::new(description.to_owned())?,
     )
     .map_err(Into::into)
+}
+
+fn current_limits() -> Result<ToolLimits, ShellError> {
+    let json_limits = JsonLimits::frame(JSON_FRAME_BYTES)?;
+    Ok(legacy_limits()?.with_json_limits(json_limits))
+}
+
+fn legacy_limits() -> Result<ToolLimits, ShellError> {
+    Ok(ToolLimits::with_optional_output(
+        None,
+        None,
+        16_384,
+        16_384,
+        4_096,
+        3,
+        65_536,
+    )?
+    .with_paged_progress())
 }
 
 fn internal(detail: impl Into<String>) -> ShellError {

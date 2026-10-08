@@ -8,7 +8,7 @@ use peritus_process::{
 };
 use peritus_tool_protocol::{
     ArtifactCompleteness, ArtifactProvenance, ArtifactReference, BoundedJson, BoundedText,
-    FailureCategory, JsonLimits, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem,
+    FailureCategory, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem,
     ResultStatus, Retryability, ToolFailure, ToolResult, ToolTiming, Truncation,
     TruncationMetadata,
 };
@@ -23,14 +23,14 @@ pub(super) fn build(
     retained: &[u8],
     started_at: AuthorityInstant,
     finished_at: AuthorityInstant,
-    progress_count: u32,
+    progress_count: u64,
     progress_truncated: bool,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
     let limits = prepared.call().limits();
     let rendering = render::output(retained, limits.model_bytes(), limits.human_bytes());
     let artifacts = artifacts(prepared, terminal)
         .map_err(|error| failure::adapter("shell-artifact-envelope", &error.to_string()))?;
-    let structured = structured(terminal, progress_truncated)
+    let structured = structured(prepared, terminal, progress_truncated)
         .map_err(|error| failure::adapter("shell-terminal-envelope", &error.to_string()))?;
     let timing = ToolTiming::new(started_at, finished_at)
         .map_err(|error| failure::adapter("shell-terminal-timing", &error.to_string()))?;
@@ -77,6 +77,7 @@ pub(super) fn build(
 }
 
 fn structured(
+    prepared: &PreparedToolCall,
     terminal: &TerminalResult,
     progress_truncated: bool,
 ) -> Result<BoundedJson, peritus_tool_protocol::ProtocolError> {
@@ -133,7 +134,7 @@ fn structured(
         ("support_tasks_joined", serde_json::Value::Bool(terminal.support_tasks_joined())),
         ("tree_cleanup_complete", serde_json::Value::Bool(terminal.tree_cleanup_complete())),
     ]);
-    BoundedJson::parse(&value.to_string(), JsonLimits::PRODUCTION)
+    BoundedJson::parse(&value.to_string(), prepared.call().limits().json_limits())
 }
 
 fn artifacts(

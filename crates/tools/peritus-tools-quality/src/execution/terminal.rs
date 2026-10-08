@@ -8,7 +8,7 @@ use peritus_process::{OutputCompleteness, OutputStream, TerminalDisposition, Ter
 use peritus_quality_policy::{GateFailure, GateOutcome};
 use peritus_tool_protocol::{
     ArtifactCompleteness, ArtifactProvenance, ArtifactReference, BoundedJson, BoundedText,
-    FailureCategory, JsonLimits, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem,
+    FailureCategory, PreparedToolCall, RecoveryRoute, ResponsibleSubsystem,
     ResultStatus, Retryability, ToolFailure, ToolResult, ToolTiming, Truncation,
     TruncationMetadata,
 };
@@ -89,8 +89,14 @@ fn build_classified(
     legacy: bool,
 ) -> Result<ToolResult, peritus_tool_router::DispatchFailure> {
     let candidate = classified.candidate();
-    let structured = structured(classified.observation(), candidate, progress_truncated, legacy)
-        .map_err(|error| adapter_failure("quality-result-structure", &error.to_string()))?;
+    let structured = structured(
+        prepared,
+        classified.observation(),
+        candidate,
+        progress_truncated,
+        legacy,
+    )
+    .map_err(|error| adapter_failure("quality-result-structure", &error.to_string()))?;
     let artifacts = artifacts(prepared, terminal)
         .map_err(|error| adapter_failure("quality-result-artifacts", &error.to_string()))?;
     let limits = prepared.call().limits();
@@ -143,6 +149,7 @@ fn build_classified(
 }
 
 fn structured(
+    prepared: &PreparedToolCall,
     observation: &QualityExecutionObservation,
     candidate: CandidateGateObservation,
     progress_truncated: bool,
@@ -202,7 +209,7 @@ fn structured(
             ("progress_truncated", serde_json::Value::Bool(progress_truncated)),
         ])
     };
-    BoundedJson::parse(&value.to_string(), JsonLimits::PRODUCTION)
+    BoundedJson::parse(&value.to_string(), prepared.call().limits().json_limits())
 }
 
 fn artifacts(

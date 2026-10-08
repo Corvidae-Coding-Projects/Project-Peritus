@@ -7,7 +7,7 @@ use crate::{ProtocolError, ProtocolErrorKind};
 
 const MAX_PROPERTIES: usize = 256;
 const MAX_PROPERTY_BYTES: usize = 256;
-const MAX_SCHEMA_DEPTH: usize = 32;
+const MAX_SCHEMA_DEPTH: usize = crate::JsonLimits::MAXIMUM.max_depth();
 
 pub(super) fn property_name(value: &str) -> Result<(), ProtocolError> {
     if value.is_empty()

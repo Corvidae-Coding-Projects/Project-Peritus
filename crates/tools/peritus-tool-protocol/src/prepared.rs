@@ -69,10 +69,13 @@ impl PreparedToolCall {
         self.replay_identity
     }
 
-    /// Returns the stable version-one canonical prepared-call envelope bytes.
+    /// Returns canonical prepared-call bytes in the admitted progress-contract version.
     #[must_use]
     pub fn canonical_bytes(&self) -> Vec<u8> {
-        let mut bytes = crate::wire::begin(3);
+        let mut bytes = crate::wire::begin_version(
+            3,
+            self.call.limits().protocol_version(),
+        );
         crate::wire::bytes(&mut bytes, &self.call.canonical_bytes());
         bytes.extend_from_slice(self.descriptor.descriptor_digest().as_bytes());
         bytes.extend_from_slice(self.arguments_digest.as_bytes());
@@ -107,6 +110,7 @@ pub fn prepare_call(
             "call limits widen the immutable descriptor ceiling",
         ));
     }
+    call.arguments().validate_limits(call.limits().json_limits())?;
     descriptor.schema().validate(call.arguments())?;
     let arguments_digest = call.arguments().digest();
     let prepared_digest = prepared_digest(&descriptor, &call, arguments_digest);
@@ -121,7 +125,11 @@ fn prepared_digest(
     arguments: Sha256Digest,
 ) -> Sha256Digest {
     let mut bytes = Vec::with_capacity(256);
-    bytes.extend_from_slice(b"peritus.prepared-tool-call.v1\0");
+    bytes.extend_from_slice(match call.limits().protocol_version() {
+        1 => b"peritus.prepared-tool-call.v1\0".as_slice(),
+        2 => b"peritus.prepared-tool-call.v2\0".as_slice(),
+        _ => b"peritus.prepared-tool-call.v3\0".as_slice(),
+    });
     bytes.extend_from_slice(call.action_id().as_bytes());
     bytes.extend_from_slice(descriptor.descriptor_digest().as_bytes());
     bytes.extend_from_slice(arguments.as_bytes());
@@ -140,7 +148,11 @@ fn replay_digest(
     prepared: Sha256Digest,
 ) -> Sha256Digest {
     let mut bytes = Vec::with_capacity(256);
-    bytes.extend_from_slice(b"peritus.tool-replay.v1\0");
+    bytes.extend_from_slice(match call.limits().protocol_version() {
+        1 => b"peritus.tool-replay.v1\0".as_slice(),
+        2 => b"peritus.tool-replay.v2\0".as_slice(),
+        _ => b"peritus.tool-replay.v3\0".as_slice(),
+    });
     bytes.extend_from_slice(call.action_id().as_bytes());
     append_bytes(&mut bytes, descriptor.name().as_str().as_bytes());
     bytes.extend_from_slice(&descriptor.version().major().to_be_bytes());

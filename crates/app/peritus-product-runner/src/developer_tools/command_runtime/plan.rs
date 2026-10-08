@@ -13,8 +13,7 @@ use peritus_process::{
 use peritus_provider_core::CancellationToken;
 use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
 use peritus_tool_protocol::{
-    BoundedJson, CallLimits, IdempotencyKey, JsonLimits, PreparedToolCall, SemanticVersion,
-    ToolCall,
+    BoundedJson, CallLimits, IdempotencyKey, PreparedToolCall, ToolCall, ToolLimits,
 };
 use peritus_tool_router::ToolRegistry;
 use serde_json::Value;
@@ -86,23 +85,23 @@ pub(super) fn compile(
         ("arguments", Value::Array(request.arguments.iter().cloned().map(Value::String).collect())),
         ("executable", Value::String(wire_executable)),
     ]);
-    let arguments = BoundedJson::parse(&wire_arguments.to_string(), JsonLimits::PRODUCTION)
-        .map_err(|error| format!("encode command tool arguments: {error}"))?;
-    let limits = CallLimits::with_optional_output(
-        request.timeout_millis,
-        None,
-        MODEL_OUTPUT_BYTES,
-        MODEL_OUTPUT_BYTES,
-        4_096,
-        3,
+    let descriptor = registry
+        .descriptors()
+        .iter()
+        .rev()
+        .find(|descriptor| descriptor.name() == &ids.capability)
+        .ok_or_else(|| "command tool descriptor is not registered".to_owned())?;
+    let arguments = BoundedJson::parse(
+        &wire_arguments.to_string(),
+        descriptor.limits().json_limits(),
     )
-    .map_err(|error| format!("construct command call limits: {error}"))?
-    .with_paged_progress();
+        .map_err(|error| format!("encode command tool arguments: {error}"))?;
+    let limits = call_limits(request.timeout_millis, descriptor.limits())
+        .map_err(|error| format!("construct command call limits: {error}"))?;
     let call = ToolCall::new(
         ids.action,
         ids.capability.clone(),
-        SemanticVersion::new(2, 0, 0)
-            .map_err(|error| format!("construct command tool version: {error}"))?,
+        descriptor.version(),
         arguments,
         limits,
         ids.revision,
@@ -287,25 +286,27 @@ pub(super) fn recover_prepared(
         ("arguments", Value::Array(arguments.into_iter().map(Value::String).collect())),
         ("executable", Value::String(wire_executable)),
     ]);
-    let arguments = BoundedJson::parse(&wire_arguments.to_string(), JsonLimits::PRODUCTION)
+    let descriptor = registry
+        .descriptors()
+        .iter()
+        .find(|descriptor| {
+            descriptor.name() == binding.capability_name()
+                && descriptor.descriptor_digest().get() == binding.descriptor_digest()
+        })
+        .ok_or_else(|| "recovered command descriptor is not registered".to_owned())?;
+    let arguments = BoundedJson::parse(
+        &wire_arguments.to_string(),
+        descriptor.limits().json_limits(),
+    )
         .map_err(|error| format!("restore command tool arguments: {error}"))?;
     let timeout_millis = execution.deadline_policy().wall_timeout_millis();
-    let limits = CallLimits::with_optional_output(
-        timeout_millis,
-        None,
-        MODEL_OUTPUT_BYTES,
-        MODEL_OUTPUT_BYTES,
-        4_096,
-        3,
-    )
-    .map_err(|error| format!("restore command call limits: {error}"))?
-    .with_paged_progress();
+    let limits = call_limits(timeout_millis, descriptor.limits())
+        .map_err(|error| format!("restore command call limits: {error}"))?;
     let identity = execution.identity();
     let call = ToolCall::new(
         identity.action_id(),
         binding.capability_name().clone(),
-        SemanticVersion::new(2, 0, 0)
-            .map_err(|error| format!("restore command tool version: {error}"))?,
+        descriptor.version(),
         arguments,
         limits,
         identity.revision(),
@@ -319,6 +320,26 @@ pub(super) fn recover_prepared(
     registry
         .prepare(call)
         .map_err(|error| format!("restore prepared command call: {error}"))
+}
+
+fn call_limits(
+    timeout_millis: Option<u64>,
+    descriptor: ToolLimits,
+) -> Result<CallLimits, peritus_tool_protocol::ProtocolError> {
+    let limits = CallLimits::with_optional_output(
+        timeout_millis,
+        descriptor.output_limit(),
+        descriptor.model_bytes(),
+        descriptor.human_bytes(),
+        descriptor.progress_events(),
+        descriptor.artifacts(),
+    )?
+    .with_paged_progress();
+    Ok(if descriptor.protocol_version() >= 3 {
+        limits.with_json_limits(descriptor.json_limits())
+    } else {
+        limits
+    })
 }
 
 fn environment(bindings: Vec<(String, String)>) -> Result<EnvironmentPlan, String> {

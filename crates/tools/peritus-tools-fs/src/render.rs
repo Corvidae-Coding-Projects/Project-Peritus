@@ -423,15 +423,15 @@ fn object(
         .into_iter()
         .map(|(name, value)| value.map(|value| (name.to_owned(), value)))
         .collect::<Result<Vec<_>, _>>()?;
-    BoundedJson::object(members, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::object(members, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn array(values: Vec<BoundedJson>) -> Result<BoundedJson, FsToolError> {
-    BoundedJson::array(values, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::array(values, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn string(value: String) -> Result<BoundedJson, FsToolError> {
-    BoundedJson::string(value, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::string(value, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn optional_string(value: Option<&str>) -> Result<BoundedJson, FsToolError> {

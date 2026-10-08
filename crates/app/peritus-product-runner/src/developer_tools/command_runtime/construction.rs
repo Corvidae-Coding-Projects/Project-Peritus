@@ -5,7 +5,7 @@ use peritus_artifact_store::StoreConfig;
 use peritus_policy::{OperationDescriptor, OperationRegistry, RiskSet};
 use peritus_process::{ExecutionGateway, ProcessStore};
 use peritus_tool_router::{RouterLimits, ToolRegistry};
-use peritus_tools_shell::exec_descriptor;
+use peritus_tools_shell::{exec_descriptor, legacy_exec_descriptor};
 use peritus_types::RunId;
 use std::{
     collections::BTreeMap,
@@ -81,6 +81,8 @@ impl CommandRuntime {
         )
         .map_err(|error| runtime_open(error.to_string()))?;
         let descriptor = exec_descriptor().map_err(|error| runtime_open(error.to_string()))?;
+        let legacy_descriptor =
+            legacy_exec_descriptor().map_err(|error| runtime_open(error.to_string()))?;
         let operation = OperationDescriptor::new(
             descriptor.operation().name().clone(),
             descriptor.operation().operation_class(),
@@ -90,7 +92,10 @@ impl CommandRuntime {
         .map_err(|error| runtime_open(format!("{error:?}")))?;
         let operations = OperationRegistry::new(vec![operation])
             .map_err(|error| runtime_open(format!("{error:?}")))?;
-        let registry = ToolRegistry::new(vec![Arc::new(descriptor)], &operations)
+        let registry = ToolRegistry::new(
+            vec![Arc::new(legacy_descriptor), Arc::new(descriptor)],
+            &operations,
+        )
             .map_err(|error| runtime_open(error.to_string()))?;
         let allocation_pages =
             RouterLimits::new(1, 1).map_err(|error| runtime_open(error.to_string()))?;

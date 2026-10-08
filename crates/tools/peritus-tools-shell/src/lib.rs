@@ -9,7 +9,9 @@ mod json_value;
 mod plan;
 mod render;
 
-pub use catalog::{exec_descriptor, script_descriptor};
+pub use catalog::{
+    exec_descriptor, legacy_exec_descriptor, legacy_script_descriptor, script_descriptor,
+};
 pub use dispatcher::{RawShellDispatcher, ShellDispatcher};
 pub use error::{ShellError, ShellErrorKind};
 pub use execution::{RecoveredTerminalExecution, ShellExecution};

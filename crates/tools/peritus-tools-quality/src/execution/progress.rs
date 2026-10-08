@@ -1,16 +1,16 @@
 //! Ordered C2 quality process progress projection.
 
 use peritus_policy::AuthorityInstant;
-use peritus_process::{ProcessEvent, ProcessEventKind};
+use peritus_process::{OutputStream, ProcessEvent, ProcessEventKind};
 use peritus_tool_protocol::{
-    BoundedJson, JsonLimits, PreparedToolCall, ProgressKind, ToolProgress,
+    BoundedJson, PreparedToolCall, ProgressKind, ToolProgress, render_output_tail,
 };
 
-use crate::{json_value::object, render::text};
+use crate::json_value::object;
 
 pub(super) fn started(
     prepared: &PreparedToolCall,
-    sequence: u32,
+    sequence: u64,
     observed_at: AuthorityInstant,
 ) -> Result<ToolProgress, peritus_tool_protocol::ProtocolError> {
     ToolProgress::new(
@@ -19,30 +19,76 @@ pub(super) fn started(
         ProgressKind::Started,
         observed_at,
         None,
-        text("quality check accepted by C2"),
+        render_output_tail(b"quality check accepted by C2", prepared.call().limits().model_bytes()).0,
     )
 }
 
 pub(super) fn event(
     prepared: &PreparedToolCall,
-    sequence: u32,
+    sequence: u64,
     event: &ProcessEvent,
     observed_at: AuthorityInstant,
 ) -> Result<ToolProgress, peritus_tool_protocol::ProtocolError> {
     let (kind, label) = classify(event.kind());
+    let loss = event.loss();
     let structured_value = object([
         ("bytes", serde_json::Value::from(event.data().len())),
         ("kind", serde_json::Value::String(label.to_owned())),
         ("process_sequence", serde_json::Value::String(event.sequence().to_string())),
+        (
+            "stream_offset",
+            event.stream_offset().map_or(serde_json::Value::Null, |value| {
+                serde_json::Value::String(value.to_string())
+            }),
+        ),
+        (
+            "event_loss_after",
+            loss.map_or(serde_json::Value::Null, |value| {
+                serde_json::Value::String(value.cursor_sequence().to_string())
+            }),
+        ),
+        (
+            "event_loss_through",
+            loss.map_or(serde_json::Value::Null, |value| {
+                serde_json::Value::String(value.through_sequence().to_string())
+            }),
+        ),
+        (
+            "event_loss_output_offsets_exact",
+            loss.map_or(serde_json::Value::Null, |value| {
+                serde_json::Value::Bool(value.output_offsets_exact())
+            }),
+        ),
+        ("stdout_loss_offsets", loss_range(event, OutputStream::Stdout)),
+        ("stderr_loss_offsets", loss_range(event, OutputStream::Stderr)),
+        ("terminal_loss_offsets", loss_range(event, OutputStream::Terminal)),
     ]);
-    let structured = BoundedJson::parse(&structured_value.to_string(), JsonLimits::PRODUCTION)?;
+    let structured = BoundedJson::parse(
+        &structured_value.to_string(),
+        prepared.call().limits().json_limits(),
+    )?;
     ToolProgress::new(
         prepared,
         sequence,
         kind,
         observed_at,
         Some(structured),
-        text(format!("quality process event {}: {label}", event.sequence())),
+        render_output_tail(
+            format!("quality process event {}: {label}", event.sequence()).as_bytes(),
+            prepared.call().limits().model_bytes(),
+        ).0,
+    )
+}
+
+fn loss_range(event: &ProcessEvent, stream: OutputStream) -> serde_json::Value {
+    event.loss().and_then(|loss| loss.output_range(stream)).map_or(
+        serde_json::Value::Null,
+        |(start, end)| {
+            serde_json::Value::Array(vec![
+                serde_json::Value::String(start.to_string()),
+                serde_json::Value::String(end.to_string()),
+            ])
+        },
     )
 }
 

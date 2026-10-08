@@ -94,6 +94,18 @@ pub(super) fn finish_checked(
     Ok(result)
 }
 
+pub(super) fn validate_limits(
+    value: &JsonValue,
+    canonical_bytes: usize,
+    limits: JsonLimits,
+) -> Result<(), ProtocolError> {
+    validate_constructed(value, limits, 1, &mut 0, "$")?;
+    if canonical_bytes > limits.max_bytes {
+        return Err(limit("$", "canonical JSON exceeds its byte bound"));
+    }
+    Ok(())
+}
+
 pub(super) fn from_bounded_array(
     values: Vec<BoundedJson>,
     limits: JsonLimits,

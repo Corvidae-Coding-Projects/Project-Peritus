@@ -88,6 +88,7 @@ impl ToolDispatcher for QualityDiscoverDispatcher<'_> {
         }
         let requested_cursor = cursor_argument(invocation.prepared().call().arguments())?;
         let maximum_output_bytes = selected_output_bytes(invocation.prepared());
+        let json_limits = invocation.prepared().call().limits().json_limits();
         let observed_at = invocation.observed_at();
         let prepared = invocation.into_prepared();
 
@@ -105,6 +106,7 @@ impl ToolDispatcher for QualityDiscoverDispatcher<'_> {
             snapshot_binding(self.workspace),
             requested_cursor,
             maximum_output_bytes,
+            json_limits,
         )?;
         let summary = if rendered.deferred {
             "quality catalog page needs a larger selected output envelope".to_owned()
@@ -154,6 +156,7 @@ fn render_catalog_page(
     snapshot: Sha256Digest,
     requested: Option<CatalogCursor>,
     maximum_output_bytes: usize,
+    json_limits: JsonLimits,
 ) -> Result<RenderedCatalogPage, DispatchFailure> {
     let total = catalog.checks().len() + catalog.diagnostics().len();
     let binding = CursorBinding { snapshot, catalog: catalog.digest() };
@@ -183,7 +186,7 @@ fn render_catalog_page(
         let value = catalog_page_value(catalog, start, end, &cursor, next.as_deref());
         let encoded = value.to_string();
         let minimum_output_bytes = encoded.len();
-        match BoundedJson::parse(&encoded, JsonLimits::PRODUCTION) {
+        match BoundedJson::parse(&encoded, json_limits) {
             Ok(structured)
                 if structured.canonical_bytes().len() <= maximum_output_bytes =>
             {
@@ -205,7 +208,7 @@ fn render_catalog_page(
                     (!total.eq(&0)).then_some(cursor.as_str()),
                     minimum_output_bytes,
                 );
-                let structured = BoundedJson::parse(&deferred.to_string(), JsonLimits::PRODUCTION)
+                let structured = BoundedJson::parse(&deferred.to_string(), json_limits)
                     .map_err(|error| {
                         adapter_failure("quality-discovery-result", &error.to_string())
                     })?;
@@ -383,10 +386,9 @@ fn cursor_argument(arguments: &BoundedJson) -> Result<Option<CatalogCursor>, Dis
 }
 
 fn selected_output_bytes(prepared: &peritus_tool_protocol::PreparedToolCall) -> usize {
-    prepared.call().limits().output_limit().map_or(JsonLimits::PRODUCTION.max_bytes(), |value| {
-        usize::try_from(value)
-            .unwrap_or(usize::MAX)
-            .min(JsonLimits::PRODUCTION.max_bytes())
+    let json_bytes = prepared.call().limits().json_limits().max_bytes();
+    prepared.call().limits().output_limit().map_or(json_bytes, |value| {
+        usize::try_from(value).unwrap_or(usize::MAX).min(json_bytes)
     })
 }
 

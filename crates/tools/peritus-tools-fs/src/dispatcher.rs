@@ -288,7 +288,7 @@ impl ToolDispatcher for FsDispatcher<'_> {
                 self.kind,
                 workspace,
                 prepared.arguments(),
-                prepared.call().limits().output_bytes(),
+                selected_output_bytes(&prepared),
             ),
             DispatchContext::ReadOwned(workspace) => {
                 let execution = FsExecution::read(
@@ -416,7 +416,7 @@ impl FsExecution {
         kind: FsDispatchKind,
         workspace: Arc<ReadOnlyWorkspace>,
     ) -> Self {
-        let maximum_output_bytes = prepared.call().limits().output_bytes();
+        let maximum_output_bytes = selected_output_bytes(&prepared);
         let arguments = prepared.arguments().clone();
         Self {
             prepared,
@@ -672,6 +672,12 @@ fn execute_read(
             "mutation kind reached immutable dispatcher",
         )),
     }
+}
+
+fn selected_output_bytes(prepared: &peritus_tool_protocol::PreparedToolCall) -> u64 {
+    let json_bytes = u64::try_from(prepared.call().limits().json_limits().max_bytes())
+        .unwrap_or(u64::MAX);
+    prepared.call().limits().output_limit().map_or(json_bytes, |output| output.min(json_bytes))
 }
 
 fn render_discover(

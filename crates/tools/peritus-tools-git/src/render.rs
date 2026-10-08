@@ -139,7 +139,7 @@ impl RenderedOutput {
             ("detached", Ok(BoundedJson::boolean(value.is_detached()))),
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
-            ("entry_count", Ok(integer(usize_integer(value.entries().len())))),
+            ("entry_count", unsigned_usize(value.entries().len())),
             ("head", string(value.head().to_string())),
             (
                 "index_tree",
@@ -238,9 +238,9 @@ impl RenderedOutput {
             ("base", string(value.base().to_string())),
             ("digest", string(digest_hex(value.digest()))),
             ("entries", array(entries)),
-            ("entry_count", Ok(integer(usize_integer(value.entries().len())))),
+            ("entry_count", unsigned_usize(value.entries().len())),
             ("patch_base64", string(STANDARD.encode(patch))),
-            ("patch_bytes", Ok(integer(usize_integer(value.patch().len())))),
+            ("patch_bytes", unsigned_usize(value.patch().len())),
             ("target", string(value.target().to_string())),
             ("truncated", Ok(BoundedJson::boolean(truncated))),
         ])?;
@@ -332,12 +332,12 @@ impl RenderedOutput {
                     ("commit", string(commit.commit().to_string())),
                     ("parents", array(parents)),
                     ("subject", string(commit.subject().to_owned())),
-                    ("timestamp_seconds", Ok(integer(u64_integer(commit.timestamp_seconds())))),
+                    ("timestamp_seconds", Ok(BoundedJson::unsigned(commit.timestamp_seconds()))),
                 ])
             })
             .collect::<Result<Vec<_>, _>>()?;
         let structured = object(vec![
-            ("commit_count", Ok(integer(usize_integer(value.commits().len())))),
+            ("commit_count", unsigned_usize(value.commits().len())),
             ("commits", array(commits)),
             ("digest", string(digest_hex(value.digest()))),
             ("start", string(value.start().to_string())),
@@ -425,8 +425,8 @@ impl RenderedOutput {
         let structured = object(vec![
             ("commit", string(value.commit().to_string())),
             ("digest", string(digest_hex(value.digest()))),
-            ("generation", Ok(integer(u64_integer(value.generation().get())))),
-            ("revision", Ok(integer(u64_integer(value.revision().get())))),
+            ("generation", Ok(BoundedJson::unsigned(value.generation().get()))),
+            ("revision", Ok(BoundedJson::unsigned(value.revision().get()))),
             ("tree", string(value.tree().to_string())),
             ("workspace_id", string(identifier_hex(value.workspace_id().as_bytes()))),
         ])?;
@@ -532,23 +532,19 @@ fn object(
         .into_iter()
         .map(|(name, value)| value.map(|value| (name.to_owned(), value)))
         .collect::<Result<Vec<_>, _>>()?;
-    BoundedJson::object(members, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::object(members, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn array(values: Vec<BoundedJson>) -> Result<BoundedJson, GitToolError> {
-    BoundedJson::array(values, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::array(values, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn string(value: String) -> Result<BoundedJson, GitToolError> {
-    BoundedJson::string(value, JsonLimits::PRODUCTION).map_err(|_| protocol_error())
+    BoundedJson::string(value, JsonLimits::MAXIMUM).map_err(|_| protocol_error())
 }
 
 fn optional_string(value: Option<&str>) -> Result<BoundedJson, GitToolError> {
     value.map_or_else(|| Ok(BoundedJson::null()), |value| string(value.to_owned()))
-}
-
-fn integer(value: i64) -> BoundedJson {
-    BoundedJson::integer(value)
 }
 
 fn unsigned_usize(value: usize) -> Result<BoundedJson, GitToolError> {
@@ -589,14 +585,6 @@ fn identifier_hex(value: &[u8]) -> String {
         output.push(char::from(HEX[usize::from(byte & 0x0f)]));
     }
     output
-}
-
-fn u64_integer(value: u64) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
-}
-
-fn usize_integer(value: usize) -> i64 {
-    i64::try_from(value).unwrap_or(i64::MAX)
 }
 
 const fn protocol_error() -> GitToolError {

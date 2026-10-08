@@ -45,14 +45,15 @@ impl ToolInvocationPlan {
         revision: RevisionTuple,
         deadline: AuthorityInstant,
         idempotency_key: IdempotencyKey,
-        json_limits: JsonLimits,
+        _json_limits: JsonLimits,
     ) -> Result<Self, ToolDriveError> {
         let name = CapabilityName::new(model_call.name().as_str().to_owned())
             .map_err(|_| ToolDriveError::InvalidModelToolName)?;
         let arguments = core::str::from_utf8(model_call.arguments().canonical_bytes())
             .map_err(|_| ToolDriveError::InvalidModelArguments)
             .and_then(|value| {
-                BoundedJson::parse(value, json_limits).map_err(ToolDriveError::ToolProtocol)
+                BoundedJson::parse(value, limits.json_limits())
+                    .map_err(ToolDriveError::ToolProtocol)
             })?;
         let call = ToolCall::new(
             action_id,

@@ -241,6 +241,7 @@ pub struct ToolResult {
     timing: ToolTiming,
     truncation: TruncationMetadata,
     encoding_version: u16,
+    json_limits: crate::JsonLimits,
     progress_frontier: u64,
 }
 
@@ -340,6 +341,9 @@ impl ToolResult {
         progress_count: u64,
     ) -> Result<Self, ProtocolError> {
         let limits = prepared.call().limits();
+        if let Some(value) = structured.as_ref() {
+            value.validate_limits(limits.json_limits())?;
+        }
         if artifacts.len() > limits.artifacts() as usize
             || (limits.progress_contract() == ProgressContract::LifetimeV1
                 && progress_count > u64::from(limits.progress_events()))
@@ -377,7 +381,8 @@ impl ToolResult {
             artifacts,
             timing,
             truncation,
-            encoding_version: limits.progress_contract().version(),
+            encoding_version: limits.protocol_version(),
+            json_limits: limits.json_limits(),
             progress_frontier: progress_count,
         })
     }

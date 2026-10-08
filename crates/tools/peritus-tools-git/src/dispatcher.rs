@@ -326,7 +326,7 @@ impl ToolDispatcher for GitDispatcher<'_> {
                     workspace,
                     *retained,
                     prepared.arguments(),
-                    prepared.call().limits().output_bytes(),
+                    selected_output_bytes(&prepared),
                 )
             }
             DispatchContext::ReadOwned { workspace, retained } => {
@@ -480,7 +480,7 @@ impl GitObservationExecution {
         retained: Option<CandidateSnapshot>,
     ) -> Self {
         let arguments = prepared.arguments().clone();
-        let maximum_output_bytes = prepared.call().limits().output_bytes();
+        let maximum_output_bytes = selected_output_bytes(&prepared);
         Self {
             prepared,
             started_at,
@@ -693,6 +693,12 @@ fn execute_read(
             "effectful kind reached immutable Git dispatcher",
         )),
     }
+}
+
+fn selected_output_bytes(prepared: &peritus_tool_protocol::PreparedToolCall) -> u64 {
+    let json_bytes = u64::try_from(prepared.call().limits().json_limits().max_bytes())
+        .unwrap_or(u64::MAX);
+    prepared.call().limits().output_limit().map_or(json_bytes, |output| output.min(json_bytes))
 }
 
 fn render_status_page(

@@ -6,7 +6,11 @@ use super::{IdempotencySemantics, LeaseRequirement, SideEffectClass, ToolDescrip
 
 pub(super) fn canonical(value: &ToolDescriptor) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(512 + value.schema.canonical_bytes().len());
-    bytes.extend_from_slice(b"peritus.tool-descriptor.v1\0");
+    bytes.extend_from_slice(match value.limits.protocol_version() {
+        1 => b"peritus.tool-descriptor.v1\0".as_slice(),
+        2 => b"peritus.tool-descriptor.v2\0".as_slice(),
+        _ => b"peritus.tool-descriptor.v3\0".as_slice(),
+    });
     push_bytes(&mut bytes, value.name.as_str().as_bytes());
     push_u16(&mut bytes, value.version.major());
     push_u16(&mut bytes, value.version.minor());
@@ -23,12 +27,18 @@ pub(super) fn canonical(value: &ToolDescriptor) -> Vec<u8> {
     bytes.push(idempotency_tag(value.idempotency));
     push_bytes(&mut bytes, value.implementation.as_str().as_bytes());
     bytes.extend_from_slice(&value.limits.timeout_millis.unwrap_or(0).to_be_bytes());
-    bytes.extend_from_slice(&value.limits.output_bytes.to_be_bytes());
+    bytes.extend_from_slice(&value.limits.output_bytes().to_be_bytes());
     bytes.extend_from_slice(&value.limits.model_bytes.to_be_bytes());
     bytes.extend_from_slice(&value.limits.human_bytes.to_be_bytes());
     bytes.extend_from_slice(&value.limits.progress_events.to_be_bytes());
+    if value.limits.protocol_version() >= 2 {
+        bytes.push(2);
+    }
     bytes.extend_from_slice(&value.limits.artifacts.to_be_bytes());
     bytes.extend_from_slice(&value.limits.control_bytes.to_be_bytes());
+    if value.limits.protocol_version() >= 3 {
+        bytes.extend_from_slice(&value.limits.json_limits.canonical_bytes());
+    }
     bytes.push(value.controls.bits());
     push_u16(&mut bytes, value.compatibility.minimum());
     push_u16(&mut bytes, value.compatibility.maximum());

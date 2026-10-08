@@ -34,6 +34,9 @@ pub(super) fn result(value: &ToolResult) -> Vec<u8> {
     bytes.extend_from_slice(value.descriptor_digest.as_bytes());
     bytes.extend_from_slice(value.prepared_digest.as_bytes());
     bytes.extend_from_slice(value.replay_identity.as_bytes());
+    if value.encoding_version >= 3 {
+        bytes.extend_from_slice(&value.json_limits.canonical_bytes());
+    }
     bytes.push(status_tag(value.status));
     append_optional_json(&mut bytes, value.structured.as_ref());
     match &value.failure {
