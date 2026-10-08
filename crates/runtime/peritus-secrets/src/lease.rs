@@ -174,6 +174,11 @@ impl SecretLease {
     pub const fn remaining_uses(&self) -> u32 {
         self.remaining_uses
     }
+    /// Returns the exclusive expiry instant used for authorized delivery.
+    #[must_use]
+    pub const fn expires_epoch_millis(&self) -> u64 {
+        self.expires_epoch_millis
+    }
     /// Returns state.
     #[must_use]
     pub const fn state(&self) -> SecretLeaseState {

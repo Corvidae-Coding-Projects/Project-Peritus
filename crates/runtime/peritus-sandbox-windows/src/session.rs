@@ -45,7 +45,9 @@ pub struct WindowsSession {
     proxy: Option<ManagedProxy>,
     proxy_cleanup: CleanupState,
     filter: NetworkFilterOwner,
+    filter_cleanup: CleanupState,
     secrets: Option<SecretDeliverySession>,
+    secret_cleanup: CleanupState,
     release: Option<ReleaseReport>,
 }
 
@@ -110,6 +112,10 @@ impl WindowsSession {
         }
         let proxy_cleanup =
             if proxy.is_some() { CleanupState::Pending } else { CleanupState::Complete };
+        let filter_cleanup =
+            if filter.is_managed() { CleanupState::Pending } else { CleanupState::Complete };
+        let secret_cleanup =
+            if secrets.is_some() { CleanupState::Pending } else { CleanupState::Complete };
         Self {
             native_launch,
             windows_launch,
@@ -127,7 +133,9 @@ impl WindowsSession {
             proxy,
             proxy_cleanup,
             filter,
+            filter_cleanup,
             secrets,
+            secret_cleanup,
             release: None,
         }
     }
@@ -170,7 +178,12 @@ impl WindowsSession {
     /// Returns partial cleanup evidence, including failed retryable dimensions.
     #[must_use]
     pub const fn release_progress(&self) -> ReleaseProgress {
-        ReleaseProgress::new(self.acl.cleanup_state(), self.proxy_cleanup)
+        ReleaseProgress::new(
+            self.acl.cleanup_state(),
+            self.proxy_cleanup,
+            self.filter_cleanup,
+            self.secret_cleanup,
+        )
     }
 
     fn transition(
@@ -380,9 +393,17 @@ impl WindowsSession {
     }
 }
 
-pub(crate) const fn process_error(error: &WindowsError) -> ProcessError {
+pub(crate) fn process_error(error: &WindowsError) -> ProcessError {
     use peritus_process::{ErrorCode, ProcessOperation, RecoveryClass};
-    let (code, operation, recovery, detail) = match error.kind() {
+    let (code, operation, recovery, detail) = if !error.preparation_cleanup().is_complete() {
+        (
+            ErrorCode::Indeterminate,
+            ProcessOperation::Reconcile,
+            RecoveryClass::ReopenAndReconcile,
+            "Windows preparation cleanup requires exact reconciliation",
+        )
+    } else {
+        match error.kind() {
         WindowsErrorKind::InvalidPlan | WindowsErrorKind::Path => (
             ErrorCode::InvalidInput,
             ProcessOperation::Validate,
@@ -430,6 +451,7 @@ pub(crate) const fn process_error(error: &WindowsError) -> ProcessError {
             RecoveryClass::CancelAndReap,
             "Windows native preparation or lifecycle operation failed",
         ),
+        }
     };
-    ProcessError::new(code, operation, recovery, detail)
+    ProcessError::with_source(code, operation, recovery, detail, error.clone())
 }

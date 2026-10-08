@@ -222,6 +222,12 @@ impl SecretDeliverySession {
         &self.leases
     }
 
+    /// Reports whether every retained artifact and lease was released.
+    #[must_use]
+    pub const fn released(&self) -> bool {
+        self.released
+    }
+
     /// Removes private files and drops all zeroizing material idempotently.
     ///
     /// # Errors

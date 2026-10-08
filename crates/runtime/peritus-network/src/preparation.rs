@@ -35,6 +35,16 @@ impl ManagedProxyPreparation {
         Self { options, token, resolver, credential }
     }
 
+    /// Validates the exact checked network projection without starting a listener or consuming
+    /// the routing-token owner.
+    ///
+    /// # Errors
+    ///
+    /// Rejects the same non-narrowing options and credential drift as [`Self::prepare`].
+    pub fn preflight(&self, checked: &CheckedSandboxPlan) -> Result<(), NetworkError> {
+        NetworkPlan::from_checked(checked, self.options.clone()).map(drop)
+    }
+
     /// Compiles the checked plan and starts its one owned loopback proxy.
     ///
     /// # Errors

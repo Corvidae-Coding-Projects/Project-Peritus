@@ -16,11 +16,18 @@ pub enum CleanupState {
 pub struct ReleaseProgress {
     acl: CleanupState,
     proxy: CleanupState,
+    filter: CleanupState,
+    secrets: CleanupState,
 }
 
 impl ReleaseProgress {
-    pub(crate) const fn new(acl: CleanupState, proxy: CleanupState) -> Self {
-        Self { acl, proxy }
+    pub(crate) const fn new(
+        acl: CleanupState,
+        proxy: CleanupState,
+        filter: CleanupState,
+        secrets: CleanupState,
+    ) -> Self {
+        Self { acl, proxy, filter, secrets }
     }
 
     /// Returns exact ACL reversal progress.
@@ -33,6 +40,18 @@ impl ReleaseProgress {
     #[must_use]
     pub const fn proxy(self) -> CleanupState {
         self.proxy
+    }
+
+    /// Returns dynamic WFP policy teardown progress.
+    #[must_use]
+    pub const fn filter(self) -> CleanupState {
+        self.filter
+    }
+
+    /// Returns exact secret-delivery teardown progress.
+    #[must_use]
+    pub const fn secrets(self) -> CleanupState {
+        self.secrets
     }
 }
 

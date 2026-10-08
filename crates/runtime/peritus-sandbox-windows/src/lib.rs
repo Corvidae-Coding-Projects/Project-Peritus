@@ -41,7 +41,10 @@ pub use config::WindowsBackendConfig;
 pub use conformance::ConformanceFacts;
 pub use descriptor::{BACKEND_NAME, BACKEND_VERSION, WindowsBackendDescriptor, WindowsIdentity};
 pub use diagnostic::{enforcement_name, resource_name};
-pub use error::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsRecovery};
+pub use error::{
+    PreparationCleanup, WindowsError, WindowsErrorKind, WindowsErrorSource, WindowsOperation,
+    WindowsRecovery,
+};
 pub use filesystem::{
     AclAccess, AclEntry, AclPlan, AclTransaction, PathEvidence, PathPolicy, ResolvedWindowsPath,
     WindowsPath, compile_acl_plan,
@@ -53,7 +56,7 @@ pub use observation::{
     ObservationBinding, ObservationStatus, WindowsCapability, WindowsObservation, WindowsPhase,
     resource_domain,
 };
-pub use preparation::WindowsBackend;
+pub use preparation::{RetainedWindowsBackendFactory, WindowsBackend};
 pub use probe::{
     MINIMUM_WINDOWS_BUILD, ProbeEvidence, ProbeRequest, WindowsProbe, production_resource_levels,
 };

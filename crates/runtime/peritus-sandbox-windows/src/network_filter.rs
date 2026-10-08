@@ -19,6 +19,10 @@ impl NetworkFilterOwner {
         }
     }
 
+    pub(crate) const fn is_managed(&self) -> bool {
+        self.managed
+    }
+
     pub(crate) fn install(profile: &TokenProfile, route: ProxyRoute) -> Result<Self, WindowsError> {
         if !profile.is_app_container() {
             return Err(crate::error::unsupported(

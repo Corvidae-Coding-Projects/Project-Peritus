@@ -37,22 +37,20 @@ impl AclTransaction {
         for (index, entry) in plan.entries.iter().enumerate() {
             let native = entry.path.to_path_buf();
             if !native.exists() {
-                let _ = transaction.restore();
-                return Err(acl_error(
+                let error = acl_error(
                     WindowsOperation::InstallAcl,
                     "exact ACL target does not exist",
-                ));
+                );
+                return Err(rollback_install(&mut transaction, error));
             }
             let backup = backup_root.join(format!("{}-{index}.acl", hex(plan.digest.as_bytes())));
             if let Err(error) = save_acl(&native, &backup) {
-                let _ = transaction.restore();
-                return Err(error);
+                return Err(rollback_install(&mut transaction, error));
             }
             let parent = native.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
             transaction.reversals.push(AclReversal { parent, backup });
             if let Err(error) = apply_entry(&native, &plan.principal_sid, entry) {
-                let _ = transaction.restore();
-                return Err(error);
+                return Err(rollback_install(&mut transaction, error));
             }
         }
         Ok(transaction)
@@ -155,6 +153,17 @@ struct AclReversal {
 
 #[cfg(not(target_os = "windows"))]
 type AclReversal = ();
+
+#[cfg(target_os = "windows")]
+fn rollback_install(transaction: &mut AclTransaction, original: WindowsError) -> WindowsError {
+    let incomplete = transaction.restore().is_err() || !transaction.restored();
+    original.with_cleanup(crate::PreparationCleanup::new(
+        incomplete,
+        false,
+        false,
+        false,
+    ))
+}
 
 #[cfg(target_os = "windows")]
 fn save_acl(target: &Path, backup: &Path) -> Result<(), WindowsError> {

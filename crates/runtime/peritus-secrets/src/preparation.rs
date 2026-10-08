@@ -8,7 +8,7 @@ use peritus_types::{EnvironmentId, ProcessId, Sha256Digest};
 
 use crate::{
     CredentialStore, RecoveryClass, SecretDeliveryContext, SecretDeliverySession, SecretError,
-    SecretErrorKind, SecretLease, SecretOperation,
+    SecretErrorKind, SecretLease, SecretLeaseState, SecretOperation,
 };
 
 /// Inert exact leases and store access consumed only during authorized native preparation.
@@ -49,6 +49,38 @@ impl SecretPreparation {
     #[must_use]
     pub fn lease_count(&self) -> usize {
         self.leases.len()
+    }
+
+    /// Validates exact live lease bindings and private staging paths without consuming a lease or
+    /// reading secret material.
+    ///
+    /// # Errors
+    /// Returns a typed lease or staging-path failure matching authorized preparation.
+    pub fn preflight(
+        &self,
+        owner: ProcessId,
+        environment: EnvironmentId,
+        sandbox_digest: Sha256Digest,
+        execution_digest: Sha256Digest,
+        requirements: &[SecretRequirement],
+    ) -> Result<(), SecretError> {
+        if requirements.len() != self.leases.len() {
+            return Err(preparation_error(
+                SecretErrorKind::Revoked,
+                RecoveryClass::Reacquire,
+                "secret requirements and supplied leases differ",
+            ));
+        }
+        preflight_bindings(
+            &self.leases,
+            requirements,
+            owner,
+            environment,
+            sandbox_digest,
+            execution_digest,
+            self.now_epoch_millis,
+        )?;
+        preflight_staging_paths(&self.staging_root, &self.leases)
     }
 
     /// Resolves and stages exactly the checked requirements under current execution bindings.
@@ -101,25 +133,10 @@ impl SecretPreparation {
         mut should_continue: impl FnMut() -> bool,
         mut observe_completed: impl FnMut(usize, usize),
     ) -> Result<SecretDeliverySession, SecretError> {
-        if requirements.len() != self.leases.len() {
-            return Err(preparation_error(
-                SecretErrorKind::Revoked,
-                RecoveryClass::Reacquire,
-                "secret requirements and supplied leases differ",
-            ));
-        }
         if !should_continue() {
             return Err(preparation_cancelled());
         }
-        preflight_bindings(
-            &self.leases,
-            requirements,
-            owner,
-            environment,
-            sandbox_digest,
-            execution_digest,
-        )?;
-        preflight_staging_paths(&self.staging_root, &self.leases)?;
+        self.preflight(owner, environment, sandbox_digest, execution_digest, requirements)?;
         observe_completed(0, requirements.len());
         let context = SecretDeliveryContext::new(
             owner,
@@ -185,6 +202,7 @@ fn preflight_bindings(
     environment: EnvironmentId,
     sandbox_digest: Sha256Digest,
     execution_digest: Sha256Digest,
+    now_epoch_millis: u64,
 ) -> Result<(), SecretError> {
     let mut matched = vec![false; leases.len()];
     for requirement in requirements {
@@ -196,6 +214,9 @@ fn preflight_bindings(
                 && lease.execution_digest() == execution_digest
                 && lease.reference() == requirement.reference()
                 && lease.delivery() == requirement.delivery()
+                && lease.state() == SecretLeaseState::Active
+                && lease.remaining_uses() > 0
+                && now_epoch_millis < lease.expires_epoch_millis()
         });
         let Some(position) = position else {
             return Err(preparation_error(

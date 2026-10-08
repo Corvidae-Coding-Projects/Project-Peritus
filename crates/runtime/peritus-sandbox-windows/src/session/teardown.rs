@@ -10,13 +10,40 @@ use crate::{
 
 impl WindowsSession {
     pub(super) fn release_owned_resources(&mut self) -> Result<ReleaseReport, ProcessError> {
-        let acl_restored = self.acl.restore().is_ok() && self.acl.restored();
-        let network_filter_removed = self.filter.release().unwrap_or(false);
-        let proxy_joined = self.release_proxy().unwrap_or(false);
-        let secret_delivery_released =
-            self.secrets.as_mut().is_none_or(|secrets| secrets.release().is_ok());
-        let secret_files_removed = remove_secret_files(&self.windows_launch).unwrap_or(false);
-        let handles_closed = self.release_protected_handles().is_ok();
+        let acl_failure = self.acl.restore().err().map(|error| process_error(&error));
+        let acl_restored = acl_failure.is_none() && self.acl.restored();
+        let filter_failure = self.filter.release().err().map(|error| process_error(&error));
+        let network_filter_removed = filter_failure.is_none();
+        self.filter_cleanup = if network_filter_removed {
+            CleanupState::Complete
+        } else {
+            CleanupState::RetryRequired
+        };
+        let proxy_failure = self.release_proxy().err();
+        let proxy_joined = proxy_failure.is_none();
+        let secret_failure = self.secrets.as_mut().and_then(|secrets| {
+            secrets.release().err().map(|source| {
+                process_error(
+                    &WindowsError::new(
+                        WindowsErrorKind::Secret,
+                        WindowsOperation::Release,
+                        WindowsRecovery::RetryCleanup,
+                        "exact secret delivery cleanup failed",
+                    )
+                    .with_source(crate::error::secret_source(&source)),
+                )
+            })
+        });
+        let secret_delivery_released = secret_failure.is_none();
+        self.secret_cleanup = if secret_delivery_released {
+            CleanupState::Complete
+        } else {
+            CleanupState::RetryRequired
+        };
+        let secret_file_failure = remove_secret_files(&self.windows_launch).err();
+        let secret_files_removed = secret_file_failure.is_none();
+        let handle_failure = self.release_protected_handles().err();
+        let handles_closed = handle_failure.is_none();
         let report = ReleaseReport {
             acl_restored,
             secret_files_removed,
@@ -25,6 +52,20 @@ impl WindowsSession {
             proxy_joined,
             network_filter_removed,
         };
+        if let Some(error) = [
+            acl_failure,
+            filter_failure,
+            proxy_failure,
+            secret_failure,
+            secret_file_failure,
+            handle_failure,
+        ]
+        .into_iter()
+        .flatten()
+        .next()
+        {
+            return Err(error);
+        }
         if !secret_delivery_released || !report.complete() {
             return Err(process_error(&WindowsError::new(
                 WindowsErrorKind::RecoveryIndeterminate,
@@ -39,24 +80,25 @@ impl WindowsSession {
     fn release_proxy(&mut self) -> Result<bool, ProcessError> {
         match self.proxy_cleanup {
             CleanupState::Complete => Ok(true),
-            CleanupState::RetryRequired => Err(process_error(&cleanup_error(
-                "managed proxy teardown previously failed and requires reconciliation",
-            ))),
-            CleanupState::Pending => {
-                let Some(proxy) = self.proxy.take() else {
+            CleanupState::Pending | CleanupState::RetryRequired => {
+                let Some(proxy) = self.proxy.as_mut() else {
                     self.proxy_cleanup = CleanupState::RetryRequired;
                     return Err(process_error(&cleanup_error(
                         "managed proxy ownership disappeared before teardown",
                     )));
                 };
-                match proxy.shutdown() {
-                    Ok(result) if result.workers_joined() => {
+                match proxy.reconcile_shutdown() {
+                    Ok(()) => {
                         self.proxy_cleanup = CleanupState::Complete;
+                        self.proxy = None;
                         Ok(true)
                     }
-                    Ok(_) | Err(_) => {
+                    Err(source) => {
                         self.proxy_cleanup = CleanupState::RetryRequired;
-                        Err(process_error(&cleanup_error("managed proxy teardown failed")))
+                        Err(process_error(
+                            &cleanup_error("managed proxy teardown failed")
+                                .with_source(crate::error::network_source(&source)),
+                        ))
                     }
                 }
             }
