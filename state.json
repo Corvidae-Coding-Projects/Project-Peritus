@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3970,
-        "tip_oid": "fd12acf0a70f235615c65f27f7541ca4a70cc83c",
-        "prefix_sha256": "e68f46ee38203610d53b1f0687b1fed7e5d818a43be277cacf8ee47d5d91bca8"
+        "sequence": 3971,
+        "tip_oid": "748ee49eb854781d80c43cc3063f266a931b6abc",
+        "prefix_sha256": "2e6190516a9ffad23fb420de1faad63d04c071f6775b22b7fdff345c49ce45fb"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3188,
+  "next_comment_id": 3189,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -40500,7 +40500,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.565054839Z",
-      "updated_at": "2026-10-06T13:27:50.567477738Z",
+      "updated_at": "2026-10-08T02:12:04.846046330Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -40511,6 +40511,15 @@
           "content": "Systemic repair plan for L441: E3 can publish analysis/report bindings that F0 later rejects with no in-place campaign repair.\n\nOwning contract and implementation boundary: crates/analysis/peritus-eval/src/aggregate/reducer.rs:349-365; src/runtime/artifact.rs:125-152; src/runtime/publication.rs:60-101; crates/analysis/peritus-evolution/src/binding/evaluation/evidence.rs:54-75; crates/analysis/peritus-eval/tests/publication_integration.rs:222-245. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nValidate one complete analysis/report/dataset/plan contract before CompleteReport and publication. Retain repairable intent and provide an explicit reconciled successor linked to the same logical work when previously published bindings cannot be amended safely. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "83d6aa23-ff77-4957-9008-4a4579cdfb61": {
+          "display_id": 3188,
+          "author": "6ME5",
+          "content": "Code complete in commit 879dd272a: versioned complete report binding and canonical analysis artifact checks align E3 staging/publication/recovery with F0 evidence admission. Both artifact dependencies retain exact profile/dataset/plan/analysis/report provenance; legacy events/receipts remain readable. Explicit reconciled successor validates same logical arms/revision/profile/dataset and supersedes linkage with both owner receipts. Existing literal-analysis test fixture is known incompatible and remains untouched for the final validation phase. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:12:04.836748299Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAJkPbgrJjV4wgzl3B57LBLRXp0KJg5cmQYXF38rfvJwKaPYxrAZWMHeIYkkiI6IveXSO9qKbEtCNp+0bh44XKAg=="
         }
       }
     },
