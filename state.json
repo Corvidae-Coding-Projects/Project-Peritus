@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3891,
-        "tip_oid": "48a13765fa3860d61e8793d02a0871df00d52290",
-        "prefix_sha256": "a16026db5f9994556828f638e6e20105a90f80a11e81360e0a6d7963bc73e1bc"
+        "sequence": 3892,
+        "tip_oid": "87b7ae621c140bd07308099ff0f5c84ff3513148",
+        "prefix_sha256": "d9e77e35dc1b5f94853f966f7ab55feae17673612b16725fa61b91915b6028e2"
       },
       "NWAR": {
         "sequence": 39,
@@ -40404,12 +40404,13 @@
       "display_id": 125,
       "title": "[L026] Governance failures become persistent execution/admission barriers",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L026.\n\n- `product_run/interaction/live.rs:26-111` converts control-store/read errors into governing-context stop text, an empty reference-authority context, revision `u64::MAX`, protection of the entire workspace, and no host permissions. The error's original class is not retained by several of these fallback return values.\n- Lines 153-207 explicitly reject provider requests and input incorporation after the shared `persistence_failed` flag is set. Tool admission at lines 247-276 yields when the supplied input generation differs from durable state. Goal admission at lines 373-380 stops on Paused or Inactive.\n- `interaction.rs:235-251` uses `pending_record_input(record).unwrap_or(false)`, so an input-inspection error can become an absence of pending input. These are fail-closed authority/durability choices; their recovery and user-actionability need caller inspection before claiming a permanent lockup.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.935861741Z",
-      "updated_at": "2026-10-08T00:07:16.031140814Z",
+      "updated_at": "2026-10-08T00:08:34.849028637Z",
+      "closed_at": "2026-10-08T00:08:34.846288422Z",
       "labels": [
         "daily-driving-limiter"
       ],
