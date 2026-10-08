@@ -699,17 +699,26 @@ impl ArtifactStore {
         &self,
         run: &mut RecoveryRun<'_>,
     ) -> Result<(), ArtifactStoreError> {
-        let mut cursor = None;
+        let mut cursor = self.catalog.finalized_recovery_cursor()?;
         loop {
             let records = self.catalog.finalized_metadata_after(cursor, 256)?;
             if records.is_empty() {
+                if cursor.is_some() {
+                    self.catalog.replace_finalized_recovery_cursor(cursor, None)?;
+                }
                 return Ok(());
             }
             for metadata in &records {
                 self.reconcile_finalized(metadata, run)?;
-                cursor = Some(metadata.digest());
             }
+            let next = records.last().map(ArtifactMetadata::digest).ok_or_else(|| {
+                corrupt_layout("nonempty artifact recovery page has no final digest")
+            })?;
+            self.catalog
+                .replace_finalized_recovery_cursor(cursor, Some(next))?;
+            cursor = Some(next);
             if records.len() < 256 {
+                self.catalog.replace_finalized_recovery_cursor(cursor, None)?;
                 return Ok(());
             }
         }

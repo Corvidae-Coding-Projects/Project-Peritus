@@ -453,6 +453,52 @@ impl Catalog {
         self.metadata_after_where(after, maximum, "finalization_state = 2")
     }
 
+    pub(crate) fn finalized_recovery_cursor(
+        &self,
+    ) -> Result<Option<ArtifactDigest>, ArtifactStoreError> {
+        let cursor: Option<Vec<u8>> = self
+            .connection
+            .query_row(
+                "SELECT finalized_after FROM artifact_recovery_state WHERE singleton = 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(catalog_io)?;
+        cursor
+            .map(|digest| array::<32>(&digest).map(ArtifactDigest::new))
+            .transpose()
+    }
+
+    pub(crate) fn replace_finalized_recovery_cursor(
+        &self,
+        expected: Option<ArtifactDigest>,
+        replacement: Option<ArtifactDigest>,
+    ) -> Result<(), ArtifactStoreError> {
+        if let (Some(expected), Some(replacement)) = (expected, replacement)
+            && replacement <= expected
+        {
+            return Err(corrupt_catalog(
+                "artifact recovery cursor does not advance in digest order",
+            ));
+        }
+        let expected = expected.map(|digest| digest.as_bytes().to_vec());
+        let replacement = replacement.map(|digest| digest.as_bytes().to_vec());
+        let changed = self
+            .connection
+            .execute(
+                "UPDATE artifact_recovery_state SET finalized_after = ?1
+                  WHERE singleton = 1 AND finalized_after IS ?2",
+                params![replacement, expected],
+            )
+            .map_err(catalog_io)?;
+        if changed != 1 {
+            return Err(corrupt_catalog(
+                "artifact recovery cursor changed outside its ordered inventory pass",
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) fn repair_obligations_after(
         &self,
         after: Option<ArtifactDigest>,

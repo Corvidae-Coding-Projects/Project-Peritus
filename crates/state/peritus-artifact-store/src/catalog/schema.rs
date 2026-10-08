@@ -72,6 +72,11 @@ CREATE TABLE IF NOT EXISTS artifact_partial_publications (
     operation_identity INTEGER NOT NULL UNIQUE CHECK(operation_identity > 0),
     FOREIGN KEY(artifact_digest) REFERENCES artifact_records(digest) ON DELETE CASCADE
 ) STRICT;
+CREATE TABLE IF NOT EXISTS artifact_recovery_state (
+    singleton INTEGER PRIMARY KEY NOT NULL CHECK(singleton = 1),
+    finalized_after BLOB CHECK(finalized_after IS NULL OR length(finalized_after) = 32)
+) STRICT;
+INSERT OR IGNORE INTO artifact_recovery_state(singleton, finalized_after) VALUES (1, NULL);
 CREATE TABLE IF NOT EXISTS artifact_repair_obligations (
     artifact_digest BLOB PRIMARY KEY NOT NULL CHECK(length(artifact_digest) = 32),
     reason INTEGER NOT NULL CHECK(reason IN (1, 2)),
