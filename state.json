@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3924,
-        "tip_oid": "2ec506cc17c067f47c03c29ba6a26fa55b2f2913",
-        "prefix_sha256": "b41ff6aa9daee9d7d1fa27a1336bcb53ce71cbf281c0dd7e08ba558bec31680c"
+        "sequence": 3925,
+        "tip_oid": "cc4962951001955d8c065b1246b87384e36ff028",
+        "prefix_sha256": "9e559a99dfb32897f14408748e471660b3d72c57285532c81319975fc0857333"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3165,
+  "next_comment_id": 3166,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -28125,11 +28125,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.231364749Z",
-      "updated_at": "2026-10-06T13:27:51.233626957Z",
+      "updated_at": "2026-10-08T01:00:06.957662728Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "76f050b7-cc18-43a3-aef7-e9deb3b0fc66": {
+          "display_id": 3165,
+          "author": "6ME5",
+          "content": "Code complete in commit ea52b2a06: protected-secret metadata shares native validation and preconsumption admission, detects global descriptor/label/destination collisions, canonicalizes grants before authority policy, removes duplicate collection and synthetic 1MiB payload caps, and retains streamed delivery plus genuine native descriptor/representation constraints and legacy shape. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:00:06.948864820Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADOw3df44oiuzXCcNLTPU/jsTKGOiytKLnRCln6rl+JpQYxUpfZCL6JKlL0F1jaicXRWpOOF/CP45M51TuklXBg=="
+        },
         "ba1e758b-5397-44fe-8e6b-e318b075830c": {
           "display_id": 2732,
           "author": "6ME5",
