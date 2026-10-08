@@ -2,16 +2,28 @@
 
 use crate::{LauncherError, terminal::Terminal};
 use peritus_product_state::DirectProviderProfile;
+use peritus_provider_core::CancellationToken;
+use peritus_provider_onboarding::ProviderEffectStore;
 
-pub(super) fn existing(
+pub(super) async fn existing(
     terminal: &mut Terminal<'_>,
     profile: &DirectProviderProfile,
+    effects: &ProviderEffectStore,
+    cancellation: &CancellationToken,
 ) -> Result<DirectProviderProfile, LauncherError> {
     loop {
         let answer = terminal.prompt(&format!("{} / {}: Enter to keep, r to replace key/model, t to test connection (up to 3 small requests; may use paid tokens): ", profile.kind().label(), profile.model()))?;
         match answer.to_ascii_lowercase().as_str() {
             "" => return Ok(profile.clone()),
-            "r" => return super::direct::setup(terminal, profile.kind()),
+            "r" => {
+                return super::direct::setup(
+                    terminal,
+                    profile.kind(),
+                    effects,
+                    cancellation,
+                )
+                .await;
+            }
             "t" => test(terminal, profile)?,
             _ => terminal.line("Press Enter, r, or t.")?,
         }

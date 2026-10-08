@@ -1,10 +1,10 @@
-//! Metadata-only provider discovery for synchronous setup, isolated from an ambient async runtime.
+//! Async, cancellable provider-owned model discovery for interactive setup.
 
 use crate::{AccountProvider, OnboardingError};
 use peritus_product_state::ProviderKind;
 use peritus_provider_core::{
     CancellationToken, Credential, Endpoint, Header, HeaderName, HttpHeaders, HttpLimits,
-    ReqwestTransport,
+    ProviderCoreError, ProviderCoreErrorKind, ReqwestTransport,
     catalog::{
         AccountCatalog, CatalogDialect, DiscoveredModel, derive_compatible_catalog_endpoint,
         discover_account_models, discover_http_models, unavailable,
@@ -16,25 +16,28 @@ impl AccountProvider {
     ///
     /// # Errors
     /// Returns an unsupported runtime or bounded discovery failure, not a substitute list.
-    pub fn discover_models(&self) -> Result<Vec<String>, OnboardingError> {
+    pub async fn discover_models(
+        &self,
+        cancellation: &CancellationToken,
+    ) -> Result<Vec<DiscoveredModel>, OnboardingError> {
         let kind = if self.kind() == ProviderKind::CodexAccount {
             AccountCatalog::Codex
         } else {
             AccountCatalog::Claude
         };
-        run(async {
-            discover_account_models(self.executable(), kind, &CancellationToken::new()).await
-        })
-        .map(|models| models.into_iter().map(|model| model.id.as_str().to_owned()).collect())
+        discover_account_models(self.executable(), kind, cancellation)
+            .await
+            .map_err(discovery_error)
     }
 }
 
-pub fn direct(
+pub async fn direct(
     kind: ProviderKind,
     endpoint: Option<&str>,
     catalog_endpoint: Option<&str>,
     header: Option<&str>,
     credential: &peritus_secrets::SecretMaterial,
+    cancellation: &CancellationToken,
 ) -> Result<Vec<DiscoveredModel>, OnboardingError> {
     let (endpoint, dialect, name, prefix) = match kind {
         ProviderKind::OpenAiApi => (
@@ -87,7 +90,7 @@ pub fn direct(
             )
         }
     };
-    run(async {
+    async {
         let endpoint = Endpoint::new(endpoint)?;
         let transport = ReqwestTransport::production()?;
         let headers = || {
@@ -110,7 +113,7 @@ pub fn direct(
                 &transport,
                 &headers,
                 HttpLimits::PRODUCTION,
-                &CancellationToken::new(),
+                cancellation,
             )
             .await;
         }
@@ -120,10 +123,12 @@ pub fn direct(
             dialect,
             &headers,
             HttpLimits::PRODUCTION,
-            &CancellationToken::new(),
+            cancellation,
         )
         .await
-    })
+    }
+    .await
+    .map_err(discovery_error)
 }
 
 pub(crate) fn compatible_catalog_endpoint(
@@ -147,20 +152,10 @@ pub(crate) fn compatible_catalog_endpoint(
     Ok(catalog)
 }
 
-fn run(
-    future: impl Future<Output = Result<Vec<DiscoveredModel>, peritus_provider_core::ProviderCoreError>>
-    + Send,
-) -> Result<Vec<DiscoveredModel>, OnboardingError> {
-    std::thread::scope(|scope| {
-        scope
-            .spawn(move || {
-                let runtime = tokio::runtime::Builder::new_current_thread()
-                    .enable_all()
-                    .build()
-                    .map_err(|_| OnboardingError::ModelCatalog)?;
-                runtime.block_on(future).map_err(OnboardingError::ModelDiscovery)
-            })
-            .join()
-            .map_err(|_| OnboardingError::ModelCatalog)?
-    })
+fn discovery_error(error: ProviderCoreError) -> OnboardingError {
+    if error.kind() == ProviderCoreErrorKind::Cancelled {
+        OnboardingError::Cancelled
+    } else {
+        OnboardingError::ModelDiscovery(error)
+    }
 }

@@ -1,8 +1,15 @@
 //! Provider-owned model menus shared by account and direct setup.
 
+use std::future::Future;
+
 use crate::{LauncherError, terminal::Terminal};
-use peritus_model_protocol::WireDialect;
+use peritus_model_protocol::{ModelName, WireDialect};
 use peritus_product_state::{CompatibleProtocol, ProviderSelection};
+use peritus_provider_core::{
+    CancellationToken,
+    catalog::DiscoveredModel,
+    hosted::HostedService,
+};
 use peritus_provider_onboarding::{AccountProvider, OnboardingError};
 
 pub(super) fn choose_direct(
@@ -10,24 +17,38 @@ pub(super) fn choose_direct(
     kind: peritus_product_state::ProviderKind,
     result: Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError>,
 ) -> Result<(String, Option<CompatibleProtocol>), LauncherError> {
-    let models = match result {
-        Ok(models) => models,
-        Err(error) => {
-            terminal.line(&error.to_string())?;
-            Vec::new()
-        }
-    };
-    let model =
-        choose(terminal, Ok(models.iter().map(|model| model.id.as_str().to_owned()).collect()))?;
-    let metadata = models.iter().find(|entry| entry.id.as_str() == model);
+    let selected = choose(terminal, result)?;
+    let metadata = selected.discovered.as_ref();
     terminal.line(match metadata.and_then(|entry| entry.tools) {
         Some(true) => "Tool calling: advertised by provider; connection not tested.",
         Some(false) => "Tool calling: provider advertises no support for this model.",
         None => "Tool calling: unknown; connection not tested.",
     })?;
+    if let Some(metadata) = metadata {
+        match (metadata.input_tokens, metadata.output_tokens) {
+            (Some(input), Some(output)) => terminal.line(&format!(
+                "Advertised token limits: {input} input, {output} output."
+            ))?,
+            (Some(input), None) => {
+                terminal.line(&format!("Advertised input-token limit: {input}."))?
+            }
+            (None, Some(output)) => {
+                terminal.line(&format!("Advertised output-token limit: {output}."))?
+            }
+            (None, None) => {}
+        }
+    }
+    if selected.manual {
+        terminal.line("This exact model ID was entered manually; availability remains unverified.")?;
+    }
+    let model = selected.id;
     if kind.hosted_service().is_none() {
         return Ok((model, None));
     }
+    let service = kind
+        .hosted_service()
+        .and_then(HostedService::parse)
+        .ok_or_else(|| LauncherError::Provider(OnboardingError::UnsupportedProvider))?;
     let protocol = match metadata.and_then(|entry| entry.dialect) {
         Some(WireDialect::CompatibleResponses | WireDialect::OpenAiResponses) => {
             CompatibleProtocol::Responses
@@ -59,22 +80,33 @@ pub(super) fn choose_direct(
             }
         }
     };
+    validate_hosted_protocol(service, protocol)?;
     Ok((model, Some(protocol)))
 }
 
-pub(super) fn choose(
+fn choose(
     terminal: &mut Terminal<'_>,
-    result: Result<Vec<String>, OnboardingError>,
-) -> Result<String, LauncherError> {
+    result: Result<Vec<DiscoveredModel>, OnboardingError>,
+) -> Result<SelectedModel, LauncherError> {
     let models = match result {
         Ok(models) => models,
+        Err(error @ OnboardingError::Cancelled) => return Err(error.into()),
         Err(error) => {
             terminal.line(&error.to_string())?;
             Vec::new()
         }
     };
     for (index, model) in models.iter().enumerate() {
-        terminal.line(&format!("  {}. {model}", index + 1))?;
+        if model.label == model.id.as_str() {
+            terminal.line(&format!("  {}. {}", index + 1, model.id.as_str()))?;
+        } else {
+            terminal.line(&format!(
+                "  {}. {} — {}",
+                index + 1,
+                model.id.as_str(),
+                model.label,
+            ))?;
+        }
     }
     terminal.line("These are provider-advertised models, not capability verification. No inference was requested.")?;
     loop {
@@ -83,16 +115,36 @@ pub(super) fn choose(
         if let Ok(index) = answer.parse::<usize>()
             && let Some(model) = index.checked_sub(1).and_then(|index| models.get(index))
         {
-            return Ok(model.clone());
+            if model.tools == Some(false) {
+                terminal.line(
+                    "That model is advertised without tool calling, which this coding-agent route requires.",
+                )?;
+                continue;
+            }
+            return Ok(SelectedModel {
+                id: model.id.as_str().to_owned(),
+                discovered: Some(model.clone()),
+                manual: false,
+            });
         }
         if let Some(id) = answer.strip_prefix("manual ").map(str::trim)
             && !id.is_empty()
-            && id.len() <= 256
-            && !id.chars().any(char::is_control)
             && !id.contains(char::is_whitespace)
+            && let Ok(id) = ModelName::new(id.to_owned())
         {
+            let discovered = models.iter().find(|model| model.id == id).cloned();
+            if discovered.as_ref().and_then(|model| model.tools) == Some(false) {
+                terminal.line(
+                    "That model is advertised without tool calling, which this coding-agent route requires.",
+                )?;
+                continue;
+            }
             terminal.line("Using your explicit manual model ID; availability is unverified.")?;
-            return Ok(id.to_owned());
+            return Ok(SelectedModel {
+                id: id.as_str().to_owned(),
+                discovered,
+                manual: true,
+            });
         }
         terminal.line(
             "Choose an advertised number or use manual MODEL_ID. No model is selected by default.",
@@ -100,10 +152,32 @@ pub(super) fn choose(
     }
 }
 
-pub(super) fn account_selections(
+struct SelectedModel {
+    id: String,
+    discovered: Option<DiscoveredModel>,
+    manual: bool,
+}
+
+fn validate_hosted_protocol(
+    service: HostedService,
+    protocol: CompatibleProtocol,
+) -> Result<(), LauncherError> {
+    let dialect = match protocol {
+        CompatibleProtocol::Responses => WireDialect::CompatibleResponses,
+        CompatibleProtocol::ChatCompletions => WireDialect::CompatibleChatCompletions,
+        CompatibleProtocol::AnthropicMessages => WireDialect::AnthropicMessages,
+        CompatibleProtocol::GoogleGenerateContent => WireDialect::GeminiGenerateContentV1,
+    };
+    service.route(dialect).map(|_| ()).map_err(|error| {
+        LauncherError::Provider(OnboardingError::ModelDiscovery(error))
+    })
+}
+
+pub(super) async fn account_selections(
     terminal: &mut Terminal<'_>,
     selection: ProviderSelection,
     existing: &ProviderSelection,
+    cancellation: &CancellationToken,
 ) -> Result<ProviderSelection, LauncherError> {
     let mut models = std::collections::BTreeMap::new();
     for kind in selection.enabled().iter().copied().filter(|kind| kind.is_account()) {
@@ -116,12 +190,31 @@ pub(super) fn account_selections(
                 "Discovering {} models through its official executable…",
                 kind.label()
             ))?;
-            choose(
-                terminal,
-                AccountProvider::discover(kind).and_then(|account| account.discover_models()),
-            )?
+            let discovered = match AccountProvider::discover(kind) {
+                Ok(account) => {
+                    interruptible(cancellation, account.discover_models(cancellation)).await
+                }
+                Err(error) => Err(error),
+            };
+            choose(terminal, discovered)?.id
         };
         models.insert(kind, model);
     }
     selection.with_account_models(models).map_err(LauncherError::from)
+}
+
+pub(super) async fn interruptible<T>(
+    cancellation: &CancellationToken,
+    operation: impl Future<Output = Result<T, OnboardingError>>,
+) -> Result<T, OnboardingError> {
+    let mut operation = Box::pin(operation);
+    tokio::select! {
+        result = &mut operation => result,
+        signal = tokio::signal::ctrl_c() => {
+            if signal.is_ok() {
+                let _ = cancellation.cancel();
+            }
+            operation.await
+        }
+    }
 }

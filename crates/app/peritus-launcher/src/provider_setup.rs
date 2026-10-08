@@ -73,7 +73,7 @@ async fn first_run(
         activated.direct_profiles,
         automatic_failover,
     )?;
-    persist(prepared, selection, effects)
+    persist(prepared, selection, effects, cancellation).await
 }
 
 /// Opens provider settings without replaying unrelated first-run setup.
@@ -121,7 +121,7 @@ pub async fn configure(
         automatic_failover,
     )?;
     record_replaced_credentials(&effects, &current, &activated.direct_profiles)?;
-    let configured = persist(prepared, selection, &effects)?;
+    let configured = persist(prepared, selection, &effects, &cancellation).await?;
     terminal.line("Provider settings saved.")?;
     Ok(configured)
 }
@@ -213,7 +213,7 @@ async fn repair_if_needed(
         direct_profiles,
         automatic_failover,
     )?;
-    persist(&prepared, selection, effects)
+    persist(&prepared, selection, effects, cancellation).await
 }
 
 fn show_catalog(
@@ -265,10 +265,12 @@ async fn activate_requested(
                 .collect::<Vec<_>>();
             enabled.push(kind);
             if existing_profiles.is_empty() {
-                direct_profiles.push(direct::setup(terminal, kind, effects)?);
+                direct_profiles.push(direct::setup(terminal, kind, effects, cancellation).await?);
             } else {
                 for profile in existing_profiles {
-                    direct_profiles.push(connection::existing(terminal, profile)?);
+                    direct_profiles.push(
+                        connection::existing(terminal, profile, effects, cancellation).await?,
+                    );
                 }
             }
             continue;
@@ -381,16 +383,19 @@ fn show_diagnostic(
     Ok(())
 }
 
-fn persist(
+async fn persist(
     prepared: &PreparedProduct,
     selection: ProviderSelection,
     effects: &ProviderEffectStore,
+    cancellation: &CancellationToken,
 ) -> Result<PreparedProduct, LauncherError> {
     let selection = models::account_selections(
         &mut Terminal::stdio(),
         selection,
         prepared.state().providers(),
-    )?;
+        cancellation,
+    )
+    .await?;
     let layout = prepared.layout().clone();
     let configured = ProductBootstrap::new(layout).configure_providers(selection)?;
     effects.reconcile_credentials(configured.state().providers())?;

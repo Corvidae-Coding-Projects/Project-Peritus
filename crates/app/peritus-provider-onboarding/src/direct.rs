@@ -72,9 +72,10 @@ impl DirectProviderDraft {
     ///
     /// # Errors
     /// Returns a bounded metadata/authentication failure; never returns a fallback list.
-    pub fn discover_models(
+    pub async fn discover_models(
         &self,
         credential: &DirectCredential,
+        cancellation: &peritus_provider_core::CancellationToken,
     ) -> Result<Vec<peritus_provider_core::catalog::DiscoveredModel>, OnboardingError> {
         crate::models::direct(
             self.kind,
@@ -82,7 +83,9 @@ impl DirectProviderDraft {
             self.catalog_endpoint.as_deref(),
             self.credential_header.as_deref(),
             &credential.0,
+            cancellation,
         )
+        .await
     }
     /// Creates one direct provider draft.
     #[must_use]
