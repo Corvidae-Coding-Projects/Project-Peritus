@@ -9,8 +9,10 @@ use crate::{ManifestDigest, PluginId, PluginVersion, SdkError, SdkErrorKind};
 
 mod wire;
 
+/// Historical numeric-quota plugin-manifest schema.
+pub const LEGACY_MANIFEST_VERSION: u16 = 1;
 /// Current canonical plugin-manifest schema.
-pub const MANIFEST_VERSION: u16 = 1;
+pub const MANIFEST_VERSION: u16 = 2;
 
 /// Isolated execution mechanism selected by the host.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -191,7 +193,76 @@ impl ProtocolRange {
     }
 }
 
-/// Hard ceilings requested by a manifest and narrowed by host policy.
+/// Explicit policy for a counter accumulated across one plugin lifecycle.
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
+#[serde(tag = "policy", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CumulativeQuota {
+    /// Permanently consumes one unit for every admitted operation.
+    Limited {
+        /// Maximum admitted operations during the lifecycle.
+        limit: u64,
+    },
+    /// Returns one unit when the admitted operation finishes.
+    Replenishable {
+        /// Maximum simultaneously checked-out units.
+        capacity: u64,
+    },
+    /// Does not impose a cumulative counter limit.
+    Unlimited,
+}
+
+impl CumulativeQuota {
+    /// Validates nonzero finite policy values.
+    ///
+    /// # Errors
+    ///
+    /// Rejects a zero finite limit or capacity.
+    pub fn validate(self) -> Result<Self, SdkError> {
+        if matches!(
+            self,
+            Self::Limited { limit: 0 } | Self::Replenishable { capacity: 0 }
+        ) {
+            Err(SdkError::new(
+                SdkErrorKind::LimitExceeded,
+                "validate cumulative plugin quota",
+                "finite cumulative quota values must be positive",
+            ))
+        } else {
+            Ok(self)
+        }
+    }
+
+    /// Intersects a selected policy with an explicit host ceiling.
+    #[must_use]
+    pub const fn narrow(self, ceiling: Self) -> Self {
+        match (self, ceiling) {
+            (Self::Unlimited, policy) => policy,
+            (policy, Self::Unlimited) => policy,
+            (Self::Limited { limit: left }, Self::Limited { limit: right }) => {
+                Self::Limited { limit: min_u64(left, right) }
+            }
+            (
+                Self::Replenishable { capacity: left },
+                Self::Replenishable { capacity: right },
+            ) => Self::Replenishable { capacity: min_u64(left, right) },
+            (Self::Limited { limit }, Self::Replenishable { capacity }) => {
+                Self::Limited { limit: min_u64(limit, capacity) }
+            }
+            (Self::Replenishable { capacity }, Self::Limited { limit }) => {
+                Self::Replenishable { capacity: min_u64(capacity, limit) }
+            }
+        }
+    }
+
+    pub(crate) const fn legacy_value(self) -> Option<u64> {
+        match self {
+            Self::Limited { limit } => Some(limit),
+            Self::Replenishable { .. } | Self::Unlimited => None,
+        }
+    }
+}
+
+/// Hard physical ceilings and explicit lifecycle policies requested by a manifest.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct PluginQuotas {
@@ -201,34 +272,34 @@ pub struct PluginQuotas {
     pub frame_bytes: u32,
     /// Maximum result bytes over one invocation.
     pub output_bytes: u64,
-    /// Maximum wall-clock duration per invocation.
-    pub invocation_millis: u64,
-    /// Maximum requests during one host lifecycle.
-    pub lifecycle_requests: u64,
-    /// Maximum protocol violations before forced termination.
-    pub protocol_violations: u16,
+    /// Optional maximum wall-clock duration per invocation; `None` selects an untimed operation.
+    pub invocation_millis: Option<u64>,
+    /// Request accounting policy during one host lifecycle.
+    pub lifecycle_requests: CumulativeQuota,
+    /// Protocol-violation accounting policy during one host lifecycle.
+    pub protocol_violations: CumulativeQuota,
 }
 
 impl PluginQuotas {
-    /// Validates that every quota is positive.
+    /// Validates positive physical bounds and finite policy values.
     ///
     /// # Errors
     ///
-    /// Rejects a zero quota.
+    /// Rejects a zero physical bound, optional duration, or finite policy value.
     pub fn validate(self) -> Result<Self, SdkError> {
         if self.concurrent_requests == 0
             || self.frame_bytes == 0
             || self.output_bytes == 0
-            || self.invocation_millis == 0
-            || self.lifecycle_requests == 0
-            || self.protocol_violations == 0
+            || self.invocation_millis == Some(0)
         {
             Err(SdkError::new(
                 SdkErrorKind::LimitExceeded,
                 "validate plugin quotas",
-                "every plugin quota must be positive",
+                "physical plugin quota values must be positive",
             ))
         } else {
+            self.lifecycle_requests.validate()?;
+            self.protocol_violations.validate()?;
             Ok(self)
         }
     }
@@ -240,10 +311,23 @@ impl PluginQuotas {
             concurrent_requests: min_u16(self.concurrent_requests, ceiling.concurrent_requests),
             frame_bytes: min_u32(self.frame_bytes, ceiling.frame_bytes),
             output_bytes: min_u64(self.output_bytes, ceiling.output_bytes),
-            invocation_millis: min_u64(self.invocation_millis, ceiling.invocation_millis),
-            lifecycle_requests: min_u64(self.lifecycle_requests, ceiling.lifecycle_requests),
-            protocol_violations: min_u16(self.protocol_violations, ceiling.protocol_violations),
+            invocation_millis: min_optional_u64(
+                self.invocation_millis,
+                ceiling.invocation_millis,
+            ),
+            lifecycle_requests: self.lifecycle_requests.narrow(ceiling.lifecycle_requests),
+            protocol_violations: self.protocol_violations.narrow(ceiling.protocol_violations),
         }
+    }
+
+    pub(crate) const fn legacy_values(self) -> Option<(u64, u64, u16)> {
+        let Some(invocation_millis) = self.invocation_millis else { return None };
+        let Some(lifecycle_requests) = self.lifecycle_requests.legacy_value() else { return None };
+        let Some(protocol_violations) = self.protocol_violations.legacy_value() else { return None };
+        if protocol_violations > u16::MAX as u64 {
+            return None;
+        }
+        Some((invocation_millis, lifecycle_requests, protocol_violations as u16))
     }
 }
 
@@ -347,9 +431,12 @@ impl PluginManifest {
     ///
     /// Rejects malformed TOML, unknown fields, incompatible schema, or invalid collections.
     pub fn parse_toml(input: &str) -> Result<Self, SdkError> {
-        let manifest: Self = toml::from_str(input).map_err(|error| {
-            SdkError::new(SdkErrorKind::InvalidManifest, "parse plugin manifest", error.to_string())
-        })?;
+        let version: ManifestVersion = parse_manifest(input)?;
+        let manifest = match version.manifest_version {
+            LEGACY_MANIFEST_VERSION => LegacyPluginManifest::parse(input)?.migrate(),
+            MANIFEST_VERSION => parse_manifest(input)?,
+            _ => return Err(manifest_error("unsupported plugin manifest version")),
+        };
         manifest.validate()?;
         Ok(manifest)
     }
@@ -360,12 +447,18 @@ impl PluginManifest {
     ///
     /// Rejects schema, entrypoint, capability, quota, or signature violations.
     pub fn validate(&self) -> Result<(), SdkError> {
-        if self.manifest_version != MANIFEST_VERSION {
+        if !matches!(self.manifest_version, LEGACY_MANIFEST_VERSION | MANIFEST_VERSION) {
             return Err(manifest_error("unsupported plugin manifest version"));
         }
-        self.protocol.negotiate(ProtocolRange::new(1, 1)?)?;
+        self.protocol.negotiate(ProtocolRange::new(1, 2)?)?;
         self.entrypoint.validate()?;
         self.quotas.validate()?;
+        if (self.manifest_version == LEGACY_MANIFEST_VERSION
+            || self.protocol.maximum == crate::protocol::LEGACY_PROTOCOL_VERSION)
+            && self.quotas.legacy_values().is_none()
+        {
+            return Err(manifest_error("version-one manifest quotas are not representable"));
+        }
         if self.capabilities.len() > 256 {
             return Err(manifest_error("capability count exceeds its bound"));
         }
@@ -500,16 +593,93 @@ fn validate_capability_name(name: &str) -> Result<(), SdkError> {
     }
 }
 
-const fn min_u16(left: u16, right: u16) -> u16 {
-    if left < right { left } else { right }
-}
-
 const fn min_u32(left: u32, right: u32) -> u32 {
     if left < right { left } else { right }
 }
 
 const fn min_u64(left: u64, right: u64) -> u64 {
     if left < right { left } else { right }
+}
+
+const fn min_optional_u64(left: Option<u64>, right: Option<u64>) -> Option<u64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(min_u64(left, right)),
+        (Some(value), None) | (None, Some(value)) => Some(value),
+        (None, None) => None,
+    }
+}
+
+#[derive(Deserialize)]
+struct ManifestVersion {
+    manifest_version: u16,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacyPluginManifest {
+    manifest_version: u16,
+    id: PluginId,
+    version: PluginVersion,
+    kind: PluginKind,
+    protocol: ProtocolRange,
+    entrypoint: PluginEntrypoint,
+    capabilities: Vec<CapabilityDeclaration>,
+    quotas: LegacyPluginQuotas,
+    signature: Option<SignatureDeclaration>,
+}
+
+impl LegacyPluginManifest {
+    fn parse(input: &str) -> Result<Self, SdkError> {
+        parse_manifest(input)
+    }
+
+    fn migrate(self) -> PluginManifest {
+        PluginManifest {
+            manifest_version: self.manifest_version,
+            id: self.id,
+            version: self.version,
+            kind: self.kind,
+            protocol: self.protocol,
+            entrypoint: self.entrypoint,
+            capabilities: self.capabilities,
+            quotas: self.quotas.migrate(),
+            signature: self.signature,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacyPluginQuotas {
+    concurrent_requests: u16,
+    frame_bytes: u32,
+    output_bytes: u64,
+    invocation_millis: u64,
+    lifecycle_requests: u64,
+    protocol_violations: u16,
+}
+
+impl LegacyPluginQuotas {
+    const fn migrate(self) -> PluginQuotas {
+        PluginQuotas {
+            concurrent_requests: self.concurrent_requests,
+            frame_bytes: self.frame_bytes,
+            output_bytes: self.output_bytes,
+            invocation_millis: Some(self.invocation_millis),
+            lifecycle_requests: CumulativeQuota::Limited {
+                limit: self.lifecycle_requests,
+            },
+            protocol_violations: CumulativeQuota::Limited {
+                limit: self.protocol_violations as u64,
+            },
+        }
+    }
+}
+
+fn parse_manifest<T: for<'de> Deserialize<'de>>(input: &str) -> Result<T, SdkError> {
+    toml::from_str(input).map_err(|error| {
+        SdkError::new(SdkErrorKind::InvalidManifest, "parse plugin manifest", error.to_string())
+    })
 }
 
 fn manifest_error(detail: &'static str) -> SdkError {

@@ -107,7 +107,7 @@ impl<'a> AuthorityRequest<'a> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvocationGrant {
     granted_capabilities: Vec<String>,
-    deadline_millis: u64,
+    deadline_millis: Option<u64>,
 }
 
 impl InvocationGrant {
@@ -116,7 +116,10 @@ impl InvocationGrant {
     /// The constructor does not create a B1 capability. Implementations must call it only after
     /// checking current committed authority and should return the exact narrowed capability set.
     #[must_use]
-    pub const fn observed(granted_capabilities: Vec<String>, deadline_millis: u64) -> Self {
+    pub const fn observed(
+        granted_capabilities: Vec<String>,
+        deadline_millis: Option<u64>,
+    ) -> Self {
         Self { granted_capabilities, deadline_millis }
     }
 
@@ -126,9 +129,9 @@ impl InvocationGrant {
         &self.granted_capabilities
     }
 
-    /// Returns the authority-bounded monotonic deadline.
+    /// Returns the optional authority-bounded invocation duration.
     #[must_use]
-    pub const fn deadline_millis(&self) -> u64 {
+    pub const fn deadline_millis(&self) -> Option<u64> {
         self.deadline_millis
     }
 

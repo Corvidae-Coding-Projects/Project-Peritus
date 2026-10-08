@@ -11,8 +11,8 @@ use serde::{
 };
 
 use super::{
-    CapabilityDeclaration, PluginEntrypoint, PluginKind, PluginManifest, PluginOperation,
-    PluginQuotas, ProtocolRange, SignatureDeclaration,
+    CapabilityDeclaration, CumulativeQuota, LEGACY_MANIFEST_VERSION, PluginEntrypoint, PluginKind,
+    PluginManifest, PluginOperation, PluginQuotas, ProtocolRange, SignatureDeclaration,
 };
 
 impl Serialize for PluginKind {
@@ -232,6 +232,58 @@ impl Serialize for PluginQuotas {
     }
 }
 
+impl Serialize for CumulativeQuota {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Limited { limit } => {
+                let mut value = serializer.serialize_struct("CumulativeQuota", 2)?;
+                value.serialize_field("policy", "limited")?;
+                value.serialize_field("limit", limit)?;
+                value.end()
+            }
+            Self::Replenishable { capacity } => {
+                let mut value = serializer.serialize_struct("CumulativeQuota", 2)?;
+                value.serialize_field("policy", "replenishable")?;
+                value.serialize_field("capacity", capacity)?;
+                value.end()
+            }
+            Self::Unlimited => {
+                let mut value = serializer.serialize_struct("CumulativeQuota", 1)?;
+                value.serialize_field("policy", "unlimited")?;
+                value.end()
+            }
+        }
+    }
+}
+
+struct LegacyPluginQuotas<'a>(&'a PluginQuotas);
+
+impl Serialize for LegacyPluginQuotas<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let Some((invocation_millis, lifecycle_requests, protocol_violations)) =
+            self.0.legacy_values()
+        else {
+            return Err(serde::ser::Error::custom(
+                "version-one manifest quotas are not representable",
+            ));
+        };
+        let mut value = serializer.serialize_struct("PluginQuotas", 6)?;
+        value.serialize_field("concurrent_requests", &self.0.concurrent_requests)?;
+        value.serialize_field("frame_bytes", &self.0.frame_bytes)?;
+        value.serialize_field("output_bytes", &self.0.output_bytes)?;
+        value.serialize_field("invocation_millis", &invocation_millis)?;
+        value.serialize_field("lifecycle_requests", &lifecycle_requests)?;
+        value.serialize_field("protocol_violations", &protocol_violations)?;
+        value.end()
+    }
+}
+
 impl Serialize for SignatureDeclaration {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -259,7 +311,11 @@ impl Serialize for PluginManifest {
         value.serialize_field("protocol", &self.protocol)?;
         value.serialize_field("entrypoint", &self.entrypoint)?;
         value.serialize_field("capabilities", &self.capabilities)?;
-        value.serialize_field("quotas", &self.quotas)?;
+        if self.manifest_version == LEGACY_MANIFEST_VERSION {
+            value.serialize_field("quotas", &LegacyPluginQuotas(&self.quotas))?;
+        } else {
+            value.serialize_field("quotas", &self.quotas)?;
+        }
         if let Some(signature) = &self.signature {
             value.serialize_field("signature", signature)?;
         }

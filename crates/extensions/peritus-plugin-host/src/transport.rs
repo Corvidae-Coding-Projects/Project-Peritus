@@ -37,7 +37,11 @@ enum ResponseWait {
 }
 
 impl PluginConnection {
-    pub(crate) fn spawn(plan: LaunchPlan, frame_bytes: u32) -> Result<Arc<Self>, HostError> {
+    pub(crate) fn spawn(
+        plan: LaunchPlan,
+        frame_bytes: u32,
+        protocol_version: u16,
+    ) -> Result<Arc<Self>, HostError> {
         let mut command = match plan {
             LaunchPlan::Process { executable, arguments, working_directory } => {
                 let mut command = Command::new(executable);
@@ -57,7 +61,7 @@ impl PluginConnection {
         };
         command
             .env_clear()
-            .env("PERITUS_PLUGIN_PROTOCOL", "1")
+            .env("PERITUS_PLUGIN_PROTOCOL", protocol_version.to_string())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
@@ -91,7 +95,7 @@ impl PluginConnection {
     pub(crate) async fn exchange(
         &self,
         request: PluginRequestEnvelope,
-        timeout: Duration,
+        timeout: Option<Duration>,
         cancellation: &HostCancellation,
     ) -> Result<PluginResponseEnvelope, HostError> {
         let _transaction = self.transaction.lock().await;
@@ -144,18 +148,25 @@ impl PluginConnection {
 
     async fn wait_for_response(
         &self,
-        timeout: Duration,
+        timeout: Option<Duration>,
         cancellation: &HostCancellation,
     ) -> ResponseWait {
         let mut cancelled = Box::pin(cancellation.cancelled());
-        let mut response = Box::pin(tokio::time::timeout(timeout, self.read()));
+        let mut response = Box::pin(async {
+            match timeout {
+                Some(timeout) => match tokio::time::timeout(timeout, self.read()).await {
+                    Ok(result) => ResponseWait::Completed(result),
+                    Err(_) => ResponseWait::TimedOut,
+                },
+                None => ResponseWait::Completed(self.read().await),
+            }
+        });
         std::future::poll_fn(|context| {
             if cancelled.as_mut().poll(context).is_ready() {
                 return Poll::Ready(ResponseWait::Cancelled);
             }
             match response.as_mut().poll(context) {
-                Poll::Ready(Ok(result)) => Poll::Ready(ResponseWait::Completed(result)),
-                Poll::Ready(Err(_)) => Poll::Ready(ResponseWait::TimedOut),
+                Poll::Ready(result) => Poll::Ready(result),
                 Poll::Pending => Poll::Pending,
             }
         })

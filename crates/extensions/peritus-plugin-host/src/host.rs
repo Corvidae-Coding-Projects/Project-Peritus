@@ -3,9 +3,9 @@
 use std::{collections::BTreeMap, path::PathBuf, sync::Arc, time::Duration};
 
 use peritus_plugin_sdk::{
-    FailureClass, HostRequest, InvocationContext, JsonPayload, PROTOCOL_VERSION, PluginFailure,
-    PluginId, PluginKind, PluginQuotas, PluginRequestEnvelope, PluginResponse, PluginStatus,
-    PluginVersion, RequestId,
+    FailureClass, HostRequest, InvocationContext, JsonPayload, LEGACY_PROTOCOL_VERSION,
+    PROTOCOL_VERSION, PluginFailure, PluginId, PluginKind, PluginQuotas, PluginRequestEnvelope,
+    PluginResponse, PluginStatus, PluginVersion, ProtocolRange, RequestId,
 };
 use tokio::sync::Mutex;
 
@@ -84,6 +84,7 @@ struct PluginInstance {
     discovered: DiscoveredPlugin,
     connection: Arc<PluginConnection>,
     quotas: QuotaLedger,
+    protocol_version: u16,
     lifecycle: Mutex<PluginLifecycle>,
     trust_anchor: String,
 }
@@ -150,21 +151,34 @@ impl PluginHost {
                 return Err(trust_error("plugin bytes differ from the explicit trust anchor"));
             }
         };
-        let quotas = discovered.manifest().quotas().narrow(self.config.quota_ceiling);
+        let host_protocol = ProtocolRange::new(LEGACY_PROTOCOL_VERSION, PROTOCOL_VERSION)
+            .map_err(plugin_protocol_error)?;
+        let protocol_version = discovered
+            .manifest()
+            .protocol()
+            .negotiate(host_protocol)
+            .map_err(plugin_protocol_error)?;
+        let quotas = discovered
+            .manifest()
+            .quotas()
+            .narrow(self.config.quota_ceiling)
+            .validate()
+            .map_err(plugin_protocol_error)?;
         let plan = self.launch_plan(&discovered);
-        let connection = PluginConnection::spawn(plan, quotas.frame_bytes)?;
+        let connection = PluginConnection::spawn(plan, quotas.frame_bytes, protocol_version)?;
         let instance = Arc::new(PluginInstance {
             discovered,
             connection,
             quotas: QuotaLedger::new(quotas),
+            protocol_version,
             lifecycle: Mutex::new(PluginLifecycle::Starting),
             trust_anchor,
         });
         let initialize = PluginRequestEnvelope {
-            protocol_version: PROTOCOL_VERSION,
+            protocol_version,
             request_id: internal_request_id("host.initialize")?,
             request: HostRequest::Initialize {
-                protocol_version: PROTOCOL_VERSION,
+                protocol_version,
                 plugin_id: instance.discovered.manifest().id().clone(),
                 plugin_version: instance.discovered.manifest().version(),
                 quotas,
@@ -172,7 +186,11 @@ impl PluginHost {
         };
         let response = instance
             .connection
-            .exchange(initialize, self.config.startup_timeout, &HostCancellation::new())
+            .exchange(
+                initialize,
+                Some(self.config.startup_timeout),
+                &HostCancellation::new(),
+            )
             .await;
         match response {
             Ok(response)
@@ -242,27 +260,24 @@ impl PluginHost {
         };
         validate_grant(capability_name, &grant)?;
         let _permit = instance.quotas.reserve()?;
+        let deadline_millis = min_optional_millis(
+            instance.quotas.limits().invocation_millis,
+            grant.deadline_millis(),
+        );
         let context = InvocationContext {
             session_id: subject.session_id().to_owned(),
             actor_id: subject.actor_id().to_owned(),
             role: InvocationGrant::role(),
             granted_capabilities: grant.granted_capabilities().to_vec(),
             authority_generation: subject.authority_generation(),
-            deadline_millis: grant.deadline_millis(),
+            deadline_millis,
         };
         let request = PluginRequestEnvelope {
-            protocol_version: PROTOCOL_VERSION,
+            protocol_version: instance.protocol_version,
             request_id,
             request: HostRequest::Invoke { capability: capability_name.to_owned(), input, context },
         };
-        let timeout = Duration::from_millis(
-            instance
-                .discovered
-                .manifest()
-                .quotas()
-                .narrow(self.config.quota_ceiling)
-                .invocation_millis,
-        );
+        let timeout = deadline_millis.map(Duration::from_millis);
         let response = instance.connection.exchange(request, timeout, cancellation).await;
         let response = match response {
             Ok(response) => response,
@@ -321,13 +336,17 @@ impl PluginHost {
             *lifecycle = PluginLifecycle::Stopping;
         }
         let request = PluginRequestEnvelope {
-            protocol_version: PROTOCOL_VERSION,
+            protocol_version: instance.protocol_version,
             request_id: internal_request_id("host.shutdown")?,
             request: HostRequest::Shutdown,
         };
         let result = instance
             .connection
-            .exchange(request, self.config.shutdown_timeout, &HostCancellation::new())
+            .exchange(
+                request,
+                Some(self.config.shutdown_timeout),
+                &HostCancellation::new(),
+            )
             .await;
         instance.connection.terminate().await;
         self.instances.lock().await.remove(id);
@@ -406,7 +425,7 @@ impl PluginHost {
 
 fn validate_grant(capability_name: &str, grant: &InvocationGrant) -> Result<(), HostError> {
     let capabilities = grant.granted_capabilities();
-    if grant.deadline_millis() == 0
+    if grant.deadline_millis() == Some(0)
         || !capabilities.iter().any(|name| name == capability_name)
         || capabilities.windows(2).any(|pair| pair[0] >= pair[1])
     {
@@ -419,6 +438,24 @@ fn validate_grant(capability_name: &str, grant: &InvocationGrant) -> Result<(), 
     } else {
         Ok(())
     }
+}
+
+const fn min_optional_millis(left: Option<u64>, right: Option<u64>) -> Option<u64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(if left < right { left } else { right }),
+        (Some(value), None) | (None, Some(value)) => Some(value),
+        (None, None) => None,
+    }
+}
+
+fn plugin_protocol_error(error: peritus_plugin_sdk::SdkError) -> HostError {
+    HostError::with_source(
+        HostFailureClass::Protocol,
+        RecoveryDisposition::CorrectRequest,
+        "negotiate plugin policy",
+        error.to_string(),
+        error,
+    )
 }
 
 fn trust_error(detail: &'static str) -> HostError {

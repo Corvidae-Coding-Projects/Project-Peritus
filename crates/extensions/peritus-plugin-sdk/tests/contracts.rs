@@ -1,8 +1,8 @@
 //! Canonical G3 plugin SDK contract and framing acceptance tests.
 
 use peritus_plugin_sdk::{
-    HostRequest, JsonBounds, JsonPayload, PluginManifest, PluginQuotas, PluginRequestEnvelope,
-    PluginVersion, RequestId, SdkErrorKind, decode_frame, encode_frame,
+    CumulativeQuota, HostRequest, JsonBounds, JsonPayload, PluginManifest, PluginQuotas,
+    PluginRequestEnvelope, PluginVersion, RequestId, SdkErrorKind, decode_frame, encode_frame,
 };
 use serde_json::Value;
 
@@ -97,9 +97,9 @@ fn host_quota_intersection_never_widens_a_manifest() {
         concurrent_requests: 2,
         frame_bytes: 1_024,
         output_bytes: 2_048,
-        invocation_millis: 5_000,
-        lifecycle_requests: 10,
-        protocol_violations: 1,
+        invocation_millis: Some(5_000),
+        lifecycle_requests: CumulativeQuota::Limited { limit: 10 },
+        protocol_violations: CumulativeQuota::Limited { limit: 1 },
     };
     assert_eq!(requested.narrow(ceiling), ceiling);
 }

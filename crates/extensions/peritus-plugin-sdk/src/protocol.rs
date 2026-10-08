@@ -8,8 +8,10 @@ mod request_wire;
 mod response_wire;
 mod wire;
 
+/// Historical plugin protocol with numeric finite quotas and compulsory deadlines.
+pub const LEGACY_PROTOCOL_VERSION: u16 = 1;
 /// Current plugin protocol version.
-pub const PROTOCOL_VERSION: u16 = 1;
+pub const PROTOCOL_VERSION: u16 = 2;
 
 /// Only role available to an untrusted plugin process or Wasm component.
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq)]
@@ -33,8 +35,8 @@ pub struct InvocationContext {
     pub granted_capabilities: Vec<String>,
     /// Current daemon authority generation.
     pub authority_generation: u64,
-    /// Monotonic deadline supplied by the host.
-    pub deadline_millis: u64,
+    /// Optional host-enforced duration for this invocation; `None` is explicitly untimed.
+    pub deadline_millis: Option<u64>,
 }
 
 /// Closed host-to-plugin request body.
@@ -74,8 +76,7 @@ pub enum HostRequest {
 }
 
 /// Complete versioned host request envelope.
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PluginRequestEnvelope {
     /// Exact protocol schema version.
     pub protocol_version: u16,

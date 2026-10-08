@@ -17,7 +17,7 @@ use peritus_plugin_host::{
     InvocationSubject, PluginHost, PluginInvocationResult, PluginLifecycle, discover,
 };
 use peritus_plugin_sdk::{
-    JsonBounds, JsonPayload, PluginId, PluginQuotas, PluginVersion, RequestId,
+    CumulativeQuota, JsonBounds, JsonPayload, PluginId, PluginQuotas, PluginVersion, RequestId,
 };
 use serde_json::Value;
 use tempfile::TempDir;
@@ -127,7 +127,7 @@ impl AuthorityMediator for Allow {
         Box::pin(async move {
             Ok(AuthorityDecision::Authorized(InvocationGrant::observed(
                 vec![request.capability().name().to_owned()],
-                10_000,
+                Some(10_000),
             )))
         })
     }
@@ -199,9 +199,9 @@ impl Fixture {
                 concurrent_requests: 2,
                 frame_bytes: 65_536,
                 output_bytes,
-                invocation_millis: 5_000,
-                lifecycle_requests: 16,
-                protocol_violations: 2,
+                invocation_millis: Some(5_000),
+                lifecycle_requests: CumulativeQuota::Limited { limit: 16 },
+                protocol_violations: CumulativeQuota::Limited { limit: 2 },
             },
             startup_timeout: FIXTURE_STARTUP_TIMEOUT,
             shutdown_timeout: Duration::from_secs(2),
