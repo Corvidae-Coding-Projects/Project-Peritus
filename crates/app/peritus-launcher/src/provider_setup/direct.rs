@@ -1,14 +1,7 @@
 //! Hidden credential entry and direct-provider settings prompts.
 
-use std::io::{self, Write as _};
-
 use crossterm::{
-    event::{
-        self, DisableBracketedPaste, EnableBracketedPaste, Event, KeyCode, KeyEventKind,
-        KeyModifiers,
-    },
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode},
+    event::{Event, KeyCode, KeyEventKind, KeyModifiers},
 };
 use peritus_product_state::{CompatibleProtocol, DirectProviderProfile, ProviderKind};
 use peritus_provider_core::CancellationToken;
@@ -17,7 +10,10 @@ use peritus_provider_onboarding::{
 };
 use zeroize::Zeroizing;
 
-use crate::{LauncherError, terminal::Terminal};
+use crate::{
+    LauncherError,
+    terminal::{Terminal, input_cancelled},
+};
 
 const MAX_CREDENTIAL_BYTES: usize = 16 * 1024;
 
@@ -33,7 +29,7 @@ pub(super) async fn setup(
 
     let (endpoint, catalog_endpoint, model, protocol, header) = settings(terminal, kind)?;
     terminal.line("Paste the API key and press Enter. Input is hidden: ")?;
-    let credential = read_secret()?;
+    let credential = read_secret(terminal)?;
     terminal.line("Credential captured. It will be published after setup is durably saved.")?;
     let draft = DirectProviderDraft::new(kind, endpoint, model, protocol, header);
     let draft = if let Some(endpoint) = catalog_endpoint {
@@ -182,38 +178,42 @@ fn required(terminal: &mut Terminal<'_>, prompt: &str) -> Result<String, Launche
     }
 }
 
-fn read_secret() -> Result<DirectCredential, LauncherError> {
-    let _guard = RawInputGuard::enter()?;
-    let mut bytes = Zeroizing::new(Vec::new());
-    loop {
-        match event::read().map_err(|error| interaction(&error))? {
-            Event::Key(key) if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) => {
-                if key.modifiers.contains(KeyModifiers::CONTROL)
-                    && matches!(key.code, KeyCode::Char('c' | 'C'))
+fn read_secret(terminal: &mut Terminal<'_>) -> Result<DirectCredential, LauncherError> {
+    let mut bytes = terminal.hidden_input(|input| {
+        let mut bytes = Zeroizing::new(Vec::new());
+        loop {
+            match input.read_event()? {
+                Event::Key(key)
+                    if matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) =>
                 {
-                    return Err(LauncherError::Interaction(
-                        "credential entry cancelled; run `peritus` to resume".to_owned(),
-                    ));
-                }
-                match key.code {
-                    KeyCode::Enter => break,
-                    KeyCode::Backspace => pop_character(&mut bytes),
-                    KeyCode::Char(value)
-                        if !value.is_control()
-                            && !key.modifiers.intersects(
-                                KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
-                            ) =>
+                    if key.modifiers.contains(KeyModifiers::CONTROL)
+                        && matches!(key.code, KeyCode::Char('c' | 'C'))
                     {
-                        push_character(&mut bytes, value)?;
+                        return Err(input_cancelled("credential entry"));
                     }
-                    _ => {}
+                    match key.code {
+                        KeyCode::Enter => break,
+                        KeyCode::Backspace => pop_character(&mut bytes),
+                        KeyCode::Char(value)
+                            if !value.is_control()
+                                && !key.modifiers.intersects(
+                                    KeyModifiers::CONTROL
+                                        | KeyModifiers::ALT
+                                        | KeyModifiers::SUPER,
+                                ) =>
+                        {
+                            push_character(&mut bytes, value)?;
+                        }
+                        _ => {}
+                    }
                 }
+                Event::Paste(value) => push_paste(&mut bytes, &value)?,
+                _ => {}
             }
-            Event::Paste(value) => push_paste(&mut bytes, &value)?,
-            _ => {}
         }
-    }
-    writeln!(io::stdout()).map_err(|error| interaction(&error))?;
+        Ok(bytes)
+    })?;
+    terminal.line("")?;
     let owned = std::mem::take(&mut *bytes);
     DirectCredential::new(owned).map_err(LauncherError::Provider)
 }
@@ -253,31 +253,6 @@ fn ensure_capacity(current: usize, additional: usize) -> Result<(), LauncherErro
         ));
     }
     Ok(())
-}
-
-struct RawInputGuard;
-
-impl RawInputGuard {
-    fn enter() -> Result<Self, LauncherError> {
-        enable_raw_mode().map_err(|error| interaction(&error))?;
-        if let Err(error) = execute!(io::stdout(), EnableBracketedPaste) {
-            let _ignored = disable_raw_mode();
-            return Err(interaction(&error));
-        }
-        io::stdout().flush().map_err(|error| interaction(&error))?;
-        Ok(Self)
-    }
-}
-
-impl Drop for RawInputGuard {
-    fn drop(&mut self) {
-        let _ignored = execute!(io::stdout(), DisableBracketedPaste);
-        let _ignored = disable_raw_mode();
-    }
-}
-
-fn interaction(error: &io::Error) -> LauncherError {
-    LauncherError::Interaction(error.to_string())
 }
 
 #[cfg(test)]
