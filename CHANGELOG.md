@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L055] Conversation request identity narrows the durable revision range (#154)
 - [L635] Filesystem traversal/search loses progress at bounds and silently excludes some search scope (#686)
 - [L054] Selected run horizons also impose a separate phase-finalization reserve (#153)
 - [L471] Compatible profiles exclude all provider-side continuation and several unused capabilities (#549)
