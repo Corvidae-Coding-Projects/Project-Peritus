@@ -49,8 +49,12 @@ fn configured_context(
         .state()
         .workspaces()
         .find(&workspace_id)
+        .filter(|profile| {
+            profile.is_direct_folder()
+                || profile.trust_level() == peritus_product_state::WorkspaceTrust::Trusted
+        })
         .ok_or_else(|| LauncherError::WorkspaceSetup(format!(
-            "workspace {workspace_id} is not in this launcher's durable registry. Reopen Peritus after configuring this workspace."
+            "workspace {workspace_id} is not an authorized target in this launcher's durable registry. Reopen Peritus after configuring this workspace."
         )))?;
     workspace_context(prepared, workspace)
 }

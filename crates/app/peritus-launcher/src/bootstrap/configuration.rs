@@ -171,8 +171,9 @@ fn render_workspaces(text: &mut String, state: &ProductState) -> Result<(), Laun
     text.push_str("\n[tools]\nallow = [");
     if state
         .workspaces()
-        .active()
-        .is_some_and(|profile| profile.trust_level() == WorkspaceTrust::Trusted)
+        .profiles()
+        .into_iter()
+        .any(|profile| profile.trust_level() == WorkspaceTrust::Trusted)
     {
         text.push_str(
             "\"fs.create\", \"fs.discover\", \"fs.metadata\", \"fs.patch\", \"fs.read\", \"fs.remove\", \"fs.replace\", \"fs.search\", \"fs.write\", \"git.candidate\", \"git.diff\", \"git.history\", \"git.rollback\", \"git.snapshot\", \"git.status\", \"quality.discover\", \"quality.run\", \"shell.exec\", \"shell.script\"",

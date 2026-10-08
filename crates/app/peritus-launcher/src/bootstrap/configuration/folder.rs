@@ -10,14 +10,14 @@ pub(super) fn render(
     layout: &AppLayout,
     state: &ProductState,
 ) -> Result<(), LauncherError> {
-    let Some(profile) = state.workspaces().active().filter(|profile| profile.is_direct_folder())
-    else {
-        return Ok(());
-    };
-    writeln!(text, "\n[[folders]]\nworkspace_id = {}\nroot = {}\nidentity = {}\nwritable = {}\nprotected_paths = [{}, {}, {}]\n",
-        toml_string(profile.workspace_id()), toml_string(profile.repository_root()),
-        toml_string(profile.repository_identity()), profile.trust_level() == WorkspaceTrust::Trusted,
-        toml_path(layout.config_root())?, toml_path(layout.state_root())?, toml_path(layout.cache_root())?,
-    ).expect("writing to String cannot fail");
+    for profile in state.workspaces().profiles().into_iter().filter(|profile| {
+        profile.is_direct_folder()
+    }) {
+        writeln!(text, "\n[[folders]]\nworkspace_id = {}\nroot = {}\nidentity = {}\nwritable = {}\nprotected_paths = [{}, {}, {}]\n",
+            toml_string(profile.workspace_id()), toml_string(profile.repository_root()),
+            toml_string(profile.repository_identity()), profile.trust_level() == WorkspaceTrust::Trusted,
+            toml_path(layout.config_root())?, toml_path(layout.state_root())?, toml_path(layout.cache_root())?,
+        ).expect("writing to String cannot fail");
+    }
     Ok(())
 }

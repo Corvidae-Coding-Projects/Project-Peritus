@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// Product-state schema understood by this executable.
-pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 2;
+pub const PRODUCT_STATE_SCHEMA_VERSION: u16 = 3;
 
 /// Canonical durable state needed to resume local bootstrap.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -58,6 +58,10 @@ impl ProductState {
             .map_err(|error| ProductStateError::InvalidPayload(error.to_string()))?;
         match state.schema_version {
             PRODUCT_STATE_SCHEMA_VERSION => {}
+            2 => {
+                state.schema_version = PRODUCT_STATE_SCHEMA_VERSION;
+                state.legacy_storage = true;
+            }
             1 => {
                 state.providers.finish_legacy_route_migration()?;
                 state.schema_version = PRODUCT_STATE_SCHEMA_VERSION;
@@ -130,7 +134,8 @@ impl ProductState {
         self.workspace_setup_complete
     }
 
-    /// Publishes a decoded legacy document in the indexed workspace and exact-route storage shape.
+    /// Publishes a decoded legacy document in the indexed workspace, exact-route, and complete
+    /// authorized-target configuration shape.
     ///
     /// The legacy generation remains valid and immutable; callers must publish this successor.
     ///

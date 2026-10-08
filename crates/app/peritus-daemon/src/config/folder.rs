@@ -58,9 +58,6 @@ impl FolderDeclaration {
 }
 
 pub(super) fn validate(folders: &[FolderDeclaration]) -> Result<(), DaemonError> {
-    if folders.len() > 32 {
-        return Err(invalid("direct folder inventory exceeds its bound"));
-    }
     let mut ids = BTreeSet::new();
     let mut roots = BTreeSet::new();
     for folder in folders {
