@@ -115,7 +115,7 @@ pub(super) fn launch(
     });
     Ok(super::PlatformLaunch::new(
         process,
-        super::NativeHandshakeStatus::Complete,
+        super::NativeHandshakeStatus::Activated,
     ))
 }
 
@@ -173,12 +173,13 @@ fn launch_native(
             .as_ref()
             .is_some_and(|reader| super::set_protocol_nonblocking(reader.as_raw_fd()).is_ok());
     let mut handshake_status = if spawned(identity).is_ok() && descriptors_ready {
-        super::NativeHandshakeStatus::Complete
+        super::NativeHandshakeStatus::Prepared
     } else {
         super::NativeHandshakeStatus::Failed
     };
-    if matches!(handshake_status, super::NativeHandshakeStatus::Complete) {
-        let exchange = (|| {
+    let mut ready_output = None;
+    if matches!(handshake_status, super::NativeHandshakeStatus::Prepared) {
+        let ready = (|| {
             let protocol_output = protocol_output
                 .take()
                 .map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>)
@@ -192,6 +193,23 @@ fn launch_native(
                 handshake.ready,
                 should_continue,
             )?;
+            Ok(protocol_output)
+        })();
+        match ready {
+            Ok(output) => {
+                handshake_status = super::NativeHandshakeStatus::Ready;
+                ready_output = Some(output);
+            }
+            Err(error) => handshake_status = error.status(),
+        }
+    }
+    if matches!(handshake_status, super::NativeHandshakeStatus::Ready) {
+        let activation = (|| {
+            let protocol_output = ready_output.take().ok_or_else(|| {
+                super::HandshakeError::Failed(pty_error(
+                    "native PTY helper ready stream disappeared",
+                ))
+            })?;
             let protocol_input = protocol_input.as_mut().ok_or_else(|| {
                 super::HandshakeError::Failed(pty_error(
                     "native PTY helper has no protocol input",
@@ -204,8 +222,11 @@ fn launch_native(
                 should_continue,
             )
         })();
-        match exchange {
-            Ok(output) => drop(output),
+        match activation {
+            Ok(output) => {
+                handshake_status = super::NativeHandshakeStatus::Activated;
+                drop(output);
+            }
             Err(error) => handshake_status = error.status(),
         }
     }

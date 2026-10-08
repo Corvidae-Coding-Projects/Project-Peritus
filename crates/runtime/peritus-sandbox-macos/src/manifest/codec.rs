@@ -13,7 +13,8 @@ use peritus_types::{ProcessId, Sha256Digest};
 use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction, canonical::Reader, error};
 
 use super::{
-    CHECKSUM_BYTES, HelperManifest, LEGACY_VERSION, MAGIC, MAX_FRAME_BYTES, NATIVE_VERSION, VERSION,
+    CHECKSUM_BYTES, HelperManifest, LEGACY_VERSION, MAGIC, MAX_FRAME_BYTES, NATIVE_VERSION,
+    PREVIOUS_VERSION, VERSION,
     fields::{
         decode_containment, decode_environment, decode_environment_legacy, decode_proxy,
         decode_resources, decode_secrets, decode_strings, decode_strings_legacy, decode_terminal,
@@ -50,7 +51,7 @@ impl HelperManifest {
                 .try_into()
                 .map_err(|_| error::invalid(MacosOperation::Manifest, "invalid version"))?,
         );
-        if !matches!(version, LEGACY_VERSION | NATIVE_VERSION | VERSION)
+        if !matches!(version, LEGACY_VERSION | NATIVE_VERSION | PREVIOUS_VERSION | VERSION)
             || (version == LEGACY_VERSION && input.len() > MAX_FRAME_BYTES)
         {
             return Err(error::invalid(
@@ -126,11 +127,11 @@ impl HelperManifest {
             decode_environment(&mut reader)?
         };
         let exec_status_descriptor = reader.u32()?;
-        let proxy = decode_proxy(&mut reader)?;
+        let proxy = decode_proxy(&mut reader, version == VERSION)?;
         let resources = decode_resources(&mut reader)?;
         let containment = decode_containment(&mut reader, version)?;
         let terminal = decode_terminal(&mut reader)?;
-        let secrets = decode_secrets(&mut reader)?;
+        let secrets = decode_secrets(&mut reader, version == VERSION)?;
         reader.finish()?;
         validate_protected_handles(exec_status_descriptor, proxy.as_ref(), &secrets)?;
         validate_control_environment(&environment, proxy.as_ref(), &secrets)?;
@@ -204,7 +205,7 @@ impl HelperManifest {
         Self::read_framed_while(&mut reader, || true)
     }
 
-    /// Reads one bounded manifest frame while the helper retains its execution owner.
+    /// Reads one physical frame or a page stream while the helper retains its execution owner.
     ///
     /// A nonblocking production descriptor allows ownership loss to cancel a partial header or
     /// payload without adding an elapsed deadline or retry ceiling.
@@ -216,20 +217,58 @@ impl HelperManifest {
         mut reader: impl Read,
         mut should_continue: impl FnMut() -> bool,
     ) -> Result<Self, MacosError> {
-        let mut length = [0_u8; 4];
-        read_exact_while(&mut reader, &mut length, &mut should_continue)?;
-        let length = usize::try_from(u32::from_le_bytes(length))
-            .map_err(|_| error::limited(MacosOperation::Manifest, "manifest frame is too large"))?;
-        if length == 0 || length > MAX_FRAME_BYTES {
-            return Err(error::limited(
-                MacosOperation::Manifest,
-                "manifest frame is empty or exceeds its bound",
-            ));
+        let first = read_frame_length(&mut reader, &mut should_continue)?;
+        if first != peritus_process::NATIVE_MANIFEST_STREAM_MARKER {
+            return Self::decode(&read_physical_frame(
+                &mut reader,
+                first,
+                &mut should_continue,
+            )?);
         }
-        let mut input = vec![0_u8; length];
-        read_exact_while(&mut reader, &mut input, &mut should_continue)?;
+        let mut input = Vec::new();
+        loop {
+            let length = read_frame_length(&mut reader, &mut should_continue)?;
+            if length == 0 {
+                break;
+            }
+            let page = read_physical_frame(&mut reader, length, &mut should_continue)?;
+            input.try_reserve(page.len()).map_err(|_| {
+                error::limited(MacosOperation::Manifest, "manifest page allocation is unavailable")
+            })?;
+            input.extend_from_slice(&page);
+        }
+        if input.is_empty() {
+            return Err(error::invalid(MacosOperation::Manifest, "manifest page stream is empty"));
+        }
         Self::decode(&input)
     }
+}
+
+fn read_frame_length(
+    reader: &mut impl Read,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<u32, MacosError> {
+    let mut length = [0_u8; 4];
+    read_exact_while(reader, &mut length, should_continue)?;
+    Ok(u32::from_le_bytes(length))
+}
+
+fn read_physical_frame(
+    reader: &mut impl Read,
+    length: u32,
+    should_continue: &mut impl FnMut() -> bool,
+) -> Result<Vec<u8>, MacosError> {
+    let length = usize::try_from(length)
+        .map_err(|_| error::limited(MacosOperation::Manifest, "manifest frame is too large"))?;
+    if length == 0 || length > peritus_process::NATIVE_MANIFEST_FRAME_BYTES {
+        return Err(error::limited(
+            MacosOperation::Manifest,
+            "manifest frame is empty or exceeds physical capacity",
+        ));
+    }
+    let mut input = vec![0_u8; length];
+    read_exact_while(reader, &mut input, should_continue)?;
+    Ok(input)
 }
 
 fn read_exact_while(

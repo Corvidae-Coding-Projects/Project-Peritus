@@ -3,6 +3,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use peritus_process::NativeProtectedHandle;
+use peritus_types::Sha256Digest;
 
 use crate::{
     MacosError, MacosOperation,
@@ -10,14 +11,13 @@ use crate::{
     error,
 };
 
-const MAX_HANDLE_LABEL_BYTES: usize = 256;
-
 /// Nonsensitive proxy endpoint and inherited-handle metadata encoded in the helper manifest.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProxyHandleDescriptor {
     route: ProxyRoute,
     label: String,
     payload_len: u32,
+    payload_digest: Option<Sha256Digest>,
 }
 
 impl ProxyHandleDescriptor {
@@ -26,8 +26,25 @@ impl ProxyHandleDescriptor {
         label: String,
         payload_len: u32,
     ) -> Result<Self, MacosError> {
+        Self::new_with_digest(route, label, payload_len, None)
+    }
+
+    pub(crate) fn new_digest_bound(
+        route: ProxyRoute,
+        label: String,
+        payload_len: u32,
+        payload_digest: Sha256Digest,
+    ) -> Result<Self, MacosError> {
+        Self::new_with_digest(route, label, payload_len, Some(payload_digest))
+    }
+
+    fn new_with_digest(
+        route: ProxyRoute,
+        label: String,
+        payload_len: u32,
+        payload_digest: Option<Sha256Digest>,
+    ) -> Result<Self, MacosError> {
         if label.is_empty()
-            || label.len() > MAX_HANDLE_LABEL_BYTES
             || !label.is_ascii()
             || label.bytes().any(|byte| byte.is_ascii_control())
             || payload_len != 32
@@ -37,7 +54,7 @@ impl ProxyHandleDescriptor {
                 "proxy handle metadata is invalid or incomplete",
             ));
         }
-        Ok(Self { route, label, payload_len })
+        Ok(Self { route, label, payload_len, payload_digest })
     }
 
     /// Returns the exact managed proxy route.
@@ -58,7 +75,17 @@ impl ProxyHandleDescriptor {
         self.payload_len
     }
 
-    pub(crate) fn encode(&self, writer: &mut Writer) -> Result<(), MacosError> {
+    /// Returns the exact proxy-token digest when carried by the manifest schema.
+    #[must_use]
+    pub const fn payload_digest(&self) -> Option<Sha256Digest> {
+        self.payload_digest
+    }
+
+    pub(crate) fn encode(
+        &self,
+        writer: &mut Writer,
+        payload_digest_schema: bool,
+    ) -> Result<(), MacosError> {
         match self.route.endpoint().ip() {
             IpAddr::V4(address) => {
                 writer.u8(4)?;
@@ -71,11 +98,28 @@ impl ProxyHandleDescriptor {
         }
         writer.u16(self.route.endpoint().port())?;
         writer.u32(self.route.routing_handle())?;
-        writer.string(&self.label)?;
-        writer.u32(self.payload_len)
+        if payload_digest_schema {
+            writer.native_bytes(self.label.as_bytes())?;
+        } else {
+            writer.string(&self.label)?;
+        }
+        writer.u32(self.payload_len)?;
+        if payload_digest_schema {
+            writer.fixed(
+                self.payload_digest
+                    .ok_or_else(|| {
+                        error::invalid(MacosOperation::Manifest, "proxy payload digest is missing")
+                    })?
+                    .as_bytes(),
+            )?;
+        }
+        Ok(())
     }
 
-    pub(crate) fn decode(reader: &mut Reader<'_>) -> Result<Self, MacosError> {
+    pub(crate) fn decode(
+        reader: &mut Reader<'_>,
+        payload_digest_schema: bool,
+    ) -> Result<Self, MacosError> {
         let address = match reader.u8()? {
             4 => IpAddr::V4(Ipv4Addr::from(reader.fixed::<4>()?)),
             6 => IpAddr::V6(Ipv6Addr::from(reader.fixed::<16>()?)),
@@ -84,7 +128,23 @@ impl ProxyHandleDescriptor {
             }
         };
         let route = ProxyRoute::new(SocketAddr::new(address, reader.u16()?), reader.u32()?)?;
-        Self::new(route, reader.string()?, reader.u32()?)
+        let label = if payload_digest_schema {
+            String::from_utf8(reader.native_bytes()?.to_vec()).map_err(|_| {
+                error::invalid(MacosOperation::Manifest, "proxy handle label is not UTF-8")
+            })?
+        } else {
+            reader.string()?
+        };
+        let payload_len = reader.u32()?;
+        let payload_digest = payload_digest_schema
+            .then(|| reader.fixed().map(Sha256Digest::new))
+            .transpose()?;
+        match payload_digest {
+            Some(payload_digest) => {
+                Self::new_digest_bound(route, label, payload_len, payload_digest)
+            }
+            None => Self::new(route, label, payload_len),
+        }
     }
 }
 
@@ -135,7 +195,7 @@ impl ProtectedProxyRoute {
     }
 
     pub(crate) fn descriptor(&self) -> Result<ProxyHandleDescriptor, MacosError> {
-        ProxyHandleDescriptor::new(
+        ProxyHandleDescriptor::new_digest_bound(
             self.route,
             self.handle.label().to_owned(),
             u32::try_from(self.handle.payload_len().ok_or_else(|| {
@@ -147,6 +207,14 @@ impl ProtectedProxyRoute {
             .map_err(|_| {
                 error::invalid(MacosOperation::Validate, "proxy token payload is too large")
             })?,
+            self.handle
+                .payload_digest()
+                .ok_or_else(|| {
+                    error::invalid(
+                        MacosOperation::Validate,
+                        "proxy token payload digest is unavailable",
+                    )
+                })?,
         )
     }
 }

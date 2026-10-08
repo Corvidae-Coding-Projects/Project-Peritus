@@ -142,10 +142,11 @@ fn secret_fixture(
                 Sha256Digest::new([20; 32]),
             );
             let grant = SecretGrant::new(reference, SecretDelivery::File(path.clone()));
-            let descriptor = SecretHandleDescriptor::new(
+            let descriptor = SecretHandleDescriptor::new_digest_bound(
                 9,
                 "peritus-macos-test-secret".to_owned(),
                 8,
+                peritus_codec::sha256(&[0_u8; 8]),
                 crate::secret_reference_digest(reference),
                 SecretHandleDestination::File(path),
             )

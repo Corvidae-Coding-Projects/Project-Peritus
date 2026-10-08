@@ -394,10 +394,14 @@ impl HelperLaunch {
             self.arguments.iter().cloned(),
         )
         .map_err(native_launch_error)?;
-        NativeLaunchDescription::new(
+        NativeLaunchDescription::new_paged(
             command,
             helper_identity,
-            manifest.canonical_bytes().to_vec(),
+            manifest
+                .canonical_bytes()
+                .chunks(peritus_process::NATIVE_MANIFEST_FRAME_BYTES)
+                .map(<[u8]>::to_vec)
+                .collect(),
             manifest.digest(),
             manifest.preparation_digest(),
         )
@@ -457,6 +461,9 @@ pub(crate) fn protected_handle_owners_match(
                 && handle.raw_handle() == u64::from(proxy.route().routing_handle())
                 && handle.payload_len()
                     == Some(usize::try_from(proxy.payload_len()).unwrap_or(usize::MAX))
+                && proxy
+                    .payload_digest()
+                    .is_none_or(|digest| handle.payload_digest() == Some(digest))
         })
     });
     status_matches
@@ -465,8 +472,11 @@ pub(crate) fn protected_handle_owners_match(
             handles.next().is_some_and(|handle| {
                 handle.label() == secret.label()
                     && handle.raw_handle() == u64::from(secret.descriptor())
-                    && handle.payload_len()
-                        == Some(usize::try_from(secret.payload_len()).unwrap_or(usize::MAX))
+                && handle.payload_len()
+                    == Some(usize::try_from(secret.payload_len()).unwrap_or(usize::MAX))
+                && secret
+                    .payload_digest()
+                    .is_none_or(|digest| handle.payload_digest() == Some(digest))
             })
         })
         && handles.next().is_none()

@@ -33,7 +33,6 @@ impl LinuxProtectedPayload {
             .ok_or_else(|| secret_error("secret binding requires a finite protected payload"))?;
         if raw < 3
             || raw > i32::MAX as u64
-            || handle.label().len() > 128
             || !handle.label().bytes().all(|byte| byte.is_ascii_graphic())
         {
             return Err(secret_error("protected payload handle is not a bounded Linux descriptor"));

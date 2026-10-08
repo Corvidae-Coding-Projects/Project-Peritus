@@ -4,10 +4,11 @@ mod proxy;
 
 use crate::{HelperManifest, LinuxError, LinuxErrorKind, LinuxOperation, LinuxRecovery};
 use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 use std::collections::BTreeSet;
 use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::os::fd::AsRawFd;
 use std::os::unix::ffi::OsStrExt;
@@ -246,7 +247,11 @@ fn prepare_protected_payloads(
         let descriptor = binding.handle().descriptor();
         match binding.requirement().delivery() {
             peritus_sandbox::SecretDelivery::Environment(name) => {
-                let value = read_protected_payload(descriptor, binding.payload_len())?;
+                let value = read_protected_payload(
+                    descriptor,
+                    binding.payload_len(),
+                    binding.payload_digest(),
+                )?;
                 if value.contains(&0) {
                     return Err(helper_error("protected environment payload contains NUL"));
                 }
@@ -264,7 +269,7 @@ fn prepare_protected_payloads(
                     use std::os::unix::fs::PermissionsExt;
 
                     if !metadata.file_type().is_file()
-                        || metadata.len() != u64::from(binding.payload_len())
+                        || metadata.len() != binding.payload_len()
                         || metadata.permissions().mode() & 0o222 != 0
                     {
                         return Err(helper_error(
@@ -272,9 +277,22 @@ fn prepare_protected_payloads(
                         ));
                     }
                 }
+                verify_payload_reader(
+                    File::open(path.as_str()).map_err(|_| {
+                        helper_error("protected file destination could not be opened")
+                    })?,
+                    binding.payload_len(),
+                    binding.payload_digest(),
+                )?;
                 close_consumed_descriptor(descriptor)?;
             }
             peritus_sandbox::SecretDelivery::BrokeredHandle(label) => {
+                verify_protected_payload(
+                    descriptor,
+                    binding.payload_len(),
+                    binding.payload_digest(),
+                )?;
+                rewind_protected_payload(descriptor)?;
                 prepared.push(PreparedPayload::Brokered {
                     label: label.as_str().to_owned(),
                     descriptor,
@@ -285,17 +303,73 @@ fn prepare_protected_payloads(
     Ok(prepared)
 }
 
-fn read_protected_payload(descriptor: u64, expected_len: u32) -> Result<Vec<u8>, LinuxError> {
+fn read_protected_payload(
+    descriptor: u64,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
+) -> Result<Vec<u8>, LinuxError> {
     let file = File::open(format!("/proc/self/fd/{descriptor}"))
         .map_err(|_| helper_error("protected payload descriptor could not be opened"))?;
-    let mut bytes = Vec::with_capacity(expected_len as usize);
-    file.take(u64::from(expected_len) + 1)
+    let capacity = usize::try_from(expected_len)
+        .map_err(|_| helper_error("protected environment payload exceeds address capacity"))?;
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(capacity)
+        .map_err(|_| helper_error("protected environment payload allocation is unavailable"))?;
+    file.take(expected_len.saturating_add(1))
         .read_to_end(&mut bytes)
         .map_err(|_| helper_error("protected payload descriptor could not be read"))?;
-    if bytes.len() != expected_len as usize {
+    if bytes.len() != capacity
+        || expected_digest.is_some_and(|digest| peritus_codec::sha256(&bytes) != digest)
+    {
         return Err(helper_error("protected payload length differs from its manifest binding"));
     }
     Ok(bytes)
+}
+
+fn verify_protected_payload(
+    descriptor: u64,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
+) -> Result<(), LinuxError> {
+    let file = File::open(format!("/proc/self/fd/{descriptor}"))
+        .map_err(|_| helper_error("protected payload descriptor could not be opened"))?;
+    verify_payload_reader(file, expected_len, expected_digest)
+}
+
+fn rewind_protected_payload(descriptor: u64) -> Result<(), LinuxError> {
+    File::open(format!("/proc/self/fd/{descriptor}"))
+        .and_then(|mut file| file.seek(SeekFrom::Start(0)).map(drop))
+        .map_err(|_| helper_error("brokered protected payload could not be rewound"))
+}
+
+fn verify_payload_reader(
+    mut reader: impl Read,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
+) -> Result<(), LinuxError> {
+    let mut hasher = Sha256::new();
+    let mut observed = 0_u64;
+    let mut buffer = [0_u8; 64 * 1_024];
+    loop {
+        let count = reader
+            .read(&mut buffer)
+            .map_err(|_| helper_error("protected payload could not be read"))?;
+        if count == 0 {
+            break;
+        }
+        observed = observed
+            .checked_add(u64::try_from(count).unwrap_or(u64::MAX))
+            .ok_or_else(|| helper_error("protected payload length overflowed"))?;
+        if observed > expected_len {
+            return Err(helper_error("protected payload length differs from its manifest binding"));
+        }
+        hasher.update(&buffer[..count]);
+    }
+    let digest = Sha256Digest::new(hasher.finalize().into());
+    if observed != expected_len || expected_digest.is_some_and(|expected| expected != digest) {
+        return Err(helper_error("protected payload differs from its manifest binding"));
+    }
+    Ok(())
 }
 
 fn close_consumed_descriptor(descriptor: u64) -> Result<(), LinuxError> {
@@ -306,18 +380,43 @@ fn close_consumed_descriptor(descriptor: u64) -> Result<(), LinuxError> {
 }
 
 fn read_manifest_frame(reader: &mut impl Read) -> Result<Vec<u8>, LinuxError> {
+    let first = read_manifest_length(reader)?;
+    if first != peritus_process::NATIVE_MANIFEST_STREAM_MARKER {
+        return read_manifest_page(reader, first);
+    }
+    let mut bytes = Vec::new();
+    loop {
+        let length = read_manifest_length(reader)?;
+        if length == 0 {
+            break;
+        }
+        let page = read_manifest_page(reader, length)?;
+        bytes.try_reserve(page.len())
+            .map_err(|_| helper_error("manifest page stream allocation is unavailable"))?;
+        bytes.extend_from_slice(&page);
+    }
+    if bytes.is_empty() {
+        return Err(helper_error("manifest page stream is empty"));
+    }
+    Ok(bytes)
+}
+
+fn read_manifest_length(reader: &mut impl Read) -> Result<u32, LinuxError> {
     let mut length = [0_u8; 4];
     reader.read_exact(&mut length).map_err(|error| {
         LinuxError::io(LinuxOperation::Manifest, "read manifest length", &error)
     })?;
-    let length = usize::try_from(u32::from_le_bytes(length))
+    Ok(u32::from_le_bytes(length))
+}
+
+fn read_manifest_page(reader: &mut impl Read, length: u32) -> Result<Vec<u8>, LinuxError> {
+    let length = usize::try_from(length)
         .map_err(|_| helper_error("manifest frame length is invalid"))?;
-    if length == 0 {
-        return Err(helper_error("manifest frame is empty"));
+    if length == 0 || length > peritus_process::NATIVE_MANIFEST_FRAME_BYTES {
+        return Err(helper_error("manifest frame is empty or exceeds physical capacity"));
     }
     let mut bytes = vec![0; length];
-    reader
-        .read_exact(&mut bytes)
+    reader.read_exact(&mut bytes)
         .map_err(|error| LinuxError::io(LinuxOperation::Manifest, "read manifest bytes", &error))?;
     Ok(bytes)
 }

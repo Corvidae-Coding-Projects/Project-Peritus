@@ -485,17 +485,25 @@ fn run_owner(
     };
     let (process, handshake_status) = launch.into_parts();
     let mut pre_start_reason = match handshake_status {
-        platform::NativeHandshakeStatus::Complete => None,
-        platform::NativeHandshakeStatus::Cancelled | platform::NativeHandshakeStatus::Failed => {
+        platform::NativeHandshakeStatus::Activated => None,
+        platform::NativeHandshakeStatus::Prepared
+        | platform::NativeHandshakeStatus::Ready
+        | platform::NativeHandshakeStatus::Cancelled
+        | platform::NativeHandshakeStatus::Failed => {
             Some(cancellation.pending().unwrap_or(CancellationReason::BackendFailure))
         }
     };
     let mut initial_failure = !process.identity().complete_containment()
-        || matches!(handshake_status, platform::NativeHandshakeStatus::Failed);
+        || matches!(
+            handshake_status,
+            platform::NativeHandshakeStatus::Prepared
+                | platform::NativeHandshakeStatus::Ready
+                | platform::NativeHandshakeStatus::Failed
+        );
     if !process.identity().complete_containment() {
         pre_start_reason.get_or_insert(CancellationReason::BackendFailure);
     }
-    if matches!(handshake_status, platform::NativeHandshakeStatus::Complete)
+    if matches!(handshake_status, platform::NativeHandshakeStatus::Activated)
         && let Some(session) = native.as_deref_mut()
     {
         let activation = {

@@ -28,7 +28,8 @@ use fields::{
 const MAGIC: [u8; 8] = *b"PRTSMAC1";
 const LEGACY_VERSION: u16 = 1;
 const NATIVE_VERSION: u16 = 2;
-const VERSION: u16 = 3;
+const PREVIOUS_VERSION: u16 = 3;
+const VERSION: u16 = 4;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const MAX_FRAME_BYTES: usize = 512 * 1_024;
 const PREPARATION_DOMAIN: &[u8] = b"PERITUS-SANDBOX-PREPARATION-V1\0";
@@ -319,13 +320,17 @@ impl HelperManifest {
             entry.encode(&mut body)?;
         }
         body.u32(self.exec_status_descriptor)?;
-        encode_proxy(&mut body, self.proxy.as_ref())?;
+        encode_proxy(&mut body, self.proxy.as_ref(), self.encoding_version == VERSION)?;
         encode_resources(&mut body, &self.resources)?;
         encode_containment(&mut body, self.containment, self.encoding_version)?;
         encode_terminal(&mut body, self.terminal)?;
-        body.count(self.secrets.len())?;
+        if self.encoding_version == VERSION {
+            body.native_count(self.secrets.len())?;
+        } else {
+            body.count(self.secrets.len())?;
+        }
         for secret in &self.secrets {
-            secret.encode(&mut body)?;
+            secret.encode(&mut body, self.encoding_version == VERSION)?;
         }
         let body = body.finish();
         let mut envelope = Writer::native();
@@ -375,13 +380,13 @@ impl HelperManifest {
             })?)?;
         }
         body.u32(self.exec_status_descriptor)?;
-        encode_proxy(&mut body, self.proxy.as_ref())?;
+        encode_proxy(&mut body, self.proxy.as_ref(), false)?;
         encode_resources(&mut body, &self.resources)?;
         encode_containment(&mut body, self.containment, LEGACY_VERSION)?;
         encode_terminal(&mut body, self.terminal)?;
         body.count(self.secrets.len())?;
         for secret in &self.secrets {
-            secret.encode(&mut body)?;
+            secret.encode(&mut body, false)?;
         }
         let body = body.finish();
         let mut envelope = Writer::new();

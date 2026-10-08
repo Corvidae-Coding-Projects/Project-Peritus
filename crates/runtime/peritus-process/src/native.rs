@@ -52,7 +52,6 @@ pub(crate) use observation::{
     capture_released_pre_start_session, capture_terminated_session,
 };
 
-const MAX_HELPER_IDENTITY_BYTES: usize = 256;
 /// Maximum bytes in one complete native-helper manifest transport frame.
 pub const NATIVE_MANIFEST_FRAME_BYTES: usize = 4 * 1_024 * 1_024;
 /// Length-prefix sentinel introducing a sequence of native-helper manifest frames.
@@ -581,7 +580,6 @@ impl NativeLaunchDescription {
     ) -> Result<Self, ProcessError> {
         let helper_identity = helper_identity.into();
         if helper_identity.is_empty()
-            || helper_identity.len() > MAX_HELPER_IDENTITY_BYTES
             || !helper_identity.is_ascii()
             || helper_identity.bytes().any(|byte| byte.is_ascii_control())
         {

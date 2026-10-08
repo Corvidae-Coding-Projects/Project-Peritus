@@ -241,7 +241,8 @@ fn stage_target_command(
     if let Some(proxy) = manifest.proxy_descriptor() {
         let mut token = native::read_protected_payload_while(
             proxy.route().routing_handle(),
-            proxy.payload_len(),
+            u64::from(proxy.payload_len()),
+            proxy.payload_digest(),
             should_continue,
         )?;
         if token.len() != 32 {
@@ -273,6 +274,7 @@ fn stage_target_command(
                 let mut payload = native::read_protected_payload_while(
                     secret.descriptor(),
                     secret.payload_len(),
+                    secret.payload_digest(),
                     should_continue,
                 )?;
                 if payload.contains(&0) {
@@ -293,12 +295,19 @@ fn stage_target_command(
                 native::materialize_secret_file(
                     secret.descriptor(),
                     secret.payload_len(),
+                    secret.payload_digest(),
                     path.as_str(),
                     materialized_secret_files,
                     should_continue,
                 )?;
             }
             crate::SecretHandleDestination::Brokered(label) => {
+                native::verify_brokered_payload_while(
+                    secret.descriptor(),
+                    secret.payload_len(),
+                    secret.payload_digest(),
+                    should_continue,
+                )?;
                 brokered.push(format!(
                     "{}:{}",
                     hex_bytes(label.as_str().as_bytes()),

@@ -1,9 +1,8 @@
 //! Direct structured pipe process launch with process-tree containment.
 
-use std::{
-    io::Write,
-    process::{Command, Stdio},
-};
+use std::process::{Command, Stdio};
+#[cfg(unix)]
+use std::io::Write;
 #[cfg(unix)]
 use std::os::fd::AsRawFd;
 
@@ -129,86 +128,130 @@ pub(super) fn launch(
     let protocol_descriptors_ready = true;
     let mut stdout =
         child_stdout.map(|reader| Box::new(reader) as Box<dyn std::io::Read + Send>);
-    let mut handshake_status = NativeHandshakeStatus::Complete;
+    let mut handshake_status = if handshake.is_some() {
+        NativeHandshakeStatus::Prepared
+    } else {
+        NativeHandshakeStatus::Activated
+    };
     if let Some(handshake) = handshake {
+        #[cfg(windows)]
+        let mut handshake = handshake;
+        #[cfg(not(windows))]
+        let handshake = handshake;
         if spawned(identity).is_err() {
             handshake_status = NativeHandshakeStatus::Failed;
             stdout.take();
         }
-        if matches!(handshake_status, NativeHandshakeStatus::Complete)
+        if matches!(handshake_status, NativeHandshakeStatus::Prepared)
             && !protocol_descriptors_ready
         {
             handshake_status = NativeHandshakeStatus::Failed;
             stdout.take();
         }
-        if matches!(handshake_status, NativeHandshakeStatus::Complete) {
-            let exchange = (|| {
+        if matches!(handshake_status, NativeHandshakeStatus::Prepared) {
+            let ready = (|| {
                 let reader = stdout.take().ok_or_else(|| {
                     HandshakeError::Failed(spawn_error(
                         "native helper has no activation output stream",
                     ))
                 })?;
-                let reader =
-                    super::verify_helper_record(reader, handshake.ready, should_continue)?;
-                let writer = input
-                    .as_mut()
-                    .map(|writer| writer as &mut dyn Write)
-                    .ok_or_else(|| {
+                super::verify_helper_record(reader, handshake.ready, should_continue)
+            })();
+            match ready {
+                Ok(reader) => {
+                    handshake_status = NativeHandshakeStatus::Ready;
+                    stdout = Some(reader);
+                }
+                Err(error) => handshake_status = error.status(),
+            }
+        }
+        if matches!(handshake_status, NativeHandshakeStatus::Ready) {
+            let activation = (|| {
+                let reader = stdout.take().ok_or_else(|| {
+                    HandshakeError::Failed(spawn_error(
+                        "native helper activation output stream disappeared",
+                    ))
+                })?;
+                #[cfg(unix)]
+                {
+                    let writer = input
+                        .as_mut()
+                        .map(|writer| writer as &mut dyn Write)
+                        .ok_or_else(|| {
+                            HandshakeError::Failed(spawn_error(
+                                "native helper has no manifest input stream",
+                            ))
+                        })?;
+                    super::write_helper_manifest(writer, &handshake.manifest, should_continue)?;
+                }
+                #[cfg(windows)]
+                {
+                    let writer = input.take().ok_or_else(|| {
                         HandshakeError::Failed(spawn_error(
                             "native helper has no manifest input stream",
                         ))
                     })?;
-                super::write_helper_manifest(writer, &handshake.manifest, should_continue)?;
+                    input = Some(super::write_helper_manifest_owned(
+                        writer,
+                        core::mem::take(&mut handshake.manifest),
+                        should_continue,
+                    )?);
+                }
                 super::verify_helper_record(reader, handshake.activated, should_continue)
             })();
-            match exchange {
-                Ok(reader) => stdout = Some(reader),
+            match activation {
+                Ok(reader) => {
+                    handshake_status = NativeHandshakeStatus::Activated;
+                    stdout = Some(reader);
+                }
                 Err(error) => handshake_status = error.status(),
             }
         }
         #[cfg(windows)]
-        if matches!(handshake_status, NativeHandshakeStatus::Complete)
+        if matches!(handshake_status, NativeHandshakeStatus::Activated)
             && let Some(status_reader) = status_reader
         {
             let verification = windows_channels
-                .as_ref()
+                .clone()
                 .ok_or_else(|| {
                     HandshakeError::Failed(spawn_error(
                         "Windows helper channels disappeared before custody transfer",
                     ))
                 })
                 .and_then(|channels| {
-                    let reader = channels.verify_secret_files(
-                        Box::new(status_reader),
-                        handshake.activated,
-                        should_continue,
-                    )?;
-                    if !should_continue() {
-                        return Err(HandshakeError::Cancelled);
-                    }
-                    channels
-                        .acknowledge_secret_files()
-                        .map_err(HandshakeError::Failed)?;
-                    if let Some(adoption) = handshake.adoption {
-                        channels
-                        .verify_target_adoption(
-                            reader,
-                            adoption,
-                            identity,
-                            should_continue,
-                        )
-                        .and_then(|reader| {
-                            if !should_continue() {
-                                return Err(HandshakeError::Cancelled);
-                            }
+                    let activated = handshake.activated;
+                    let adoption = handshake.adoption;
+                    let started = handshake.started;
+                    super::run_interruptible_handshake(
+                        move || {
+                            let mut continue_io = || true;
+                            let reader = channels.verify_secret_files(
+                                Box::new(status_reader),
+                                activated,
+                                &mut continue_io,
+                            )?;
                             channels
-                                .acknowledge_target_adoption()
+                                .acknowledge_secret_files()
                                 .map_err(HandshakeError::Failed)?;
-                            super::verify_helper_record(reader, handshake.started, should_continue)
-                        })
-                    } else {
-                        super::verify_helper_record(reader, handshake.started, should_continue)
-                    }
+                            let reader = if let Some(adoption) = adoption {
+                                let reader = channels.verify_target_adoption(
+                                    reader,
+                                    adoption,
+                                    identity,
+                                    &mut continue_io,
+                                )?;
+                                channels
+                                    .acknowledge_target_adoption()
+                                    .map_err(HandshakeError::Failed)?;
+                                reader
+                            } else {
+                                reader
+                            };
+                            super::verify_helper_record(reader, started, &mut continue_io)?;
+                            Ok(())
+                        },
+                        should_continue,
+                    )
                 });
             if let Err(error) = verification {
                 handshake_status = error.status();
@@ -261,7 +304,7 @@ pub(super) fn launch(
         #[cfg(windows)]
         windows_channels,
         #[cfg(windows)]
-        windows_completion: if matches!(handshake_status, NativeHandshakeStatus::Complete) {
+        windows_completion: if matches!(handshake_status, NativeHandshakeStatus::Activated) {
             windows_completion
         } else {
             None

@@ -12,6 +12,8 @@ use std::{
 };
 
 use peritus_sandbox::SandboxResourceKind;
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 use zeroize::Zeroizing;
 
 use crate::{
@@ -236,14 +238,16 @@ pub(crate) fn write_status_while(
 
 pub(super) fn read_protected_payload_while(
     descriptor: u32,
-    expected_len: u32,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Vec<u8>, MacosError> {
     let mut file = std::fs::File::open(format!("/dev/fd/{descriptor}"))
         .map_err(|_| protected_error("protected payload descriptor cannot be opened"))?;
     file.seek(std::io::SeekFrom::Start(0))
         .map_err(|_| protected_error("protected payload descriptor cannot be rewound"))?;
-    let expected_len = usize::try_from(expected_len).unwrap_or(usize::MAX);
+    let expected_len = usize::try_from(expected_len)
+        .map_err(|_| protected_error("protected payload exceeds native address capacity"))?;
     let mut payload = Vec::new();
     payload
         .try_reserve_exact(expected_len)
@@ -297,12 +301,16 @@ pub(super) fn read_protected_payload_while(
             ));
         }
     }
+    if expected_digest.is_some_and(|digest| peritus_codec::sha256(&payload) != digest) {
+        return Err(protected_error("protected payload digest differs from manifest"));
+    }
     Ok(payload)
 }
 
 pub(super) fn materialize_secret_file(
     descriptor: u32,
-    expected_len: u32,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
     destination: &str,
     materialized: &mut MaterializedSecretFiles,
     should_continue: &mut dyn FnMut() -> bool,
@@ -329,7 +337,8 @@ pub(super) fn materialize_secret_file(
         }
     };
     let result = (|| {
-        let mut remaining = u64::from(expected_len);
+        let mut remaining = expected_len;
+        let mut digest = Sha256::new();
         let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
         while remaining != 0 {
             ensure_staging_continues(should_continue)?;
@@ -350,6 +359,7 @@ pub(super) fn materialize_secret_file(
                 return Err(protected_error("protected file payload is truncated"));
             }
             write_all_while(&mut file, &buffer[..count], should_continue)?;
+            digest.update(&buffer[..count]);
             remaining = remaining.saturating_sub(u64::try_from(count).unwrap_or(u64::MAX));
         }
         ensure_staging_continues(should_continue)?;
@@ -373,6 +383,11 @@ pub(super) fn materialize_secret_file(
             }
         }
         ensure_staging_continues(should_continue)?;
+        if expected_digest.is_some_and(|expected| {
+            Sha256Digest::new(digest.finalize().into()) != expected
+        }) {
+            return Err(protected_error("protected file payload digest differs from manifest"));
+        }
         file.sync_all()
             .map_err(|_| protected_error("secret file destination cannot be synchronized"))?;
         ensure_staging_continues(should_continue)
@@ -380,6 +395,49 @@ pub(super) fn materialize_secret_file(
     if let Err(error) = result {
         drop(file);
         return Err(error);
+    }
+    Ok(())
+}
+
+pub(super) fn verify_brokered_payload_while(
+    descriptor: u32,
+    expected_len: u64,
+    expected_digest: Option<Sha256Digest>,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), MacosError> {
+    let mut source = std::fs::File::open(format!("/dev/fd/{descriptor}"))
+        .map_err(|_| protected_error("brokered payload descriptor cannot be opened"))?;
+    source
+        .seek(std::io::SeekFrom::Start(0))
+        .map_err(|_| protected_error("brokered payload descriptor cannot be rewound"))?;
+    let mut observed = 0_u64;
+    let mut digest = Sha256::new();
+    let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
+    loop {
+        ensure_staging_continues(should_continue)?;
+        let count = source
+            .read(&mut *buffer)
+            .map_err(|_| protected_error("brokered payload descriptor cannot be read"))?;
+        if count == 0 {
+            break;
+        }
+        observed = observed
+            .checked_add(u64::try_from(count).unwrap_or(u64::MAX))
+            .ok_or_else(|| protected_error("brokered payload length overflowed"))?;
+        if observed > expected_len {
+            return Err(protected_error("brokered payload length differs from manifest"));
+        }
+        digest.update(&buffer[..count]);
+    }
+    let observed_digest = Sha256Digest::new(digest.finalize().into());
+    if observed != expected_len
+        || expected_digest.is_some_and(|expected| expected != observed_digest)
+    {
+        return Err(protected_error("brokered payload differs from manifest"));
+    }
+    // SAFETY: the manifest-bounded inherited descriptor is a staged regular file and remains live.
+    if unsafe { libc::lseek(descriptor.cast_signed(), 0, libc::SEEK_SET) } < 0 {
+        return Err(protected_error("brokered payload descriptor cannot be reset"));
     }
     Ok(())
 }

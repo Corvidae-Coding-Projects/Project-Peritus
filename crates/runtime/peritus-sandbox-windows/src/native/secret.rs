@@ -2,7 +2,7 @@
 
 use std::{
     fs::{File, OpenOptions},
-    io::{ErrorKind, Read, Write},
+    io::{ErrorKind, Read, Seek, SeekFrom, Write},
     os::windows::{
         fs::OpenOptionsExt,
         io::{AsRawHandle, FromRawHandle, RawHandle},
@@ -15,6 +15,8 @@ use windows_sys::Win32::Storage::FileSystem::{
     FileDispositionInfo, FileIdInfo, GetFileInformationByHandleEx, GetFileType,
     SetFileInformationByHandle,
 };
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::{
@@ -153,9 +155,6 @@ pub(super) fn stage(
         staged.environment.extend([http, https]);
     }
     for descriptor in manifest.secret_handles() {
-        if matches!(descriptor.destination(), SecretHandleDestination::Brokered(_)) {
-            continue;
-        }
         let expected = descriptor.payload_len().ok_or_else(|| {
             secret_error("protected secret lacks an exact payload-length binding")
         })?;
@@ -168,7 +167,12 @@ pub(super) fn stage(
                         "environment secret exceeds native Windows capacity",
                     ));
                 }
-                let mut bytes = read_exact_payload(&mut source, expected, should_continue)?;
+                let mut bytes = read_exact_payload(
+                    &mut source,
+                    expected,
+                    descriptor.payload_digest(),
+                    should_continue,
+                )?;
                 let result = (|| {
                     let text = core::str::from_utf8(&bytes)
                         .map_err(|_| secret_error("environment secret is not valid UTF-8"))?;
@@ -197,11 +201,24 @@ pub(super) fn stage(
                 staged.files.push(stage_file(
                     &mut source,
                     expected,
+                    descriptor.payload_digest(),
                     native,
                     should_continue,
                 )?);
             }
-            SecretHandleDestination::Brokered(_) => {}
+            SecretHandleDestination::Brokered(_) => {
+                copy_exact(
+                    &mut source,
+                    expected,
+                    descriptor.payload_digest(),
+                    &mut std::io::sink(),
+                    should_continue,
+                )?;
+                source
+                    .seek(SeekFrom::Start(0))
+                    .map_err(|_| secret_error("brokered secret handle cannot be rewound"))?;
+                core::mem::forget(source);
+            }
         }
     }
     staged.environment.sort_by(|left, right| {
@@ -274,6 +291,7 @@ fn validate_source(source: &File, expected: u64) -> Result<(), WindowsError> {
 fn read_exact_payload(
     source: &mut File,
     expected: u64,
+    expected_digest: Option<Sha256Digest>,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Vec<u8>, WindowsError> {
     let expected_usize = usize::try_from(expected)
@@ -282,13 +300,14 @@ fn read_exact_payload(
     bytes
         .try_reserve_exact(expected_usize)
         .map_err(|_| secret_error("environment secret allocation is unavailable"))?;
-    copy_exact(source, expected, &mut bytes, should_continue)?;
+    copy_exact(source, expected, expected_digest, &mut bytes, should_continue)?;
     Ok(bytes)
 }
 
 fn stage_file(
     source: &mut File,
     expected: u64,
+    expected_digest: Option<Sha256Digest>,
     path: WindowsPath,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<StagedSecretFile, WindowsError> {
@@ -306,7 +325,7 @@ fn stage_file(
     let mut destination = options
         .open(path.to_path_buf())
         .map_err(|_| secret_error("private secret file cannot be created exclusively"))?;
-    copy_exact(source, expected, &mut destination, should_continue)?;
+    copy_exact(source, expected, expected_digest, &mut destination, should_continue)?;
     destination
         .flush()
         .and_then(|()| destination.sync_all())
@@ -320,11 +339,13 @@ fn stage_file(
 fn copy_exact(
     source: &mut File,
     expected: u64,
+    expected_digest: Option<Sha256Digest>,
     destination: &mut dyn Write,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<(), WindowsError> {
     let mut buffer = Zeroizing::new([0_u8; READ_CHUNK_BYTES]);
     let mut remaining = expected;
+    let mut digest = Sha256::new();
     while remaining != 0 {
         if !should_continue() {
             return Err(secret_error(
@@ -346,6 +367,7 @@ fn copy_exact(
         destination
             .write_all(&buffer[..count])
             .map_err(|_| secret_error("protected secret destination cannot be written"))?;
+        digest.update(&buffer[..count]);
         remaining -= u64::try_from(count)
             .map_err(|_| secret_error("protected secret transfer size is not representable"))?;
     }
@@ -356,7 +378,14 @@ fn copy_exact(
             ));
         }
         match source.read(&mut buffer[..1]) {
-            Ok(0) => return Ok(()),
+            Ok(0) => {
+                let observed = Sha256Digest::new(digest.finalize().into());
+                return if expected_digest.is_none_or(|expected| expected == observed) {
+                    Ok(())
+                } else {
+                    Err(secret_error("protected secret digest differs from manifest"))
+                };
+            }
             Ok(_) => {
                 return Err(secret_error(
                     "protected secret exceeds its declared payload length",

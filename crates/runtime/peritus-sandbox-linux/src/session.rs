@@ -1,18 +1,23 @@
 //! C2-owned Linux native session lifecycle.
 
+use std::collections::VecDeque;
+
 use crate::{
     CgroupHandle, EnforcementLevel, LinuxError, LinuxErrorKind, LinuxLaunchDescription,
     LinuxObservation, LinuxOperation, LinuxRecovery, NativeCapability, NativePhase,
     ObservationOutcome, ResourceEnforcement, ResourcePlan, observation::ObservationBinding,
 };
 use peritus_process::{
-    CancellationReason, NativeLaunchDescription, NativeSandboxSession, OsExitObservation,
-    ProcessError, ProcessTreeIdentity,
+    CancellationReason, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
+    NativeObservationPage, NativeObservationReceipt, NativeObservationTransport,
+    NativeSandboxSession, OsExitObservation, ProcessError, ProcessTreeIdentity,
+    native_observation_prefix_digest, native_observation_producer_binding,
 };
-use peritus_sandbox::{EnforcementObservation, SandboxResourceKind};
+use peritus_sandbox::{EnforcementObservation, ObservationTail, SandboxResourceKind};
 use peritus_types::Sha256Digest;
 
 const RICH_OBSERVATION_BOUND: usize = 64;
+const COMMON_OBSERVATION_TAIL_BOUND: usize = 64;
 
 fn release_emits_observation(phase: NativePhase) -> Result<bool, LinuxError> {
     match phase {
@@ -38,8 +43,12 @@ pub struct LinuxPreparedSession {
     secrets: Option<peritus_secrets::SecretDeliverySession>,
     phase: NativePhase,
     binding: ObservationBinding,
-    observations: Vec<EnforcementObservation>,
-    linux_observations: Vec<LinuxObservation>,
+    observations: ObservationTail<EnforcementObservation>,
+    pending_observations: VecDeque<EnforcementObservation>,
+    acknowledged_observations: Option<NativeObservationReceipt>,
+    next_observation_sequence: u64,
+    linux_observations: ObservationTail<LinuxObservation>,
+    next_linux_observation_sequence: u64,
     resource_enforcement: Vec<ResourceEnforcement>,
 }
 
@@ -66,16 +75,20 @@ impl LinuxPreparedSession {
             probe: probe_digest,
             preparation: preparation_digest,
         };
-        let observations =
-            vec![binding.common(1, NativePhase::Prepared, ObservationOutcome::Observed)];
-        let mut linux_observations = vec![LinuxObservation::new(
+        let prepared = binding.common(1, NativePhase::Prepared, ObservationOutcome::Observed);
+        let mut observations = ObservationTail::new(COMMON_OBSERVATION_TAIL_BOUND);
+        observations.push(prepared);
+        let pending_observations = VecDeque::from([prepared]);
+        let mut linux_observations = ObservationTail::new(RICH_OBSERVATION_BOUND);
+        linux_observations.push(LinuxObservation::new(
             1,
             binding,
             NativePhase::Prepared,
             None,
             None,
             ObservationOutcome::Observed,
-        )];
+        ));
+        let mut next_linux_observation_sequence = 2_u64;
         for capability in [
             NativeCapability::Namespaces,
             NativeCapability::Landlock,
@@ -83,30 +96,31 @@ impl LinuxPreparedSession {
             NativeCapability::PrivilegeDrop,
             NativeCapability::Cgroup,
         ] {
-            let sequence = u64::try_from(linux_observations.len() + 1).unwrap_or(u64::MAX);
             linux_observations.push(LinuxObservation::new(
-                sequence,
+                next_linux_observation_sequence,
                 binding,
                 NativePhase::Prepared,
                 Some(capability),
                 Some(EnforcementLevel::Hard),
                 ObservationOutcome::Observed,
             ));
+            next_linux_observation_sequence = next_linux_observation_sequence.saturating_add(1);
         }
         for (present, capability, level) in [
             (pty, NativeCapability::Pty, EnforcementLevel::Supervisor),
             (proxy_route, NativeCapability::ProxyRoute, EnforcementLevel::Hard),
         ] {
             if present {
-                let sequence = u64::try_from(linux_observations.len() + 1).unwrap_or(u64::MAX);
                 linux_observations.push(LinuxObservation::new(
-                    sequence,
+                    next_linux_observation_sequence,
                     binding,
                     NativePhase::Prepared,
                     Some(capability),
                     Some(level),
                     ObservationOutcome::Observed,
                 ));
+                next_linux_observation_sequence =
+                    next_linux_observation_sequence.saturating_add(1);
             }
         }
         let resource_enforcement: Vec<_> = [
@@ -123,15 +137,15 @@ impl LinuxPreparedSession {
         .map(|kind| ResourceEnforcement::new(kind, resources.enforcement(kind)))
         .collect();
         for enforcement in &resource_enforcement {
-            let sequence = u64::try_from(linux_observations.len() + 1).unwrap_or(u64::MAX);
             linux_observations.push(LinuxObservation::new(
-                sequence,
+                next_linux_observation_sequence,
                 binding,
                 NativePhase::Prepared,
                 Some(NativeCapability::Resource(enforcement.kind())),
                 Some(enforcement.level()),
                 ObservationOutcome::Observed,
             ));
+            next_linux_observation_sequence = next_linux_observation_sequence.saturating_add(1);
         }
         Self {
             launch,
@@ -143,7 +157,11 @@ impl LinuxPreparedSession {
             phase: NativePhase::Prepared,
             binding,
             observations,
+            pending_observations,
+            acknowledged_observations: None,
+            next_observation_sequence: 2,
             linux_observations,
+            next_linux_observation_sequence,
             resource_enforcement,
         }
     }
@@ -155,7 +173,12 @@ impl LinuxPreparedSession {
     /// Returns rich preparation-bound Linux observations.
     #[must_use]
     pub fn linux_observations(&self) -> &[LinuxObservation] {
-        &self.linux_observations
+        self.linux_observations.as_slice()
+    }
+    /// Returns rich Linux observations omitted before the retained diagnostic tail.
+    #[must_use]
+    pub const fn linux_observations_dropped(&self) -> u64 {
+        self.linux_observations.dropped()
     }
     /// Returns dimension-specific truthful resource enforcement.
     #[must_use]
@@ -176,7 +199,8 @@ impl LinuxPreparedSession {
                 "native lifecycle transition is out of order",
             ));
         }
-        let common_sequence = u64::try_from(self.observations.len() + 1).map_err(|_| {
+        let common_sequence = self.next_observation_sequence;
+        self.next_observation_sequence = self.next_observation_sequence.checked_add(1).ok_or_else(|| {
             LinuxError::new(
                 LinuxErrorKind::Observation,
                 LinuxOperation::Observe,
@@ -184,24 +208,20 @@ impl LinuxPreparedSession {
                 "native observation sequence overflowed",
             )
         })?;
-        self.observations.push(self.binding.common(common_sequence, next, outcome));
-        if self.linux_observations.len() >= RICH_OBSERVATION_BOUND {
-            return Err(LinuxError::new(
-                LinuxErrorKind::Observation,
-                LinuxOperation::Observe,
-                LinuxRecovery::Reconcile,
-                "Linux observation bound was exhausted",
+        let common = self.binding.common(common_sequence, next, outcome);
+        self.pending_observations.push_back(common);
+        self.observations.push(common);
+        if let Some(sequence) = self.next_linux_observation_sequence.checked_add(1) {
+            self.linux_observations.push(LinuxObservation::new(
+                self.next_linux_observation_sequence,
+                self.binding,
+                next,
+                None,
+                None,
+                outcome,
             ));
+            self.next_linux_observation_sequence = sequence;
         }
-        let rich_sequence = u64::try_from(self.linux_observations.len() + 1).unwrap_or(u64::MAX);
-        self.linux_observations.push(LinuxObservation::new(
-            rich_sequence,
-            self.binding,
-            next,
-            None,
-            None,
-            outcome,
-        ));
         self.phase = next;
         Ok(())
     }
@@ -213,7 +233,99 @@ impl NativeSandboxSession for LinuxPreparedSession {
     }
 
     fn observations(&self) -> &[EnforcementObservation] {
-        &self.observations
+        self.observations.as_slice()
+    }
+
+    fn observation_tail_dropped(&self) -> u64 {
+        self.observations.dropped()
+    }
+
+    fn acknowledged_observation_receipt(&self) -> Option<NativeObservationReceipt> {
+        self.acknowledged_observations
+    }
+
+    fn observation_transport(&self) -> NativeObservationTransport {
+        NativeObservationTransport::DurableDelta
+    }
+
+    fn observation_page(
+        &self,
+        after_sequence: u64,
+    ) -> Result<NativeObservationPage, ProcessError> {
+        let acknowledged = self
+            .acknowledged_observations
+            .map_or(0, NativeObservationReceipt::through_sequence);
+        if after_sequence != acknowledged {
+            return Err(crate::preparation::lifecycle_process_error(&LinuxError::new(
+                LinuxErrorKind::Observation,
+                LinuxOperation::Observe,
+                LinuxRecovery::Reconcile,
+                "native observation page does not begin at the acknowledged frontier",
+            )));
+        }
+        let page = self
+            .pending_observations
+            .iter()
+            .copied()
+            .take(NATIVE_OBSERVATION_PAGE_RECORDS)
+            .collect();
+        NativeObservationPage::new(self.next_observation_sequence - 1, page)
+    }
+
+    fn acknowledge_observations(
+        &mut self,
+        receipt: NativeObservationReceipt,
+    ) -> Result<(), ProcessError> {
+        if self.acknowledged_observations == Some(receipt) {
+            return Ok(());
+        }
+        let acknowledged = self
+            .acknowledged_observations
+            .map_or(0, NativeObservationReceipt::through_sequence);
+        let count = receipt
+            .through_sequence()
+            .checked_sub(acknowledged)
+            .and_then(|value| usize::try_from(value).ok())
+            .filter(|count| *count > 0 && *count <= self.pending_observations.len())
+            .ok_or_else(|| crate::preparation::lifecycle_process_error(&LinuxError::new(
+                LinuxErrorKind::Observation,
+                LinuxOperation::Observe,
+                LinuxRecovery::Reconcile,
+                "native observation receipt is outside the pending prefix",
+            )))?;
+        let pending_prefix = self
+            .pending_observations
+            .iter()
+            .copied()
+            .take(count)
+            .collect::<Vec<_>>();
+        let producer_binding = native_observation_producer_binding(
+            self.launch.manifest_digest(),
+            self.launch.preparation_digest(),
+        );
+        let previous_prefix = self
+            .acknowledged_observations
+            .map(NativeObservationReceipt::producer_prefix_digest);
+        if receipt.producer_binding_digest() != producer_binding
+            || receipt.producer_prefix_digest()
+                != native_observation_prefix_digest(
+                    producer_binding,
+                    previous_prefix,
+                    &pending_prefix,
+                )
+            || pending_prefix.last().map(|value| value.sequence())
+            != Some(receipt.through_sequence())
+        {
+            return Err(crate::preparation::lifecycle_process_error(&LinuxError::new(
+                LinuxErrorKind::Observation,
+                LinuxOperation::Observe,
+                LinuxRecovery::Reconcile,
+                "native observation receipt does not match the pending producer prefix",
+            )));
+        }
+        self.pending_observations.drain(..count);
+        self.acknowledged_observations = Some(receipt);
+        Ok(())
     }
 
     fn activated(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
@@ -295,10 +407,10 @@ impl NativeSandboxSession for LinuxPreparedSession {
         }
         self.secrets = None;
         self.exec_status = None;
-        let launch_without_handles = NativeLaunchDescription::new(
+        let launch_without_handles = NativeLaunchDescription::new_paged(
             self.launch.command().clone(),
             self.launch.helper_identity(),
-            self.launch.manifest().to_vec(),
+            self.launch.manifest_pages().map(<[u8]>::to_vec).collect(),
             self.launch.manifest_digest(),
             self.launch.preparation_digest(),
         )?;

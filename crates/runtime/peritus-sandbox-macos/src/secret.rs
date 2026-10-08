@@ -28,7 +28,8 @@ pub enum SecretHandleDestination {
 pub struct SecretHandleDescriptor {
     descriptor: u32,
     label: String,
-    payload_len: u32,
+    payload_len: u64,
+    payload_digest: Option<Sha256Digest>,
     reference_digest: Sha256Digest,
     destination: SecretHandleDestination,
 }
@@ -37,7 +38,43 @@ impl SecretHandleDescriptor {
     pub(crate) fn new(
         descriptor: u32,
         label: String,
-        payload_len: u32,
+        payload_len: u64,
+        reference_digest: Sha256Digest,
+        destination: SecretHandleDestination,
+    ) -> Result<Self, MacosError> {
+        Self::new_with_digest(
+            descriptor,
+            label,
+            payload_len,
+            None,
+            reference_digest,
+            destination,
+        )
+    }
+
+    pub(crate) fn new_digest_bound(
+        descriptor: u32,
+        label: String,
+        payload_len: u64,
+        payload_digest: Sha256Digest,
+        reference_digest: Sha256Digest,
+        destination: SecretHandleDestination,
+    ) -> Result<Self, MacosError> {
+        Self::new_with_digest(
+            descriptor,
+            label,
+            payload_len,
+            Some(payload_digest),
+            reference_digest,
+            destination,
+        )
+    }
+
+    fn new_with_digest(
+        descriptor: u32,
+        label: String,
+        payload_len: u64,
+        payload_digest: Option<Sha256Digest>,
         reference_digest: Sha256Digest,
         destination: SecretHandleDestination,
     ) -> Result<Self, MacosError> {
@@ -49,7 +86,14 @@ impl SecretHandleDescriptor {
         {
             return Err(secret_error("secret handle manifest metadata is invalid"));
         }
-        Ok(Self { descriptor, label, payload_len, reference_digest, destination })
+        Ok(Self {
+            descriptor,
+            label,
+            payload_len,
+            payload_digest,
+            reference_digest,
+            destination,
+        })
     }
 
     /// Returns the inherited descriptor number.
@@ -66,8 +110,14 @@ impl SecretHandleDescriptor {
 
     /// Returns the exact finite payload length.
     #[must_use]
-    pub const fn payload_len(&self) -> u32 {
+    pub const fn payload_len(&self) -> u64 {
         self.payload_len
+    }
+
+    /// Returns the exact staged-payload digest when carried by the manifest schema.
+    #[must_use]
+    pub const fn payload_digest(&self) -> Option<Sha256Digest> {
+        self.payload_digest
     }
 
     /// Returns the exact nonsensitive secret-reference digest.
@@ -82,10 +132,30 @@ impl SecretHandleDescriptor {
         &self.destination
     }
 
-    pub(crate) fn encode(&self, writer: &mut Writer) -> Result<(), MacosError> {
+    pub(crate) fn encode(
+        &self,
+        writer: &mut Writer,
+        payload_digest_schema: bool,
+    ) -> Result<(), MacosError> {
         writer.u32(self.descriptor)?;
-        writer.string(&self.label)?;
-        writer.u32(self.payload_len)?;
+        if payload_digest_schema {
+            writer.native_bytes(self.label.as_bytes())?;
+        } else {
+            writer.string(&self.label)?;
+        }
+        if payload_digest_schema {
+            writer.u64(self.payload_len)?;
+            writer.fixed(
+                self.payload_digest
+                    .ok_or_else(|| secret_error("secret payload digest is unavailable"))?
+                    .as_bytes(),
+            )?;
+        } else {
+            writer.u32(
+                u32::try_from(self.payload_len)
+                    .map_err(|_| secret_error("legacy secret payload is too large"))?,
+            )?;
+        }
         writer.fixed(self.reference_digest.as_bytes())?;
         match &self.destination {
             SecretHandleDestination::Environment(name) => {
@@ -103,10 +173,25 @@ impl SecretHandleDescriptor {
         }
     }
 
-    pub(crate) fn decode(reader: &mut Reader<'_>) -> Result<Self, MacosError> {
+    pub(crate) fn decode(
+        reader: &mut Reader<'_>,
+        payload_digest_schema: bool,
+    ) -> Result<Self, MacosError> {
         let descriptor = reader.u32()?;
-        let label = reader.string()?;
-        let payload_len = reader.u32()?;
+        let label = if payload_digest_schema {
+            String::from_utf8(reader.native_bytes()?.to_vec())
+                .map_err(|_| secret_error("manifest secret handle label is not UTF-8"))?
+        } else {
+            reader.string()?
+        };
+        let payload_len = if payload_digest_schema {
+            reader.u64()?
+        } else {
+            u64::from(reader.u32()?)
+        };
+        let payload_digest = payload_digest_schema
+            .then(|| reader.fixed().map(Sha256Digest::new))
+            .transpose()?;
         let reference_digest = Sha256Digest::new(reader.fixed()?);
         let destination = match reader.u8()? {
             0 => SecretHandleDestination::Environment(
@@ -124,7 +209,23 @@ impl SecretHandleDescriptor {
             ),
             _ => return Err(secret_error("manifest secret destination tag is invalid")),
         };
-        Self::new(descriptor, label, payload_len, reference_digest, destination)
+        match payload_digest {
+            Some(payload_digest) => Self::new_digest_bound(
+                descriptor,
+                label,
+                payload_len,
+                payload_digest,
+                reference_digest,
+                destination,
+            ),
+            None => Self::new(
+                descriptor,
+                label,
+                payload_len,
+                reference_digest,
+                destination,
+            ),
+        }
     }
 }
 
@@ -158,16 +259,19 @@ impl ProtectedSecretHandle {
         let descriptor = descriptor_number(&handle)?;
         let payload_len = handle
             .payload_len()
-            .and_then(|length| u32::try_from(length).ok())
+            .and_then(|length| u64::try_from(length).ok())
             .ok_or_else(|| {
                 secret_error(
                     "protected secret handle must contain one representable finite payload",
                 )
             })?;
-        let metadata = SecretHandleDescriptor::new(
+        let metadata = SecretHandleDescriptor::new_digest_bound(
             descriptor,
             handle.label().to_owned(),
             payload_len,
+            handle
+                .payload_digest()
+                .ok_or_else(|| secret_error("protected secret payload digest is unavailable"))?,
             secret_reference_digest(reference),
             destination,
         )?;
@@ -334,11 +438,11 @@ mod tests {
         let protected = protected("secret-one", 7);
         let descriptor = protected.manifest_descriptor();
         let mut writer = crate::canonical::Writer::new();
-        descriptor.encode(&mut writer).unwrap();
+        descriptor.encode(&mut writer, true).unwrap();
         let bytes = writer.finish();
         assert!(!bytes.windows(8).any(|window| window == [7; 8]));
         let mut reader = crate::canonical::Reader::new(&bytes).unwrap();
-        let decoded = SecretHandleDescriptor::decode(&mut reader).unwrap();
+        let decoded = SecretHandleDescriptor::decode(&mut reader, true).unwrap();
         reader.finish().unwrap();
         assert_eq!(decoded, descriptor);
         assert_eq!(decoded.payload_len(), 8);

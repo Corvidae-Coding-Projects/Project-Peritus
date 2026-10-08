@@ -35,6 +35,7 @@ pub struct ProtectedSecretHandle {
     reference_digest: Sha256Digest,
     destination: SecretHandleDestination,
     payload_len: Option<u64>,
+    payload_digest: Option<Sha256Digest>,
 }
 
 impl ProtectedSecretHandle {
@@ -50,7 +51,13 @@ impl ProtectedSecretHandle {
         if handle == 0 || reference_digest == Sha256Digest::new([0; 32]) {
             return Err(secret_error("secret handle identity is incomplete"));
         }
-        Ok(Self { handle, reference_digest, destination, payload_len: None })
+        Ok(Self {
+            handle,
+            reference_digest,
+            destination,
+            payload_len: None,
+            payload_digest: None,
+        })
     }
 
     /// Creates a protected handle descriptor with its exact finite payload length.
@@ -68,6 +75,19 @@ impl ProtectedSecretHandle {
             return Err(secret_error("secret payload length is empty"));
         }
         value.payload_len = Some(payload_len);
+        Ok(value)
+    }
+
+    /// Creates a protected handle descriptor with exact finite payload length and digest.
+    pub fn new_digest_bound(
+        handle: u64,
+        reference_digest: Sha256Digest,
+        destination: SecretHandleDestination,
+        payload_len: u64,
+        payload_digest: Sha256Digest,
+    ) -> Result<Self, WindowsError> {
+        let mut value = Self::new_bound(handle, reference_digest, destination, payload_len)?;
+        value.payload_digest = Some(payload_digest);
         Ok(value)
     }
 
@@ -93,6 +113,12 @@ impl ProtectedSecretHandle {
     #[must_use]
     pub const fn payload_len(&self) -> Option<u64> {
         self.payload_len
+    }
+
+    /// Returns the exact finite payload digest when carried by the manifest schema.
+    #[must_use]
+    pub const fn payload_digest(&self) -> Option<Sha256Digest> {
+        self.payload_digest
     }
 }
 

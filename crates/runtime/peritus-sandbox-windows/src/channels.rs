@@ -415,11 +415,17 @@ fn stage_secret_handles(
             artifact,
             should_continue,
         )?;
-        descriptors.push(ProtectedSecretHandle::new_bound(
+        descriptors.push(ProtectedSecretHandle::new_digest_bound(
             protected.raw_handle(),
             secret_reference_digest(requirement.reference()),
             SecretHandleDestination::from(requirement.delivery()),
             payload_len,
+            protected.payload_digest().ok_or_else(|| {
+                channel_error(
+                    WindowsErrorKind::PreparationMismatch,
+                    "staged secret payload digest is unavailable",
+                )
+            })?,
         )?);
         handles.push(protected);
     }

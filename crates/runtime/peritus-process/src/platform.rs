@@ -121,7 +121,9 @@ pub(crate) struct NativeHandshake {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum NativeHandshakeStatus {
-    Complete,
+    Prepared,
+    Ready,
+    Activated,
     Cancelled,
     Failed,
 }
@@ -347,6 +349,29 @@ pub(crate) fn verify_helper_record(
     expected: Sha256Digest,
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<Box<dyn Read + Send>, HandshakeError> {
+    #[cfg(windows)]
+    {
+        return run_interruptible_handshake(
+            move || {
+                let mut record = [0_u8; Sha256Digest::LENGTH];
+                reader.read_exact(&mut record).map_err(|_| {
+                    HandshakeError::Failed(helper_protocol_error(
+                        "native helper handshake stream could not be read",
+                    ))
+                })?;
+                if record != expected.into_bytes() {
+                    return Err(HandshakeError::Failed(helper_protocol_error(
+                        "native helper handshake record mismatched",
+                    )));
+                }
+                Ok(reader)
+            },
+            should_continue,
+        );
+    }
+
+    #[cfg(unix)]
+    {
     use std::io::ErrorKind;
 
     let mut record = [0_u8; Sha256Digest::LENGTH];
@@ -377,6 +402,56 @@ pub(crate) fn verify_helper_record(
         )));
     }
     Ok(reader)
+    }
+}
+
+#[cfg(windows)]
+pub(crate) fn run_interruptible_handshake<T: Send + 'static>(
+    operation: impl FnOnce() -> Result<T, HandshakeError> + Send + 'static,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<T, HandshakeError> {
+    use std::{sync::mpsc::RecvTimeoutError, time::Duration};
+
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    let _worker = std::thread::Builder::new()
+        .name("peritus-native-handshake-io".to_owned())
+        .spawn(move || {
+            let _ = sender.send(operation());
+        })
+        .map_err(|_| {
+            HandshakeError::Failed(helper_protocol_error(
+                "native helper handshake worker could not be created",
+            ))
+        })?;
+    loop {
+        if !should_continue() {
+            return Err(HandshakeError::Cancelled);
+        }
+        match receiver.recv_timeout(Duration::from_millis(10)) {
+            Ok(result) => return result,
+            Err(RecvTimeoutError::Timeout) => {}
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(HandshakeError::Failed(helper_protocol_error(
+                    "native helper handshake worker ended without a result",
+                )));
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+pub(crate) fn write_helper_manifest_owned<W: Write + Send + 'static>(
+    mut writer: W,
+    manifest: Vec<Vec<u8>>,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<W, HandshakeError> {
+    run_interruptible_handshake(
+        move || {
+            write_helper_manifest(&mut writer, &manifest, &mut || true)?;
+            Ok(writer)
+        },
+        should_continue,
+    )
 }
 
 pub(crate) fn write_helper_manifest(

@@ -30,7 +30,8 @@ const LEGACY_SCHEMA: u16 = 1;
 const NATIVE_SCHEMA: u16 = 2;
 const PREVIOUS_SCHEMA: u16 = 3;
 const PAGED_SCHEMA: u16 = 4;
-pub(super) const SCHEMA: u16 = 5;
+const PAYLOAD_LENGTH_SCHEMA: u16 = 5;
+pub(super) const SCHEMA: u16 = 6;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const COMPLETE_FRAME_BYTES: usize = peritus_process::NATIVE_MANIFEST_FRAME_BYTES;
 const CODEC_FRAME_BYTES: usize = COMPLETE_FRAME_BYTES - CHECKSUM_BYTES;
@@ -57,7 +58,7 @@ pub(super) fn encode(manifest: &HelperManifest) -> Result<Vec<u8>, WindowsError>
             let payload = encode_native_payload(manifest)?;
             encode_single(manifest.encoding_version, &payload)
         }
-        PAGED_SCHEMA | SCHEMA => {
+        PAGED_SCHEMA | PAYLOAD_LENGTH_SCHEMA | SCHEMA => {
             let payload = encode_native_payload(manifest)?;
             encode_paged(&payload, manifest.encoding_version)
         }
@@ -217,7 +218,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
     let first = decode_frame_header(&bytes[..peritus_codec::HEADER_LEN], FRAME_LIMITS)
         .map_err(codec_error)?;
     let schema = first.schema_version();
-    let payload = if matches!(schema, PAGED_SCHEMA | SCHEMA) {
+    let payload = if matches!(schema, PAGED_SCHEMA | PAYLOAD_LENGTH_SCHEMA | SCHEMA) {
         Cow::Owned(decode_paged(bytes, schema)?)
     } else {
         if bytes.len() > COMPLETE_FRAME_BYTES {
@@ -236,7 +237,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<HelperManifest, WindowsError> {
         }
         Cow::Borrowed(frame.payload())
     };
-    let limits = if matches!(schema, PAGED_SCHEMA | SCHEMA) {
+    let limits = if matches!(schema, PAGED_SCHEMA | PAYLOAD_LENGTH_SCHEMA | SCHEMA) {
         LOGICAL_LIMITS
     } else {
         FRAME_LIMITS
@@ -351,7 +352,10 @@ pub(super) fn page_ends(bytes: &[u8]) -> Result<Vec<usize>, WindowsError> {
     }
     let first = decode_frame_header(&bytes[..peritus_codec::HEADER_LEN], FRAME_LIMITS)
         .map_err(codec_error)?;
-    if !matches!(first.schema_version(), PAGED_SCHEMA | SCHEMA) {
+    if !matches!(
+        first.schema_version(),
+        PAGED_SCHEMA | PAYLOAD_LENGTH_SCHEMA | SCHEMA
+    ) {
         if bytes.len() > COMPLETE_FRAME_BYTES {
             return Err(protocol("manifest complete frame exceeds physical capacity"));
         }
@@ -753,10 +757,18 @@ fn encode_secrets(
                 string(writer, label.as_str())?;
             }
         }
-        if schema >= SCHEMA {
+        if schema >= PAYLOAD_LENGTH_SCHEMA {
             boolean(writer, value.payload_len().is_some())?;
             if let Some(payload_len) = value.payload_len() {
                 u64_value(writer, payload_len)?;
+                if schema >= SCHEMA {
+                    digest(
+                        writer,
+                        value.payload_digest().ok_or_else(|| {
+                            protocol("secret payload digest is unavailable")
+                        })?,
+                    )?;
+                }
             }
         }
     }
@@ -787,12 +799,23 @@ fn decode_secrets(
             ),
             _ => return Err(protocol("manifest has unknown secret destination")),
         };
-        let payload_len = if schema >= SCHEMA && reader.read_bool().map_err(codec_error)? {
+        let payload_len = if schema >= PAYLOAD_LENGTH_SCHEMA
+            && reader.read_bool().map_err(codec_error)?
+        {
             Some(reader.read_u64().map_err(codec_error)?)
         } else {
             None
         };
         values.push(match payload_len {
+            Some(payload_len) if schema >= SCHEMA => {
+                ProtectedSecretHandle::new_digest_bound(
+                    handle,
+                    reference,
+                    destination,
+                    payload_len,
+                    read_digest(reader)?,
+                )?
+            }
             Some(payload_len) => {
                 ProtectedSecretHandle::new_bound(handle, reference, destination, payload_len)?
             }

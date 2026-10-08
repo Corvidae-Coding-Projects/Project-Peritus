@@ -71,10 +71,10 @@ impl MacosSession {
         self.recovery.record_proxy_released(proxy_released)?;
         self.cleanup = proxy_released;
         self.proxy = None;
-        self.launch = NativeLaunchDescription::new(
+        self.launch = NativeLaunchDescription::new_paged(
             self.launch.command().clone(),
             self.launch.helper_identity(),
-            self.launch.manifest().to_vec(),
+            self.launch.manifest_pages().map(<[u8]>::to_vec).collect(),
             self.launch.manifest_digest(),
             self.launch.preparation_digest(),
         )

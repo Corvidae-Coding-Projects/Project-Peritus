@@ -20,7 +20,8 @@ use std::path::PathBuf;
 
 const MANIFEST_MAGIC: [u8; 8] = *b"PRTLNXM1";
 const LEGACY_VERSION: u16 = 1;
-const VERSION: u16 = 2;
+const PREVIOUS_VERSION: u16 = 2;
+const VERSION: u16 = 3;
 
 /// Complete versioned helper preparation input.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -66,7 +67,6 @@ impl HelperManifest {
         if !working_directory.is_absolute()
             || !valid_cgroup_leaf(&cgroup_leaf)
             || landlock_rules.len() > 256
-            || inherited_handles.len() > 256
         {
             return Err(manifest_error("manifest path or collection is invalid"));
         }
@@ -113,9 +113,6 @@ impl HelperManifest {
         mut self,
         mut protected_payloads: Vec<ProtectedPayloadBinding>,
     ) -> Result<Self, LinuxError> {
-        if protected_payloads.len() > 128 {
-            return Err(manifest_error("protected payload count exceeds its bound"));
-        }
         protected_payloads.sort();
         for (index, binding) in protected_payloads.iter().enumerate() {
             if self.inherited_handles.iter().any(|handle| {
@@ -216,7 +213,7 @@ impl HelperManifest {
         }
         let mut bytes = Vec::new();
         bytes.extend_from_slice(&MANIFEST_MAGIC);
-        bytes.extend_from_slice(&VERSION.to_be_bytes());
+        bytes.extend_from_slice(&self.encoding_version.to_be_bytes());
         for digest in
             [self.plan_digest, self.backend_digest, self.support_digest, self.preparation_digest]
         {
@@ -248,18 +245,26 @@ impl HelperManifest {
         }
         self.resources.encode(&mut bytes);
         bytes.push(self.network.tag());
-        crate::canonical::push_bounded_count_unbounded_total(
-            &mut bytes,
-            self.inherited_handles.len(),
-        )?;
+        if self.encoding_version == VERSION {
+            crate::canonical::push_count_unbounded(&mut bytes, self.inherited_handles.len())?;
+        } else {
+            crate::canonical::push_bounded_count_unbounded_total(
+                &mut bytes,
+                self.inherited_handles.len(),
+            )?;
+        }
         for handle in &self.inherited_handles {
             bytes.extend_from_slice(&handle.descriptor().to_be_bytes());
             crate::canonical::push_bytes_unbounded(&mut bytes, handle.label().as_bytes())?;
         }
-        crate::canonical::push_bounded_count_unbounded_total(
-            &mut bytes,
-            self.protected_payloads.len(),
-        )?;
+        if self.encoding_version == VERSION {
+            crate::canonical::push_count_unbounded(&mut bytes, self.protected_payloads.len())?;
+        } else {
+            crate::canonical::push_bounded_count_unbounded_total(
+                &mut bytes,
+                self.protected_payloads.len(),
+            )?;
+        }
         for binding in &self.protected_payloads {
             bytes.extend_from_slice(binding.requirement.reference().resource_id().as_bytes());
             bytes.extend_from_slice(binding.requirement.reference().version().as_bytes());
@@ -269,7 +274,20 @@ impl HelperManifest {
                 &mut bytes,
                 binding.handle.label().as_bytes(),
             )?;
-            bytes.extend_from_slice(&binding.payload_len.to_be_bytes());
+            if self.encoding_version == PREVIOUS_VERSION {
+                bytes.extend_from_slice(
+                    &u32::try_from(binding.payload_len)
+                        .map_err(|_| manifest_error("legacy protected payload is too large"))?
+                        .to_be_bytes(),
+                );
+            } else {
+                bytes.extend_from_slice(&binding.payload_len.to_be_bytes());
+                bytes.extend_from_slice(
+                    binding.payload_digest.ok_or_else(|| {
+                        manifest_error("protected payload digest is unavailable")
+                    })?.as_bytes(),
+                );
+            }
         }
         let checksum = peritus_codec::sha256(&bytes);
         bytes.extend_from_slice(checksum.as_bytes());
@@ -347,7 +365,11 @@ impl HelperManifest {
             delivery::encode_legacy(&mut bytes, binding.requirement.delivery())?;
             bytes.extend_from_slice(&binding.handle.descriptor().to_be_bytes());
             crate::canonical::push_str(&mut bytes, binding.handle.label())?;
-            bytes.extend_from_slice(&binding.payload_len.to_be_bytes());
+            bytes.extend_from_slice(
+                &u32::try_from(binding.payload_len)
+                    .map_err(|_| manifest_error("legacy protected payload is too large"))?
+                    .to_be_bytes(),
+            );
         }
         crate::canonical::check_total(&bytes)?;
         let checksum = peritus_codec::sha256(&bytes);
@@ -374,7 +396,7 @@ impl HelperManifest {
             return Err(manifest_error("manifest magic or version is unsupported"));
         }
         let version = reader.u16()?;
-        if !matches!(version, LEGACY_VERSION | VERSION)
+        if !matches!(version, LEGACY_VERSION | PREVIOUS_VERSION | VERSION)
             || (version == LEGACY_VERSION && bytes.len() > crate::canonical::MAX_PROTOCOL_BYTES)
         {
             return Err(manifest_error("manifest magic or version is unsupported"));
@@ -450,7 +472,11 @@ impl HelperManifest {
             1 => NetworkIsolation::ManagedProxy,
             _ => return Err(manifest_error("manifest network tag is unknown")),
         };
-        let handle_count = reader.count()?;
+        let handle_count = if version == VERSION {
+            reader.count_unbounded()?
+        } else {
+            reader.count()?
+        };
         let mut handles = Vec::with_capacity(handle_count);
         for _ in 0..handle_count {
             let descriptor = reader.u64()?;
@@ -461,7 +487,11 @@ impl HelperManifest {
             };
             handles.push(InheritedHandle::new(descriptor, label)?);
         }
-        let protected_count = reader.count()?;
+        let protected_count = if version == VERSION {
+            reader.count_unbounded()?
+        } else {
+            reader.count()?
+        };
         let mut protected_payloads = Vec::with_capacity(protected_count);
         for _ in 0..protected_count {
             let resource_id = ResourceId::new(reader.fixed::<16>()?)
@@ -479,13 +509,20 @@ impl HelperManifest {
                 reader.string_unbounded()?
             };
             let handle = InheritedHandle::new(descriptor, label)?;
-            let payload_len = usize::try_from(reader.u32()?)
-                .map_err(|_| manifest_error("protected payload length is invalid"))?;
-            protected_payloads.push(ProtectedPayloadBinding::new(
-                SecretGrant::new(SecretReference::new(resource_id, payload_version), delivery),
-                handle,
-                payload_len,
-            )?);
+            let requirement =
+                SecretGrant::new(SecretReference::new(resource_id, payload_version), delivery);
+            protected_payloads.push(if version == VERSION {
+                let payload_len = usize::try_from(reader.u64()?)
+                    .map_err(|_| manifest_error("protected payload length is invalid"))?;
+                ProtectedPayloadBinding::new(
+                    requirement,
+                    handle,
+                    payload_len,
+                    Sha256Digest::new(reader.fixed()?),
+                )?
+            } else {
+                ProtectedPayloadBinding::new_legacy(requirement, handle, reader.u32()?)?
+            });
         }
         reader.finish()?;
         let mut manifest = Self::new(

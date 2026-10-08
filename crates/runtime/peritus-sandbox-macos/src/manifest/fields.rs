@@ -140,15 +140,20 @@ pub(super) fn validate_control_environment(
 pub(super) fn encode_proxy(
     writer: &mut Writer,
     proxy: Option<&ProxyHandleDescriptor>,
+    payload_digest_schema: bool,
 ) -> Result<(), MacosError> {
     writer.boolean(proxy.is_some())?;
-    proxy.map_or(Ok(()), |proxy| proxy.encode(writer))
+    proxy.map_or(Ok(()), |proxy| proxy.encode(writer, payload_digest_schema))
 }
 
 pub(super) fn decode_proxy(
     reader: &mut Reader<'_>,
+    payload_digest_schema: bool,
 ) -> Result<Option<ProxyHandleDescriptor>, MacosError> {
-    reader.boolean()?.then(|| ProxyHandleDescriptor::decode(reader)).transpose()
+    reader
+        .boolean()?
+        .then(|| ProxyHandleDescriptor::decode(reader, payload_digest_schema))
+        .transpose()
 }
 
 pub(super) fn encode_resources(
@@ -315,9 +320,16 @@ pub(super) fn decode_terminal(reader: &mut Reader<'_>) -> Result<TerminalMapping
 
 pub(super) fn decode_secrets(
     reader: &mut Reader<'_>,
+    payload_digest_schema: bool,
 ) -> Result<Vec<SecretHandleDescriptor>, MacosError> {
-    let count = reader.count()?;
-    (0..count).map(|_| SecretHandleDescriptor::decode(reader)).collect()
+    let count = if payload_digest_schema {
+        reader.native_count()?
+    } else {
+        reader.count()?
+    };
+    (0..count)
+        .map(|_| SecretHandleDescriptor::decode(reader, payload_digest_schema))
+        .collect()
 }
 
 pub(super) fn validate_protected_handles(

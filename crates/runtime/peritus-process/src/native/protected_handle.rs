@@ -8,10 +8,11 @@ use std::{
 };
 
 use zeroize::{Zeroize, Zeroizing};
+use sha2::{Digest as _, Sha256};
+
+use peritus_types::Sha256Digest;
 
 use crate::{ErrorCode, ProcessError, ProcessOperation, RecoveryClass};
-
-const MAX_LABEL_BYTES: usize = 256;
 
 /// One anonymous, read-only-by-convention payload handle retained for a native helper.
 ///
@@ -23,6 +24,7 @@ const MAX_LABEL_BYTES: usize = 256;
 pub struct NativeProtectedHandle {
     label: String,
     payload_len: Option<usize>,
+    payload_digest: Option<Sha256Digest>,
     inner: Arc<ProtectedHandleInner>,
 }
 
@@ -49,6 +51,7 @@ impl NativeProtectedHandle {
             return Err(handle_error("native protected payload is empty"));
         }
         let payload_len = payload.len();
+        let payload_digest = peritus_codec::sha256(&payload);
         let result = (|| {
             let mut file = tempfile::tempfile()
                 .map_err(|_| handle_error("native protected anonymous handle creation failed"))?;
@@ -59,6 +62,7 @@ impl NativeProtectedHandle {
             Ok(Self {
                 label,
                 payload_len: Some(payload_len),
+                payload_digest: Some(payload_digest),
                 inner: Arc::new(ProtectedHandleInner { file, truncate_on_drop: true }),
             })
         })();
@@ -91,6 +95,7 @@ impl NativeProtectedHandle {
             .map_err(|_| handle_error("native protected anonymous handle creation failed"))?;
         let mut buffer = Zeroizing::new([0_u8; 64 * 1_024]);
         let mut payload_len = 0_usize;
+        let mut payload_digest = Sha256::new();
         loop {
             if !should_continue() {
                 return Err(stream_error("native protected payload staging was cancelled"));
@@ -103,6 +108,7 @@ impl NativeProtectedHandle {
             }
             file.write_all(&buffer[..count])
                 .map_err(|_| handle_error("native protected anonymous handle staging failed"))?;
+            payload_digest.update(&buffer[..count]);
             payload_len = payload_len.checked_add(count).ok_or_else(|| {
                 handle_error("native protected payload length is not representable")
             })?;
@@ -117,6 +123,7 @@ impl NativeProtectedHandle {
         Ok(Self {
             label,
             payload_len: Some(payload_len),
+            payload_digest: Some(Sha256Digest::new(payload_digest.finalize().into())),
             inner: Arc::new(ProtectedHandleInner { file, truncate_on_drop: true }),
         })
     }
@@ -138,6 +145,7 @@ impl NativeProtectedHandle {
         Ok(Self {
             label,
             payload_len: None,
+            payload_digest: None,
             inner: Arc::new(ProtectedHandleInner { file, truncate_on_drop: false }),
         })
     }
@@ -152,7 +160,6 @@ impl NativeProtectedHandle {
     #[must_use]
     pub fn label_is_supported(label: &str) -> bool {
         !label.is_empty()
-            && label.len() <= MAX_LABEL_BYTES
             && label.is_ascii()
             && !label.bytes().any(|byte| byte.is_ascii_control())
     }
@@ -161,6 +168,12 @@ impl NativeProtectedHandle {
     #[must_use]
     pub const fn payload_len(&self) -> Option<usize> {
         self.payload_len
+    }
+
+    /// Returns the exact digest of finite staged payload bytes.
+    #[must_use]
+    pub const fn payload_digest(&self) -> Option<Sha256Digest> {
+        self.payload_digest
     }
 
     /// Returns the stable numeric operating-system handle used by the backend manifest.

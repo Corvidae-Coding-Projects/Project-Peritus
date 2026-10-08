@@ -3,6 +3,7 @@
 use super::manifest_error;
 use crate::LinuxError;
 use peritus_sandbox::SecretRequirement;
+use peritus_types::Sha256Digest;
 use std::{
     ffi::{OsStr, OsString},
     fmt,
@@ -132,7 +133,6 @@ impl InheritedHandle {
     pub fn new(descriptor: u64, label: String) -> Result<Self, LinuxError> {
         if descriptor < 3
             || label.is_empty()
-            || label.len() > 128
             || !label.bytes().all(|byte| byte.is_ascii_graphic())
         {
             return Err(manifest_error("protected inherited handle is invalid"));
@@ -156,7 +156,8 @@ impl InheritedHandle {
 pub struct ProtectedPayloadBinding {
     pub(super) requirement: SecretRequirement,
     pub(super) handle: InheritedHandle,
-    pub(super) payload_len: u32,
+    pub(super) payload_len: u64,
+    pub(super) payload_digest: Option<Sha256Digest>,
 }
 
 impl ProtectedPayloadBinding {
@@ -168,12 +169,24 @@ impl ProtectedPayloadBinding {
         requirement: SecretRequirement,
         handle: InheritedHandle,
         payload_len: usize,
+        payload_digest: Sha256Digest,
     ) -> Result<Self, LinuxError> {
-        let payload_len = u32::try_from(payload_len)
+        let payload_len = u64::try_from(payload_len)
             .ok()
-            .filter(|length| (1..=1024 * 1024).contains(length))
+            .filter(|length| *length != 0)
             .ok_or_else(|| manifest_error("protected payload length is invalid"))?;
-        Ok(Self { requirement, handle, payload_len })
+        Ok(Self { requirement, handle, payload_len, payload_digest: Some(payload_digest) })
+    }
+
+    pub(super) fn new_legacy(
+        requirement: SecretRequirement,
+        handle: InheritedHandle,
+        payload_len: u32,
+    ) -> Result<Self, LinuxError> {
+        if payload_len == 0 {
+            return Err(manifest_error("protected payload length is invalid"));
+        }
+        Ok(Self { requirement, handle, payload_len: u64::from(payload_len), payload_digest: None })
     }
 
     /// Returns the checked secret reference and exact destination.
@@ -190,7 +203,13 @@ impl ProtectedPayloadBinding {
 
     /// Returns the exact protected byte length.
     #[must_use]
-    pub const fn payload_len(&self) -> u32 {
+    pub const fn payload_len(&self) -> u64 {
         self.payload_len
+    }
+
+    /// Returns the exact payload digest when carried by this manifest version.
+    #[must_use]
+    pub const fn payload_digest(&self) -> Option<Sha256Digest> {
+        self.payload_digest
     }
 }

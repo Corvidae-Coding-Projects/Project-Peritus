@@ -10,13 +10,29 @@ use peritus_process::{
     NativeSandboxBackend, ProcessError, ProcessOperation, RecoveryClass,
 };
 use peritus_sandbox::BackendDescriptor;
+use std::sync::Arc;
+
+mod retained_owner;
+
+pub use retained_owner::RetainedLinuxBackendFactory;
 
 /// Probed Linux backend. Construction performs only bounded support probes, never preparation.
-#[derive(Debug)]
 pub struct LinuxBackend {
     config: LinuxBackendConfig,
     probe: LinuxProbe,
     descriptor: LinuxBackendDescriptor,
+    probe_continues: Arc<dyn Fn() -> bool + Send + Sync>,
+}
+
+impl core::fmt::Debug for LinuxBackend {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("LinuxBackend")
+            .field("config", &self.config)
+            .field("probe", &self.probe)
+            .field("descriptor", &self.descriptor)
+            .finish_non_exhaustive()
+    }
 }
 
 impl LinuxBackend {
@@ -25,12 +41,26 @@ impl LinuxBackend {
     /// # Errors
     /// Returns a typed probe/descriptor error when installed identities cannot be bounded.
     pub fn new(config: LinuxBackendConfig) -> Result<Self, LinuxError> {
-        let probe = LinuxProbe::run(config.probe_request())?;
+        Self::new_cancellable(config, || true)
+    }
+
+    /// Probes and freezes one Linux backend while the caller owns cancellation.
+    ///
+    /// # Errors
+    /// Returns a typed probe/descriptor error when cancelled or installed identities cannot be
+    /// observed exactly.
+    pub fn new_cancellable(
+        config: LinuxBackendConfig,
+        should_continue: impl Fn() -> bool + Send + Sync + 'static,
+    ) -> Result<Self, LinuxError> {
+        config.validate_managed_network_identity()?;
+        let probe_continues = Arc::new(should_continue);
+        let probe = LinuxProbe::run_cancellable(config.probe_request(), || probe_continues())?;
         let descriptor = LinuxBackendDescriptor::from_probe_with_managed_proxy(
             &probe,
             config.managed_proxy.is_some(),
         )?;
-        Ok(Self { config, probe, descriptor })
+        Ok(Self { config, probe, descriptor, probe_continues })
     }
     /// Returns complete probe facts.
     #[must_use]
@@ -54,6 +84,14 @@ impl LinuxBackend {
         let execution = context.execution_plan();
         let sandbox = context.sandbox_plan();
         let admission = context.admission();
+        if sandbox.isolation() != peritus_sandbox::IsolationRequirement::Restricted {
+            return Err(LinuxError::new(
+                LinuxErrorKind::InvalidPlan,
+                LinuxOperation::Prepare,
+                LinuxRecovery::CorrectRequest,
+                "native Linux preparation requires restricted isolation",
+            ));
+        }
         if admission.descriptor() != self.descriptor.common()
             || admission.plan_digest() != sandbox.digest()
             || admission.descriptor_digest() != self.descriptor.common().digest()
@@ -80,7 +118,9 @@ impl LinuxBackend {
                 "authorized Linux plan, descriptor, support, or preparation differs",
             ));
         }
-        let current_probe = LinuxProbe::run(self.config.probe_request())?;
+        let current_probe = LinuxProbe::run_cancellable(self.config.probe_request(), || {
+            (self.probe_continues)()
+        })?;
         if current_probe.digest() != self.probe.digest() {
             return Err(LinuxError::new(
                 LinuxErrorKind::ProbeFailed,
@@ -114,6 +154,9 @@ impl LinuxBackend {
             )?;
             mount_policy = mount_policy.with_private_filesystem(helper)?;
         }
+        mount_policy = mount_policy
+            .with_read_only_replacements(&self.config.read_only_replacements)?
+            .with_writable_inputs(&self.config.writable_inputs)?;
         crate::preparation_validation::validate_secret_destinations(
             sandbox,
             execution,
@@ -189,6 +232,14 @@ impl LinuxBackend {
                     payload.requirement().clone(),
                     payload.manifest_handle()?,
                     payload.payload_len(),
+                    payload.handle().payload_digest().ok_or_else(|| {
+                        LinuxError::new(
+                            LinuxErrorKind::PreparationMismatch,
+                            LinuxOperation::Prepare,
+                            LinuxRecovery::CorrectRequest,
+                            "protected payload digest is unavailable",
+                        )
+                    })?,
                 )
             })
             .collect::<Result<Vec<_>, LinuxError>>()?;
@@ -219,10 +270,15 @@ impl LinuxBackend {
             protected_payloads.iter().map(|payload| payload.handle().clone()).collect::<Vec<_>>();
         protected_handles.extend(proxy_handles);
         protected_handles.push(exec_status_handle);
-        let native_launch = NativeLaunchDescription::new(
+        let native_launch = NativeLaunchDescription::new_paged(
             local_launch.command().clone(),
             local_launch.helper_identity(),
-            local_launch.manifest().bytes().to_vec(),
+            local_launch
+                .manifest()
+                .bytes()
+                .chunks(peritus_process::NATIVE_MANIFEST_FRAME_BYTES)
+                .map(<[u8]>::to_vec)
+                .collect(),
             local_launch.manifest().digest(),
             admission.preparation_digest(),
         )
@@ -231,7 +287,7 @@ impl LinuxBackend {
                 LinuxErrorKind::Helper,
                 LinuxOperation::Prepare,
                 LinuxRecovery::CorrectRequest,
-                "native launch description rejected the bounded helper manifest",
+                "native launch description rejected the exact helper manifest",
             )
         })?
         .with_protected_handles(protected_handles)
@@ -271,6 +327,14 @@ impl NativeSandboxBackend for LinuxBackend {
 
     fn platform(&self) -> NativePlatform {
         NativePlatform::Linux
+    }
+
+    fn retained_factory_request(
+        &self,
+        sandbox: &peritus_sandbox::CheckedSandboxPlan,
+        admission: &peritus_sandbox::BackendAdmission,
+    ) -> Result<peritus_process::RetainedBackendFactoryRequest, ProcessError> {
+        retained_owner::request(self, sandbox, admission)
     }
 
     fn prepare(
