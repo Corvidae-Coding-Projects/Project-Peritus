@@ -1,6 +1,7 @@
 //! Optional live user-input and public activity boundary for developer execution.
 
 use super::DeveloperLoopError;
+use std::pin::Pin;
 pub use crate::developer_interaction::{DeveloperInput, DeveloperRequestAdmission};
 
 /// Host-owned role whose model is selected at each new logical model turn.
@@ -12,6 +13,47 @@ pub enum DeveloperModelRole {
     Reviewer,
     /// Review remediation model.
     Fixer,
+}
+
+/// One atomically resolved host provider choice plus optional explicit-selection provenance.
+pub struct DeveloperProviderSelection {
+    provider: std::sync::Arc<dyn peritus_provider_core::ModelProvider>,
+    provenance: Option<peritus_types::Sha256Digest>,
+}
+
+impl DeveloperProviderSelection {
+    /// Binds an adapter to the digest of the exact persisted user selection that resolved it.
+    #[must_use]
+    pub fn new(
+        provider: std::sync::Arc<dyn peritus_provider_core::ModelProvider>,
+        provenance: peritus_types::Sha256Digest,
+    ) -> Self {
+        Self { provider, provenance: Some(provenance) }
+    }
+
+    fn without_provenance(
+        provider: std::sync::Arc<dyn peritus_provider_core::ModelProvider>,
+    ) -> Self {
+        Self { provider, provenance: None }
+    }
+
+    /// Borrows the immutable adapter resolved from this selection snapshot.
+    #[must_use]
+    pub fn provider(&self) -> &dyn peritus_provider_core::ModelProvider {
+        self.provider.as_ref()
+    }
+
+    /// Consumes the snapshot and returns its immutable adapter.
+    #[must_use]
+    pub fn into_provider(self) -> std::sync::Arc<dyn peritus_provider_core::ModelProvider> {
+        self.provider
+    }
+
+    /// Returns the exact persisted-selection digest when the host can prove it.
+    #[must_use]
+    pub const fn provenance(&self) -> Option<peritus_types::Sha256Digest> {
+        self.provenance
+    }
 }
 
 /// Host decision after an already-admitted provider or tool operation settles.
@@ -32,6 +74,33 @@ pub enum DeveloperToolEffect {
     ReadOnly,
     /// Any operation that can mutate state or whose effect class is not proven read-only.
     MutationCapable,
+}
+
+/// Explicit owner of transcript compaction for one developer-loop invocation.
+///
+/// A local context owner selects and checkpoints the provider-visible frontier from its retained
+/// lineage. The legacy loop operates only when no local port is present; its optional semantic
+/// pass may be enabled independently of its deterministic complete-exchange compaction.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DeveloperCompactionOwner {
+    /// The supplied [`super::DeveloperContextPort`] owns selection and durable publication.
+    LocalContext,
+    /// D0 owns the legacy transcript and may optionally ask the task provider for a summary.
+    LegacyLoop {
+        /// Whether the legacy provider-authored semantic pass is permitted.
+        provider_semantic: bool,
+    },
+}
+
+impl DeveloperCompactionOwner {
+    /// The default legacy owner, including its provider-authored semantic pass.
+    pub const LEGACY: Self = Self::LegacyLoop { provider_semantic: true };
+
+    /// Returns whether the legacy owner may dispatch a provider-authored semantic pass.
+    #[must_use]
+    pub const fn permits_provider_semantic(self) -> bool {
+        matches!(self, Self::LegacyLoop { provider_semantic: true })
+    }
 }
 
 /// Host-validated reason for repeating an independent review; contains no provider payload.
@@ -78,10 +147,12 @@ pub enum DeveloperActivity<'a> {
 
 /// Daemon-owned live input and observation port; it cannot grant tool authority.
 pub trait DeveloperInteraction: Send + Sync {
-    /// Whether this host explicitly permits legacy provider-authored automatic compaction.
-    /// Governed workbench hosts disable it; deterministic local preparation remains available.
-    fn allows_semantic_compaction(&self) -> bool {
-        true
+    /// Declares the compaction owner required by this host invocation.
+    ///
+    /// The loop negotiates this value against the supplied context port before reopening any
+    /// invocation. It never falls back from a missing local owner to legacy compaction.
+    fn compaction_owner(&self) -> DeveloperCompactionOwner {
+        DeveloperCompactionOwner::LEGACY
     }
     /// Resolves an immutable adapter for the next turn, without changing an in-flight request.
     /// Returning `None` retains the caller's fixed provider.
@@ -94,6 +165,20 @@ pub trait DeveloperInteraction: Send + Sync {
     ) -> Result<Option<std::sync::Arc<dyn peritus_provider_core::ModelProvider>>, DeveloperLoopError>
     {
         Ok(None)
+    }
+
+    /// Atomically resolves the next-turn adapter and exact explicit-selection provenance.
+    /// Hosts that cannot prove selection provenance retain compatibility but cannot authorize
+    /// automatic retirement of a retry schedule after a provider-profile mismatch.
+    ///
+    /// # Errors
+    /// Fails closed if the selected adapter or its durable provenance cannot be resolved.
+    fn provider_selection(
+        &self,
+        role: DeveloperModelRole,
+    ) -> Result<Option<DeveloperProviderSelection>, DeveloperLoopError> {
+        self.provider(role)
+            .map(|provider| provider.map(DeveloperProviderSelection::without_provenance))
     }
 
     /// Atomically captures current input. Failure stops rather than using a stale snapshot.
@@ -126,6 +211,35 @@ pub trait DeveloperInteraction: Send + Sync {
         request: &peritus_model_protocol::ModelRequest,
     ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
         self.prepare_request(revision, request)
+    }
+
+    /// Admits a request only while its explicit provider-selection snapshot is still current.
+    /// Hosts without explicit selection provenance retain the legacy role-aware admission path.
+    ///
+    /// # Errors
+    /// Returns a durable-input, selection, control, or synchronization failure.
+    fn prepare_selected_role_request(
+        &self,
+        role: DeveloperModelRole,
+        revision: u64,
+        _selection_provenance: Option<peritus_types::Sha256Digest>,
+        request: &peritus_model_protocol::ModelRequest,
+    ) -> Result<DeveloperRequestAdmission, DeveloperLoopError> {
+        self.prepare_role_request(role, revision, request)
+    }
+
+    /// Resolves host-owned artifact media after durable request admission and before provider I/O.
+    ///
+    /// The default preserves requests that contain only inline or provider-owned media. A host
+    /// that emits Peritus artifact references must return an exact transient provider projection.
+    ///
+    /// # Errors
+    /// Returns a durable artifact, integrity, or selected-provider limit failure.
+    fn materialize_request(
+        &self,
+        request: peritus_model_protocol::ModelRequest,
+    ) -> Result<peritus_model_protocol::ModelRequest, DeveloperLoopError> {
+        Ok(request)
     }
 
     /// Reconciles one admitted request at its terminal provider boundary.
@@ -177,4 +291,21 @@ pub trait DeveloperInteraction: Send + Sync {
     /// # Errors
     /// Returns an observation failure rather than claiming invisible successful progress.
     fn observe(&self, activity: DeveloperActivity<'_>) -> Result<(), DeveloperLoopError>;
+
+    /// Delivers a coalescible waiting projection independently of provider ownership.
+    /// Hosts may retain it in a durable outbox. Delivery failure is diagnostic and must never
+    /// cancel, replace, or retry the already-admitted provider request.
+    fn observe_waiting(
+        &self,
+        elapsed_seconds: u64,
+    ) -> Pin<Box<dyn Future<Output = Result<(), DeveloperLoopError>> + Send + '_>> {
+        Box::pin(async move {
+            self.observe(DeveloperActivity::ModelWaiting { elapsed_seconds })
+        })
+    }
+
+    /// Reports a waiting-projection failure without altering accepted execution state.
+    fn waiting_observation_failed(&self, error: &DeveloperLoopError) {
+        eprintln!("peritus: waiting status delivery failed; provider ownership is retained: {error}");
+    }
 }

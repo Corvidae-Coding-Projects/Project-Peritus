@@ -20,17 +20,20 @@ pub use crate::usage::DeveloperUsage;
 pub use accounting::DeveloperAccountingEvent;
 pub use context_port::{
     DeveloperContextAssembly, DeveloperContextEvent, DeveloperContextPort,
+    DeveloperContextResume,
     estimate_developer_request_tokens,
 };
 pub use entry::DeveloperLoop;
+pub use observation::developer_tool_page_bytes;
 pub use error::DeveloperLoopError;
 pub use interaction::{
-    DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperModelRole,
-    DeveloperRequestAdmission, DeveloperReviewRetryReason, DeveloperToolEffect,
+    DeveloperActivity, DeveloperCompactionOwner, DeveloperControlFlow, DeveloperInteraction,
+    DeveloperModelRole, DeveloperProviderSelection, DeveloperRequestAdmission,
+    DeveloperReviewRetryReason, DeveloperToolEffect,
 };
 pub use tool_executor::{DeveloperToolExecution, DeveloperToolExecutor};
 pub use types::{
     DeveloperContextCompaction, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperRetryReason, DeveloperRetryRecord, DeveloperToolObservation, DeveloperTrace,
-    DeveloperTraceEvent,
+    DeveloperRetryDisposition, DeveloperRetryReason, DeveloperRetryRecord,
+    DeveloperRetryRecovery, DeveloperToolObservation, DeveloperTrace, DeveloperTraceEvent,
 };

@@ -8,9 +8,9 @@ use crate::product_control::{ControlStore, ControlStoreError, RequestSourceSnaps
 use peritus_agent::DeveloperInput;
 #[cfg(not(verus_only))]
 use peritus_agent::{
-    DeveloperActivity, DeveloperControlFlow, DeveloperInteraction, DeveloperLoopError,
-    DeveloperModelRole, DeveloperProviderSelection, DeveloperRequestAdmission,
-    DeveloperToolEffect,
+    DeveloperActivity, DeveloperCompactionOwner, DeveloperControlFlow, DeveloperInteraction,
+    DeveloperLoopError, DeveloperModelRole, DeveloperProviderSelection,
+    DeveloperRequestAdmission, DeveloperToolEffect,
 };
 use peritus_app_protocol::{ProductActivityKind, ProductModelChoice};
 use peritus_product_runner::control::HostPermissions;
@@ -393,8 +393,12 @@ impl DeveloperInteraction for LiveConversation {
         ));
     }
 
-    fn allows_semantic_compaction(&self) -> bool {
-        false
+    fn compaction_owner(&self) -> DeveloperCompactionOwner {
+        if self.service.inner.local_context.enabled {
+            DeveloperCompactionOwner::LocalContext
+        } else {
+            DeveloperCompactionOwner::LegacyLoop { provider_semantic: false }
+        }
     }
     fn provider(
         &self,

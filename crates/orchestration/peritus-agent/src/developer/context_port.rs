@@ -1,13 +1,17 @@
 //! Host-owned local context boundary for the production developer loop.
 
 use peritus_model_protocol::{
-    CanonicalJson, CompletedToolCall, JsonBounds, Message, ProtocolLimits, ProviderProfile,
-    ToolDefinition,
+    CanonicalJson, CompletedToolCall, ContentBlock, JsonBounds, Message, ProtocolLimits,
+    ProviderProfile, Role, ToolDefinition,
 };
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 use super::context_encoding::estimated_request_tokens;
-use super::{DeveloperLoopError, DeveloperLoopRequest, DeveloperToolObservation};
+use super::{
+    DeveloperCompactionOwner, DeveloperInteraction, DeveloperLoopError, DeveloperLoopRequest,
+    DeveloperToolObservation,
+};
 
 /// Estimates the complete input request using the same accounting as the production loop.
 /// Output capacity is not subtracted from an input-only provider ceiling.
@@ -31,6 +35,94 @@ pub struct DeveloperContextAssembly<'a> {
     pub tools: &'a [ToolDefinition],
     /// Receiving provider's protocol and input capacity; not a memory namespace key.
     pub profile: &'a ProviderProfile,
+}
+
+/// Exact local invocation state authorized for a pending definitely-unaccepted retry.
+pub struct DeveloperContextResume {
+    turn: u16,
+    system: String,
+    prompt: String,
+    attachments: Vec<peritus_model_protocol::MediaInput>,
+    messages: Vec<Message>,
+    tool_calls: u32,
+    retries: u64,
+}
+
+impl DeveloperContextResume {
+    /// Creates checked continuation state from a host-validated durable invocation.
+    ///
+    /// # Errors
+    /// Rejects a zero turn or an empty provider request view.
+    pub fn new(
+        turn: u16,
+        initial_messages: &[Message],
+        messages: Vec<Message>,
+        tool_calls: u32,
+        retries: u64,
+    ) -> Result<Self, DeveloperLoopError> {
+        let [system, user] = initial_messages else {
+            return Err(DeveloperLoopError::Context(
+                "invalid durable invocation resume state".to_owned(),
+            ));
+        };
+        let [ContentBlock::Text(system_text)] = system.content() else {
+            return Err(DeveloperLoopError::Context(
+                "durable invocation system input changed shape".to_owned(),
+            ));
+        };
+        let Some((ContentBlock::Text(prompt_text), attachment_blocks)) =
+            user.content().split_first()
+        else {
+            return Err(DeveloperLoopError::Context(
+                "durable invocation user input changed shape".to_owned(),
+            ));
+        };
+        if turn == 0
+            || system.role() != peritus_model_protocol::Role::System
+            || user.role() != peritus_model_protocol::Role::User
+            || messages.is_empty()
+        {
+            return Err(DeveloperLoopError::Context(
+                "invalid durable invocation resume state".to_owned(),
+            ));
+        }
+        let attachments = attachment_blocks
+            .iter()
+            .map(|block| match block {
+                ContentBlock::Image(media) => Ok(media.clone()),
+                _ => Err(DeveloperLoopError::Context(
+                    "durable invocation attachment changed shape".to_owned(),
+                )),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(Self {
+            turn,
+            system: system_text.expose_for_wire().to_owned(),
+            prompt: prompt_text.expose_for_wire().to_owned(),
+            attachments,
+            messages,
+            tool_calls,
+            retries,
+        })
+    }
+
+    pub(super) const fn turn(&self) -> u16 {
+        self.turn
+    }
+
+    pub(super) const fn tool_calls(&self) -> u32 {
+        self.tool_calls
+    }
+
+    pub(super) const fn retries(&self) -> u64 {
+        self.retries
+    }
+
+    pub(super) fn into_request_state(
+        self,
+    ) -> (String, String, Vec<peritus_model_protocol::MediaInput>, Vec<Message>) {
+        (self.system, self.prompt, self.attachments, self.messages)
+    }
 }
 
 /// Authorized visible events supplied to local memory in execution order.
@@ -62,10 +154,33 @@ pub enum DeveloperContextEvent<'a> {
 /// This seam does not itself implement durable storage, working-state reduction, or retrieval.
 /// Those policies belong in C6 with effects supplied by the product host through C0 facilities.
 pub trait DeveloperContextPort: Send {
+    /// Identifies the owner implemented by this port.
+    ///
+    /// Context ports own local selection and checkpoint publication. Returning a legacy owner is
+    /// rejected before the invocation is opened.
+    fn compaction_owner(&self) -> DeveloperCompactionOwner {
+        DeveloperCompactionOwner::LocalContext
+    }
+
     /// Native runtime persistence directory owned by this exact task and role lineage.
     /// It is independent of invocation prefixes and provider response cursors.
     fn local_session_directory(&self) -> Option<std::path::PathBuf> {
         None
+    }
+
+    /// Returns the exact published provider view for a pending safe retry, when one exists.
+    ///
+    /// The default starts a new invocation. Implementations may resume only a durable request
+    /// known not to have been accepted; ambiguous or settled requests must fail closed.
+    ///
+    /// # Errors
+    /// Rejects changed inputs, conflicting identity, unresolved acceptance, or corrupt state.
+    fn resume(
+        &mut self,
+        _request: &DeveloperLoopRequest,
+        _initial_messages: &[Message],
+    ) -> Result<Option<DeveloperContextResume>, DeveloperLoopError> {
+        Ok(None)
     }
     /// Reopens the bound lineage and durably records the current invocation's exact inputs.
     ///
@@ -125,6 +240,55 @@ pub trait DeveloperContextPort: Send {
 pub(super) struct ContextSession<'a>(pub(super) Option<&'a mut dyn DeveloperContextPort>);
 
 impl ContextSession<'_> {
+    pub(super) fn negotiate_compaction(
+        &self,
+        interaction: Option<&dyn DeveloperInteraction>,
+    ) -> Result<DeveloperCompactionOwner, DeveloperLoopError> {
+        let requested = interaction.map(|port| port.compaction_owner());
+        match (self.0.as_ref(), requested) {
+            (Some(port), Some(requested)) => {
+                let supplied = port.compaction_owner();
+                if supplied != DeveloperCompactionOwner::LocalContext {
+                    return Err(DeveloperLoopError::Context(
+                        "context port declared a legacy compaction owner".to_owned(),
+                    ));
+                }
+                if requested != supplied {
+                    return Err(DeveloperLoopError::RecoveryRequired(
+                        "host compaction ownership changed before invocation reentry".to_owned(),
+                    ));
+                }
+                Ok(supplied)
+            }
+            (Some(port), None) => {
+                let supplied = port.compaction_owner();
+                if supplied == DeveloperCompactionOwner::LocalContext {
+                    Ok(supplied)
+                } else {
+                    Err(DeveloperLoopError::Context(
+                        "context port declared a legacy compaction owner".to_owned(),
+                    ))
+                }
+            }
+            (None, Some(DeveloperCompactionOwner::LocalContext)) => {
+                Err(DeveloperLoopError::RecoveryRequired(
+                    "the retained local compaction owner is unavailable for this invocation"
+                        .to_owned(),
+                ))
+            }
+            (None, Some(owner)) => Ok(owner),
+            (None, None) => Ok(DeveloperCompactionOwner::LEGACY),
+        }
+    }
+
+    pub(super) fn resume(
+        &mut self,
+        request: &DeveloperLoopRequest,
+        messages: &[Message],
+    ) -> Result<Option<DeveloperContextResume>, DeveloperLoopError> {
+        self.0.as_mut().map_or(Ok(None), |port| port.resume(request, messages))
+    }
+
     pub(super) fn annotate(
         &self,
         call: &CompletedToolCall,
@@ -151,10 +315,6 @@ impl ContextSession<'_> {
             value = Value::from_iter([("output", value), ("local_context", metadata)]);
         }
         Ok(CanonicalJson::parse(&value.to_string(), JsonBounds::value(ProtocolLimits::PRODUCTION))?)
-    }
-
-    pub(super) fn is_local(&self) -> bool {
-        self.0.is_some()
     }
 
     pub(super) fn local_session_directory(&self) -> Option<std::path::PathBuf> {
@@ -219,6 +379,7 @@ impl ContextSession<'_> {
                     "local view did not preserve current governing user input".to_owned(),
                 ));
             }
+            validate_complete_tool_protocol(&candidate)?;
             let estimated = estimated_request_tokens(&candidate, tools);
             let capacity = profile.limits().max_input_tokens();
             if estimated > capacity {
@@ -231,5 +392,53 @@ impl ContextSession<'_> {
             return Ok(estimated < prior);
         }
         Ok(false)
+    }
+}
+
+fn validate_complete_tool_protocol(messages: &[Message]) -> Result<(), DeveloperLoopError> {
+    let mut pending = BTreeSet::new();
+    for message in messages {
+        match message.role() {
+            Role::Assistant => {
+                if !pending.is_empty() {
+                    return Err(DeveloperLoopError::Context(
+                        "local view split a pending tool protocol exchange".to_owned(),
+                    ));
+                }
+                for block in message.content() {
+                    if let ContentBlock::ToolCall(call) = block
+                        && !pending.insert(call.id().expose_for_wire().to_owned())
+                    {
+                        return Err(DeveloperLoopError::Context(
+                            "local view duplicated a pending tool call".to_owned(),
+                        ));
+                    }
+                }
+            }
+            Role::Tool => {
+                for block in message.content() {
+                    if let ContentBlock::ToolResult(result) = block
+                        && !pending.remove(result.call_id().expose_for_wire())
+                    {
+                        return Err(DeveloperLoopError::Context(
+                            "local view retained a tool result without its exact call".to_owned(),
+                        ));
+                    }
+                }
+            }
+            Role::System | Role::Developer | Role::User if !pending.is_empty() => {
+                return Err(DeveloperLoopError::Context(
+                    "local view split a pending tool protocol exchange".to_owned(),
+                ));
+            }
+            Role::System | Role::Developer | Role::User => {}
+        }
+    }
+    if pending.is_empty() {
+        Ok(())
+    } else {
+        Err(DeveloperLoopError::Context(
+            "local view retained tool calls without their complete results".to_owned(),
+        ))
     }
 }

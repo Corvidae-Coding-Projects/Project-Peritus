@@ -35,11 +35,14 @@ pub use completion::{CompletionProposal, CompletionRequest, EvidenceReference, T
 #[cfg(not(verus_only))]
 pub use developer::{
     DeveloperAccountingEvent, DeveloperActivity, DeveloperContextAssembly, DeveloperContextEvent,
-    DeveloperContextPort, DeveloperControlFlow, DeveloperInteraction, DeveloperLoop,
-    DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome, DeveloperLoopRequest,
-    DeveloperModelRole, DeveloperRetryReason, DeveloperRetryRecord, DeveloperReviewRetryReason,
-    DeveloperToolEffect, DeveloperToolExecution, DeveloperToolExecutor, DeveloperToolObservation,
-    DeveloperTrace, DeveloperTraceEvent, DeveloperUsage, estimate_developer_request_tokens,
+    DeveloperContextPort, DeveloperContextResume, DeveloperControlFlow, DeveloperInteraction,
+    DeveloperLoop, DeveloperLoopError, DeveloperLoopLimits, DeveloperLoopOutcome,
+    DeveloperLoopRequest, DeveloperModelRole, DeveloperProviderSelection,
+    DeveloperRetryDisposition, DeveloperRetryReason, DeveloperRetryRecord,
+    DeveloperRetryRecovery, DeveloperReviewRetryReason, DeveloperToolEffect,
+    DeveloperToolExecution, DeveloperToolExecutor, DeveloperToolObservation, DeveloperTrace,
+    DeveloperTraceEvent, DeveloperUsage, DeveloperCompactionOwner,
+    developer_tool_page_bytes, estimate_developer_request_tokens,
 };
 pub use developer_interaction::{DeveloperInput, DeveloperRequestAdmission};
 pub use error::{AgentErrorCode, AgentOperation, AgentRecovery, AgentRejection};

@@ -1,8 +1,8 @@
 //! Long reasoning-bearing sessions still compact, and only display summaries reach observers.
 use super::*;
 use peritus_agent::{
-    DeveloperActivity, DeveloperInput, DeveloperInteraction, DeveloperLoopError,
-    DeveloperRequestAdmission,
+    DeveloperActivity, DeveloperCompactionOwner, DeveloperInput, DeveloperInteraction,
+    DeveloperLoopError, DeveloperRequestAdmission,
 };
 use peritus_model_protocol::{Capability, CompletedToolCall, Message};
 
@@ -10,8 +10,8 @@ use peritus_model_protocol::{Capability, CompletedToolCall, Message};
 struct Observer(Mutex<Vec<String>>);
 
 impl DeveloperInteraction for Observer {
-    fn allows_semantic_compaction(&self) -> bool {
-        false
+    fn compaction_owner(&self) -> DeveloperCompactionOwner {
+        DeveloperCompactionOwner::LegacyLoop { provider_semantic: false }
     }
     fn input(&self) -> Result<DeveloperInput, DeveloperLoopError> {
         Ok(DeveloperInput {
