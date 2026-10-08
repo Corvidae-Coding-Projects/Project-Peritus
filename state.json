@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3945,
-        "tip_oid": "851206458f6e797cc86e10eeaac5f9437e25d837",
-        "prefix_sha256": "e177cbbb54a7f159ea99299241049fac27cf3212f324192cd3a22004eb3a5eef"
+        "sequence": 3946,
+        "tip_oid": "26d22daac1698d313bcb5be5b6c59e0eed7d5671",
+        "prefix_sha256": "95d00d71d047d7d2908e755dbaf9be12ea5df924c3e6c71d32af385bc53ae920"
       },
       "NWAR": {
         "sequence": 39,
@@ -26919,12 +26919,13 @@
       "display_id": 663,
       "title": "[L607] Windows path and ACL projection imposes workspace-shape and finite-root gates",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L607.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/filesystem.rs:13,29-82,85-102,135-177`; `src/filesystem/path.rs:12,28-56,65-83,188-220,235-258`; `src/native/path.rs:10-32`; `src/preparation.rs:304-326` in the same crate.\n- Behavior: Protected roots and external read-only inputs each cap at 256 before deduplication. Paths cap at 32,767 UTF-16 units and reject UNC/device/ADS/traversal/reserved syntax; identity folds ASCII case only, and native canonicalization uses lossy text conversion. Every resolved native object and existing ancestor must exist and be reparse-free; protected roots must remain on the workspace volume. Any allow rule containing a protected root is rejected, so a broad workspace allow combined with protected metadata cannot be represented even with explicit deny entries. Native ACL installation also requires every exact target to exist.\n- Consequence: Normal broad workspace grants or creation rules for absent objects can fail despite a checked plan. These are policy/representation and filesystem-shape blockers rather than session expiration; path-integrity requirements need a safe representable implementation, not blanket removal.\n- Repair direction: Compile component-aware deny-dominant permissions using native identities, negotiate explicit path capacities, and support checked parent-based creation without requiring the new object to exist.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.245715482Z",
-      "updated_at": "2026-10-08T01:29:51.736512368Z",
+      "updated_at": "2026-10-08T01:31:23.962740829Z",
+      "closed_at": "2026-10-08T01:31:23.959599726Z",
       "labels": [
         "daily-driving-limiter"
       ],
