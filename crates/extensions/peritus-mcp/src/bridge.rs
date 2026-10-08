@@ -221,12 +221,15 @@ impl BridgeToolCallResult {
 ///
 /// Implementations must compute tool exposure through the C4 registry and current B1 scope, route
 /// calls through C4 preparation/authorization/dispatch, and apply A3 session/revision binding to
-/// resources and prompts. Returning a value is an observation; this trait has no grant API.
+/// resources and prompts. Each returned future owns its daemon operation: implementations must
+/// propagate the supplied cancellation and must not detach accepted effects when the future is
+/// dropped. Returning a value is an observation; this trait has no grant API.
 pub trait AuthorityBridge: Send + Sync {
     /// Lists tools already exposed to the exact authenticated context.
     fn list_tools<'a>(
         &'a self,
         context: &'a BridgeContext,
+        cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgeTool>, BridgeError>>;
 
     /// Routes one tool call through the authoritative C4/G0 lifecycle.
@@ -242,6 +245,7 @@ pub trait AuthorityBridge: Send + Sync {
     fn list_resources<'a>(
         &'a self,
         context: &'a BridgeContext,
+        cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgeResource>, BridgeError>>;
 
     /// Reads one exact authority-filtered resource.
@@ -256,6 +260,7 @@ pub trait AuthorityBridge: Send + Sync {
     fn list_prompts<'a>(
         &'a self,
         context: &'a BridgeContext,
+        cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgePrompt>, BridgeError>>;
 
     /// Resolves one prompt template through current daemon state.

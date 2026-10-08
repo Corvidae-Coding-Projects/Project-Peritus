@@ -33,7 +33,9 @@ const REQUEST_CANCELLED: i32 = -32_800;
 pub struct ServerLimits {
     /// Maximum JSON message bytes.
     pub message_bytes: usize,
-    /// Maximum active requests.
+    /// Maximum concurrently executing bridge requests.
+    ///
+    /// Additional admitted requests wait for this execution window without being rejected.
     pub in_flight_requests: usize,
     /// Maximum entries returned on one list page.
     pub page_entries: usize,
@@ -48,17 +50,23 @@ impl ServerLimits {
     ///
     /// # Errors
     ///
-    /// Rejects a zero limit.
+    /// Rejects a zero limit or an execution window that the runtime cannot represent.
     pub fn validate(self) -> Result<Self, McpError> {
         if self.message_bytes == 0 || self.in_flight_requests == 0 || self.page_entries == 0 {
-            Err(McpError::new(
+            return Err(McpError::new(
                 McpErrorClass::Limit,
                 "validate MCP server limits",
                 "every MCP server limit must be positive",
-            ))
-        } else {
-            Ok(self)
+            ));
         }
+        if self.in_flight_requests > Semaphore::MAX_PERMITS {
+            return Err(McpError::new(
+                McpErrorClass::Limit,
+                "validate MCP server limits",
+                "MCP execution window exceeds the runtime semaphore representation",
+            ));
+        }
+        Ok(self)
     }
 }
 
@@ -132,8 +140,7 @@ impl McpServer {
         R: AsyncBufRead + Send + Unpin + 'static,
         W: AsyncWrite + Send + Unpin + 'static,
     {
-        let (responses, mut response_receiver) =
-            mpsc::channel::<JsonRpcResponse>(self.limits.in_flight_requests);
+        let (responses, mut response_receiver) = mpsc::unbounded_channel::<JsonRpcResponse>();
         let response_limit = self.limits.message_bytes;
         let writer_task = tokio::spawn(async move {
             while let Some(response) = response_receiver.recv().await {
@@ -180,7 +187,7 @@ impl McpServer {
     async fn read_requests<R>(
         self: &Arc<Self>,
         reader: &mut R,
-        responses: &mpsc::Sender<JsonRpcResponse>,
+        responses: &mpsc::UnboundedSender<JsonRpcResponse>,
         requests: &mut JoinSet<Result<(), McpError>>,
     ) -> Result<(), McpError>
     where
@@ -197,16 +204,14 @@ impl McpServer {
                             INVALID_REQUEST,
                             "jsonrpc must be 2.0",
                         ),
-                    )
-                    .await?;
+                    )?;
                     continue;
                 }
                 Err(error) => {
                     send_response(
                         responses,
                         JsonRpcResponse::failure(None, PARSE_ERROR, error.to_string()),
-                    )
-                    .await?;
+                    )?;
                     continue;
                 }
             };
@@ -215,23 +220,14 @@ impl McpServer {
                 continue;
             }
             if request.method == "initialize" {
-                let response = self.handle_request(request).await;
-                send_response(responses, response).await?;
+                let Some(id) = request.id else {
+                    continue;
+                };
+                let response = self.initialize(id, request.params).await;
+                send_response(responses, response)?;
                 continue;
             }
             let Some(id) = request.id.clone() else {
-                continue;
-            };
-            let Ok(permit) = Arc::clone(&self.admission).try_acquire_owned() else {
-                send_response(
-                    responses,
-                    JsonRpcResponse::failure(
-                        Some(id),
-                        INTERNAL_ERROR,
-                        "MCP in-flight request limit reached",
-                    ),
-                )
-                .await?;
                 continue;
             };
             let cancellation = McpCancellation::new();
@@ -246,8 +242,7 @@ impl McpServer {
                             INVALID_REQUEST,
                             "request id is already active",
                         ),
-                    )
-                    .await?;
+                    )?;
                     continue;
                 }
                 active.insert(id.clone(), cancellation.clone());
@@ -255,11 +250,36 @@ impl McpServer {
             let server = Arc::clone(self);
             let responses = responses.clone();
             requests.spawn(async move {
-                let _permit = permit;
-                let response =
-                    server.handle_admitted_request(id.clone(), request, &cancellation).await;
+                let permit = tokio::select! {
+                    biased;
+                    () = cancellation.cancelled() => None,
+                    acquired = Arc::clone(&server.admission).acquire_owned() => {
+                        match acquired {
+                            Ok(permit) => Some(permit),
+                            Err(_) => {
+                                server.active.lock().await.remove(&id);
+                                return send_response(
+                                    &responses,
+                                    JsonRpcResponse::failure(
+                                        Some(id),
+                                        INTERNAL_ERROR,
+                                        "MCP request admission closed unexpectedly",
+                                    ),
+                                );
+                            }
+                        }
+                    }
+                };
+                let response = if let Some(permit) = permit {
+                    let response =
+                        server.handle_admitted_request(id.clone(), request, &cancellation).await;
+                    drop(permit);
+                    response
+                } else {
+                    bridge_response(id.clone(), &cancelled())
+                };
                 server.active.lock().await.remove(&id);
-                send_response(&responses, response).await
+                send_response(&responses, response)
             });
         }
         Ok(())
@@ -283,16 +303,6 @@ impl McpServer {
             }
             _ => {}
         }
-    }
-
-    async fn handle_request(&self, request: JsonRpcRequest) -> JsonRpcResponse {
-        let Some(id) = request.id.clone() else {
-            return JsonRpcResponse::failure(None, INVALID_REQUEST, "request id is required");
-        };
-        if request.method == "initialize" {
-            return self.initialize(id, request.params).await;
-        }
-        self.handle_admitted_request(id, request, &McpCancellation::new()).await
     }
 
     async fn handle_admitted_request(
@@ -360,14 +370,38 @@ impl McpServer {
         request: JsonRpcRequest,
         cancellation: &McpCancellation,
     ) -> JsonRpcResponse {
-        let result = match request.method.as_str() {
-            "tools/list" => self.list_tools(request.params).await,
-            "tools/call" => self.call_tool(request.params, cancellation).await,
-            "resources/list" => self.list_resources(request.params).await,
-            "resources/read" => self.read_resource(request.params, cancellation).await,
-            "prompts/list" => self.list_prompts(request.params).await,
-            "prompts/get" => self.get_prompt(request.params, cancellation).await,
-            _ => return JsonRpcResponse::failure(Some(id), METHOD_NOT_FOUND, "method not found"),
+        let method = request.method;
+        let params = request.params;
+        if !matches!(
+            method.as_str(),
+            "tools/list"
+                | "tools/call"
+                | "resources/list"
+                | "resources/read"
+                | "prompts/list"
+                | "prompts/get"
+        ) {
+            return JsonRpcResponse::failure(Some(id), METHOD_NOT_FOUND, "method not found");
+        }
+        let operation = async {
+            match method.as_str() {
+                "tools/list" => self.list_tools(params, cancellation).await,
+                "tools/call" => self.call_tool(params, cancellation).await,
+                "resources/list" => self.list_resources(params, cancellation).await,
+                "resources/read" => self.read_resource(params, cancellation).await,
+                "prompts/list" => self.list_prompts(params, cancellation).await,
+                "prompts/get" => self.get_prompt(params, cancellation).await,
+                _ => Err(BridgeError::new(
+                    BridgeErrorClass::Infrastructure,
+                    "mcp_dispatch",
+                    "validated MCP method was unavailable",
+                )),
+            }
+        };
+        let result = tokio::select! {
+            biased;
+            () = cancellation.cancelled() => Err(cancelled()),
+            result = operation => result,
         };
         match result {
             Ok(value) => JsonRpcResponse::success(id, value),
@@ -375,9 +409,13 @@ impl McpServer {
         }
     }
 
-    async fn list_tools(&self, params: Option<Value>) -> Result<Value, BridgeError> {
+    async fn list_tools(
+        &self,
+        params: Option<Value>,
+        cancellation: &McpCancellation,
+    ) -> Result<Value, BridgeError> {
         let cursor = cursor(params)?;
-        let tools = self.bridge.list_tools(&self.context).await?;
+        let tools = self.bridge.list_tools(&self.context, cancellation).await?;
         page("tools", &tools, cursor, self.limits.page_entries)
     }
 
@@ -395,9 +433,13 @@ impl McpServer {
         serde_json::to_value(result).map_err(serialization_error)
     }
 
-    async fn list_resources(&self, params: Option<Value>) -> Result<Value, BridgeError> {
+    async fn list_resources(
+        &self,
+        params: Option<Value>,
+        cancellation: &McpCancellation,
+    ) -> Result<Value, BridgeError> {
         let cursor = cursor(params)?;
-        let resources = self.bridge.list_resources(&self.context).await?;
+        let resources = self.bridge.list_resources(&self.context, cancellation).await?;
         page("resources", &resources, cursor, self.limits.page_entries)
     }
 
@@ -415,9 +457,13 @@ impl McpServer {
         Ok(object("contents", contents))
     }
 
-    async fn list_prompts(&self, params: Option<Value>) -> Result<Value, BridgeError> {
+    async fn list_prompts(
+        &self,
+        params: Option<Value>,
+        cancellation: &McpCancellation,
+    ) -> Result<Value, BridgeError> {
         let cursor = cursor(params)?;
-        let prompts = self.bridge.list_prompts(&self.context).await?;
+        let prompts = self.bridge.list_prompts(&self.context, cancellation).await?;
         page("prompts", &prompts, cursor, self.limits.page_entries)
     }
 
@@ -537,6 +583,10 @@ fn invalid(detail: impl Into<String>) -> BridgeError {
     BridgeError::new(BridgeErrorClass::InvalidRequest, "invalid_params", detail)
 }
 
+fn cancelled() -> BridgeError {
+    BridgeError::new(BridgeErrorClass::Cancelled, "cancelled", "request was cancelled")
+}
+
 fn serialization_error(error: serde_json::Error) -> BridgeError {
     BridgeError::with_source(
         BridgeErrorClass::Infrastructure,
@@ -546,11 +596,11 @@ fn serialization_error(error: serde_json::Error) -> BridgeError {
     )
 }
 
-async fn send_response(
-    sender: &mpsc::Sender<JsonRpcResponse>,
+fn send_response(
+    sender: &mpsc::UnboundedSender<JsonRpcResponse>,
     response: JsonRpcResponse,
 ) -> Result<(), McpError> {
-    sender.send(response).await.map_err(|_| {
+    sender.send(response).map_err(|_| {
         McpError::new(
             McpErrorClass::Transport,
             "queue MCP response",

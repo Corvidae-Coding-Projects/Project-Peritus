@@ -34,6 +34,7 @@ impl AuthorityBridge for FakeBridge {
     fn list_tools<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        _cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgeTool>, BridgeError>> {
         Box::pin(async {
             Ok(vec![
@@ -85,6 +86,7 @@ impl AuthorityBridge for FakeBridge {
     fn list_resources<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        _cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgeResource>, BridgeError>> {
         Box::pin(async {
             Ok(vec![BridgeResource {
@@ -115,6 +117,7 @@ impl AuthorityBridge for FakeBridge {
     fn list_prompts<'a>(
         &'a self,
         _context: &'a BridgeContext,
+        _cancellation: &'a McpCancellation,
     ) -> BridgeFuture<'a, Result<Vec<BridgePrompt>, BridgeError>> {
         Box::pin(async {
             Ok(vec![BridgePrompt {
