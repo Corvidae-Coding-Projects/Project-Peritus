@@ -90,7 +90,7 @@ impl ProductRunner {
         // From this point forward the runner owns finalization independently of the active
         // deadline. The returned settlement lets the host persist any remaining goal/reply work
         // as a durable completion obligation.
-        match execution.refresh_obligation_contract(&input) {
+        match execution.refresh_obligation_contract_for_finalization(&input) {
             Ok(true) => {
                 terminal.next_phase = execution.next_phase;
                 terminal.retain_finalization_failure(&ProductRunnerError::new(

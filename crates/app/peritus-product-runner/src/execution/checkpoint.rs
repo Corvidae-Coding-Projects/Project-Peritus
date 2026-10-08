@@ -54,6 +54,12 @@ pub(super) enum CheckpointEvidence {
     ExternalEffect,
 }
 
+#[derive(Clone, Copy)]
+enum ObservationOwner {
+    Active,
+    Finalization,
+}
+
 impl CandidateRecorder {
     #[cfg(test)]
     pub(super) fn new(
@@ -230,7 +236,13 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
     ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
-        self.record_observation(requested_stage, conversation_revision, acquired, None)
+        self.record_observation(
+            requested_stage,
+            conversation_revision,
+            acquired,
+            None,
+            ObservationOwner::Active,
+        )
             .map(|(checkpoint, _)| checkpoint)
     }
 
@@ -269,6 +281,7 @@ impl CandidateRecorder {
             conversation_revision,
             CheckpointEvidence::Gates { satisfied, execution_context },
             Some(expected),
+            ObservationOwner::Active,
         )
     }
 
@@ -278,13 +291,14 @@ impl CandidateRecorder {
         conversation_revision: u64,
         acquired: CheckpointEvidence,
         expected: Option<CandidateIdentity>,
+        owner: ObservationOwner,
     ) -> Result<(Option<CandidateCheckpoint>, bool), ProductRunnerError> {
         let mut recorder_state = self.lock()?;
         recorder_state.ensure_active()?;
-        self.check_capture_cancelled()?;
+        self.check_capture_cancelled_for(owner)?;
         let (has_workspace_candidate, content, repository) =
-            self.capture_candidate_observation()?;
-        self.check_capture_cancelled()?;
+            self.capture_candidate_observation(owner)?;
+        self.check_capture_cancelled_for(owner)?;
         if !has_workspace_candidate && !recorder_state.external_effect_observed {
             // A fresh repository observation is authoritative: a reverted workspace must not
             // retain an older candidate merely because it once contained changes.
@@ -379,6 +393,22 @@ impl CandidateRecorder {
         self.record(CandidateStage::Observed, conversation_revision, CheckpointEvidence::None)
     }
 
+    /// Refreshes after active work has stopped, retaining explicit caller cancellation while
+    /// excluding the provider token already consumed by an active-work deadline.
+    pub(super) fn refresh_for_finalization(
+        &self,
+        conversation_revision: u64,
+    ) -> Result<Option<CandidateCheckpoint>, ProductRunnerError> {
+        self.record_observation(
+            CandidateStage::Observed,
+            conversation_revision,
+            CheckpointEvidence::None,
+            None,
+            ObservationOwner::Finalization,
+        )
+        .map(|(checkpoint, _)| checkpoint)
+    }
+
     pub(super) fn record_pending_review(
         &self,
         conversation_revision: u64,
@@ -405,6 +435,20 @@ impl CandidateRecorder {
             CandidateStage::Observed,
             conversation_revision,
             CheckpointEvidence::ObligationContractChanged,
+        )
+        .map(|_| ())
+    }
+
+    pub(super) fn adopt_obligation_contract_for_finalization(
+        &self,
+        conversation_revision: u64,
+    ) -> Result<(), ProductRunnerError> {
+        self.record_observation(
+            CandidateStage::Observed,
+            conversation_revision,
+            CheckpointEvidence::ObligationContractChanged,
+            None,
+            ObservationOwner::Finalization,
         )
         .map(|_| ())
     }
@@ -478,35 +522,37 @@ impl CandidateRecorder {
 
     fn capture_candidate_observation(
         &self,
+        owner: ObservationOwner,
     ) -> Result<(bool, Sha256Digest, Sha256Digest), ProductRunnerError> {
         crate::candidate::process::with_cancellation(
-            self.observation_cancellation(),
-            || self.capture_candidate_observation_inner(),
+            self.observation_cancellation_for(owner),
+            || self.capture_candidate_observation_inner(owner),
         )
     }
 
     fn capture_candidate_observation_inner(
         &self,
+        owner: ObservationOwner,
     ) -> Result<(bool, Sha256Digest, Sha256Digest), ProductRunnerError> {
-        self.check_capture_cancelled()?;
+        self.check_capture_cancelled_for(owner)?;
         if let Some(observation) = self.baseline.snapshot_observation(&self.root)? {
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             return Ok(observation.into_parts());
         }
         loop {
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             let before = self.baseline.checkpoint(&self.root)?.digest();
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             let has_workspace_candidate = !self.baseline.changed_paths(&self.root)?.is_empty();
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             let content = self.baseline.content_digest(&self.root)?;
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             let after = self.baseline.checkpoint(&self.root)?.digest();
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             if before == after {
                 return Ok((has_workspace_candidate, content, after));
             }
-            self.check_capture_cancelled()?;
+            self.check_capture_cancelled_for(owner)?;
             std::thread::sleep(Duration::from_millis(10));
         }
     }
@@ -538,14 +584,36 @@ impl CandidateRecorder {
     }
 
     fn observation_cancellation(&self) -> crate::candidate::process::Cancellation {
+        self.observation_cancellation_for(ObservationOwner::Active)
+    }
+
+    fn observation_cancellation_for(
+        &self,
+        owner: ObservationOwner,
+    ) -> crate::candidate::process::Cancellation {
         crate::candidate::process::Cancellation::new(
             Arc::clone(&self.cancelled),
-            self.provider_cancellation.clone(),
+            match owner {
+                ObservationOwner::Active => self.provider_cancellation.clone(),
+                ObservationOwner::Finalization => {
+                    peritus_provider_core::CancellationToken::new()
+                }
+            },
         )
     }
 
     fn check_capture_cancelled(&self) -> Result<(), ProductRunnerError> {
-        if self.cancelled.load(Ordering::Acquire) || self.provider_cancellation.is_cancelled() {
+        self.check_capture_cancelled_for(ObservationOwner::Active)
+    }
+
+    fn check_capture_cancelled_for(
+        &self,
+        owner: ObservationOwner,
+    ) -> Result<(), ProductRunnerError> {
+        if self.cancelled.load(Ordering::Acquire)
+            || (matches!(owner, ObservationOwner::Active)
+                && self.provider_cancellation.is_cancelled())
+        {
             return Err(ProductRunnerError::new(
                 ProductRunnerErrorKind::Cancelled,
                 "observe candidate identity",

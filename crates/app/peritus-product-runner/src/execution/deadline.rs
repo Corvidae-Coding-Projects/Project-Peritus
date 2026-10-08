@@ -1,13 +1,10 @@
-//! Phase-aware run admission with time reserved for honest finalization.
+//! Phase admission against the caller-selected deadline only.
 
 use std::time::Duration;
 
 use crate::{ProductRunnerError, ProductRunnerErrorKind};
 
-const MAX_FINALIZATION_RESERVE: Duration = Duration::from_mins(1);
-const MIN_FINALIZATION_RESERVE: Duration = Duration::from_secs(1);
-
-/// Open-ended work phases that may not consume the protected finalization reserve.
+/// Open-ended work phases governed by the same explicit run deadline.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum OpenEndedPhase {
     Design,
@@ -16,21 +13,16 @@ pub(super) enum OpenEndedPhase {
     Fixer,
 }
 
-/// Portion of a run horizon available for design or model work.
-#[must_use]
-pub(super) fn active_window(horizon: Duration) -> Duration {
-    horizon.saturating_sub(finalization_reserve(horizon))
-}
-
-/// Rejects a new open-ended turn once only the finalization reserve remains.
+/// Rejects a new phase only when its explicit deadline has actually elapsed.
+/// Settlement of already owned work runs separately from phase admission.
 pub(super) fn require_phase_window(
     horizon: Option<Duration>,
     remaining: Option<Duration>,
     phase: OpenEndedPhase,
 ) -> Result<(), ProductRunnerError> {
-    let (horizon, remaining) = match (horizon, remaining) {
+    let remaining = match (horizon, remaining) {
         (None, None) => return Ok(()),
-        (Some(horizon), Some(remaining)) => (horizon, remaining),
+        (Some(_), Some(remaining)) => remaining,
         _ => {
             return Err(ProductRunnerError::new(
                 ProductRunnerErrorKind::InvalidPrecondition,
@@ -39,22 +31,16 @@ pub(super) fn require_phase_window(
             ));
         }
     };
-    if remaining <= finalization_reserve(horizon) {
+    if remaining.is_zero() {
         return Err(ProductRunnerError::new(
             ProductRunnerErrorKind::Budget,
             "start open-ended product phase",
             format!(
-                "the {phase:?} phase was not started because the protected finalization reserve is active"
+                "the {phase:?} phase was not started because the explicitly selected run deadline elapsed"
             ),
         ));
     }
     Ok(())
-}
-
-#[must_use]
-pub(super) fn finalization_reserve(horizon: Duration) -> Duration {
-    let proportional = horizon / 10;
-    proportional.clamp(MIN_FINALIZATION_RESERVE.min(horizon), MAX_FINALIZATION_RESERVE.min(horizon))
 }
 
 #[cfg(test)]
@@ -62,35 +48,45 @@ mod tests {
     use super::*;
 
     #[test]
-    fn active_window_always_preserves_a_finalization_reserve() {
-        let horizon = Duration::from_mins(10);
-        assert_eq!(finalization_reserve(horizon), Duration::from_mins(1));
-        assert_eq!(active_window(horizon), Duration::from_mins(9));
+    fn every_positive_explicit_window_admits_every_phase() {
+        let horizon = Duration::from_secs(600);
+        for phase in [
+            OpenEndedPhase::Design,
+            OpenEndedPhase::Writer,
+            OpenEndedPhase::Reviewer,
+            OpenEndedPhase::Fixer,
+        ] {
+            assert!(require_phase_window(Some(horizon), Some(horizon), phase).is_ok());
+            assert!(
+                require_phase_window(Some(horizon), Some(Duration::from_nanos(1)), phase).is_ok(),
+            );
+        }
     }
 
     #[test]
-    fn model_turns_stop_before_finalization_time_is_consumed() {
+    fn only_an_elapsed_explicit_deadline_rejects_a_phase() {
         let horizon = Duration::from_secs(100);
-        assert!(
-            require_phase_window(
-                Some(horizon),
-                Some(Duration::from_secs(11)),
-                OpenEndedPhase::Writer,
-            )
-            .is_ok()
-        );
-        assert!(
-            require_phase_window(
-                Some(horizon),
-                Some(Duration::from_secs(10)),
-                OpenEndedPhase::Writer,
-            )
-            .is_err()
-        );
+        for phase in [
+            OpenEndedPhase::Design,
+            OpenEndedPhase::Writer,
+            OpenEndedPhase::Reviewer,
+            OpenEndedPhase::Fixer,
+        ] {
+            assert!(require_phase_window(Some(horizon), Some(Duration::ZERO), phase).is_err());
+        }
+    }
+
+    #[test]
+    fn untimed_runs_are_admitted_and_deadline_state_must_match() {
+        let horizon = Duration::from_secs(100);
         assert!(require_phase_window(None, None, OpenEndedPhase::Writer).is_ok());
         assert!(
             require_phase_window(Some(horizon), None, OpenEndedPhase::Writer).is_err(),
             "a mismatched horizon must fail closed",
+        );
+        assert!(
+            require_phase_window(None, Some(horizon), OpenEndedPhase::Writer).is_err(),
+            "live deadline accounting without a configured horizon must fail closed",
         );
     }
 }

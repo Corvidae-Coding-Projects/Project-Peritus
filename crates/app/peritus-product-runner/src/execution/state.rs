@@ -29,6 +29,19 @@ pub(super) struct ExecutionContext {
 
 impl ExecutionContext {
     pub(super) fn prepare(input: &ProductRunInput) -> Result<Self, ProductRunnerError> {
+        Self::prepare_inner(input, false)
+    }
+
+    pub(super) fn prepare_for_finalization(
+        input: &ProductRunInput,
+    ) -> Result<Self, ProductRunnerError> {
+        Self::prepare_inner(input, true)
+    }
+
+    fn prepare_inner(
+        input: &ProductRunInput,
+        for_finalization: bool,
+    ) -> Result<Self, ProductRunnerError> {
         if let Some(resume) = &input.resume
             && resume.baseline().scope() != input.in_place_scope().as_ref()
         {
@@ -44,7 +57,11 @@ impl ExecutionContext {
             if obligations.source_contract_is_current(input) {
                 break (obligations, transcript);
             }
-            super::check_cancelled(input)?;
+            if for_finalization {
+                super::cancellation::check_finalization_cancelled(input)?;
+            } else {
+                super::check_cancelled(input)?;
+            }
         };
         let conversation_revision = obligations
             .source_revision()
@@ -60,7 +77,13 @@ impl ExecutionContext {
             |resume| resume.obligation_source_root() != obligations.source_root_digest(),
         );
         if obligation_contract_changed {
-            recorder.adopt_obligation_contract(conversation_revision)?;
+            if for_finalization {
+                recorder.adopt_obligation_contract_for_finalization(conversation_revision)?;
+            } else {
+                recorder.adopt_obligation_contract(conversation_revision)?;
+            }
+        } else if for_finalization {
+            let _ = recorder.refresh_for_finalization(conversation_revision)?;
         } else {
             let _ = recorder.refresh(conversation_revision)?;
         }
@@ -118,6 +141,21 @@ impl ExecutionContext {
         &mut self,
         input: &ProductRunInput,
     ) -> Result<bool, ProductRunnerError> {
+        self.refresh_obligation_contract_inner(input, false)
+    }
+
+    pub(super) fn refresh_obligation_contract_for_finalization(
+        &mut self,
+        input: &ProductRunInput,
+    ) -> Result<bool, ProductRunnerError> {
+        self.refresh_obligation_contract_inner(input, true)
+    }
+
+    fn refresh_obligation_contract_inner(
+        &mut self,
+        input: &ProductRunInput,
+        for_finalization: bool,
+    ) -> Result<bool, ProductRunnerError> {
         if self.obligations.source_contract_is_current(input) {
             return Ok(false);
         }
@@ -126,14 +164,22 @@ impl ExecutionContext {
             if replacement.source_contract_is_current(input) {
                 break replacement;
             }
-            super::check_cancelled(input)?;
+            if for_finalization {
+                super::cancellation::check_finalization_cancelled(input)?;
+            } else {
+                super::check_cancelled(input)?;
+            }
         };
         let changed = replacement.source_root_digest() != self.obligations.source_root_digest();
         if changed {
             let revision = replacement
                 .source_revision()
                 .unwrap_or_else(|| input.conversation.revision());
-            self.recorder.adopt_obligation_contract(revision)?;
+            if for_finalization {
+                self.recorder.adopt_obligation_contract_for_finalization(revision)?;
+            } else {
+                self.recorder.adopt_obligation_contract(revision)?;
+            }
             self.next_phase = ProductRunPhase::Designing;
         }
         self.obligations = replacement;

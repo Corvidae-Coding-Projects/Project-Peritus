@@ -140,7 +140,8 @@ impl ProductRunner {
                     )
                 }
                 Err(_) => {
-                    input.cancelled.store(true, std::sync::atomic::Ordering::Release);
+                    // Expiry ends active provider ownership. It is not caller cancellation, and
+                    // the separate finalizer must remain able to settle already owned effects.
                     let _ = input.provider_cancellation.cancel();
                     (
                         SettlementCause::Deadline,
@@ -191,8 +192,8 @@ fn settle(
         // Discussing interrupted work does not throw away its continuation. The same production
         // finalizer refreshes its scoped identity and invalidates stale qualification, without
         // running design, writer, checks or review for this read-only conversational turn.
-        let mut execution = super::state::ExecutionContext::prepare(input)?;
-        let _ = execution.refresh_obligation_contract(input)?;
+        let mut execution = super::state::ExecutionContext::prepare_for_finalization(input)?;
+        let _ = execution.refresh_obligation_contract_for_finalization(input)?;
         return super::settlement::finalize_current(
             super::settlement::FinalizationInput {
                 input,
