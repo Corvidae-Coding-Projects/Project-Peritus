@@ -5,7 +5,10 @@ mod canonical;
 mod metric;
 mod validation;
 
-pub use analysis::{EvaluationAnalysis, analyze_evaluation};
+pub use analysis::{
+    EvaluationAnalysis, EvaluationAnalysisBatch, EvaluationAnalysisCheckpoint, analyze_evaluation,
+    analyze_evaluation_batch,
+};
 pub use metric::{
     ArmCorrectness, ArmResourceSummary, EvaluationReliability, MetricAvailability,
     MetricUnavailableReason, PairedEvidence, TaskPassAtK, TaskStability,

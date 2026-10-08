@@ -252,6 +252,8 @@ pub enum EvaluationRecoveryDecision {
     },
     /// Every logical rollout is terminal; deterministic analysis may begin.
     BeginAnalysis,
+    /// Continue the exact durable analysis frontier under its retained owner.
+    ResumeAnalysis,
     /// Report bytes must be finalized or reconciled.
     ReconcileReportArtifact,
     /// Restore the canonical publication directive under the original report operation.
@@ -306,11 +308,24 @@ pub fn decide_recovery(
             }
             return EvaluationRecoveryDecision::ReconcilePublicationIntent;
         }
+        EvaluationPhase::Analyzing => {
+            return if observed.schedule_directives == 0
+                && observed.execution_directives == 0
+                && !observed.publication_directive
+            {
+                if state.analysis_digest().is_some() {
+                    EvaluationRecoveryDecision::ReconcileReportArtifact
+                } else {
+                    EvaluationRecoveryDecision::ResumeAnalysis
+                }
+            } else {
+                EvaluationRecoveryDecision::Quarantine
+            };
+        }
         EvaluationPhase::Created
         | EvaluationPhase::Planned
         | EvaluationPhase::Scheduling
-        | EvaluationPhase::Running
-        | EvaluationPhase::Analyzing => {}
+        | EvaluationPhase::Running => {}
     }
     let mut retained_retries = state.rollouts().filter_map(|(rollout_id, progress)| {
         match progress.status() {
@@ -453,6 +468,13 @@ pub fn decide_recovery_with_delivery(
             OutboxDeliveryStatus::Acknowledged | OutboxDeliveryStatus::Exhausted => {
                 EvaluationRecoveryDecision::Quarantine
             }
+        };
+    }
+    if state.phase() == EvaluationPhase::Analyzing {
+        return if state.analysis_digest().is_some() {
+            EvaluationRecoveryDecision::ReconcileReportArtifact
+        } else {
+            EvaluationRecoveryDecision::ResumeAnalysis
         };
     }
     if let Some((target, status)) = actions.first().copied() {

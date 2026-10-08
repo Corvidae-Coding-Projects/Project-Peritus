@@ -2,6 +2,38 @@
 
 use crate::{EvaluationError, EvaluationErrorKind, EvaluationOperation, invalid};
 
+/// Caller-selected physical work for one resumable bootstrap turn.
+///
+/// This bounds one invocation, not the cumulative statistical workload frozen in the profile.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct BootstrapBatchWork {
+    maximum_draws: u64,
+}
+
+impl BootstrapBatchWork {
+    /// Creates one nonempty physical draw batch.
+    ///
+    /// # Errors
+    /// Rejects zero work. The caller remains responsible for selecting a responsive batch size.
+    pub const fn new(maximum_draws: u64) -> Result<Self, EvaluationError> {
+        if maximum_draws == 0 {
+            Err(invalid(
+                EvaluationErrorKind::LimitExceeded,
+                EvaluationOperation::Analyze,
+                "bootstrap physical batch has zero draws",
+            ))
+        } else {
+            Ok(Self { maximum_draws })
+        }
+    }
+
+    /// Maximum deterministic draws performed before the next durable boundary.
+    #[must_use]
+    pub const fn maximum_draws(self) -> u64 {
+        self.maximum_draws
+    }
+}
+
 /// Complete independently enforced physical page and statistical-work limits.
 ///
 /// Task, rollout, attempt, and state bounds size one physical page. They never limit the
@@ -24,7 +56,7 @@ impl EvaluationLimits {
     pub const MAX_ROLLOUTS: u32 = 16_384;
     /// Compiled attempt records per physical page.
     pub const MAX_ATTEMPTS_PER_ROLLOUT: u16 = 16;
-    /// Compiled deterministic bootstrap replicate ceiling.
+    /// Compiled cumulative bootstrap request ceiling.
     pub const MAX_BOOTSTRAP_REPLICATES: u32 = 100_000;
     /// Compiled distinct pass@k values.
     pub const MAX_PASS_K_VALUES: u16 = 32;

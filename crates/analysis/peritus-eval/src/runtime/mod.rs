@@ -1,5 +1,6 @@
 //! Narrow effect orchestration over existing C0 owners.
 
+mod analysis;
 mod artifact;
 mod publication;
 mod recovery;
@@ -7,6 +8,9 @@ mod recovery;
 use peritus_journal::{CommittedBatch, OutboxId, SqliteJournal};
 use peritus_types::{CommandId, EventId, Sha256Digest};
 
+pub use analysis::{
+    DurableAnalysisAdvance, FinalizedAnalysisArtifact, advance_durable_analysis,
+};
 pub use artifact::{
     FinalizedEvaluationArtifact, commit_report_ready, finalize_report_artifact,
     stage_and_commit_report,
@@ -135,6 +139,56 @@ impl<'a> EvaluationRuntime<'a> {
     ) -> Result<CommittedEvaluationTransition, EvaluationError> {
         let operation = commit_evaluation_transition(self.journal, command, transition)?;
         Ok(CommittedEvaluationTransition::new(operation))
+    }
+
+    /// Commits the complete ledger boundary that authorizes deterministic analysis.
+    ///
+    /// # Errors
+    /// Rejects incomplete conservation, stale fences, invalid phase, or C0 failure.
+    pub fn start_analysis(
+        &mut self,
+        state: &EvaluationState,
+        ids: TransitionIds,
+    ) -> Result<CommittedEvaluationTransition, EvaluationError> {
+        self.commit_kind(
+            state,
+            ids,
+            EvaluationCommandKind::StartAnalysis { counts: state.counts() },
+        )
+    }
+
+    /// Advances one physical analysis batch and commits its checkpoint or completed artifact.
+    ///
+    /// # Errors
+    /// Rejects phase, owner, input, checkpoint, cancellation, artifact, or C0 transition drift.
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "durable analysis binds every owner, input, work, cancellation, and transition identity"
+    )]
+    pub fn advance_analysis(
+        &mut self,
+        artifact_store: &peritus_artifact_store::ArtifactStore,
+        state: &EvaluationState,
+        plan: &crate::EvaluationPlan,
+        profile: &FrozenEvaluationProfile,
+        ledger: &crate::RolloutLedger,
+        owner: peritus_types::ActorId,
+        work: crate::BootstrapBatchWork,
+        cancellation: &peritus_journal::JournalCancellation,
+        ids: TransitionIds,
+    ) -> Result<DurableAnalysisAdvance, EvaluationError> {
+        analysis::advance_durable_analysis(
+            self.journal,
+            artifact_store,
+            state,
+            plan,
+            profile,
+            ledger,
+            owner,
+            work,
+            cancellation,
+            ids,
+        )
     }
 
     /// Commits the exact claimed initial or retained-retry attempt before external execution.

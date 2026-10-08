@@ -124,6 +124,7 @@ pub fn commit_report_ready(
 ) -> Result<CommittedEvaluationTransition, EvaluationError> {
     if report.report().campaign_id() != state.campaign_id()
         || report.report().profile_digest() != state.profile_digest()
+        || state.analysis_digest() != Some(report.report().analysis().digest())
         || staged.report_id() != report.id()
         || staged.payload_digest() != report.digest()
         || staged.artifact_digest().sha256() != peritus_codec::sha256(report.bytes())

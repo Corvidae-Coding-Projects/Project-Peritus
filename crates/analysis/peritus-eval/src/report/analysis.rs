@@ -2,14 +2,20 @@
 
 use std::collections::BTreeMap;
 
+use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
+
 use crate::{
-    ArmCorrectness, ArmResourceSummary, DistributionSummary, EvaluationArm, EvaluationError,
-    EvaluationErrorKind, EvaluationOperation, EvaluationPlan, EvaluationReliability,
-    FrozenEvaluationProfile, InfrastructureTreatment, LedgerCounts, MetricAvailability,
-    MetricUnavailableReason, PairedCell, PairedEvidence, ResultDigest, RolloutLedger,
-    RolloutOutcome, RolloutRecord, TaskFailureClass, TaskId, TaskPassAtK, TaskStability,
-    WilsonInterval, analyze_stability, compare_paired, pass_at_k,
+    ArmCorrectness, ArmResourceSummary, BootstrapBatchWork, BootstrapCursor, DistributionSummary,
+    EvaluationArm, EvaluationError, EvaluationErrorKind, EvaluationOperation, EvaluationPlan,
+    EvaluationRecovery, EvaluationReliability, FrozenEvaluationProfile, InfrastructureTreatment,
+    LedgerCounts, MetricAvailability, MetricUnavailableReason, PairedBootstrapStatus, PairedCell,
+    PairedComparisonJob, PairedEvidence, ResultDigest, RolloutLedger, RolloutOutcome, RolloutRecord,
+    TaskFailureClass, TaskId, TaskPassAtK, TaskStability, WilsonInterval, analyze_stability,
+    compare_paired, pass_at_k,
 };
+
+const ANALYSIS_CHECKPOINT_DOMAIN: &[u8] = b"peritus.evaluation.analysis-checkpoint.v1\0";
+const ANALYSIS_INPUT_DOMAIN: &[u8] = b"peritus.evaluation.analysis-input.v1\0";
 
 /// Complete deterministic E3 analysis, with no promotion authority.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -59,6 +65,55 @@ impl EvaluationAnalysis {
     pub const fn digest(&self) -> ResultDigest {
         self.digest
     }
+
+    pub(crate) fn canonical_bytes(
+        &self,
+        profile: crate::ProfileDigest,
+    ) -> Result<Vec<u8>, EvaluationError> {
+        super::canonical::analysis_bytes(profile, self)
+    }
+}
+
+/// Canonical artifact payload for one exact resumable analysis frontier.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EvaluationAnalysisCheckpoint {
+    bytes: Vec<u8>,
+}
+
+impl EvaluationAnalysisCheckpoint {
+    /// Adopts bytes loaded from the artifact owner for full input-bound validation on resume.
+    ///
+    /// # Errors
+    /// Rejects an empty artifact payload.
+    pub fn from_artifact_bytes(bytes: Vec<u8>) -> Result<Self, EvaluationError> {
+        if bytes.is_empty() {
+            Err(invalid_checkpoint("analysis checkpoint artifact is empty"))
+        } else {
+            Ok(Self { bytes })
+        }
+    }
+
+    /// Exact canonical checkpoint bytes.
+    #[must_use]
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+}
+
+/// Result of one explicitly bounded, cancellation-aware analysis turn.
+#[derive(Clone, Debug)]
+pub enum EvaluationAnalysisBatch {
+    /// A complete frontier must be persisted before the caller yields.
+    Checkpoint {
+        /// Canonical input-bound frontier bytes.
+        checkpoint: EvaluationAnalysisCheckpoint,
+        /// Exact bootstrap cursor, absent when the paired metric requires no bootstrap.
+        cursor: Option<BootstrapCursor>,
+        /// Whether cancellation caused the boundary rather than exhaustion of the physical budget.
+        cancelled: bool,
+    },
+    /// Every deterministic statistic is complete.
+    Complete(EvaluationAnalysis),
 }
 
 /// Analyzes only a complete ledger bound to the exact plan/profile.
@@ -74,6 +129,111 @@ pub fn analyze_evaluation(
     profile: &FrozenEvaluationProfile,
     ledger: &RolloutLedger,
 ) -> Result<EvaluationAnalysis, EvaluationError> {
+    let records = bound_records(plan, profile, ledger)?;
+    let paired = paired(profile, plan, &records)?;
+    finish_analysis(plan, profile, ledger, &records, paired)
+}
+
+/// Advances deterministic analysis by one explicit physical bootstrap batch.
+///
+/// The returned checkpoint binds the campaign, profile, plan, terminal records, retained attempt
+/// identities, exact bootstrap cursor, partial draw sum, and exact order-statistic frontiers.
+///
+/// # Errors
+/// Rejects incomplete or drifted inputs, malformed prior checkpoints, invalid work, or arithmetic
+/// overflow.
+pub fn analyze_evaluation_batch(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    ledger: &RolloutLedger,
+    prior: Option<&EvaluationAnalysisCheckpoint>,
+    work: BootstrapBatchWork,
+    mut is_cancelled: impl FnMut() -> bool,
+) -> Result<EvaluationAnalysisBatch, EvaluationError> {
+    let records = bound_records(plan, profile, ledger)?;
+    let input_digest = analysis_input_digest(plan, profile, ledger, &records)?;
+    let prepared = paired_input(profile, plan, &records)?;
+    let restored = prior
+        .map(|checkpoint| decode_analysis_checkpoint(plan, profile, input_digest, checkpoint.bytes()))
+        .transpose()?;
+    match prepared {
+        PreparedPaired::Unavailable(reason) => {
+            if restored.as_ref().is_some_and(Option::is_some) {
+                return Err(invalid_checkpoint(
+                    "analysis checkpoint contains bootstrap state for an unavailable metric",
+                ));
+            }
+            if is_cancelled() {
+                let checkpoint =
+                    encode_analysis_checkpoint(plan, profile, input_digest, None)?;
+                return Ok(EvaluationAnalysisBatch::Checkpoint {
+                    checkpoint,
+                    cursor: None,
+                    cancelled: true,
+                });
+            }
+            let paired = MetricAvailability::Unavailable(reason);
+            Ok(EvaluationAnalysisBatch::Complete(finish_analysis(
+                plan, profile, ledger, &records, paired,
+            )?))
+        }
+        PreparedPaired::Available { cells, invalid_pairs } => {
+            let mut job = match restored {
+                Some(Some(bytes)) => PairedComparisonJob::restore(
+                    profile.digest(),
+                    &cells,
+                    profile.metrics().bootstrap_replicates(),
+                    profile.metrics().confidence_millionths(),
+                    &bytes,
+                )?,
+                Some(None) => {
+                    return Err(invalid_checkpoint(
+                        "analysis checkpoint omits required bootstrap state",
+                    ));
+                }
+                None => PairedComparisonJob::new(
+                    profile.digest(),
+                    &cells,
+                    profile.metrics().bootstrap_replicates(),
+                    profile.metrics().confidence_millionths(),
+                )?,
+            };
+            match job.advance(work, &mut is_cancelled)? {
+                PairedBootstrapStatus::Complete => {
+                    let paired = MetricAvailability::Available(PairedEvidence {
+                        comparison: job.comparison()?,
+                        invalid_pairs,
+                    });
+                    Ok(EvaluationAnalysisBatch::Complete(finish_analysis(
+                        plan, profile, ledger, &records, paired,
+                    )?))
+                }
+                status @ (PairedBootstrapStatus::Pending
+                | PairedBootstrapStatus::Cancelled) => {
+                    let cursor = job.cursor();
+                    let paired_checkpoint = job.checkpoint_bytes()?;
+                    let checkpoint = encode_analysis_checkpoint(
+                        plan,
+                        profile,
+                        input_digest,
+                        Some(&paired_checkpoint),
+                    )?;
+                    Ok(EvaluationAnalysisBatch::Checkpoint {
+                        checkpoint,
+                        cursor: Some(cursor),
+                        cancelled: status == PairedBootstrapStatus::Cancelled,
+                    })
+                }
+            }
+        }
+    }
+}
+
+fn bound_records(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    ledger: &RolloutLedger,
+) -> Result<BTreeMap<crate::RolloutId, RolloutRecord>, EvaluationError> {
     if plan.digest().as_bytes() == &[0; 32] || !ledger.complete() {
         return Err(crate::invalid(
             EvaluationErrorKind::Incomplete,
@@ -97,12 +257,20 @@ pub fn analyze_evaluation(
         }
         records.insert(spec.id(), record);
     }
+    Ok(records)
+}
 
-    let baseline_records = arm_records(plan, &records, EvaluationArm::Baseline);
-    let candidate_records = arm_records(plan, &records, EvaluationArm::Candidate);
+fn finish_analysis(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    ledger: &RolloutLedger,
+    records: &BTreeMap<crate::RolloutId, RolloutRecord>,
+    paired: MetricAvailability<PairedEvidence>,
+) -> Result<EvaluationAnalysis, EvaluationError> {
+    let baseline_records = arm_records(plan, records, EvaluationArm::Baseline);
+    let candidate_records = arm_records(plan, records, EvaluationArm::Candidate);
     let baseline = correctness(profile, &baseline_records)?;
     let candidate = correctness(profile, &candidate_records)?;
-    let paired = paired(profile, plan, &records)?;
     let baseline_resources = resources(profile, &baseline_records)?;
     let candidate_resources = resources(profile, &candidate_records)?;
     let reliability = reliability(plan, ledger)?;
@@ -247,6 +415,32 @@ fn paired(
     plan: &EvaluationPlan,
     records: &BTreeMap<crate::RolloutId, RolloutRecord>,
 ) -> Result<MetricAvailability<PairedEvidence>, EvaluationError> {
+    match paired_input(profile, plan, records)? {
+        PreparedPaired::Unavailable(reason) => Ok(MetricAvailability::Unavailable(reason)),
+        PreparedPaired::Available { cells, invalid_pairs } => {
+            Ok(MetricAvailability::Available(PairedEvidence {
+                comparison: compare_paired(
+                    profile.digest(),
+                    &cells,
+                    profile.metrics().bootstrap_replicates(),
+                    profile.metrics().confidence_millionths(),
+                )?,
+                invalid_pairs,
+            }))
+        }
+    }
+}
+
+enum PreparedPaired {
+    Unavailable(MetricUnavailableReason),
+    Available { cells: Vec<PairedCell>, invalid_pairs: u32 },
+}
+
+fn paired_input(
+    profile: &FrozenEvaluationProfile,
+    plan: &EvaluationPlan,
+    records: &BTreeMap<crate::RolloutId, RolloutRecord>,
+) -> Result<PreparedPaired, EvaluationError> {
     let mut pairs: BTreeMap<(TaskId, u16), [Option<RolloutRecord>; 2]> = BTreeMap::new();
     for spec in plan.specs() {
         let index = match spec.arm() {
@@ -265,19 +459,19 @@ fn paired(
         for outcome in [baseline.outcome(), candidate.outcome()] {
             match outcome {
                 RolloutOutcome::Cancelled => {
-                    return Ok(MetricAvailability::Unavailable(
+                    return Ok(PreparedPaired::Unavailable(
                         MetricUnavailableReason::CancelledRollout,
                     ));
                 }
                 RolloutOutcome::Ambiguous { .. } => {
-                    return Ok(MetricAvailability::Unavailable(
+                    return Ok(PreparedPaired::Unavailable(
                         MetricUnavailableReason::AmbiguousRollout,
                     ));
                 }
                 RolloutOutcome::InfrastructureFailed { .. }
                     if treatment == InfrastructureTreatment::InvalidateMetric =>
                 {
-                    return Ok(MetricAvailability::Unavailable(
+                    return Ok(PreparedPaired::Unavailable(
                         MetricUnavailableReason::InfrastructureInvalidated,
                     ));
                 }
@@ -293,17 +487,80 @@ fn paired(
         }
     }
     if cells.is_empty() {
-        return Ok(MetricAvailability::Unavailable(MetricUnavailableReason::EmptyDenominator));
+        return Ok(PreparedPaired::Unavailable(MetricUnavailableReason::EmptyDenominator));
     }
-    Ok(MetricAvailability::Available(PairedEvidence {
-        comparison: compare_paired(
-            profile.digest(),
-            &cells,
-            profile.metrics().bootstrap_replicates(),
-            profile.metrics().confidence_millionths(),
-        )?,
-        invalid_pairs,
-    }))
+    Ok(PreparedPaired::Available { cells, invalid_pairs })
+}
+
+fn analysis_input_digest(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    ledger: &RolloutLedger,
+    records: &BTreeMap<crate::RolloutId, RolloutRecord>,
+) -> Result<peritus_types::Sha256Digest, EvaluationError> {
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    writer.write_bytes(ANALYSIS_INPUT_DOMAIN).map_err(checkpoint_codec)?;
+    writer.write_fixed(plan.campaign_id().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_fixed(profile.digest().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_fixed(plan.digest().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_collection_len(plan.specs().len()).map_err(checkpoint_codec)?;
+    for spec in plan.specs() {
+        let record = records.get(&spec.id()).ok_or_else(incomplete)?;
+        writer.write_fixed(record.digest().as_bytes()).map_err(checkpoint_codec)?;
+        let attempts = ledger.attempts(spec.id()).ok_or_else(incomplete)?;
+        writer.write_collection_len(attempts.len()).map_err(checkpoint_codec)?;
+        for attempt in attempts {
+            writer.write_u16(attempt.number()).map_err(checkpoint_codec)?;
+            writer
+                .write_fixed(attempt.observation_digest().as_bytes())
+                .map_err(checkpoint_codec)?;
+            writer.write_bool(attempt.late_after_cancellation()).map_err(checkpoint_codec)?;
+        }
+    }
+    Ok(peritus_codec::sha256(&writer.into_bytes()))
+}
+
+fn encode_analysis_checkpoint(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    input_digest: peritus_types::Sha256Digest,
+    paired: Option<&[u8]>,
+) -> Result<EvaluationAnalysisCheckpoint, EvaluationError> {
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    writer.write_bytes(ANALYSIS_CHECKPOINT_DOMAIN).map_err(checkpoint_codec)?;
+    writer.write_fixed(plan.campaign_id().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_fixed(profile.digest().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_fixed(plan.digest().as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_fixed(input_digest.as_bytes()).map_err(checkpoint_codec)?;
+    writer.write_option_tag(paired.is_some()).map_err(checkpoint_codec)?;
+    if let Some(bytes) = paired {
+        writer.write_bytes(bytes).map_err(checkpoint_codec)?;
+    }
+    Ok(EvaluationAnalysisCheckpoint { bytes: writer.into_bytes() })
+}
+
+fn decode_analysis_checkpoint(
+    plan: &EvaluationPlan,
+    profile: &FrozenEvaluationProfile,
+    input_digest: peritus_types::Sha256Digest,
+    bytes: &[u8],
+) -> Result<Option<Vec<u8>>, EvaluationError> {
+    let mut reader = CanonicalReader::new(bytes, CodecLimits::PRODUCTION);
+    if reader.read_bytes().map_err(checkpoint_codec)? != ANALYSIS_CHECKPOINT_DOMAIN
+        || reader.read_fixed::<16>().map_err(checkpoint_codec)? != *plan.campaign_id().as_bytes()
+        || reader.read_fixed::<32>().map_err(checkpoint_codec)? != *profile.digest().as_bytes()
+        || reader.read_fixed::<32>().map_err(checkpoint_codec)? != *plan.digest().as_bytes()
+        || reader.read_fixed::<32>().map_err(checkpoint_codec)? != *input_digest.as_bytes()
+    {
+        return Err(invalid_checkpoint("analysis checkpoint immutable input binding differs"));
+    }
+    let paired = reader
+        .read_option_tag()
+        .map_err(checkpoint_codec)?
+        .then(|| reader.read_bytes_owned().map_err(checkpoint_codec))
+        .transpose()?;
+    reader.finish().map_err(checkpoint_codec)?;
+    Ok(paired)
 }
 
 fn resources(
@@ -536,5 +793,21 @@ const fn missing_resource() -> EvaluationError {
         EvaluationErrorKind::Incomplete,
         EvaluationOperation::Analyze,
         "resource observation is explicitly missing",
+    )
+}
+const fn invalid_checkpoint(detail: &'static str) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::Binding,
+        EvaluationOperation::Analyze,
+        EvaluationRecovery::Quarantine,
+        detail,
+    )
+}
+const fn checkpoint_codec(_: peritus_codec::CodecError) -> EvaluationError {
+    EvaluationError::new(
+        EvaluationErrorKind::LimitExceeded,
+        EvaluationOperation::Analyze,
+        EvaluationRecovery::ReduceScope,
+        "analysis checkpoint exceeds canonical codec limits",
     )
 }
