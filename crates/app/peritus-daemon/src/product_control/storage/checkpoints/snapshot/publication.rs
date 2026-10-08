@@ -548,11 +548,7 @@ impl ControlStore {
         let claim = plan.claim.clone();
         let owner = plan.owner;
         let mut pending = PendingPublication::new_or_resume(&root, &claim, || {
-            if self
-                .journal
-                .state_record(claim.namespace, &claim.id)?
-                .is_some()
-            {
+            if self.publication_is_authoritative(claim.namespace, &claim.id)? {
                 return Err(Error::Corrupt(
                     "authoritative root retains an unfinished publication marker",
                 ));
@@ -586,7 +582,7 @@ impl ControlStore {
         let mut changed = false;
         let mut retained_claimed = BTreeMap::new();
         for (key, entry) in std::mem::take(&mut inventory.entries) {
-            let authoritative = self.journal.state_record(key.0, &key.1)?.is_some();
+            let authoritative = self.publication_is_authoritative(key.0, &key.1)?;
             if !authoritative && entry.claimed.is_some() {
                 retained_claimed.insert(key, entry);
                 continue;
@@ -610,6 +606,20 @@ impl ControlStore {
             self.collect_abandoned_snapshot_artifacts()?;
         }
         Ok(())
+    }
+
+    fn publication_is_authoritative(
+        &self,
+        namespace: u16,
+        id: &[u8; 16],
+    ) -> Result<bool, Error> {
+        if let Some(record) = self.journal.state_record(namespace, id)? {
+            if record.revision() != 1 {
+                return Err(Error::Corrupt("immutable publication root has a mutable revision"));
+            }
+            return Ok(true);
+        }
+        Ok(self.journal.state_record_revision(namespace, id, 1)?.is_some())
     }
 
     fn mark_snapshot_collection_pending(&self) -> Result<(), Error> {

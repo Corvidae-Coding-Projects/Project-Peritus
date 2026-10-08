@@ -655,6 +655,62 @@ impl Catalog {
         })
     }
 
+    pub(crate) fn migrate_reference_owner(
+        &self,
+        previous: ReferenceOwner,
+        replacement: ReferenceOwner,
+    ) -> Result<u64, ArtifactStoreError> {
+        if previous == replacement {
+            return Ok(0);
+        }
+        let transaction =
+            Transaction::new_unchecked(&self.connection, TransactionBehavior::Immediate)
+                .map_err(catalog_io)?;
+        transaction
+            .execute(
+                "INSERT OR IGNORE INTO artifact_references(
+                    owner_kind, owner_identity, artifact_digest
+                 )
+                 SELECT ?3, ?4, artifact_digest
+                   FROM artifact_references
+                  WHERE owner_kind = ?1 AND owner_identity = ?2",
+                params![
+                    previous.kind().database_tag(),
+                    previous.identity().as_bytes().as_slice(),
+                    replacement.kind().database_tag(),
+                    replacement.identity().as_bytes().as_slice(),
+                ],
+            )
+            .map_err(catalog_io)?;
+        transaction
+            .execute(
+                "DELETE FROM artifact_collection_candidates
+                  WHERE artifact_digest IN (
+                    SELECT artifact_digest FROM artifact_references
+                     WHERE owner_kind = ?1 AND owner_identity = ?2
+                  )",
+                params![
+                    replacement.kind().database_tag(),
+                    replacement.identity().as_bytes().as_slice(),
+                ],
+            )
+            .map_err(catalog_io)?;
+        let changed = transaction
+            .execute(
+                "DELETE FROM artifact_references
+                  WHERE owner_kind = ?1 AND owner_identity = ?2",
+                params![
+                    previous.kind().database_tag(),
+                    previous.identity().as_bytes().as_slice(),
+                ],
+            )
+            .map_err(catalog_io)?;
+        transaction.commit().map_err(catalog_io)?;
+        u64::try_from(changed).map_err(|_| {
+            corrupt_catalog("migrated artifact reference count cannot be represented")
+        })
+    }
+
     pub(crate) fn release_publication(
         &self,
         digest: ArtifactDigest,
@@ -794,24 +850,19 @@ impl Catalog {
     }
 
     pub(crate) fn inventory(&self) -> Result<Vec<GcInventoryEntry>, ArtifactStoreError> {
-        self.inventory_where("AND integrity_state = 1")
-    }
-
-    fn inventory_where(
-        &self,
-        integrity_filter: &'static str,
-    ) -> Result<Vec<GcInventoryEntry>, ArtifactStoreError> {
-        let query = format!(
-            "SELECT record.digest, record.size, record.quarantine_state,
-                    record.quarantine_generation,
+        let mut statement = self
+            .connection
+            .prepare(
+                "SELECT record.digest, record.size, record.quarantine_state,
+                    record.quarantine_generation, record.integrity_state,
                     candidate.artifact_digest IS NOT NULL
                FROM artifact_records AS record
                LEFT JOIN artifact_collection_candidates AS candidate
                  ON candidate.artifact_digest = record.digest
-              WHERE record.finalization_state = 2 {integrity_filter}
-              ORDER BY record.digest"
-        );
-        let mut statement = self.connection.prepare(&query).map_err(catalog_io)?;
+              WHERE record.finalization_state = 2
+              ORDER BY record.digest",
+            )
+            .map_err(catalog_io)?;
         let rows = statement
             .query_map([], |row| {
                 Ok((
@@ -819,23 +870,63 @@ impl Catalog {
                     row.get::<_, i64>(1)?,
                     row.get::<_, i64>(2)?,
                     row.get::<_, Option<i64>>(3)?,
-                    row.get::<_, bool>(4)?,
+                    row.get::<_, i64>(4)?,
+                    row.get::<_, bool>(5)?,
                 ))
             })
             .map_err(catalog_io)?;
         let mut inventory = Vec::new();
         for row in rows {
-            let (digest, size, state, generation, collection_eligible) =
+            let (digest, size, state, generation, integrity, collection_eligible) =
                 row.map_err(catalog_io)?;
             let quarantine = decode_quarantine(state, generation)?;
-            inventory.push(GcInventoryEntry::with_collection_eligibility(
+            let repair_required = match integrity {
+                1 => false,
+                2 => true,
+                _ => return Err(corrupt_catalog("unknown artifact integrity state")),
+            };
+            inventory.push(GcInventoryEntry::with_collection_state(
                 ArtifactDigest::new(array::<32>(&digest)?),
                 u64::try_from(size).map_err(|_| corrupt_catalog("negative artifact size"))?,
                 quarantine,
                 collection_eligible,
+                repair_required,
             ));
         }
         Ok(inventory)
+    }
+
+    pub(crate) fn repair_containments(
+        &self,
+        digest: ArtifactDigest,
+    ) -> Result<Vec<(u64, ContainedLayoutNamespace)>, ArtifactStoreError> {
+        let mut statement = self
+            .connection
+            .prepare(
+                "SELECT operation_identity, namespace
+                   FROM artifact_repair_containments
+                  WHERE artifact_digest = ?1
+                  ORDER BY operation_identity",
+            )
+            .map_err(catalog_io)?;
+        let rows = statement
+            .query_map([digest.as_bytes().as_slice()], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
+            })
+            .map_err(catalog_io)?;
+        let mut containments = Vec::new();
+        for row in rows {
+            let (identity, namespace) = row.map_err(catalog_io)?;
+            let identity = u64::try_from(identity)
+                .map_err(|_| corrupt_catalog("negative repair containment identity"))?;
+            let namespace = match namespace {
+                1 => ContainedLayoutNamespace::Objects,
+                2 => ContainedLayoutNamespace::Quarantine,
+                _ => return Err(corrupt_catalog("unknown repair containment namespace")),
+            };
+            containments.push((identity, namespace));
+        }
+        Ok(containments)
     }
 
     pub(crate) fn quota_bytes(&self) -> Result<(u64, u64), ArtifactStoreError> {

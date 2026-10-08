@@ -277,6 +277,8 @@ impl ControlStore {
             .state_record(IMAGE_DESCRIPTOR_NAMESPACE, image.operation().as_bytes())?
         {
             verify_descriptor(image, descriptor.bytes())?;
+            verify_retained_image(&self.checkpoint_artifacts, image)?;
+            adopt_image_owner(&self.checkpoint_artifacts, image)?;
         } else {
             let legacy = self
                 .journal
@@ -368,9 +370,27 @@ fn retain_legacy_image(
         writer.write_chunk(bytes).map_err(artifact_error)?;
         writer.finalize().map_err(artifact_error)?;
     }
+    verify_retained_image(store, image)?;
+    adopt_image_owner(store, image)
+}
+
+fn verify_retained_image(store: &ArtifactStore, image: &ImageAttachment) -> Result<(), Error> {
+    let digest = ArtifactDigest::from_sha256(image.digest());
+    let metadata = store.verify(digest).map_err(artifact_error)?;
+    if metadata.size() != image.bytes() || metadata.digest() != digest {
+        return Err(Error::Corrupt("image artifact metadata differs from its control reference"));
+    }
+    Ok(())
+}
+
+fn adopt_image_owner(store: &ArtifactStore, image: &ImageAttachment) -> Result<(), Error> {
+    let digest = ArtifactDigest::from_sha256(image.digest());
+    let owner = descriptor_owner(image);
+    store.add_reference(owner, digest).map_err(artifact_error)?;
     store
-        .add_reference(legacy_owner(image), digest)
-        .map_err(artifact_error)
+        .migrate_reference_owner(legacy_owner(image), owner)
+        .map_err(artifact_error)?;
+    Ok(())
 }
 
 fn descriptor_bytes(image: &ImageAttachment) -> Vec<u8> {

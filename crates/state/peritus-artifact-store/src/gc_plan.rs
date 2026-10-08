@@ -39,6 +39,7 @@ pub struct GcInventoryEntry {
     size: u64,
     quarantine: QuarantineState,
     collection_eligible: bool,
+    repair_required: bool,
 }
 
 impl GcInventoryEntry {
@@ -49,7 +50,7 @@ impl GcInventoryEntry {
     /// have not acquired or released an owner remain protected.
     #[must_use]
     pub const fn new(digest: ArtifactDigest, size: u64, quarantine: QuarantineState) -> Self {
-        Self { digest, size, quarantine, collection_eligible: true }
+        Self { digest, size, quarantine, collection_eligible: true, repair_required: false }
     }
 
     /// Creates an inventory observation with its durable collection eligibility.
@@ -60,7 +61,17 @@ impl GcInventoryEntry {
         quarantine: QuarantineState,
         collection_eligible: bool,
     ) -> Self {
-        Self { digest, size, quarantine, collection_eligible }
+        Self { digest, size, quarantine, collection_eligible, repair_required: false }
+    }
+
+    pub(crate) const fn with_collection_state(
+        digest: ArtifactDigest,
+        size: u64,
+        quarantine: QuarantineState,
+        collection_eligible: bool,
+        repair_required: bool,
+    ) -> Self {
+        Self { digest, size, quarantine, collection_eligible, repair_required }
     }
 
     /// Returns the digest.
@@ -85,6 +96,12 @@ impl GcInventoryEntry {
     #[must_use]
     pub const fn collection_eligible(self) -> bool {
         self.collection_eligible
+    }
+
+    /// Returns whether exact bytes are fenced behind a durable repair obligation.
+    #[must_use]
+    pub const fn repair_required(self) -> bool {
+        self.repair_required
     }
 }
 
@@ -118,6 +135,24 @@ pub enum GcAction {
         /// Prior quarantine generation.
         since: CollectionGeneration,
     },
+    /// Advances an unreferenced repair obligation into its first accounting quarantine generation.
+    QuarantineRepair {
+        /// Artifact accounting identity to quarantine.
+        digest: ArtifactDigest,
+        /// Exact logical size still charged to the store.
+        size: u64,
+        /// Generation assigned to the accounting quarantine.
+        generation: CollectionGeneration,
+    },
+    /// Deletes an unreferenced repair obligation after its later accounting sweep generation.
+    DeleteRepair {
+        /// Artifact accounting identity to delete.
+        digest: ArtifactDigest,
+        /// Exact logical size released from durable accounting.
+        size: u64,
+        /// Prior accounting-quarantine generation.
+        since: CollectionGeneration,
+    },
 }
 
 impl GcAction {
@@ -127,7 +162,9 @@ impl GcAction {
         match self {
             Self::Quarantine { digest, .. }
             | Self::Restore { digest, .. }
-            | Self::Delete { digest, .. } => digest,
+            | Self::Delete { digest, .. }
+            | Self::QuarantineRepair { digest, .. }
+            | Self::DeleteRepair { digest, .. } => digest,
         }
     }
 }
@@ -172,22 +209,50 @@ impl GcPlan {
         let mut actions = Vec::new();
         for entry in entries.into_values() {
             let is_marked = marked.contains(&entry.digest);
-            match (entry.quarantine, is_marked) {
-                (QuarantineState::Active, false) if entry.collection_eligible => {
+            match (entry.repair_required, entry.quarantine, is_marked) {
+                (true, _, true) => {}
+                (true, QuarantineState::Active, false) if entry.collection_eligible => {
+                    actions.push(GcAction::QuarantineRepair {
+                        digest: entry.digest,
+                        size: entry.size,
+                        generation,
+                    });
+                }
+                (true, QuarantineState::Quarantined { since }, false) => {
+                    if !entry.collection_eligible {
+                        return Err(invalid_plan(
+                            "a quarantined repair obligation lacks durable collection eligibility",
+                        ));
+                    }
+                    if since > generation {
+                        return Err(invalid_plan(
+                            "repair quarantine generation is newer than the plan",
+                        ));
+                    }
+                    if sweep_is_later(since.get(), generation.get()) {
+                        actions.push(GcAction::DeleteRepair {
+                            digest: entry.digest,
+                            size: entry.size,
+                            since,
+                        });
+                    }
+                }
+                (true, QuarantineState::Active, false) => {}
+                (false, QuarantineState::Active, false) if entry.collection_eligible => {
                     actions.push(GcAction::Quarantine {
                         digest: entry.digest,
                         size: entry.size,
                         generation,
                     });
                 }
-                (QuarantineState::Quarantined { since }, true) => {
+                (false, QuarantineState::Quarantined { since }, true) => {
                     actions.push(GcAction::Restore {
                         digest: entry.digest,
                         size: entry.size,
                         since,
                     });
                 }
-                (QuarantineState::Quarantined { since }, false) => {
+                (false, QuarantineState::Quarantined { since }, false) => {
                     if !entry.collection_eligible {
                         return Err(invalid_plan(
                             "a quarantined artifact lacks durable collection eligibility",
@@ -204,7 +269,7 @@ impl GcPlan {
                         });
                     }
                 }
-                (QuarantineState::Active, _) => {}
+                (false, QuarantineState::Active, _) => {}
             }
         }
         Ok(Self { generation, actions, marked })
@@ -241,13 +306,13 @@ pub struct GcApplication {
 impl GcApplication {
     pub(crate) fn observe(&mut self, action: GcAction) -> Result<(), ArtifactStoreError> {
         match action {
-            GcAction::Quarantine { .. } => {
+            GcAction::Quarantine { .. } | GcAction::QuarantineRepair { .. } => {
                 self.quarantined = self.quarantined.checked_add(1).ok_or_else(overflow)?;
             }
             GcAction::Restore { .. } => {
                 self.restored = self.restored.checked_add(1).ok_or_else(overflow)?;
             }
-            GcAction::Delete { size, .. } => {
+            GcAction::Delete { size, .. } | GcAction::DeleteRepair { size, .. } => {
                 self.deleted = self.deleted.checked_add(1).ok_or_else(overflow)?;
                 self.deleted_bytes = self.deleted_bytes.checked_add(size).ok_or_else(overflow)?;
             }

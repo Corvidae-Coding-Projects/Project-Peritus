@@ -12,9 +12,9 @@ pub use capacity::SpaceObservation;
 use crate::{
     ArtifactCatalogCancellation, ArtifactDigest, ArtifactMetadata, ArtifactReadHandle,
     ArtifactStoreError, ArtifactWriteHandle, ArtifactWriter, CollectionGeneration, ErrorCode,
-    FinalizedArtifact, GcAction, GcApplication, GcPlan, QuarantineState, QuotaPlan, QuotaSnapshot,
-    RecoveryClass, RecoveryObservation, RecoveryReport, RecoverySummary, ReferenceOwner,
-    ReferenceRoots, StoragePolicy, StoreConfig, StoreOperation, WriteRequest,
+    FinalizedArtifact, GcAction, GcApplication, GcPlan, IntegrityState, QuarantineState, QuotaPlan,
+    QuotaSnapshot, RecoveryClass, RecoveryObservation, RecoveryReport, RecoverySummary,
+    ReferenceOwner, ReferenceRoots, StoragePolicy, StoreConfig, StoreOperation, WriteRequest,
     catalog::Catalog,
     finalize::{read_finalized, verify_finalized},
     path::{StorePaths, io, sync_directory},
@@ -341,6 +341,22 @@ impl ArtifactStore {
         self.catalog.retire_reference_owner(owner)
     }
 
+    /// Atomically transfers every durable root from a legacy owner to its canonical replacement.
+    ///
+    /// Exact references, including repair obligations, remain continuously owned throughout the
+    /// transaction. This is intended for format migrations performed while the store lock is held.
+    ///
+    /// # Errors
+    ///
+    /// Returns a catalog or reference-count representation error.
+    pub fn migrate_reference_owner(
+        &self,
+        previous: ReferenceOwner,
+        replacement: ReferenceOwner,
+    ) -> Result<u64, ArtifactStoreError> {
+        self.catalog.migrate_reference_owner(previous, replacement)
+    }
+
     /// Explicitly releases a finalized publication that never acquired a durable reference.
     ///
     /// The exact creating event prevents one context from releasing a coincidentally known digest
@@ -498,7 +514,79 @@ impl ArtifactStore {
                     .map_err(|error| io(StoreOperation::Remove, error))?;
                 sync_directory(&self.paths.ensure_quarantine_parent(digest)?)
             }
+            GcAction::QuarantineRepair { digest, size, generation } => {
+                let metadata = self.require_state(digest, size, QuarantineState::Active)?;
+                if metadata.integrity() != IntegrityState::Corrupt {
+                    return Err(stale_plan());
+                }
+                self.catalog
+                    .set_quarantine(digest, QuarantineState::Quarantined { since: generation })
+            }
+            GcAction::DeleteRepair { digest, size, since } => {
+                let metadata =
+                    self.require_state(digest, size, QuarantineState::Quarantined { since })?;
+                if metadata.integrity() != IntegrityState::Corrupt {
+                    return Err(stale_plan());
+                }
+                let containments = self.catalog.repair_containments(digest)?;
+                self.catalog.delete_record(digest)?;
+                self.remove_repair_content(digest, &containments)
+            }
         }
+    }
+
+    fn remove_repair_content(
+        &self,
+        digest: ArtifactDigest,
+        containments: &[(u64, crate::ContainedLayoutNamespace)],
+    ) -> Result<(), ArtifactStoreError> {
+        for path in [self.paths.object(digest), self.paths.quarantine(digest)] {
+            match fs::symlink_metadata(&path) {
+                Ok(metadata) if metadata.file_type().is_file() || metadata.file_type().is_symlink() => {
+                    fs::remove_file(&path).map_err(|error| io(StoreOperation::Remove, error))?;
+                    sync_directory(path.parent().ok_or_else(|| {
+                        ArtifactStoreError::message(
+                            ErrorCode::CorruptObject,
+                            RecoveryClass::TerminalIntegrity,
+                            "repair content has no canonical parent",
+                        )
+                    })?)?;
+                }
+                Ok(_) => return Err(ArtifactStoreError::message(
+                    ErrorCode::CorruptObject,
+                    RecoveryClass::TerminalIntegrity,
+                    "repair content is not a regular file",
+                )),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(io(StoreOperation::Remove, error)),
+            }
+        }
+        let mut removed_containment = false;
+        for &(identity, namespace) in containments {
+            let directory = self.paths.recovery().join(format!(
+                "{identity:016x}-{}-{}",
+                namespace.tag(),
+                digest.to_hex(),
+            ));
+            match fs::symlink_metadata(&directory) {
+                Ok(metadata) if metadata.file_type().is_dir() && !metadata.file_type().is_symlink() => {
+                    fs::remove_dir_all(&directory)
+                        .map_err(|error| io(StoreOperation::Remove, error))?;
+                    removed_containment = true;
+                }
+                Ok(_) => return Err(ArtifactStoreError::message(
+                    ErrorCode::CorruptObject,
+                    RecoveryClass::TerminalIntegrity,
+                    "repair containment is not a safe directory",
+                )),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(io(StoreOperation::Remove, error)),
+            }
+        }
+        if removed_containment {
+            sync_directory(self.paths.recovery())?;
+        }
+        Ok(())
     }
 
     fn require_state(

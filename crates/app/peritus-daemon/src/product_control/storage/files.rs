@@ -328,6 +328,8 @@ impl ControlStore {
             .state_record(FILE_DESCRIPTOR_NAMESPACE, version.operation().as_bytes())?
         {
             verify_descriptor(version, descriptor.bytes())?;
+            verify_retained_artifact(&self.checkpoint_artifacts, version)?;
+            adopt_file_owner(&self.checkpoint_artifacts, version)?;
         } else {
             let legacy = self
                 .journal
@@ -442,7 +444,17 @@ fn retain_legacy_file(
         writer.finalize().map_err(artifact_error)?;
     }
     verify_retained_artifact(store, version)?;
-    store.add_reference(legacy_owner(version), digest).map_err(artifact_error)
+    adopt_file_owner(store, version)
+}
+
+fn adopt_file_owner(store: &ArtifactStore, version: &FileVersion) -> Result<(), Error> {
+    let digest = ArtifactDigest::from_sha256(version.observation().digest());
+    let owner = descriptor_owner(version);
+    store.add_reference(owner, digest).map_err(artifact_error)?;
+    store
+        .migrate_reference_owner(legacy_owner(version), owner)
+        .map_err(artifact_error)?;
+    Ok(())
 }
 
 fn verify_retained_artifact(

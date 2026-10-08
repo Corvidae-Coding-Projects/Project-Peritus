@@ -394,7 +394,9 @@ pub(crate) fn open_public_reply_artifact(
 ) -> Result<ArtifactReadHandle, Error> {
     let digest = spool_reply_artifact(config, reference, legacy)?;
     let store = artifact(ArtifactStore::open(config.clone()))?;
-    artifact(store.add_reference(reply_owner(reference), digest))?;
+    let owner = reply_owner(reference);
+    artifact(store.add_reference(owner, digest))?;
+    artifact(store.migrate_reference_owner(legacy_reply_owner(reference), owner))?;
     artifact(store.open_read(digest))
 }
 
@@ -470,6 +472,13 @@ fn verify_descriptor(reference: &PublicReplyReference, bytes: &[u8]) -> Result<(
 fn reply_owner(reference: &PublicReplyReference) -> ReferenceOwner {
     super::checkpoints::snapshot::reference_owner(
         REPLY_DESCRIPTOR_NAMESPACE,
+        reference.operation().as_bytes(),
+    )
+}
+
+fn legacy_reply_owner(reference: &PublicReplyReference) -> ReferenceOwner {
+    super::checkpoints::snapshot::reference_owner(
+        REPLY_NAMESPACE,
         reference.operation().as_bytes(),
     )
 }
