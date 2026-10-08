@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3967,
-        "tip_oid": "fe7dc30712c5ef83caba6bfad5ae4202237d2209",
-        "prefix_sha256": "014477722dda58b21ad82b23af5523e504028dfc7c08e03acb0d47ece7fab28e"
+        "sequence": 3968,
+        "tip_oid": "540541fdea6fcdbf082a39af02c6315145215961",
+        "prefix_sha256": "4dbdb0157996af3998560512d7617941511c769744e9f5bba6e7ab3678cb38a3"
       },
       "NWAR": {
         "sequence": 39,
@@ -30010,12 +30010,13 @@
       "display_id": 136,
       "title": "[L037] Selected horizons synthesize a completion reserve and clamp command execution",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L037.\n\n- `developer_tools/command_budget.rs:9,56-87,96-103` reserves **one fifth of the selected horizon**, at least one second for a whole-second horizon, at most **300 seconds**, and no more than the horizon. Remaining command time is floored to whole seconds after subtracting that reserve.\n- It clamps a requested timeout, assigns the remaining allowance when the command has no requested timeout, and refuses to start when zero remains. `executor/command.rs:42-44,67-69,167-188` enforces this allowance. `None` horizon has no reserve and preserves the optional requested timeout.\n- Explicit `timeout_seconds` must be positive and at most **u64::MAX / 1,000** for millisecond representation. Terminal dimensions are **1..65,535** at command start (defaults 24×80) and **0..65,535** at resize; downstream validation remains pending.\n- Daily-driving status: ordinary daemon launch currently has no run horizon; other horizon callers are pending. This reserve is an additional policy deadline inside any selected horizon, and timeout recovery text discourages an equivalent longer retry at `command.rs:200-206`.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.985155844Z",
-      "updated_at": "2026-10-08T02:05:51.903119445Z",
+      "updated_at": "2026-10-08T02:07:26.620144249Z",
+      "closed_at": "2026-10-08T02:07:26.617019515Z",
       "labels": [
         "daily-driving-limiter"
       ],
