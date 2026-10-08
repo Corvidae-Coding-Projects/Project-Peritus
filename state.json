@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3952,
-        "tip_oid": "8bc7c2cc61c3f60df05eed4701abee01a531de75",
-        "prefix_sha256": "0c00172dca89d5d11891e7e76acbfe79844c1a74a347895649793274095923be"
+        "sequence": 3953,
+        "tip_oid": "321615ea7122962f19d754d0e6e8bcb75afb0c68",
+        "prefix_sha256": "def8f581c02c516686721e89b5201fa28be7a0087026f52336df3b7e2abd53e9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3179,
+  "next_comment_id": 3180,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15076,11 +15076,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.971084862Z",
-      "updated_at": "2026-10-06T13:19:07.973177717Z",
+      "updated_at": "2026-10-08T01:43:01.390265902Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2e5921aa-84cd-4d0f-9786-c5544faf5bd0": {
+          "display_id": 3179,
+          "author": "6ME5",
+          "content": "Code complete in commit 1dde279ab: goal lifecycle separates runner acceptance from unresolved attempt obligations, retains accepted/stale evidence provenance during reconciliation, and blocks achieved goals only when bound evidence changes. Resume preserves the same objective/usage frontier; cancellation without explicit user intent remains recovery-required. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:43:01.380359716Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA15Leg5dwJOdB/0H2p3G7G4uMJWvsTd8jtmv0ljgt0DxKQTXujKyLrUCEr9qIy1BGMKaEeJ0Fr0H8K/duZwq+BA=="
+        },
         "b391d35d-49e8-4df0-a933-d2e2e544b61c": {
           "display_id": 2205,
           "author": "6ME5",
