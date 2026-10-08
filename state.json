@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4190,
-        "tip_oid": "1c8f7dfe7da730acbdf9aafb60618d533897e349",
-        "prefix_sha256": "1a1553ba8a08e1910ae55aa97f0ff8cd96cb9c1e4aa32647587c0ace4819a92c"
+        "sequence": 4191,
+        "tip_oid": "8616607c8cf0085bedf501b665dc00c3d1484fa2",
+        "prefix_sha256": "995edfd0a10f643f9e243a268582277c442b47e5693a8860407943d972ea7191"
       },
       "NWAR": {
         "sequence": 39,
@@ -6357,11 +6357,12 @@
       "uuid": "20c9929f-61e3-4fde-9b53-418c6a1ce4f5",
       "display_id": 826,
       "title": "Continue: validate and publish the existing 20 minimum repairs",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-08T14:47:29.994627132Z",
-      "updated_at": "2026-10-08T16:21:35.159054380Z",
+      "updated_at": "2026-10-08T16:23:38.838323965Z",
+      "closed_at": "2026-10-08T16:23:38.835322287Z",
       "comments": {
         "a4961b8e-9ada-4c34-8802-4c3a52244e64": {
           "display_id": 3279,
