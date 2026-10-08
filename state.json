@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4143,
-        "tip_oid": "bd5874bf0c1727dfb0586622bb1922c80424e398",
-        "prefix_sha256": "24f57528ac3aa93216e98ab01bb15225d0384de7d68f5e2b150b4b5d65320630"
+        "sequence": 4144,
+        "tip_oid": "1d9f8006ad8c1fd1a14fa0ccf87a64f3e729cbeb",
+        "prefix_sha256": "8e7b40b88deb02e330b075993e1384a898f8eb894307b2585ea7518fcbbeb2c2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3275,
+  "next_comment_id": 3276,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -31600,7 +31600,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.492488064Z",
-      "updated_at": "2026-10-06T13:27:51.495189715Z",
+      "updated_at": "2026-10-08T10:35:00.755364778Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -31611,6 +31611,15 @@
           "content": "Systemic repair plan for L674: CLI artifact transfers lose resumable progress and output replacement has a destructive failure gap.\n\nOwning contract and implementation boundary: crates/app/peritus-cli/src/artifact.rs:54-91,112-198,211-258,278-319,322-378,381-385; src/args/artifact.rs:74-105. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPersist transfer/source digest/offset/temp publication state, reconcile an exact transfer after reconnect, and publish with atomic platform-appropriate replace/no-replace plus directory durability. Preserve partial verified data through recoverable failures. No tests run.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "4236da02-34a6-4cd3-85d5-020c46aec300": {
+          "display_id": 3275,
+          "author": "6ME5",
+          "content": "Code complete in commit 6d8bf48f9. Artifact get/put now support explicit leased durable receipts binding endpoint/session/scope, source/output fingerprints, transfer/request seeds, digests, acknowledged offsets/ordinals, pending chunk identities, and verification/publication phases. Downloads retain and revalidate partial bytes and resume the original transfer, with atomic predecessor-safe publication and directory durability. Uploads bind the preflight digest to the same open source handle, persist pending bytes/request identities before send, reconcile ambiguous completion, and replay only original identities. Receipt/data/temp aliasing rejects before effects. Chunk size remains a physical frame; no timer or cumulative-work cutoff added. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T10:35:00.746408939Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADUaw7oIFPOfDpEYLtgJmL91ECeNzhk4IwCU3Xg35NKKQzJm4/NwRetdHi5hsUM3CAUVi1Zpdy5/PFfLGjvZHAA=="
         }
       }
     },
