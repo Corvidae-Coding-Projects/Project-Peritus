@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4011,
-        "tip_oid": "d2aa84c3e2e53ae825a20b45526f134056c12456",
-        "prefix_sha256": "befb44634ede137eee9197c7d00d06f67c5eb85fec15399cf576e702c792c234"
+        "sequence": 4012,
+        "tip_oid": "b6ff07b10e85fb9f0e89d682bd252e6d35bd526b",
+        "prefix_sha256": "abcb750d880b3f7979f6b66a9963c89609fb45457ea69137db4615ee4e587bf2"
       },
       "NWAR": {
         "sequence": 39,
@@ -32983,12 +32983,13 @@
       "display_id": 529,
       "title": "[L450] Ordinary F0 committed-command replay fails after later checkpoint progress",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L450.\n\n- Evidence: `crates/analysis/peritus-evolution/src/durability/campaign.rs:192-228`, `src/durability/pointer.rs:165-201` in the same crate.\n- Behavior: The journal resolves an exact committed command before current-head validation, but F0 then loads the current checkpoint and requires it to equal that command's original successor state and sequence. After any later transition, replaying the identical old command returns a quarantining recovery error despite an exact durable command/event receipt.\n- Consequence: A delayed retry or receipt lookup can be classified as corruption solely because useful work has advanced. Immediate replay before another transition is accepted. This finding concerns ordinary campaign/pointer commits; atomic activation has a separate approve-once resolution contract and is not assumed identical.\n- Repair direction: Validate the immutable producing transaction and its original installed state independently of the latest projection. Return the existing receipt without regressing current state, retaining conflicting-request and causal-fence rejection for genuinely new mutations. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.606478223Z",
-      "updated_at": "2026-10-08T03:20:11.313550609Z",
+      "updated_at": "2026-10-08T03:21:52.312266619Z",
+      "closed_at": "2026-10-08T03:21:52.309625795Z",
       "labels": [
         "daily-driving-limiter"
       ],
