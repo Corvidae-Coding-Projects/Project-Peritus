@@ -4,10 +4,12 @@ use peritus_artifact_store::ArtifactStore;
 use peritus_git::CandidateSnapshot;
 use peritus_tool_protocol::{ImplementationIdentity, SchemaDigest};
 use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher, ToolStart};
+use peritus_types::Sha256Digest;
 use peritus_workspace::{
     CandidateOutcome, MutationOutcome, MutationOutcomeReference, ReadOnlyWorkspace,
-    RollbackOutcome, RollbackRequest, WorkspaceAuthorizationRequest, WorkspaceCallerBinding,
-    WorkspaceGateway,
+    RepositoryMutationKind, RepositoryMutationOperationReference,
+    RepositoryMutationOutcomeReference, RollbackOutcome, RollbackRequest,
+    WorkspaceAuthorizationRequest, WorkspaceCallerBinding, WorkspaceGateway,
 };
 
 use crate::{
@@ -76,6 +78,9 @@ enum DispatchContext<'a> {
         target: &'a CandidateSnapshot,
         artifacts: &'a ArtifactStore,
     },
+    Adopted {
+        outcome: Box<RepositoryMutationOutcomeReference>,
+    },
     MergeUnsupported,
 }
 
@@ -94,6 +99,8 @@ pub struct GitDispatcher<'a> {
     descriptor_digest: SchemaDigest,
     context: DispatchContext<'a>,
     mutation_outcome: Option<GitMutationOutcome>,
+    repository_operation: Option<RepositoryMutationOperationReference>,
+    repository_outcome: Option<RepositoryMutationOutcomeReference>,
 }
 
 impl<'a> GitDispatcher<'a> {
@@ -171,6 +178,33 @@ impl<'a> GitDispatcher<'a> {
         )
     }
 
+    /// Creates a no-effect dispatcher for one previously completed durable repository mutation.
+    ///
+    /// # Errors
+    /// Rejects a read/merge kind, kind mismatch, or invalid frozen descriptor catalog.
+    pub fn adopted(
+        kind: GitDispatchKind,
+        outcome: RepositoryMutationOutcomeReference,
+    ) -> Result<Self, GitToolError> {
+        let expected = match kind {
+            GitDispatchKind::Candidate => RepositoryMutationKind::Candidate,
+            GitDispatchKind::Rollback => RepositoryMutationKind::Rollback,
+            _ => {
+                return Err(GitToolError::invalid(
+                    GitToolOperation::Catalog,
+                    "only completed candidate or rollback results can be adopted",
+                ));
+            }
+        };
+        if outcome.operation().kind() != expected {
+            return Err(GitToolError::invalid(
+                GitToolOperation::Catalog,
+                "adopted repository result kind differs from the dispatcher",
+            ));
+        }
+        Self::build(kind, DispatchContext::Adopted { outcome: Box::new(outcome) })
+    }
+
     /// Creates the authorized-but-unsupported merge dispatcher with no target mutation handle.
     ///
     /// # Errors
@@ -192,6 +226,8 @@ impl<'a> GitDispatcher<'a> {
             descriptor_digest: descriptor.descriptor_digest(),
             context,
             mutation_outcome: None,
+            repository_operation: None,
+            repository_outcome: None,
         })
     }
 
@@ -199,6 +235,22 @@ impl<'a> GitDispatcher<'a> {
     #[must_use]
     pub const fn take_mutation_outcome(&mut self) -> Option<GitMutationOutcome> {
         self.mutation_outcome.take()
+    }
+
+    /// Borrows the durable operation after authority has been consumed and before any Git effect.
+    #[must_use]
+    pub const fn repository_operation_reference(
+        &self,
+    ) -> Option<&RepositoryMutationOperationReference> {
+        self.repository_operation.as_ref()
+    }
+
+    /// Borrows the durable exact outcome after successful repository publication.
+    #[must_use]
+    pub const fn repository_outcome_reference(
+        &self,
+    ) -> Option<&RepositoryMutationOutcomeReference> {
+        self.repository_outcome.as_ref()
     }
 }
 
@@ -237,12 +289,22 @@ impl ToolDispatcher for GitDispatcher<'_> {
             DispatchContext::Candidate { gateway, authorization, mutation, artifacts } => {
                 let input = decoder::candidate(prepared.arguments())
                     .map_err(|error| tool_failure(&error))?;
-                let outcome = gateway
-                    .create_candidate(authorization, mutation, input.snapshot_id(), artifacts)
+                admit_mutation_result(&prepared, completed_at)?;
+                let mutation = gateway
+                    .prepare_candidate(authorization, mutation, input.snapshot_id())
                     .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
-                let rendered = RenderedOutput::candidate(&outcome);
+                self.repository_operation = Some(mutation.operation_reference().clone());
+                let terminal = mutation_terminal(
+                    &prepared,
+                    mutation.operation_reference(),
+                    completed_at,
+                )?;
+                let outcome = gateway
+                    .create_prepared_candidate(mutation, artifacts)
+                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
-                rendered
+                return Ok(ToolStart::Completed(terminal));
             }
             DispatchContext::CandidateReference {
                 gateway,
@@ -252,17 +314,26 @@ impl ToolDispatcher for GitDispatcher<'_> {
             } => {
                 let input = decoder::candidate(prepared.arguments())
                     .map_err(|error| tool_failure(&error))?;
-                let outcome = gateway
-                    .create_candidate_from_reference(
+                admit_mutation_result(&prepared, completed_at)?;
+                let mutation = gateway
+                    .prepare_candidate_from_reference(
                         authorization,
                         *mutation,
                         input.snapshot_id(),
-                        artifacts,
                     )
                     .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
-                let rendered = RenderedOutput::candidate(&outcome);
+                self.repository_operation = Some(mutation.operation_reference().clone());
+                let terminal = mutation_terminal(
+                    &prepared,
+                    mutation.operation_reference(),
+                    completed_at,
+                )?;
+                let outcome = gateway
+                    .create_prepared_candidate(mutation, artifacts)
+                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
-                rendered
+                return Ok(ToolStart::Completed(terminal));
             }
             DispatchContext::Rollback { gateway, authorization, target, artifacts } => {
                 let input = decoder::rollback(prepared.arguments())
@@ -270,22 +341,64 @@ impl ToolDispatcher for GitDispatcher<'_> {
                 if input.target_snapshot_id() != target.snapshot_id() {
                     return Err(protocol_failure("rollback target differs from prepared input"));
                 }
-                let outcome = gateway
-                    .rollback(
+                admit_mutation_result(&prepared, completed_at)?;
+                let mutation = gateway
+                    .prepare_rollback(
                         authorization,
                         RollbackRequest::new(target, input.successor_snapshot_id()),
-                        artifacts,
                     )
                     .map_err(|_| workspace_failure("target-owned rollback failed"))?;
-                let rendered = RenderedOutput::rollback(&outcome);
+                self.repository_operation = Some(mutation.operation_reference().clone());
+                let terminal = mutation_terminal(
+                    &prepared,
+                    mutation.operation_reference(),
+                    completed_at,
+                )?;
+                let outcome = gateway
+                    .apply_prepared_rollback(mutation, artifacts)
+                    .map_err(|_| workspace_failure("target-owned rollback failed"))?;
+                self.repository_outcome = Some(outcome.receipt().clone());
                 self.mutation_outcome = Some(GitMutationOutcome::Rollback(outcome));
-                rendered
+                return Ok(ToolStart::Completed(terminal));
+            }
+            DispatchContext::Adopted { outcome } => {
+                let terminal = mutation_terminal(&prepared, outcome.operation(), completed_at)?;
+                self.repository_operation = Some(outcome.operation().clone());
+                self.repository_outcome = Some((**outcome).clone());
+                return Ok(ToolStart::Completed(terminal));
             }
             DispatchContext::MergeUnsupported => return Err(unsupported_failure()),
         }
         .map_err(|error| tool_failure(&error))?;
         finish(&prepared, &rendered, completed_at).map(ToolStart::Completed)
     }
+}
+
+fn admit_mutation_result(
+    prepared: &peritus_tool_protocol::PreparedToolCall,
+    completed_at: peritus_policy::AuthorityInstant,
+) -> Result<(), DispatchFailure> {
+    let rendered = RenderedOutput::mutation_receipt(Sha256Digest::new([0_u8; 32]))
+        .map_err(|error| tool_failure(&error))?;
+    finish(prepared, &rendered, completed_at).map(drop)
+}
+
+fn mutation_terminal(
+    prepared: &peritus_tool_protocol::PreparedToolCall,
+    operation: &RepositoryMutationOperationReference,
+    completed_at: peritus_policy::AuthorityInstant,
+) -> Result<peritus_tool_protocol::ToolResult, DispatchFailure> {
+    if operation.action_id() != prepared.call().action_id()
+        || operation.descriptor_digest() != Some(prepared.descriptor_digest().get())
+        || operation.prepared_digest() != Some(prepared.prepared_digest())
+    {
+        return Err(protocol_failure(
+            "durable repository operation differs from the prepared invocation",
+        ));
+    }
+    let rendered = RenderedOutput::mutation_receipt(operation.digest())
+        .map_err(|error| tool_failure(&error))?;
+    finish(prepared, &rendered, completed_at)
 }
 
 fn execute_read(
@@ -438,6 +551,15 @@ fn context_matches(context: &DispatchContext<'_>, caller: &WorkspaceCallerBindin
         | DispatchContext::CandidateReference { authorization, .. }
         | DispatchContext::Rollback { authorization, .. } => {
             authorization.caller_binding() == Some(caller)
+        }
+        DispatchContext::Adopted { outcome } => {
+            let operation = outcome.operation();
+            operation.action_id() == caller.action_id()
+                && operation.workspace_id() == caller.workspace_id()
+                && operation.resource_id() == caller.resource_id()
+                && operation.environment_id() == Some(caller.environment_id())
+                && operation.descriptor_digest() == Some(caller.descriptor_digest())
+                && operation.prepared_digest() == Some(caller.prepared_digest())
         }
         DispatchContext::MergeUnsupported => true,
     }

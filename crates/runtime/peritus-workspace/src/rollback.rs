@@ -5,10 +5,16 @@ use peritus_git::{CandidateRequest, CandidateSnapshot, RestoreRequest, SnapshotR
 use peritus_types::{ActionId, SnapshotId};
 
 use crate::{
-    ErrorCode, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest, WorkspaceCondition,
-    WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
+    ErrorCode, RecoveryClass, RepositoryMutationKind, RepositoryMutationOperationReference,
+    RepositoryMutationOutcomeReference, SnapshotIdentity, WorkspaceAuthorizationRequest,
+    WorkspaceCondition, WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
-use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
+use crate::{
+    SnapshotPublicationFailure, finalize_snapshot_manifest,
+    mutation_record::{persist_repository_operation, persist_repository_outcome},
+};
+
+const ROLLBACK_RESULT_MAGIC: &[u8] = b"PERITUS-WORKSPACE-ROLLBACK-RESULT-V1\0";
 
 /// Exact retained snapshot to restore and identity for its new successor snapshot.
 #[derive(Clone, Copy, Debug)]
@@ -44,6 +50,7 @@ pub struct RollbackOutcome {
     identity: SnapshotIdentity,
     manifest: WorkspaceManifest,
     artifact: FinalizedArtifact,
+    receipt: RepositoryMutationOutcomeReference,
 }
 
 impl RollbackOutcome {
@@ -77,6 +84,26 @@ impl RollbackOutcome {
     pub const fn manifest(&self) -> &WorkspaceManifest {
         &self.manifest
     }
+    /// Borrows the exact restart-visible action result.
+    #[must_use]
+    pub const fn receipt(&self) -> &RepositoryMutationOutcomeReference {
+        &self.receipt
+    }
+}
+
+/// Authorized durable rollback operation which has not crossed the Git effect boundary.
+pub struct PreparedRollbackMutation {
+    operation: RepositoryMutationOperationReference,
+    target: CandidateSnapshot,
+    successor_snapshot_id: SnapshotId,
+}
+
+impl PreparedRollbackMutation {
+    /// Borrows the exact durable operation identity retained before mutation begins.
+    #[must_use]
+    pub const fn operation_reference(&self) -> &RepositoryMutationOperationReference {
+        &self.operation
+    }
 }
 
 impl WorkspaceGateway {
@@ -96,8 +123,81 @@ impl WorkspaceGateway {
         request: RollbackRequest<'_>,
         artifacts: &ArtifactStore,
     ) -> Result<RollbackOutcome, WorkspaceError> {
+        let prepared = self.prepare_rollback(authorization, request)?;
+        self.apply_prepared_rollback(prepared, artifacts)
+    }
+
+    /// Consumes rollback authority and retains its exact operation before any Git effect.
+    ///
+    /// # Errors
+    /// Rejects lineage, counter, authority, or durable operation publication failures.
+    pub fn prepare_rollback(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        request: RollbackRequest<'_>,
+    ) -> Result<PreparedRollbackMutation, WorkspaceError> {
+        self.state().current_snapshot().revision().checked_next().map_err(|_| {
+            rollback_error(
+                ErrorCode::RevisionExhausted,
+                RecoveryClass::Quarantine,
+                "workspace revision is exhausted",
+            )
+        })?;
+        if request.target().workspace_id() != self.state().binding().workspace_id() {
+            return Err(rollback_error(
+                ErrorCode::ResourceMismatch,
+                RecoveryClass::CorrectRequest,
+                "rollback target belongs to another workspace lineage",
+            ));
+        }
         let payload = rollback_payload(self.state(), &request, authorization.caller_binding());
         let permit = self.authorize(authorization, &payload)?;
+        let operation = RepositoryMutationOperationReference::new(
+            RepositoryMutationKind::Rollback,
+            &permit,
+            self.state().binding().workspace_id(),
+            self.state().binding().resource_id(),
+            payload,
+            authorization.caller_binding(),
+        );
+        persist_repository_operation(self.transaction_namespace(), &operation)?;
+        Ok(PreparedRollbackMutation {
+            operation,
+            target: request.target().clone(),
+            successor_snapshot_id: request.successor_snapshot_id(),
+        })
+    }
+
+    /// Applies one already-authorized rollback, installs the new logical state, and durably
+    /// settles its exact result before reporting success.
+    ///
+    /// # Errors
+    /// Preserves typed Git, artifact, durable receipt, and workspace recovery failures.
+    #[allow(
+        clippy::too_many_lines,
+        reason = "rollback keeps the ordered restore, retain, receipt, and state commit visible"
+    )]
+    pub fn apply_prepared_rollback(
+        &mut self,
+        prepared: PreparedRollbackMutation,
+        artifacts: &ArtifactStore,
+    ) -> Result<RollbackOutcome, WorkspaceError> {
+        if prepared.operation.kind() != RepositoryMutationKind::Rollback
+            || prepared.operation.workspace_id() != self.state().binding().workspace_id()
+            || prepared.operation.resource_id() != self.state().binding().resource_id()
+            || prepared.operation.generation() != self.state().generation()
+            || prepared.operation.revision() != self.state().revision()
+            || self.state().condition() != WorkspaceCondition::Clean
+        {
+            return Err(rollback_error(
+                ErrorCode::StaleWorkspace,
+                RecoveryClass::Reconcile,
+                "prepared rollback differs from current workspace ownership",
+            ));
+        }
+        let operation = prepared.operation;
+        let target = prepared.target;
+        let successor_snapshot_id = prepared.successor_snapshot_id;
         let prior = self.state().current_snapshot().clone();
         let next_revision = prior.revision().checked_next().map_err(|_| {
             rollback_error(
@@ -107,17 +207,10 @@ impl WorkspaceGateway {
             )
         })?;
         let baseline_commit = self.state().binding().baseline_commit();
-        if request.target().workspace_id() != self.state().binding().workspace_id() {
-            return Err(rollback_error(
-                ErrorCode::ResourceMismatch,
-                RecoveryClass::CorrectRequest,
-                "rollback target belongs to another workspace lineage",
-            ));
-        }
         let repository = self.workspace_mut().repository().clone();
         let worktree = self.workspace_mut().worktree().clone();
         let restored = repository
-            .restore_snapshot(RestoreRequest::new(&worktree, request.target(), baseline_commit))
+            .restore_snapshot(RestoreRequest::new(&worktree, &target, baseline_commit))
             .map_err(|_| {
                 self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
                 rollback_error(
@@ -136,8 +229,8 @@ impl WorkspaceGateway {
                     "restored result could not be written as an exact tree",
                 )
             })?;
-        if candidate.tree() != request.target().tree()
-            || restored.restored_tree() != request.target().tree()
+        if candidate.tree() != target.tree()
+            || restored.restored_tree() != target.tree()
         {
             self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Dirty);
             return Err(rollback_error(
@@ -151,7 +244,7 @@ impl WorkspaceGateway {
                 &worktree,
                 &candidate,
                 prior.workspace_id(),
-                request.successor_snapshot_id(),
+                successor_snapshot_id,
                 prior.commit(),
             ))
             .map_err(|_| {
@@ -173,8 +266,8 @@ impl WorkspaceGateway {
             prior.generation(),
             prior.revision(),
             next_revision,
-            permit.action_id(),
-            permit.action_digest(),
+            operation.action_id(),
+            operation.action_digest(),
             snapshot.tree(),
             candidate.manifest_digest(),
         );
@@ -183,17 +276,26 @@ impl WorkspaceGateway {
             &snapshot,
             &manifest,
             artifacts,
-            permit.dispatch_event(),
+            operation.dispatch_event(),
         )
         .map_err(|failure| rollback_publication_error(self, &failure))?;
+        let receipt = RepositoryMutationOutcomeReference::new(
+            operation,
+            rollback_result_bytes(&target, &snapshot, &manifest, artifact.digest()),
+        )?;
         self.workspace_mut().state_mut().install(identity.clone());
+        if let Err(error) = persist_repository_outcome(self.transaction_namespace(), &receipt) {
+            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
+            return Err(error);
+        }
         Ok(RollbackOutcome {
-            action_id: permit.action_id(),
-            restored_from: request.target().commit(),
+            action_id: receipt.operation().action_id(),
+            restored_from: target.commit(),
             snapshot,
             identity,
             manifest,
             artifact,
+            receipt,
         })
     }
 }
@@ -266,6 +368,26 @@ fn put_object(bytes: &mut Vec<u8>, object: peritus_git::ObjectId) {
         peritus_git::ObjectFormat::Sha256 => 2,
     });
     bytes.extend_from_slice(object.as_bytes());
+}
+
+fn rollback_result_bytes(
+    target: &CandidateSnapshot,
+    snapshot: &CandidateSnapshot,
+    manifest: &WorkspaceManifest,
+    artifact: ArtifactDigest,
+) -> Vec<u8> {
+    let mut bytes = ROLLBACK_RESULT_MAGIC.to_vec();
+    put_result_bytes(&mut bytes, target.manifest().bytes());
+    put_result_bytes(&mut bytes, snapshot.manifest().bytes());
+    put_result_bytes(&mut bytes, manifest.canonical_bytes());
+    bytes.extend_from_slice(artifact.as_bytes());
+    bytes
+}
+
+fn put_result_bytes(target: &mut Vec<u8>, value: &[u8]) {
+    let length = u64::try_from(value.len()).expect("bounded rollback result length fits u64");
+    target.extend_from_slice(&length.to_be_bytes());
+    target.extend_from_slice(value);
 }
 
 const fn rollback_error(

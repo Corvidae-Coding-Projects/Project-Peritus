@@ -58,6 +58,21 @@ impl RenderedOutput {
         )
     }
 
+    /// Renders the compact exact key for a target-owned durable repository result.
+    ///
+    /// The fixed-width key is intentionally renderable before the Git effect; a replacement
+    /// process uses it to adopt the completed result or enter reconciliation without replay.
+    ///
+    /// # Errors
+    /// Returns a typed protocol-bound failure.
+    pub fn mutation_receipt(
+        operation_digest: peritus_types::Sha256Digest,
+    ) -> Result<Self, GitToolError> {
+        let receipt = digest_hex(operation_digest);
+        let structured = object(vec![("mutation_receipt", string(receipt.clone()))])?;
+        finish(structured, format!("Git mutation receipt {receipt}."), false)
+    }
+
     /// Renders an authorized candidate-plus-snapshot outcome.
     ///
     /// # Errors

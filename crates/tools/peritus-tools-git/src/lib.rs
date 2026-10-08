@@ -24,3 +24,7 @@ pub use read::{
     SnapshotObservation, StatusObservationPage,
 };
 pub use render::RenderedOutput;
+pub use peritus_workspace::{
+    RepositoryMutationAdoption, RepositoryMutationKind,
+    RepositoryMutationOperationReference, RepositoryMutationOutcomeReference,
+};

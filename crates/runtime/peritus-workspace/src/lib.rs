@@ -43,8 +43,8 @@ mod writable;
 pub use authorization::WorkspaceAuthorizationRequest;
 pub use caller::{ReadOnlyTargetBinding, WorkspaceCallerBinding};
 pub use candidate::{
-    CandidateOutcome, candidate_authorization_payload, candidate_authorization_payload_for_caller,
-    candidate_authorization_payload_for_reference,
+    CandidateOutcome, PreparedCandidateMutation, candidate_authorization_payload,
+    candidate_authorization_payload_for_caller, candidate_authorization_payload_for_reference,
     candidate_authorization_payload_for_reference_and_caller,
     predicted_candidate_authorization_payload,
 };
@@ -59,7 +59,11 @@ pub use mutation::{
     MutationOutcome, PreparedWorkspaceMutation, patch_authorization_payload,
     patch_authorization_payload_for_caller,
 };
-pub use mutation_record::{MutationOperationReference, MutationOutcomeReference};
+pub use mutation_record::{
+    MutationOperationReference, MutationOutcomeReference, RepositoryMutationAdoption,
+    RepositoryMutationKind, RepositoryMutationOperationReference,
+    RepositoryMutationOutcomeReference,
+};
 pub use open::{ReadOnlyOpenRequest, WritableOpenRequest};
 pub use publication::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 pub use read_only::ReadOnlyWorkspace;
@@ -69,7 +73,7 @@ pub use reconcile::{
 };
 pub use registration::{MAX_WORKSPACE_REGISTRATION_BYTES, WorkspaceRegistration};
 pub use rollback::{
-    RollbackOutcome, RollbackRequest, rollback_authorization_payload,
+    PreparedRollbackMutation, RollbackOutcome, RollbackRequest, rollback_authorization_payload,
     rollback_authorization_payload_for_caller,
 };
 pub use scoped_inspection::{

@@ -29,7 +29,7 @@ struct DescriptorSpec {
 const SPECS: &[DescriptorSpec] = &[
     mutation_spec(
         "git.candidate",
-        "Create an authorized candidate and retained snapshot",
+        "Create an authorized candidate with a durable adoptable result receipt",
         candidate_schema,
     ),
     read_spec(
@@ -54,7 +54,7 @@ const SPECS: &[DescriptorSpec] = &[
     },
     mutation_spec(
         "git.rollback",
-        "Restore a retained snapshot as an authorized successor",
+        "Restore a retained snapshot with a durable adoptable result receipt",
         rollback_schema,
     ),
     read_spec("git.snapshot", "Inspect current or retained snapshot identity", snapshot_schema),
@@ -113,7 +113,7 @@ pub fn descriptor_catalog() -> Result<Vec<ToolDescriptor>, GitToolError> {
 /// Returns a typed construction failure if the frozen catalog is invalid.
 pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
     let catalog = descriptor_catalog()?;
-    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V2\0".to_vec();
+    let mut bytes = b"PERITUS-GIT-TOOL-CATALOG-V3\0".to_vec();
     let catalog_length = u64::try_from(catalog.len()).expect("bounded Git catalog length fits u64");
     bytes.extend_from_slice(&catalog_length.to_be_bytes());
     for descriptor in catalog {
@@ -123,8 +123,14 @@ pub fn descriptor_digest() -> Result<Sha256Digest, GitToolError> {
 }
 
 fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, GitToolError> {
-    let paged_observation = matches!(spec.name, "git.diff" | "git.history" | "git.status");
-    let version = if paged_observation { 2 } else { 1 };
+    let version = if matches!(
+        spec.name,
+        "git.candidate" | "git.diff" | "git.history" | "git.rollback" | "git.status"
+    ) {
+        2
+    } else {
+        1
+    };
     let operation = OperationDescriptor::new(
         capability(spec.name)?,
         spec.class,

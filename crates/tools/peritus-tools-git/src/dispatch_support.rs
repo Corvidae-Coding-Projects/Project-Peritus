@@ -27,6 +27,11 @@ pub fn caller_binding(invocation: &AuthorizedInvocation) -> WorkspaceCallerBindi
 
 pub fn minimum_result_capacity(prepared: &peritus_tool_protocol::PreparedToolCall) -> bool {
     let limits = prepared.call().limits();
+    if matches!(prepared.descriptor().name().as_str(), "git.candidate" | "git.rollback") {
+        // Effectful operations perform exact terminal admission before consuming authority and
+        // again after publishing their fixed-width durable operation reference.
+        return true;
+    }
     let minimum_output = match prepared.descriptor().name().as_str() {
         "git.diff" | "git.history" | "git.status" => 1_024,
         _ => 512,

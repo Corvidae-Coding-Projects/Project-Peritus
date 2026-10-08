@@ -7,10 +7,16 @@ use peritus_types::{ActionId, Generation, ResourceId, RevisionNumber, SnapshotId
 
 use crate::{
     ErrorCode, MutationOutcome, MutationOutcomeReference, RecoveryClass, SnapshotIdentity,
-    WorkspaceAuthorizationRequest, WorkspaceCondition, WorkspaceError, WorkspaceGateway,
-    WorkspaceManifest, WorkspaceOperation,
+    RepositoryMutationKind, RepositoryMutationOperationReference,
+    RepositoryMutationOutcomeReference, WorkspaceAuthorizationRequest, WorkspaceCondition,
+    WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
 };
-use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
+use crate::{
+    SnapshotPublicationFailure, finalize_snapshot_manifest,
+    mutation_record::{persist_repository_operation, persist_repository_outcome},
+};
+
+const CANDIDATE_RESULT_MAGIC: &[u8] = b"PERITUS-WORKSPACE-CANDIDATE-RESULT-V1\0";
 
 /// Retained immutable candidate and its finalized C0 artifact observation.
 pub struct CandidateOutcome {
@@ -20,6 +26,7 @@ pub struct CandidateOutcome {
     identity: SnapshotIdentity,
     manifest: WorkspaceManifest,
     artifact: FinalizedArtifact,
+    receipt: RepositoryMutationOutcomeReference,
 }
 
 impl CandidateOutcome {
@@ -53,6 +60,26 @@ impl CandidateOutcome {
     pub const fn manifest(&self) -> &WorkspaceManifest {
         &self.manifest
     }
+    /// Borrows the exact restart-visible action result.
+    #[must_use]
+    pub const fn receipt(&self) -> &RepositoryMutationOutcomeReference {
+        &self.receipt
+    }
+}
+
+/// Authorized durable candidate operation which has not crossed the Git effect boundary.
+pub struct PreparedCandidateMutation {
+    operation: RepositoryMutationOperationReference,
+    mutation: MutationOutcomeReference,
+    snapshot_id: SnapshotId,
+}
+
+impl PreparedCandidateMutation {
+    /// Borrows the exact durable operation identity retained before mutation begins.
+    #[must_use]
+    pub const fn operation_reference(&self) -> &RepositoryMutationOperationReference {
+        &self.operation
+    }
 }
 
 impl WorkspaceGateway {
@@ -67,12 +94,29 @@ impl WorkspaceGateway {
         snapshot_id: SnapshotId,
         artifacts: &ArtifactStore,
     ) -> Result<CandidateOutcome, WorkspaceError> {
+        let prepared = self.prepare_candidate(
+            authorization,
+            mutation,
+            snapshot_id,
+        )?;
+        self.create_prepared_candidate(prepared, artifacts)
+    }
+
+    /// Consumes candidate authority and retains its exact operation before any Git effect.
+    ///
+    /// # Errors
+    /// Rejects stale patch evidence, authority mismatch, or durable operation publication failure.
+    pub fn prepare_candidate(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        mutation: &MutationOutcome,
+        snapshot_id: SnapshotId,
+    ) -> Result<PreparedCandidateMutation, WorkspaceError> {
         let payload = candidate_payload(mutation, snapshot_id, authorization.caller_binding());
-        self.create_candidate_reference_inner(
+        self.prepare_candidate_reference_inner(
             authorization,
             mutation.reference(),
             snapshot_id,
-            artifacts,
             payload,
         )
     }
@@ -88,6 +132,25 @@ impl WorkspaceGateway {
         snapshot_id: SnapshotId,
         artifacts: &ArtifactStore,
     ) -> Result<CandidateOutcome, WorkspaceError> {
+        let prepared = self.prepare_candidate_from_reference(
+            authorization,
+            mutation,
+            snapshot_id,
+        )?;
+        self.create_prepared_candidate(prepared, artifacts)
+    }
+
+    /// Resolves a patch handoff, consumes candidate authority, and retains the operation before
+    /// any Git effect.
+    ///
+    /// # Errors
+    /// Rejects unavailable or stale patch evidence, authority mismatch, or record failure.
+    pub fn prepare_candidate_from_reference(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        mutation: MutationOutcomeReference,
+        snapshot_id: SnapshotId,
+    ) -> Result<PreparedCandidateMutation, WorkspaceError> {
         let mutation = crate::mutation_record::resolve_outcome(
             self.transaction_namespace(),
             mutation,
@@ -97,29 +160,22 @@ impl WorkspaceGateway {
             snapshot_id,
             authorization.caller_binding(),
         );
-        self.create_candidate_reference_inner(
-            authorization,
-            mutation,
-            snapshot_id,
-            artifacts,
-            payload,
-        )
+        self.prepare_candidate_reference_inner(authorization, mutation, snapshot_id, payload)
     }
 
-    /// Reconciles the exact applied patch, creates a Git tree and successor snapshot, finalizes its
-    /// manifest, and only then marks the logical workspace revision clean.
+    /// Validates the exact applied patch, consumes candidate authority, and publishes the durable
+    /// pre-effect operation record.
     ///
     /// # Errors
     ///
-    /// On any Git or artifact failure, the live workspace remains dirty and requires inspection.
-    fn create_candidate_reference_inner(
+    /// Returns before Git effect on stale input, authority, or operation-record failure.
+    fn prepare_candidate_reference_inner(
         &mut self,
         authorization: &WorkspaceAuthorizationRequest<'_>,
         mutation: MutationOutcomeReference,
         snapshot_id: SnapshotId,
-        artifacts: &ArtifactStore,
         payload: Vec<u8>,
-    ) -> Result<CandidateOutcome, WorkspaceError> {
+    ) -> Result<PreparedCandidateMutation, WorkspaceError> {
         validate_mutation_input(self.state(), mutation)?;
         let permit =
             self.authorize_in_condition(authorization, &payload, WorkspaceCondition::Dirty)?;
@@ -132,6 +188,45 @@ impl WorkspaceGateway {
                 "patch outcome differs from candidate permit",
             ));
         }
+        let operation = RepositoryMutationOperationReference::new(
+            RepositoryMutationKind::Candidate,
+            &permit,
+            self.state().binding().workspace_id(),
+            self.state().binding().resource_id(),
+            payload,
+            authorization.caller_binding(),
+        );
+        persist_repository_operation(self.transaction_namespace(), &operation)?;
+        Ok(PreparedCandidateMutation { operation, mutation, snapshot_id })
+    }
+
+    /// Applies one already-authorized candidate operation, installs the new logical state, and
+    /// durably settles its exact result before reporting success.
+    ///
+    /// # Errors
+    /// Preserves typed Git, artifact, durable receipt, and workspace recovery failures.
+    pub fn create_prepared_candidate(
+        &mut self,
+        prepared: PreparedCandidateMutation,
+        artifacts: &ArtifactStore,
+    ) -> Result<CandidateOutcome, WorkspaceError> {
+        if prepared.operation.kind() != RepositoryMutationKind::Candidate
+            || prepared.operation.workspace_id() != self.state().binding().workspace_id()
+            || prepared.operation.resource_id() != self.state().binding().resource_id()
+            || prepared.operation.generation() != self.state().generation()
+            || prepared.operation.revision() != self.state().revision()
+            || self.state().condition() != WorkspaceCondition::Dirty
+        {
+            return Err(candidate_error(
+                ErrorCode::StaleWorkspace,
+                RecoveryClass::Reconcile,
+                "prepared candidate differs from current workspace ownership",
+            ));
+        }
+        validate_mutation_input(self.state(), prepared.mutation)?;
+        let operation = prepared.operation;
+        let mutation = prepared.mutation;
+        let snapshot_id = prepared.snapshot_id;
         let prior = self.state().current_snapshot().clone();
         let repository = self.workspace_mut().repository().clone();
         let worktree = self.workspace_mut().worktree().clone();
@@ -185,8 +280,8 @@ impl WorkspaceGateway {
             prior.generation(),
             prior.revision(),
             next_revision,
-            permit.action_id(),
-            permit.action_digest(),
+            operation.action_id(),
+            operation.action_digest(),
             snapshot.tree(),
             detail_digest,
         );
@@ -195,17 +290,31 @@ impl WorkspaceGateway {
             &snapshot,
             &manifest,
             artifacts,
-            permit.dispatch_event(),
+            operation.dispatch_event(),
         )
         .map_err(|failure| candidate_publication_error(self, &failure))?;
+        let receipt = RepositoryMutationOutcomeReference::new(
+            operation,
+            candidate_result_bytes(
+                mutation.patch_identity(),
+                &snapshot,
+                &manifest,
+                artifact.digest(),
+            ),
+        )?;
         self.workspace_mut().state_mut().install(identity.clone());
+        if let Err(error) = persist_repository_outcome(self.transaction_namespace(), &receipt) {
+            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
+            return Err(error);
+        }
         Ok(CandidateOutcome {
-            action_id: permit.action_id(),
+            action_id: receipt.operation().action_id(),
             patch_id: mutation.patch_identity(),
             snapshot,
             identity,
             manifest,
             artifact,
+            receipt,
         })
     }
 }
@@ -393,6 +502,26 @@ fn combined_detail(
     bytes.extend_from_slice(left.as_bytes());
     bytes.extend_from_slice(right.as_bytes());
     peritus_codec::sha256(&bytes)
+}
+
+fn candidate_result_bytes(
+    patch: PatchIdentity,
+    snapshot: &CandidateSnapshot,
+    manifest: &WorkspaceManifest,
+    artifact: ArtifactDigest,
+) -> Vec<u8> {
+    let mut bytes = CANDIDATE_RESULT_MAGIC.to_vec();
+    bytes.extend_from_slice(patch.as_bytes());
+    put_result_bytes(&mut bytes, snapshot.manifest().bytes());
+    put_result_bytes(&mut bytes, manifest.canonical_bytes());
+    bytes.extend_from_slice(artifact.as_bytes());
+    bytes
+}
+
+fn put_result_bytes(target: &mut Vec<u8>, value: &[u8]) {
+    let length = u64::try_from(value.len()).expect("bounded candidate result length fits u64");
+    target.extend_from_slice(&length.to_be_bytes());
+    target.extend_from_slice(value);
 }
 
 const fn candidate_error(
