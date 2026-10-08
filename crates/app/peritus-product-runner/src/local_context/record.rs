@@ -2,6 +2,7 @@
 
 use super::{error, storage::StoredArtifact};
 use peritus_agent::DeveloperLoopError;
+use peritus_codec::sha256;
 use peritus_context::working::{ObservationKind, ObservationSource};
 use serde::Deserialize;
 use serde::Serialize;
@@ -25,6 +26,7 @@ pub(super) const PAGED_GENESIS_SCHEMA_VERSION: u16 = 2;
 pub(super) const LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 1;
 pub(super) const SEGMENT_CONTINUATION_SCHEMA_VERSION: u16 = 2;
 pub(super) const WORKING_SELECTION_FRONTIER_SCHEMA_VERSION: u16 = 1;
+pub(super) const PENDING_EFFECT_REFERENCE_SCHEMA_VERSION: u16 = 1;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -350,9 +352,47 @@ pub(super) struct PendingDescriptor {
     pub(super) source: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) source_artifact_sha256: Option<[u8; 32]>,
-    pub(super) handle: Option<String>,
+    pub(super) handle: Option<PendingEffectIdentity>,
     pub(super) state: PendingState,
 }
+
+/// Backward-compatible pending-effect identity. Legacy checkpoints retain their exact inline
+/// string bytes; new records keep arbitrary-length identities in caller-owned artifact storage.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(untagged)]
+pub(super) enum PendingEffectIdentity {
+    Legacy(String),
+    Reference(PendingEffectReference),
+}
+
+impl PendingEffectIdentity {
+    pub(super) const fn artifact(&self) -> Option<StoredArtifact> {
+        match self {
+            Self::Legacy(_) => None,
+            Self::Reference(reference) => Some(reference.artifact),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub(super) struct PendingEffectReference {
+    pub(super) schema_version: u16,
+    pub(super) artifact: StoredArtifact,
+}
+
+/// Stable operation identity for an exact externally stored handle.
+pub(super) fn pending_effect_key(reference: PendingEffectReference) -> [u8; 16] {
+    let mut material = b"peritus-pending-effect-reference-v1\0".to_vec();
+    material.extend_from_slice(reference.artifact.digest.as_bytes());
+    material.extend_from_slice(&reference.artifact.bytes.to_be_bytes());
+    let digest = sha256(&material);
+    let mut key = [0_u8; 16];
+    key.copy_from_slice(&digest.as_bytes()[..16]);
+    key[0] |= 1;
+    key
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Serialize, Eq, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum PendingState {

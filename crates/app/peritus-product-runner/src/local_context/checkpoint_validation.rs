@@ -7,8 +7,9 @@ use super::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, CheckpointManifest,
         INDEXED_CHECKPOINT_SCHEMA_VERSION, LEGACY_CHECKPOINT_SCHEMA_VERSION,
         LEGACY_SEGMENT_CONTINUATION_SCHEMA_VERSION, SEGMENT_CONTINUATION_SCHEMA_VERSION,
-        PAGED_CHECKPOINT_SCHEMA_VERSION, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION,
-        TranscriptManifest, ViewValidation, WORKING_SELECTION_FRONTIER_SCHEMA_VERSION, decode,
+        PAGED_CHECKPOINT_SCHEMA_VERSION, PENDING_EFFECT_REFERENCE_SCHEMA_VERSION,
+        PendingEffectIdentity, SNAPSHOT_CHECKPOINT_SCHEMA_VERSION, TranscriptManifest,
+        ViewValidation, WORKING_SELECTION_FRONTIER_SCHEMA_VERSION, decode, pending_effect_key,
     },
 };
 use peritus_agent::DeveloperLoopError;
@@ -278,24 +279,38 @@ pub(super) fn validate_transcript(
         {
             return Err(error("pending projection invocation mismatch"));
         }
-        let expected_key = if let Some(handle) = &pending.handle {
-            if source.kind != ArchiveKind::ToolOutput
-                || source.call.as_ref() != Some(&pending.call)
-                || handle.is_empty()
-                || handle.len() > 256
-            {
-                return Err(error("pending operation source mismatch"));
+        let expected_key = match &pending.handle {
+            Some(PendingEffectIdentity::Legacy(handle)) => {
+                if source.kind != ArchiveKind::ToolOutput
+                    || source.call.as_ref() != Some(&pending.call)
+                    || handle.is_empty()
+                    || handle.len() > 256
+                {
+                    return Err(error("pending legacy operation source mismatch"));
+                }
+                environment::key(format!("operation:{handle}").as_bytes())?.into_bytes()
             }
-            environment::key(format!("operation:{handle}").as_bytes())?
-        } else {
-            if source.kind != ArchiveKind::Assistant {
-                return Err(error("pending proposal source mismatch"));
+            Some(PendingEffectIdentity::Reference(reference)) => {
+                if source.kind != ArchiveKind::ToolOutput
+                    || source.call.as_ref() != Some(&pending.call)
+                    || reference.schema_version != PENDING_EFFECT_REFERENCE_SCHEMA_VERSION
+                    || reference.artifact.bytes == 0
+                {
+                    return Err(error("pending operation source mismatch"));
+                }
+                pending_effect_key(*reference)
             }
-            environment::key(
-                format!("proposal:{}/{}", pending.invocation, pending.call.id).as_bytes(),
-            )?
+            None => {
+                if source.kind != ArchiveKind::Assistant {
+                    return Err(error("pending proposal source mismatch"));
+                }
+                environment::key(
+                    format!("proposal:{}/{}", pending.invocation, pending.call.id).as_bytes(),
+                )?
+                .into_bytes()
+            }
         };
-        if expected_key.into_bytes() != pending.key {
+        if expected_key != pending.key {
             return Err(error("pending identity does not bind its source"));
         }
     }

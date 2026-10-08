@@ -6,8 +6,9 @@ use super::super::{
     record::{
         ArchiveKind, ArchivedObservation, CHECKPOINT_SCHEMA_VERSION, HOST_INDEX_SCHEMA_VERSION,
         HostIndexRoot, INDEX_PAGE_SCHEMA_VERSION, MemoryRecord, ObservedFileIndexPage,
-        PendingDescriptor, PendingIndexPage, SourceIndexPage, TranscriptDeltaPage,
-        TranscriptManifest, decode, encode,
+        PENDING_EFFECT_REFERENCE_SCHEMA_VERSION, PendingDescriptor, PendingEffectIdentity,
+        PendingIndexPage, SourceIndexPage, TranscriptDeltaPage, TranscriptManifest, decode, encode,
+        pending_effect_key,
     },
     storage::StoredArtifact,
 };
@@ -22,6 +23,8 @@ const SOURCE_PAGE_ENTRIES: usize = 255;
 // Schema-one stores already contain pages written before physical dependency binding.
 const LEGACY_SOURCE_PAGE_ENTRIES: usize = 256;
 const TRANSCRIPT_PAGE_ENTRIES: usize = 256;
+// One predecessor plus one exact handle artifact per upsert fits physical bundle fanout.
+const PENDING_PAGE_ENTRIES: usize = 255;
 
 struct StoredHostIndex {
     root: StoredArtifact,
@@ -244,7 +247,12 @@ impl LocalMemory {
         let mut changed = false;
         while let Some(next) = next_pending_step(&current, &self.transcript.pending)? {
             let page = pending_delta(tail, &current, &next)?;
-            let children = tail.into_iter().collect::<Vec<_>>();
+            let mut children = tail.into_iter().collect::<Vec<_>>();
+            children.extend(
+                page.upserts
+                    .iter()
+                    .filter_map(|pending| pending.handle.as_ref()?.artifact()),
+            );
             let artifact = self.store.store_bundle(&encode(&page)?, &children)?;
             tail = Some(artifact);
             current = next;
@@ -873,7 +881,7 @@ fn next_pending_step(
         .iter()
         .filter(|value| !after_index.contains_key(&value.key))
         .map(|value| value.key)
-        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .take(PENDING_PAGE_ENTRIES)
         .collect::<Vec<_>>();
     if !removals.is_empty() {
         return Ok(Some(
@@ -892,7 +900,7 @@ fn next_pending_step(
         .iter()
         .filter(|value| before_index.get(&value.key).is_none_or(|old| *old != *value))
         .cloned()
-        .take(TRANSCRIPT_PAGE_ENTRIES)
+        .take(PENDING_PAGE_ENTRIES)
         .collect::<Vec<_>>();
     if upserts.is_empty() {
         return Err(error("pending page plan cannot reach the exact index"));
@@ -1086,6 +1094,20 @@ fn read_pending_chain(
             || (page.before == page.after && page.previous.is_some())
         {
             return Err(error("unsupported pending page schema"));
+        }
+        for pending in &page.upserts {
+            if let Some(PendingEffectIdentity::Reference(reference)) = &pending.handle {
+                if reference.schema_version != PENDING_EFFECT_REFERENCE_SCHEMA_VERSION
+                    || reference.artifact.bytes == 0
+                    || pending_effect_key(*reference) != pending.key
+                {
+                    return Err(error("invalid pending effect artifact reference"));
+                }
+                let handle = read(reference.artifact)?;
+                if std::str::from_utf8(&handle).map_or(true, str::is_empty) {
+                    return Err(error("pending effect artifact is not a complete handle"));
+                }
+            }
         }
         current = page.previous;
         pages.push(page);

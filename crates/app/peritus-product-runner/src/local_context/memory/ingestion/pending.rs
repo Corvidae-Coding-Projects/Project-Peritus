@@ -2,7 +2,11 @@
 
 use super::super::super::{
     error,
-    record::{ArchiveKind, ArchivedObservation, PendingDescriptor, PendingState},
+    record::{
+        ArchiveKind, ArchivedObservation, PENDING_EFFECT_REFERENCE_SCHEMA_VERSION,
+        PendingDescriptor, PendingEffectIdentity, PendingEffectReference, PendingState,
+        pending_effect_key,
+    },
 };
 use super::{LocalMemory, call_identity, environment};
 use peritus_agent::DeveloperLoopError;
@@ -99,10 +103,14 @@ impl LocalMemory {
         let value: Value = serde_json::from_slice(&self.store.read(source.artifact)?)
             .map_err(|_| error("decode canonical tool observation"))?;
         if let Some(handle) = value.get("handle").and_then(Value::as_str) {
-            if handle.len() > 256 {
-                return Err(error("operation handle exceeds bound"));
+            if handle.is_empty() {
+                return Err(error("operation handle is empty"));
             }
-            let key = environment::key(format!("operation:{handle}").as_bytes())?.into_bytes();
+            let reference = PendingEffectReference {
+                schema_version: PENDING_EFFECT_REFERENCE_SCHEMA_VERSION,
+                artifact: self.store.store(handle.as_bytes())?,
+            };
+            let key = pending_effect_key(reference);
             self.transcript.pending.retain(|pending| pending.key != key);
             let state = match value.get("state").and_then(Value::as_str) {
                 Some("running") => Some(PendingState::Running),
@@ -116,7 +124,7 @@ impl LocalMemory {
                     call: call.clone(),
                     source: source.sequence,
                     source_artifact_sha256: Some(source.artifact.digest.into_bytes()),
-                    handle: Some(handle.to_owned()),
+                    handle: Some(PendingEffectIdentity::Reference(reference)),
                     state,
                 });
             }

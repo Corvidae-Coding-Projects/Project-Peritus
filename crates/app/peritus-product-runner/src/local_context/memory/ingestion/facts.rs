@@ -5,7 +5,7 @@ use super::{LocalMemory, environment};
 use peritus_agent::DeveloperLoopError;
 use peritus_codec::sha256;
 use peritus_context::{
-    ContextLimits, bind_context_content,
+    ContextLimits, ContextNodeId, bind_context_content,
     working::{
         ObservationId, WorkingDelta, WorkingEntry, WorkingEntryKind, WorkingEntryStatus,
         WorkingEvent, WorkingLinks, WorkingValidity,
@@ -37,24 +37,31 @@ impl LocalMemory {
             let call =
                 source.call.as_ref().ok_or_else(|| error("tool fact has no call identity"))?;
             if !call.name.starts_with("context_") {
-                let id = environment::key(
+                // Preserve the original logical key so existing unresolved obligations continue
+                // on the same lineage after the history/active split was introduced.
+                let obligation = environment::key(
                     format!("failed-approach:{}:{:02x?}", call.name, call.arguments_digest)
                         .as_bytes(),
                 )?;
-                let previous = self.state.entry(self.state.binding(), id).ok();
-                if (source.is_error || previous.is_some())
-                    && !previous.is_some_and(|entry| {
-                        entry.links().supports().iter().any(|id| id.get() == source.sequence)
-                            || entry.status() == WorkingEntryStatus::Superseded
-                    })
-                {
-                    let text = format!(
-                        "Host tool {} reported {} for arguments SHA-256 {:02x?}. Inspect obs:{:06} before repeating the unchanged approach; this is an observation, not independent acceptance.",
-                        call.name,
-                        if source.is_error { "failure" } else { "a later non-error result" },
-                        call.arguments_digest,
-                        source.sequence
-                    );
+                let previous = current_obligation(self, obligation)?;
+                let status = if source.is_error {
+                    WorkingEntryStatus::Open
+                } else {
+                    WorkingEntryStatus::Resolved
+                };
+                let repeated = previous.is_some_and(|(_, previous_status, previous_source)| {
+                    previous_status == status
+                        && self.sources.iter().any(|candidate| {
+                            candidate.sequence == previous_source
+                                && candidate.artifact.digest == source.artifact.digest
+                                && candidate.is_error == source.is_error
+                        })
+                });
+                if (source.is_error || previous.is_some()) && !repeated {
+                    let id = previous.map_or(obligation, |(previous, _, _)| {
+                        transition_id(obligation, source.sequence)
+                    });
+                    let text = fact_summary(call, &source, status);
                     let text = &text[..text.floor_char_boundary(self.limits.entry_bytes())];
                     let content_limits = ContextLimits::new(
                         self.limits.entries(),
@@ -96,12 +103,15 @@ impl LocalMemory {
                         self.limits,
                     )
                     .map_err(|_| error("invalid fact entry"))?
-                    .with_status(if source.is_error {
-                        WorkingEntryStatus::Open
-                    } else {
-                        WorkingEntryStatus::Resolved
-                    })
+                    .with_status(status)
                     .map_err(|_| error("invalid fact status"))?;
+                    let entry = if let Some((previous, _, _)) = previous {
+                        entry
+                            .with_supersedes(previous)
+                            .map_err(|_| error("invalid fact supersession"))?
+                    } else {
+                        entry
+                    };
                     let delta = WorkingDelta::new(
                         self.state.binding(),
                         self.state.revision(),
@@ -116,4 +126,73 @@ impl LocalMemory {
         }
         self.persist_transcript()
     }
+}
+
+fn current_obligation(
+    memory: &LocalMemory,
+    root: ContextNodeId,
+) -> Result<Option<(ContextNodeId, WorkingEntryStatus, u64)>, DeveloperLoopError> {
+    let entries = memory
+        .state
+        .entries(memory.state.binding())
+        .map_err(|_| error("failed-approach lineage binding mismatch"))?;
+    let Ok(mut index) = entries.binary_search_by_key(&root, WorkingEntry::id) else {
+        return Ok(None);
+    };
+    loop {
+        let current = &entries[index];
+        if current.kind() != WorkingEntryKind::FailedApproach
+            || current.links().supports().len() != 1
+        {
+            return Err(error("failed-approach lineage is invalid"));
+        }
+        let mut successor = None;
+        for (candidate_index, candidate) in entries.iter().enumerate() {
+            if candidate.supersedes() == Some(current.id()) {
+                if successor.replace(candidate_index).is_some() {
+                    return Err(error("failed-approach lineage has competing successors"));
+                }
+            }
+        }
+        match successor {
+            Some(next) if current.status() == WorkingEntryStatus::Superseded => index = next,
+            Some(_) => return Err(error("failed-approach successor did not retire its predecessor")),
+            None if current.status() == WorkingEntryStatus::Superseded => {
+                return Err(error("failed-approach lineage is truncated"));
+            }
+            None => {
+                return Ok(Some((
+                    current.id(),
+                    current.status(),
+                    current.links().supports()[0].get(),
+                )));
+            }
+        }
+    }
+}
+
+fn transition_id(root: ContextNodeId, source: u64) -> ContextNodeId {
+    let mut material = b"peritus-failed-approach-transition-v1\0".to_vec();
+    material.extend_from_slice(root.as_bytes());
+    material.extend_from_slice(&source.to_be_bytes());
+    let digest = sha256(&material);
+    let mut id = [0_u8; 16];
+    id.copy_from_slice(&digest.as_bytes()[..16]);
+    id[0] |= 1;
+    ContextNodeId::new(id).expect("derived failed-approach identity is nonzero")
+}
+
+fn fact_summary(
+    call: &super::super::super::record::CallIdentity,
+    source: &super::super::super::record::ArchivedObservation,
+    status: WorkingEntryStatus,
+) -> String {
+    format!(
+        "obs:{:06}; status={}; tool={:?}; tool_name_sha256={:02x?}; arguments_sha256={:02x?}. The exact occurrence and result remain in the observation archive. Inspect that source before repeating the unchanged approach; this is evidence, not independent acceptance.",
+        source.sequence,
+        if status == WorkingEntryStatus::Open { "failed" } else { "resolved_by_non_error" },
+        call.name,
+        sha256(call.name.as_bytes()).into_bytes(),
+        call.arguments_digest,
+    )
 }
