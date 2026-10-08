@@ -691,6 +691,40 @@ impl CommandRuntime {
         self.observe_async(handle, Observation::Poll).await
     }
 
+    pub(super) fn output(
+        &self,
+        handle: &str,
+        label: &str,
+        digest: &str,
+        prepared_digest: &str,
+        size: u64,
+        offset: u64,
+    ) -> Result<Value, DeveloperLoopError> {
+        let projection = {
+            let state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
+            if let Some(terminal) = state.terminal.get(handle) {
+                result::terminal_deferred(handle, &terminal.result, &terminal.progress)
+            } else if let Some(recovered) = state.recovered.get(handle) {
+                recovered.clone()
+            } else if state.starting.contains_key(handle) || state.active.contains_key(handle) {
+                return Err(tool("command output is available only after terminal completion"));
+            } else {
+                return Err(tool("command invocation handle is unknown"));
+            }
+        };
+        result::read_output_page(
+            &projection,
+            &self.inner.artifacts,
+            handle,
+            label,
+            digest,
+            prepared_digest,
+            size,
+            offset,
+        )
+        .map_err(tool)
+    }
+
     fn start_owned(
         &self,
         request: StartCommand<'_>,

@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 use sha2::{Digest as _, Sha256};
 
 use super::{
-    super::{access_policy::WorkspaceAccessPolicy, path::ignored},
+    super::{access_policy::WorkspaceAccessPolicy, path::traversal_exclusion},
     retained::{
         InspectionError, WorkspaceInspectionOwner, checked_record, digest_hex, encode_hex, seal,
         sync_storage_directory, take_bytes,
@@ -168,6 +168,7 @@ impl WorkspaceInspectionOwner {
         sources: &mut Sha256,
         writer: &mut RecordWriter,
     ) -> Result<(), InspectionError> {
+        let targeted_root = start.clone();
         let mut queue = VecDeque::from([(start, true)]);
         while let Some((directory, required)) = queue.pop_front() {
             if self.is_cancelled() {
@@ -200,12 +201,16 @@ impl WorkspaceInspectionOwner {
                 for item in page.items() {
                     if let Some(metadata) = item.metadata() {
                         let relative = metadata.path().as_path();
-                        if ignored(relative) {
+                        if let Some(exclusion) = traversal_exclusion(
+                            relative,
+                            targeted_root.as_ref().map(WorkspacePath::as_path),
+                        ) {
                             writer.write(&json!({
                                 "kind": "omission",
                                 "path": metadata.path().as_str(),
-                                "reason": "ignored_path",
-                                "detail": "entry is excluded from workspace inspection by repository policy"
+                                "reason": exclusion.reason(),
+                                "detail": exclusion.detail(),
+                                "targetable": exclusion.targetable()
                             }))?;
                             continue;
                         }

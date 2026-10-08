@@ -166,6 +166,17 @@ impl WorkspaceAccessPolicy {
         !self.protected_paths.iter().any(|path| relative.starts_with(path))
     }
 
+    pub(super) fn authorize_removal_tree<'a>(
+        &self,
+        paths: impl IntoIterator<Item = &'a str>,
+    ) -> Result<(), String> {
+        for path in paths {
+            self.authorize_path(path)?;
+            self.authorize_mutation_path(path)?;
+        }
+        Ok(())
+    }
+
     fn authorize_path(&self, raw: &str) -> Result<(), String> {
         let relative = normalized_relative(raw);
         if self.protected_paths.iter().any(|path| relative.starts_with(path)) {

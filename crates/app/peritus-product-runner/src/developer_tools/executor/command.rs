@@ -234,6 +234,20 @@ impl WorkspaceDeveloperTools {
         runtime.poll_async(handle).await
     }
 
+    pub(super) fn read_command_output(
+        &self,
+        arguments: &Value,
+    ) -> Result<Value, DeveloperLoopError> {
+        self.command_runtime()?.output(
+            required_string(arguments, "handle")?,
+            required_string(arguments, "label")?,
+            required_string(arguments, "digest")?,
+            required_string(arguments, "prepared_digest")?,
+            decimal_argument(arguments, "size")?,
+            decimal_argument(arguments, "offset")?,
+        )
+    }
+
     pub(super) fn write_command_stdin(
         &self,
         arguments: &Value,
@@ -400,6 +414,17 @@ impl WorkspaceDeveloperTools {
             mode,
         })
     }
+}
+
+fn decimal_argument(arguments: &Value, name: &str) -> Result<u64, DeveloperLoopError> {
+    let text = required_string(arguments, name)?;
+    let value = text
+        .parse::<u64>()
+        .map_err(|_| tool(format!("{name} is not a canonical u64 decimal")))?;
+    if text != value.to_string() {
+        return Err(tool(format!("{name} is not a canonical u64 decimal")));
+    }
+    Ok(value)
 }
 
 fn annotate_result(

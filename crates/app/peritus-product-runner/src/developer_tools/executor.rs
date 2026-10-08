@@ -37,6 +37,7 @@ pub(in crate::developer_tools) mod sources;
 
 use active::ActiveCommandLedger;
 use checkpoint_observer::PreparedMutation;
+use removal::PreparedRemoval;
 pub use checkpoint_observer::ToolCheckpointBoundary;
 use checkpoint_observer::ToolCheckpointObserver;
 
@@ -58,6 +59,7 @@ pub struct WorkspaceDeveloperTools {
     command_evidence: CommandEvidence,
     command_budget: Option<CommandBudget>,
     receipts: Option<EffectReceiptLedger>,
+    removal_transactions: Option<PathBuf>,
     command_runtime: Option<crate::CommandRuntime>,
     active_commands: ActiveCommandLedger,
     #[cfg(test)]
@@ -69,6 +71,7 @@ pub struct WorkspaceDeveloperTools {
     checkpoint_observer: Option<ToolCheckpointObserver>,
     checkpoint_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
     prepared_mutations: Vec<PreparedMutation>,
+    prepared_removal: Option<PreparedRemoval>,
     checkpoint_targets: Vec<(String, crate::WorkspaceMutationKind)>,
     pub(super) protection_view: Option<std::sync::Arc<dyn crate::ConversationView>>,
 }
@@ -184,7 +187,7 @@ impl WorkspaceDeveloperTools {
         if matches!(
             tool_name,
             "request_sources" | "request_source_read"
-                | "command_poll" | "command_recover" | "command_cancel"
+                | "command_poll" | "command_output_read" | "command_recover" | "command_cancel"
         ) {
             return None;
         }
@@ -273,7 +276,9 @@ fn required_permissions(
         // stable terminal observation without requiring authority that can no longer be used.
         "command_stdin" | "command_resize" | "command_signal" => Some(&[]),
         // Observation and cleanup of an already-owned process remain available after revocation.
-        "command_poll" | "command_recover" | "command_cancel" => Some(&[]),
+        "command_poll" | "command_output_read" | "command_recover" | "command_cancel" => {
+            Some(&[])
+        }
         _ => None,
     }
 }
@@ -307,7 +312,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
             name,
             "request_sources" | "request_source_read" | "context_sources" | "context_source_read"
                 | "workspace_list" | "workspace_search" | "workspace_read"
-                | "command_poll" | "command_recover" | "command_cancel"
+                | "command_poll" | "command_output_read" | "command_recover" | "command_cancel"
         ) {
             return DeveloperToolEffect::ReadOnly;
         }

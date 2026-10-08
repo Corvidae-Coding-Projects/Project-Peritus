@@ -72,6 +72,20 @@ impl EffectReceiptLedger {
         }
     }
 
+    pub(super) fn pending_effect_identity(&mut self) -> Result<String, DeveloperLoopError> {
+        self.load()?;
+        let ordinal = self
+            .next_ordinal
+            .checked_add(1)
+            .ok_or_else(|| tool("effect receipt ordinal overflowed"))?;
+        let mut hasher = Sha256::new();
+        hasher.update(b"peritus/recursive-removal-transaction/v1\0");
+        hasher.update((self.scope.len() as u64).to_be_bytes());
+        hasher.update(self.scope.as_bytes());
+        hasher.update(ordinal.to_be_bytes());
+        Ok(hex(hasher.finalize().into()))
+    }
+
     pub(super) fn begin(
         &mut self,
         call: &CompletedToolCall,

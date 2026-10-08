@@ -18,7 +18,7 @@ pub fn checked(
     }
     if relative.is_absolute()
         || relative.components().any(|component| !matches!(component, Component::Normal(_)))
-        || relative.starts_with(".git")
+        || protected_metadata(relative)
     {
         return Err(tool("path must be a normal workspace-relative path"));
     }
@@ -54,11 +54,66 @@ pub fn tool(detail: impl Into<String>) -> DeveloperLoopError {
     DeveloperLoopError::Tool(detail.into())
 }
 
-pub fn ignored(path: &Path) -> bool {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum TraversalExclusion {
+    ProtectedMetadata,
+    DefaultCache,
+}
+
+impl TraversalExclusion {
+    pub const fn reason(self) -> &'static str {
+        match self {
+            Self::ProtectedMetadata => "protected_metadata",
+            Self::DefaultCache => "default_cache",
+        }
+    }
+
+    pub const fn detail(self) -> &'static str {
+        match self {
+            Self::ProtectedMetadata => {
+                "repository control metadata is never exposed as an ordinary workspace target"
+            }
+            Self::DefaultCache => {
+                "a common generated cache is omitted from broad traversal; target this path explicitly to inspect it"
+            }
+        }
+    }
+
+    pub const fn targetable(self) -> bool {
+        matches!(self, Self::DefaultCache)
+    }
+}
+
+pub fn traversal_exclusion(path: &Path, targeted_root: Option<&Path>) -> Option<TraversalExclusion> {
+    if protected_metadata(path) {
+        return Some(TraversalExclusion::ProtectedMetadata);
+    }
+    if targets_default_exclusion(targeted_root)
+        && targeted_root.is_some_and(|root| path.starts_with(root))
+    {
+        return None;
+    }
+    contains_default_exclusion(path).then_some(TraversalExclusion::DefaultCache)
+}
+
+pub fn protected_metadata(path: &Path) -> bool {
+    path.components().any(|component| {
+        component
+            .as_os_str()
+            .to_str()
+            .is_some_and(|name| name.eq_ignore_ascii_case(".git"))
+    })
+}
+
+pub fn targets_default_exclusion(path: Option<&Path>) -> bool {
+    path.is_some_and(contains_default_exclusion)
+}
+
+fn contains_default_exclusion(path: &Path) -> bool {
     path.components().any(|component| {
         matches!(
             component.as_os_str().to_str(),
-            Some(".git" | "target" | "node_modules" | ".venv" | "__pycache__")
+            Some("target" | "node_modules" | ".venv" | "__pycache__")
         )
     })
 }

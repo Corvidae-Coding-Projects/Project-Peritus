@@ -29,6 +29,7 @@ impl WorkspaceDeveloperTools {
             command_evidence: CommandEvidence::default(),
             command_budget: None,
             receipts: None,
+            removal_transactions: None,
             command_runtime: None,
             active_commands: ActiveCommandLedger::default(),
             #[cfg(test)]
@@ -40,6 +41,7 @@ impl WorkspaceDeveloperTools {
             checkpoint_observer: None,
             checkpoint_view: None,
             prepared_mutations: Vec::new(),
+            prepared_removal: None,
             checkpoint_targets: Vec::new(),
             protection_view: None,
         }
@@ -77,6 +79,7 @@ impl WorkspaceDeveloperTools {
             std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             peritus_provider_core::CancellationToken::new(),
         ));
+        let removal_transactions = Some(receipt_path.with_extension("recursive-removals"));
         Self {
             root,
             access_policy: WorkspaceAccessPolicy::default(),
@@ -88,6 +91,7 @@ impl WorkspaceDeveloperTools {
             command_evidence: CommandEvidence::default(),
             command_budget: Some(CommandBudget::new(command_horizon.into())),
             receipts: Some(EffectReceiptLedger::new(receipt_path, receipt_scope)),
+            removal_transactions,
             command_runtime: Some(command_runtime),
             active_commands: ActiveCommandLedger::default(),
             #[cfg(test)]
@@ -99,6 +103,7 @@ impl WorkspaceDeveloperTools {
             checkpoint_observer: None,
             checkpoint_view: None,
             prepared_mutations: Vec::new(),
+            prepared_removal: None,
             checkpoint_targets: Vec::new(),
             protection_view: None,
         }

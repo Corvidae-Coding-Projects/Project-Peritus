@@ -100,6 +100,7 @@ impl WorkspaceDeveloperTools {
             "run_command" => self.run_command(arguments, call.id().expose_for_wire()),
             "command_start" => self.start_command(arguments, call.id().expose_for_wire()),
             "command_poll" => self.poll_command(arguments),
+            "command_output_read" => self.read_command_output(arguments),
             "command_stdin" => self.write_command_stdin(arguments),
             "command_resize" => self.resize_command(arguments),
             "command_signal" => self.signal_command(arguments),
@@ -246,8 +247,16 @@ impl WorkspaceDeveloperTools {
         ]))
     }
 
-    pub(super) fn remove(&self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
+    pub(super) fn remove(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
+        if removal::recursive(arguments)? {
+            let prepared = self
+                .prepared_removal
+                .take()
+                .ok_or_else(|| tool("recursive removal has no validated transaction plan"))?;
+            removal::remove_recursive(&self.root, &prepared)
+        } else {
+            removal::remove(&self.root, &self.grounding, &self.ownership, arguments)
+        }
     }
 }
 

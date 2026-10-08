@@ -11,6 +11,7 @@ use super::WorkspaceDeveloperTools;
 use crate::developer_tools::{
     executor::literal_patch::inspect_literal_patch,
     path::{checked, tool},
+    removal,
     wire::{required_string, string},
 };
 use crate::{
@@ -107,22 +108,45 @@ impl WorkspaceDeveloperTools {
             }
             "workspace_remove" => {
                 let path = required_string(arguments, "path")?;
-                if checked(&self.root, path, true)?.exists() {
-                    return Err(tool(
-                        "removed path reappeared before checkpoint recovery; reconciliation is required",
-                    ));
+                match fs::symlink_metadata(checked(&self.root, path, true)?) {
+                    Ok(_) => {
+                        return Err(tool(
+                            "removed path reappeared before checkpoint recovery; reconciliation is required",
+                        ));
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(tool(error.to_string())),
                 }
-                let kind = match result.get("kind").and_then(Value::as_str) {
-                    Some("file") => WorkspaceMutationKind::File,
-                    Some("directory") => WorkspaceMutationKind::EmptyDirectory,
-                    _ => return Err(tool("completed removal receipt has no supported path kind")),
-                };
-                self.prepared_mutations.push(PreparedMutation {
-                    path: path.to_owned(),
-                    kind,
-                    owned_postchange: CheckpointFileVersion::Absent,
-                    baseline: None,
-                });
+                if result.get("kind").and_then(Value::as_str) == Some("directory_tree") {
+                    let state_root = self
+                        .removal_transactions
+                        .as_deref()
+                        .ok_or_else(|| tool("writable tools have no recursive removal state"))?;
+                    for (path, kind) in removal::recovery_checkpoints(state_root, result)? {
+                        self.prepared_mutations.push(PreparedMutation {
+                            path,
+                            kind,
+                            owned_postchange: CheckpointFileVersion::Absent,
+                            baseline: None,
+                        });
+                    }
+                } else {
+                    let kind = match result.get("kind").and_then(Value::as_str) {
+                        Some("file") => WorkspaceMutationKind::File,
+                        Some("directory") => WorkspaceMutationKind::EmptyDirectory,
+                        _ => {
+                            return Err(tool(
+                                "completed removal receipt has no supported path kind",
+                            ));
+                        }
+                    };
+                    self.prepared_mutations.push(PreparedMutation {
+                        path: path.to_owned(),
+                        kind,
+                        owned_postchange: CheckpointFileVersion::Absent,
+                        baseline: None,
+                    });
+                }
             }
             _ => {}
         }
@@ -135,6 +159,7 @@ impl WorkspaceDeveloperTools {
         arguments: &Value,
     ) -> Result<(), DeveloperLoopError> {
         self.prepare_checkpoint_targets(name, arguments)?;
+        let recursive = self.prepared_removal.clone();
         if let Some(observer) = &self.checkpoint_observer {
             for (path, kind) in &self.checkpoint_targets {
                 observer(ToolCheckpointBoundary::BeforeMutation {
@@ -142,6 +167,19 @@ impl WorkspaceDeveloperTools {
                     kind: *kind,
                 })
                 .map_err(tool)?;
+            }
+        }
+        if recursive.as_ref().is_some_and(removal::PreparedRemoval::checkpoint_required) {
+            let targets = self.checkpoint_targets.clone();
+            let mutations = self.prepared_mutations.clone();
+            self.prepare_checkpoint_targets(name, arguments)?;
+            if self.checkpoint_targets != targets
+                || self.prepared_mutations != mutations
+                || self.prepared_removal != recursive
+            {
+                return Err(tool(
+                    "recursive removal scope changed during checkpoint preflight; reobserve before mutation",
+                ));
             }
         }
         Ok(())
@@ -153,6 +191,7 @@ impl WorkspaceDeveloperTools {
         arguments: &Value,
     ) -> Result<(), DeveloperLoopError> {
         self.prepared_mutations.clear();
+        self.prepared_removal = None;
         self.checkpoint_targets.clear();
         match name {
             "workspace_write" => self.prepare_write_checkpoint(arguments),
@@ -202,6 +241,45 @@ impl WorkspaceDeveloperTools {
     }
 
     fn prepare_remove_checkpoint(&mut self, arguments: &Value) -> Result<(), DeveloperLoopError> {
+        if removal::recursive(arguments)? {
+            let transaction = self
+                .receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                .pending_effect_identity()?;
+            let state_root = self
+                .removal_transactions
+                .as_deref()
+                .ok_or_else(|| tool("writable tools have no recursive removal state"))?;
+            let view = self
+                .protection_view
+                .as_deref()
+                .ok_or_else(|| tool("recursive workspace_remove has no live user authority"))?;
+            let prepared = removal::prepare_recursive(
+                &self.root,
+                state_root,
+                &transaction,
+                &self.grounding,
+                &self.ownership,
+                &self.access_policy,
+                view,
+                arguments,
+            )?;
+            let checkpoints = prepared.checkpoints();
+            for (path, kind) in checkpoints {
+                if prepared.checkpoint_required() {
+                    self.checkpoint_before_mutation(&path, kind);
+                }
+                self.prepared_mutations.push(PreparedMutation {
+                    path,
+                    kind,
+                    owned_postchange: CheckpointFileVersion::Absent,
+                    baseline: None,
+                });
+            }
+            self.prepared_removal = Some(prepared);
+            return Ok(());
+        }
         let relative = required_string(arguments, "path")?;
         if relative.is_empty() || relative == "." {
             return Err(tool("workspace_remove cannot remove the workspace root"));

@@ -206,7 +206,7 @@ fn read_only_role_allows(
         "request_sources" | "request_source_read"
             | "context_sources" | "context_source_read"
             | "workspace_list" | "workspace_search" | "workspace_read"
-            | "command_poll" | "command_recover" | "command_cancel"
+            | "command_poll" | "command_output_read" | "command_recover" | "command_cancel"
     ) || (matches!(
         tool_name,
         "run_command" | "command_start" | "command_stdin" | "command_resize"

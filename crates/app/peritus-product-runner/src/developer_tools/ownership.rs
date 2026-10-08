@@ -9,7 +9,7 @@ use std::{
 
 use peritus_agent::DeveloperLoopError;
 
-use super::path::{ignored, tool};
+use super::path::{protected_metadata, targets_default_exclusion, tool};
 
 /// Distinguishes baseline and model-caused files from unrelated late external evidence.
 #[derive(Clone)]
@@ -95,7 +95,8 @@ impl WorkspaceOwnership {
     /// first-party and remains subject to exact-target source checks.
     #[must_use]
     pub fn source_layout_applies(&self, path: &Path) -> bool {
-        self.baseline.contains(path) || self.directly_created.contains(path)
+        !targets_default_exclusion(Some(path))
+            && (self.baseline.contains(path) || self.directly_created.contains(path))
     }
 
     /// Allows exact-file removal only when this product run has a defensible ownership claim.
@@ -128,7 +129,7 @@ fn untracked_files(root: &Path) -> Option<BTreeSet<PathBuf>> {
         return None;
     }
     let output = Command::new("git")
-        .args(["ls-files", "--others", "--exclude-standard", "-z"])
+        .args(["ls-files", "--others", "-z"])
         .current_dir(root)
         .output()
         .ok()?;
@@ -160,7 +161,7 @@ fn regular_files(root: &Path) -> BTreeSet<PathBuf> {
             let Ok(relative) = path.strip_prefix(root) else {
                 continue;
             };
-            if ignored(relative) {
+            if protected_metadata(relative) {
                 continue;
             }
             let Ok(kind) = child.file_type() else {

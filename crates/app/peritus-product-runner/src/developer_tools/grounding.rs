@@ -700,6 +700,23 @@ impl GroundingEvidence {
         Ok(())
     }
 
+    pub fn ensure_recursive_removal_allowed(&self, path: &str) -> Result<(), String> {
+        self.validate().map_err(str::to_owned)?;
+        let path = PathBuf::from(path);
+        let directly_listed = self.listed_paths.contains(&path);
+        let completely_listed = self
+            .listings
+            .completed()
+            .any(|(_, traversal)| std::path::Path::new(&traversal.subject) == path);
+        if !directly_listed && !completely_listed {
+            return Err(format!(
+                "list the exact recursive-removal root before requesting its deletion: {}",
+                path.display(),
+            ));
+        }
+        Ok(())
+    }
+
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.list_calls == 0 {
             return Err("repository grounding requires a successful workspace listing");

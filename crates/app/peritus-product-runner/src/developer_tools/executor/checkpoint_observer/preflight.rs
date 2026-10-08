@@ -29,6 +29,7 @@ impl WorkspaceDeveloperTools {
         self.prepare_checkpoint_targets(name, arguments)?;
         let targets = self.checkpoint_targets.clone();
         let mutations = self.prepared_mutations.clone();
+        let removal = self.prepared_removal.clone();
         let witness = if self.checkpoint_observer.is_some() && !targets.is_empty() {
             Some(inspect_targets(self.root.clone(), targets.clone()).await?)
         } else {
@@ -55,6 +56,7 @@ impl WorkspaceDeveloperTools {
         self.prepare_checkpoint_targets(name, arguments)?;
         if self.checkpoint_targets != targets
             || self.prepared_mutations != mutations
+            || self.prepared_removal != removal
             || match witness {
                 Some(before) => inspect_targets(self.root.clone(), targets).await? != before,
                 None => false,

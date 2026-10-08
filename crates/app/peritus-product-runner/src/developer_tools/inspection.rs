@@ -1,18 +1,13 @@
 //! Bounded read-only workspace inspection operations.
 
-use std::{
-    fmt::Write as _,
-    fs,
-    io::{BufRead as _, BufReader},
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use peritus_agent::DeveloperLoopError;
 use serde_json::Value;
 
 use super::{
     access_policy::WorkspaceAccessPolicy,
-    path::{checked, ignored, tool},
+    path::{checked, targets_default_exclusion, traversal_exclusion, tool},
     resources::CommandResources,
     wire::{object, required_string, string},
 };
@@ -25,8 +20,6 @@ mod retained;
 mod search;
 pub(crate) use listing::{DirectoryListingOwner, ListingError, RetainedListingPage};
 pub(crate) use retained::{InspectionError, WorkspaceInspectionOwner};
-
-pub(super) const MAX_FILE_BYTES: usize = 2 * 1024 * 1024;
 
 pub(super) fn list(
     root: &Path,
@@ -64,19 +57,15 @@ fn listing(
     let mut entries = Vec::new();
     let mut omissions = Vec::new();
     let observed_items = page.items().len();
+    let targeted_root = page.observation().path().map(|path| path.as_path());
     for item in page.items() {
         let relative = item_relative(page.observation(), item)?;
-        if ignored(&relative) {
+        if let Some(exclusion) = traversal_exclusion(&relative, targeted_root) {
             omissions.push(object(vec![
                 ("path", Value::String(relative.to_string_lossy().into_owned())),
-                ("reason", Value::String("ignored_path".to_owned())),
-                (
-                    "detail",
-                    Value::String(
-                        "entry is excluded from workspace inspection by repository policy"
-                            .to_owned(),
-                    ),
-                ),
+                ("reason", Value::String(exclusion.reason().to_owned())),
+                ("detail", Value::String(exclusion.detail().to_owned())),
+                ("targetable", Value::Bool(exclusion.targetable())),
             ]));
             continue;
         }
@@ -118,6 +107,7 @@ fn listing(
             Value::Bool(page.observation().count() == 0),
         ),
         ("coverage_complete", Value::Bool(omitted_items == 0)),
+        ("coverage_policy", coverage_policy(targeted_root)),
         ("complete", Value::Bool(page.complete())),
         ("partial", Value::Bool(!page.complete())),
         ("truncated", Value::Bool(!page.complete())),
@@ -279,6 +269,10 @@ pub(super) fn search(
             "coverage_complete",
             Value::Bool(page.observation.omissions == 0),
         ),
+        (
+            "coverage_policy",
+            coverage_policy(selected.as_ref().map(peritus_patch::WorkspacePath::as_path)),
+        ),
         ("complete", Value::Bool(complete)),
         ("partial", Value::Bool(!complete)),
         ("truncated", Value::Bool(!complete)),
@@ -402,54 +396,25 @@ pub(super) fn entry_kind(kind: fs::FileType) -> &'static str {
     }
 }
 
-pub(super) fn read_line_range(
-    path: &Path,
-    start: usize,
-    end: usize,
-) -> Result<String, DeveloperLoopError> {
-    let file = fs::File::open(path).map_err(|error| tool(error.to_string()))?;
-    let mut reader = BufReader::new(file);
-    let mut current = 1_usize;
-    let mut selected = Vec::new();
-    let mut output = String::new();
-    loop {
-        let available = reader.fill_buf().map_err(|error| tool(error.to_string()))?;
-        if available.is_empty() || current > end {
-            break;
-        }
-        let consumed = available
-            .iter()
-            .position(|byte| *byte == b'\n')
-            .map_or(available.len(), |index| index + 1);
-        let segment = &available[..consumed];
-        if current >= start {
-            if selected.len().saturating_add(segment.len()) > MAX_FILE_BYTES {
-                return Err(tool("selected line range exceeds the inline byte bound"));
-            }
-            selected.extend_from_slice(segment);
-        }
-        let complete = segment.last() == Some(&b'\n');
-        reader.consume(consumed);
-        if complete {
-            if current >= start {
-                append_line(&mut output, current, &selected)?;
-                selected.clear();
-            }
-            current = current.saturating_add(1);
-        }
-    }
-    if current >= start && current <= end && !selected.is_empty() {
-        append_line(&mut output, current, &selected)?;
-    }
-    Ok(output)
-}
-
-fn append_line(output: &mut String, number: usize, bytes: &[u8]) -> Result<(), DeveloperLoopError> {
-    let bytes = bytes.strip_suffix(b"\n").unwrap_or(bytes);
-    let bytes = bytes.strip_suffix(b"\r").unwrap_or(bytes);
-    let line = std::str::from_utf8(bytes).map_err(|_| tool("selected line range is not UTF-8"))?;
-    if !output.is_empty() {
-        output.push('\n');
-    }
-    write!(output, "{number}: {line}").map_err(|error| tool(error.to_string()))
+fn coverage_policy(targeted_root: Option<&Path>) -> Value {
+    object(vec![
+        (
+            "protected_metadata",
+            Value::Array(vec![Value::String(".git".to_owned())]),
+        ),
+        (
+            "default_exclusions",
+            Value::Array(
+                ["target", "node_modules", ".venv", "__pycache__"]
+                    .into_iter()
+                    .map(|name| Value::String(name.to_owned()))
+                    .collect(),
+            ),
+        ),
+        ("default_exclusions_targetable", Value::Bool(true)),
+        (
+            "targeted_default_exclusion",
+            Value::Bool(targets_default_exclusion(targeted_root)),
+        ),
+    ])
 }
