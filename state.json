@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4052,
-        "tip_oid": "317cd49b150554151aa006cd0ef934edd493b339",
-        "prefix_sha256": "86532e14a345185633e1d8caaa3f5eefa8cbe38e646866a9deb5ffd082af0c29"
+        "sequence": 4053,
+        "tip_oid": "9cb5f79555aa3df6447bb8cca2bf2e162867924a",
+        "prefix_sha256": "1c1525d1ca78ac743d2c8c75fe6916f657a35717dafc9908a9f1e09c34edad03"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3229,
+  "next_comment_id": 3230,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -32153,7 +32153,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.329023634Z",
-      "updated_at": "2026-10-06T13:27:51.331607736Z",
+      "updated_at": "2026-10-08T04:32:45.955146796Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -32164,6 +32164,15 @@
           "content": "Systemic repair plan for L626: Projection storage repeats the five-second SQLite contention cutoff.\n\nOwning contract and implementation boundary: crates/state/peritus-projection/src/sqlite/store.rs:13-72,186-209; src/error.rs:84-97; src/sqlite/schema.rs:3-28. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nGive the shared database owner cancellation-aware durable contention handling and classify representability separately from corruption. Source review only; no tests run.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "ead67c67-0533-46b1-86cb-f89d60c06ef4": {
+          "display_id": 3229,
+          "author": "6ME5",
+          "content": "Code complete in commit 86454de77. Projection SQLite uses explicit fail-fast/timeout/cancel-wait policies with retained live startup cancellation instead of an implicit five-second cutoff. Busy and locked causes remain distinct; impossible candidate persistence rejects as input representability before writes, leaving prior frontier intact, while exact installed retries retain identity. Live daemon caller migration is included. Tests, builds, lint, formatting, and review deferred until all task code and closures are complete, per user directive.",
+          "created_at": "2026-10-08T04:32:45.922161725Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABArpYcL43CqnyLZZTtnzwXDemlt8WDTLAoCm5XpsRbIFh8sp+dzB6FR0CNfS2FIZs576kW1J6sFO85KOF5+ngcBQ=="
         }
       }
     },
