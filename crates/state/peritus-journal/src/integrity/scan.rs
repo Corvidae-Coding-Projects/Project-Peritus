@@ -72,6 +72,96 @@ pub(super) fn scan_transaction(
     })
 }
 
+pub(super) fn scan_head_record_transaction(
+    transaction: &Transaction<'_>,
+    store_id: StoreId,
+    position: u64,
+) -> Result<IntegrityExport, JournalError> {
+    let (count, last): (i64, Option<i64>) = transaction
+        .query_row("SELECT COUNT(*), MAX(global_position) FROM events", [], |row| {
+            Ok((row.get(0)?, row.get(1)?))
+        })
+        .map_err(|error| JournalError::sqlite("observe head-record export range", error))?;
+    let event_count = u64::try_from(count).map_err(|_| corrupt("negative event count"))?;
+    let last_position = last
+        .map(|value| crate::sqlite::query::positive_u64(value, "last global position"))
+        .transpose()?
+        .unwrap_or(0);
+    if event_count != last_position || position > last_position {
+        return Err(corrupt("head-record export position or global range is invalid"));
+    }
+    let records = crate::sqlite::query::load_records_range(transaction, position, position)?;
+    let [record] = records.as_slice() else {
+        return Err(corrupt("head-record export event is absent"));
+    };
+    let batch = crate::sqlite::query::load_command_batch(
+        transaction,
+        store_id,
+        record.command_id(),
+    )?
+    .ok_or_else(|| corrupt("head-record export event has no owning command"))?;
+    if !batch.records().iter().any(|value| value == record) {
+        return Err(corrupt("head-record export command does not own the exact event"));
+    }
+    let stored_heads = load_heads(transaction)?;
+    let expected_head = AggregateHead::new(
+        record.aggregate(),
+        record.sequence(),
+        record.event_id(),
+        record.event_hash(),
+    );
+    if stored_heads
+        .iter()
+        .find(|head| head.key() == record.aggregate())
+        != Some(&expected_head)
+    {
+        return Err(corrupt("exported provenance event is not its current aggregate head"));
+    }
+    let invalid_artifact: bool = transaction
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM artifact_references r
+              LEFT JOIN artifact_records a ON a.digest = r.artifact_digest
+             WHERE r.owner_kind = 1 AND r.owner_identity = ?1
+               AND (a.digest IS NULL OR a.finalization_state != 2 OR a.quarantine_state != 1))",
+            [batch.batch_hash().as_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .map_err(|error| JournalError::sqlite("check head-record artifacts", error))?;
+    if invalid_artifact {
+        return Err(corrupt("head-record artifact reference is not finalized and available"));
+    }
+    let artifact_references = batch
+        .artifact_dependencies()
+        .iter()
+        .map(|dependency| super::CommittedArtifactReference {
+            batch_hash: batch.batch_hash(),
+            first_position: batch.first_position(),
+            last_position: batch.last_position(),
+            artifact_digest: dependency.digest(),
+        })
+        .collect();
+    let head_digest = crate::hash_chain::journal_head_hash(
+        store_id,
+        last_position,
+        stored_heads
+            .iter()
+            .map(|head| (head.key(), head.sequence().get(), head.event_hash())),
+        stored_heads.len(),
+    );
+    Ok(IntegrityExport {
+        report: IntegrityReport {
+            store_id,
+            event_count,
+            aggregate_count: stored_heads.len() as u64,
+            last_position,
+            journal_head_digest: head_digest,
+        },
+        records,
+        heads: stored_heads,
+        artifact_references,
+    })
+}
+
 fn validate_event_order(
     records: &[CommittedRecord],
 ) -> Result<BTreeMap<AggregateKey, AggregateHead>, JournalError> {

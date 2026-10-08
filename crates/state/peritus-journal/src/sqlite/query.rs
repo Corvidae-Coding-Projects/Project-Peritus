@@ -2,6 +2,7 @@
 
 mod aggregate;
 mod command;
+pub(crate) use command::load_command_batch;
 mod records;
 mod state;
 

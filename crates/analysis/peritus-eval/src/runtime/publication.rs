@@ -188,7 +188,9 @@ pub fn publish_claimed_report(
     if state.phase() != EvaluationPhase::ReportReady {
         return Err(binding("publication state is not report-ready"));
     }
-    let export = journal.integrity_export().map_err(journal_error)?;
+    let export = journal
+        .integrity_export_for_head(report_commit_position)
+        .map_err(journal_error)?;
     let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
     if evidence.id() != publication.evidence_id() {
         return Err(recovery("admitted evidence identity differs from publication"));

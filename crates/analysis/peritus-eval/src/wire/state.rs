@@ -22,6 +22,9 @@ impl EvaluationStateFrame {
     pub fn into_state(self) -> EvaluationState {
         self.0
     }
+    pub(crate) const fn state(&self) -> &EvaluationState {
+        &self.0
+    }
     /// Exact complete-state equality.
     #[must_use]
     pub fn matches_state(&self, state: &EvaluationState) -> bool {
@@ -58,7 +61,11 @@ impl CanonicalEncode for EvaluationStateFrame {
     const FAMILY: u16 = 87;
     const SCHEMA_VERSION: u16 = 1;
     fn encode_payload(&self, writer: &mut CanonicalWriter) -> Result<(), CodecError> {
-        writer.write_bytes(&self.0.canonical_bytes().map_err(super::scalar::semantic)?)
+        if let Some(bytes) = self.0.cached_canonical_bytes() {
+            writer.write_bytes(bytes)
+        } else {
+            writer.write_bytes(&self.0.canonical_bytes().map_err(super::scalar::semantic)?)
+        }
     }
 }
 

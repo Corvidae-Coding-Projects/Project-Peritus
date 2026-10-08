@@ -162,6 +162,38 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("finish integrity export", error))?;
         Ok(export)
     }
+
+    /// Produces a bounded exact export for one event that is still its aggregate head.
+    ///
+    /// The event, owning command batch, artifact references, aggregate head, and current canonical
+    /// head catalog are checked in one read transaction. This avoids materializing unrelated event
+    /// frames when a caller needs provenance for the current aggregate result.
+    ///
+    /// # Errors
+    /// Returns invalid input for position zero, or a storage/integrity error when the event is
+    /// absent, detached from its command, or no longer the aggregate head.
+    pub fn integrity_export_for_head(
+        &mut self,
+        position: u64,
+    ) -> Result<IntegrityExport, JournalError> {
+        if position == 0 {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "export journal head record",
+                "journal provenance position is zero",
+            ));
+        }
+        let store_id = self.store_id;
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .map_err(|error| JournalError::sqlite("begin head-record export", error))?;
+        let export = scan::scan_head_record_transaction(&transaction, store_id, position)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("finish head-record export", error))?;
+        Ok(export)
+    }
 }
 
 const fn corrupt(detail: &'static str) -> JournalError {

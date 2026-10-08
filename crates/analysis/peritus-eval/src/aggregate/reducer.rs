@@ -1,6 +1,9 @@
 //! Pure evaluation command decision, event application, and replay.
 
 use peritus_codec::CanonicalWriter;
+use std::sync::Arc;
+
+use super::state::RolloutTable;
 
 use crate::{
     EvaluationCommand, EvaluationCommandKind, EvaluationError, EvaluationErrorKind,
@@ -185,12 +188,13 @@ fn apply_kind(
             sequence,
             last_event_id: event_id,
             state_digest: peritus_types::Sha256Digest::new([0; 32]),
+            canonical_cache: Arc::new(Vec::new()),
             phase: EvaluationPhase::Created,
             batch_total: None,
             pending_plan_id: None,
             pending_plan_digest: None,
-            batch_artifacts: Vec::new(),
-            rollouts: std::collections::BTreeMap::new(),
+            batch_artifacts: Arc::new(Vec::new()),
+            rollouts: RolloutTable::default(),
             plan: None,
             analysis_digest: None,
             analysis_artifact: None,
@@ -240,7 +244,7 @@ fn apply_kind(
                     return Err(binding("plan batch repeats a rollout identity"));
                 }
             }
-            state.batch_artifacts.push(batch.artifact());
+            Arc::make_mut(&mut state.batch_artifacts).push(batch.artifact());
         }
         EvaluationCommandKind::CompletePlan { plan } => {
             require_phase(&state, &[EvaluationPhase::Created])?;
@@ -265,16 +269,19 @@ fn apply_kind(
                 &state,
                 &[EvaluationPhase::Planned, EvaluationPhase::Scheduling, EvaluationPhase::Running],
             )?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if progress.status() != RolloutStatus::Planned
-                || progress.binding().work_id() != work.id()
-                || progress.binding().request_digest() != work.payload_digest()
-                || work.class() != peritus_scheduler::ExecutionClass::Coordination
-                || work.revision() != state.revision
-            {
-                return Err(binding("schedule request rollout is not in planned state"));
-            }
-            progress.set_status(RolloutStatus::Scheduling);
+            let revision = state.revision;
+            update_rollout(&mut state, rollout_id, |progress| {
+                if progress.status() != RolloutStatus::Planned
+                    || progress.binding().work_id() != work.id()
+                    || progress.binding().request_digest() != work.payload_digest()
+                    || work.class() != peritus_scheduler::ExecutionClass::Coordination
+                    || work.revision() != revision
+                {
+                    return Err(binding("schedule request rollout is not in planned state"));
+                }
+                progress.set_status(RolloutStatus::Scheduling);
+                Ok(())
+            })?;
             if state.phase == EvaluationPhase::Planned {
                 state.phase = EvaluationPhase::Scheduling;
             }
@@ -284,71 +291,84 @@ fn apply_kind(
                 &state,
                 &[EvaluationPhase::Scheduling, EvaluationPhase::Running],
             )?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if progress.status() != RolloutStatus::Scheduling {
-                return Err(binding("schedule acknowledgement has no outstanding request"));
-            }
-            progress.set_status(RolloutStatus::Scheduled {
-                acknowledgement_digest: *acknowledgement_digest,
-            });
+            update_rollout(&mut state, rollout_id, |progress| {
+                if progress.status() != RolloutStatus::Scheduling {
+                    return Err(binding("schedule acknowledgement has no outstanding request"));
+                }
+                progress.set_status(RolloutStatus::Scheduled {
+                    acknowledgement_digest: *acknowledgement_digest,
+                });
+                Ok(())
+            })?;
         }
         EvaluationCommandKind::StartRollout { rollout_id, attempt, .. } => {
             require_phase(&state, &[EvaluationPhase::Scheduling, EvaluationPhase::Running])?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if !matches!(progress.status(), RolloutStatus::Scheduled { .. })
-                || progress.attempts_retained().checked_add(1) != Some(*attempt)
-            {
-                return Err(binding("rollout start is not the next scheduled attempt"));
-            }
-            progress.set_status(RolloutStatus::Running { attempt: *attempt });
+            update_rollout(&mut state, rollout_id, |progress| {
+                if !matches!(progress.status(), RolloutStatus::Scheduled { .. })
+                    || progress.attempts_retained().checked_add(1) != Some(*attempt)
+                {
+                    return Err(binding("rollout start is not the next scheduled attempt"));
+                }
+                progress.set_status(RolloutStatus::Running { attempt: *attempt });
+                Ok(())
+            })?;
             state.phase = EvaluationPhase::Running;
         }
         EvaluationCommandKind::StartRetryRollout { rollout_id, retry, .. } => {
             require_phase(&state, &[EvaluationPhase::Scheduling, EvaluationPhase::Running])?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if progress.status() != (RolloutStatus::RetryPending { retry: *retry })
-                || progress.attempts_retained().checked_add(1) != Some(retry.next_attempt())
-            {
-                return Err(binding("retry start differs from the retained retry intent"));
-            }
-            progress.set_status(RolloutStatus::RetryRunning { retry: *retry });
+            update_rollout(&mut state, rollout_id, |progress| {
+                if progress.status() != (RolloutStatus::RetryPending { retry: *retry })
+                    || progress.attempts_retained().checked_add(1) != Some(retry.next_attempt())
+                {
+                    return Err(binding("retry start differs from the retained retry intent"));
+                }
+                progress.set_status(RolloutStatus::RetryRunning { retry: *retry });
+                Ok(())
+            })?;
             state.phase = EvaluationPhase::Running;
         }
         EvaluationCommandKind::RetainRetryableAttempt { rollout_id, attempt, .. } => {
             require_effect_phase(&state, &[EvaluationPhase::Running])?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if !running_attempt_matches(progress.status(), *attempt) {
-                return Err(binding("retryable attempt differs from the running attempt"));
-            }
-            progress.retain_attempt(*attempt);
-            progress.set_status(RolloutStatus::Scheduled {
-                acknowledgement_digest: progress.binding().request_digest(),
-            });
+            update_rollout(&mut state, rollout_id, |progress| {
+                if !running_attempt_matches(progress.status(), *attempt) {
+                    return Err(binding("retryable attempt differs from the running attempt"));
+                }
+                progress.retain_attempt(*attempt);
+                progress.set_status(RolloutStatus::Scheduled {
+                    acknowledgement_digest: progress.binding().request_digest(),
+                });
+                Ok(())
+            })?;
         }
         EvaluationCommandKind::RetainRetryableAttemptAndRetry { rollout_id, retry } => {
             require_effect_phase(&state, &[EvaluationPhase::Running])?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
             let retained = retry.retained();
-            if retry.profile_digest() != state.profile_digest
-                || retained.rollout_id() != *rollout_id
-                || !running_attempt_matches(progress.status(), retained.attempt())
-                || progress.attempts_retained().checked_add(1) != Some(retained.attempt())
-            {
-                return Err(binding("retained retry differs from the running attempt"));
-            }
-            progress.retain_attempt(retained.attempt());
-            progress.set_status(RolloutStatus::RetryPending { retry: *retry });
+            let profile_digest = state.profile_digest;
+            update_rollout(&mut state, rollout_id, |progress| {
+                if retry.profile_digest() != profile_digest
+                    || retained.rollout_id() != *rollout_id
+                    || !running_attempt_matches(progress.status(), retained.attempt())
+                    || progress.attempts_retained().checked_add(1) != Some(retained.attempt())
+                {
+                    return Err(binding("retained retry differs from the running attempt"));
+                }
+                progress.retain_attempt(retained.attempt());
+                progress.set_status(RolloutStatus::RetryPending { retry: *retry });
+                Ok(())
+            })?;
         }
         EvaluationCommandKind::SettleRollout { rollout_id, terminal } => {
             require_effect_phase(&state, &[EvaluationPhase::Running])?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if !running_attempt_matches(progress.status(), terminal.attempt())
-                || progress.attempts_retained().checked_add(1) != Some(terminal.attempt())
-            {
-                return Err(binding("terminal result differs from the running attempt"));
-            }
-            progress.retain_attempt(terminal.attempt());
-            progress.set_status(RolloutStatus::Settled(*terminal));
+            update_rollout(&mut state, rollout_id, |progress| {
+                if !running_attempt_matches(progress.status(), terminal.attempt())
+                    || progress.attempts_retained().checked_add(1) != Some(terminal.attempt())
+                {
+                    return Err(binding("terminal result differs from the running attempt"));
+                }
+                progress.retain_attempt(terminal.attempt());
+                progress.set_status(RolloutStatus::Settled(*terminal));
+                Ok(())
+            })?;
         }
         EvaluationCommandKind::CancelCampaign { reason_digest } => {
             if state.phase == EvaluationPhase::Cancelling {
@@ -377,21 +397,25 @@ fn apply_kind(
         EvaluationCommandKind::SettleCancellation { rollout_id, observation_digest } => {
             require_phase(&state, &[EvaluationPhase::Cancelling])?;
             let reason = state.cancellation_reason.ok_or_else(transition)?;
-            let progress = state.rollouts.get_mut(rollout_id).ok_or_else(unknown_rollout)?;
-            if !matches!(
-                progress.status(),
-                RolloutStatus::Scheduling
-                    | RolloutStatus::Scheduled { .. }
-                    | RolloutStatus::RetryPending { .. }
-                    | RolloutStatus::RetryRunning { .. }
-                    | RolloutStatus::Running { .. }
-            ) {
-                return Err(binding("cancellation settlement has no outstanding external work"));
-            }
-            progress.set_status(RolloutStatus::Cancelled {
-                reason_digest: reason,
-                observation_digest: *observation_digest,
-            });
+            update_rollout(&mut state, rollout_id, |progress| {
+                if !matches!(
+                    progress.status(),
+                    RolloutStatus::Scheduling
+                        | RolloutStatus::Scheduled { .. }
+                        | RolloutStatus::RetryPending { .. }
+                        | RolloutStatus::RetryRunning { .. }
+                        | RolloutStatus::Running { .. }
+                ) {
+                    return Err(binding(
+                        "cancellation settlement has no outstanding external work",
+                    ));
+                }
+                progress.set_status(RolloutStatus::Cancelled {
+                    reason_digest: reason,
+                    observation_digest: *observation_digest,
+                });
+                Ok(())
+            })?;
         }
         EvaluationCommandKind::CompleteCancellation => {
             require_phase(&state, &[EvaluationPhase::Cancelling])?;
@@ -407,7 +431,7 @@ fn apply_kind(
                 }
                 _ => {}
             }
-            for progress in state.rollouts.values_mut() {
+            state.rollouts.try_for_each_mut(|progress| {
                 match progress.status() {
                     RolloutStatus::Planned => {
                         progress.set_status(RolloutStatus::Cancelled {
@@ -426,7 +450,8 @@ fn apply_kind(
                         ));
                     }
                 }
-            }
+                Ok(())
+            })?;
             if !state.counts().complete() {
                 return Err(transition());
             }
@@ -572,6 +597,13 @@ fn retain_analysis_safe_point(
     }
     state.analysis_safe_point = Some(safe_point);
     Ok(())
+}
+fn update_rollout<R>(
+    state: &mut EvaluationState,
+    rollout_id: &crate::RolloutId,
+    update: impl FnOnce(&mut RolloutProgress) -> Result<R, EvaluationError>,
+) -> Result<R, EvaluationError> {
+    state.rollouts.update(rollout_id, update).ok_or_else(unknown_rollout)?
 }
 fn running_attempt_matches(status: RolloutStatus, attempt: u16) -> bool {
     match status {

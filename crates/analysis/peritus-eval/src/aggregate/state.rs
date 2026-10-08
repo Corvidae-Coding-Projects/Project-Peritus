@@ -1,6 +1,6 @@
 //! Complete compact family-87 evaluation checkpoint.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use peritus_artifact_store::ArtifactDigest;
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecLimits};
@@ -22,6 +22,133 @@ use crate::{
 const STATE_DOMAIN: &[u8] = b"peritus.evaluation.state.v1\0";
 const STATE_PAGE_EXTENSION_TAG: u8 = 1;
 const STATE_CONTROL_EXTENSION_TAG: u8 = 2;
+const ROLLOUT_SHARDS: usize = 256;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct RolloutTable {
+    shards: [Arc<BTreeMap<RolloutId, RolloutProgress>>; ROLLOUT_SHARDS],
+    len: usize,
+    counts: LedgerCounts,
+}
+
+impl Default for RolloutTable {
+    fn default() -> Self {
+        Self {
+            shards: std::array::from_fn(|_| Arc::new(BTreeMap::new())),
+            len: 0,
+            counts: LedgerCounts::default(),
+        }
+    }
+}
+
+impl RolloutTable {
+    fn shard(id: RolloutId) -> usize {
+        usize::from(id.as_bytes()[0])
+    }
+
+    pub(crate) const fn len(&self) -> usize {
+        self.len
+    }
+
+    pub(crate) const fn counts(&self) -> LedgerCounts {
+        self.counts
+    }
+
+    pub(crate) fn get(&self, id: &RolloutId) -> Option<&RolloutProgress> {
+        self.shards[Self::shard(*id)].get(id)
+    }
+
+    pub(crate) fn insert(
+        &mut self,
+        id: RolloutId,
+        progress: RolloutProgress,
+    ) -> Option<RolloutProgress> {
+        let previous = Arc::make_mut(&mut self.shards[Self::shard(id)]).insert(id, progress);
+        if let Some(previous) = previous {
+            replace_status(&mut self.counts, previous.status(), progress.status());
+        } else {
+            self.len = self.len.saturating_add(1);
+            self.counts.expected = u32::try_from(self.len).unwrap_or(u32::MAX);
+            add_status(&mut self.counts, progress.status());
+        }
+        previous
+    }
+
+    pub(crate) fn update<R>(
+        &mut self,
+        id: &RolloutId,
+        update: impl FnOnce(&mut RolloutProgress) -> R,
+    ) -> Option<R> {
+        let (result, before, after) = {
+            let progress = Arc::make_mut(&mut self.shards[Self::shard(*id)]).get_mut(id)?;
+            let before = progress.status();
+            let result = update(progress);
+            (result, before, progress.status())
+        };
+        replace_status(&mut self.counts, before, after);
+        Some(result)
+    }
+
+    pub(crate) fn try_for_each_mut<E>(
+        &mut self,
+        mut update: impl FnMut(&mut RolloutProgress) -> Result<(), E>,
+    ) -> Result<(), E> {
+        for index in 0..ROLLOUT_SHARDS {
+            let mut counts = self.counts;
+            {
+                let shard = Arc::make_mut(&mut self.shards[index]);
+                for progress in shard.values_mut() {
+                    let before = progress.status();
+                    let result = update(progress);
+                    replace_status(&mut counts, before, progress.status());
+                    result?;
+                }
+            }
+            self.counts = counts;
+        }
+        Ok(())
+    }
+
+    pub(crate) fn iter(
+        &self,
+    ) -> impl Iterator<Item = (&RolloutId, &RolloutProgress)> + '_ {
+        self.shards.iter().flat_map(|shard| shard.iter())
+    }
+
+}
+
+fn replace_status(counts: &mut LedgerCounts, before: RolloutStatus, after: RolloutStatus) {
+    remove_status(counts, before);
+    add_status(counts, after);
+}
+
+fn remove_status(counts: &mut LedgerCounts, status: RolloutStatus) {
+    let value = match status {
+        RolloutStatus::Settled(record) => match record.class() {
+            RolloutTerminalClass::Passed => &mut counts.passed,
+            RolloutTerminalClass::TaskFailed => &mut counts.task_failed,
+            RolloutTerminalClass::InfrastructureFailed => &mut counts.infrastructure_failed,
+            RolloutTerminalClass::Ambiguous => &mut counts.ambiguous,
+        },
+        RolloutStatus::Cancelled { .. } => &mut counts.cancelled,
+        _ => return,
+    };
+    *value = value.saturating_sub(1);
+}
+
+fn add_status(counts: &mut LedgerCounts, status: RolloutStatus) {
+    let value = match status {
+        RolloutStatus::Settled(record) => match record.class() {
+            RolloutTerminalClass::Passed => &mut counts.passed,
+            RolloutTerminalClass::TaskFailed => &mut counts.task_failed,
+            RolloutTerminalClass::InfrastructureFailed => &mut counts.infrastructure_failed,
+            RolloutTerminalClass::Ambiguous => &mut counts.ambiguous,
+        },
+        RolloutStatus::Cancelled { .. } => &mut counts.cancelled,
+        _ => return,
+    };
+    *value = value.saturating_add(1);
+}
 
 /// Complete authoritative E3 campaign state.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -36,12 +163,13 @@ pub struct EvaluationState {
     pub(crate) sequence: u64,
     pub(crate) last_event_id: EventId,
     pub(crate) state_digest: Sha256Digest,
+    pub(crate) canonical_cache: Arc<Vec<u8>>,
     pub(crate) phase: EvaluationPhase,
     pub(crate) batch_total: Option<u32>,
     pub(crate) pending_plan_id: Option<EvaluationPlanId>,
     pub(crate) pending_plan_digest: Option<PlanDigest>,
-    pub(crate) batch_artifacts: Vec<ArtifactDigest>,
-    pub(crate) rollouts: BTreeMap<RolloutId, RolloutProgress>,
+    pub(crate) batch_artifacts: Arc<Vec<ArtifactDigest>>,
+    pub(crate) rollouts: RolloutTable,
     pub(crate) plan: Option<PlanRecord>,
     pub(crate) analysis_digest: Option<ResultDigest>,
     pub(crate) analysis_artifact: Option<ArtifactDigest>,
@@ -127,8 +255,19 @@ impl EvaluationState {
     }
     /// Iterates rollout progress in canonical identity order.
     #[must_use]
-    pub fn rollouts(&self) -> std::vec::IntoIter<(RolloutId, RolloutProgress)> {
-        self.rollouts.iter().map(|(id, progress)| (*id, *progress)).collect::<Vec<_>>().into_iter()
+    pub fn rollouts(&self) -> impl Iterator<Item = (RolloutId, RolloutProgress)> + '_ {
+        self.rollouts_after(None)
+    }
+    /// Streams rollout progress strictly after an optional retained identity cursor.
+    #[must_use]
+    pub fn rollouts_after(
+        &self,
+        after: Option<RolloutId>,
+    ) -> impl Iterator<Item = (RolloutId, RolloutProgress)> + '_ {
+        self.rollouts
+            .iter()
+            .filter(move |(id, _)| after.is_none_or(|cursor| **id > cursor))
+            .map(|(id, progress)| (*id, *progress))
     }
     /// Complete deterministic analysis digest when committed.
     #[must_use]
@@ -204,23 +343,7 @@ impl EvaluationState {
     /// Computes raw terminal counts from the complete progress map.
     #[must_use]
     pub fn counts(&self) -> LedgerCounts {
-        let mut counts = LedgerCounts {
-            expected: u32::try_from(self.rollouts.len()).unwrap_or(u32::MAX),
-            ..LedgerCounts::default()
-        };
-        for progress in self.rollouts.values() {
-            match progress.status() {
-                RolloutStatus::Settled(record) => match record.class() {
-                    RolloutTerminalClass::Passed => counts.passed += 1,
-                    RolloutTerminalClass::TaskFailed => counts.task_failed += 1,
-                    RolloutTerminalClass::InfrastructureFailed => counts.infrastructure_failed += 1,
-                    RolloutTerminalClass::Ambiguous => counts.ambiguous += 1,
-                },
-                RolloutStatus::Cancelled { .. } => counts.cancelled += 1,
-                _ => {}
-            }
-        }
-        counts
+        self.rollouts.counts()
     }
 
     /// Canonically encodes the complete state and advertised digest.
@@ -229,16 +352,26 @@ impl EvaluationState {
     /// Returns a codec error if complete logical state is not canonically representable.
     /// Physical checkpoint pages are applied after this complete identity is encoded.
     pub fn canonical_bytes(&self) -> Result<Vec<u8>, EvaluationError> {
+        if !self.canonical_cache.is_empty() {
+            return Ok(self.canonical_cache.as_ref().clone());
+        }
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
         encode_identity(&mut writer, self)?;
         writer.write_fixed(self.state_digest.as_bytes()).map_err(codec)?;
         Ok(writer.into_bytes())
     }
 
+    pub(crate) fn cached_canonical_bytes(&self) -> Option<&[u8]> {
+        (!self.canonical_cache.is_empty()).then_some(self.canonical_cache.as_slice())
+    }
+
     pub(crate) fn refresh_digest(&mut self) -> Result<(), EvaluationError> {
         let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
         encode_identity(&mut writer, self)?;
-        self.state_digest = peritus_codec::sha256(&writer.into_bytes());
+        let mut bytes = writer.into_bytes();
+        self.state_digest = peritus_codec::sha256(&bytes);
+        bytes.extend_from_slice(self.state_digest.as_bytes());
+        self.canonical_cache = Arc::new(bytes);
         Ok(())
     }
 
@@ -286,7 +419,7 @@ impl EvaluationState {
             batch_artifacts.push(ArtifactDigest::from_sha256(digest(&mut reader)?));
         }
         let rollout_len = reader.read_collection_len(2 * 16 + 32 + 2 + 1).map_err(codec)?;
-        let mut rollouts = BTreeMap::new();
+        let mut rollouts = RolloutTable::default();
         for _ in 0..rollout_len {
             let id = RolloutId::new(reader.read_fixed().map_err(codec)?)?;
             let binding = PlannedRolloutBinding::new(
@@ -444,11 +577,12 @@ impl EvaluationState {
             sequence,
             last_event_id,
             state_digest,
+            canonical_cache: Arc::new(Vec::new()),
             phase,
             batch_total,
             pending_plan_id,
             pending_plan_digest,
-            batch_artifacts,
+            batch_artifacts: Arc::new(batch_artifacts),
             rollouts,
             plan,
             analysis_digest,
@@ -500,11 +634,11 @@ fn encode_identity(
         writer.write_fixed(value.as_bytes()).map_err(codec)?;
     }
     writer.write_collection_len(state.batch_artifacts.len()).map_err(codec)?;
-    for artifact in &state.batch_artifacts {
+    for artifact in state.batch_artifacts.iter() {
         writer.write_fixed(artifact.as_bytes()).map_err(codec)?;
     }
     writer.write_collection_len(state.rollouts.len()).map_err(codec)?;
-    for (id, progress) in &state.rollouts {
+    for (id, progress) in state.rollouts.iter() {
         writer.write_fixed(id.as_bytes()).map_err(codec)?;
         writer.write_fixed(progress.binding().work_id().as_bytes()).map_err(codec)?;
         writer.write_fixed(progress.binding().request_digest().as_bytes()).map_err(codec)?;

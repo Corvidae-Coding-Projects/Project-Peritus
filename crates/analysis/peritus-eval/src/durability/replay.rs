@@ -1,15 +1,20 @@
-//! Checked C0 loading and exact complete-checkpoint replay.
+//! Checked bounded C0 loading backed by the exact complete checkpoint.
 
 use peritus_codec::{CodecLimits, decode_message};
-use peritus_journal::{SqliteJournal, StoreId};
+use peritus_journal::{DurableStateRecord, MAX_GLOBAL_WINDOW_RECORDS, SqliteJournal, StoreId};
 
 use crate::{
     EvaluationCampaignId, EvaluationError, EvaluationErrorKind, EvaluationEvent,
-    EvaluationOperation, EvaluationRecovery, EvaluationState, apply_event, replay,
+    EvaluationOperation, EvaluationRecovery, EvaluationState,
     wire::{EvaluationEventFrame, EvaluationStateFrame},
 };
 
 use super::{EVALUATION_STATE_NAMESPACE, evaluation_aggregate_key, evaluation_state_key};
+
+pub(super) struct CurrentEvaluationCheckpoint {
+    pub(super) record: DurableStateRecord,
+    pub(super) frame: EvaluationStateFrame,
+}
 
 /// Contiguous family-86 events paired with the exact family-87 checkpoint.
 pub struct EvaluationReplay {
@@ -29,23 +34,17 @@ impl EvaluationReplay {
     pub fn events(&self) -> &[EvaluationEvent] {
         &self.events
     }
-    /// Rebuilds state and requires exact checkpoint equality.
+    /// Returns the already validated exact checkpoint state.
     ///
     /// # Errors
-    /// Rejects an incomplete history or any replay/checkpoint disagreement.
+    /// Rejects an impossible empty-history/checkpoint combination.
     pub fn rebuild(&self) -> Result<Option<EvaluationState>, EvaluationError> {
-        if self.events.is_empty() {
-            return if self.checkpoint.is_none() {
-                Ok(None)
-            } else {
-                Err(recovery("evaluation checkpoint exists without immutable events"))
-            };
+        match (&self.events[..], &self.checkpoint) {
+            ([], None) => Ok(None),
+            ([], Some(_)) => Err(recovery("evaluation checkpoint exists without immutable events")),
+            (_, Some(checkpoint)) => Ok(Some(checkpoint.state().clone())),
+            (_, None) => Err(recovery("evaluation events exist without an exact checkpoint")),
         }
-        let state = replay(&self.events)?;
-        if !self.checkpoint.as_ref().is_some_and(|frame| frame.matches_state(&state)) {
-            return Err(recovery("evaluation checkpoint differs from deterministic replay"));
-        }
-        Ok(Some(state))
     }
 }
 
@@ -63,7 +62,11 @@ impl core::fmt::Debug for EvaluationReplay {
     }
 }
 
-/// Loads and verifies one evaluation aggregate from C0.
+/// Loads and verifies one evaluation aggregate from bounded C0 event windows.
+///
+/// The self-validating checkpoint is decoded once. Event windows then validate immutable record,
+/// predecessor, revision, profile, and state-digest bindings without repeatedly materializing every
+/// historical campaign state.
 ///
 /// # Errors
 /// Rejects journal failures, malformed frames, broken provenance, or checkpoint drift.
@@ -71,52 +74,122 @@ pub fn load_evaluation_replay(
     journal: &SqliteJournal,
     campaign_id: EvaluationCampaignId,
 ) -> Result<EvaluationReplay, EvaluationError> {
+    let current = load_current_checkpoint(journal, campaign_id)?;
+    let Some(current) = current else {
+        return Ok(EvaluationReplay {
+            store_id: journal.store_id(),
+            events: Vec::new(),
+            checkpoint: None,
+        });
+    };
     let aggregate = evaluation_aggregate_key(campaign_id)?;
     let state_key = evaluation_state_key(campaign_id);
-    let records = journal.records_for_aggregate(aggregate).map_err(journal_error)?;
-    let state_record =
-        journal.state_record(EVALUATION_STATE_NAMESPACE, &state_key).map_err(journal_error)?;
-    if records.is_empty() != state_record.is_none() {
+    let expected_revision = peritus_evidence::revision_digest(current.frame.state().revision());
+    let expected_profile = current.frame.state().profile_digest();
+    let expected_sequence = current.frame.sequence();
+    let mut events = Vec::new();
+    let mut cursor = 0_u64;
+    let mut previous_event = None;
+    let mut previous_state_digest = peritus_types::Sha256Digest::new([0; 32]);
+    loop {
+        let records = journal
+            .aggregate_events_after(aggregate, cursor, MAX_GLOBAL_WINDOW_RECORDS)
+            .map_err(journal_error)?;
+        if records.is_empty() {
+            break;
+        }
+        events.try_reserve(records.len()).map_err(|_| recovery(
+            "evaluation event projection cannot reserve its bounded window",
+        ))?;
+        for record in records {
+            let frame = decode_message::<EvaluationEventFrame>(
+                record.frame_bytes(),
+                CodecLimits::PRODUCTION,
+            )
+            .map_err(codec)?;
+            let event = frame.activate()?;
+            let sequence = cursor.checked_add(1).ok_or_else(|| {
+                recovery("evaluation event projection sequence overflowed")
+            })?;
+            if event.campaign_id() != campaign_id
+                || event.sequence() != sequence
+                || event.sequence() != record.sequence().get()
+                || event.id() != record.event_id()
+                || event.command_id() != record.command_id()
+                || event.previous_event() != previous_event
+                || event.previous_event() != record.previous_event_id()
+                || event.prior_state_digest() != previous_state_digest
+                || event.profile_digest() != expected_profile
+                || record.revision_digest() != expected_revision
+            {
+                return Err(recovery(
+                    "decoded evaluation event differs from its bounded C0 record chain",
+                ));
+            }
+            let historical_root = journal
+                .state_record_revision(EVALUATION_STATE_NAMESPACE, &state_key, sequence)
+                .map_err(journal_error)?
+                .ok_or_else(|| {
+                    recovery("evaluation event has no immutable checkpoint root")
+                })?;
+            if historical_root.producing_position() != record.global_position() {
+                return Err(recovery(
+                    "evaluation event checkpoint was installed by another operation",
+                ));
+            }
+            super::checkpoint::validate_event_root(
+                &historical_root,
+                campaign_id,
+                &event,
+            )?;
+            cursor = sequence;
+            previous_event = Some(event.id());
+            previous_state_digest = event.successor_state_digest();
+            events.push(event);
+        }
+        if cursor >= expected_sequence {
+            break;
+        }
+    }
+    if cursor != expected_sequence
+        || previous_event != Some(current.frame.last_event_id())
+        || previous_state_digest != current.frame.state_digest()
+    {
+        return Err(recovery(
+            "evaluation checkpoint differs from the bounded immutable event frontier",
+        ));
+    }
+    Ok(EvaluationReplay {
+        store_id: journal.store_id(),
+        events,
+        checkpoint: Some(current.frame),
+    })
+}
+
+pub(super) fn load_current_checkpoint(
+    journal: &SqliteJournal,
+    campaign_id: EvaluationCampaignId,
+) -> Result<Option<CurrentEvaluationCheckpoint>, EvaluationError> {
+    let aggregate = evaluation_aggregate_key(campaign_id)?;
+    let state_key = evaluation_state_key(campaign_id);
+    let head = journal.head(aggregate).map_err(journal_error)?;
+    let record = journal
+        .state_record(EVALUATION_STATE_NAMESPACE, &state_key)
+        .map_err(journal_error)?;
+    if head.is_some() != record.is_some() {
         return Err(recovery("evaluation event/checkpoint presence differs"));
     }
-    let mut events = Vec::with_capacity(records.len());
-    let mut reconstructed: Option<EvaluationState> = None;
-    for record in records {
-        let frame =
-            decode_message::<EvaluationEventFrame>(record.frame_bytes(), CodecLimits::PRODUCTION)
-                .map_err(codec)?;
-        let event = frame.check(reconstructed.as_ref())?;
-        let successor = apply_event(reconstructed.as_ref(), &event)?;
-        if event.campaign_id() != campaign_id
-            || event.sequence() != record.sequence().get()
-            || event.id() != record.event_id()
-            || event.command_id() != record.command_id()
-            || event.previous_event() != record.previous_event_id()
-            || peritus_evidence::revision_digest(successor.revision()) != record.revision_digest()
-        {
-            return Err(recovery("decoded evaluation event differs from its C0 record"));
-        }
-        reconstructed = Some(successor);
-        events.push(event);
+    let (Some(head), Some(record)) = (head, record) else {
+        return Ok(None);
+    };
+    let frame = super::checkpoint::decode(journal, &record, campaign_id)?;
+    if frame.sequence() != head.sequence().get()
+        || frame.last_event_id() != head.event_id()
+        || record.revision() != frame.sequence()
+    {
+        return Err(recovery("evaluation checkpoint differs from its aggregate head"));
     }
-    let checkpoint = state_record
-        .as_ref()
-        .map(|record| super::checkpoint::decode(journal, record, campaign_id))
-        .transpose()?;
-    if let Some(frame) = &checkpoint {
-        let last = events.last().ok_or_else(|| recovery("checkpoint has no evaluation event"))?;
-        let record = state_record.as_ref().ok_or_else(|| recovery("checkpoint vanished"))?;
-        if frame.campaign_id() != campaign_id
-            || frame.sequence() != last.sequence()
-            || frame.last_event_id() != last.id()
-            || frame.state_digest() != last.successor_state_digest()
-            || record.revision() != frame.sequence()
-            || !reconstructed.as_ref().is_some_and(|state| frame.matches_state(state))
-        {
-            return Err(recovery("evaluation checkpoint differs from aggregate head or replay"));
-        }
-    }
-    Ok(EvaluationReplay { store_id: journal.store_id(), events, checkpoint })
+    Ok(Some(CurrentEvaluationCheckpoint { record, frame }))
 }
 
 fn codec(_: impl core::fmt::Display) -> EvaluationError {

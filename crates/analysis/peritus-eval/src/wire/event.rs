@@ -45,16 +45,13 @@ impl EvaluationEventFrame {
             kind_bytes: super::semantic::encode(kind).map_err(super::scalar::semantic)?,
         })
     }
-    /// Activates event data only through exact predecessor replay.
+    /// Activates inert event data without applying it to aggregate state.
     ///
     /// # Errors
-    /// Rejects malformed semantics, broken fences, or successor drift.
-    pub fn check(
-        self,
-        prior: Option<&EvaluationState>,
-    ) -> Result<EvaluationEvent, EvaluationError> {
+    /// Rejects malformed semantic payloads.
+    pub fn activate(self) -> Result<EvaluationEvent, EvaluationError> {
         let kind = super::semantic::decode(&self.kind_bytes)?;
-        let event = EvaluationEvent::new(
+        Ok(EvaluationEvent::new(
             self.event_id,
             self.command_id,
             self.campaign_id,
@@ -65,7 +62,17 @@ impl EvaluationEventFrame {
             self.command_digest,
             self.successor_state_digest,
             EvaluationEventKind::Accepted(kind),
-        );
+        ))
+    }
+    /// Activates event data only through exact predecessor replay.
+    ///
+    /// # Errors
+    /// Rejects malformed semantics, broken fences, or successor drift.
+    pub fn check(
+        self,
+        prior: Option<&EvaluationState>,
+    ) -> Result<EvaluationEvent, EvaluationError> {
+        let event = self.activate()?;
         let _ = apply_event(prior, &event)?;
         Ok(event)
     }

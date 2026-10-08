@@ -25,7 +25,41 @@ impl SqliteJournal {
         command_id: CommandId,
         request_digest: Sha256Digest,
     ) -> Result<CommandResolution, JournalError> {
-        resolve_command(&self.connection, self.store_id, command_id, request_digest)
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin command resolution", error))?;
+        let resolution =
+            resolve_command(&transaction, self.store_id, command_id, request_digest)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete command resolution", error))?;
+        Ok(resolution)
+    }
+
+    /// Observes one fully checked committed batch by its command identity.
+    ///
+    /// The command row, exact event range, artifact dependencies, and batch hash are read and
+    /// validated in one snapshot. This observation does not resolve a caller request digest and
+    /// cannot acknowledge an indeterminate append.
+    ///
+    /// # Errors
+    ///
+    /// Returns a storage or terminal integrity failure for malformed retained command evidence.
+    /// Absence is represented as `None`.
+    pub fn command_batch(
+        &self,
+        command_id: CommandId,
+    ) -> Result<Option<CommittedBatch>, JournalError> {
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin command batch observation", error))?;
+        let batch = load_command_batch(&transaction, self.store_id, command_id)?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("complete command batch observation", error))?;
+        Ok(batch)
     }
 }
 
@@ -35,21 +69,77 @@ pub fn resolve_command(
     command_id: CommandId,
     request_digest: Sha256Digest,
 ) -> Result<CommandResolution, JournalError> {
-    let row: Option<CommandRow> = connection
-        .query_row(
-            "SELECT request_digest, first_position, last_position, event_count, batch_hash FROM commands WHERE command_id = ?1",
-            params![command_id.as_bytes().as_slice()],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-        )
-        .optional()
-        .map_err(|error| JournalError::sqlite("resolve command", error))?;
-    let Some((stored_digest, first, last, count, stored_batch_hash)) = row else {
+    let Some((stored_digest, first, last, count, stored_batch_hash)) =
+        load_command_row(connection, command_id)?
+    else {
         return Ok(CommandResolution::DefinitelyAbsent);
     };
     let stored_digest = digest_from_blob(&stored_digest, "command request digest")?;
     if stored_digest != request_digest {
         return Ok(CommandResolution::Conflict { command_id, stored_digest });
     }
+    validated_command_batch(
+        connection,
+        store_id,
+        command_id,
+        stored_digest,
+        first,
+        last,
+        count,
+        &stored_batch_hash,
+    )
+    .map(CommandResolution::Committed)
+}
+
+pub(crate) fn load_command_batch(
+    connection: &Connection,
+    store_id: crate::StoreId,
+    command_id: CommandId,
+) -> Result<Option<CommittedBatch>, JournalError> {
+    let Some((stored_digest, first, last, count, stored_batch_hash)) =
+        load_command_row(connection, command_id)?
+    else {
+        return Ok(None);
+    };
+    let stored_digest = digest_from_blob(&stored_digest, "command request digest")?;
+    validated_command_batch(
+        connection,
+        store_id,
+        command_id,
+        stored_digest,
+        first,
+        last,
+        count,
+        &stored_batch_hash,
+    )
+    .map(Some)
+}
+
+fn load_command_row(
+    connection: &Connection,
+    command_id: CommandId,
+) -> Result<Option<CommandRow>, JournalError> {
+    connection
+        .query_row(
+            "SELECT request_digest, first_position, last_position, event_count, batch_hash FROM commands WHERE command_id = ?1",
+            params![command_id.as_bytes().as_slice()],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        )
+        .optional()
+        .map_err(|error| JournalError::sqlite("read command row", error))
+}
+
+#[allow(clippy::too_many_arguments, reason = "stored command hash inputs remain explicit")]
+fn validated_command_batch(
+    connection: &Connection,
+    store_id: crate::StoreId,
+    command_id: CommandId,
+    request_digest: Sha256Digest,
+    first: i64,
+    last: i64,
+    count: i64,
+    stored_batch_hash: &[u8],
+) -> Result<CommittedBatch, JournalError> {
     let first = positive_u64(first, "command first position")?;
     let last = positive_u64(last, "command last position")?;
     let count = positive_u64(count, "command event count")?;
@@ -63,16 +153,21 @@ pub fn resolve_command(
     if records.iter().any(|record| record.command_id() != command_id) {
         return Err(corrupt("command range contains another command identity"));
     }
-    let stored_batch_hash = digest_from_blob(&stored_batch_hash, "command batch hash")?;
+    let stored_batch_hash = digest_from_blob(stored_batch_hash, "command batch hash")?;
     let artifact_dependencies = load_artifact_dependencies(connection, stored_batch_hash)?;
+    let event_count = u32::try_from(records.len())
+        .map_err(|_| corrupt("command event count exceeds the batch-hash representation"))?;
+    let artifact_count = u32::try_from(artifact_dependencies.len()).map_err(|_| {
+        corrupt("command artifact dependency count exceeds the batch-hash representation")
+    })?;
     let computed_batch_hash = batch_hash(
         store_id,
         command_id,
         request_digest,
         records.iter().map(CommittedRecord::event_hash),
-        records.len(),
+        event_count,
         artifact_dependencies.iter().map(|dependency| dependency.digest()),
-        artifact_dependencies.len(),
+        artifact_count,
     );
     if computed_batch_hash != stored_batch_hash {
         return Err(corrupt("command batch hash does not match its immutable events"));
@@ -89,7 +184,7 @@ pub fn resolve_command(
             ),
         );
     }
-    Ok(CommandResolution::Committed(CommittedBatch {
+    Ok(CommittedBatch {
         command_id,
         request_digest,
         first_position: first,
@@ -98,7 +193,7 @@ pub fn resolve_command(
         records,
         heads: final_heads.into_values().collect(),
         artifact_dependencies,
-    }))
+    })
 }
 
 fn load_artifact_dependencies(

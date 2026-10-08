@@ -283,6 +283,81 @@ impl SqliteJournal {
             .map_err(|error| JournalError::sqlite("finish state history read", error))?;
         Ok(record)
     }
+
+    /// Reads the immutable revision of one journal-owned state row installed at an exact event.
+    ///
+    /// This position lookup is intended for historical roots whose component rows have independent
+    /// revision sequences. It retains the same exact-byte and producing-event validation as
+    /// [`Self::state_record_revision`].
+    ///
+    /// # Errors
+    /// Returns invalid input for a reserved namespace, invalid key, or zero position, and a storage
+    /// or terminal integrity error for malformed history. Absence is `None`.
+    pub fn state_record_at_position(
+        &self,
+        namespace: u16,
+        key: &[u8],
+        producing_position: u64,
+    ) -> Result<Option<DurableStateRecord>, JournalError> {
+        if namespace == 0
+            || key.is_empty()
+            || key.len() > crate::record::MAX_STATE_KEY_BYTES
+            || producing_position == 0
+        {
+            return Err(JournalError::new(
+                JournalErrorKind::InvalidInput,
+                "read state history by producer",
+                "state namespace, key, or producing position is outside its canonical bounds",
+            ));
+        }
+        let transaction = self
+            .connection
+            .unchecked_transaction()
+            .map_err(|error| JournalError::sqlite("begin state producer history read", error))?;
+        let row: Option<(i64, Vec<u8>, Vec<u8>, bool)> = transaction
+            .query_row(
+                "SELECT revision, value_digest, root_digest,
+                        EXISTS(SELECT 1 FROM events WHERE global_position = producing_position)
+                   FROM state_record_history
+                  WHERE namespace = ?1 AND record_key = ?2 AND producing_position = ?3",
+                params![
+                    i64::from(namespace),
+                    key,
+                    super::super::append::to_i64(
+                        producing_position,
+                        "state history producing position",
+                    )?,
+                ],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .optional()
+            .map_err(|error| JournalError::sqlite("read state history by producer", error))?;
+        let record = row
+            .map(|(revision, stored_digest, root, producer_exists)| {
+                if !producer_exists {
+                    return Err(corrupt("state history has no exact producing event"));
+                }
+                let bytes = super::super::history::restore(&transaction, &root)?;
+                let revision = positive_u64(revision, "state producing revision")?;
+                let digest = digest_from_blob(&stored_digest, "state history value digest")?;
+                if peritus_codec::sha256(&bytes) != digest {
+                    return Err(corrupt("state history digest does not match exact bytes"));
+                }
+                Ok(DurableStateRecord {
+                    namespace,
+                    key: key.to_vec(),
+                    revision,
+                    bytes,
+                    digest,
+                    producing_position,
+                })
+            })
+            .transpose()?;
+        transaction
+            .commit()
+            .map_err(|error| JournalError::sqlite("finish state producer history read", error))?;
+        Ok(record)
+    }
 }
 
 const fn invalid_metadata(detail: &'static str) -> JournalError {

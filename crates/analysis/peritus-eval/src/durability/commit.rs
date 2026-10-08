@@ -1,6 +1,6 @@
 //! Atomic family-86 event, family-87 checkpoint, artifact, and outbox persistence.
 
-use peritus_codec::{CodecLimits, encode_message};
+use peritus_codec::{CodecLimits, decode_message, encode_message};
 use peritus_journal::{
     AppendRequest, ArtifactDependency, CommandResolution, CommittedBatch, EventDraft, ExactFrame,
     HeadExpectation, OutboxAcknowledgement, OutboxDraft, SqliteJournal, StateInstall,
@@ -19,7 +19,8 @@ use crate::{
 use super::{
     CommittedEvaluationOperation, EVALUATION_RECEIPT_NAMESPACE, EVALUATION_STATE_NAMESPACE,
     EXECUTION_DESTINATION, EvaluationCommitMode, EvaluationOperationReceipt, binding,
-    evaluation_aggregate_key, evaluation_state_key, load_evaluation_replay,
+    evaluation_aggregate_key, evaluation_state_key,
+    replay::load_current_checkpoint,
     receipt::{claim_receipt, receipt_key},
 };
 
@@ -611,37 +612,41 @@ fn operation_from_batch(
         ));
     }
     let sequence = record.sequence().get();
-    let event_index = usize::try_from(
-        sequence
-            .checked_sub(1)
-            .ok_or_else(|| recovery("evaluation operation sequence is zero"))?,
+    let event = decode_message::<EvaluationEventFrame>(
+        record.frame_bytes(),
+        CodecLimits::PRODUCTION,
     )
-    .map_err(|_| recovery("evaluation operation sequence overflows memory indexing"))?;
-    let replay_observation = load_evaluation_replay(journal, campaign_id)?;
-    let event = replay_observation
-        .events()
-        .get(event_index)
-        .cloned()
-        .ok_or_else(|| recovery("evaluation operation event is absent from aggregate replay"))?;
-    let historical_state = crate::replay(&replay_observation.events()[..=event_index])?;
-    let current_state = replay_observation
-        .rebuild()?
+    .map_err(codec)?
+    .activate()?;
+    let current = load_current_checkpoint(journal, campaign_id)?
         .ok_or_else(|| recovery("accepted evaluation operation has no current aggregate"))?;
     let state_key = evaluation_state_key(campaign_id);
     let stored_historical = journal
         .state_record_revision(EVALUATION_STATE_NAMESPACE, &state_key, sequence)
         .map_err(journal_error)?
         .ok_or_else(|| recovery("evaluation operation has no historical successor checkpoint"))?;
-    super::checkpoint::validate_historical(
-        &stored_historical,
-        campaign_id,
-        &historical_state,
-    )?;
+    let historical_state = if current.frame.sequence() == sequence {
+        if stored_historical.digest() != current.record.digest()
+            || stored_historical.bytes() != current.record.bytes()
+            || stored_historical.producing_position() != current.record.producing_position()
+        {
+            return Err(recovery(
+                "current evaluation checkpoint differs from its immutable history row",
+            ));
+        }
+        current.frame.state().clone()
+    } else {
+        super::checkpoint::decode_historical(journal, &stored_historical, campaign_id)?
+            .into_state()
+    };
+    let current_state = current.frame.into_state();
     if event.campaign_id() != campaign_id
         || event.sequence() != sequence
         || event.id() != record.event_id()
         || event.command_id() != record.command_id()
         || event.previous_event() != record.previous_event_id()
+        || event.successor_state_digest() != historical_state.state_digest()
+        || event.profile_digest() != historical_state.profile_digest()
         || peritus_evidence::revision_digest(historical_state.revision())
             != record.revision_digest()
         || stored_historical.producing_position() != batch.last_position()
