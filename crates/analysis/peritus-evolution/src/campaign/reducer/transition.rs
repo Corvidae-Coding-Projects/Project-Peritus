@@ -258,12 +258,21 @@ pub(super) fn apply_kind(
             if attribution.variant_id() != assessment.variant_id()
                 || attribution.id() != assessment.attribution_id()
                 || assessment.policy_digest() != state.policy.policy().digest()
+                || !state
+                    .limits
+                    .accepts_attribution_entries(attribution.entries().len())
+                || !crate::selection::criteria_match_policy(
+                    assessment.criteria(),
+                    state.policy.policy(),
+                )
                 || evaluation.is_none_or(|value| {
                     attribution.evaluation_digest() != value.evidence().digest()
                         || assessment.evidence_digest() != value.evidence().digest()
                 })
             {
-                return Err(binding("attribution, assessment, and evaluation differ"));
+                return Err(binding(
+                    "attribution, assessment, evaluation, or representability contract differs",
+                ));
             }
             insert_by(
                 &mut state.attributions,

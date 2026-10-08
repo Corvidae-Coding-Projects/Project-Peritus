@@ -19,7 +19,7 @@ use peritus_types::Sha256Digest;
 /// criterion results and do not produce an error.
 #[allow(
     clippy::too_many_lines,
-    reason = "the closed fourteen-criterion policy table remains contiguous and auditable"
+    reason = "the closed policy-derived criterion table remains contiguous and auditable"
 )]
 pub fn assess_variant(
     variant: &VariantDefinition,
@@ -166,6 +166,9 @@ pub fn assess_variant(
         ),
     ]);
     criteria.sort_unstable_by_key(|result| result.criterion());
+    if !criteria_match_policy(&criteria, policy) {
+        return Err(binding("assessment criteria differ from the frozen promotion policy"));
+    }
     let objectives = ObjectiveVector {
         paired_lower: paired.unwrap_or(i32::MIN),
         critical_regressions: attribution.critical_regressions(),
@@ -185,6 +188,40 @@ pub fn assess_variant(
         criteria,
         objectives,
     ))
+}
+
+pub(crate) fn criteria_match_policy(
+    criteria: &[CriterionResult],
+    policy: &PromotionPolicy,
+) -> bool {
+    if !super::assessment::criteria_match_schema(criteria) {
+        return false;
+    }
+    criteria
+        .iter()
+        .map(|result| result.criterion())
+        .eq(Criterion::ALL.into_iter().filter(|criterion| {
+            criterion_measurement(*criterion).is_none_or(|(measurement, objective)| {
+                policy.thresholds().measurement(measurement).required()
+                    || policy.objectives().contains(&objective)
+            })
+        }))
+}
+
+const fn criterion_measurement(
+    criterion: Criterion,
+) -> Option<(PromotionMeasurement, Objective)> {
+    match criterion {
+        Criterion::Latency => Some((PromotionMeasurement::LatencyP95, Objective::Latency)),
+        Criterion::Cost => Some((PromotionMeasurement::CostMean, Objective::Cost)),
+        Criterion::InputTokens => {
+            Some((PromotionMeasurement::InputTokensMean, Objective::InputTokens))
+        }
+        Criterion::OutputTokens => {
+            Some((PromotionMeasurement::OutputTokensMean, Objective::OutputTokens))
+        }
+        _ => None,
+    }
 }
 
 /// Selects one eligible variant by frozen objective order and stable variant identity.

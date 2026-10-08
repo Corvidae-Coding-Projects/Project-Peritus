@@ -117,7 +117,7 @@ pub(crate) fn decode_kind(bytes: &[u8]) -> Result<CampaignCommandKind, Evolution
         },
         8 => CampaignCommandKind::CompleteAttribution {
             attribution: attribution::read(&mut reader, unbounded)?,
-            assessment: selection::assessment(&mut reader, unbounded)?,
+            assessment: selection::assessment(&mut reader)?,
         },
         9 => CampaignCommandKind::RecordSelection(selection::selection(&mut reader)?),
         10 => CampaignCommandKind::RequestPromotion(proposal::promotion(&mut reader)?),

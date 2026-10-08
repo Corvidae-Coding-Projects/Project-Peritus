@@ -377,9 +377,6 @@ impl PromotionPolicy {
         limits: EvolutionLimits,
     ) -> Result<Self, EvolutionError> {
         if objectives.is_empty()
-            || limits
-                .criteria_limit()
-                .is_some_and(|maximum| objectives.len() > usize::from(maximum))
             || objectives
                 .iter()
                 .enumerate()

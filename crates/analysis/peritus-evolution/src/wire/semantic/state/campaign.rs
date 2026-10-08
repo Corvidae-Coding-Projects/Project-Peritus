@@ -114,7 +114,7 @@ pub(crate) fn decode_campaign_state(bytes: &[u8]) -> Result<CampaignState, Evolu
         attribution::read(reader, limits)
     })?;
     let assessments = read_vec(&mut reader, maximum_variants, 2 * 16 + 2 * 32 + 4, |reader| {
-        selection::assessment(reader, limits)
+        selection::assessment(reader)
     })?;
     let selected = read_option(&mut reader, selection::selection)?;
     let promotion = read_option(&mut reader, proposal::promotion)?;
@@ -211,7 +211,7 @@ fn read_generation(
     let evidence = evaluation::read(reader)?;
     let supersession = read_option(reader, evaluation::read_supersession)?;
     let attribution = read_option(reader, |reader| attribution::read(reader, limits))?;
-    let assessment = read_option(reader, |reader| selection::assessment(reader, limits))?;
+    let assessment = read_option(reader, selection::assessment)?;
     EvaluationGeneration::from_exact_parts(
         variant_id,
         generation,

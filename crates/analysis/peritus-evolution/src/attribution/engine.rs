@@ -38,20 +38,19 @@ pub fn attribute(
     {
         return Err(unsupported_mandatory_failure_class());
     }
-    let predicted = manifests.iter().map(|manifest| manifest.predictions().len()).sum::<usize>();
-    if predicted == 0
-        || limits.attribution_entries_limit().is_some_and(|maximum| {
-            predicted > usize::try_from(maximum).unwrap_or(usize::MAX)
+    let predicted = manifests
+        .iter()
+        .try_fold(0_usize, |total, manifest| {
+            total.checked_add(manifest.predictions().len())
         })
-    {
-        return Err(EvolutionError::new(
-            EvolutionErrorKind::LimitExceeded,
-            EvolutionOperation::Attribute,
-            EvolutionRecovery::ReduceScope,
-            "attribution entry population is empty or over limit",
-        ));
+        .ok_or_else(attribution_population)?;
+    if !limits.accepts_attribution_entries(predicted) {
+        return Err(attribution_population());
     }
-    let mut entries = Vec::with_capacity(predicted);
+    let mut entries = Vec::new();
+    if entries.try_reserve_exact(predicted).is_err() {
+        return Err(attribution_population());
+    }
     for manifest in manifests {
         for prediction in manifest.predictions() {
             let observation = observe(prediction, evaluation);
@@ -72,6 +71,15 @@ pub fn attribute(
         variant.interaction_group(),
         entries,
         limits,
+    )
+}
+
+const fn attribution_population() -> EvolutionError {
+    EvolutionError::new(
+        EvolutionErrorKind::LimitExceeded,
+        EvolutionOperation::Attribute,
+        EvolutionRecovery::ReduceScope,
+        "attribution entry population is empty, over policy, or not representable",
     )
 }
 

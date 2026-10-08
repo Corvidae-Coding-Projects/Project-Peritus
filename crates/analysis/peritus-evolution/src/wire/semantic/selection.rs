@@ -3,9 +3,8 @@
 use peritus_codec::{CanonicalReader, CanonicalWriter};
 
 use crate::{
-    AttributionId, Criterion, CriterionOutcome, CriterionResult, EvolutionError, EvolutionLimits,
-    ObjectiveVector, SelectionDecision, SelectionRecord, VariantAssessment, VariantId,
-    VariantRejection,
+    AttributionId, Criterion, CriterionOutcome, CriterionResult, EvolutionError, ObjectiveVector,
+    SelectionDecision, SelectionRecord, VariantAssessment, VariantId, VariantRejection,
 };
 
 use super::{super::scalar, change};
@@ -33,24 +32,18 @@ pub(super) fn write_assessment(
 
 pub(super) fn assessment(
     reader: &mut CanonicalReader<'_>,
-    limits: EvolutionLimits,
 ) -> Result<VariantAssessment, EvolutionError> {
     let variant = VariantId::new(reader.read_fixed().map_err(scalar::codec)?)?;
     let attribution = AttributionId::new(reader.read_fixed().map_err(scalar::codec)?)?;
     let evidence = scalar::digest(reader)?;
     let policy = scalar::digest(reader)?;
     let length = reader.read_collection_len(1 + 1 + 1 + 32).map_err(scalar::codec)?;
-    if length != 14
-        || limits.criteria_limit().is_some_and(|maximum| length > usize::from(maximum))
-    {
+    if length > Criterion::ALL.len() {
         return Err(scalar::protocol());
     }
     let mut criteria = reader.reserve_collection(length).map_err(scalar::codec)?;
-    for expected in 0_u8..14 {
+    for _ in 0..length {
         let criterion = criterion(reader.read_u8().map_err(scalar::codec)?)?;
-        if criterion.tag() != expected {
-            return Err(scalar::protocol());
-        }
         let outcome = outcome(reader.read_u8().map_err(scalar::codec)?)?;
         let observed = reader
             .read_option_tag()
@@ -58,6 +51,9 @@ pub(super) fn assessment(
             .then(|| change::metric_value(reader))
             .transpose()?;
         criteria.push(CriterionResult::new(criterion, outcome, observed, scalar::digest(reader)?));
+    }
+    if !crate::selection::criteria_match_schema(&criteria) {
+        return Err(scalar::protocol());
     }
     Ok(VariantAssessment::from_exact_parts(
         variant,

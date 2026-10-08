@@ -2,6 +2,19 @@
 
 use crate::{EvolutionError, EvolutionErrorKind, EvolutionOperation, EvolutionRecovery};
 
+/// Maximum attribution entries in one independently encoded compatibility page.
+///
+/// Logical workload policy remains independent: a record may contain any representable number of
+/// these pages. Keeping each page within the legacy codec contract lets old single-page bytes stay
+/// exact while larger records use the versioned paged representation.
+pub(crate) const ATTRIBUTION_PAGE_ENTRIES: usize =
+    peritus_codec::CodecLimits::LEGACY_V1.max_collection_items;
+
+/// Converts one logical attribution population to its schema-v1 representable count.
+pub(crate) fn represented_attribution_entries(count: usize) -> Option<u32> {
+    u32::try_from(count).ok().filter(|count| *count != 0)
+}
+
 /// Complete independent logical bounds for one evolution authority.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct EvolutionLimits {
@@ -53,6 +66,9 @@ impl EvolutionLimits {
     }
 
     /// Constructs an explicit finite or sentinel-unlimited workload policy.
+    ///
+    /// `criteria` is retained as an inert schema-v1 compatibility field. The closed criterion
+    /// catalog and frozen measurement policy determine assessment membership.
     ///
     /// # Errors
     /// Rejects zero fields. All-ones fields select no workload-policy limit.
@@ -111,7 +127,6 @@ impl EvolutionLimits {
             && self.deltas_per_manifest >= predecessor.deltas_per_manifest
             && self.predictions_per_manifest >= predecessor.predictions_per_manifest
             && self.attribution_entries >= predecessor.attribution_entries
-            && self.criteria >= predecessor.criteria
             && self.text_bytes >= predecessor.text_bytes
             && self.activation_history >= predecessor.activation_history
             && (self.manifests > predecessor.manifests
@@ -120,7 +135,6 @@ impl EvolutionLimits {
                 || self.deltas_per_manifest > predecessor.deltas_per_manifest
                 || self.predictions_per_manifest > predecessor.predictions_per_manifest
                 || self.attribution_entries > predecessor.attribution_entries
-                || self.criteria > predecessor.criteria
                 || self.text_bytes > predecessor.text_bytes
                 || self.activation_history > predecessor.activation_history)
     }
@@ -155,7 +169,7 @@ impl EvolutionLimits {
     pub const fn attribution_entries(self) -> u32 {
         self.attribution_entries
     }
-    /// Maximum independent selection criteria.
+    /// Returns the inert schema-v1 criteria field retained for exact legacy bytes and digests.
     #[must_use]
     pub const fn criteria(self) -> u16 {
         self.criteria
@@ -201,11 +215,6 @@ impl EvolutionLimits {
     pub const fn attribution_entries_limit(self) -> Option<u32> {
         finite_u32(self.attribution_entries)
     }
-    /// Finite criteria allowance, or `None` when policy does not limit it.
-    #[must_use]
-    pub const fn criteria_limit(self) -> Option<u16> {
-        finite_u16(self.criteria)
-    }
     /// Finite text allowance, or `None` when policy does not limit it.
     #[must_use]
     pub const fn text_bytes_limit(self) -> Option<u32> {
@@ -215,6 +224,14 @@ impl EvolutionLimits {
     #[must_use]
     pub const fn activation_history_limit(self) -> Option<u16> {
         finite_u16(self.activation_history)
+    }
+
+    /// Returns whether a logical attribution population is both representable and within policy.
+    #[must_use]
+    pub(crate) fn accepts_attribution_entries(self, count: usize) -> bool {
+        represented_attribution_entries(count).is_some_and(|count| {
+            self.attribution_entries_limit().is_none_or(|maximum| count <= maximum)
+        })
     }
 
     pub(crate) fn digest(self) -> peritus_types::Sha256Digest {

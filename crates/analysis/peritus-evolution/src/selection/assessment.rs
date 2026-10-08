@@ -37,8 +37,29 @@ pub enum Criterion {
 }
 
 impl Criterion {
+    pub(crate) const ALL: [Self; 14] = [
+        Self::PairedCorrectness,
+        Self::CriticalRegressions,
+        Self::Safety,
+        Self::Reliability,
+        Self::AttributionCoverage,
+        Self::MandatoryPredictions,
+        Self::Latency,
+        Self::Cost,
+        Self::InputTokens,
+        Self::OutputTokens,
+        Self::TraceCompleteness,
+        Self::TeardownCompleteness,
+        Self::IndependentReview,
+        Self::Compatibility,
+    ];
+
     pub(crate) const fn tag(self) -> u8 {
         self as u8
+    }
+
+    pub(crate) const fn schema_required(self) -> bool {
+        !matches!(self, Self::Latency | Self::Cost | Self::InputTokens | Self::OutputTokens)
     }
 }
 
@@ -234,6 +255,16 @@ impl VariantAssessment {
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+}
+
+pub(crate) fn criteria_match_schema(criteria: &[CriterionResult]) -> bool {
+    criteria.windows(2).all(|pair| pair[0].criterion() < pair[1].criterion())
+        && Criterion::ALL
+            .iter()
+            .filter(|criterion| criterion.schema_required())
+            .all(|criterion| {
+                criteria.binary_search_by_key(criterion, |result| result.criterion()).is_ok()
+            })
 }
 
 fn assessment_digest(
