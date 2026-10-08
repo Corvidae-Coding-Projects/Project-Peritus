@@ -1,6 +1,8 @@
 //! Stable semantic request encoding independent of provider JSON field order.
 
 use peritus_codec::{CanonicalWriter, CodecLimits};
+use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 use crate::{
     CachePolicy, ContentBlock, MediaKind, MediaReferenceKind, Message, ModelRequest,
@@ -17,28 +19,44 @@ use values::{
 const CANONICAL_MAGIC: &[u8; 4] = b"P5MR";
 
 pub fn request_bytes(request: &ModelRequest) -> Result<Vec<u8>, ProtocolError> {
-    request_bytes_bounded(request, 512 * 1024 * 1024)
+    let mut writer = CanonicalWriter::new(CodecLimits::PRODUCTION);
+    request_value(&mut writer, request)?;
+    Ok(writer.into_bytes())
 }
 
 pub fn request_bytes_bounded(
     request: &ModelRequest,
     maximum_bytes: usize,
 ) -> Result<Vec<u8>, ProtocolError> {
-    if maximum_bytes == 0 || maximum_bytes > 512 * 1024 * 1024 {
+    if maximum_bytes == 0 {
         return Err(ProtocolError::at(
             ProtocolErrorKind::InvalidLimit,
             "canonical_request",
-            "canonical byte ceiling must be positive and within the protocol maximum",
+            "canonical byte ceiling must be positive",
         ));
     }
     let mut writer = CanonicalWriter::new(CodecLimits::new(
         maximum_bytes,
         maximum_bytes,
-        maximum_bytes / 4,
-        maximum_bytes,
-        maximum_bytes,
-        128,
+        usize::MAX,
+        usize::MAX,
+        usize::MAX,
+        CodecLimits::UNLIMITED_NESTING,
     ));
+    request_value(&mut writer, request)?;
+    Ok(writer.into_bytes())
+}
+
+pub fn request_digest(request: &ModelRequest) -> Result<Sha256Digest, ProtocolError> {
+    let mut writer = DigestWriter::new();
+    request_value(&mut writer, request)?;
+    Ok(writer.finish())
+}
+
+fn request_value<W: CanonicalSink + ?Sized>(
+    mut writer: &mut W,
+    request: &ModelRequest,
+) -> Result<(), ProtocolError> {
     write_fixed(&mut writer, CANONICAL_MAGIC)?;
     u16_value(&mut writer, request.protocol().major())?;
     u16_value(&mut writer, request.protocol().minor())?;
@@ -97,10 +115,13 @@ pub fn request_bytes_bounded(
         text(&mut writer, extension.name().as_str())?;
         bytes(&mut writer, extension.value().canonical_bytes())?;
     }
-    Ok(writer.into_bytes())
+    Ok(())
 }
 
-pub fn message_value(writer: &mut CanonicalWriter, message: &Message) -> Result<(), ProtocolError> {
+pub(crate) fn message_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    message: &Message,
+) -> Result<(), ProtocolError> {
     u8_value(
         writer,
         match message.role() {
@@ -118,7 +139,10 @@ pub fn message_value(writer: &mut CanonicalWriter, message: &Message) -> Result<
     Ok(())
 }
 
-fn content(writer: &mut CanonicalWriter, block: &ContentBlock) -> Result<(), ProtocolError> {
+fn content<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    block: &ContentBlock,
+) -> Result<(), ProtocolError> {
     match block {
         ContentBlock::Text(value) => {
             u8_value(writer, 1)?;
@@ -156,8 +180,8 @@ fn content(writer: &mut CanonicalWriter, block: &ContentBlock) -> Result<(), Pro
     }
 }
 
-fn media_value(
-    writer: &mut CanonicalWriter,
+fn media_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     tag: u8,
     media: &crate::MediaInput,
 ) -> Result<(), ProtocolError> {
@@ -199,7 +223,10 @@ fn media_value(
     Ok(())
 }
 
-fn tool_choice(writer: &mut CanonicalWriter, choice: &ToolChoice) -> Result<(), ProtocolError> {
+fn tool_choice<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    choice: &ToolChoice,
+) -> Result<(), ProtocolError> {
     match choice {
         ToolChoice::Auto => u8_value(writer, 1),
         ToolChoice::None => u8_value(writer, 2),
@@ -211,8 +238,8 @@ fn tool_choice(writer: &mut CanonicalWriter, choice: &ToolChoice) -> Result<(), 
     }
 }
 
-fn parallel_policy(
-    writer: &mut CanonicalWriter,
+fn parallel_policy<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     policy: ParallelToolPolicy,
 ) -> Result<(), ProtocolError> {
     match policy {
@@ -224,8 +251,8 @@ fn parallel_policy(
     }
 }
 
-fn output_policy(
-    writer: &mut CanonicalWriter,
+fn output_policy<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     output: &StructuredOutput,
 ) -> Result<(), ProtocolError> {
     match output {
@@ -241,8 +268,8 @@ fn output_policy(
     }
 }
 
-fn reasoning_policy(
-    writer: &mut CanonicalWriter,
+fn reasoning_policy<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     reasoning: ReasoningPolicy,
 ) -> Result<(), ProtocolError> {
     match reasoning {
@@ -270,7 +297,10 @@ fn reasoning_policy(
     }
 }
 
-fn cache_policy(writer: &mut CanonicalWriter, cache: &CachePolicy) -> Result<(), ProtocolError> {
+fn cache_policy<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    cache: &CachePolicy,
+) -> Result<(), ProtocolError> {
     match cache {
         CachePolicy::Disabled => u8_value(writer, 1),
         CachePolicy::Automatic => u8_value(writer, 2),
@@ -283,6 +313,99 @@ fn cache_policy(writer: &mut CanonicalWriter, cache: &CachePolicy) -> Result<(),
             text(writer, key.expose_for_wire())
         }
     }
+}
+
+pub(crate) trait CanonicalSink {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), ProtocolError>;
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), ProtocolError>;
+    fn write_str(&mut self, value: &str) -> Result<(), ProtocolError>;
+    fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError>;
+}
+
+impl<T: CanonicalSink + ?Sized> CanonicalSink for &mut T {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        (**self).write_fixed(value)
+    }
+
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        (**self).write_bytes(value)
+    }
+
+    fn write_str(&mut self, value: &str) -> Result<(), ProtocolError> {
+        (**self).write_str(value)
+    }
+
+    fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError> {
+        (**self).write_collection_len(value)
+    }
+}
+
+impl CanonicalSink for CanonicalWriter {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        CanonicalWriter::write_fixed(self, value).map_err(codec)
+    }
+
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        CanonicalWriter::write_bytes(self, value).map_err(codec)
+    }
+
+    fn write_str(&mut self, value: &str) -> Result<(), ProtocolError> {
+        CanonicalWriter::write_str(self, value).map_err(codec)
+    }
+
+    fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError> {
+        CanonicalWriter::write_collection_len(self, value).map_err(codec)
+    }
+}
+
+struct DigestWriter {
+    digest: Sha256,
+}
+
+impl DigestWriter {
+    fn new() -> Self {
+        Self { digest: Sha256::new() }
+    }
+
+    fn finish(self) -> Sha256Digest {
+        Sha256Digest::new(self.digest.finalize().into())
+    }
+}
+
+impl CanonicalSink for DigestWriter {
+    fn write_fixed(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        self.digest.update(value);
+        Ok(())
+    }
+
+    fn write_bytes(&mut self, value: &[u8]) -> Result<(), ProtocolError> {
+        let length = u32::try_from(value.len()).map_err(|_| representation())?;
+        self.digest.update(length.to_be_bytes());
+        self.digest.update(value);
+        Ok(())
+    }
+
+    fn write_str(&mut self, value: &str) -> Result<(), ProtocolError> {
+        self.write_bytes(value.as_bytes())
+    }
+
+    fn write_collection_len(&mut self, value: usize) -> Result<(), ProtocolError> {
+        let length = u32::try_from(value).map_err(|_| representation())?;
+        self.digest.update(length.to_be_bytes());
+        Ok(())
+    }
+}
+
+fn codec(_: peritus_codec::CodecError) -> ProtocolError {
+    representation()
+}
+
+fn representation() -> ProtocolError {
+    ProtocolError::at(
+        ProtocolErrorKind::InvalidLimit,
+        "canonical_request",
+        "canonical request encoding exceeded a selected storage or format bound",
+    )
 }
 
 const fn dialect(value: WireDialect) -> u8 {

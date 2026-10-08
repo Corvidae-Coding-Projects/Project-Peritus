@@ -14,8 +14,6 @@ use crate::{
 };
 
 const CANONICAL_MAGIC: [u8; 4] = *b"P5MR";
-const MAX_CANONICAL_REQUEST_BYTES: usize = 512 * 1024 * 1024;
-
 /// Decodes exact canonical v1 request bytes against their immutable profile revision.
 ///
 /// The canonical form deliberately excludes caller request identity and profile lifecycle facts,
@@ -33,13 +31,7 @@ pub fn decode_request(
     request_id: RequestId,
     limits: ProtocolLimits,
 ) -> Result<ModelRequest, ProtocolError> {
-    if bytes.len() > MAX_CANONICAL_REQUEST_BYTES {
-        return Err(invalid(
-            "canonical_request",
-            "canonical request exceeds its maximum byte bound",
-        ));
-    }
-    let mut reader = CanonicalReader::new(bytes, reader_limits(limits));
+    let mut reader = CanonicalReader::new(bytes, reader_limits(bytes.len()));
     decode_magic_and_profile(&mut reader, profile)?;
     let negotiated = decode_negotiated(&mut reader, profile)?;
     let messages = decode_messages(&mut reader, limits)?;

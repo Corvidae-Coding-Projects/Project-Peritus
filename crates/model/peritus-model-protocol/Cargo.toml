@@ -14,6 +14,7 @@ peritus-codec = { version = "=0.0.5", path = "../../foundation/peritus-codec" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 vstd.workspace = true
 
 [package.metadata.peritus]

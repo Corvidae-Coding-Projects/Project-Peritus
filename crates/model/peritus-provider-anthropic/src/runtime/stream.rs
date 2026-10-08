@@ -25,8 +25,7 @@ impl ClaudeRuntimeStream {
         turn: RuntimeTurn,
         provider_bytes: &[u8],
     ) -> Result<Self, ProviderCoreError> {
-        let request_bytes = request.canonical_bytes().map_err(|_| malformed())?;
-        let prefix = digest_prefix(peritus_codec::sha256(&request_bytes));
+        let prefix = digest_prefix(request.fingerprint().map_err(|_| malformed())?.digest());
         let digest = peritus_codec::sha256(provider_bytes);
         let mut builder = Builder::new(digest);
         builder.push(ModelEvent::ResponseStarted {

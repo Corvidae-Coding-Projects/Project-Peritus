@@ -1,10 +1,10 @@
 //! Canonical scalar encodings shared by semantic request fields.
 
-use crate::{ProtocolError, ProtocolErrorKind};
-use peritus_codec::CanonicalWriter;
+use super::CanonicalSink;
+use crate::ProtocolError;
 
-pub(super) fn optional_text(
-    writer: &mut CanonicalWriter,
+pub(super) fn optional_text<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     value: Option<&str>,
 ) -> Result<(), ProtocolError> {
     option_tag(writer, value.is_some())?;
@@ -14,8 +14,8 @@ pub(super) fn optional_text(
     Ok(())
 }
 
-pub(super) fn optional_digest(
-    writer: &mut CanonicalWriter,
+pub(super) fn optional_digest<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     value: Option<peritus_types::Sha256Digest>,
 ) -> Result<(), ProtocolError> {
     option_tag(writer, value.is_some())?;
@@ -25,8 +25,8 @@ pub(super) fn optional_digest(
     Ok(())
 }
 
-pub(super) fn optional_u64(
-    writer: &mut CanonicalWriter,
+pub(super) fn optional_u64<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     value: Option<u64>,
 ) -> Result<(), ProtocolError> {
     option_tag(writer, value.is_some())?;
@@ -36,8 +36,8 @@ pub(super) fn optional_u64(
     Ok(())
 }
 
-pub(super) fn optional_i64(
-    writer: &mut CanonicalWriter,
+pub(super) fn optional_i64<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     value: Option<i64>,
 ) -> Result<(), ProtocolError> {
     option_tag(writer, value.is_some())?;
@@ -47,8 +47,8 @@ pub(super) fn optional_i64(
     Ok(())
 }
 
-pub(super) fn optional_u32(
-    writer: &mut CanonicalWriter,
+pub(super) fn optional_u32<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
     value: Option<u32>,
 ) -> Result<(), ProtocolError> {
     option_tag(writer, value.is_some())?;
@@ -58,50 +58,72 @@ pub(super) fn optional_u32(
     Ok(())
 }
 
-pub(super) fn collection(writer: &mut CanonicalWriter, value: usize) -> Result<(), ProtocolError> {
-    writer.write_collection_len(value).map_err(codec)
+pub(super) fn collection<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: usize,
+) -> Result<(), ProtocolError> {
+    writer.write_collection_len(value)
 }
 
-pub(super) fn text(writer: &mut CanonicalWriter, value: &str) -> Result<(), ProtocolError> {
-    writer.write_str(value).map_err(codec)
+pub(super) fn text<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: &str,
+) -> Result<(), ProtocolError> {
+    writer.write_str(value)
 }
 
-pub(super) fn bytes(writer: &mut CanonicalWriter, value: &[u8]) -> Result<(), ProtocolError> {
-    writer.write_bytes(value).map_err(codec)
+pub(super) fn bytes<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: &[u8],
+) -> Result<(), ProtocolError> {
+    writer.write_bytes(value)
 }
 
-pub(super) fn write_fixed(writer: &mut CanonicalWriter, value: &[u8]) -> Result<(), ProtocolError> {
-    writer.write_fixed(value).map_err(codec)
+pub(super) fn write_fixed<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: &[u8],
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(value)
 }
 
-pub(super) fn boolean(writer: &mut CanonicalWriter, value: bool) -> Result<(), ProtocolError> {
-    writer.write_bool(value).map_err(codec)
+pub(super) fn boolean<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: bool,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&[u8::from(value)])
 }
 
-pub(super) fn option_tag(writer: &mut CanonicalWriter, present: bool) -> Result<(), ProtocolError> {
-    writer.write_option_tag(present).map_err(codec)
+pub(super) fn option_tag<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    present: bool,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&[u8::from(present)])
 }
 
-pub(super) fn u8_value(writer: &mut CanonicalWriter, value: u8) -> Result<(), ProtocolError> {
-    writer.write_u8(value).map_err(codec)
+pub(super) fn u8_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: u8,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&[value])
 }
 
-pub(super) fn u16_value(writer: &mut CanonicalWriter, value: u16) -> Result<(), ProtocolError> {
-    writer.write_u16(value).map_err(codec)
+pub(super) fn u16_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: u16,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&value.to_be_bytes())
 }
 
-pub(super) fn u32_value(writer: &mut CanonicalWriter, value: u32) -> Result<(), ProtocolError> {
-    writer.write_u32(value).map_err(codec)
+pub(super) fn u32_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: u32,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&value.to_be_bytes())
 }
 
-pub(super) fn u64_value(writer: &mut CanonicalWriter, value: u64) -> Result<(), ProtocolError> {
-    writer.write_u64(value).map_err(codec)
-}
-
-fn codec(_: peritus_codec::CodecError) -> ProtocolError {
-    ProtocolError::at(
-        ProtocolErrorKind::InvalidLimit,
-        "canonical_request",
-        "canonical request encoding exceeded an internal bound",
-    )
+pub(super) fn u64_value<W: CanonicalSink + ?Sized>(
+    writer: &mut W,
+    value: u64,
+) -> Result<(), ProtocolError> {
+    writer.write_fixed(&value.to_be_bytes())
 }

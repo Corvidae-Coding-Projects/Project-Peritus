@@ -25,8 +25,7 @@ impl CodexRuntimeStream {
         turn: RuntimeTurn,
         provider_bytes: &[u8],
     ) -> Result<Self, ProviderCoreError> {
-        let canonical = request.canonical_bytes().map_err(|_| malformed())?;
-        let prefix = digest_prefix(peritus_codec::sha256(&canonical));
+        let prefix = digest_prefix(request.fingerprint().map_err(|_| malformed())?.digest());
         let mut builder = Builder::new(peritus_codec::sha256(provider_bytes));
         builder.push(ModelEvent::ResponseStarted {
             response_id: None,

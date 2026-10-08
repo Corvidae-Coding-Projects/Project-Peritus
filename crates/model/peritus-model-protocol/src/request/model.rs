@@ -26,6 +26,7 @@ pub struct ModelRequest {
     tool_choice: ToolChoice,
     parallel_tools: ParallelToolPolicy,
     options: RequestOptions,
+    fingerprint: crate::RequestFingerprint,
     local_session_directory: Option<std::path::PathBuf>,
 }
 
@@ -65,7 +66,7 @@ impl ModelRequest {
             profile.resume_kind(),
             limits,
         )?;
-        Ok(Self {
+        let mut request = Self {
             protocol: ProtocolVersion::V1,
             profile_id: profile.profile_id(),
             profile_revision: profile.revision(),
@@ -80,8 +81,12 @@ impl ModelRequest {
             tool_choice,
             parallel_tools,
             options,
+            fingerprint: crate::RequestFingerprint::new(Sha256Digest::new([0; 32])),
             local_session_directory: None,
-        })
+        };
+        request.fingerprint =
+            crate::RequestFingerprint::new(crate::canonical::request_digest(&request)?);
+        Ok(request)
     }
 
     /// Binds native runtime storage to a host-owned task and role directory.
@@ -119,6 +124,8 @@ impl ModelRequest {
             self.resume_kind,
             limits,
         )?;
+        self.fingerprint =
+            crate::RequestFingerprint::new(crate::canonical::request_digest(&self)?);
         Ok(self)
     }
 
@@ -253,7 +260,7 @@ impl ModelRequest {
     /// not encode the whole request and truncate it, and does not change its fingerprint.
     ///
     /// # Errors
-    /// Rejects a zero or above-protocol ceiling, or a request that cannot fit completely.
+    /// Rejects a zero ceiling or a request that cannot fit completely.
     pub fn canonical_bytes_bounded(&self, maximum_bytes: usize) -> Result<Vec<u8>, ProtocolError> {
         crate::canonical::request_bytes_bounded(self, maximum_bytes)
     }
@@ -264,8 +271,7 @@ impl ModelRequest {
     ///
     /// Returns a protocol limit error if canonical encoding fails.
     pub fn fingerprint(&self) -> Result<crate::RequestFingerprint, ProtocolError> {
-        self.canonical_bytes()
-            .map(|bytes| crate::RequestFingerprint::new(peritus_codec::sha256(&bytes)))
+        Ok(self.fingerprint)
     }
 
     /// Derives a stable printable idempotency key from exact semantic request bytes.

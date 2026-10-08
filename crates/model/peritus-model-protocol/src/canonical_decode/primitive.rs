@@ -8,21 +8,19 @@ use crate::{
     ProtocolLimits, SchemaDialect,
 };
 
-const MAX_CANONICAL_REQUEST_BYTES: usize = 512 * 1024 * 1024;
-
-pub(super) const fn reader_limits(_limits: ProtocolLimits) -> CodecLimits {
+pub(super) const fn reader_limits(encoded_bytes: usize) -> CodecLimits {
     CodecLimits::new(
-        MAX_CANONICAL_REQUEST_BYTES,
-        MAX_CANONICAL_REQUEST_BYTES,
-        MAX_CANONICAL_REQUEST_BYTES / 4,
-        MAX_CANONICAL_REQUEST_BYTES,
-        MAX_CANONICAL_REQUEST_BYTES,
-        128,
+        encoded_bytes,
+        encoded_bytes,
+        usize::MAX,
+        usize::MAX,
+        usize::MAX,
+        CodecLimits::UNLIMITED_NESTING,
     )
 }
 
-pub(super) const fn physical_collection_max(minimum_item_bytes: usize) -> usize {
-    MAX_CANONICAL_REQUEST_BYTES / minimum_item_bytes
+pub(super) const fn physical_collection_max(_minimum_item_bytes: usize) -> usize {
+    usize::MAX
 }
 
 pub(super) fn read_collection_len(
