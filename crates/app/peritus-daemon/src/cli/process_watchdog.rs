@@ -3,13 +3,13 @@
 use std::{
     io::Read as _,
     process::ExitCode,
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use peritus_process::{NativeProcessProbe, ProbeObservation, ProcessProbe, ProcessTreeIdentity};
 
 const DISARM: u8 = 1;
-const REOBSERVE_LIMIT: Duration = Duration::from_millis(500);
+const REOBSERVE_INTERVAL: Duration = Duration::from_millis(5);
 
 pub(super) fn run(root: u32, start: u64, group: u32) -> ExitCode {
     if root == 0 || root != group {
@@ -31,30 +31,42 @@ pub(super) fn run(root: u32, start: u64, group: u32) -> ExitCode {
 fn terminate(root: u32, start: u64, group: u32) -> Result<(), ()> {
     let identity = ProcessTreeIdentity::new(root, Some(start), Some(group), true);
     let mut probe = NativeProcessProbe::new();
-    let mut observation = probe.observe(identity).map_err(|_| ())?;
-    if observation == ProbeObservation::Unverifiable {
-        let deadline = Instant::now() + REOBSERVE_LIMIT;
-        while observation == ProbeObservation::Unverifiable && Instant::now() < deadline {
-            std::thread::sleep(Duration::from_millis(5));
-            observation = probe.observe(identity).map_err(|_| ())?;
+    let group = i32::try_from(group).map_err(|_| ())?;
+    loop {
+        match probe.observe(identity) {
+            Ok(ProbeObservation::ExactLive) => {
+                // Native termination rechecks the exact birth/group binding before signaling.
+                // A transient observation or signal failure retains this cleanup obligation.
+                let _ = probe.terminate(identity);
+            }
+            Ok(ProbeObservation::ExactAbsent) => {
+                if group_absent(group) {
+                    return Ok(());
+                }
+                // Root absence does not prove the identity of a surviving numeric group. Keep
+                // observing the unresolved tree rather than signaling a potentially reused ID.
+            }
+            Ok(ProbeObservation::Mismatched) => {
+                if group_absent(group) {
+                    return Ok(());
+                }
+                // The root PID was reused while the numeric group remains live. That does not
+                // identify the surviving group as either the old tree or the reused process, so
+                // retain the obligation without signaling either identity.
+            }
+            Ok(ProbeObservation::Unverifiable) | Err(_) => {}
         }
-    }
-    match observation {
-        ProbeObservation::ExactLive => probe.terminate(identity).map_err(|_| ()),
-        ProbeObservation::ExactAbsent => {
-            let group = i32::try_from(group).map_err(|_| ())?;
-            kill_group(group)
-        }
-        ProbeObservation::Mismatched | ProbeObservation::Unverifiable => Err(()),
+        std::thread::sleep(REOBSERVE_INTERVAL);
     }
 }
 
-#[allow(unsafe_code, reason = "negative-pid kill is the Linux process-group termination boundary")]
-fn kill_group(group: i32) -> Result<(), ()> {
+#[allow(unsafe_code, reason = "signal zero only observes Linux process-group existence")]
+fn group_absent(group: i32) -> bool {
     // SAFETY: `group` came from a nonzero root identity, was checked to equal the owned process
-    // group, and converted to a positive i32. Negating it selects that exact process group.
-    if unsafe { libc::kill(-group, libc::SIGKILL) } == 0 {
-        return Ok(());
+    // group, and converted to a positive i32. Signal zero performs no process mutation; absence
+    // requires ESRCH from this exact observation rather than an elapsed patience window.
+    if unsafe { libc::kill(-group, 0) } == 0 {
+        return false;
     }
-    (std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)).then_some(()).ok_or(())
+    std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
 }
