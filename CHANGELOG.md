@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Remove checkpoint capture file and aggregate byte quotas while retaining path safety (L003; Crosslink #104).
+- Remove patch file, byte, and operation quotas while retaining preimage checks and atomic application (L006; Crosslink #106).
+- Remove u16 checkpoint collection and index ceilings while preserving legacy identities and complete exclusion facts (L010; Crosslink #110).
+- Derive valid UTF-8 checkpoint titles without rejecting work because of generated text (L012; Crosslink #112).
+- Align checkpoint capture and restore capacity and retain typed patch errors (L013; Crosslink #113).
+- Recover complete transaction manifests above the former 16 MiB limit and deduplicate retained ancestors (L016; Crosslink #118).
+- Remove journal batch and state-history ceilings, migrate existing storage to schema 3 without changing digests, and preserve checkpoint key ordering beyond 65,535 paths (L020; Crosslink #120).
+- Remove workspace write and receipt size refusals, and stream receipt hashing (L035; Crosslink #134).
+- Preserve exact automatic-checkpoint retry lookup before recapture; no additional implementation was needed (L036; Crosslink #135).
+- Page workspace listing and search with scoped cursors, incremental inspection, and explicit omissions (L041; Crosslink #140).
+- Continue bounded workspace and reference reads without silent truncation or repeating cursors (L045; Crosslink #144).
+- Hash artifacts incrementally without the former 64 MiB refusal (L076; Crosslink #175).
+- Continue retrieval within sources using actual encoded page bounds rather than query, handle, or source-size cutoffs (L078; Crosslink #177).
+- Sample design inventory incrementally with cancellation, truthful omissions, and real workspace-list continuation (L124; Crosslink #223).
+- Page explicitly authorized references with native case rules, preserved path punctuation, and symlink confinement (L168; Crosslink #264).
+- Stream CSV validation using the selected delimiter, encoding, and row-shape contract; absent optional contracts do not block work (L172; Crosslink #307).
+- Stream JSON and YAML validation with cancellation and without whole-file size or empty-document refusals (L173; Crosslink #308).
+- Qualify SQLite migrations against explicit initial state and ordered paths, requiring repeatability, rollback, or postchecks only when selected (L174; Crosslink #309).
+- Stream source readability, report selected missing or unreadable paths, and honor Python source encodings (L175; Crosslink #310).
+- Page checkpoint and rewind coverage with full confirmation binding, durable restore summaries, stale-input protection, recovery, and TUI navigation (L712; Crosslink #744).
+- Deliver the selected 20-repair round with validated code and tracked results (Crosslink continuation #826).
+
 ## 0.0.5
 
 - Use one durable conversation and operation path across the terminal interface, CLI, WebUI,
@@ -457,6 +483,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L010] Checkpoint manifest count and text-field ceilings (#110)
 
 - Extend the frozen Terminal-Bench evidence with an emergent cross-component validation miss, a
   slow-source deadline recurrence, another pre-model large-inventory recurrence, and a fifth
