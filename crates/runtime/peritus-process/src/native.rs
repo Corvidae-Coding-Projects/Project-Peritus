@@ -241,17 +241,37 @@ impl NativeLaunchDescription {
     ///
     /// # Errors
     ///
-    /// Rejects duplicate labels, duplicate operating-system handles, or an excessive set.
+    /// Rejects duplicate labels or duplicate operating-system handles.
     pub fn with_protected_handles(
-        mut self,
+        self,
         mut handles: Vec<NativeProtectedHandle>,
     ) -> Result<Self, ProcessError> {
-        const MAX_PROTECTED_HANDLES: usize = 256;
-        if handles.len() > MAX_PROTECTED_HANDLES {
-            return Err(native_mismatch("native protected handle count exceeds its bound"));
-        }
         handles.sort_by(|left, right| left.label().cmp(right.label()));
-        if handles.windows(2).any(|pair| pair[0].label() == pair[1].label()) {
+        self.attach_protected_handles(handles)
+    }
+
+    /// Adds exact protected handles while retaining the caller's validated role order.
+    ///
+    /// Platform backends use this after comparing every handle with an ordered helper manifest.
+    /// The operating system remains the cumulative capacity authority; this representation adds
+    /// no independent total-count ceiling.
+    ///
+    /// # Errors
+    /// Rejects duplicate labels or duplicate operating-system handles.
+    pub fn with_ordered_protected_handles(
+        self,
+        handles: Vec<NativeProtectedHandle>,
+    ) -> Result<Self, ProcessError> {
+        self.attach_protected_handles(handles)
+    }
+
+    fn attach_protected_handles(
+        mut self,
+        handles: Vec<NativeProtectedHandle>,
+    ) -> Result<Self, ProcessError> {
+        let mut labels = handles.iter().map(NativeProtectedHandle::label).collect::<Vec<_>>();
+        labels.sort_unstable();
+        if labels.windows(2).any(|pair| pair[0] == pair[1]) {
             return Err(native_mismatch("native protected handle labels collide"));
         }
         let mut raw_handles =
@@ -426,6 +446,23 @@ pub trait NativeSandboxBackend: Send + 'static {
         Err(native_mismatch(
             "native backend does not support retained owner reconstruction",
         ))
+    }
+
+    /// Validates current platform launch capacity before fresh one-use authority is consumed.
+    ///
+    /// Implementations may inspect only current nonsensitive platform capacity and the already
+    /// checked sandbox plan. This preflight must not create a prepared session, reserve live
+    /// handles, or start support work. Exact handle identities are checked again during
+    /// post-consumption preparation.
+    ///
+    /// # Errors
+    /// Returns a typed pre-effect failure when current platform capacity cannot represent the
+    /// selected helper contract.
+    fn validate_preparation_capacity(
+        &self,
+        _sandbox: &CheckedSandboxPlan,
+    ) -> Result<(), ProcessError> {
+        Ok(())
     }
 
     /// Prepares one session from the opaque authorized context.

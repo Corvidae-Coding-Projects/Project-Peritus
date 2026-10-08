@@ -201,6 +201,7 @@ impl ExecutionGateway {
                 }
             };
             let binding = retained.binding();
+            backend.validate_preparation_capacity(sandbox_plan)?;
             self.store.consume_retained(
                 &transaction,
                 &plan,
@@ -223,6 +224,7 @@ impl ExecutionGateway {
                 plan.terminal_capabilities(),
             );
         }
+        backend.validate_preparation_capacity(sandbox_plan)?;
         self.store.consume(&plan, validation.action_digest, validation.lease_claim)?;
         let context = AuthorizedPreparationContext::new(&plan, sandbox_plan, admission);
         let mut session = match backend.prepare(context) {
@@ -314,6 +316,7 @@ impl ExecutionGateway {
         let sandbox = retained.sandbox_plan();
         validate_native_binding(&plan, sandbox, admission, &backend)?;
         supervisor::validate_native_launch(&plan)?;
+        backend.validate_preparation_capacity(sandbox)?;
         if let Some(reason) = cancellation_requested() {
             // Backend construction may probe support, but the backend owns no prepared session or
             // session support tasks. Drop its inert configuration before certifying that absence.

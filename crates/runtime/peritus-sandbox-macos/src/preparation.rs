@@ -1,8 +1,8 @@
 //! Fail-closed native preparation and C2 adapter.
 
 use peritus_process::{
-    AuthorizedPreparationContext, CommandSpec, ExecutionPlan, NativeLaunchDescription,
-    NativePlatform, NativeSandboxBackend, ProcessError,
+    AuthorizedPreparationContext, ExecutionPlan, NativePlatform, NativeSandboxBackend,
+    ProcessError,
 };
 use peritus_sandbox::{
     AdmissionProfile, BackendAdmission, BackendDescriptor, CheckedSandboxPlan, RuleEffect,
@@ -13,10 +13,10 @@ use peritus_types::Sha256Digest;
 use std::sync::Arc;
 
 use crate::{
-    BACKEND_NAME, BACKEND_VERSION, HelperManifest, MacosDescriptor, MacosError, MacosErrorKind,
-    MacosHostProbe, MacosOperation, MacosSession, ProcessContainment, ProfileCompiler,
-    ProtectedProxyRoute, ProtectedSecretHandle, RecoveryAction, ResourceControlPlan,
-    TerminalMapping, error,
+    BACKEND_NAME, BACKEND_VERSION, HelperLaunch, HelperManifest, MacosDescriptor, MacosError,
+    MacosErrorKind, MacosHostProbe, MacosOperation, MacosSession, ManifestHandle,
+    ProcessContainment, ProfileCompiler, ProtectedProxyRoute, ProtectedSecretHandle,
+    RecoveryAction, ResourceControlPlan, TerminalMapping, error,
     session::{SessionResources, process_error},
 };
 
@@ -40,6 +40,15 @@ pub type PreparedMacosSandbox = MacosSession;
 /// Monotonic, nonsensitive progress emitted during authorized native preparation.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PreparationProgress {
+    /// Current descriptor authority was checked before fresh one-use consumption.
+    DescriptorCapacity {
+        /// Minimum slots for standard streams plus manifest/status/proxy/secret descriptors.
+        required: u64,
+        /// Inherited soft descriptor ceiling observed without using it as a policy ceiling.
+        inherited_soft: u64,
+        /// Genuine operating-system hard descriptor authority.
+        inherited_hard: u64,
+    },
     /// All selected paths and exact plan bindings passed preflight before live owners were started.
     PreflightComplete,
     /// Installed-helper identity bytes were streamed into the integrity digest.
@@ -331,39 +340,31 @@ impl MacosBackend {
             secret_descriptors,
         )
         .map_err(|error| owners.cleanup(error))?;
-        let command = CommandSpec::new(
-            self.config.helper_path.as_os_str().to_owned(),
-            std::iter::empty::<std::ffi::OsString>(),
+        let helper_launch = HelperLaunch::new(
+            self.config.helper_path.clone(),
+            ManifestHandle::protected_stdin(),
+            manifest.exec_status_descriptor(),
+            manifest.proxy_descriptor(),
+            manifest.secrets(),
+            manifest.containment(),
+            manifest.terminal(),
         )
-            .map_err(|_| error::invalid(MacosOperation::Prepare, "helper command is invalid"))
-            .map_err(|error| owners.cleanup(error))?;
+        .map_err(|error| owners.cleanup(error))?;
         let helper_identity = helper_identity(helper_digest);
-        let mut protected_handles =
-            protected_secrets.iter().map(|secret| secret.handle().clone()).collect::<Vec<_>>();
-        protected_handles.push(exec_status_handle);
+        let mut protected_handles = vec![exec_status_handle];
         if let Some(proxy) = &protected_proxy {
             protected_handles.push(proxy.handle().clone());
         }
-        let launch = NativeLaunchDescription::new(
-            command,
+        protected_handles.extend(
+            protected_secrets
+                .iter()
+                .map(|secret| secret.handle().clone()),
+        );
+        let launch = helper_launch.native_description(
             helper_identity,
-            manifest.canonical_bytes().to_vec(),
-            manifest.digest(),
-            admission.preparation_digest(),
+            &manifest,
+            protected_handles,
         )
-        .and_then(|launch| launch.with_protected_handles(protected_handles))
-        .map_err(|source| {
-            MacosError::new(
-                MacosErrorKind::PreparationMismatch,
-                MacosOperation::Prepare,
-                RecoveryAction::Reauthorize,
-                format!(
-                    "C2 rejected the native launch description ({})",
-                    source.code().as_str()
-                ),
-            )
-            .with_source(error::process_source(&source))
-        })
         .map_err(|error| owners.cleanup(error))?;
         let facts = crate::verified::NativeBindingFacts {
             features_covered: sandbox
@@ -503,6 +504,25 @@ impl NativeSandboxBackend for MacosBackend {
 
     fn platform(&self) -> NativePlatform {
         NativePlatform::Macos
+    }
+
+    fn validate_preparation_capacity(
+        &self,
+        sandbox: &CheckedSandboxPlan,
+    ) -> Result<(), ProcessError> {
+        self.validate_protected_bindings(sandbox)
+            .map_err(|error| process_error(&error))?;
+        let capacity = crate::process::preflight_helper_descriptor_capacity(
+            self.config.proxy.is_some(),
+            sandbox.requirements().secrets().len(),
+        )
+        .map_err(|error| process_error(&error))?;
+        (self.preparation_progress)(PreparationProgress::DescriptorCapacity {
+            required: capacity.required(),
+            inherited_soft: capacity.inherited_soft(),
+            inherited_hard: capacity.inherited_hard(),
+        });
+        Ok(())
     }
 
     fn retained_factory_request(

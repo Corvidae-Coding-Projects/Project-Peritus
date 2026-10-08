@@ -27,7 +27,7 @@ mod observation_mapping;
 mod tests;
 
 pub(crate) use adapter::process_error;
-use observation_mapping::{protected_handles_match, push_native_mapping};
+use observation_mapping::push_native_mapping;
 
 const MAX_DIAGNOSTIC_OBSERVATIONS: usize = 4_096;
 const COMMON_OBSERVATION_TAIL_LIMIT: usize = 64;
@@ -188,7 +188,10 @@ impl MacosSession {
         let diagnostic_limit = observation_limit.min(MAX_DIAGNOSTIC_OBSERVATIONS);
         if manifest.proxy().is_some() != resources.proxy.is_some()
             || manifest.secrets().len() != resources.secrets.artifacts().len()
-            || !protected_handles_match(&launch, &manifest)
+            || !crate::process::protected_handle_owners_match(
+                launch.protected_handles(),
+                &manifest,
+            )
         {
             let error = crate::error::mismatch(
                 MacosErrorKind::PreparationMismatch,

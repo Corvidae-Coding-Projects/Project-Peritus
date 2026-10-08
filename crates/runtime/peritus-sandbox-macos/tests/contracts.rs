@@ -148,6 +148,7 @@ fn manifest_round_trip_is_canonical_and_tamper_evident() {
     let helper_launch = HelperLaunch::new(
         "/opt/peritus/bin/peritus-macos-sandbox-helper".into(),
         ManifestHandle::protected_stdin(),
+        decoded.exec_status_descriptor(),
         None,
         &[],
         ProcessContainment::from_checked_plan(&plan),
@@ -155,7 +156,13 @@ fn manifest_round_trip_is_canonical_and_tamper_evident() {
     )
     .unwrap();
     assert!(helper_launch.arguments().is_empty());
-    assert_eq!(helper_launch.inherited_descriptors(), [InheritedDescriptor::Manifest(0)]);
+    assert_eq!(
+        helper_launch.inherited_descriptors(),
+        [
+            InheritedDescriptor::Manifest(0),
+            InheritedDescriptor::ExecutionStatus(decoded.exec_status_descriptor()),
+        ]
+    );
 
     let mut tampered = manifest.canonical_bytes().to_vec();
     tampered[20] ^= 1;

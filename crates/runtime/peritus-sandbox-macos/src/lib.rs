@@ -57,7 +57,10 @@ pub use preparation::{
     RetainedMacosBackendFactory,
 };
 pub use probe::{MacosHostProbe, ProbeEvidence, ProbeRequest, ResourceProbe, SystemProbe};
-pub use process::{HelperLaunch, InheritedDescriptor, ProcessContainment, TerminalMapping};
+pub use process::{
+    HelperDescriptorCapacity, HelperLaunch, InheritedDescriptor, ProcessContainment,
+    TerminalMapping,
+};
 pub use recovery::{CleanupProgress, MacosRecoveryRecord, RecoveryClassification, RuntimeIdentity};
 pub use resource::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 #[cfg(target_os = "macos")]

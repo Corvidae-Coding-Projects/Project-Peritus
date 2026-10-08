@@ -131,13 +131,16 @@ impl MacosConformanceSubject {
             admission.preparation_digest(),
         )
         .and_then(|launch| {
-            let mut handles =
-                protected_secrets.iter().map(|secret| secret.handle().clone()).collect::<Vec<_>>();
+            let mut handles = vec![exec_status_handle];
             if let Some(proxy) = &protected_proxy {
                 handles.push(proxy.handle().clone());
             }
-            handles.push(exec_status_handle);
-            launch.with_protected_handles(handles)
+            handles.extend(
+                protected_secrets
+                    .iter()
+                    .map(|secret| secret.handle().clone()),
+            );
+            launch.with_ordered_protected_handles(handles)
         })
         .map_err(|_| ())?;
         Ok(PreparedProjection {
