@@ -39,6 +39,7 @@ impl Connection {
         let protocol = protocol_id(process_seed(config.endpoint()), self.generation);
         let endpoint = config.endpoint().to_owned();
         let requested = model.retained_session().or_else(|| config.requested_session());
+        let timeout = config.connection_timeout();
         let previous = self.session.take();
         let cleanup = model.cleanup_messages();
         model.update(Action::Connecting);
@@ -49,7 +50,7 @@ impl Connection {
                 // attempt cancels cleanup and drops its reader/writer owner as well.
                 let _ = previous.close(cleanup).await;
             }
-            ClientSession::connect(&endpoint, protocol?, requested, events).await
+            Self::connect_with_policy(&endpoint, protocol?, requested, timeout, events).await
         }));
     }
 
@@ -156,6 +157,23 @@ impl Connection {
             }
         }
     }
+}
+
+async fn connect_with_policy(
+    endpoint: &std::path::Path,
+    protocol: peritus_app_protocol::ProtocolId,
+    requested: Option<peritus_types::SessionId>,
+    timeout: Option<std::time::Duration>,
+    events: mpsc::Sender<ClientEvent>,
+) -> Result<ClientSession, TuiError> {
+    let operation = ClientSession::connect(endpoint, protocol, requested, events);
+    let Some(timeout) = timeout else { return operation.await };
+    let deadline = tokio::time::Instant::now().checked_add(timeout).ok_or_else(|| {
+        TuiError::InvalidValue("daemon connection timeout is too large for this platform".into())
+    })?;
+    tokio::time::timeout_at(deadline, operation)
+        .await
+        .map_err(|_| TuiError::Task("daemon connection reached the caller-selected deadline".into()))?
 }
 
 #[cfg(test)]

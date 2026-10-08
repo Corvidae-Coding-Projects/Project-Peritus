@@ -1,6 +1,6 @@
 //! End-to-end interactive product launch composition.
 
-use std::{future::Future, path::PathBuf};
+use std::{future::Future, path::PathBuf, time::Duration};
 
 use peritus_product_state::WorkspaceProfile;
 use peritus_provider_core::CancellationToken;
@@ -34,7 +34,7 @@ pub async fn launch_interactive() -> Result<ExitReason, LauncherError> {
 pub async fn launch_interactive_at(
     repository: Option<PathBuf>,
 ) -> Result<ExitReason, LauncherError> {
-    launch_interactive_run(repository, None, None).await
+    launch_interactive_run(repository, None, None, None, None).await
 }
 
 /// Opens an exact conversation while preserving normal workspace setup and recovery.
@@ -45,8 +45,17 @@ pub async fn launch_interactive_run(
     repository: Option<PathBuf>,
     run: Option<peritus_types::RunId>,
     endpoint: Option<std::ffi::OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<Duration>,
 ) -> Result<ExitReason, LauncherError> {
-    launch_interactive_target(repository, InitialConversation::Run(run), endpoint).await
+    launch_interactive_target(
+        repository,
+        InitialConversation::Run(run),
+        endpoint,
+        session,
+        timeout,
+    )
+    .await
 }
 
 /// Opens the most recently active conversation for the current directory's workspace.
@@ -55,8 +64,10 @@ pub async fn launch_interactive_run(
 /// Returns a setup failure, mismatched endpoint, or terminal failure without changing targets.
 pub async fn launch_interactive_resume(
     endpoint: Option<std::ffi::OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<Duration>,
 ) -> Result<ExitReason, LauncherError> {
-    launch_interactive_target(None, InitialConversation::Latest, endpoint).await
+    launch_interactive_target(None, InitialConversation::Latest, endpoint, session, timeout).await
 }
 
 #[derive(Clone, Copy)]
@@ -69,6 +80,8 @@ async fn launch_interactive_target(
     repository: Option<PathBuf>,
     initial: InitialConversation,
     endpoint: Option<std::ffi::OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<Duration>,
 ) -> Result<ExitReason, LauncherError> {
     let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
@@ -85,7 +98,9 @@ async fn launch_interactive_target(
         SiblingBinaries::discover_cancellable(&discovery_cancellation),
     )
     .await?;
-    let mut supervisor = DaemonSupervisor::without_deadline();
+    let mut supervisor = timeout
+        .map(DaemonSupervisor::new)
+        .unwrap_or_else(DaemonSupervisor::without_deadline);
     if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
         return Err(LauncherError::Interaction("The selected workspace uses a different daemon endpoint. Reconnect the browser to its configured daemon.".into()));
     }
@@ -108,10 +123,14 @@ async fn launch_interactive_target(
             ),
         )
         .await?;
-        let outcome = peritus_tui::run_with_state(
-            TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
-            &mut tui_state,
-        )
+        let mut config = TuiConfig::new(prepared.endpoint_path()).with_product(product.clone());
+        if let Some(session) = session {
+            config = config.with_session(session);
+        }
+        if let Some(timeout) = timeout {
+            config = config.with_connection_timeout(timeout);
+        }
+        let outcome = peritus_tui::run_with_state(config, &mut tui_state)
         .await
         .map_err(LauncherError::Tui)?;
         match outcome {

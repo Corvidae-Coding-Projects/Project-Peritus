@@ -48,6 +48,7 @@ struct LocalReads {
 pub struct TuiConfig {
     endpoint: PathBuf,
     requested_session: Option<SessionId>,
+    connection_timeout: Option<Duration>,
     product: Option<ProductLaunchContext>,
 }
 
@@ -55,13 +56,25 @@ impl TuiConfig {
     /// Creates a configuration for one exact local daemon endpoint.
     #[must_use]
     pub fn new(endpoint: impl Into<PathBuf>) -> Self {
-        Self { endpoint: endpoint.into(), requested_session: None, product: None }
+        Self {
+            endpoint: endpoint.into(),
+            requested_session: None,
+            connection_timeout: None,
+            product: None,
+        }
     }
 
     /// Requests resumption of an existing durable application session.
     #[must_use]
     pub const fn with_session(mut self, session: SessionId) -> Self {
         self.requested_session = Some(session);
+        self
+    }
+
+    /// Applies a caller-selected bound to each daemon connection attempt.
+    #[must_use]
+    pub const fn with_connection_timeout(mut self, timeout: Duration) -> Self {
+        self.connection_timeout = Some(timeout);
         self
     }
 
@@ -82,6 +95,12 @@ impl TuiConfig {
     #[must_use]
     pub const fn requested_session(&self) -> Option<SessionId> {
         self.requested_session
+    }
+
+    /// Returns the caller-selected daemon connection bound, if any.
+    #[must_use]
+    pub const fn connection_timeout(&self) -> Option<Duration> {
+        self.connection_timeout
     }
 
     /// Borrows launcher-resolved product context when entered through `peritus`.

@@ -43,7 +43,11 @@ impl Cli {
                         &parser.value_utf8("--timeout-seconds")?,
                         "--timeout-seconds",
                     )?;
-                    timeout = Some(Duration::from_secs(value));
+                    set_once(
+                        &mut timeout,
+                        Duration::from_secs(value),
+                        "--timeout-seconds",
+                    )?;
                 }
                 Some("--json") => {
                     parser.pop();

@@ -55,6 +55,7 @@ pub async fn shutdown(
     wait: bool,
     output: &Output,
 ) -> Result<(), CliError> {
+    let completion_deadline = if wait { checked_deadline(timeout)? } else { None };
     let mut client =
         Client::connect(endpoint, session, timeout, &[WellKnownProtocolFeature::GracefulShutdown])
             .await?;
@@ -81,16 +82,15 @@ pub async fn shutdown(
             "shutdown accepted; completion not awaited",
         );
     }
-    await_shutdown(&mut client, shutdown, timeout, output).await
+    await_shutdown(&mut client, shutdown, completion_deadline, output).await
 }
 
 async fn await_shutdown(
     client: &mut Client,
     shutdown: ShutdownRequest,
-    timeout: Option<Duration>,
+    deadline: Option<tokio::time::Instant>,
     output: &Output,
 ) -> Result<(), CliError> {
-    let deadline = timeout.map(|timeout| tokio::time::Instant::now() + timeout);
     loop {
         let remaining = deadline
             .map(|deadline| deadline.saturating_duration_since(tokio::time::Instant::now()));
@@ -172,6 +172,18 @@ async fn await_shutdown(
             _ => {}
         }
     }
+}
+
+fn checked_deadline(
+    timeout: Option<Duration>,
+) -> Result<Option<tokio::time::Instant>, CliError> {
+    timeout
+        .map(|duration| {
+            tokio::time::Instant::now().checked_add(duration).ok_or_else(|| {
+                CliError::usage("--timeout-seconds is too large for this platform")
+            })
+        })
+        .transpose()
 }
 
 pub async fn submit(

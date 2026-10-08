@@ -79,10 +79,16 @@ fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
         return run_workspace_settings();
     }
     if let Command::Open { path, run } = &cli.command {
-        return run_interactive_at(path.clone(), *run, cli.endpoint.clone());
+        return run_interactive_at(
+            path.clone(),
+            *run,
+            cli.endpoint.clone(),
+            cli.session,
+            cli.timeout,
+        );
     }
     if matches!(&cli.command, Command::Resume) {
-        return run_interactive_resume(cli.endpoint);
+        return run_interactive_resume(cli.endpoint, cli.session, cli.timeout);
     }
 
     let runtime = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
@@ -172,7 +178,7 @@ fn run_workspace_settings() -> ExitCode {
 }
 
 fn run_interactive() -> ExitCode {
-    run_interactive_at(None, None, None)
+    run_interactive_at(None, None, None, None, None)
 }
 
 enum InteractiveLaunch {
@@ -184,15 +190,31 @@ fn run_interactive_at(
     repository: Option<std::path::PathBuf>,
     run: Option<peritus_types::RunId>,
     endpoint: Option<OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<std::time::Duration>,
 ) -> ExitCode {
-    run_interactive_target(InteractiveLaunch::Open { repository, run }, endpoint)
+    run_interactive_target(
+        InteractiveLaunch::Open { repository, run },
+        endpoint,
+        session,
+        timeout,
+    )
 }
 
-fn run_interactive_resume(endpoint: Option<OsString>) -> ExitCode {
-    run_interactive_target(InteractiveLaunch::Resume, endpoint)
+fn run_interactive_resume(
+    endpoint: Option<OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<std::time::Duration>,
+) -> ExitCode {
+    run_interactive_target(InteractiveLaunch::Resume, endpoint, session, timeout)
 }
 
-fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>) -> ExitCode {
+fn run_interactive_target(
+    target: InteractiveLaunch,
+    endpoint: Option<OsString>,
+    session: Option<peritus_types::SessionId>,
+    timeout: Option<std::time::Duration>,
+) -> ExitCode {
     if !std::io::stdin().is_terminal() || !std::io::stdout().is_terminal() {
         return report_error(
             &CliError::usage(
@@ -213,11 +235,15 @@ fn run_interactive_target(target: InteractiveLaunch, endpoint: Option<OsString>)
     let (operation, result) = match target {
         InteractiveLaunch::Open { repository, run } => (
             "launch interactive product",
-            runtime.block_on(peritus_launcher::launch_interactive_run(repository, run, endpoint)),
+            runtime.block_on(peritus_launcher::launch_interactive_run(
+                repository, run, endpoint, session, timeout,
+            )),
         ),
         InteractiveLaunch::Resume => (
             "resume interactive product",
-            runtime.block_on(peritus_launcher::launch_interactive_resume(endpoint)),
+            runtime.block_on(peritus_launcher::launch_interactive_resume(
+                endpoint, session, timeout,
+            )),
         ),
     };
     match result {
