@@ -201,7 +201,7 @@ fn recovery_classification_never_claims_mismatched_ownership() {
     .with_root_start_token(Some(1));
     let record =
         MacosRecoveryRecord::new(identity, true, CleanupProgress::prepared(false, false)).unwrap();
-    assert_eq!(record.classify(Some(identity), true), RecoveryClassification::LiveOwned);
+    assert_eq!(record.classify(Some(identity), true), RecoveryClassification::Indeterminate);
     let mismatch = RuntimeIdentity::new(
         support::binding().process_id(),
         Sha256Digest::new([9; 32]),

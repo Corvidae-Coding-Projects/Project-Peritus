@@ -2,9 +2,10 @@
 
 use peritus_process::{
     CancellationReason, ErrorCode, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
-    NativeObservationPage, NativeObservationReceipt, NativeObservationTransport, NativePoll,
-    NativeSandboxSession, OsExitObservation, ProcessError, ProcessOperation,
-    ProcessTreeIdentity, RecoveryClass as ProcessRecovery,
+    NativeObservationPage, NativeObservationReceipt, NativeObservationTransport, NativePlatform,
+    NativePoll, NativeRecoveryPhase, NativeSandboxSession, NativeSessionRecovery,
+    OsExitObservation, ProcessError, ProcessOperation, ProcessTreeIdentity,
+    RecoveryClass as ProcessRecovery,
     native_observation_prefix_digest, native_observation_producer_binding,
 };
 use peritus_sandbox::EnforcementObservation;
@@ -15,6 +16,58 @@ use crate::{MacosError, MacosErrorKind, MacosOperation, RecoveryAction};
 impl NativeSandboxSession for MacosSession {
     fn launch_description(&self) -> &NativeLaunchDescription {
         &self.launch
+    }
+
+    fn recovery_snapshot(&self) -> Result<Option<NativeSessionRecovery>, ProcessError> {
+        let identity = self.recovery.identity();
+        let tree = match (
+            identity.root_pid(),
+            identity.root_start_token(),
+            identity.process_group(),
+        ) {
+            (Some(root), Some(start), Some(group)) => {
+                Some(ProcessTreeIdentity::new(root, Some(start), Some(group), true))
+            }
+            (None, None, None) => None,
+            _ => {
+                return Err(process_error(&MacosError::new(
+                    MacosErrorKind::RecoveryIndeterminate,
+                    MacosOperation::Recover,
+                    RecoveryAction::Quarantine,
+                    "macOS recovery birth identity is incomplete",
+                )));
+            }
+        };
+        let phase = match self.recovery.phase() {
+            SessionPhase::Prepared => NativeRecoveryPhase::Prepared,
+            SessionPhase::Active => NativeRecoveryPhase::Active,
+            SessionPhase::Cancelling => NativeRecoveryPhase::Cancelling,
+            SessionPhase::Terminated => NativeRecoveryPhase::Terminated,
+            SessionPhase::Released => NativeRecoveryPhase::Released,
+        };
+        let custody = self.recovery.custody();
+        let bytes = self.recovery.canonical_bytes();
+        let mut record = Vec::new();
+        record.try_reserve_exact(bytes.len()).map_err(|_| {
+            process_error(&MacosError::new(
+                MacosErrorKind::LimitExceeded,
+                MacosOperation::Recover,
+                RecoveryAction::Reconcile,
+                "macOS recovery record cannot be transferred",
+            ))
+        })?;
+        record.extend_from_slice(bytes);
+        NativeSessionRecovery::new(
+            NativePlatform::Macos,
+            identity.process_id(),
+            phase,
+            tree,
+            custody.owner_operation_digest(),
+            custody.service_owner_digest(),
+            custody.adoptable(self.recovery.phase()),
+            record,
+        )
+        .map(Some)
     }
 
     fn spawned(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {

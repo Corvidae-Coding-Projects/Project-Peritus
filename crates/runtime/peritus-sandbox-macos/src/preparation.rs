@@ -181,6 +181,7 @@ impl MacosBackend {
         execution: &ExecutionPlan,
         sandbox: &CheckedSandboxPlan,
         admission: &BackendAdmission,
+        retained_owner: Option<peritus_process::RetainedOwnerBinding>,
     ) -> Result<PreparedMacosSandbox, MacosError> {
         self.ensure_preparation_continues()?;
         let preparation_continues = Arc::clone(&self.preparation_continues);
@@ -401,6 +402,7 @@ impl MacosBackend {
             helper_digest,
             proxy_digest,
             observation_limit,
+            retained_owner,
             SessionResources::new_cancellable(
                 exec_status_owner,
                 proxy_owner,
@@ -541,6 +543,7 @@ impl NativeSandboxBackend for MacosBackend {
             context.execution_plan(),
             context.sandbox_plan(),
             context.admission(),
+            context.retained_owner(),
         )
         .map_err(|error| {
             let cleanup_complete = error.preparation_cleanup().is_complete();

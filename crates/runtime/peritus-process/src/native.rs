@@ -34,6 +34,7 @@ use peritus_types::Sha256Digest;
 use crate::{
     CancellationReason, CommandSpec, ErrorCode, ExecutionPlan, OsExitObservation, ProcessError,
     ProcessOperation, ProcessTreeIdentity, RecoveryClass, RetainedBackendFactoryRequest,
+    RetainedOwnerBinding,
 };
 
 pub(crate) use observation::{
@@ -44,6 +45,161 @@ pub(crate) use observation::{
 const MAX_HELPER_IDENTITY_BYTES: usize = 256;
 /// Maximum number of exact observations transferred in one physical page.
 pub const NATIVE_OBSERVATION_PAGE_RECORDS: usize = 256;
+
+/// Closed lifecycle vocabulary carried by an independently retained native session.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum NativeRecoveryPhase {
+    /// Native resources are prepared; the helper may or may not have been spawned yet.
+    Prepared,
+    /// Helper activation and exact tree custody were accepted.
+    Active,
+    /// The immutable first cancellation reason was accepted.
+    Cancelling,
+    /// Root termination was observed while native cleanup remains owned.
+    Terminated,
+    /// Every backend-owned resource was released.
+    Released,
+}
+
+/// Exact live native-session evidence published only by the retained process owner.
+///
+/// The opaque record remains platform-owned. The common process layer binds it to the consumed
+/// retained-owner operation and exact native birth identity before allowing attachment to count
+/// as adoption. A record without retained custody remains diagnostic and cannot authorize a
+/// recovered live-owner claim.
+#[derive(Clone, Eq, PartialEq)]
+pub struct NativeSessionRecovery {
+    platform: NativePlatform,
+    process_id: peritus_types::ProcessId,
+    phase: NativeRecoveryPhase,
+    tree: Option<ProcessTreeIdentity>,
+    owner_operation_digest: Option<Sha256Digest>,
+    service_owner_digest: Option<Sha256Digest>,
+    custody_complete: bool,
+    record: Vec<u8>,
+    record_digest: Sha256Digest,
+}
+
+impl core::fmt::Debug for NativeSessionRecovery {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("NativeSessionRecovery")
+            .field("platform", &self.platform)
+            .field("process_id", &self.process_id)
+            .field("phase", &self.phase)
+            .field("tree", &self.tree)
+            .field("custody_complete", &self.custody_complete)
+            .field("record_bytes", &self.record.len())
+            .field("record_digest", &self.record_digest)
+            .finish_non_exhaustive()
+    }
+}
+
+impl NativeSessionRecovery {
+    /// Creates one bounded live-owner snapshot from a platform-authenticated record.
+    ///
+    /// # Errors
+    /// Rejects incomplete retained-owner bindings, invalid live-tree identity, and unbounded or
+    /// empty platform records.
+    #[allow(clippy::too_many_arguments, reason = "each adoption binding remains explicit")]
+    pub fn new(
+        platform: NativePlatform,
+        process_id: peritus_types::ProcessId,
+        phase: NativeRecoveryPhase,
+        tree: Option<ProcessTreeIdentity>,
+        owner_operation_digest: Option<Sha256Digest>,
+        service_owner_digest: Option<Sha256Digest>,
+        custody_complete: bool,
+        record: Vec<u8>,
+    ) -> Result<Self, ProcessError> {
+        let retained_binding_complete =
+            owner_operation_digest.is_some() == service_owner_digest.is_some();
+        let tree_exact = tree.is_none_or(|tree| {
+            tree.root_pid() != 0
+                && tree.start_token().is_some()
+                && tree.process_group() == Some(tree.root_pid())
+                && tree.complete_containment()
+        });
+        if record.is_empty()
+            || u32::try_from(record.len()).is_err()
+            || !retained_binding_complete
+            || custody_complete && owner_operation_digest.is_none()
+            || !tree_exact
+            || matches!(
+                phase,
+                NativeRecoveryPhase::Active
+                    | NativeRecoveryPhase::Cancelling
+                    | NativeRecoveryPhase::Terminated
+            ) && tree.is_none()
+        {
+            return Err(ProcessError::new(
+                ErrorCode::CorruptRecovery,
+                ProcessOperation::Reconcile,
+                RecoveryClass::Quarantine,
+                "native session recovery snapshot is invalid",
+            ));
+        }
+        let record_digest = peritus_codec::sha256(&record);
+        Ok(Self {
+            platform,
+            process_id,
+            phase,
+            tree,
+            owner_operation_digest,
+            service_owner_digest,
+            custody_complete,
+            record,
+            record_digest,
+        })
+    }
+
+    /// Returns the native platform that owns the opaque record.
+    #[must_use]
+    pub const fn platform(&self) -> NativePlatform { self.platform }
+    /// Returns the consumed execution identity.
+    #[must_use]
+    pub const fn process_id(&self) -> peritus_types::ProcessId { self.process_id }
+    /// Returns the platform session phase.
+    #[must_use]
+    pub const fn phase(&self) -> NativeRecoveryPhase { self.phase }
+    /// Returns the exact accepted helper birth identity, when spawned.
+    #[must_use]
+    pub const fn tree_identity(&self) -> Option<ProcessTreeIdentity> { self.tree }
+    /// Returns the retained owner operation binding, when adoption is available.
+    #[must_use]
+    pub const fn owner_operation_digest(&self) -> Option<Sha256Digest> {
+        self.owner_operation_digest
+    }
+    /// Returns the authenticated retained service-owner generation.
+    #[must_use]
+    pub const fn service_owner_digest(&self) -> Option<Sha256Digest> {
+        self.service_owner_digest
+    }
+    /// Reports that every resource required by the current phase remains under the live owner.
+    #[must_use]
+    pub const fn custody_complete(&self) -> bool { self.custody_complete }
+    /// Borrows the platform-owned canonical record.
+    #[must_use]
+    pub fn record(&self) -> &[u8] { &self.record }
+    /// Returns the digest of the complete platform record.
+    #[must_use]
+    pub const fn record_digest(&self) -> Sha256Digest { self.record_digest }
+
+    /// Verifies that this live snapshot belongs to one exact retained-owner request.
+    #[must_use]
+    pub fn matches_retained_owner(
+        &self,
+        platform: NativePlatform,
+        binding: RetainedOwnerBinding,
+    ) -> bool {
+        self.platform == platform
+            && self.process_id == binding.process_id()
+            && self.owner_operation_digest == Some(binding.operation_digest())
+            && self.service_owner_digest == Some(binding.service_owner().digest())
+            && self.custody_complete
+            && self.phase != NativeRecoveryPhase::Released
+    }
+}
 
 /// Observation transport exposed by a native session.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -380,6 +536,7 @@ pub struct AuthorizedPreparationContext<'a> {
     execution_plan: &'a ExecutionPlan,
     sandbox_plan: &'a CheckedSandboxPlan,
     admission: &'a BackendAdmission,
+    retained_owner: Option<RetainedOwnerBinding>,
 }
 
 impl<'a> AuthorizedPreparationContext<'a> {
@@ -388,7 +545,21 @@ impl<'a> AuthorizedPreparationContext<'a> {
         sandbox_plan: &'a CheckedSandboxPlan,
         admission: &'a BackendAdmission,
     ) -> Self {
-        Self { execution_plan, sandbox_plan, admission }
+        Self { execution_plan, sandbox_plan, admission, retained_owner: None }
+    }
+
+    pub(crate) const fn retained(
+        execution_plan: &'a ExecutionPlan,
+        sandbox_plan: &'a CheckedSandboxPlan,
+        admission: &'a BackendAdmission,
+        retained_owner: RetainedOwnerBinding,
+    ) -> Self {
+        Self {
+            execution_plan,
+            sandbox_plan,
+            admission,
+            retained_owner: Some(retained_owner),
+        }
     }
 
     /// Returns the exact authorized execution plan.
@@ -407,6 +578,14 @@ impl<'a> AuthorizedPreparationContext<'a> {
     #[must_use]
     pub const fn admission(&self) -> &BackendAdmission {
         self.admission
+    }
+
+    /// Returns the exact retained-owner binding when preparation runs inside that service owner.
+    ///
+    /// `None` is an explicit local-owner session and cannot later claim retained adoption.
+    #[must_use]
+    pub const fn retained_owner(&self) -> Option<RetainedOwnerBinding> {
+        self.retained_owner
     }
 }
 
@@ -485,6 +664,17 @@ pub trait NativeSandboxBackend: Send + 'static {
 pub trait NativeSandboxSession: Send + 'static {
     /// Returns the exact helper/direct-child launch description.
     fn launch_description(&self) -> &NativeLaunchDescription;
+
+    /// Returns exact platform recovery evidence held by the current live owner.
+    ///
+    /// The default makes custody unavailable explicitly. Retained-owner attachment never treats
+    /// an absent snapshot as a released resource or as authority to replace the native session.
+    ///
+    /// # Errors
+    /// Returns a typed recovery failure when the platform record cannot be represented exactly.
+    fn recovery_snapshot(&self) -> Result<Option<NativeSessionRecovery>, ProcessError> {
+        Ok(None)
+    }
 
     /// Retains the exact helper birth and process-tree identity before protocol delivery begins.
     ///

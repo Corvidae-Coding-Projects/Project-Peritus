@@ -61,7 +61,10 @@ pub use process::{
     HelperDescriptorCapacity, HelperLaunch, InheritedDescriptor, ProcessContainment,
     TerminalMapping,
 };
-pub use recovery::{CleanupProgress, MacosRecoveryRecord, RecoveryClassification, RuntimeIdentity};
+pub use recovery::{
+    CleanupProgress, MacosRecoveryRecord, RecoveryClassification, RecoveryResourceState,
+    RuntimeIdentity, SessionCustody,
+};
 pub use resource::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 #[cfg(target_os = "macos")]
 pub use runner::{

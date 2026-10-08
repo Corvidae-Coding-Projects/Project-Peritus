@@ -247,6 +247,11 @@ fn start_with_native(
     session: Option<Box<dyn NativeSandboxSession>>,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
 ) -> Result<OwnedProcess, ProcessError> {
+    let native_recovery = session
+        .as_deref()
+        .map(NativeSandboxSession::recovery_snapshot)
+        .transpose()?
+        .flatten();
     let (execution_plan, _action_digest) = launch.into_parts();
     let process_id = execution_plan.identity().process_id();
     let plan = SupervisorPlan::from_execution(&execution_plan);
@@ -262,6 +267,7 @@ fn start_with_native(
             retained_stderr: Vec::new(),
             retained_terminal: Vec::new(),
             tree: None,
+            native_recovery,
             terminal: None,
         }),
         changed: std::sync::Condvar::new(),
@@ -300,6 +306,7 @@ fn start_with_native(
         let error = supervisor_error("process owner thread cannot be created");
         let cleanup_complete = release_pre_spawn_session(
             store,
+            &shared,
             &mut pending_session.lock().unwrap_or_else(std::sync::PoisonError::into_inner),
             &plan,
             sandbox_digest,
@@ -406,7 +413,7 @@ fn run_owner(
         Ok(spools) => spools,
         Err(error) => {
             let cleanup_complete =
-                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
+                release_pre_spawn_session(store, &shared, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
@@ -414,7 +421,7 @@ fn run_owner(
         Ok(resources) => resources,
         Err(error) => {
             let cleanup_complete =
-                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
+                release_pre_spawn_session(store, &shared, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
@@ -439,9 +446,11 @@ fn run_owner(
         let mut record_spawned = |tree| {
             #[cfg(target_os = "macos")]
             store.record_spawned(plan.process_id(), tree)?;
-            native
-                .as_deref_mut()
-                .map_or(Ok(()), |session| session.spawned(tree))
+            if let Some(session) = native.as_deref_mut() {
+                session.spawned(tree)?;
+                publish_native_recovery(&shared, session)?;
+            }
+            Ok(())
         };
         let mut should_continue = || cancellation.pending().is_none();
         platform::launch(
@@ -457,7 +466,7 @@ fn run_owner(
         Ok(launch) => launch,
         Err(error) => {
             let cleanup_complete =
-                release_pre_spawn_session(store, &mut native, plan, sandbox_digest);
+                release_pre_spawn_session(store, &shared, &mut native, plan, sandbox_digest);
             return publish_spawn_failure(store, plan, &shared, began, cleanup_complete, error);
         }
     };
@@ -491,6 +500,9 @@ fn run_owner(
             {
                 initial_failure = true;
                 pre_start_reason.get_or_insert(CancellationReason::BackendFailure);
+            } else if publish_native_recovery(&shared, session).is_err() {
+                initial_failure = true;
+                pre_start_reason.get_or_insert(CancellationReason::BackendFailure);
             }
         } else if let Some(reason) = cancellation.pending() {
             pre_start_reason = Some(reason);
@@ -518,6 +530,7 @@ fn run_owner(
 
 fn release_pre_spawn_session(
     store: &ProcessStore,
+    shared: &Arc<SharedObservation>,
     session: &mut Option<Box<dyn NativeSandboxSession>>,
     plan: &SupervisorPlan,
     sandbox_digest: Option<peritus_types::Sha256Digest>,
@@ -531,7 +544,20 @@ fn release_pre_spawn_session(
     let release = session.release();
     let capture =
         crate::native::capture_released_session(store, session, plan, sandbox_digest);
-    release.is_ok() && capture.is_ok()
+    let recovery = publish_native_recovery(shared, session);
+    release.is_ok() && capture.is_ok() && recovery.is_ok()
+}
+
+pub(super) fn publish_native_recovery(
+    shared: &Arc<SharedObservation>,
+    session: &dyn NativeSandboxSession,
+) -> Result<(), ProcessError> {
+    let recovery = session.recovery_snapshot()?;
+    let mut state = shared.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    state.native_recovery = recovery;
+    drop(state);
+    shared.changed.notify_all();
+    Ok(())
 }
 
 pub(super) fn publish_terminal(

@@ -93,6 +93,14 @@ impl ResourceMonitor {
             ))
         }
     }
+
+    /// Releases any in-progress workspace scan and native sampling custody.
+    pub(crate) fn release(&mut self) {
+        #[cfg(target_os = "macos")]
+        {
+            self.disk = None;
+        }
+    }
 }
 
 #[cfg(target_os = "macos")]

@@ -227,6 +227,7 @@ impl SpawnedOwner {
             );
             let exceeded = poll? == crate::NativePoll::ResourceLimitExceeded;
             capture?;
+            super::publish_native_recovery(&self.shared, session)?;
             if exceeded {
                 self.trigger_resource_limit()?;
             }
@@ -387,7 +388,8 @@ impl SpawnedOwner {
                 &self.plan,
                 self.plan.sandbox_digest(),
             );
-            (termination, capture)
+            let recovery = super::publish_native_recovery(&self.shared, session);
+            (termination.and(recovery), capture)
         } else {
             (Ok(()), Ok(()))
         };
@@ -425,6 +427,7 @@ impl Drop for SpawnedOwner {
                     &self.plan,
                     self.plan.sandbox_digest(),
                 );
+                let _ = super::publish_native_recovery(&self.shared, session);
             }
         }
     }

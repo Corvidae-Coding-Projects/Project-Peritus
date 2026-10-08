@@ -1,15 +1,20 @@
 //! Versioned durable runtime identity and cleanup records.
 
+use peritus_process::{
+    CancellationReason, NativePlatform, NativeRecoveryPhase, NativeSessionRecovery,
+    RetainedOwnerBinding,
+};
 use peritus_types::{ProcessId, Sha256Digest};
 
-use crate::MacosError;
+use crate::{MacosError, SessionPhase, TerminationReason};
 
 mod codec;
 
 const MAGIC: [u8; 8] = *b"PRTSMRC1";
 const LEGACY_VERSION: u16 = 1;
 const PROCESS_BIRTH_VERSION: u16 = 2;
-const VERSION: u16 = 3;
+const FILE_CLEANUP_VERSION: u16 = 3;
+const VERSION: u16 = 4;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 
 /// Exact nonsensitive native identity retained for safe recovery.
@@ -124,6 +129,207 @@ impl RuntimeIdentity {
             process_group: tree.process_group(),
             ..self
         }
+    }
+}
+
+/// Independently inspectable ownership state for one backend resource family.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum RecoveryResourceState {
+    /// This session never selected the resource family.
+    NotRequired,
+    /// The original session owner still holds the live resource.
+    Live,
+    /// Release was completed and durably recorded.
+    Released,
+    /// A legacy or detached record cannot prove current custody or release.
+    Unavailable,
+}
+
+/// Exact retained-owner binding and live resource custody for recovery adoption.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SessionCustody {
+    owner_operation_digest: Option<Sha256Digest>,
+    service_owner_digest: Option<Sha256Digest>,
+    launch: RecoveryResourceState,
+    execution_status: RecoveryResourceState,
+    proxy: RecoveryResourceState,
+    secrets: RecoveryResourceState,
+    resource_monitor: RecoveryResourceState,
+}
+
+impl SessionCustody {
+    const fn prepared(
+        retained_owner: Option<RetainedOwnerBinding>,
+        has_proxy: bool,
+        has_secrets: bool,
+    ) -> Self {
+        let (owner_operation_digest, service_owner_digest) = match retained_owner {
+            Some(binding) => (
+                Some(binding.operation_digest()),
+                Some(binding.service_owner().digest()),
+            ),
+            None => (None, None),
+        };
+        Self {
+            owner_operation_digest,
+            service_owner_digest,
+            launch: RecoveryResourceState::Live,
+            execution_status: RecoveryResourceState::Live,
+            proxy: if has_proxy {
+                RecoveryResourceState::Live
+            } else {
+                RecoveryResourceState::NotRequired
+            },
+            secrets: if has_secrets {
+                RecoveryResourceState::Live
+            } else {
+                RecoveryResourceState::NotRequired
+            },
+            resource_monitor: RecoveryResourceState::Live,
+        }
+    }
+
+    const fn legacy(cleanup: CleanupProgress) -> Self {
+        let native = if cleanup.helper_quiescent() && cleanup.profile_released() {
+            RecoveryResourceState::Released
+        } else {
+            RecoveryResourceState::Unavailable
+        };
+        Self {
+            owner_operation_digest: None,
+            service_owner_digest: None,
+            launch: native,
+            execution_status: if cleanup.is_complete() {
+                RecoveryResourceState::Released
+            } else {
+                RecoveryResourceState::Unavailable
+            },
+            proxy: if cleanup.proxy_released() {
+                RecoveryResourceState::Released
+            } else {
+                RecoveryResourceState::Unavailable
+            },
+            secrets: if cleanup.secrets_released() {
+                RecoveryResourceState::Released
+            } else {
+                RecoveryResourceState::Unavailable
+            },
+            resource_monitor: native,
+        }
+    }
+
+    /// Returns the retained operation digest, when the live service owner is authoritative.
+    #[must_use]
+    pub const fn owner_operation_digest(self) -> Option<Sha256Digest> {
+        self.owner_operation_digest
+    }
+
+    /// Returns the authenticated service-owner generation digest.
+    #[must_use]
+    pub const fn service_owner_digest(self) -> Option<Sha256Digest> {
+        self.service_owner_digest
+    }
+
+    /// Returns protected launch-handle custody.
+    #[must_use]
+    pub const fn launch(self) -> RecoveryResourceState { self.launch }
+    /// Returns execution-status channel and monitor custody.
+    #[must_use]
+    pub const fn execution_status(self) -> RecoveryResourceState { self.execution_status }
+    /// Returns managed-proxy owner custody.
+    #[must_use]
+    pub const fn proxy(self) -> RecoveryResourceState { self.proxy }
+    /// Returns secret leases, material, and delivery-artifact custody.
+    #[must_use]
+    pub const fn secrets(self) -> RecoveryResourceState { self.secrets }
+    /// Returns backend resource-monitor custody.
+    #[must_use]
+    pub const fn resource_monitor(self) -> RecoveryResourceState { self.resource_monitor }
+
+    pub(crate) const fn adoptable(self, phase: SessionPhase) -> bool {
+        if self.owner_operation_digest.is_none()
+            || self.service_owner_digest.is_none()
+            || phase == SessionPhase::Released
+        {
+            return false;
+        }
+        let launch_exact = match phase {
+            SessionPhase::Prepared => matches!(self.launch, RecoveryResourceState::Live),
+            SessionPhase::Active | SessionPhase::Cancelling | SessionPhase::Terminated => {
+                if matches!(self.proxy, RecoveryResourceState::NotRequired)
+                    && matches!(self.secrets, RecoveryResourceState::NotRequired)
+                {
+                    matches!(self.launch, RecoveryResourceState::Released)
+                } else {
+                    matches!(self.launch, RecoveryResourceState::Live)
+                }
+            }
+            SessionPhase::Released => false,
+        };
+        launch_exact
+            && matches!(self.execution_status, RecoveryResourceState::Live)
+            && matches!(
+                self.proxy,
+                RecoveryResourceState::Live | RecoveryResourceState::NotRequired
+            )
+            && matches!(
+                self.secrets,
+                RecoveryResourceState::Live | RecoveryResourceState::NotRequired
+            )
+            && matches!(self.resource_monitor, RecoveryResourceState::Live)
+    }
+
+    const fn released(self) -> bool {
+        matches!(self.launch, RecoveryResourceState::Released)
+            && matches!(self.execution_status, RecoveryResourceState::Released)
+            && matches!(
+                self.proxy,
+                RecoveryResourceState::Released | RecoveryResourceState::NotRequired
+            )
+            && matches!(
+                self.secrets,
+                RecoveryResourceState::Released | RecoveryResourceState::NotRequired
+            )
+            && matches!(self.resource_monitor, RecoveryResourceState::Released)
+    }
+
+    const fn release_execution_status(&mut self) {
+        self.execution_status = RecoveryResourceState::Released;
+    }
+
+    const fn activated(&mut self) {
+        if matches!(self.proxy, RecoveryResourceState::NotRequired)
+            && matches!(self.secrets, RecoveryResourceState::NotRequired)
+        {
+            self.launch = RecoveryResourceState::Released;
+        }
+    }
+
+    const fn lose_execution_status(&mut self) {
+        self.execution_status = RecoveryResourceState::Unavailable;
+    }
+
+    const fn release_secrets(&mut self) {
+        if !matches!(self.secrets, RecoveryResourceState::NotRequired) {
+            self.secrets = RecoveryResourceState::Released;
+        }
+    }
+
+    const fn release_proxy(&mut self) {
+        if !matches!(self.proxy, RecoveryResourceState::NotRequired) {
+            self.proxy = RecoveryResourceState::Released;
+        }
+    }
+
+    const fn lose_proxy(&mut self) {
+        if !matches!(self.proxy, RecoveryResourceState::NotRequired) {
+            self.proxy = RecoveryResourceState::Unavailable;
+        }
+    }
+
+    const fn release_native(&mut self) {
+        self.launch = RecoveryResourceState::Released;
+        self.resource_monitor = RecoveryResourceState::Released;
     }
 }
 
@@ -245,6 +451,10 @@ impl CleanupProgress {
 pub struct MacosRecoveryRecord {
     identity: RuntimeIdentity,
     activated: bool,
+    phase: SessionPhase,
+    cancellation: Option<CancellationReason>,
+    termination: Option<TerminationReason>,
+    custody: SessionCustody,
     cleanup: CleanupProgress,
     materialized_secret_files: Vec<String>,
     canonical: Vec<u8>,
@@ -261,7 +471,13 @@ impl MacosRecoveryRecord {
         activated: bool,
         cleanup: CleanupProgress,
     ) -> Result<Self, MacosError> {
-        Self::new_with_materialized_secret_files(identity, activated, cleanup, Vec::new())
+        Self::new_with_materialized_secret_files(
+            identity,
+            activated,
+            cleanup,
+            Vec::new(),
+            None,
+        )
     }
 
     pub(crate) fn new_with_materialized_secret_files(
@@ -269,10 +485,50 @@ impl MacosRecoveryRecord {
         activated: bool,
         cleanup: CleanupProgress,
         materialized_secret_files: Vec<String>,
+        retained_owner: Option<RetainedOwnerBinding>,
     ) -> Result<Self, MacosError> {
+        if retained_owner.is_some_and(|binding| binding.process_id() != identity.process_id())
+            || activated
+                && !matches!(
+                    (
+                        identity.root_pid(),
+                        identity.root_start_token(),
+                        identity.process_group(),
+                    ),
+                    (Some(root), Some(_), Some(group)) if root == group
+                )
+        {
+            return Err(recovery_state_error(
+                "native recovery owner or birth identity differs",
+            ));
+        }
+        let phase = if cleanup.is_complete() && materialized_secret_files.is_empty() {
+            SessionPhase::Released
+        } else if activated {
+            SessionPhase::Active
+        } else {
+            SessionPhase::Prepared
+        };
+        let mut custody = SessionCustody::prepared(
+            retained_owner,
+            identity.proxy_routing_digest().is_some(),
+            identity.secret_binding_digest().is_some(),
+        );
+        if phase == SessionPhase::Active {
+            custody.activated();
+        } else if phase == SessionPhase::Released {
+            custody.release_execution_status();
+            custody.release_secrets();
+            custody.release_proxy();
+            custody.release_native();
+        }
         let mut record = Self {
             identity,
             activated,
+            phase,
+            cancellation: None,
+            termination: None,
+            custody,
             cleanup,
             materialized_secret_files,
             canonical: Vec::new(),
@@ -293,6 +549,22 @@ impl MacosRecoveryRecord {
     pub const fn activated(&self) -> bool {
         self.activated
     }
+
+    /// Returns the exact backend lifecycle phase.
+    #[must_use]
+    pub const fn phase(&self) -> SessionPhase { self.phase }
+
+    /// Returns the immutable first accepted cancellation reason.
+    #[must_use]
+    pub const fn cancellation(&self) -> Option<CancellationReason> { self.cancellation }
+
+    /// Returns the observed terminal category without implying cleanup.
+    #[must_use]
+    pub const fn termination(&self) -> Option<TerminationReason> { self.termination }
+
+    /// Returns explicit owner and per-resource custody.
+    #[must_use]
+    pub const fn custody(&self) -> SessionCustody { self.custody }
 
     /// Returns monotonic cleanup progress.
     #[must_use]
@@ -328,25 +600,66 @@ impl MacosRecoveryRecord {
         if !inspection_accessible {
             return RecoveryClassification::Indeterminate;
         }
-        let cleanup_complete =
-            self.cleanup.is_complete() && self.materialized_secret_files.is_empty();
+        let cleanup_complete = self.phase == SessionPhase::Released
+            && self.cleanup.is_complete()
+            && self.materialized_secret_files.is_empty();
         match observed {
-            Some(identity)
-                if identity == self.identity
-                    && exact_process_tree(identity)
-                    && !cleanup_complete =>
-            {
-                RecoveryClassification::LiveOwned
-            }
             Some(identity) if identity != self.identity => RecoveryClassification::Mismatched,
             Some(_) if cleanup_complete => RecoveryClassification::Mismatched,
             Some(_) => RecoveryClassification::Indeterminate,
             None if cleanup_complete => RecoveryClassification::AbsentClean,
-            None if !self.materialized_secret_files.is_empty() => {
-                RecoveryClassification::Indeterminate
-            }
-            None if self.identity.root_pid().is_some() => RecoveryClassification::Indeterminate,
-            None => RecoveryClassification::AbsentClean,
+            None => RecoveryClassification::Indeterminate,
+        }
+    }
+
+    /// Classifies adoption evidence emitted by the original retained process owner.
+    ///
+    /// A copied PID/group tuple is insufficient. Live ownership requires the exact current
+    /// checksummed record, authenticated retained-owner generation, birth token, phase, and
+    /// complete resource custody reported through the protected owner transport.
+    #[must_use]
+    pub fn classify_adoption(
+        &self,
+        observed: &NativeSessionRecovery,
+        inspection_accessible: bool,
+    ) -> RecoveryClassification {
+        if !inspection_accessible {
+            return RecoveryClassification::Indeterminate;
+        }
+        if observed.platform() != NativePlatform::Macos
+            || observed.process_id() != self.identity.process_id()
+        {
+            return RecoveryClassification::Mismatched;
+        }
+        let phase_matches = matches!(
+            (self.phase, observed.phase()),
+            (SessionPhase::Prepared, NativeRecoveryPhase::Prepared)
+                | (SessionPhase::Active, NativeRecoveryPhase::Active)
+                | (SessionPhase::Cancelling, NativeRecoveryPhase::Cancelling)
+                | (SessionPhase::Terminated, NativeRecoveryPhase::Terminated)
+                | (SessionPhase::Released, NativeRecoveryPhase::Released)
+        );
+        let tree_matches = observed.tree_identity().map_or_else(
+            || self.identity.root_pid().is_none(),
+            |tree| {
+                self.identity.root_pid() == Some(tree.root_pid())
+                    && self.identity.root_start_token() == tree.start_token()
+                    && self.identity.process_group() == tree.process_group()
+                    && tree.complete_containment()
+            },
+        );
+        if observed.record_digest() == self.digest
+            && observed.record() == self.canonical_bytes()
+            && observed.owner_operation_digest() == self.custody.owner_operation_digest()
+            && observed.service_owner_digest() == self.custody.service_owner_digest()
+            && observed.custody_complete()
+            && self.custody.adoptable(self.phase)
+            && phase_matches
+            && tree_matches
+        {
+            RecoveryClassification::LiveOwned
+        } else {
+            RecoveryClassification::Indeterminate
         }
     }
 
@@ -362,11 +675,79 @@ impl MacosRecoveryRecord {
 
     pub(crate) fn record_activation(&mut self) -> Result<(), MacosError> {
         self.activated = true;
+        self.phase = SessionPhase::Active;
+        self.custody.activated();
+        self.refresh()
+    }
+
+    pub(crate) fn record_cancellation(
+        &mut self,
+        reason: CancellationReason,
+    ) -> Result<(), MacosError> {
+        if self.cancellation.is_some_and(|recorded| recorded != reason) {
+            return Err(recovery_state_error(
+                "native recovery cancellation reason cannot be replaced",
+            ));
+        }
+        self.cancellation = Some(reason);
+        self.phase = SessionPhase::Cancelling;
+        self.refresh()
+    }
+
+    pub(crate) fn record_termination(
+        &mut self,
+        termination: TerminationReason,
+    ) -> Result<(), MacosError> {
+        self.termination = Some(termination);
+        self.phase = SessionPhase::Terminated;
         self.refresh()
     }
 
     pub(crate) fn record_cleanup(&mut self, cleanup: CleanupProgress) -> Result<(), MacosError> {
         self.cleanup = cleanup;
+        self.refresh()
+    }
+
+    pub(crate) fn record_execution_status_released(&mut self) -> Result<(), MacosError> {
+        self.custody.release_execution_status();
+        self.refresh()
+    }
+
+    pub(crate) fn record_execution_status_unavailable(&mut self) -> Result<(), MacosError> {
+        self.custody.lose_execution_status();
+        self.refresh()
+    }
+
+    pub(crate) fn record_secrets_released(&mut self) -> Result<(), MacosError> {
+        self.custody.release_secrets();
+        self.refresh()
+    }
+
+    pub(crate) fn record_proxy_released(&mut self) -> Result<(), MacosError> {
+        self.custody.release_proxy();
+        self.refresh()
+    }
+
+    pub(crate) fn record_proxy_unavailable(&mut self) -> Result<(), MacosError> {
+        self.custody.lose_proxy();
+        self.refresh()
+    }
+
+    pub(crate) fn record_native_released(&mut self) -> Result<(), MacosError> {
+        self.custody.release_native();
+        self.refresh()
+    }
+
+    pub(crate) fn record_released(&mut self) -> Result<(), MacosError> {
+        if !self.cleanup.is_complete()
+            || !self.materialized_secret_files.is_empty()
+            || !self.custody.released()
+        {
+            return Err(recovery_state_error(
+                "native recovery release lacks complete cleanup evidence",
+            ));
+        }
+        self.phase = SessionPhase::Released;
         self.refresh()
     }
 
@@ -392,21 +773,19 @@ impl MacosRecoveryRecord {
     }
 }
 
-const fn exact_process_tree(identity: RuntimeIdentity) -> bool {
-    matches!(
-        (
-            identity.root_pid(),
-            identity.root_start_token(),
-            identity.process_group(),
-        ),
-        (Some(root), Some(_), Some(group)) if root != 0 && group == root
+fn recovery_state_error(detail: &'static str) -> MacosError {
+    MacosError::new(
+        crate::MacosErrorKind::RecoveryIndeterminate,
+        crate::MacosOperation::Recover,
+        crate::RecoveryAction::Quarantine,
+        detail,
     )
 }
 
 /// Result of exact native resource classification during recovery.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RecoveryClassification {
-    /// The exact recorded native identity is still live and may be terminated or cleaned.
+    /// The original retained owner proved exact live custody and remains attached for supervision.
     LiveOwned,
     /// No resource remains and the record proves complete cleanup or pre-activation absence.
     AbsentClean,

@@ -156,6 +156,7 @@ pub struct MacosSession {
     cleanup: CleanupProgress,
     resource_monitor: ResourceMonitor,
     exec_status: crate::exec_status::ExecStatusOwner,
+    exec_status_cleanup_failed: bool,
     proxy: Option<ManagedProxy>,
     proxy_cleanup_failed: bool,
     secrets: SecretDeliverySession,
@@ -183,6 +184,7 @@ impl MacosSession {
         helper_digest: Sha256Digest,
         proxy_routing_digest: Option<Sha256Digest>,
         observation_limit: usize,
+        retained_owner: Option<peritus_process::RetainedOwnerBinding>,
         resources: SessionResources,
     ) -> Result<Self, MacosError> {
         let diagnostic_limit = observation_limit.min(MAX_DIAGNOSTIC_OBSERVATIONS);
@@ -234,6 +236,7 @@ impl MacosSession {
             false,
             cleanup,
             materialized_secret_files,
+            retained_owner,
         ) {
             Ok(recovery) => recovery,
             Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
@@ -336,6 +339,7 @@ impl MacosSession {
             cleanup,
             resource_monitor,
             exec_status,
+            exec_status_cleanup_failed: false,
             proxy,
             proxy_cleanup_failed: false,
             secrets,

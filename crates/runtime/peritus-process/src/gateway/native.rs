@@ -66,6 +66,24 @@ impl ExecutionGateway {
             ));
         }
         transport.launch_or_attach(key, retained.encode(), retained.digest())?;
+        let observation = transport.observe(
+            key,
+            crate::ProcessCursor::after(0),
+            0,
+            None,
+        )?;
+        if retained.backend_factory_request().platform() == NativePlatform::Macos
+            && !observation.matches_native_adoption(
+                retained.backend_factory_request().platform(),
+                binding,
+            )
+        {
+            return Err(retained_owner_error(
+                ErrorCode::Indeterminate,
+                RecoveryClass::ReopenAndReconcile,
+                "retained native session custody is unavailable or differs",
+            ));
+        }
         supervisor::attach_retained(
             &self.store,
             std::sync::Arc::clone(transport),
@@ -147,6 +165,24 @@ impl ExecutionGateway {
                 let key = RetainedProcessKey::from_binding(binding);
                 drop(transaction);
                 transport.launch_or_attach(key, retained.encode(), retained.digest())?;
+                if retained.backend_factory_request().platform() == NativePlatform::Macos {
+                    let observation = transport.observe(
+                        key,
+                        crate::ProcessCursor::after(0),
+                        0,
+                        None,
+                    )?;
+                    if !observation.matches_native_adoption(
+                        retained.backend_factory_request().platform(),
+                        binding,
+                    ) {
+                        return Err(retained_owner_error(
+                            ErrorCode::Indeterminate,
+                            RecoveryClass::ReopenAndReconcile,
+                            "retained native session custody is unavailable or differs",
+                        ));
+                    }
+                }
                 return supervisor::attach_retained(
                     &self.store,
                     std::sync::Arc::clone(transport),
@@ -324,7 +360,7 @@ impl ExecutionGateway {
             supervisor::record_preparation_cancellation(&self.store, &plan, reason, true)?;
             return Err(retained_launch_cancelled());
         }
-        let context = AuthorizedPreparationContext::new(&plan, sandbox, admission);
+        let context = AuthorizedPreparationContext::retained(&plan, sandbox, admission, binding);
         let mut session = match backend.prepare(context) {
             Ok(session) => session,
             Err(error) => {

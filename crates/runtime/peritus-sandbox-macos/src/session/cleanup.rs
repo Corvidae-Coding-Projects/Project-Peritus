@@ -31,11 +31,22 @@ impl MacosSession {
         // A helper can materialize file-delivered secrets and then fail before C2 accepts the
         // activation acknowledgement. Prepared abandonment must therefore clean the same exact
         // destinations as normal termination; absent paths remain an idempotent success.
-        self.exec_status.finish()?;
+        if self.exec_status_cleanup_failed {
+            return Err(cleanup_error(
+                "execution-status monitor cleanup remains indeterminate",
+            ));
+        }
+        if let Err(error) = self.exec_status.finish() {
+            self.exec_status_cleanup_failed = true;
+            self.recovery.record_execution_status_unavailable()?;
+            return Err(error);
+        }
+        self.recovery.record_execution_status_released()?;
         self.cleanup.mark_support_joined();
         self.recovery.record_cleanup(self.cleanup)?;
         release_materialized_secret_files(&mut self.recovery)?;
         self.secrets.release().map_err(|_| cleanup_error("secret lease cleanup failed"))?;
+        self.recovery.record_secrets_released()?;
         self.cleanup.mark_secrets_released();
         self.recovery.record_cleanup(self.cleanup)?;
         if self.proxy_cleanup_failed {
@@ -45,8 +56,10 @@ impl MacosSession {
             && proxy.shutdown().is_err()
         {
             self.proxy_cleanup_failed = true;
+            self.recovery.record_proxy_unavailable()?;
             return Err(cleanup_error("managed proxy cleanup failed"));
         }
+        self.recovery.record_proxy_released()?;
         self.cleanup.mark_proxy_released();
         self.recovery.record_cleanup(self.cleanup)?;
         self.launch = NativeLaunchDescription::new(
@@ -57,12 +70,15 @@ impl MacosSession {
             self.launch.preparation_digest(),
         )
         .map_err(|_| cleanup_error("protected launch handles could not be released"))?;
+        self.resource_monitor.release();
+        self.recovery.record_native_released()?;
         self.cleanup.mark_native_released();
         self.recovery.record_cleanup(self.cleanup)?;
         if !self.cleanup.is_complete() {
             return Err(cleanup_error("one or more native resource families remain owned"));
         }
         self.phase = SessionPhase::Released;
+        self.recovery.record_released()?;
         self.push_lifecycle(
             ObservationKind::Released,
             ObservationEvent::Released,

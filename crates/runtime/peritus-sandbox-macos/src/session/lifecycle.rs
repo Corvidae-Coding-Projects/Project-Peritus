@@ -117,6 +117,7 @@ impl MacosSession {
     pub fn record_cancellation(&mut self, reason: CancellationReason) -> Result<(), MacosError> {
         match self.phase {
             SessionPhase::Prepared if self.recovery.identity().root_pid().is_some() => {
+                self.recovery.record_cancellation(reason)?;
                 self.phase = SessionPhase::Cancelling;
                 self.cancellation = Some(reason);
                 self.push_lifecycle(
@@ -127,6 +128,7 @@ impl MacosSession {
                 )
             }
             SessionPhase::Active => {
+                self.recovery.record_cancellation(reason)?;
                 self.phase = SessionPhase::Cancelling;
                 self.cancellation = Some(reason);
                 self.push_lifecycle(
@@ -149,13 +151,15 @@ impl MacosSession {
         if !matches!(self.phase, SessionPhase::Active | SessionPhase::Cancelling) {
             return Err(lifecycle_error("termination requires an active or cancelling session"));
         }
-        self.termination = Some(match exit {
+        let termination = match exit {
             OsExitObservation::Code(code) => TerminationReason::TargetExit(*code),
             OsExitObservation::Unavailable => TerminationReason::Unavailable,
             OsExitObservation::Signal(_)
             | OsExitObservation::SignalName(_)
             | OsExitObservation::PlatformException(_) => TerminationReason::Signalled,
-        });
+        };
+        self.recovery.record_termination(termination)?;
+        self.termination = Some(termination);
         self.phase = SessionPhase::Terminated;
         self.push_lifecycle(
             ObservationKind::Terminated,
