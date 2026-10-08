@@ -1153,17 +1153,10 @@ fn project_metadata(value: &WorkspaceMetadata) -> MetadataObservation {
 }
 
 const fn inspection_error(operation: FsToolOperation, error: &WorkspaceError) -> FsToolError {
-    let recovery = match error.recovery() {
-        peritus_workspace::RecoveryClass::CorrectRequest => RecoveryClass::CorrectInput,
-        peritus_workspace::RecoveryClass::Reauthorize => RecoveryClass::Reauthorize,
-        peritus_workspace::RecoveryClass::Reobserve => RecoveryClass::Reobserve,
-        peritus_workspace::RecoveryClass::Reconcile
-        | peritus_workspace::RecoveryClass::Quarantine => RecoveryClass::Reconcile,
-    };
-    FsToolError::new(
+    FsToolError::from_workspace(
         FsToolErrorKind::Inspection,
         operation,
-        recovery,
+        error,
         "immutable workspace inspection failed",
     )
 }

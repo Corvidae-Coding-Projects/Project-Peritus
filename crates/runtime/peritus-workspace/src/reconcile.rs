@@ -289,6 +289,10 @@ fn inspect_transactions(workspace: &crate::WritableWorkspace) -> (bool, bool, Sh
             bytes.push(3);
             continue;
         }
+        if path == crate::mutation_record::record_root(workspace.transaction_root()) {
+            bytes.push(8);
+            continue;
+        }
         if !crate::transaction_namespace::is_canonical_transaction_directory(&path) {
             clean = false;
             bytes.push(4);

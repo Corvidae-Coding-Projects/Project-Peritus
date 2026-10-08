@@ -55,10 +55,36 @@ impl RenderedOutput {
     /// # Errors
     /// Returns a typed protocol failure if bounded encoding cannot be constructed.
     pub fn mutation(value: &peritus_workspace::MutationOutcome) -> Result<Self, FsToolError> {
+        Self::mutation_reference(value.reference())
+    }
+
+    /// Renders restart-visible authorized C1 patch outcome evidence.
+    ///
+    /// # Errors
+    /// Returns a typed protocol failure if bounded encoding cannot be constructed.
+    pub fn mutation_reference(
+        value: peritus_workspace::MutationOutcomeReference,
+    ) -> Result<Self, FsToolError> {
+        let operation = value.operation();
         let structured = object(vec![
             ("action_id", string(identifier_hex(value.action_id().as_bytes()))),
             ("generation", Ok(BoundedJson::unsigned(value.generation().get()))),
+            (
+                "installed_manifest_digest",
+                string(digest_hex(value.installed_manifest_digest())),
+            ),
+            ("mutation_operation_digest", string(digest_hex(operation.digest()))),
+            (
+                "mutation_operation_reference",
+                string(STANDARD.encode(operation.canonical_bytes())),
+            ),
+            ("mutation_outcome_digest", string(digest_hex(value.digest()))),
+            (
+                "mutation_outcome_reference",
+                string(STANDARD.encode(value.canonical_bytes())),
+            ),
             ("patch_identity", string(value.patch_identity().to_string())),
+            ("resource_id", string(identifier_hex(value.resource_id().as_bytes()))),
             ("revision", Ok(BoundedJson::unsigned(value.revision().get()))),
             ("workspace_id", string(identifier_hex(value.workspace_id().as_bytes()))),
         ])?;

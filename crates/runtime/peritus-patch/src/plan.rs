@@ -15,6 +15,15 @@ impl PatchIdentity {
         Self(digest)
     }
 
+    /// Reconstructs a typed identity from an already authenticated digest.
+    ///
+    /// This does not claim that a patch was applied; callers must validate the enclosing durable
+    /// record at the owning workspace boundary.
+    #[must_use]
+    pub const fn from_digest(digest: Sha256Digest) -> Self {
+        Self(digest)
+    }
+
     /// Returns the exact identity digest.
     #[must_use]
     pub const fn digest(self) -> Sha256Digest {

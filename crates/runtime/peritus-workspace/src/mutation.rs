@@ -6,16 +6,15 @@ use peritus_types::{ActionId, Generation, ResourceId, RevisionNumber, WorkspaceI
 use crate::{
     ErrorCode, RecoveryClass, WorkspaceAuthorizationRequest, WorkspaceCondition, WorkspaceError,
     WorkspaceGateway, WorkspaceOperation,
+    mutation_record::{
+        MutationOperationReference, MutationOutcomeReference, persist_operation, persist_outcome,
+    },
 };
 
 /// Successful filesystem transaction observation. Candidate creation remains a separate,
 /// independently authorized operation before the workspace is clean again.
 pub struct MutationOutcome {
-    action_id: ActionId,
-    workspace_id: WorkspaceId,
-    resource_id: ResourceId,
-    generation: Generation,
-    revision: RevisionNumber,
+    reference: MutationOutcomeReference,
     patch: AppliedPatch,
 }
 
@@ -23,38 +22,56 @@ impl MutationOutcome {
     /// Returns the exact authorized action.
     #[must_use]
     pub const fn action_id(&self) -> ActionId {
-        self.action_id
+        self.reference.action_id()
     }
     /// Returns the exact workspace lineage whose filesystem was changed.
     #[must_use]
     pub const fn workspace_id(&self) -> WorkspaceId {
-        self.workspace_id
+        self.reference.workspace_id()
     }
     /// Returns the exact authorized resource whose filesystem was changed.
     #[must_use]
     pub const fn resource_id(&self) -> ResourceId {
-        self.resource_id
+        self.reference.resource_id()
     }
     /// Returns the generation in which the patch was installed.
     #[must_use]
     pub const fn generation(&self) -> Generation {
-        self.generation
+        self.reference.generation()
     }
     /// Returns the unchanged logical revision pending candidate creation.
     #[must_use]
     pub const fn revision(&self) -> RevisionNumber {
-        self.revision
+        self.reference.revision()
     }
     /// Returns the applied canonical patch identity.
     #[must_use]
     pub const fn patch_identity(&self) -> PatchIdentity {
-        self.patch.identity()
+        self.reference.patch_identity()
     }
     /// Borrows exact durable patch-transaction evidence.
     #[must_use]
     pub const fn applied_patch(&self) -> &AppliedPatch {
         &self.patch
     }
+
+    /// Returns the durable restart-visible handoff to candidate creation.
+    #[must_use]
+    pub const fn reference(&self) -> MutationOutcomeReference {
+        self.reference
+    }
+}
+
+/// Authorized durable patch operation which has not crossed the filesystem effect boundary.
+pub struct PreparedWorkspaceMutation {
+    operation: MutationOperationReference,
+    plan: peritus_patch::PatchPlan,
+}
+
+impl PreparedWorkspaceMutation {
+    /// Returns the durable operation identity retained before mutation begins.
+    #[must_use]
+    pub const fn operation_reference(&self) -> MutationOperationReference { self.operation }
 }
 
 impl WorkspaceGateway {
@@ -73,6 +90,19 @@ impl WorkspaceGateway {
         authorization: &WorkspaceAuthorizationRequest<'_>,
         patch: PatchSet,
     ) -> Result<MutationOutcome, WorkspaceError> {
+        let prepared = self.prepare_patch(authorization, patch)?;
+        self.apply_prepared_patch(prepared)
+    }
+
+    /// Consumes authority and durably records an exact operation before any patch effect.
+    ///
+    /// # Errors
+    /// Returns on authority, planning, binding, or durable-record failure before target mutation.
+    pub fn prepare_patch(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        patch: PatchSet,
+    ) -> Result<PreparedWorkspaceMutation, WorkspaceError> {
         let payload = patch_payload(&patch, authorization.caller_binding());
         let permit = self.authorize(authorization, &payload)?;
         let state = self.state();
@@ -84,9 +114,42 @@ impl WorkspaceGateway {
         {
             return Err(patch_error("planned patch differs from the one-use permit"));
         }
+        let operation = MutationOperationReference::new(
+            &permit,
+            state.binding().workspace_id(),
+            state.binding().resource_id(),
+            plan.identity(),
+        );
+        persist_operation(self.transaction_namespace(), operation)?;
+        Ok(PreparedWorkspaceMutation { operation, plan })
+    }
+
+    /// Applies one already authorized and durably retained operation.
+    ///
+    /// # Errors
+    /// Preserves typed patch recovery and fences indeterminate or unrecorded success.
+    pub fn apply_prepared_patch(
+        &mut self,
+        prepared: PreparedWorkspaceMutation,
+    ) -> Result<MutationOutcome, WorkspaceError> {
+        let operation = prepared.operation;
+        if self.state().condition() != WorkspaceCondition::Clean
+            || operation.workspace_id() != self.state().binding().workspace_id()
+            || operation.resource_id() != self.state().binding().resource_id()
+            || operation.generation() != self.state().generation()
+            || operation.revision() != self.state().revision()
+            || operation.patch_identity() != prepared.plan.identity()
+        {
+            return Err(WorkspaceError::new(
+                ErrorCode::StaleWorkspace,
+                WorkspaceOperation::Mutate,
+                RecoveryClass::Reconcile,
+                "prepared mutation differs from current workspace ownership",
+            ));
+        }
         let root = self.workspace_mut().root().to_owned();
         let transaction_root = self.workspace_mut().transaction_root().to_owned();
-        let result = peritus_patch::apply_patch(root, transaction_root, &plan);
+        let result = peritus_patch::apply_patch(root, transaction_root, &prepared.plan);
         let applied = match result {
             Ok(applied) => applied,
             Err(error) => {
@@ -96,27 +159,16 @@ impl WorkspaceGateway {
                     WorkspaceCondition::Clean
                 };
                 self.workspace_mut().state_mut().set_condition(condition);
-                return Err(WorkspaceError::new(
-                    ErrorCode::Patch,
-                    WorkspaceOperation::Mutate,
-                    if condition == WorkspaceCondition::Indeterminate {
-                        RecoveryClass::Reconcile
-                    } else {
-                        RecoveryClass::Reobserve
-                    },
-                    "checked patch transaction failed",
-                ));
+                return Err(WorkspaceError::from_patch(&error, condition));
             }
         };
+        let reference = MutationOutcomeReference::new(operation, applied.manifest_digest());
+        if let Err(error) = persist_outcome(self.transaction_namespace(), reference) {
+            self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Indeterminate);
+            return Err(error);
+        }
         self.workspace_mut().state_mut().set_condition(WorkspaceCondition::Dirty);
-        Ok(MutationOutcome {
-            action_id: permit.action_id(),
-            workspace_id: self.state().binding().workspace_id(),
-            resource_id: self.state().binding().resource_id(),
-            generation: permit.generation(),
-            revision: permit.revision(),
-            patch: applied,
-        })
+        Ok(MutationOutcome { reference, patch: applied })
     }
 }
 

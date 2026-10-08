@@ -2,6 +2,11 @@
 
 use core::fmt;
 
+use peritus_workspace::{
+    ErrorCode as WorkspaceErrorCode, RecoveryClass as WorkspaceRecoveryClass, WorkspaceCause,
+    WorkspaceError, WorkspaceOperation,
+};
+
 /// Stable filesystem-tool failure class.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum FsToolErrorKind {
@@ -74,6 +79,32 @@ pub enum RecoveryClass {
     SelectSupportedOperation,
 }
 
+/// Redaction-safe typed cause retained from the target-owned workspace boundary.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum FsToolCause {
+    /// Exact workspace classification, including an optional nested patch cause.
+    Workspace {
+        /// Stable C1 error code.
+        code: WorkspaceErrorCode,
+        /// C1 operation which observed the failure.
+        operation: WorkspaceOperation,
+        /// C1 recovery guidance.
+        recovery: WorkspaceRecoveryClass,
+        /// Optional lower patch-adapter cause without paths or content.
+        cause: Option<WorkspaceCause>,
+    },
+}
+
+impl FsToolCause {
+    /// Returns the most specific stable external code.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Workspace { code, .. } => code.as_str(),
+        }
+    }
+}
+
 /// Bounded typed filesystem-tool error.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FsToolError {
@@ -81,6 +112,7 @@ pub struct FsToolError {
     operation: FsToolOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    cause: Option<FsToolCause>,
 }
 
 impl FsToolError {
@@ -90,11 +122,39 @@ impl FsToolError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, recovery, detail }
+        Self { kind, operation, recovery, detail, cause: None }
     }
 
     pub(crate) const fn invalid(operation: FsToolOperation, detail: &'static str) -> Self {
         Self::new(FsToolErrorKind::InvalidInput, operation, RecoveryClass::CorrectInput, detail)
+    }
+
+    pub(crate) const fn from_workspace(
+        kind: FsToolErrorKind,
+        operation: FsToolOperation,
+        error: &WorkspaceError,
+        detail: &'static str,
+    ) -> Self {
+        let recovery = match error.recovery() {
+            WorkspaceRecoveryClass::CorrectRequest => RecoveryClass::CorrectInput,
+            WorkspaceRecoveryClass::Reauthorize => RecoveryClass::Reauthorize,
+            WorkspaceRecoveryClass::Reobserve => RecoveryClass::Reobserve,
+            WorkspaceRecoveryClass::Reconcile | WorkspaceRecoveryClass::Quarantine => {
+                RecoveryClass::Reconcile
+            }
+        };
+        Self {
+            kind,
+            operation,
+            recovery,
+            detail,
+            cause: Some(FsToolCause::Workspace {
+                code: error.code(),
+                operation: error.operation(),
+                recovery: error.recovery(),
+                cause: error.cause(),
+            }),
+        }
     }
 
     /// Returns the stable failure class.
@@ -120,11 +180,26 @@ impl FsToolError {
     pub const fn detail(&self) -> &'static str {
         self.detail
     }
+
+    /// Returns the exact redaction-safe lower-boundary cause when one exists.
+    #[must_use]
+    pub const fn cause(&self) -> Option<FsToolCause> {
+        self.cause
+    }
+
+    /// Returns the most specific stable external failure code.
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self.cause {
+            Some(cause) => cause.code(),
+            None => self.kind.code(),
+        }
+    }
 }
 
 impl fmt::Display for FsToolError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{} during {:?}: {}", self.kind.code(), self.operation, self.detail)
+        write!(formatter, "{} during {:?}: {}", self.code(), self.operation, self.detail)
     }
 }
 

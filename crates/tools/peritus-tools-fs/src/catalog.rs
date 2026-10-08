@@ -86,7 +86,7 @@ pub fn descriptor_catalog() -> Result<Vec<ToolDescriptor>, FsToolError> {
 /// Returns a typed construction failure if the frozen catalog is invalid.
 pub fn descriptor_digest() -> Result<Sha256Digest, FsToolError> {
     let catalog = descriptor_catalog()?;
-    let mut bytes = b"PERITUS-FS-TOOL-CATALOG-V3\0".to_vec();
+    let mut bytes = b"PERITUS-FS-TOOL-CATALOG-V4\0".to_vec();
     bytes.extend_from_slice(&(catalog.len() as u64).to_be_bytes());
     for descriptor in catalog {
         put_bytes(&mut bytes, &descriptor.canonical_bytes());
@@ -104,17 +104,17 @@ fn build_descriptor(spec: &DescriptorSpec) -> Result<ToolDescriptor, FsToolError
     .map_err(|_| catalog_error())?;
     ToolDescriptor::new(
         name,
-        SemanticVersion::new(3, 0, 0).map_err(|_| catalog_error())?,
+        SemanticVersion::new(4, 0, 0).map_err(|_| catalog_error())?,
         (spec.schema)()?,
         operation,
         spec.effect,
         spec.lease,
         spec.replay,
-        ImplementationIdentity::new(format!("peritus.tools.fs.{}/v3", spec.name))
+        ImplementationIdentity::new(format!("peritus.tools.fs.{}/v4", spec.name))
             .map_err(|_| catalog_error())?,
-        ToolLimits::with_optional_timeout(None, 8 * 1_024 * 1_024, 16_384, 16_384, 1, 1, 1)
+        ToolLimits::with_optional_timeout(None, 8 * 1_024 * 1_024, 16_384, 16_384, 2, 1, 1)
             .map_err(|_| catalog_error())?,
-        ControlSet::NONE,
+        ControlSet::new(false, false, false, true, true),
         ProtocolCompatibility::V1,
         BoundedText::new(spec.description.to_owned()).map_err(|_| catalog_error())?,
     )

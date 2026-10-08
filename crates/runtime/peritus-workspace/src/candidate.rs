@@ -6,8 +6,9 @@ use peritus_patch::PatchIdentity;
 use peritus_types::{ActionId, Generation, ResourceId, RevisionNumber, SnapshotId, WorkspaceId};
 
 use crate::{
-    ErrorCode, MutationOutcome, RecoveryClass, SnapshotIdentity, WorkspaceAuthorizationRequest,
-    WorkspaceCondition, WorkspaceError, WorkspaceGateway, WorkspaceManifest, WorkspaceOperation,
+    ErrorCode, MutationOutcome, MutationOutcomeReference, RecoveryClass, SnapshotIdentity,
+    WorkspaceAuthorizationRequest, WorkspaceCondition, WorkspaceError, WorkspaceGateway,
+    WorkspaceManifest, WorkspaceOperation,
 };
 use crate::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 
@@ -55,12 +56,10 @@ impl CandidateOutcome {
 }
 
 impl WorkspaceGateway {
-    /// Reconciles the exact applied patch, creates a Git tree and successor snapshot, finalizes its
-    /// manifest, and only then marks the logical workspace revision clean.
+    /// Creates a candidate from the live outcome retained by a legacy in-process caller.
     ///
     /// # Errors
-    ///
-    /// On any Git or artifact failure, the live workspace remains dirty and requires inspection.
+    /// Preserves candidate authorization, Git, artifact, and workspace failures.
     pub fn create_candidate(
         &mut self,
         authorization: &WorkspaceAuthorizationRequest<'_>,
@@ -68,8 +67,60 @@ impl WorkspaceGateway {
         snapshot_id: SnapshotId,
         artifacts: &ArtifactStore,
     ) -> Result<CandidateOutcome, WorkspaceError> {
-        validate_mutation_input(self.state(), mutation)?;
         let payload = candidate_payload(mutation, snapshot_id, authorization.caller_binding());
+        self.create_candidate_reference_inner(
+            authorization,
+            mutation.reference(),
+            snapshot_id,
+            artifacts,
+            payload,
+        )
+    }
+
+    /// Resolves a target-owned durable mutation outcome and creates its exact candidate.
+    ///
+    /// # Errors
+    /// Rejects unavailable, forged, stale, foreign, or otherwise invalid outcome references.
+    pub fn create_candidate_from_reference(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        mutation: MutationOutcomeReference,
+        snapshot_id: SnapshotId,
+        artifacts: &ArtifactStore,
+    ) -> Result<CandidateOutcome, WorkspaceError> {
+        let mutation = crate::mutation_record::resolve_outcome(
+            self.transaction_namespace(),
+            mutation,
+        )?;
+        let payload = candidate_payload_reference(
+            mutation,
+            snapshot_id,
+            authorization.caller_binding(),
+        );
+        self.create_candidate_reference_inner(
+            authorization,
+            mutation,
+            snapshot_id,
+            artifacts,
+            payload,
+        )
+    }
+
+    /// Reconciles the exact applied patch, creates a Git tree and successor snapshot, finalizes its
+    /// manifest, and only then marks the logical workspace revision clean.
+    ///
+    /// # Errors
+    ///
+    /// On any Git or artifact failure, the live workspace remains dirty and requires inspection.
+    fn create_candidate_reference_inner(
+        &mut self,
+        authorization: &WorkspaceAuthorizationRequest<'_>,
+        mutation: MutationOutcomeReference,
+        snapshot_id: SnapshotId,
+        artifacts: &ArtifactStore,
+        payload: Vec<u8>,
+    ) -> Result<CandidateOutcome, WorkspaceError> {
+        validate_mutation_input(self.state(), mutation)?;
         let permit =
             self.authorize_in_condition(authorization, &payload, WorkspaceCondition::Dirty)?;
         validate_mutation_input(self.state(), mutation)?;
@@ -126,7 +177,7 @@ impl WorkspaceGateway {
             snapshot.tree(),
         );
         let detail_digest = combined_detail(
-            mutation.applied_patch().manifest_digest(),
+            mutation.installed_manifest_digest(),
             candidate.manifest_digest(),
         );
         let manifest = WorkspaceManifest::candidate(
@@ -189,6 +240,15 @@ pub fn candidate_authorization_payload(
     candidate_payload(mutation, snapshot_id, None)
 }
 
+/// Returns canonical candidate authority bytes for a durable mutation handoff.
+#[must_use]
+pub fn candidate_authorization_payload_for_reference(
+    mutation: MutationOutcomeReference,
+    snapshot_id: SnapshotId,
+) -> Vec<u8> {
+    candidate_payload_reference(mutation, snapshot_id, None)
+}
+
 /// Returns the canonical candidate payload for an exact predicted patch outcome.
 ///
 /// This is inert preparation for independently obtaining the candidate authorization before an
@@ -230,21 +290,44 @@ pub fn candidate_authorization_payload_for_caller(
     candidate_payload(mutation, snapshot_id, Some(caller))
 }
 
+/// Returns canonical candidate authority bytes bound to a caller and durable mutation handoff.
+#[must_use]
+pub fn candidate_authorization_payload_for_reference_and_caller(
+    mutation: MutationOutcomeReference,
+    snapshot_id: SnapshotId,
+    caller: &crate::WorkspaceCallerBinding,
+) -> Vec<u8> {
+    candidate_payload_reference(mutation, snapshot_id, Some(caller))
+}
+
 fn candidate_payload(
     mutation: &MutationOutcome,
     snapshot_id: SnapshotId,
     caller: Option<&crate::WorkspaceCallerBinding>,
 ) -> Vec<u8> {
-    candidate_payload_fields(
-        mutation.action_id(),
-        mutation.workspace_id(),
-        mutation.resource_id(),
-        mutation.generation(),
-        mutation.revision(),
-        mutation.patch_identity(),
-        snapshot_id,
-        caller,
-    )
+    candidate_payload_reference(mutation.reference(), snapshot_id, caller)
+}
+
+fn candidate_payload_reference(
+    mutation: MutationOutcomeReference,
+    snapshot_id: SnapshotId,
+    caller: Option<&crate::WorkspaceCallerBinding>,
+) -> Vec<u8> {
+    let reference = mutation.canonical_bytes();
+    let mut bytes = if caller.is_some() {
+        b"PERITUS-WORKSPACE-CANDIDATE-REFERENCE-V2\0".to_vec()
+    } else {
+        b"PERITUS-WORKSPACE-CANDIDATE-REFERENCE-V1\0".to_vec()
+    };
+    let reference_length =
+        u64::try_from(reference.len()).expect("canonical mutation outcome length fits u64");
+    bytes.extend_from_slice(&reference_length.to_be_bytes());
+    bytes.extend_from_slice(&reference);
+    bytes.extend_from_slice(snapshot_id.as_bytes());
+    if let Some(caller) = caller {
+        crate::caller::append_caller(&mut bytes, Some(caller));
+    }
+    bytes
 }
 
 #[allow(
@@ -281,7 +364,7 @@ fn candidate_payload_fields(
 
 fn validate_mutation_input(
     state: &crate::WorkspaceState,
-    mutation: &MutationOutcome,
+    mutation: MutationOutcomeReference,
 ) -> Result<(), WorkspaceError> {
     if mutation.workspace_id() != state.binding().workspace_id()
         || mutation.resource_id() != state.binding().resource_id()

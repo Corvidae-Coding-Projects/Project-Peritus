@@ -5,8 +5,9 @@ use peritus_git::CandidateSnapshot;
 use peritus_tool_protocol::{ImplementationIdentity, SchemaDigest};
 use peritus_tool_router::{AuthorizedInvocation, DispatchFailure, ToolDispatcher, ToolStart};
 use peritus_workspace::{
-    CandidateOutcome, MutationOutcome, ReadOnlyWorkspace, RollbackOutcome, RollbackRequest,
-    WorkspaceAuthorizationRequest, WorkspaceCallerBinding, WorkspaceGateway,
+    CandidateOutcome, MutationOutcome, MutationOutcomeReference, ReadOnlyWorkspace,
+    RollbackOutcome, RollbackRequest, WorkspaceAuthorizationRequest, WorkspaceCallerBinding,
+    WorkspaceGateway,
 };
 
 use crate::{
@@ -60,6 +61,12 @@ enum DispatchContext<'a> {
         gateway: &'a mut WorkspaceGateway,
         authorization: &'a WorkspaceAuthorizationRequest<'a>,
         mutation: &'a MutationOutcome,
+        artifacts: &'a ArtifactStore,
+    },
+    CandidateReference {
+        gateway: &'a mut WorkspaceGateway,
+        authorization: &'a WorkspaceAuthorizationRequest<'a>,
+        mutation: MutationOutcomeReference,
         artifacts: &'a ArtifactStore,
     },
     Rollback {
@@ -123,6 +130,27 @@ impl<'a> GitDispatcher<'a> {
         Self::build(
             GitDispatchKind::Candidate,
             DispatchContext::Candidate { gateway, authorization, mutation, artifacts },
+        )
+    }
+
+    /// Creates the authorized candidate dispatcher from a restart-visible mutation handoff.
+    ///
+    /// # Errors
+    /// Returns a typed frozen-catalog construction failure.
+    pub fn candidate_reference(
+        gateway: &'a mut WorkspaceGateway,
+        authorization: &'a WorkspaceAuthorizationRequest<'a>,
+        mutation: MutationOutcomeReference,
+        artifacts: &'a ArtifactStore,
+    ) -> Result<Self, GitToolError> {
+        Self::build(
+            GitDispatchKind::Candidate,
+            DispatchContext::CandidateReference {
+                gateway,
+                authorization,
+                mutation,
+                artifacts,
+            },
         )
     }
 
@@ -209,6 +237,26 @@ impl ToolDispatcher for GitDispatcher<'_> {
                 self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
                 rendered
             }
+            DispatchContext::CandidateReference {
+                gateway,
+                authorization,
+                mutation,
+                artifacts,
+            } => {
+                let input = decoder::candidate(prepared.arguments())
+                    .map_err(|error| tool_failure(&error))?;
+                let outcome = gateway
+                    .create_candidate_from_reference(
+                        authorization,
+                        *mutation,
+                        input.snapshot_id(),
+                        artifacts,
+                    )
+                    .map_err(|_| workspace_failure("target-owned candidate creation failed"))?;
+                let rendered = RenderedOutput::candidate(&outcome);
+                self.mutation_outcome = Some(GitMutationOutcome::Candidate(outcome));
+                rendered
+            }
             DispatchContext::Rollback { gateway, authorization, target, artifacts } => {
                 let input = decoder::rollback(prepared.arguments())
                     .map_err(|error| tool_failure(&error))?;
@@ -275,6 +323,7 @@ fn context_matches(context: &DispatchContext<'_>, caller: &WorkspaceCallerBindin
             })
         }
         DispatchContext::Candidate { authorization, .. }
+        | DispatchContext::CandidateReference { authorization, .. }
         | DispatchContext::Rollback { authorization, .. } => {
             authorization.caller_binding() == Some(caller)
         }

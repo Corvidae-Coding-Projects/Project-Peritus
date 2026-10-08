@@ -94,6 +94,22 @@ pub enum RecoveryClass {
     Quarantine,
 }
 
+/// Redaction-safe typed lower-boundary cause retained without paths or content.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum WorkspaceCause {
+    /// Exact patch-adapter classification and rollback observation.
+    Patch {
+        /// Stable patch error code.
+        code: peritus_patch::ErrorCode,
+        /// Patch phase which failed.
+        operation: peritus_patch::PatchOperationContext,
+        /// Patch adapter recovery guidance.
+        recovery: peritus_patch::RecoveryClass,
+        /// Whether restoration was required and proved.
+        rollback: peritus_patch::RollbackStatus,
+    },
+}
+
 /// Bounded typed workspace failure.
 #[derive(Debug)]
 pub struct WorkspaceError {
@@ -101,6 +117,7 @@ pub struct WorkspaceError {
     operation: WorkspaceOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    cause: Option<WorkspaceCause>,
     source: Option<std::io::Error>,
 }
 
@@ -111,7 +128,39 @@ impl WorkspaceError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { code, operation, recovery, detail, source: None }
+        Self { code, operation, recovery, detail, cause: None, source: None }
+    }
+
+    pub(crate) const fn from_patch(
+        error: &peritus_patch::PatchError,
+        condition: crate::WorkspaceCondition,
+    ) -> Self {
+        let recovery = match error.recovery_class() {
+            peritus_patch::RecoveryClass::CorrectPatch => RecoveryClass::CorrectRequest,
+            peritus_patch::RecoveryClass::ReinspectWorkspace => RecoveryClass::Reobserve,
+            peritus_patch::RecoveryClass::Reauthorize => RecoveryClass::Reauthorize,
+            peritus_patch::RecoveryClass::Retry => RecoveryClass::Reobserve,
+            peritus_patch::RecoveryClass::RecoverTransaction
+            | peritus_patch::RecoveryClass::FenceWorkspace => RecoveryClass::Reconcile,
+            _ => RecoveryClass::Reconcile,
+        };
+        Self {
+            code: ErrorCode::Patch,
+            operation: WorkspaceOperation::Mutate,
+            recovery: if matches!(condition, crate::WorkspaceCondition::Indeterminate) {
+                RecoveryClass::Reconcile
+            } else {
+                recovery
+            },
+            detail: "checked patch transaction failed",
+            cause: Some(WorkspaceCause::Patch {
+                code: error.code(),
+                operation: error.operation(),
+                recovery: error.recovery_class(),
+                rollback: error.rollback_status(),
+            }),
+            source: None,
+        }
     }
 
     pub(crate) fn with_io_source(mut self, source: std::io::Error) -> Self {
@@ -138,6 +187,12 @@ impl WorkspaceError {
     #[must_use]
     pub const fn detail(&self) -> &'static str {
         self.detail
+    }
+
+    /// Returns a typed content-free lower-boundary cause when one exists.
+    #[must_use]
+    pub const fn cause(&self) -> Option<WorkspaceCause> {
+        self.cause
     }
 }
 

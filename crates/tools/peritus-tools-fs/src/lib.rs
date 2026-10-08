@@ -16,7 +16,7 @@ mod verified;
 
 pub use catalog::{descriptor_catalog, descriptor_digest};
 pub use dispatcher::{FsDispatchKind, FsDispatcher};
-pub use error::{FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
+pub use error::{FsToolCause, FsToolError, FsToolErrorKind, FsToolOperation, RecoveryClass};
 pub use exclusion::DiscoverExclusion;
 pub use input::{
     CreateInput, DiscoverInput, MetadataInput, MutationContent, PatchEdit, PatchInput, ReadInput,

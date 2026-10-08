@@ -19,6 +19,7 @@ mod identity;
 mod inspection;
 mod manifest;
 mod mutation;
+mod mutation_record;
 mod open;
 mod publication;
 mod read_only;
@@ -43,9 +44,11 @@ pub use authorization::WorkspaceAuthorizationRequest;
 pub use caller::{ReadOnlyTargetBinding, WorkspaceCallerBinding};
 pub use candidate::{
     CandidateOutcome, candidate_authorization_payload, candidate_authorization_payload_for_caller,
+    candidate_authorization_payload_for_reference,
+    candidate_authorization_payload_for_reference_and_caller,
     predicted_candidate_authorization_payload,
 };
-pub use error::{ErrorCode, RecoveryClass, WorkspaceError, WorkspaceOperation};
+pub use error::{ErrorCode, RecoveryClass, WorkspaceCause, WorkspaceError, WorkspaceOperation};
 pub use gateway::WorkspaceGateway;
 pub use identity::{SnapshotIdentity, WorkspaceBinding};
 pub use inspection::{
@@ -53,8 +56,10 @@ pub use inspection::{
 };
 pub use manifest::{ManifestKind, WorkspaceManifest};
 pub use mutation::{
-    MutationOutcome, patch_authorization_payload, patch_authorization_payload_for_caller,
+    MutationOutcome, PreparedWorkspaceMutation, patch_authorization_payload,
+    patch_authorization_payload_for_caller,
 };
+pub use mutation_record::{MutationOperationReference, MutationOutcomeReference};
 pub use open::{ReadOnlyOpenRequest, WritableOpenRequest};
 pub use publication::{SnapshotPublicationFailure, finalize_snapshot_manifest};
 pub use read_only::ReadOnlyWorkspace;
