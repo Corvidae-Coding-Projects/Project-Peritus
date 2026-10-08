@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3935,
-        "tip_oid": "9a13e59703316f01cb95560833bc0ac80924f04e",
-        "prefix_sha256": "7576a65d8c5ae4e8ff20c1baf1dcdf18772e8d065635497625e86b311b39dc71"
+        "sequence": 3936,
+        "tip_oid": "fbc289372c48653ffb9f873d90666dd351f21282",
+        "prefix_sha256": "7614ee13b1971d0a9eca8ea7b6a015c2924c49921ce148504dab79950cc63206"
       },
       "NWAR": {
         "sequence": 39,
@@ -30592,12 +30592,13 @@
       "display_id": 129,
       "title": "[L030] Product task, detail, deliverable, and page admission",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L030.\n\n- `peritus-app-protocol/src/product.rs:38-43` declares **64 KiB task text**, **1 MiB per run detail field**, and **256 runs per page**. Task-construction callers remain pending; the daemon list caller was read in L015 and supports an offset.\n- `ProductDeliverable::checked` at lines 67-78 rejects an empty changed-path collection, more than **65,535 changed paths or successful commands**, and fields above 1 MiB. Some restore constructors additionally require a successful command. Absolute/traversal/Git paths are rejected at lines 79-85 as authority/path constraints.\n- Large deliverables can be rejected even when their underlying work succeeded. One-page size does not by itself imply old runs are deleted; retention/pagination client behavior remains pending.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.953981168Z",
-      "updated_at": "2026-10-08T01:14:56.016510361Z",
+      "updated_at": "2026-10-08T01:16:21.423476246Z",
+      "closed_at": "2026-10-08T01:16:21.420743582Z",
       "labels": [
         "daily-driving-limiter"
       ],
