@@ -13,7 +13,7 @@ use super::adapter_failure;
 use crate::execution::failure;
 use crate::{
     CheckCatalog, CleanQualitySnapshot, QualityError, QualityErrorKind, RunInput,
-    execution::QualityExecution, run_descriptor,
+    checkpoint, execution::QualityExecution, run_descriptor,
 };
 
 /// One-use exact-check dispatcher bound to C2 authority and one native C3 backend.
@@ -184,6 +184,23 @@ where
         let creating_event = invocation.dispatch_event();
         let started_at = invocation.observed_at();
         let prepared = invocation.into_prepared();
+        let process_id = plan.identity().process_id();
+        let plan_digest = plan.digest();
+        let checkpoint = checkpoint::Owner::prepare(
+            self.gateway.store(),
+            &prepared,
+            &definition,
+            plan_digest,
+            process_id,
+            self.artifacts.as_ref().ok_or_else(|| {
+                adapter_failure(
+                    "quality-run-consumed",
+                    "quality artifact store was already consumed",
+                )
+            })?,
+            creating_event,
+            started_at,
+        )?;
         let plan = self.plan.take().ok_or_else(|| {
             adapter_failure("quality-run-consumed", "quality execution plan was already consumed")
         })?;
@@ -193,7 +210,6 @@ where
         let artifacts = self.artifacts.take().ok_or_else(|| {
             adapter_failure("quality-run-consumed", "quality artifact store was already consumed")
         })?;
-        let process_id = plan.identity().process_id();
         let process_store = self.gateway.store().clone();
         let owner = self
             .gateway
@@ -208,6 +224,7 @@ where
             artifacts,
             creating_event,
             started_at,
+            checkpoint,
         ))))
     }
 }

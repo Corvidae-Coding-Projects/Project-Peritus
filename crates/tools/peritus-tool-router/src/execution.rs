@@ -2,7 +2,8 @@
 
 use peritus_policy::AuthorityInstant;
 use peritus_tool_protocol::{
-    CancellationReason, PreparedToolCall, ResultStatus, ToolControl, ToolDescriptor, ToolResult,
+    CancellationReason, PreparedToolCall, ProgressContract, ResultStatus, ToolControl,
+    ToolDescriptor, ToolResult,
 };
 
 use crate::{DispatchFailure, ExecutionUpdate, RouterError, RouterErrorKind, ToolExecution};
@@ -10,27 +11,40 @@ use crate::{DispatchFailure, ExecutionUpdate, RouterError, RouterErrorKind, Tool
 pub struct ActiveEntry {
     prepared: PreparedToolCall,
     execution: Box<dyn ToolExecution>,
-    started_at: AuthorityInstant,
-    next_sequence: u32,
+    last_observed_at: AuthorityInstant,
+    next_sequence: u64,
 }
 
 impl ActiveEntry {
     pub(crate) const fn new(
         prepared: PreparedToolCall,
         execution: Box<dyn ToolExecution>,
-        started_at: AuthorityInstant,
+        observed_at: AuthorityInstant,
     ) -> Self {
-        Self { prepared, execution, started_at, next_sequence: 0 }
+        Self { prepared, execution, last_observed_at: observed_at, next_sequence: 0 }
+    }
+
+    pub(crate) const fn adopted(
+        prepared: PreparedToolCall,
+        execution: Box<dyn ToolExecution>,
+        observed_at: AuthorityInstant,
+        next_sequence: u64,
+    ) -> Self {
+        Self { prepared, execution, last_observed_at: observed_at, next_sequence }
     }
 
     pub(crate) const fn prepared(&self) -> &PreparedToolCall {
         &self.prepared
     }
-    pub(crate) const fn started_at(&self) -> AuthorityInstant {
-        self.started_at
-    }
-    pub(crate) const fn progress_count(&self) -> u32 {
-        self.next_sequence
+
+    pub(crate) fn observe_time(&mut self, observed_at: AuthorityInstant) -> Result<(), RouterError> {
+        if observed_at.epoch() != self.last_observed_at.epoch()
+            || observed_at.tick_millis() < self.last_observed_at.tick_millis()
+        {
+            return Err(invalid("active observation time regressed or crossed epochs"));
+        }
+        self.last_observed_at = observed_at;
+        Ok(())
     }
 
     pub(crate) fn poll(
@@ -70,7 +84,7 @@ impl ActiveEntry {
         self.execution.recover(observed_at)
     }
 
-    pub(crate) fn accept_update(&mut self, update: &ExecutionUpdate) -> Result<(), RouterError> {
+    pub(crate) fn validate_update(&self, update: &ExecutionUpdate) -> Result<u64, RouterError> {
         let progress = update.progress();
         if progress.first().is_some_and(|event| event.sequence() != self.next_sequence)
             || progress
@@ -79,16 +93,31 @@ impl ActiveEntry {
         {
             return Err(invalid("execution progress is not globally contiguous"));
         }
-        let observed = u32::try_from(progress.len())
+        let observed = u64::try_from(progress.len())
             .map_err(|_| invalid("execution progress count exceeds its integer bound"))?;
-        self.next_sequence = self
+        let next_sequence = self
             .next_sequence
             .checked_add(observed)
             .ok_or_else(|| invalid("execution progress sequence overflowed"))?;
         if let Some(result) = update.terminal() {
-            validate_result(&self.prepared, result, self.next_sequence)?;
+            validate_result(&self.prepared, result, next_sequence)?;
         }
+        Ok(next_sequence)
+    }
+
+    pub(crate) fn acknowledge_update(
+        &mut self,
+        next_sequence: u64,
+    ) -> Result<(), DispatchFailure> {
+        if self.prepared.call().limits().progress_contract() == ProgressContract::PagedV2 {
+            self.execution.acknowledge_progress(next_sequence)?;
+        }
+        self.next_sequence = next_sequence;
         Ok(())
+    }
+
+    pub(crate) const fn next_sequence(&self) -> u64 {
+        self.next_sequence
     }
 }
 
@@ -123,7 +152,7 @@ pub fn ensure_supported(
 pub fn validate_result(
     prepared: &PreparedToolCall,
     result: &ToolResult,
-    progress_count: u32,
+    progress_count: u64,
 ) -> Result<(), RouterError> {
     if result.action_id() != prepared.call().action_id()
         || result.descriptor_digest() != prepared.descriptor_digest()
@@ -138,9 +167,9 @@ pub fn validate_result(
 }
 
 fn deadline_reached(prepared: &PreparedToolCall, observed_at: AuthorityInstant) -> bool {
-    observed_at.epoch() != prepared.call().deadline().epoch()
-        || (prepared.call().limits().timeout_millis().is_some()
-            && observed_at.tick_millis() >= prepared.call().deadline().tick_millis())
+    prepared.call().limits().timeout_millis().is_some()
+        && observed_at.epoch() == prepared.call().deadline().epoch()
+        && observed_at.tick_millis() >= prepared.call().deadline().tick_millis()
 }
 
 const fn invalid(detail: &'static str) -> RouterError {

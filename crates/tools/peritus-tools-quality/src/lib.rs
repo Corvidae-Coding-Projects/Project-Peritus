@@ -2,6 +2,7 @@
 
 mod acceptance;
 mod catalog;
+mod checkpoint;
 mod definition;
 mod discovery;
 mod dispatcher;
