@@ -2,12 +2,13 @@
 
 pub use crate::quiescence::{HolderQuiescenceObservation, QuiescenceBlocker};
 pub use crate::recovery::{
-    ProbeObservation, ProcessProbe, RecoveryDisposition, RecoveryEntry, RecoveryReport,
+    ProbeObservation, ProcessProbe, ProcessTreeQuiescence, RecoveryDisposition, RecoveryEntry, RecoveryObservation,
+    RecoveryReport,
 };
 pub use crate::resource::{
     ProcessResourceDimension, ProcessResourceObservation, ProcessResourcePolicy, ResourceFidelity,
 };
 pub use crate::terminal::{
-    OsExitObservation, OutputArtifact, OutputSummary, ProcessInstant, TerminalDisposition,
-    TerminalRecovery, TerminalResult,
+    NativeFailureObservation, NativePostActivationFailure, OsExitObservation, OutputArtifact,
+    OutputSummary, ProcessInstant, TerminalDisposition, TerminalRecovery, TerminalResult,
 };

@@ -37,6 +37,7 @@ pub use crate::native::{
     native_helper_worker_failed_record, native_ready_record,
     native_observation_prefix_digest, native_observation_producer_binding,
     native_target_adoption_record, native_target_exec_failed_record, native_target_started_record,
+    native_windows_completion_record,
 };
 #[cfg(unix)]
 pub use crate::native::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
@@ -44,7 +45,7 @@ pub use crate::native::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 pub use crate::native::{
     NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
     NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
-    NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
+    NativeWindowsCompletion, NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
     NativeWindowsOwnerInspection, NativeWindowsQuiescence, NativeWindowsResourceSnapshot,
 };
 pub use crate::output::{OutputCompleteness, OutputStream, StreamAccounting};
@@ -56,7 +57,8 @@ pub use crate::platform::admission::validate_command_environment as validate_nat
 #[cfg(windows)]
 pub use crate::platform::current_process_resident_memory_bytes;
 pub use crate::result_api::{
-    HolderQuiescenceObservation, OsExitObservation, OutputArtifact, OutputSummary,
+    HolderQuiescenceObservation, NativeFailureObservation, NativePostActivationFailure,
+    OsExitObservation, OutputArtifact, OutputSummary,
     ProbeObservation, ProcessInstant, ProcessProbe, ProcessResourceDimension,
     ProcessResourceObservation, ProcessResourcePolicy, ProcessTreeQuiescence, QuiescenceBlocker, RecoveryDisposition,
     RecoveryEntry, RecoveryObservation, RecoveryReport, ResourceFidelity, TerminalDisposition, TerminalRecovery,

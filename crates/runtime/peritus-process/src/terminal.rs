@@ -13,6 +13,76 @@ mod canonical_tests;
 
 pub(crate) use canonical::{decode_terminal, encode_terminal, terminal_digest};
 
+/// Stable cause observed after a native target was acknowledged as started.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum NativePostActivationFailure {
+    /// The retained target handle could no longer establish completion.
+    TargetCompletion,
+    /// The completed target's native status could not be read.
+    TargetStatus,
+    /// Target output could not be drained through the installed terminal transport.
+    OutputCollection,
+    /// One or more terminal workers could not be joined after target completion.
+    WorkerJoin,
+    /// Helper-owned private secret files could not be removed after target completion.
+    SecretCleanup,
+    /// A legacy authenticated receipt reported failure without a finer cause.
+    LegacyUnspecified,
+}
+
+/// Exact target status, when known, paired with an independent native runtime failure.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct NativeFailureObservation {
+    target_status: Option<u32>,
+    failure: NativePostActivationFailure,
+}
+
+impl NativeFailureObservation {
+    /// Creates one structured post-activation failure observation.
+    #[must_use]
+    pub const fn new(
+        target_status: Option<u32>,
+        failure: NativePostActivationFailure,
+    ) -> Self {
+        Self { target_status, failure }
+    }
+
+    /// Returns the exact native target status when it was observed before the failure.
+    #[must_use]
+    pub const fn target_status(self) -> Option<u32> {
+        self.target_status
+    }
+
+    /// Returns the stable post-activation failure cause.
+    #[must_use]
+    pub const fn failure(self) -> NativePostActivationFailure {
+        self.failure
+    }
+}
+
+pub(crate) const fn native_failure_tag(value: NativePostActivationFailure) -> u8 {
+    match value {
+        NativePostActivationFailure::TargetCompletion => 1,
+        NativePostActivationFailure::TargetStatus => 2,
+        NativePostActivationFailure::OutputCollection => 3,
+        NativePostActivationFailure::WorkerJoin => 4,
+        NativePostActivationFailure::SecretCleanup => 5,
+        NativePostActivationFailure::LegacyUnspecified => 6,
+    }
+}
+
+pub(crate) const fn decode_native_failure(tag: u8) -> Option<NativePostActivationFailure> {
+    match tag {
+        1 => Some(NativePostActivationFailure::TargetCompletion),
+        2 => Some(NativePostActivationFailure::TargetStatus),
+        3 => Some(NativePostActivationFailure::OutputCollection),
+        4 => Some(NativePostActivationFailure::WorkerJoin),
+        5 => Some(NativePostActivationFailure::SecretCleanup),
+        6 => Some(NativePostActivationFailure::LegacyUnspecified),
+        _ => None,
+    }
+}
+
 /// Underlying platform exit observation retained independently of top-level classification.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum OsExitObservation {
@@ -24,6 +94,8 @@ pub enum OsExitObservation {
     SignalName(String),
     /// A platform exception/status terminated the process.
     PlatformException(u32),
+    /// A native runtime failure, retaining an exact target status independently when available.
+    NativeFailure(NativeFailureObservation),
     /// No trustworthy operating-system exit was available.
     Unavailable,
 }
@@ -320,5 +392,21 @@ impl TerminalResult {
 
     pub(crate) const fn mark_artifacts_complete(&mut self) {
         self.artifact_publication_complete = true;
+    }
+
+    /// Encodes the complete terminal result for the authenticated retained-owner transport.
+    ///
+    /// # Errors
+    /// Returns a typed failure when the result is internally inconsistent.
+    pub fn encode_retained_owner(&self) -> Result<Vec<u8>, crate::ProcessError> {
+        encode_terminal(self)
+    }
+
+    /// Decodes a complete terminal result from the authenticated retained-owner transport.
+    ///
+    /// # Errors
+    /// Rejects malformed or noncanonical terminal bytes.
+    pub fn decode_retained_owner(bytes: &[u8]) -> Result<Self, crate::ProcessError> {
+        decode_terminal(bytes)
     }
 }

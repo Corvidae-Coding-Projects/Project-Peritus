@@ -7,8 +7,11 @@ use peritus_types::{
 use sha2::{Digest, Sha256};
 
 use crate::{
-    CancellationReason, ErrorCode, ExecutionIdentity, LifecyclePhase, OsExitObservation,
-    ProcessError, ProcessOperation, RecoveryClass, StopTrigger, WorkspaceAccess,
+    CancellationReason, ErrorCode, ExecutionIdentity, LifecyclePhase, NativeFailureObservation,
+    OsExitObservation, ProcessError, ProcessOperation, RecoveryClass, StopTrigger, WorkspaceAccess,
+    native::observation::{
+        NativeObservationFrontier, NativeObservationPhase, NativeObservationState,
+    },
     platform::ProcessTreeIdentity,
 };
 
@@ -19,12 +22,20 @@ mod terminal_payload;
 use reader::Reader;
 use terminal_payload::{decode_terminal_payload, encode_terminal_payload, terminal_binding_valid};
 
-const MAGIC: &[u8] = b"PERITUS-PROCESS-MANIFEST-V2\0";
+const MAGIC_V4: &[u8] = b"PERITUS-PROCESS-MANIFEST-V4\0";
+const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-MANIFEST-V3\0";
+const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-MANIFEST-V2\0";
 const MAX_MANIFEST_BYTES: usize = 16 * 1_024;
 
 pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessError> {
     let mut bytes = Vec::with_capacity(768);
-    bytes.extend_from_slice(MAGIC);
+    let uses_native_failure = matches!(
+        manifest.exit.as_ref(),
+        Some(OsExitObservation::NativeFailure(_))
+    ) || manifest.terminal.as_ref().is_some_and(|terminal| {
+        matches!(terminal.os_exit(), OsExitObservation::NativeFailure(_))
+    });
+    bytes.extend_from_slice(if uses_native_failure { MAGIC_V4 } else { MAGIC_V3 });
     encode_identity(&mut bytes, &manifest.identity);
     for digest_value in [
         manifest.action_digest,
@@ -36,6 +47,7 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
     ] {
         digest(&mut bytes, digest_value);
     }
+    encode_native_observations(&mut bytes, manifest.native_observations);
     bytes.push(match manifest.access {
         WorkspaceAccess::ReadOnly => 1,
         WorkspaceAccess::Writable => 2,
@@ -61,10 +73,16 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
 }
 
 pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
-    if bytes.len() < MAGIC.len() + Sha256Digest::LENGTH
-        || bytes.len() > MAX_MANIFEST_BYTES
-        || !bytes.starts_with(MAGIC)
-    {
+    let (magic, version) = if bytes.starts_with(MAGIC_V4) {
+        (MAGIC_V4, 4_u8)
+    } else if bytes.starts_with(MAGIC_V3) {
+        (MAGIC_V3, 3_u8)
+    } else if bytes.starts_with(MAGIC_V2) {
+        (MAGIC_V2, 2_u8)
+    } else {
+        return Err(corrupt("process manifest has invalid framing"));
+    };
+    if bytes.len() < magic.len() + Sha256Digest::LENGTH || bytes.len() > MAX_MANIFEST_BYTES {
         return Err(corrupt("process manifest has invalid framing"));
     }
     let payload_end = bytes.len() - Sha256Digest::LENGTH;
@@ -72,21 +90,34 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
     if bytes[payload_end..] != expected {
         return Err(corrupt("process manifest checksum differs"));
     }
-    let mut reader = Reader::new(&bytes[MAGIC.len()..payload_end]);
+    let mut reader = Reader::new(&bytes[magic.len()..payload_end]);
+    let identity = decode_identity(&mut reader)?;
+    let action_digest = reader.digest()?;
+    let plan_digest = reader.digest()?;
+    let sandbox_digest = reader.digest()?;
+    let backend_digest = reader.digest()?;
+    let support_digest = reader.digest()?;
+    let preparation_digest = reader.digest()?;
+    let native_observations = if version >= 3 {
+        decode_native_observations(&mut reader)?
+    } else {
+        NativeObservationState::LegacyUnrecorded
+    };
     let manifest = ExecutionManifest {
-        identity: decode_identity(&mut reader)?,
-        action_digest: reader.digest()?,
-        plan_digest: reader.digest()?,
-        sandbox_digest: reader.digest()?,
-        backend_digest: reader.digest()?,
-        support_digest: reader.digest()?,
-        preparation_digest: reader.digest()?,
+        identity,
+        action_digest,
+        plan_digest,
+        sandbox_digest,
+        backend_digest,
+        support_digest,
+        preparation_digest,
+        native_observations,
         access: decode_access(reader.u8()?)?,
         lease: decode_lease(&mut reader)?,
         phase: decode_phase(reader.u8()?)?,
         tree: decode_tree(&mut reader)?,
         trigger: decode_trigger(&mut reader)?,
-        exit: decode_exit(&mut reader)?,
+        exit: decode_exit(&mut reader, version >= 4)?,
         observed_output: reader.u64()?,
         retained_output: reader.u64()?,
         dropped_output: reader.u64()?,
@@ -98,11 +129,91 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
     if !reader.is_empty()
         || manifest.retained_output > manifest.observed_output
         || manifest.dropped_output != manifest.observed_output - manifest.retained_output
+        || !native_observation_binding_valid(&manifest)
         || !terminal_binding_valid(&manifest)?
     {
         return Err(corrupt("process manifest fields are noncanonical or inconsistent"));
     }
     Ok(manifest)
+}
+
+fn encode_native_observations(bytes: &mut Vec<u8>, state: NativeObservationState) {
+    match state {
+        NativeObservationState::Untracked => bytes.push(0),
+        NativeObservationState::LegacyUnrecorded => bytes.push(1),
+        NativeObservationState::Recorded(frontier) => {
+            bytes.push(2);
+            digest(bytes, frontier.plan_digest);
+            digest(bytes, frontier.backend_digest);
+            digest(bytes, frontier.producer_binding_digest);
+            digest(bytes, frontier.producer_prefix_digest);
+            u64_value(bytes, frontier.page_count);
+            u64_value(bytes, frontier.total_count);
+            u64_value(bytes, frontier.next_sequence);
+            digest(bytes, frontier.last_page_digest);
+            bytes.push(native_phase_tag(frontier.phase));
+        }
+    }
+}
+
+fn decode_native_observations(
+    reader: &mut Reader<'_>,
+) -> Result<NativeObservationState, ProcessError> {
+    match reader.u8()? {
+        0 => Ok(NativeObservationState::Untracked),
+        1 => Ok(NativeObservationState::LegacyUnrecorded),
+        2 => Ok(NativeObservationState::Recorded(NativeObservationFrontier {
+            plan_digest: reader.digest()?,
+            backend_digest: reader.digest()?,
+            producer_binding_digest: reader.digest()?,
+            producer_prefix_digest: reader.digest()?,
+            page_count: reader.u64()?,
+            total_count: reader.u64()?,
+            next_sequence: reader.u64()?,
+            last_page_digest: reader.digest()?,
+            phase: decode_native_phase(reader.u8()?)?,
+        })),
+        _ => Err(corrupt("process manifest has an unknown native observation state")),
+    }
+}
+
+fn native_observation_binding_valid(manifest: &ExecutionManifest) -> bool {
+    match manifest.native_observations {
+        NativeObservationState::Untracked | NativeObservationState::LegacyUnrecorded => true,
+        NativeObservationState::Recorded(frontier) => {
+            frontier.plan_digest == manifest.sandbox_digest
+                && frontier.backend_digest == manifest.backend_digest
+                && frontier.page_count > 0
+                && frontier.total_count > 0
+                && frontier.next_sequence == frontier.total_count.checked_add(1).unwrap_or(0)
+                && frontier.phase != NativeObservationPhase::AwaitingPrepared
+        }
+    }
+}
+
+const fn native_phase_tag(phase: NativeObservationPhase) -> u8 {
+    match phase {
+        NativeObservationPhase::AwaitingPrepared => 0,
+        NativeObservationPhase::Prepared => 1,
+        NativeObservationPhase::Activated => 2,
+        NativeObservationPhase::Cancelling => 3,
+        NativeObservationPhase::Terminated => 4,
+        NativeObservationPhase::ReleasedFromPrepared => 5,
+        NativeObservationPhase::ReleasedFromTerminated => 6,
+    }
+}
+
+const fn decode_native_phase(tag: u8) -> Result<NativeObservationPhase, ProcessError> {
+    match tag {
+        0 => Ok(NativeObservationPhase::AwaitingPrepared),
+        1 => Ok(NativeObservationPhase::Prepared),
+        2 => Ok(NativeObservationPhase::Activated),
+        3 => Ok(NativeObservationPhase::Cancelling),
+        4 => Ok(NativeObservationPhase::Terminated),
+        5 => Ok(NativeObservationPhase::ReleasedFromPrepared),
+        6 => Ok(NativeObservationPhase::ReleasedFromTerminated),
+        _ => Err(corrupt("process manifest has an unknown native observation phase")),
+    }
 }
 
 const fn decode_access(tag: u8) -> Result<WorkspaceAccess, ProcessError> {
@@ -290,11 +401,25 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: Option<&OsExitObservation>) -> Result<
             u32_value(bytes, *code);
         }
         Some(OsExitObservation::Unavailable) => bytes.push(5),
+        Some(OsExitObservation::NativeFailure(value)) => {
+            bytes.push(6);
+            match value.target_status() {
+                Some(status) => {
+                    bytes.push(1);
+                    u32_value(bytes, status);
+                }
+                None => bytes.push(0),
+            }
+            bytes.push(crate::terminal::native_failure_tag(value.failure()));
+        }
     }
     Ok(())
 }
 
-fn decode_exit(reader: &mut Reader<'_>) -> Result<Option<OsExitObservation>, ProcessError> {
+fn decode_exit(
+    reader: &mut Reader<'_>,
+    allow_native_failure: bool,
+) -> Result<Option<OsExitObservation>, ProcessError> {
     Ok(match reader.u8()? {
         0 => None,
         1 => Some(OsExitObservation::Code(reader.i32()?)),
@@ -302,6 +427,19 @@ fn decode_exit(reader: &mut Reader<'_>) -> Result<Option<OsExitObservation>, Pro
         3 => Some(OsExitObservation::SignalName(reader.string(128)?)),
         4 => Some(OsExitObservation::PlatformException(reader.u32()?)),
         5 => Some(OsExitObservation::Unavailable),
+        6 if allow_native_failure => {
+            let target_status = match reader.u8()? {
+                0 => None,
+                1 => Some(reader.u32()?),
+                _ => return Err(corrupt("manifest native status option is invalid")),
+            };
+            let failure = crate::terminal::decode_native_failure(reader.u8()?)
+                .ok_or_else(|| corrupt("manifest native failure is unknown"))?;
+            Some(OsExitObservation::NativeFailure(NativeFailureObservation::new(
+                target_status,
+                failure,
+            )))
+        }
         _ => return Err(corrupt("manifest has an unknown exit observation tag")),
     })
 }

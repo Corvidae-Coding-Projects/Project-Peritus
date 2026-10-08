@@ -111,6 +111,8 @@ pub(crate) struct NativeHandshake {
     #[cfg(windows)]
     pub(crate) worker_failed: Sha256Digest,
     #[cfg(windows)]
+    pub(crate) completion: Sha256Digest,
+    #[cfg(windows)]
     pub(crate) adoption: Option<Sha256Digest>,
     pub(crate) protected_handles: Vec<NativeProtectedHandle>,
     #[cfg(windows)]
@@ -163,6 +165,8 @@ pub(crate) enum PlatformExit {
     #[cfg(unix)]
     SignalName(String),
     PlatformException(u32),
+    NativeFailure(crate::NativeFailureObservation),
+    Unavailable,
 }
 
 pub(crate) trait PlatformProcess: Send {

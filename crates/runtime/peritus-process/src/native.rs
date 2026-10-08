@@ -15,6 +15,7 @@ pub use protocol::{
     native_activation_record, native_helper_quiesced_record,
     native_helper_worker_failed_record, native_ready_record, native_target_adoption_record,
     native_target_exec_failed_record, native_target_started_record,
+    native_windows_completion_record,
 };
 pub use observation::{
     native_observation_prefix_digest, native_observation_producer_binding,
@@ -25,7 +26,8 @@ pub use pty::{NATIVE_PTY_SLAVE_ENV, NativePtyAttachment};
 pub use windows_channel::{
     NATIVE_WINDOWS_CONTROL_HANDLE_ENV, NATIVE_WINDOWS_JOB_HANDLE_ENV,
     NATIVE_WINDOWS_JOB_HANDLE_LABEL, NATIVE_WINDOWS_STATUS_HANDLE_ENV,
-    NativeWindowsHelperAttachment, NativeWindowsHelperChannels, NativeWindowsQuiescence,
+    NativeWindowsCompletion, NativeWindowsHelperAttachment, NativeWindowsHelperChannels,
+    NativeWindowsQuiescence,
     NativeWindowsResourceSnapshot,
     NativeWindowsSecretFileBinding, NativeWindowsSecretFileIdentity,
 };

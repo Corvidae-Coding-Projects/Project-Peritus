@@ -33,8 +33,9 @@ use windows_sys::Win32::{
 };
 
 use crate::{
-    ErrorCode, NativeProtectedHandle, NativeWindowsContainmentIdentity, ProcessError,
-    ProcessOperation, ProcessTreeIdentity, RecoveryClass, TerminalSize,
+    ErrorCode, NativePostActivationFailure, NativeProtectedHandle,
+    NativeWindowsContainmentIdentity, ProcessError, ProcessOperation, ProcessTreeIdentity,
+    RecoveryClass, TerminalSize,
 };
 use peritus_types::Sha256Digest;
 
@@ -52,6 +53,69 @@ const TARGET_ADOPTION_ACK: u8 = 5;
 const SECRET_FILES_ACK: u8 = 6;
 const SECRET_FILE_HEADER_BYTES: usize = Sha256Digest::LENGTH + 4;
 const SECRET_FILE_ENTRY_BYTES: usize = Sha256Digest::LENGTH + 8 + 8 + 16;
+const WINDOWS_COMPLETION_VERSION: u8 = 2;
+const WINDOWS_COMPLETION_TAIL_BYTES: usize = 7;
+const WINDOWS_COMPLETION_HAS_STATUS: u8 = 1;
+const WINDOWS_COMPLETION_HAS_FAILURE: u8 = 2;
+
+/// Authenticated Windows target completion, independent of the helper's process exit.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct NativeWindowsCompletion {
+    target_status: Option<u32>,
+    failure: Option<NativePostActivationFailure>,
+    legacy: bool,
+}
+
+impl NativeWindowsCompletion {
+    /// Creates an exact target-only completion.
+    #[must_use]
+    pub const fn target(target_status: u32) -> Self {
+        Self { target_status: Some(target_status), failure: None, legacy: false }
+    }
+
+    /// Creates an exact failure observed before a target status became available.
+    #[must_use]
+    pub const fn failure(failure: NativePostActivationFailure) -> Self {
+        Self { target_status: None, failure: Some(failure), legacy: false }
+    }
+
+    /// Creates an exact target status paired with an independent later failure.
+    #[must_use]
+    pub const fn target_with_failure(
+        target_status: u32,
+        failure: NativePostActivationFailure,
+    ) -> Self {
+        Self { target_status: Some(target_status), failure: Some(failure), legacy: false }
+    }
+
+    const fn legacy_quiesced() -> Self {
+        Self { target_status: None, failure: None, legacy: true }
+    }
+
+    const fn legacy_failed() -> Self {
+        Self {
+            target_status: None,
+            failure: Some(NativePostActivationFailure::LegacyUnspecified),
+            legacy: true,
+        }
+    }
+
+    /// Returns the exact native target status when the version-two producer observed it.
+    #[must_use]
+    pub const fn target_status(self) -> Option<u32> {
+        self.target_status
+    }
+
+    /// Returns the structured post-activation failure when one was reported.
+    #[must_use]
+    pub const fn post_activation_failure(self) -> Option<NativePostActivationFailure> {
+        self.failure
+    }
+
+    pub(crate) const fn is_legacy(self) -> bool {
+        self.legacy
+    }
+}
 
 /// Exact live quiescence facts read through the retained target and Job Object handles.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -724,23 +788,61 @@ impl NativeWindowsHelperChannels {
         }
     }
 
-    pub(crate) fn verify_helper_quiescence(
+    pub(crate) fn verify_helper_completion(
         &self,
+        completion: Sha256Digest,
         quiesced: Sha256Digest,
         worker_failed: Sha256Digest,
-    ) -> Result<(), ProcessError> {
+    ) -> Result<NativeWindowsCompletion, ProcessError> {
         let mut record = [0_u8; Sha256Digest::LENGTH];
         let mut reader = &*self.status_reader;
         reader
             .read_exact(&mut record)
-            .map_err(|_| worker_error("Windows helper quiescence record is missing"))?;
+            .map_err(|_| worker_error("Windows helper completion record is missing"))?;
+        if record == completion.into_bytes() {
+            let mut tail = [0_u8; WINDOWS_COMPLETION_TAIL_BYTES];
+            reader
+                .read_exact(&mut tail)
+                .map_err(|_| worker_error("Windows helper completion frame is truncated"))?;
+            if tail[0] != WINDOWS_COMPLETION_VERSION
+                || tail[1] & !(WINDOWS_COMPLETION_HAS_STATUS | WINDOWS_COMPLETION_HAS_FAILURE) != 0
+            {
+                return Err(worker_error("Windows helper completion frame is malformed"));
+            }
+            let has_status = tail[1] & WINDOWS_COMPLETION_HAS_STATUS != 0;
+            let has_failure = tail[1] & WINDOWS_COMPLETION_HAS_FAILURE != 0;
+            let raw_status = u32::from_le_bytes(
+                tail[2..6]
+                    .try_into()
+                    .expect("fixed Windows target status field"),
+            );
+            let target_status = has_status.then_some(raw_status);
+            let failure = if has_failure {
+                crate::terminal::decode_native_failure(tail[6]).filter(|failure| {
+                    *failure != NativePostActivationFailure::LegacyUnspecified
+                })
+            } else {
+                None
+            };
+            if (!has_status && raw_status != 0)
+                || has_failure != failure.is_some()
+                || (!has_status && !has_failure)
+            {
+                return Err(worker_error("Windows helper completion frame is noncanonical"));
+            }
+            return Ok(NativeWindowsCompletion {
+                target_status,
+                failure,
+                legacy: false,
+            });
+        }
         if record == quiesced.into_bytes() {
-            return Ok(());
+            return Ok(NativeWindowsCompletion::legacy_quiesced());
         }
         if record == worker_failed.into_bytes() {
-            return Err(worker_error("Windows helper worker failed after target activation"));
+            return Ok(NativeWindowsCompletion::legacy_failed());
         }
-        Err(worker_error("Windows helper quiescence record is malformed"))
+        Err(worker_error("Windows helper completion record is malformed"))
     }
 
     fn raw_containment_job(&self) -> Result<HANDLE, ProcessError> {
@@ -892,6 +994,40 @@ impl NativeWindowsHelperAttachment {
         self.status
             .write_all(&record)
             .map_err(|_| channel_error("Windows helper quiescence record cannot be written"))
+    }
+
+    /// Publishes a version-two exact target status and independent post-activation failure.
+    ///
+    /// # Errors
+    /// Rejects legacy-only evidence and reports a protocol failure if C2 cannot receive the frame.
+    pub fn signal_completion(
+        &mut self,
+        record: [u8; Sha256Digest::LENGTH],
+        completion: NativeWindowsCompletion,
+    ) -> Result<(), ProcessError> {
+        if completion.is_legacy()
+            || completion.target_status().is_none()
+                && completion.post_activation_failure().is_none()
+            || completion.post_activation_failure()
+                == Some(NativePostActivationFailure::LegacyUnspecified)
+        {
+            return Err(channel_error("Windows helper completion evidence is not exact"));
+        }
+        let mut tail = [0_u8; WINDOWS_COMPLETION_TAIL_BYTES];
+        tail[0] = WINDOWS_COMPLETION_VERSION;
+        if let Some(status) = completion.target_status() {
+            tail[1] |= WINDOWS_COMPLETION_HAS_STATUS;
+            tail[2..6].copy_from_slice(&status.to_le_bytes());
+        }
+        if let Some(failure) = completion.post_activation_failure() {
+            tail[1] |= WINDOWS_COMPLETION_HAS_FAILURE;
+            tail[6] = crate::terminal::native_failure_tag(failure);
+        }
+        self.status
+            .write_all(&record)
+            .and_then(|()| self.status.write_all(&tail))
+            .and_then(|()| self.status.flush())
+            .map_err(|_| channel_error("Windows helper completion frame cannot be written"))
     }
 
     /// Publishes exact private-file identities while delete-on-close remains armed.

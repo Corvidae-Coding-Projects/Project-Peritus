@@ -8,18 +8,18 @@ use crate::ReservedHelperExit;
 #[must_use]
 pub fn helper_main() -> ExitCode {
     match run() {
-        Ok(code) => u8::try_from(code).map_or(ExitCode::FAILURE, ExitCode::from),
+        Ok(()) => ExitCode::SUCCESS,
         Err(category) => ExitCode::from(u8::try_from(category.code()).unwrap_or(120)),
     }
 }
 
 #[cfg(not(target_os = "windows"))]
-const fn run() -> Result<i32, ReservedHelperExit> {
+const fn run() -> Result<(), ReservedHelperExit> {
     Err(ReservedHelperExit::UnsupportedPlatform)
 }
 
 #[cfg(target_os = "windows")]
-fn run() -> Result<i32, ReservedHelperExit> {
+fn run() -> Result<(), ReservedHelperExit> {
     use std::io::{self, Write};
 
     let mut helper_channels = peritus_process::NativeWindowsHelperAttachment::from_environment()
@@ -56,26 +56,20 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .signal_secret_files(activation_record.into_bytes(), &secret_files)
         .and_then(|()| helper_channels.await_secret_file_adoption())
         .map_err(|_| ReservedHelperExit::Secret)?;
-    let result = crate::runner::execute_manifest_with_channels(
+    let completion = crate::runner::execute_manifest_with_channels(
         &manifest,
         &mut activation,
         &mut helper_channels,
+    )
+    .map_err(|_| ReservedHelperExit::TargetCreate)?;
+    let record = peritus_process::native_windows_completion_record(
+        manifest.digest(),
+        manifest.preparation_digest(),
     );
-    let record = if result.is_ok() {
-        peritus_process::native_helper_quiesced_record(
-            manifest.digest(),
-            manifest.preparation_digest(),
-        )
-    } else {
-        peritus_process::native_helper_worker_failed_record(
-            manifest.digest(),
-            manifest.preparation_digest(),
-        )
-    };
     helper_channels
-        .signal_quiescence(record.into_bytes())
+        .signal_completion(record.into_bytes(), completion)
         .map_err(|_| ReservedHelperExit::TargetCreate)?;
-    result.map_err(|_| ReservedHelperExit::TargetCreate)
+    Ok(())
 }
 
 #[cfg(target_os = "windows")]

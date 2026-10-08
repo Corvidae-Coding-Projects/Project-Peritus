@@ -22,7 +22,9 @@ use crate::{
     EnvironmentEntry, HelperManifest, TerminalMapping, WindowsError, WindowsErrorKind,
     WindowsOperation, WindowsRecovery,
 };
-use peritus_process::ProcessTreeIdentity;
+use peritus_process::{
+    NativePostActivationFailure, NativeWindowsCompletion, ProcessTreeIdentity,
+};
 
 use super::{Activation, handle::AttributeList};
 
@@ -30,14 +32,22 @@ pub(super) fn launch_and_wait(
     manifest: &HelperManifest,
     activation: &mut Activation,
 ) -> Result<i32, WindowsError> {
-    launch_and_wait_inner(manifest, activation, None)
+    let completion = launch_and_wait_inner(manifest, activation, None)?;
+    if completion.post_activation_failure().is_some() {
+        return Err(launch_error("target failed after protected activation"));
+    }
+    let status = completion
+        .target_status()
+        .ok_or_else(|| launch_error("exact target status is unavailable"))?;
+    i32::try_from(status)
+        .map_err(|_| launch_error("target status requires the protected wide-status channel"))
 }
 
 pub(super) fn launch_and_wait_with_channels(
     manifest: &HelperManifest,
     activation: &mut Activation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
-) -> Result<i32, WindowsError> {
+) -> Result<NativeWindowsCompletion, WindowsError> {
     launch_and_wait_inner(manifest, activation, Some(channels))
 }
 
@@ -45,7 +55,7 @@ fn launch_and_wait_inner(
     manifest: &HelperManifest,
     activation: &mut Activation,
     mut channels: Option<&mut peritus_process::NativeWindowsHelperAttachment>,
-) -> Result<i32, WindowsError> {
+) -> Result<NativeWindowsCompletion, WindowsError> {
     validate_native_admission(manifest, activation.secrets.environment())?;
     let channels = channels.as_deref_mut().ok_or_else(|| {
         launch_error("independent Windows containment adoption channel is unavailable")
@@ -123,46 +133,72 @@ fn launch_and_wait_inner(
         .take_control_reader()
         .ok_or_else(|| launch_error("Windows terminal control ownership is unavailable"))?;
     activation.terminal.start_io(control)?;
-    let execution = (|| {
-        // SAFETY: the primary thread handle is live and has not been resumed.
-        if unsafe { ResumeThread(thread_handle.raw()) } == u32::MAX {
-            return Err(launch_error("assigned target primary thread cannot be resumed"));
-        }
-        let record = peritus_process::native_target_started_record(
-            manifest.digest(),
-            manifest.preparation_digest(),
-        );
-        channels
-            .signal_started(record.into_bytes())
-            .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
-        loop {
-            // This is a completion poll, not a lifetime deadline. It keeps worker failure visible
-            // while retaining the target process handle as the sole completion authority.
-            match unsafe { WaitForSingleObject(process_handle.raw(), 10) } {
-                WAIT_OBJECT_0 => break,
-                WAIT_TIMEOUT => activation.terminal.poll_io()?,
-                _ => return Err(launch_error("owned target completion cannot be observed")),
+    // SAFETY: the primary thread handle is live and has not been resumed.
+    if unsafe { ResumeThread(thread_handle.raw()) } == u32::MAX {
+        return Err(launch_error("assigned target primary thread cannot be resumed"));
+    }
+    let record = peritus_process::native_target_started_record(
+        manifest.digest(),
+        manifest.preparation_digest(),
+    );
+    channels
+        .signal_started(record.into_bytes())
+        .map_err(|_| launch_error("target-started status cannot be acknowledged"))?;
+
+    let mut target_status = None;
+    let mut target_completed = false;
+    let mut failure = None;
+    loop {
+        // This is a completion poll, not a lifetime deadline. It keeps worker failure visible
+        // while retaining the target process handle as the sole completion authority.
+        match unsafe { WaitForSingleObject(process_handle.raw(), 10) } {
+            WAIT_OBJECT_0 => {
+                target_completed = true;
+                process_handle.disarm();
+                let mut code = 0_u32;
+                // SAFETY: the completed process handle and exit-code storage are valid.
+                if unsafe { GetExitCodeProcess(process_handle.raw(), &raw mut code) } == 0 {
+                    failure = Some(NativePostActivationFailure::TargetStatus);
+                } else {
+                    target_status = Some(code);
+                }
+                if activation.terminal.poll_io().is_err() && failure.is_none() {
+                    failure = Some(NativePostActivationFailure::OutputCollection);
+                }
+                break;
+            }
+            WAIT_TIMEOUT => {
+                if activation.terminal.poll_io().is_err() {
+                    failure = Some(NativePostActivationFailure::OutputCollection);
+                    break;
+                }
+            }
+            _ => {
+                failure = Some(NativePostActivationFailure::TargetCompletion);
+                break;
             }
         }
-        activation.terminal.poll_io()?;
-        let mut code = 0_u32;
-        // SAFETY: the completed process handle and exit-code storage are valid.
-        if unsafe { GetExitCodeProcess(process_handle.raw(), &raw mut code) } == 0 {
-            return Err(launch_error("owned target exit status cannot be read"));
-        }
-        process_handle.disarm();
-        Ok(i32::try_from(code).unwrap_or(i32::MAX))
-    })();
-    if execution.is_err() {
+    }
+    if failure.is_some() && !target_completed {
         // SAFETY: termination is confined to the exact retained target before worker joins.
         unsafe { TerminateProcess(process_handle.raw(), 127) };
     }
     let workers = activation.terminal.finish_io();
     let secret_files = activation.secrets.cleanup_files();
     drop(attributes);
-    match (execution, workers, secret_files) {
-        (Err(error), _, _) | (Ok(_), Err(error), _) | (Ok(_), Ok(()), Err(error)) => Err(error),
-        (Ok(code), Ok(()), Ok(())) => Ok(code),
+    if failure.is_none() && workers.is_err() {
+        failure = Some(NativePostActivationFailure::WorkerJoin);
+    }
+    if failure.is_none() && secret_files.is_err() {
+        failure = Some(NativePostActivationFailure::SecretCleanup);
+    }
+    match (target_status, failure) {
+        (Some(status), Some(failure)) => {
+            Ok(NativeWindowsCompletion::target_with_failure(status, failure))
+        }
+        (Some(status), None) => Ok(NativeWindowsCompletion::target(status)),
+        (None, Some(failure)) => Ok(NativeWindowsCompletion::failure(failure)),
+        (None, None) => Err(launch_error("target completion produced no exact terminal fact")),
     }
 }
 

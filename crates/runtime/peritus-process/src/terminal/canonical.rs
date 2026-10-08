@@ -4,9 +4,9 @@ use peritus_types::{ProcessId, Sha256Digest};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    ErrorCode, EscalationRecord, OsExitObservation, OutputArtifact, OutputSummary, ProcessError,
-    ProcessInstant, ProcessOperation, ProcessResourceObservation, RecoveryClass, StopTrigger,
-    StreamAccounting, TerminalResult,
+    ErrorCode, EscalationRecord, NativeFailureObservation, OsExitObservation, OutputArtifact,
+    OutputSummary, ProcessError, ProcessInstant, ProcessOperation, ProcessResourceObservation,
+    RecoveryClass, StopTrigger, StreamAccounting, TerminalResult,
 };
 
 mod reader;
@@ -19,7 +19,8 @@ use tags::{
     recovery_tag, resource_tag, stream_tag,
 };
 
-const MAGIC: &[u8] = b"PERITUS-PROCESS-TERMINAL-V2\0";
+const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-TERMINAL-V3\0";
+const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-TERMINAL-V2\0";
 const MAX_ITEMS: usize = 64;
 const MAX_SIGNAL_NAME_BYTES: usize = 128;
 
@@ -31,7 +32,11 @@ pub(crate) fn terminal_digest(result: &TerminalResult) -> Result<Sha256Digest, P
 pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, ProcessError> {
     validate_terminal(result)?;
     let mut bytes = Vec::with_capacity(512);
-    bytes.extend_from_slice(MAGIC);
+    bytes.extend_from_slice(if matches!(result.os_exit(), OsExitObservation::NativeFailure(_)) {
+        MAGIC_V3
+    } else {
+        MAGIC_V2
+    });
     bytes.extend_from_slice(result.process_id().as_bytes());
     digest(&mut bytes, result.plan_digest());
     bytes.push(disposition_tag(result.disposition()));
@@ -54,14 +59,18 @@ pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, Proces
 }
 
 pub(crate) fn decode_terminal(bytes: &[u8]) -> Result<TerminalResult, ProcessError> {
-    if !bytes.starts_with(MAGIC) {
+    let (magic, allow_native_failure) = if bytes.starts_with(MAGIC_V3) {
+        (MAGIC_V3, true)
+    } else if bytes.starts_with(MAGIC_V2) {
+        (MAGIC_V2, false)
+    } else {
         return Err(corrupt("terminal result has invalid framing"));
-    }
-    let mut reader = Reader::new(&bytes[MAGIC.len()..]);
+    };
+    let mut reader = Reader::new(&bytes[magic.len()..]);
     let process_id = reader.id(ProcessId::new)?;
     let plan_digest = reader.digest()?;
     let disposition = decode_disposition(reader.u8()?)?;
-    let os_exit = decode_exit(&mut reader)?;
+    let os_exit = decode_exit(&mut reader, allow_native_failure)?;
     let first_trigger = decode_trigger(&mut reader)?;
     let escalation = EscalationRecord::new(reader.boolean()?, reader.boolean()?, reader.boolean()?);
     let started_at = reader.optional_u64()?.map(ProcessInstant::from_millis);
@@ -304,17 +313,44 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), Proc
             bytes.extend_from_slice(&value.to_be_bytes());
         }
         OsExitObservation::Unavailable => bytes.push(5),
+        OsExitObservation::NativeFailure(value) => {
+            bytes.push(6);
+            match value.target_status() {
+                Some(status) => {
+                    bytes.push(1);
+                    bytes.extend_from_slice(&status.to_be_bytes());
+                }
+                None => bytes.push(0),
+            }
+            bytes.push(crate::terminal::native_failure_tag(value.failure()));
+        }
     }
     Ok(())
 }
 
-fn decode_exit(reader: &mut Reader<'_>) -> Result<OsExitObservation, ProcessError> {
+fn decode_exit(
+    reader: &mut Reader<'_>,
+    allow_native_failure: bool,
+) -> Result<OsExitObservation, ProcessError> {
     match reader.u8()? {
         1 => Ok(OsExitObservation::Code(reader.i32()?)),
         2 => Ok(OsExitObservation::Signal(reader.i32()?)),
         3 => Ok(OsExitObservation::SignalName(reader.string(MAX_SIGNAL_NAME_BYTES)?)),
         4 => Ok(OsExitObservation::PlatformException(reader.u32()?)),
         5 => Ok(OsExitObservation::Unavailable),
+        6 if allow_native_failure => {
+            let target_status = match reader.u8()? {
+                0 => None,
+                1 => Some(reader.u32()?),
+                _ => return Err(corrupt("terminal native status option is invalid")),
+            };
+            let failure = crate::terminal::decode_native_failure(reader.u8()?)
+                .ok_or_else(|| corrupt("terminal native failure is unknown"))?;
+            Ok(OsExitObservation::NativeFailure(NativeFailureObservation::new(
+                target_status,
+                failure,
+            )))
+        }
         _ => Err(corrupt("terminal result has an unknown exit tag")),
     }
 }

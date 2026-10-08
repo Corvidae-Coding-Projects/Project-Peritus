@@ -279,7 +279,7 @@ pub(crate) fn execute_manifest_with_channels(
     manifest: &HelperManifest,
     activation: &mut WindowsActivation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
-) -> Result<i32, WindowsError> {
+) -> Result<peritus_process::NativeWindowsCompletion, WindowsError> {
     crate::native::execute_with_channels(manifest, &mut activation.inner, channels)
 }
 

@@ -449,6 +449,11 @@ fn run_owner(
             value.preparation_digest(),
         ),
         #[cfg(windows)]
+        completion: crate::native_windows_completion_record(
+            value.manifest_digest(),
+            value.preparation_digest(),
+        ),
+        #[cfg(windows)]
         adoption: value.windows_target_adoption_record(),
         protected_handles: value.protected_handles().to_vec(),
         #[cfg(windows)]

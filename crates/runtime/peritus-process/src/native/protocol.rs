@@ -48,6 +48,19 @@ pub fn native_helper_worker_failed_record(
     )
 }
 
+/// Computes the version-two authenticated Windows target-completion record.
+#[must_use]
+pub fn native_windows_completion_record(
+    manifest_digest: Sha256Digest,
+    preparation_digest: Sha256Digest,
+) -> Sha256Digest {
+    protocol_digest(
+        b"peritus-native-windows-completion-v2",
+        manifest_digest,
+        preparation_digest,
+    )
+}
+
 /// Computes the authority-bound record that introduces one suspended target for adoption.
 #[must_use]
 pub fn native_target_adoption_record(

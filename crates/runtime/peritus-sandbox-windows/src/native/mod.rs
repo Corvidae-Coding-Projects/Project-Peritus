@@ -77,7 +77,7 @@ pub(crate) fn execute_with_channels(
     manifest: &HelperManifest,
     activation: &mut Activation,
     channels: &mut peritus_process::NativeWindowsHelperAttachment,
-) -> Result<i32, WindowsError> {
+) -> Result<peritus_process::NativeWindowsCompletion, WindowsError> {
     launch::launch_and_wait_with_channels(manifest, activation, channels)
 }
 

@@ -8,20 +8,45 @@ use crate::{
     TerminalResult, control::SharedObservation, platform::PlatformExit,
 };
 
-use super::{elapsed_millis, publish_terminal};
+use super::{SupervisorPlan, elapsed_millis, publish_terminal};
 
 pub(crate) fn record_preparation_failure(
     store: &ProcessStore,
     plan: &ExecutionPlan,
     backend_cleanup_complete: bool,
 ) -> Result<(), ProcessError> {
+    record_preparation_stop(
+        store,
+        plan,
+        CancellationReason::BackendFailure,
+        backend_cleanup_complete,
+    )
+    .map(|_| ())
+}
+
+pub(crate) fn record_preparation_cancellation(
+    store: &ProcessStore,
+    plan: &ExecutionPlan,
+    reason: CancellationReason,
+    backend_cleanup_complete: bool,
+) -> Result<TerminalResult, ProcessError> {
+    record_preparation_stop(store, plan, reason, backend_cleanup_complete)
+}
+
+fn record_preparation_stop(
+    store: &ProcessStore,
+    plan: &ExecutionPlan,
+    reason: CancellationReason,
+    backend_cleanup_complete: bool,
+) -> Result<TerminalResult, ProcessError> {
     let process_id = plan.identity().process_id();
-    let trigger = StopTrigger::new(1, CancellationReason::BackendFailure);
+    let trigger = StopTrigger::new(1, reason);
+    let exit = OsExitObservation::Unavailable;
     store.record_phase(process_id, crate::LifecyclePhase::Starting)?;
     store.record_stopping(process_id, trigger)?;
     store.record_failed_closed(
         process_id,
-        OsExitObservation::Unavailable,
+        exit.clone(),
         0,
         0,
         0,
@@ -31,8 +56,18 @@ pub(crate) fn record_preparation_failure(
     let result = TerminalResult::new(
         process_id,
         plan.digest(),
-        TerminalDisposition::SandboxDenied,
-        OsExitObservation::Unavailable,
+        classify(
+            Some(trigger),
+            &exit,
+            CompletionFacts::new(
+                FailureState::Healthy,
+                CompletionState::Complete,
+                CompletionState::Complete,
+                FailureState::Healthy,
+            ),
+            false,
+        ),
+        exit,
         Some(trigger),
         EscalationRecord::new(false, false, true),
         None,
@@ -43,7 +78,8 @@ pub(crate) fn record_preparation_failure(
         backend_cleanup_complete,
         TerminalRecovery::OriginalOwner,
     );
-    store.record_terminal(process_id, &result)
+    store.record_terminal(process_id, &result)?;
+    Ok(result)
 }
 
 #[cfg(unix)]
@@ -53,6 +89,8 @@ pub(super) fn convert_exit(exit: &PlatformExit) -> OsExitObservation {
         PlatformExit::Signal(signal) => OsExitObservation::Signal(*signal),
         PlatformExit::SignalName(signal) => OsExitObservation::SignalName(signal.clone()),
         PlatformExit::PlatformException(code) => OsExitObservation::PlatformException(*code),
+        PlatformExit::NativeFailure(failure) => OsExitObservation::NativeFailure(*failure),
+        PlatformExit::Unavailable => OsExitObservation::Unavailable,
     }
 }
 
@@ -61,18 +99,20 @@ pub(super) const fn convert_exit(exit: &PlatformExit) -> OsExitObservation {
     match exit {
         PlatformExit::Code(code) => OsExitObservation::Code(*code),
         PlatformExit::PlatformException(code) => OsExitObservation::PlatformException(*code),
+        PlatformExit::NativeFailure(failure) => OsExitObservation::NativeFailure(*failure),
+        PlatformExit::Unavailable => OsExitObservation::Unavailable,
     }
 }
 
 pub(super) fn publish_spawn_failure(
     store: &ProcessStore,
-    plan: &ExecutionPlan,
+    plan: &SupervisorPlan,
     shared: &Arc<SharedObservation>,
     began: Instant,
     backend_cleanup_complete: bool,
     _error: ProcessError,
 ) -> Result<TerminalResult, ProcessError> {
-    let process_id = plan.identity().process_id();
+    let process_id = plan.process_id();
     store.record_spawn_failed(process_id, backend_cleanup_complete)?;
     let result = TerminalResult::new(
         process_id,
@@ -177,6 +217,7 @@ pub(super) const fn classify(
         OsExitObservation::Signal(_)
         | OsExitObservation::SignalName(_)
         | OsExitObservation::PlatformException(_) => TerminalDisposition::Signalled,
+        OsExitObservation::NativeFailure(_) => TerminalDisposition::SandboxDenied,
         OsExitObservation::Unavailable => TerminalDisposition::SupervisorFailed,
     }
 }

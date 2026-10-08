@@ -87,7 +87,7 @@ pub(super) fn launch(
     #[cfg(windows)]
     let windows_completion = handshake
         .as_ref()
-        .map(|value| (value.quiesced, value.worker_failed));
+        .map(|value| (value.completion, value.quiesced, value.worker_failed));
     #[cfg(windows)]
     let status_reader = windows_channels
         .as_ref()
@@ -284,7 +284,11 @@ struct PipeProcess {
     #[cfg(windows)]
     windows_channels: Option<crate::NativeWindowsHelperChannels>,
     #[cfg(windows)]
-    windows_completion: Option<(peritus_types::Sha256Digest, peritus_types::Sha256Digest)>,
+    windows_completion: Option<(
+        peritus_types::Sha256Digest,
+        peritus_types::Sha256Digest,
+        peritus_types::Sha256Digest,
+    )>,
     #[cfg(windows)]
     windows_terminal: bool,
 }
@@ -312,15 +316,20 @@ impl PlatformProcess for PipeProcess {
         let status = try_wait_windows_root(&mut **child)?;
         #[cfg(windows)]
         if status.is_some()
-            && let Some((quiesced, worker_failed)) = self.windows_completion
+            && let Some((completion, quiesced, worker_failed)) = self.windows_completion.take()
         {
-            if !self.termination_requested {
-                self.windows_channels
-                    .as_ref()
-                    .ok_or_else(|| tree_error("Windows helper quiescence channel is unavailable"))?
-                    .verify_helper_quiescence(quiesced, worker_failed)?;
+            let verified = self
+                .windows_channels
+                .as_ref()
+                .ok_or_else(|| tree_error("Windows helper completion channel is unavailable"))?
+                .verify_helper_completion(completion, quiesced, worker_failed);
+            if self.termination_requested {
+                return Ok(Some(verified.map_or(
+                    PlatformExit::Unavailable,
+                    convert_windows_completion,
+                )));
             }
-            self.windows_completion = None;
+            return verified.map(convert_windows_completion).map(Some);
         }
         Ok(status.map(convert_status))
     }
@@ -434,6 +443,26 @@ fn convert_status(status: std::process::ExitStatus) -> PlatformExit {
         }
     }
     status.code().map_or(PlatformExit::PlatformException(1), PlatformExit::Code)
+}
+
+#[cfg(windows)]
+fn convert_windows_completion(
+    completion: crate::NativeWindowsCompletion,
+) -> PlatformExit {
+    if let Some(failure) = completion.post_activation_failure() {
+        return PlatformExit::NativeFailure(crate::NativeFailureObservation::new(
+            completion.target_status(),
+            failure,
+        ));
+    }
+    if completion.is_legacy() {
+        return PlatformExit::Unavailable;
+    }
+    match completion.target_status() {
+        Some(status) => i32::try_from(status)
+            .map_or(PlatformExit::PlatformException(status), PlatformExit::Code),
+        None => PlatformExit::Unavailable,
+    }
 }
 
 const fn spawn_error(detail: &'static str) -> ProcessError {
