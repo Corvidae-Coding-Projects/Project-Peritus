@@ -7,16 +7,15 @@ use peritus_process::{
     CancellationReason, NativeLaunchDescription, NativeObservationReceipt,
 };
 use peritus_sandbox::{
-    CapabilityDomain, EnforcementObservation, ObservationDisposition, ObservationKind,
-    ObservationTail,
+    EnforcementObservation, ObservationDisposition, ObservationKind, ObservationTail,
 };
 use peritus_secrets::SecretDeliverySession;
 use peritus_types::Sha256Digest;
 
 use crate::{
-    CleanupProgress, EnforcementLevel, HelperManifest, MacosError, MacosErrorKind,
-    MacosObservation, MacosOperation, MacosRecoveryRecord, ObservationEvent, ObservationStatus,
-    PreparationCleanup, RecoveryAction, RuntimeIdentity, resource_monitor::ResourceMonitor,
+    CleanupProgress, HelperManifest, MacosError, MacosErrorKind, MacosObservation,
+    MacosOperation, MacosRecoveryRecord, PreparationCleanup, RecoveryAction, RuntimeIdentity,
+    resource_monitor::ResourceMonitor,
 };
 
 mod adapter;
@@ -27,10 +26,9 @@ mod observation_mapping;
 mod tests;
 
 pub(crate) use adapter::process_error;
-use observation_mapping::push_native_mapping;
+use observation_mapping::initial_native_observations;
 
-const MAX_DIAGNOSTIC_OBSERVATIONS: usize = 4_096;
-const COMMON_OBSERVATION_TAIL_LIMIT: usize = 64;
+const LIFECYCLE_OBSERVATION_CAPACITY: usize = 5;
 
 pub(crate) struct SessionResources {
     exec_status: crate::exec_status::ExecStatusOwner,
@@ -150,7 +148,8 @@ pub struct MacosSession {
     pending_observations: VecDeque<EnforcementObservation>,
     acknowledged_observations: Option<NativeObservationReceipt>,
     next_observation_sequence: u64,
-    native_observations: ObservationTail<MacosObservation>,
+    native_observations: Vec<MacosObservation>,
+    native_observation_capacity: usize,
     next_native_observation_sequence: u64,
     recovery: MacosRecoveryRecord,
     cleanup: CleanupProgress,
@@ -182,11 +181,9 @@ impl MacosSession {
         manifest: HelperManifest,
         helper_digest: Sha256Digest,
         proxy_routing_digest: Option<Sha256Digest>,
-        observation_limit: usize,
         retained_owner: Option<peritus_process::RetainedOwnerBinding>,
         resources: SessionResources,
     ) -> Result<Self, MacosError> {
-        let diagnostic_limit = observation_limit.min(MAX_DIAGNOSTIC_OBSERVATIONS);
         if manifest.proxy().is_some() != resources.proxy.is_some()
             || manifest.secrets().len() != resources.secrets.artifacts().len()
             || !crate::process::protected_handle_owners_match(
@@ -240,6 +237,11 @@ impl MacosSession {
             Ok(recovery) => recovery,
             Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
         };
+        let (native_observations, next_native_observation_sequence, native_observation_capacity) =
+            match initial_native_observations(&manifest) {
+                Ok(observations) => observations,
+                Err(error) => return Err(resources.cleanup_after_preparation_failure(error)),
+            };
         let SessionResources {
             exec_status,
             proxy,
@@ -254,74 +256,11 @@ impl MacosSession {
             None,
             ObservationDisposition::Completed,
         );
-        let native = MacosObservation::new(
-            1,
-            manifest.plan_digest(),
-            manifest.descriptor_digest(),
-            manifest.preparation_digest(),
-            manifest.profile_digest(),
-            ObservationEvent::Prepared,
-            None,
-            None,
-            None,
-            ObservationStatus::Completed,
-        );
-        let mut observations = ObservationTail::new(COMMON_OBSERVATION_TAIL_LIMIT);
+        let mut observations = ObservationTail::new(LIFECYCLE_OBSERVATION_CAPACITY);
         observations.push(common);
-        let pending_observations = VecDeque::from([common]);
-        let mut native_observations = ObservationTail::new(diagnostic_limit);
-        native_observations.push(native);
-        let mut next_native_observation_sequence = 2_u64;
-        for (domain, enforcement) in [
-            (CapabilityDomain::Filesystem, EnforcementLevel::Hard),
-            (CapabilityDomain::Process, EnforcementLevel::Supervisor),
-            (CapabilityDomain::Environment, EnforcementLevel::Supervisor),
-            (CapabilityDomain::Network, EnforcementLevel::Hard),
-            (CapabilityDomain::Terminal, EnforcementLevel::Supervisor),
-        ] {
-            push_native_mapping(
-                &mut native_observations,
-                &mut next_native_observation_sequence,
-                &manifest,
-                ObservationEvent::ControlMapped,
-                domain,
-                None,
-                enforcement,
-            );
-        }
-        for control in manifest.resources().controls() {
-            push_native_mapping(
-                &mut native_observations,
-                &mut next_native_observation_sequence,
-                &manifest,
-                ObservationEvent::ResourceMapped,
-                CapabilityDomain::Resource,
-                Some(control.kind()),
-                control.level(),
-            );
-        }
-        if manifest.proxy().is_some() {
-            push_native_mapping(
-                &mut native_observations,
-                &mut next_native_observation_sequence,
-                &manifest,
-                ObservationEvent::ProxyMapped,
-                CapabilityDomain::Network,
-                None,
-                EnforcementLevel::Supervisor,
-            );
-        }
-        if !manifest.secrets().is_empty() {
-            push_native_mapping(
-                &mut native_observations,
-                &mut next_native_observation_sequence,
-                &manifest,
-                ObservationEvent::ControlMapped,
-                CapabilityDomain::Secret,
-                None,
-                EnforcementLevel::Supervisor,
-            );
-        }
+        let mut pending_observations =
+            VecDeque::with_capacity(LIFECYCLE_OBSERVATION_CAPACITY);
+        pending_observations.push_back(common);
         Ok(Self {
             launch,
             manifest,
@@ -333,6 +272,7 @@ impl MacosSession {
             acknowledged_observations: None,
             next_observation_sequence: 2,
             native_observations,
+            native_observation_capacity,
             next_native_observation_sequence,
             recovery,
             cleanup,
@@ -359,12 +299,15 @@ impl MacosSession {
     /// Returns rich preparation-bound macOS observations.
     #[must_use]
     pub fn native_observations(&self) -> &[MacosObservation] {
-        self.native_observations.as_slice()
+        &self.native_observations
     }
-    /// Returns rich macOS observations omitted before the retained diagnostic tail.
+    /// Reports omitted rich macOS evidence.
+    ///
+    /// The finite preparation and lifecycle evidence contract is retained completely, so this is
+    /// always zero.
     #[must_use]
     pub const fn native_observations_dropped(&self) -> u64 {
-        self.native_observations.dropped()
+        0
     }
 
     /// Returns the latest durable recovery record.

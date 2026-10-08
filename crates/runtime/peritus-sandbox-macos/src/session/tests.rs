@@ -26,7 +26,6 @@ pub(super) fn session(workspace: &Path) -> MacosSession {
         manifest,
         Sha256Digest::new([9; 32]),
         None,
-        16,
         None,
         SessionResources::new(exec_status, None, peritus_secrets::SecretDeliverySession::new()),
     )

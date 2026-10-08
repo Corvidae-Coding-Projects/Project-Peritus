@@ -224,7 +224,6 @@ impl MacosConformanceSubject {
             projected.manifest,
             projected.helper_digest,
             projected.proxy_digest,
-            64,
             None,
             crate::session::SessionResources::new(
                 projected.exec_status,

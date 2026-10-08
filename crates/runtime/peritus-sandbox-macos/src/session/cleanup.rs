@@ -28,6 +28,12 @@ impl MacosSession {
             }
             SessionPhase::Released => unreachable!("released session returned above"),
         }
+        let release_evidence = self.stage_lifecycle(
+            ObservationKind::Released,
+            ObservationEvent::Released,
+            ObservationDisposition::Completed,
+            ObservationStatus::Completed,
+        )?;
         // A helper can materialize file-delivered secrets and then fail before C2 accepts the
         // activation acknowledgement. Prepared abandonment must therefore clean the same exact
         // destinations as normal termination; absent paths remain an idempotent success.
@@ -80,14 +86,9 @@ impl MacosSession {
         if !self.cleanup.is_complete() {
             return Err(cleanup_error("one or more native resource families remain owned"));
         }
-        self.phase = SessionPhase::Released;
         self.recovery.record_released()?;
-        self.push_lifecycle(
-            ObservationKind::Released,
-            ObservationEvent::Released,
-            ObservationDisposition::Completed,
-            ObservationStatus::Completed,
-        )?;
+        self.phase = SessionPhase::Released;
+        self.commit_lifecycle(release_evidence);
         Ok(ReleaseReport { cleanup: self.cleanup, already_released: false })
     }
 }

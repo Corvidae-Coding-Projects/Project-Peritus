@@ -671,16 +671,22 @@ impl MacosRecoveryRecord {
         tree: peritus_process::ProcessTreeIdentity,
         cleanup: CleanupProgress,
     ) -> Result<(), MacosError> {
-        self.identity = self.identity.spawned(tree);
-        self.cleanup = cleanup;
-        self.refresh()
+        let mut next = self.clone();
+        next.identity = next.identity.spawned(tree);
+        next.cleanup = cleanup;
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_activation(&mut self) -> Result<(), MacosError> {
-        self.activated = true;
-        self.phase = SessionPhase::Active;
-        self.custody.activated();
-        self.refresh()
+        let mut next = self.clone();
+        next.activated = true;
+        next.phase = SessionPhase::Active;
+        next.custody.activated();
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_cancellation(
@@ -692,18 +698,24 @@ impl MacosRecoveryRecord {
                 "native recovery cancellation reason cannot be replaced",
             ));
         }
-        self.cancellation = Some(reason);
-        self.phase = SessionPhase::Cancelling;
-        self.refresh()
+        let mut next = self.clone();
+        next.cancellation = Some(reason);
+        next.phase = SessionPhase::Cancelling;
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_termination(
         &mut self,
         termination: TerminationReason,
     ) -> Result<(), MacosError> {
-        self.termination = Some(termination);
-        self.phase = SessionPhase::Terminated;
-        self.refresh()
+        let mut next = self.clone();
+        next.termination = Some(termination);
+        next.phase = SessionPhase::Terminated;
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_cleanup(&mut self, cleanup: CleanupProgress) -> Result<(), MacosError> {
@@ -760,8 +772,11 @@ impl MacosRecoveryRecord {
                 "native recovery release lacks complete cleanup evidence",
             ));
         }
-        self.phase = SessionPhase::Released;
-        self.refresh()
+        let mut next = self.clone();
+        next.phase = SessionPhase::Released;
+        next.refresh()?;
+        *self = next;
+        Ok(())
     }
 
     pub(crate) fn record_materialized_secret_file_released(

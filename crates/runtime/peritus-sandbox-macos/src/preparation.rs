@@ -392,16 +392,12 @@ impl MacosBackend {
         ensure_preparation_continues(preparation_continues.as_ref())
             .map_err(|error| owners.cleanup(error))?;
         let proxy_digest = proxy_route.map(proxy_identity_digest);
-        let observation_limit =
-            usize::try_from(sandbox.contract().terminal().limits().event_count().get())
-                .unwrap_or(usize::MAX);
         let (proxy_owner, secret_owner) = owners.into_parts();
         let session = MacosSession::new(
             launch,
             manifest,
             helper_digest,
             proxy_digest,
-            observation_limit,
             retained_owner,
             SessionResources::new_cancellable(
                 exec_status_owner,

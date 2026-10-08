@@ -3,7 +3,10 @@
 use peritus_process::{CancellationReason, OsExitObservation, ProcessTreeIdentity};
 use peritus_sandbox::{EnforcementObservation, ObservationDisposition, ObservationKind};
 
-use super::{MacosSession, SessionPhase, TerminationReason, adapter::lifecycle_error};
+use super::{
+    LIFECYCLE_OBSERVATION_CAPACITY, MacosSession, SessionPhase, TerminationReason,
+    adapter::lifecycle_error,
+};
 use crate::{
     MacosError, MacosErrorKind, MacosObservation, ObservationEvent, ObservationStatus,
     RecoveryAction,
@@ -92,6 +95,12 @@ impl MacosSession {
                 "C2 did not establish complete process-group containment",
             ));
         }
+        let evidence = self.stage_lifecycle(
+            ObservationKind::Activated,
+            ObservationEvent::Activated,
+            ObservationDisposition::Completed,
+            ObservationStatus::Completed,
+        )?;
         if !self.launch.release_protected_handle(crate::EXEC_STATUS_LABEL) {
             return Err(lifecycle_error("helper exec status ownership was absent at activation"));
         }
@@ -100,14 +109,10 @@ impl MacosSession {
             self.manifest.preparation_digest(),
             should_continue,
         )?;
-        self.phase = SessionPhase::Active;
         self.recovery.record_activation()?;
-        self.push_lifecycle(
-            ObservationKind::Activated,
-            ObservationEvent::Activated,
-            ObservationDisposition::Completed,
-            ObservationStatus::Completed,
-        )
+        self.phase = SessionPhase::Active;
+        self.commit_lifecycle(evidence);
+        Ok(())
     }
 
     /// Records an idempotent first cancellation request.
@@ -116,31 +121,22 @@ impl MacosSession {
     /// Rejects cancellation outside a spawned/active/cancelling session.
     pub fn record_cancellation(&mut self, reason: CancellationReason) -> Result<(), MacosError> {
         match self.phase {
-            SessionPhase::Prepared if self.recovery.identity().root_pid().is_some() => {
-                self.recovery.record_cancellation(reason)?;
-                self.phase = SessionPhase::Cancelling;
-                self.cancellation = Some(reason);
-                self.push_lifecycle(
-                    ObservationKind::Cancellation,
-                    ObservationEvent::CancelRequested,
-                    ObservationDisposition::Accepted,
-                    ObservationStatus::Accepted,
-                )
-            }
-            SessionPhase::Active => {
-                self.recovery.record_cancellation(reason)?;
-                self.phase = SessionPhase::Cancelling;
-                self.cancellation = Some(reason);
-                self.push_lifecycle(
-                    ObservationKind::Cancellation,
-                    ObservationEvent::CancelRequested,
-                    ObservationDisposition::Accepted,
-                    ObservationStatus::Accepted,
-                )
-            }
-            SessionPhase::Cancelling if self.cancellation == Some(reason) => Ok(()),
-            _ => Err(lifecycle_error("cancellation is invalid in the current phase")),
+            SessionPhase::Prepared if self.recovery.identity().root_pid().is_some() => {}
+            SessionPhase::Active => {}
+            SessionPhase::Cancelling if self.cancellation == Some(reason) => return Ok(()),
+            _ => return Err(lifecycle_error("cancellation is invalid in the current phase")),
         }
+        let evidence = self.stage_lifecycle(
+            ObservationKind::Cancellation,
+            ObservationEvent::CancelRequested,
+            ObservationDisposition::Accepted,
+            ObservationStatus::Accepted,
+        )?;
+        self.recovery.record_cancellation(reason)?;
+        self.phase = SessionPhase::Cancelling;
+        self.cancellation = Some(reason);
+        self.commit_lifecycle(evidence);
+        Ok(())
     }
 
     /// Records root termination after authenticated helper activation.
@@ -158,42 +154,53 @@ impl MacosSession {
             | OsExitObservation::SignalName(_)
             | OsExitObservation::PlatformException(_) => TerminationReason::Signalled,
         };
-        self.recovery.record_termination(termination)?;
-        self.termination = Some(termination);
-        self.phase = SessionPhase::Terminated;
-        self.push_lifecycle(
+        let evidence = self.stage_lifecycle(
             ObservationKind::Terminated,
             ObservationEvent::Terminated,
             ObservationDisposition::Completed,
             ObservationStatus::Completed,
         )?;
+        self.recovery.record_termination(termination)?;
+        self.termination = Some(termination);
+        self.phase = SessionPhase::Terminated;
+        self.commit_lifecycle(evidence);
         Ok(())
     }
 
-    pub(super) fn push_lifecycle(
-        &mut self,
+    pub(super) fn stage_lifecycle(
+        &self,
         kind: ObservationKind,
         event: ObservationEvent,
         disposition: ObservationDisposition,
         status: ObservationStatus,
-    ) -> Result<(), MacosError> {
+    ) -> Result<LifecycleEvidence, MacosError> {
+        if self.observations.as_slice().len() >= LIFECYCLE_OBSERVATION_CAPACITY
+            || self.pending_observations.len() >= LIFECYCLE_OBSERVATION_CAPACITY
+            || self.native_observations.len() >= self.native_observation_capacity
+        {
+            return Err(lifecycle_error(
+                "native lifecycle observation retention contract was exhausted",
+            ));
+        }
         let sequence = self.next_observation_sequence;
-        self.next_observation_sequence = sequence
+        let next_observation_sequence = sequence
             .checked_add(1)
             .ok_or_else(|| lifecycle_error("native observation sequence overflowed"))?;
-        let observation = EnforcementObservation::new(
-            sequence,
-            self.manifest.plan_digest(),
-            self.manifest.descriptor_digest(),
-            kind,
-            None,
-            disposition,
-        );
-        self.pending_observations.push_back(observation);
-        self.observations.push(observation);
-        if let Some(next) = self.next_native_observation_sequence.checked_add(1) {
-            self.native_observations.push(MacosObservation::new(
-                self.next_native_observation_sequence,
+        let native_sequence = self.next_native_observation_sequence;
+        let next_native_observation_sequence = native_sequence
+            .checked_add(1)
+            .ok_or_else(|| lifecycle_error("macOS evidence sequence overflowed"))?;
+        Ok(LifecycleEvidence {
+            common: EnforcementObservation::new(
+                sequence,
+                self.manifest.plan_digest(),
+                self.manifest.descriptor_digest(),
+                kind,
+                None,
+                disposition,
+            ),
+            native: MacosObservation::new(
+                native_sequence,
                 self.manifest.plan_digest(),
                 self.manifest.descriptor_digest(),
                 self.manifest.preparation_digest(),
@@ -203,9 +210,24 @@ impl MacosSession {
                 None,
                 None,
                 status,
-            ));
-            self.next_native_observation_sequence = next;
-        }
-        Ok(())
+            ),
+            next_observation_sequence,
+            next_native_observation_sequence,
+        })
     }
+
+    pub(super) fn commit_lifecycle(&mut self, evidence: LifecycleEvidence) {
+        self.next_observation_sequence = evidence.next_observation_sequence;
+        self.next_native_observation_sequence = evidence.next_native_observation_sequence;
+        self.pending_observations.push_back(evidence.common);
+        self.observations.push(evidence.common);
+        self.native_observations.push(evidence.native);
+    }
+}
+
+pub(super) struct LifecycleEvidence {
+    common: EnforcementObservation,
+    native: MacosObservation,
+    next_observation_sequence: u64,
+    next_native_observation_sequence: u64,
 }
