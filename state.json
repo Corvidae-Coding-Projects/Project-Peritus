@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3980,
-        "tip_oid": "14838c2af97743f5898558627efc375891207bd6",
-        "prefix_sha256": "8ee7fb986b2f82206148c3f818e7a2b689a65d46f62f64e80bde9b06e38ec6bb"
+        "sequence": 3981,
+        "tip_oid": "c76ca57ead3ba47e43979796adde21be10b9be9e",
+        "prefix_sha256": "06f75e7940a97ef503c61ed5404056bc315dbc44f633f6787d8b1f6f1a75e594"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3193,
+  "next_comment_id": 3194,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -2699,7 +2699,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.574391395Z",
-      "updated_at": "2026-10-06T13:27:50.576648884Z",
+      "updated_at": "2026-10-08T02:27:56.802672363Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -2710,6 +2710,15 @@
           "content": "Systemic repair plan for L443: F0 silently evicts rollback targets from the long-lived production pointer.\n\nOwning contract and implementation boundary: crates/analysis/peritus-evolution/src/pointer/reducer.rs:161-184,239-243,245-255,272-300,313-319; src/pointer/rollback.rs:156-176; src/pointer/state.rs:206-210; src/limits.rs:22-33. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nResolve rollback targets from durable immutable activation history with exact provenance and compatibility checks. Bound the hot projection/cache independently of target eligibility and preserve stable target identity across checkpoint compaction. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "d5760602-1f8a-4964-b65b-2d546593d5e3": {
+          "display_id": 3193,
+          "author": "6ME5",
+          "content": "Code complete in commit 434dc3f1b: durable activation ledger reconstructs exact committed pointer provenance/checkpoints and resolves rollback targets independently from hot cache capacity. Legacy eviction replay requires exact immutable proof; journal-backed proposals, preparation/activation and approval reuse validate target origins against full retained history. Existing wire formats/digests and #521 new non-evicting scope policy retained. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T02:27:56.793872867Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAr9nbjj7zHMcIXOTmX7IwIkUDYOFSlKI5oVpRziq3pnIBKuABB1ONsj0EcElO9cuvfDJk9d0lMZYYBKS2tonzCw=="
         }
       }
     },
