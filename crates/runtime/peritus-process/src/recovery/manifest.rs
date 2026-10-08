@@ -92,6 +92,7 @@ pub(crate) struct ExecutionManifest {
 }
 
 impl ExecutionManifest {
+    pub(crate) const MAX_RECOVERY_ROOT_BYTES: usize = codec::MAX_RECOVERY_ROOT_BYTES;
     pub(crate) fn authorized(
         plan: &ExecutionPlan,
         action_digest: Sha256Digest,
@@ -179,5 +180,27 @@ impl ExecutionManifest {
 
     pub(crate) fn decode(bytes: &[u8]) -> Result<Self, ProcessError> {
         codec::decode(bytes)
+    }
+
+    pub(crate) fn encode_recovery_root(
+        &self,
+        total_bytes: u64,
+        page_count: u64,
+    ) -> Result<Vec<u8>, ProcessError> {
+        codec::encode_recovery_root(
+            self,
+            codec::TerminalEvidence { total_bytes, page_count },
+        )
+    }
+
+    pub(crate) fn decode_recovery_root(
+        bytes: &[u8],
+    ) -> Result<(Self, Option<(u64, u64)>), ProcessError> {
+        let (manifest, evidence) = codec::decode_recovery_root(bytes)?;
+        Ok((manifest, evidence.map(|value| (value.total_bytes, value.page_count))))
+    }
+
+    pub(crate) fn terminal_binding_valid(&self) -> Result<bool, ProcessError> {
+        codec::terminal_binding_valid(self)
     }
 }

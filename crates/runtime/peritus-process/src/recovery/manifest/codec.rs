@@ -20,12 +20,22 @@ use super::{ExecutionManifest, LeaseOwnership};
 mod reader;
 mod terminal_payload;
 use reader::Reader;
-use terminal_payload::{decode_terminal_payload, encode_terminal_payload, terminal_binding_valid};
+use terminal_payload::{
+    decode_terminal_payload, encode_terminal_payload,
+    terminal_binding_valid as validate_terminal_binding,
+};
 
+const MAGIC_V5: &[u8] = b"PERITUS-PROCESS-MANIFEST-V5\0";
 const MAGIC_V4: &[u8] = b"PERITUS-PROCESS-MANIFEST-V4\0";
 const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-MANIFEST-V3\0";
 const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-MANIFEST-V2\0";
-const MAX_MANIFEST_BYTES: usize = 16 * 1_024;
+pub(super) const MAX_RECOVERY_ROOT_BYTES: usize = 16 * 1_024;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct TerminalEvidence {
+    pub(super) total_bytes: u64,
+    pub(super) page_count: u64,
+}
 
 pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessError> {
     let mut bytes = Vec::with_capacity(768);
@@ -64,8 +74,58 @@ pub(super) fn encode(manifest: &ExecutionManifest) -> Result<Vec<u8>, ProcessErr
     bytes.push(u8::from(manifest.support_tasks_joined));
     optional_digest(&mut bytes, manifest.terminal_digest);
     encode_terminal_payload(&mut bytes, manifest.terminal.as_ref())?;
-    if bytes.len() + Sha256Digest::LENGTH > MAX_MANIFEST_BYTES {
-        return Err(corrupt("process manifest exceeds its canonical bound"));
+    let checksum: [u8; 32] = Sha256::digest(&bytes).into();
+    bytes.extend_from_slice(&checksum);
+    Ok(bytes)
+}
+
+pub(super) fn encode_recovery_root(
+    manifest: &ExecutionManifest,
+    evidence: TerminalEvidence,
+) -> Result<Vec<u8>, ProcessError> {
+    if evidence.total_bytes == 0
+        || evidence.page_count == 0
+        || manifest.phase != LifecyclePhase::Terminal
+        || manifest.terminal_digest.is_none()
+        || manifest.terminal.is_none()
+        || !validate_terminal_binding(manifest)?
+    {
+        return Err(corrupt("process manifest terminal evidence root is inconsistent"));
+    }
+    let mut bytes = Vec::with_capacity(768);
+    bytes.extend_from_slice(MAGIC_V5);
+    encode_identity(&mut bytes, &manifest.identity);
+    for digest_value in [
+        manifest.action_digest,
+        manifest.plan_digest,
+        manifest.sandbox_digest,
+        manifest.backend_digest,
+        manifest.support_digest,
+        manifest.preparation_digest,
+    ] {
+        digest(&mut bytes, digest_value);
+    }
+    encode_native_observations(&mut bytes, manifest.native_observations);
+    bytes.push(match manifest.access {
+        WorkspaceAccess::ReadOnly => 1,
+        WorkspaceAccess::Writable => 2,
+    });
+    encode_lease(&mut bytes, manifest.lease);
+    bytes.push(phase_tag(manifest.phase));
+    encode_tree(&mut bytes, manifest.tree);
+    encode_trigger(&mut bytes, manifest.trigger);
+    encode_exit(&mut bytes, manifest.exit.as_ref())?;
+    u64_value(&mut bytes, manifest.observed_output);
+    u64_value(&mut bytes, manifest.retained_output);
+    u64_value(&mut bytes, manifest.dropped_output);
+    bytes.push(u8::from(manifest.tree_quiescent));
+    bytes.push(u8::from(manifest.support_tasks_joined));
+    optional_digest(&mut bytes, manifest.terminal_digest);
+    bytes.push(1);
+    u64_value(&mut bytes, evidence.total_bytes);
+    u64_value(&mut bytes, evidence.page_count);
+    if bytes.len() + Sha256Digest::LENGTH > MAX_RECOVERY_ROOT_BYTES {
+        return Err(corrupt("process manifest recovery root exceeds its canonical bound"));
     }
     let checksum: [u8; 32] = Sha256::digest(&bytes).into();
     bytes.extend_from_slice(&checksum);
@@ -82,7 +142,7 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
     } else {
         return Err(corrupt("process manifest has invalid framing"));
     };
-    if bytes.len() < magic.len() + Sha256Digest::LENGTH || bytes.len() > MAX_MANIFEST_BYTES {
+    if bytes.len() < magic.len() + Sha256Digest::LENGTH {
         return Err(corrupt("process manifest has invalid framing"));
     }
     let payload_end = bytes.len() - Sha256Digest::LENGTH;
@@ -130,11 +190,84 @@ pub(super) fn decode(bytes: &[u8]) -> Result<ExecutionManifest, ProcessError> {
         || manifest.retained_output > manifest.observed_output
         || manifest.dropped_output != manifest.observed_output - manifest.retained_output
         || !native_observation_binding_valid(&manifest)
-        || !terminal_binding_valid(&manifest)?
+        || !validate_terminal_binding(&manifest)?
     {
         return Err(corrupt("process manifest fields are noncanonical or inconsistent"));
     }
     Ok(manifest)
+}
+
+pub(super) fn terminal_binding_valid(manifest: &ExecutionManifest) -> Result<bool, ProcessError> {
+    validate_terminal_binding(manifest)
+}
+
+pub(super) fn decode_recovery_root(
+    bytes: &[u8],
+) -> Result<(ExecutionManifest, Option<TerminalEvidence>), ProcessError> {
+    if !bytes.starts_with(MAGIC_V5) {
+        return decode(bytes).map(|manifest| (manifest, None));
+    }
+    if bytes.len() < MAGIC_V5.len() + Sha256Digest::LENGTH
+        || bytes.len() > MAX_RECOVERY_ROOT_BYTES
+    {
+        return Err(corrupt("process manifest recovery root has invalid framing"));
+    }
+    let payload_end = bytes.len() - Sha256Digest::LENGTH;
+    let expected: [u8; 32] = Sha256::digest(&bytes[..payload_end]).into();
+    if bytes[payload_end..] != expected {
+        return Err(corrupt("process manifest checksum differs"));
+    }
+    let mut reader = Reader::new(&bytes[MAGIC_V5.len()..payload_end]);
+    let identity = decode_identity(&mut reader)?;
+    let action_digest = reader.digest()?;
+    let plan_digest = reader.digest()?;
+    let sandbox_digest = reader.digest()?;
+    let backend_digest = reader.digest()?;
+    let support_digest = reader.digest()?;
+    let preparation_digest = reader.digest()?;
+    let native_observations = decode_native_observations(&mut reader)?;
+    let manifest = ExecutionManifest {
+        identity,
+        action_digest,
+        plan_digest,
+        sandbox_digest,
+        backend_digest,
+        support_digest,
+        preparation_digest,
+        native_observations,
+        access: decode_access(reader.u8()?)?,
+        lease: decode_lease(&mut reader)?,
+        phase: decode_phase(reader.u8()?)?,
+        tree: decode_tree(&mut reader)?,
+        trigger: decode_trigger(&mut reader)?,
+        exit: decode_exit(&mut reader, true)?,
+        observed_output: reader.u64()?,
+        retained_output: reader.u64()?,
+        dropped_output: reader.u64()?,
+        tree_quiescent: reader.boolean()?,
+        support_tasks_joined: reader.boolean()?,
+        terminal_digest: reader.optional_digest()?,
+        terminal: None,
+    };
+    if reader.u8()? != 1 {
+        return Err(corrupt("manifest has an invalid terminal-evidence tag"));
+    }
+    let evidence = TerminalEvidence {
+        total_bytes: reader.u64()?,
+        page_count: reader.u64()?,
+    };
+    if !reader.is_empty()
+        || manifest.phase != LifecyclePhase::Terminal
+        || manifest.terminal_digest.is_none()
+        || evidence.total_bytes == 0
+        || evidence.page_count == 0
+        || manifest.retained_output > manifest.observed_output
+        || manifest.dropped_output != manifest.observed_output - manifest.retained_output
+        || !native_observation_binding_valid(&manifest)
+    {
+        return Err(corrupt("process manifest fields are noncanonical or inconsistent"));
+    }
+    Ok((manifest, Some(evidence)))
 }
 
 fn encode_native_observations(bytes: &mut Vec<u8>, state: NativeObservationState) {

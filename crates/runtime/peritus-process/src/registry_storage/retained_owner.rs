@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::{
-    hex, load_canonical_tombstone, load_claim, load_manifest, load_quarantined_identity,
+    hex, load_canonical_tombstone, load_claim, load_manifest, load_manifest_record,
+    load_quarantined_identity,
     persist_quarantined_identity, process_id_from_hex, quarantine_path, sync_directory,
     write_manifest,
 };
@@ -287,12 +288,8 @@ pub(crate) fn load_retained_owner_request(
     )
     .map_err(|error| store_cause("staged retained owner manifest cannot be read", error))
     .and_then(|bytes| ExecutionManifest::decode(&bytes))?;
-    let retained = read_regular_file(
-        &manifests.join(format!("{name}.manifest")),
-        "retained owner manifest cannot be read",
-    )
-    .map_err(|error| store_cause("retained owner manifest cannot be read", error))
-    .and_then(|bytes| ExecutionManifest::decode(&bytes))?;
+    let retained = load_manifest_record(manifests, process_id)?
+        .ok_or_else(|| store_error("retained owner manifest cannot be read"))?;
     if !claim.matches_manifest(&staged)
         || !claim.matches_manifest(&retained)
         || !retained.has_same_authorization(&staged)
@@ -463,11 +460,18 @@ fn read_regular_file(path: &Path, detail: &'static str) -> std::io::Result<Vec<u
     if !metadata.file_type().is_file() {
         return Err(std::io::Error::other(detail));
     }
-    let length = usize::try_from(metadata.len()).map_err(|_| std::io::Error::other(detail))?;
     let mut bytes = Vec::new();
-    bytes.try_reserve_exact(length).map_err(|_| std::io::Error::other(detail))?;
-    file.take(metadata.len().saturating_add(1)).read_to_end(&mut bytes)?;
-    if bytes.len() != length {
+    let mut reader = file.take(metadata.len().saturating_add(1));
+    let mut page = [0_u8; 64 * 1_024];
+    loop {
+        let count = reader.read(&mut page)?;
+        if count == 0 {
+            break;
+        }
+        bytes.try_reserve(count).map_err(|_| std::io::Error::other(detail))?;
+        bytes.extend_from_slice(&page[..count]);
+    }
+    if u64::try_from(bytes.len()).ok() != Some(metadata.len()) {
         return Err(std::io::Error::other(detail));
     }
     Ok(bytes)

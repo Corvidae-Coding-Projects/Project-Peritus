@@ -14,7 +14,8 @@ use crate::{
     native::observation::NativeObservationState,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
     registry_storage::{
-        load_canonical_tombstone, load_claim, load_manifest, load_quarantine,
+        decode_recovery_manifest, encode_recovery_manifest, load_canonical_tombstone,
+        load_claim, load_manifest, load_quarantine,
         load_quarantined_identity, quarantine_path, validate_native_observation_frontier,
         visit_quarantined_identities, visit_registry_identities,
     },
@@ -29,6 +30,7 @@ pub(super) const RECORD_PAGE_SIZE: usize = 256;
 
 pub(super) struct RegistryIndex {
     connection: Connection,
+    root: PathBuf,
     // Declaration order closes SQLite before removing its private file, including on Windows.
     _file: NamedTempFile,
     _owner: IndexOwner,
@@ -178,7 +180,7 @@ impl RegistryIndex {
                  retired INTEGER NOT NULL DEFAULT 0
              ) WITHOUT ROWID;",
         ).map_err(|error| store_cause("process index cannot be initialized", error))?;
-        Ok(Self { connection, _file: file, _owner: owner })
+        Ok(Self { connection, root: root.to_path_buf(), _file: file, _owner: owner })
     }
 
     pub(super) fn quarantine(&mut self, process_id: ProcessId) -> Result<(), ProcessError> {
@@ -212,7 +214,9 @@ impl RegistryIndex {
         let claim = claim.as_ref().map(|claim| (*claim).encode());
         let manifest = manifest
             .as_ref()
-            .map(ExecutionManifest::encode)
+            .map(|manifest| {
+                encode_recovery_manifest(&self.root.join("manifests-v1"), manifest)
+            })
             .transpose()?;
         let transaction = self
             .connection
@@ -276,7 +280,11 @@ impl RegistryIndex {
             "INSERT INTO records(process_id,manifest,settled) VALUES(?1,?2,?3)
              ON CONFLICT(process_id) DO UPDATE SET
                  manifest=excluded.manifest,settled=excluded.settled",
-            params![process_id.as_bytes().as_slice(), manifest.encode()?, settled],
+            params![
+                process_id.as_bytes().as_slice(),
+                encode_recovery_manifest(&self.root.join("manifests-v1"), manifest)?,
+                settled,
+            ],
         ).map_err(|error| store_cause("process manifest index cannot be updated", error))?;
         Ok(())
     }
@@ -304,7 +312,16 @@ impl RegistryIndex {
             [process_id.as_bytes().as_slice()],
             |row| Ok((row.get::<_, Option<Vec<u8>>>(0)?, row.get::<_, Option<Vec<u8>>>(1)?, row.get::<_, bool>(2)?)),
         ).optional().map_err(|error| store_cause("process index identity cannot be read", error))?;
-        row.map(|(claim, manifest, retired)| decode_record(process_id, claim, manifest, retired)).transpose()
+        row.map(|(claim, manifest, retired)| {
+            decode_record(
+                &self.root.join("manifests-v1"),
+                process_id,
+                claim,
+                manifest,
+                retired,
+            )
+        })
+        .transpose()
     }
 
     pub(super) fn page(
@@ -328,7 +345,13 @@ impl RegistryIndex {
             let claim = row.get(1).map_err(|error| store_cause("process index claim is invalid", error))?;
             let manifest = row.get(2).map_err(|error| store_cause("process index manifest is invalid", error))?;
             let retired = row.get(3).map_err(|error| store_cause("process index retirement is invalid", error))?;
-            page.push(decode_record(process_id, claim, manifest, retired)?);
+            page.push(decode_record(
+                &self.root.join("manifests-v1"),
+                process_id,
+                claim,
+                manifest,
+                retired,
+            )?);
         }
         Ok(page)
     }
@@ -357,13 +380,17 @@ pub(crate) fn retirable(manifest: &ExecutionManifest) -> bool {
 }
 
 fn decode_record(
+    manifest_directory: &Path,
     process_id: ProcessId,
     claim: Option<Vec<u8>>,
     manifest: Option<Vec<u8>>,
     retired: bool,
 ) -> Result<IndexedRecord, ProcessError> {
     let claim = claim.as_deref().map(ConsumptionClaim::decode).transpose()?;
-    let manifest = manifest.as_deref().map(ExecutionManifest::decode).transpose()?;
+    let manifest = manifest
+        .as_deref()
+        .map(|bytes| decode_recovery_manifest(manifest_directory, bytes))
+        .transpose()?;
     if claim.is_some_and(|claim| claim.process_id() != process_id)
         || manifest.as_ref().is_some_and(|manifest| manifest.identity.process_id() != process_id)
         || retired && !manifest.as_ref().is_some_and(retirable)

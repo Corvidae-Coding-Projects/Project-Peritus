@@ -4,7 +4,7 @@ use peritus_types::Sha256Digest;
 
 use crate::ProcessError;
 
-use super::corrupt;
+use super::{corrupt, unavailable};
 
 pub(super) struct Reader<'a> {
     bytes: &'a [u8],
@@ -93,6 +93,26 @@ impl<'a> Reader<'a> {
             .ok_or_else(|| corrupt("terminal string is truncated"))?;
         self.offset = end;
         String::from_utf8(value.to_vec()).map_err(|_| corrupt("terminal string is not UTF-8"))
+    }
+
+    pub(super) fn unbounded_string(&mut self) -> Result<String, ProcessError> {
+        let length = usize::try_from(self.u64()?)
+            .map_err(|_| unavailable("terminal string length is not addressable"))?;
+        let end = self
+            .offset
+            .checked_add(length)
+            .ok_or_else(|| corrupt("terminal string offset overflowed"))?;
+        let value = self
+            .bytes
+            .get(self.offset..end)
+            .ok_or_else(|| corrupt("terminal string is truncated"))?;
+        self.offset = end;
+        let mut owned = Vec::new();
+        owned
+            .try_reserve_exact(length)
+            .map_err(|_| unavailable("terminal string allocation is unavailable"))?;
+        owned.extend_from_slice(value);
+        String::from_utf8(owned).map_err(|_| corrupt("terminal string is not UTF-8"))
     }
 
     pub(super) fn id<T, E>(

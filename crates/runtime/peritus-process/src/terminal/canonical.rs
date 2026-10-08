@@ -21,8 +21,10 @@ use tags::{
 
 const MAGIC_V3: &[u8] = b"PERITUS-PROCESS-TERMINAL-V3\0";
 const MAGIC_V2: &[u8] = b"PERITUS-PROCESS-TERMINAL-V2\0";
-const MAX_ITEMS: usize = 64;
-const MAX_SIGNAL_NAME_BYTES: usize = 128;
+const MAGIC_V4: &[u8] = b"PERITUS-PROCESS-TERMINAL-V4\0";
+const HISTORICAL_SIGNAL_NAME_BYTES: usize = 128;
+const OUTPUT_STREAM_COUNT: usize = 3;
+const RESOURCE_DIMENSION_COUNT: usize = 8;
 
 pub(crate) fn terminal_digest(result: &TerminalResult) -> Result<Sha256Digest, ProcessError> {
     let bytes = encode_terminal(result)?;
@@ -32,7 +34,13 @@ pub(crate) fn terminal_digest(result: &TerminalResult) -> Result<Sha256Digest, P
 pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, ProcessError> {
     validate_terminal(result)?;
     let mut bytes = Vec::with_capacity(512);
-    bytes.extend_from_slice(if matches!(result.os_exit(), OsExitObservation::NativeFailure(_)) {
+    let extended_signal = matches!(
+        result.os_exit(),
+        OsExitObservation::SignalName(value) if value.len() > HISTORICAL_SIGNAL_NAME_BYTES
+    );
+    bytes.extend_from_slice(if extended_signal {
+        MAGIC_V4
+    } else if matches!(result.os_exit(), OsExitObservation::NativeFailure(_)) {
         MAGIC_V3
     } else {
         MAGIC_V2
@@ -40,7 +48,7 @@ pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, Proces
     bytes.extend_from_slice(result.process_id().as_bytes());
     digest(&mut bytes, result.plan_digest());
     bytes.push(disposition_tag(result.disposition()));
-    encode_exit(&mut bytes, result.os_exit())?;
+    encode_exit(&mut bytes, result.os_exit(), extended_signal)?;
     encode_trigger(&mut bytes, result.first_trigger());
     let escalation = result.escalation();
     boolean(&mut bytes, escalation.graceful_attempted());
@@ -59,10 +67,12 @@ pub(crate) fn encode_terminal(result: &TerminalResult) -> Result<Vec<u8>, Proces
 }
 
 pub(crate) fn decode_terminal(bytes: &[u8]) -> Result<TerminalResult, ProcessError> {
-    let (magic, allow_native_failure) = if bytes.starts_with(MAGIC_V3) {
-        (MAGIC_V3, true)
+    let (magic, allow_native_failure, extended_signal) = if bytes.starts_with(MAGIC_V4) {
+        (MAGIC_V4, true, true)
+    } else if bytes.starts_with(MAGIC_V3) {
+        (MAGIC_V3, true, false)
     } else if bytes.starts_with(MAGIC_V2) {
-        (MAGIC_V2, false)
+        (MAGIC_V2, false, false)
     } else {
         return Err(corrupt("terminal result has invalid framing"));
     };
@@ -70,7 +80,7 @@ pub(crate) fn decode_terminal(bytes: &[u8]) -> Result<TerminalResult, ProcessErr
     let process_id = reader.id(ProcessId::new)?;
     let plan_digest = reader.digest()?;
     let disposition = decode_disposition(reader.u8()?)?;
-    let os_exit = decode_exit(&mut reader, allow_native_failure)?;
+    let os_exit = decode_exit(&mut reader, allow_native_failure, extended_signal)?;
     let first_trigger = decode_trigger(&mut reader)?;
     let escalation = EscalationRecord::new(reader.boolean()?, reader.boolean()?, reader.boolean()?);
     let started_at = reader.optional_u64()?.map(ProcessInstant::from_millis);
@@ -128,7 +138,7 @@ fn validate_terminal(result: &TerminalResult) -> Result<(), ProcessError> {
 }
 
 fn validate_output(output: &OutputSummary) -> Result<(), ProcessError> {
-    if output.streams().len() > MAX_ITEMS {
+    if output.streams().len() > OUTPUT_STREAM_COUNT {
         return Err(corrupt("terminal output stream count exceeds its bound"));
     }
     let mut seen = [false; 3];
@@ -146,7 +156,7 @@ fn validate_output(output: &OutputSummary) -> Result<(), ProcessError> {
 }
 
 fn validate_resources(resources: &[ProcessResourceObservation]) -> Result<(), ProcessError> {
-    if resources.len() > MAX_ITEMS {
+    if resources.len() > RESOURCE_DIMENSION_COUNT {
         return Err(corrupt("terminal resource observation count exceeds its bound"));
     }
     for (index, resource) in resources.iter().enumerate() {
@@ -162,7 +172,7 @@ fn validate_artifacts(
     artifacts: &[OutputArtifact],
     publication_complete: bool,
 ) -> Result<(), ProcessError> {
-    if artifacts.len() > MAX_ITEMS {
+    if artifacts.len() > OUTPUT_STREAM_COUNT {
         return Err(corrupt("terminal artifact count exceeds its bound"));
     }
     for (index, artifact) in artifacts.iter().enumerate() {
@@ -195,7 +205,7 @@ fn validate_artifacts(
 }
 
 fn encode_output(bytes: &mut Vec<u8>, output: &OutputSummary) -> Result<(), ProcessError> {
-    count(bytes, output.streams().len())?;
+    count(bytes, output.streams().len(), OUTPUT_STREAM_COUNT)?;
     let mut streams = output.streams().to_vec();
     streams.sort_by_key(|stream| stream_tag(stream.stream()));
     for stream in streams {
@@ -210,7 +220,7 @@ fn encode_output(bytes: &mut Vec<u8>, output: &OutputSummary) -> Result<(), Proc
 }
 
 fn decode_output(reader: &mut Reader<'_>) -> Result<OutputSummary, ProcessError> {
-    let count = reader.count(MAX_ITEMS)?;
+    let count = reader.count(OUTPUT_STREAM_COUNT)?;
     let mut streams = Vec::with_capacity(count);
     for _ in 0..count {
         streams.push(
@@ -231,7 +241,7 @@ fn encode_resources(
     bytes: &mut Vec<u8>,
     resources: &[ProcessResourceObservation],
 ) -> Result<(), ProcessError> {
-    count(bytes, resources.len())?;
+    count(bytes, resources.len(), RESOURCE_DIMENSION_COUNT)?;
     let mut ordered = resources.to_vec();
     ordered.sort_by_key(|resource| resource_tag(resource.dimension()));
     for resource in ordered {
@@ -246,7 +256,7 @@ fn encode_resources(
 fn decode_resources(
     reader: &mut Reader<'_>,
 ) -> Result<Vec<ProcessResourceObservation>, ProcessError> {
-    let count = reader.count(MAX_ITEMS)?;
+    let count = reader.count(RESOURCE_DIMENSION_COUNT)?;
     let mut resources = Vec::with_capacity(count);
     for _ in 0..count {
         resources.push(ProcessResourceObservation::new(
@@ -260,7 +270,7 @@ fn decode_resources(
 }
 
 fn encode_artifacts(bytes: &mut Vec<u8>, artifacts: &[OutputArtifact]) -> Result<(), ProcessError> {
-    count(bytes, artifacts.len())?;
+    count(bytes, artifacts.len(), OUTPUT_STREAM_COUNT)?;
     let mut ordered = artifacts.to_vec();
     ordered.sort_by_key(|artifact| stream_tag(artifact.stream()));
     for artifact in ordered {
@@ -275,7 +285,7 @@ fn encode_artifacts(bytes: &mut Vec<u8>, artifacts: &[OutputArtifact]) -> Result
 }
 
 fn decode_artifacts(reader: &mut Reader<'_>) -> Result<Vec<OutputArtifact>, ProcessError> {
-    let count = reader.count(MAX_ITEMS)?;
+    let count = reader.count(OUTPUT_STREAM_COUNT)?;
     let mut artifacts = Vec::with_capacity(count);
     for _ in 0..count {
         artifacts.push(OutputArtifact::new(
@@ -290,7 +300,11 @@ fn decode_artifacts(reader: &mut Reader<'_>) -> Result<Vec<OutputArtifact>, Proc
     Ok(artifacts)
 }
 
-fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), ProcessError> {
+fn encode_exit(
+    bytes: &mut Vec<u8>,
+    exit: &OsExitObservation,
+    extended_signal: bool,
+) -> Result<(), ProcessError> {
     match exit {
         OsExitObservation::Code(value) => {
             bytes.push(1);
@@ -301,11 +315,17 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), Proc
             bytes.extend_from_slice(&value.to_be_bytes());
         }
         OsExitObservation::SignalName(value) => {
-            if value.len() > MAX_SIGNAL_NAME_BYTES {
-                return Err(corrupt("terminal signal name exceeds its bound"));
-            }
             bytes.push(3);
-            length(bytes, value.len(), MAX_SIGNAL_NAME_BYTES)?;
+            if extended_signal {
+                u64_value(
+                    bytes,
+                    u64::try_from(value.len()).map_err(|_| {
+                        unavailable("terminal signal name length is not representable")
+                    })?,
+                );
+            } else {
+                length(bytes, value.len(), HISTORICAL_SIGNAL_NAME_BYTES)?;
+            }
             bytes.extend_from_slice(value.as_bytes());
         }
         OsExitObservation::PlatformException(value) => {
@@ -331,11 +351,15 @@ fn encode_exit(bytes: &mut Vec<u8>, exit: &OsExitObservation) -> Result<(), Proc
 fn decode_exit(
     reader: &mut Reader<'_>,
     allow_native_failure: bool,
+    extended_signal: bool,
 ) -> Result<OsExitObservation, ProcessError> {
     match reader.u8()? {
         1 => Ok(OsExitObservation::Code(reader.i32()?)),
         2 => Ok(OsExitObservation::Signal(reader.i32()?)),
-        3 => Ok(OsExitObservation::SignalName(reader.string(MAX_SIGNAL_NAME_BYTES)?)),
+        3 if extended_signal => Ok(OsExitObservation::SignalName(reader.unbounded_string()?)),
+        3 => Ok(OsExitObservation::SignalName(
+            reader.string(HISTORICAL_SIGNAL_NAME_BYTES)?,
+        )),
         4 => Ok(OsExitObservation::PlatformException(reader.u32()?)),
         5 => Ok(OsExitObservation::Unavailable),
         6 if allow_native_failure => {
@@ -380,8 +404,8 @@ fn decode_trigger(reader: &mut Reader<'_>) -> Result<Option<StopTrigger>, Proces
     }
 }
 
-fn count(bytes: &mut Vec<u8>, value: usize) -> Result<(), ProcessError> {
-    length(bytes, value, MAX_ITEMS)
+fn count(bytes: &mut Vec<u8>, value: usize, limit: usize) -> Result<(), ProcessError> {
+    length(bytes, value, limit)
 }
 
 fn length(bytes: &mut Vec<u8>, value: usize, limit: usize) -> Result<(), ProcessError> {
@@ -421,6 +445,15 @@ pub(super) const fn corrupt(detail: &'static str) -> ProcessError {
         ErrorCode::CorruptRecovery,
         ProcessOperation::Reconcile,
         RecoveryClass::Quarantine,
+        detail,
+    )
+}
+
+pub(super) const fn unavailable(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::Indeterminate,
+        ProcessOperation::Reconcile,
+        RecoveryClass::ReopenAndReconcile,
         detail,
     )
 }

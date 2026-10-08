@@ -134,6 +134,7 @@ impl ProcessStore {
         let quarantine = root.join("quarantine-v1");
         let tombstones = root.join("tombstones-v1");
         let native_observations = root.join("native-observations-v1");
+        let terminal_evidence = root.join("terminal-evidence-v1");
         let retained_owners = root.join("retained-owners-v1");
         let completion_receipts = root.join("owner-completions-v1");
         let quarantined_identities = root.join("quarantined-identities-v1");
@@ -144,6 +145,7 @@ impl ProcessStore {
             &quarantine,
             &tombstones,
             &native_observations,
+            &terminal_evidence,
             &retained_owners,
             &completion_receipts,
             &quarantined_identities,

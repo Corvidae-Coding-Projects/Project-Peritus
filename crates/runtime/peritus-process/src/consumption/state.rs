@@ -8,7 +8,8 @@ use crate::{
     ExecutionIdentity, LifecyclePhase, OsExitObservation, ProcessError, ProcessTreeIdentity,
     recovery::manifest::ExecutionManifest,
     registry_storage::{
-        RetainedOwnerTransaction, acquire_retained_owner_transaction, hex, write_manifest,
+        RetainedOwnerTransaction, acquire_retained_owner_transaction, hex,
+        load_manifest_record, write_manifest,
     },
 };
 
@@ -333,9 +334,9 @@ impl ProcessStore {
         let written = write_manifest(&self.inner.manifests, &next);
         // A reported directory-sync or backup-cleanup failure may already have published next.
         // Re-observe the canonical file instead of claiming the predecessor is still current.
-        let actual = std::fs::read(self.inner.manifests.join(format!("{}.manifest", hex(process_id.as_bytes()))))
-            .map_err(|_| store_error("published process manifest cannot be reconciled"))
-            .and_then(|bytes| ExecutionManifest::decode(&bytes));
+        let actual = load_manifest_record(&self.inner.manifests, process_id).and_then(|manifest| {
+            manifest.ok_or_else(|| store_error("published process manifest disappeared"))
+        });
         match actual {
             Ok(actual) => state.index.manifest(&actual).inspect_err(|_| state.unresolved_io = true)?,
             Err(error) => { state.unresolved_io = true; return Err(error); }

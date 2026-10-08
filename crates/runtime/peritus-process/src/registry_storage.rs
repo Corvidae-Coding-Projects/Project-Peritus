@@ -12,6 +12,7 @@ use crate::{
     ErrorCode, ExecutionIdentity, ProcessError, ProcessOperation, RecoveryClass,
     consumption::store_cause,
     recovery::{claim::ConsumptionClaim, manifest::ExecutionManifest},
+    terminal::encode_terminal,
 };
 
 mod tombstone;
@@ -19,6 +20,10 @@ pub(crate) use tombstone::{load_canonical_tombstone, load_tombstone, persist_tom
 mod native_observation;
 pub(crate) use native_observation::{
     persist_native_observation_page, validate_native_observation_frontier,
+};
+mod terminal_evidence;
+use terminal_evidence::{
+    TerminalEvidenceRoot, load_terminal_evidence, persist_terminal_evidence,
 };
 mod retained_owner;
 pub(crate) use retained_owner::{
@@ -188,22 +193,9 @@ pub(crate) fn load_manifest(
     process_id: ProcessId,
 ) -> Result<Option<ExecutionManifest>, ProcessError> {
     let path = directory.join(format!("{}.manifest", hex(process_id.as_bytes())));
-    let bytes = match read_canonical_file(&path, "process manifest cannot be read") {
-        Ok(Some(bytes)) => bytes,
-        Ok(None) => return Ok(None),
-        Err(_) => {
-            quarantine_path(
-                &path,
-                quarantine,
-                quarantined_identities,
-                quarantined,
-            )?;
-            return Ok(None);
-        }
-    };
-    match ExecutionManifest::decode(&bytes) {
-        Ok(manifest) if manifest.identity.process_id() == process_id => Ok(Some(manifest)),
-        Ok(_) | Err(_) => {
+    match load_manifest_record(directory, process_id) {
+        Ok(manifest) => Ok(manifest),
+        Err(error) if error.code() == ErrorCode::CorruptRecovery => {
             quarantine_path(
                 &path,
                 quarantine,
@@ -212,7 +204,27 @@ pub(crate) fn load_manifest(
             )?;
             Ok(None)
         }
+        Err(error) => Err(error),
     }
+}
+
+pub(crate) fn load_manifest_record(
+    directory: &Path,
+    process_id: ProcessId,
+) -> Result<Option<ExecutionManifest>, ProcessError> {
+    let path = directory.join(format!("{}.manifest", hex(process_id.as_bytes())));
+    let Some(bytes) = read_bounded_canonical_file(
+        &path,
+        "process manifest cannot be read",
+        ExecutionManifest::MAX_RECOVERY_ROOT_BYTES,
+    )? else {
+        return Ok(None);
+    };
+    let manifest = decode_recovery_manifest(directory, &bytes)?;
+    if manifest.identity.process_id() != process_id {
+        return Err(corrupt_record("process manifest identity differs from its path"));
+    }
+    Ok(Some(manifest))
 }
 
 pub(crate) fn load_quarantined_identity(
@@ -316,7 +328,7 @@ pub(crate) fn write_manifest(
     let target = directory.join(format!("{name}.manifest"));
     let staging = directory.join(format!("{name}.staging"));
     let backup = directory.join(format!("{name}.previous"));
-    let bytes = manifest.encode()?;
+    let bytes = encode_recovery_manifest(directory, manifest)?;
     let mut file = OpenOptions::new()
         .write(true)
         .create(true)
@@ -361,6 +373,98 @@ pub(crate) fn write_manifest(
         sync_directory(directory)?;
     }
     Ok(())
+}
+
+pub(crate) fn encode_recovery_manifest(
+    manifest_directory: &Path,
+    manifest: &ExecutionManifest,
+) -> Result<Vec<u8>, ProcessError> {
+    let terminal_bytes = manifest
+        .terminal
+        .as_ref()
+        .map(encode_terminal)
+        .transpose()?;
+    if terminal_bytes
+        .as_ref()
+        .is_some_and(|bytes| bytes.len() > ExecutionManifest::MAX_RECOVERY_ROOT_BYTES)
+    {
+        return encode_external_recovery_manifest(
+            manifest_directory,
+            manifest,
+            terminal_bytes.as_deref().unwrap_or_default(),
+        );
+    }
+    let inline = manifest.encode()?;
+    if inline.len() <= ExecutionManifest::MAX_RECOVERY_ROOT_BYTES {
+        return Ok(inline);
+    }
+    encode_external_recovery_manifest(
+        manifest_directory,
+        manifest,
+        terminal_bytes.as_deref().unwrap_or_default(),
+    )
+}
+
+fn encode_external_recovery_manifest(
+    manifest_directory: &Path,
+    manifest: &ExecutionManifest,
+    terminal_bytes: &[u8],
+) -> Result<Vec<u8>, ProcessError> {
+    if manifest.terminal.is_none() || terminal_bytes.is_empty() {
+        return Err(corrupt_record(
+            "oversized process manifest has no terminal evidence",
+        ));
+    }
+    let digest = manifest
+        .terminal_digest
+        .ok_or_else(|| corrupt_record("oversized process manifest has no terminal digest"))?;
+    let evidence = persist_terminal_evidence(
+        &terminal_evidence_directory(manifest_directory)?,
+        manifest.identity.process_id(),
+        digest,
+        terminal_bytes,
+    )?;
+    manifest.encode_recovery_root(evidence.total_bytes, evidence.page_count)
+}
+
+pub(crate) fn decode_recovery_manifest(
+    manifest_directory: &Path,
+    bytes: &[u8],
+) -> Result<ExecutionManifest, ProcessError> {
+    let (mut manifest, evidence) = ExecutionManifest::decode_recovery_root(bytes)?;
+    if let Some((total_bytes, page_count)) = evidence {
+        let digest = manifest
+            .terminal_digest
+            .ok_or_else(|| corrupt_record("process manifest recovery root has no terminal digest"))?;
+        manifest.terminal = Some(load_terminal_evidence(
+            &terminal_evidence_directory(manifest_directory)?,
+            manifest.identity.process_id(),
+            digest,
+            TerminalEvidenceRoot { total_bytes, page_count },
+        )?);
+        if !manifest.terminal_binding_valid()? {
+            return Err(corrupt_record(
+                "process manifest differs from its terminal evidence",
+            ));
+        }
+    }
+    Ok(manifest)
+}
+
+fn terminal_evidence_directory(manifest_directory: &Path) -> Result<PathBuf, ProcessError> {
+    manifest_directory
+        .parent()
+        .map(|root| root.join("terminal-evidence-v1"))
+        .ok_or_else(|| store_error("process manifest directory has no protected parent"))
+}
+
+const fn corrupt_record(detail: &'static str) -> ProcessError {
+    ProcessError::new(
+        ErrorCode::CorruptRecovery,
+        ProcessOperation::Reconcile,
+        RecoveryClass::Quarantine,
+        detail,
+    )
 }
 
 pub(crate) fn retire_execution_record(
@@ -504,6 +608,22 @@ fn read_canonical_file(
     path: &Path,
     detail: &'static str,
 ) -> Result<Option<Vec<u8>>, ProcessError> {
+    read_canonical_file_inner(path, detail, None)
+}
+
+pub(super) fn read_bounded_canonical_file(
+    path: &Path,
+    detail: &'static str,
+    max_bytes: usize,
+) -> Result<Option<Vec<u8>>, ProcessError> {
+    read_canonical_file_inner(path, detail, Some(max_bytes))
+}
+
+fn read_canonical_file_inner(
+    path: &Path,
+    detail: &'static str,
+    max_bytes: Option<usize>,
+) -> Result<Option<Vec<u8>>, ProcessError> {
     let path_metadata = match fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
@@ -517,15 +637,25 @@ fn read_canonical_file(
     if !metadata.file_type().is_file() {
         return Err(store_error(detail));
     }
-    let length = usize::try_from(metadata.len()).map_err(|error| store_cause(detail, error))?;
+    if max_bytes.is_some_and(|maximum| {
+        metadata.len() > u64::try_from(maximum).unwrap_or(u64::MAX)
+    }) {
+        return Err(corrupt_record("recovery root exceeds its physical bound"));
+    }
     let mut bytes = Vec::new();
-    bytes
-        .try_reserve_exact(length)
-        .map_err(|error| store_cause(detail, error))?;
-    file.take(metadata.len().saturating_add(1))
-        .read_to_end(&mut bytes)
-        .map_err(|error| store_cause(detail, error))?;
-    if bytes.len() != length {
+    let mut reader = file.take(metadata.len().saturating_add(1));
+    let mut page = [0_u8; 64 * 1_024];
+    loop {
+        let count = reader.read(&mut page).map_err(|error| store_cause(detail, error))?;
+        if count == 0 {
+            break;
+        }
+        bytes
+            .try_reserve(count)
+            .map_err(|error| store_cause(detail, error))?;
+        bytes.extend_from_slice(&page[..count]);
+    }
+    if u64::try_from(bytes.len()).ok() != Some(metadata.len()) {
         return Err(store_error(detail));
     }
     Ok(Some(bytes))
