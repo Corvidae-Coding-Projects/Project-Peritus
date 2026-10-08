@@ -155,17 +155,18 @@ impl GoalRecord {
             self.mark_paused(now)?;
             return Ok(());
         }
-        match settlement {
-            GoalSettlement::Accepted
-                if !unresolved_effects
-                    && evidence_input_generation == Some(self.required_input_generation) =>
-            {
-                for criterion in &mut self.criteria {
-                    if criterion.kind == GoalCriterionKind::RunnerAcceptance {
-                        criterion.state = GoalCriterionState::Satisfied;
-                        criterion.evidence_revision = evidence_input_generation;
-                    }
+        let current_acceptance = settlement == GoalSettlement::Accepted
+            && evidence_input_generation == Some(self.required_input_generation);
+        if current_acceptance {
+            for criterion in &mut self.criteria {
+                if criterion.kind == GoalCriterionKind::RunnerAcceptance {
+                    criterion.state = GoalCriterionState::Satisfied;
+                    criterion.evidence_revision = evidence_input_generation;
                 }
+            }
+        }
+        match settlement {
+            GoalSettlement::Accepted if current_acceptance && !unresolved_effects => {
                 if self
                     .criteria
                     .iter()
@@ -182,6 +183,13 @@ impl GoalRecord {
                         "Runner acceptance settled, but mandatory external evidence is still missing or unavailable.".to_owned(),
                     )?;
                 }
+            }
+            GoalSettlement::Accepted if current_acceptance => {
+                self.state = GoalState::Blocked;
+                self.reason = GoalText::new(
+                    "Current runner acceptance is retained, but unresolved attempt obligations must be reconciled before resume."
+                        .to_owned(),
+                )?;
             }
             GoalSettlement::WaitingForUser => {
                 self.state = GoalState::WaitingForUser;
@@ -203,10 +211,18 @@ impl GoalRecord {
                         .to_owned(),
                 )?;
             }
-            GoalSettlement::Accepted | GoalSettlement::Failed => {
+            GoalSettlement::Accepted => {
                 self.state = GoalState::Blocked;
                 self.reason = GoalText::new(
-                    "The attempt ended without complete current acceptance evidence.".to_owned(),
+                    "The attempt's acceptance evidence does not bind the current governing input; explicitly resume the retained goal."
+                        .to_owned(),
+                )?;
+            }
+            GoalSettlement::Failed => {
+                self.state = GoalState::Blocked;
+                self.reason = GoalText::new(
+                    "The attempt stopped before current runner acceptance; explicitly resume the retained goal and cumulative usage frontier."
+                        .to_owned(),
                 )?;
             }
         }

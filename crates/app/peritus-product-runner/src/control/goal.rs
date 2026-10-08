@@ -151,7 +151,7 @@ impl GoalCriterion {
     pub const fn state(&self) -> GoalCriterionState {
         self.state
     }
-    /// Returns the exact governing input revision satisfied by current evidence.
+    /// Returns the exact governing input revision bound to this evidence, including when stale.
     #[must_use]
     pub const fn evidence_revision(&self) -> Option<u64> {
         self.evidence_revision

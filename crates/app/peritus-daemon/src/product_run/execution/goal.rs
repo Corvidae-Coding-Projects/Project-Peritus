@@ -146,7 +146,7 @@ impl ProductRunService {
                     if error.kind()
                         == peritus_product_runner::ProductRunnerErrorKind::Cancelled =>
                 {
-                    (GoalSettlement::Cancelled, true)
+                    (GoalSettlement::RecoveryRequired, true)
                 }
                 Err(_) => (GoalSettlement::Failed, true),
             }

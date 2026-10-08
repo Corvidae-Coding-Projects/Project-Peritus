@@ -156,8 +156,10 @@ impl GoalRecord {
         self.attempt_progress = GoalAttemptProgress::default();
         self.state = GoalState::Active;
         self.pause_mode = None;
-        self.reason =
-            GoalText::new("Explicitly resumed with cumulative accounting retained.".to_owned())?;
+        self.reason = GoalText::new(
+            "Explicitly resumed with the same confirmed objective and cumulative accounting retained."
+                .to_owned(),
+        )?;
         self.updated_unix_millis = now;
         Ok(())
     }
@@ -188,10 +190,15 @@ impl GoalRecord {
             return Ok(());
         }
         self.required_input_generation = generation;
+        let mut invalidated_evidence = false;
         for criterion in &mut self.criteria {
-            if criterion.state == GoalCriterionState::Satisfied {
+            if criterion.state == GoalCriterionState::Satisfied
+                && criterion
+                    .evidence_revision
+                    .is_some_and(|revision| revision != generation)
+            {
                 criterion.state = GoalCriterionState::Stale;
-                criterion.evidence_revision = None;
+                invalidated_evidence = true;
             }
         }
         if objective_changed {
@@ -201,7 +208,7 @@ impl GoalRecord {
                 "The confirmed objective changed; clear or explicitly replace this goal."
                     .to_owned(),
             )?;
-        } else if self.state == GoalState::Achieved {
+        } else if self.state == GoalState::Achieved && invalidated_evidence {
             self.state = GoalState::Blocked;
             self.pause_mode = None;
             self.reason = GoalText::new(
