@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3894,
-        "tip_oid": "a8eec5de1de1449e2eac447cb5f2431963d0f5c2",
-        "prefix_sha256": "88cecfa5e7c8bcbd25f12d577f6e4ebce543cb8fb467108cc02c495ad36b9832"
+        "sequence": 3895,
+        "tip_oid": "4af1e1b40d9915962569620d94865fbffea1dd99",
+        "prefix_sha256": "a811bca3d5a9c6005e2296a005add81c88116920477b8963cf2a292147835a96"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3150,
+  "next_comment_id": 3151,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -24222,11 +24222,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.208853007Z",
-      "updated_at": "2026-10-06T13:27:51.211200609Z",
+      "updated_at": "2026-10-08T00:12:42.385040953Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "3246a49c-74f0-4498-827a-602b6a62d173": {
+          "display_id": 3150,
+          "author": "6ME5",
+          "content": "Code complete in commit f55461ecb. Unified public and native helper descriptor custody including execution-status role, removed independent64/256-count gates, preserved role order and exact identities, and exposed genuine native slot capacity before consuming one-use authority. Closing at the code-complete stage as directed by the user. No tests, builds, lint, formatting, code generation or runtime validation were run; final validation is deferred until all task code is complete and all task issues are closed.",
+          "created_at": "2026-10-08T00:12:42.375755356Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAo5UvuZ1ZSudHwqsdYHghA9rwN7sDiAjl/rVZrVFEoeygctqMk/0X1Lq/FqbzeB+uxBH5GUhF2anjFnWluXxPBg=="
+        },
         "852edb50-413b-49f4-be01-626fad5c213b": {
           "display_id": 2727,
           "author": "6ME5",
