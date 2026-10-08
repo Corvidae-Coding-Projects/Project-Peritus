@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4113,
-        "tip_oid": "a419a4e590f1cdcf30a3f96c52ffe8b3c3cde8f7",
-        "prefix_sha256": "04ea45c835dd991b09fb1ec0a140ebfa61f6ac6bbdb9624c5df5c0ef6fe02fef"
+        "sequence": 4114,
+        "tip_oid": "2ea3af45702d3b18a9b144229e25abe95e69d065",
+        "prefix_sha256": "e27f126db434b08e8c626be8b9fdb4f36eeed75704efa2c86e76b4eadd1d0bd9"
       },
       "NWAR": {
         "sequence": 39,
@@ -24761,12 +24761,13 @@
       "display_id": 687,
       "title": "[L636] Filesystem result windows expose only the first 500 items and can still fail the canonical JSON ceiling",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L636.\n\n- Evidence: `crates/tools/peritus-tools-fs/src/render.rs:10-11,59-111,118-147,188-226,243-261`; `src/dispatcher.rs:273-309`; `crates/tools/peritus-tool-protocol/src/limits.rs:20-55`; `src/schema/canonical.rs:81-90,209-231,239-289` in the protocol crate.\n- Behavior: Discovery and search render at most the first 500 entries/matches, truthfully label that window truncated, and supply no next-page token. Model/human renderings are summary sentences; file bytes, paths, and matches are in structured output. BoundedJson independently caps the whole canonical value at 256 KiB, depth at 32, members at 4,096, and each string at 64 KiB; custom limits can only narrow these ceilings. The renderer does not adapt the 500-item window to serialized size. A valid 48 KiB UTF-8 file of control characters expands past 256 KiB when JSON-escaped, and long path windows can also exceed the bound. Selected call output is checked after inspection/rendering. Oversized output becomes a generic protocol failure rather than an artifact or smaller recoverable page. Integer renderings saturate at i64::MAX rather than preserving larger exact u64 values.\n- Consequence: Accepted read/traversal input can perform all its work and still return no usable result. Repeating the same request cannot expose item 501 or a too-large encoded file. Whether downstream model context includes the structured payload remains a composition question; the summary rendering alone does not contain file contents.\n- Repair direction: Plan byte-sized pages against actual serialized limits, include a continuation/artifact digest, preserve exact numeric encodings, and verify downstream content delivery end to end. Source review only; no tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.363280698Z",
-      "updated_at": "2026-10-08T06:18:22.764301649Z",
+      "updated_at": "2026-10-08T06:19:40.007777835Z",
+      "closed_at": "2026-10-08T06:19:40.004784288Z",
       "labels": [
         "daily-driving-limiter"
       ],
