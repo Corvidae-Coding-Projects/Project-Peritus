@@ -25,14 +25,9 @@ impl OpenAiStream {
         {
             return Err(error::malformed("OpenAI response creation contradicted the request"));
         }
-        if self.register_background {
-            let mut registry = self
-                .resumable
-                .lock()
-                .map_err(|_| error::malformed("OpenAI continuation registry was unavailable"))?;
-            if registry.len() < 4_096 {
-                registry.insert(identity.clone());
-            }
+        if self.track_background {
+            self.background_responses
+                .register_observed(identity.clone(), &self.expected_model)?;
         }
         let model = ModelName::new(model_text.to_owned())
             .map_err(|_| error::malformed("OpenAI response model identity is invalid"))?;
@@ -77,6 +72,7 @@ impl OpenAiStream {
         };
         events.push(ModelEvent::Finish(finish));
         events.push(ModelEvent::ResponseCompleted);
+        self.reconcile_background_terminal()?;
         Ok(events)
     }
 
@@ -113,6 +109,7 @@ impl OpenAiStream {
             events.push(ModelEvent::Finish(incomplete_reason(response)));
         }
         events.push(ModelEvent::ResponseFailed(failure));
+        self.reconcile_background_terminal()?;
         Ok(events)
     }
 
@@ -132,6 +129,16 @@ impl OpenAiStream {
             "openai.stream.error",
         )?;
         Ok(vec![ModelEvent::ResponseFailed(failure)])
+    }
+
+    fn reconcile_background_terminal(&self) -> Result<(), ProviderCoreError> {
+        if !self.track_background {
+            return Ok(());
+        }
+        let response_id = self.state.response_id().ok_or_else(|| {
+            error::malformed("OpenAI background terminal omitted response authority")
+        })?;
+        self.background_responses.retire_terminal(response_id)
     }
 
     pub(super) fn ancillary(value: &Value) -> Result<Vec<ModelEvent>, ProviderCoreError> {

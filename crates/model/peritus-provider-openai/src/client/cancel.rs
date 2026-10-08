@@ -94,44 +94,14 @@ fn require_known(
     provider: &OpenAiProvider,
     response_id: &ResponseId,
 ) -> Result<(), ProviderCoreError> {
-    let known = provider.resumable_background.lock().map_err(|_| {
-        ProviderCoreError::invalid_request(
-            "openai_cancel",
-            "OpenAI background-response registry is unavailable",
-        )
-    })?;
-    if !known.contains(response_id) {
-        return Err(ProviderCoreError::invalid_request(
-            "openai_cancel",
-            "provider cancellation requires a background response observed by this adapter",
-        ));
-    }
-    drop(known);
-    Ok(())
+    provider.background_responses.require_active(response_id)
 }
 
 fn forget_known(
     provider: &OpenAiProvider,
     response_id: &ResponseId,
 ) -> Result<(), ProviderCoreError> {
-    let mut known = provider
-        .resumable_background
-        .lock()
-        .map_err(|_| {
-            ProviderCoreError::invalid_request(
-                "openai_cancel",
-                "OpenAI background-response registry is unavailable",
-            )
-        })?;
-    let mut restored = provider.restored_continuations.lock().map_err(|_| {
-        ProviderCoreError::invalid_request(
-            "openai_cancel",
-            "OpenAI restored-continuation registry is unavailable",
-        )
-    })?;
-    known.remove(response_id);
-    restored.remove(response_id);
-    Ok(())
+    provider.background_responses.retire_cancelled(response_id)
 }
 
 fn cancel_endpoint(

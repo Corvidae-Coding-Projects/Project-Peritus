@@ -7,7 +7,9 @@ mod state;
 mod terminal;
 
 use core::fmt;
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::{BTreeMap, VecDeque};
+#[cfg(test)]
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 
 use peritus_model_protocol::{
@@ -18,6 +20,7 @@ use peritus_provider_core::{
     BoxFuture, ByteStream, CancellationToken, FramingLimits, ModelStream, ProviderCoreError,
     ProviderCoreErrorKind, SseItem, SseParser,
 };
+use peritus_types::ProviderProfileId;
 
 use crate::error;
 
@@ -38,8 +41,8 @@ pub struct OpenAiStream {
     limits: ProtocolLimits,
     state: state::ResponseState,
     metadata: metadata::ResponseMetadata,
-    register_background: bool,
-    resumable: Arc<Mutex<BTreeSet<ResponseId>>>,
+    track_background: bool,
+    background_responses: BackgroundResponseRegistry,
     restored_partial: Vec<EventEnvelope>,
 }
 
@@ -47,6 +50,8 @@ pub struct OpenAiStream {
 pub(crate) struct OpenAiResumeState {
     local_sequence: u64,
     provider_sequence: u64,
+    profile_id: ProviderProfileId,
+    profile_revision: u64,
     expected_model: ModelName,
     state: state::ResponseState,
     partial: Vec<EventEnvelope>,
@@ -57,6 +62,8 @@ impl OpenAiResumeState {
         prefix: &[EventEnvelope],
         response_id: &ResponseId,
         provider_sequence: u64,
+        profile_id: ProviderProfileId,
+        profile_revision: u64,
         expected_model: &ModelName,
         limits: ProtocolLimits,
     ) -> Result<Option<Self>, ProviderCoreError> {
@@ -108,6 +115,8 @@ impl OpenAiResumeState {
         Ok(Some(Self {
             local_sequence,
             provider_sequence,
+            profile_id,
+            profile_revision,
             expected_model: expected_model.clone(),
             state,
             partial: partial.to_vec(),
@@ -118,17 +127,212 @@ impl OpenAiResumeState {
         &self,
         response_id: &ResponseId,
         provider_sequence: u64,
+        profile_id: ProviderProfileId,
+        profile_revision: u64,
         expected_model: &ModelName,
     ) -> bool {
         self.provider_sequence == provider_sequence
+            && self.profile_id == profile_id
+            && self.profile_revision == profile_revision
             && &self.expected_model == expected_model
             && self.state.response_id() == Some(response_id)
+    }
+
+    fn same_authority(&self, other: &Self) -> bool {
+        self.profile_id == other.profile_id
+            && self.profile_revision == other.profile_revision
+            && self.expected_model == other.expected_model
+            && self.state.response_id() == other.state.response_id()
+    }
+}
+
+struct BackgroundResponseRecord {
+    model: ModelName,
+    checkpoint: Option<OpenAiResumeState>,
+}
+
+/// Shared active background-response ownership for creation, resumption, and cancellation.
+#[derive(Clone, Default)]
+pub(crate) struct BackgroundResponseRegistry {
+    records: Arc<Mutex<BTreeMap<ResponseId, BackgroundResponseRecord>>>,
+}
+
+impl BackgroundResponseRegistry {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn register_observed(
+        &self,
+        response_id: ResponseId,
+        model: &ModelName,
+    ) -> Result<(), ProviderCoreError> {
+        let mut records = self
+            .records
+            .lock()
+            .map_err(|_| error::malformed("OpenAI background-response registry was unavailable"))?;
+        if let Some(record) = records.get(&response_id) {
+            if &record.model != model {
+                return Err(error::malformed(
+                    "OpenAI background response changed its model authority",
+                ));
+            }
+            return Ok(());
+        }
+        records.insert(
+            response_id,
+            BackgroundResponseRecord { model: model.clone(), checkpoint: None },
+        );
+        Ok(())
+    }
+
+    pub(crate) fn restore_active(
+        &self,
+        response_id: ResponseId,
+        model: &ModelName,
+        checkpoint: Option<OpenAiResumeState>,
+    ) -> Result<(), ProviderCoreError> {
+        if checkpoint
+            .as_ref()
+            .is_some_and(|state| &state.expected_model != model)
+        {
+            return Err(error::invalid(
+                "restored OpenAI response changed its model authority",
+            ));
+        }
+        let mut records = self
+            .records
+            .lock()
+            .map_err(|_| error::invalid("OpenAI background-response registry is unavailable"))?;
+        if let Some(record) = records.get_mut(&response_id) {
+            if &record.model != model {
+                return Err(error::invalid(
+                    "restored OpenAI response changed its model authority",
+                ));
+            }
+            if let (Some(existing), Some(replacement)) =
+                (record.checkpoint.as_ref(), checkpoint.as_ref())
+                && !existing.same_authority(replacement)
+            {
+                return Err(error::invalid(
+                    "restored OpenAI response changed its profile authority",
+                ));
+            }
+            if checkpoint.is_some() {
+                record.checkpoint = checkpoint;
+            }
+            return Ok(());
+        }
+        records.insert(
+            response_id,
+            BackgroundResponseRecord { model: model.clone(), checkpoint },
+        );
+        Ok(())
+    }
+
+    pub(crate) fn claim_exact(
+        &self,
+        response_id: &ResponseId,
+        provider_sequence: u64,
+        profile_id: ProviderProfileId,
+        profile_revision: u64,
+        expected_model: &ModelName,
+    ) -> Result<OpenAiResumeState, ProviderCoreError> {
+        let mut records = self
+            .records
+            .lock()
+            .map_err(|_| error::invalid("OpenAI background-response registry is unavailable"))?;
+        let record = records.get_mut(response_id).ok_or_else(|| {
+            error::invalid(
+                "exact continuation is limited to active background responses owned by this adapter",
+            )
+        })?;
+        if &record.model != expected_model
+            || !record.checkpoint.as_ref().is_some_and(|state| {
+                state.matches(
+                    response_id,
+                    provider_sequence,
+                    profile_id,
+                    profile_revision,
+                    expected_model,
+                )
+            })
+        {
+            return Err(error::invalid(
+                "exact continuation does not match a restored OpenAI decoder checkpoint",
+            ));
+        }
+        record.checkpoint.take().ok_or_else(|| {
+            error::invalid("OpenAI restored continuation checkpoint is unavailable")
+        })
+    }
+
+    pub(crate) fn return_checkpoint(
+        &self,
+        response_id: &ResponseId,
+        checkpoint: OpenAiResumeState,
+    ) {
+        let mut records = match self.records.lock() {
+            Ok(records) => records,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if let Some(record) = records.get_mut(response_id)
+            && record.model == checkpoint.expected_model
+            && record.checkpoint.is_none()
+        {
+            record.checkpoint = Some(checkpoint);
+        }
+    }
+
+    pub(crate) fn require_active(
+        &self,
+        response_id: &ResponseId,
+    ) -> Result<(), ProviderCoreError> {
+        let records = self
+            .records
+            .lock()
+            .map_err(|_| error::invalid("OpenAI background-response registry is unavailable"))?;
+        if !records.contains_key(response_id) {
+            return Err(error::invalid(
+                "provider cancellation requires an active background response owned by this adapter",
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn retire_terminal(
+        &self,
+        response_id: &ResponseId,
+    ) -> Result<(), ProviderCoreError> {
+        self.records
+            .lock()
+            .map_err(|_| error::malformed("OpenAI background-response registry was unavailable"))?
+            .remove(response_id);
+        Ok(())
+    }
+
+    pub(crate) fn retire_cancelled(
+        &self,
+        response_id: &ResponseId,
+    ) -> Result<(), ProviderCoreError> {
+        self.records
+            .lock()
+            .map_err(|_| error::invalid("OpenAI background-response registry is unavailable"))?
+            .remove(response_id);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+impl From<Arc<Mutex<BTreeSet<ResponseId>>>> for BackgroundResponseRegistry {
+    fn from(_legacy: Arc<Mutex<BTreeSet<ResponseId>>>) -> Self {
+        Self::new()
     }
 }
 
 impl OpenAiStream {
     #[allow(clippy::too_many_arguments, reason = "stream binds independent validated context")]
-    pub(crate) fn new(
+    pub(crate) fn new<R>(
         body: Box<dyn ByteStream>,
         framing_limits: FramingLimits,
         provider: ProviderName,
@@ -136,9 +340,12 @@ impl OpenAiStream {
         structured_output: bool,
         limits: ProtocolLimits,
         metadata: metadata::ResponseMetadata,
-        register_background: bool,
-        resumable: Arc<Mutex<BTreeSet<ResponseId>>>,
-    ) -> Self {
+        track_background: bool,
+        background_responses: R,
+    ) -> Self
+    where
+        R: Into<BackgroundResponseRegistry>,
+    {
         Self {
             body,
             parser: SseParser::new(framing_limits),
@@ -152,8 +359,8 @@ impl OpenAiStream {
             limits,
             state: state::ResponseState::new(),
             metadata,
-            register_background,
-            resumable,
+            track_background,
+            background_responses: background_responses.into(),
             restored_partial: Vec::new(),
         }
     }
@@ -166,7 +373,7 @@ impl OpenAiStream {
         structured_output: bool,
         limits: ProtocolLimits,
         metadata: metadata::ResponseMetadata,
-        resumable: Arc<Mutex<BTreeSet<ResponseId>>>,
+        background_responses: BackgroundResponseRegistry,
         restored: OpenAiResumeState,
     ) -> Self {
         Self {
@@ -182,8 +389,8 @@ impl OpenAiStream {
             limits,
             state: restored.state,
             metadata,
-            register_background: false,
-            resumable,
+            track_background: true,
+            background_responses,
             restored_partial: restored.partial,
         }
     }
@@ -211,8 +418,8 @@ impl OpenAiStream {
             limits: ProtocolLimits::PRODUCTION,
             state: state::ResponseState::new(),
             metadata: metadata::ResponseMetadata::empty(),
-            register_background: false,
-            resumable: Arc::new(Mutex::new(BTreeSet::new())),
+            track_background: false,
+            background_responses: BackgroundResponseRegistry::new(),
             restored_partial: Vec::new(),
         })
     }
