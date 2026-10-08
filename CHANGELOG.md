@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L062] Generic artifact quota admission and storage-location fences (#161)
 - [L476] Compatible wire and terminal formats narrow otherwise accepted content capacities (#554)
 - [L061] Working-memory lineage has hard observation and entry-count ceilings (#160)
 - [L643] Git observation and rendering ceilings have no continuation protocol (#689)
