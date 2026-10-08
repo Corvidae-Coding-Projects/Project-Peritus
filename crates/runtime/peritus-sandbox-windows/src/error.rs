@@ -110,6 +110,8 @@ pub enum WindowsRecovery {
     CancelAndReap,
     /// Retry exact resource cleanup.
     RetryCleanup,
+    /// Reopen retained ownership evidence and explicitly reconcile cleanup.
+    ReconcileCleanup,
     /// Quarantine ambiguous recovery state.
     Quarantine,
 }

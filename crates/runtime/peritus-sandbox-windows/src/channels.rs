@@ -195,9 +195,10 @@ impl PreparedChannels {
             self.secret_owner = None;
         }
         let filter_release = self.filter_owner.release().is_err();
-        let proxy_shutdown = self.proxy_owner.as_mut().is_some_and(|owner| {
-            owner.reconcile_shutdown().is_err() && owner.reconcile_shutdown().is_err()
-        });
+        let proxy_shutdown = self
+            .proxy_owner
+            .as_mut()
+            .is_some_and(|owner| owner.reconcile_shutdown().is_err());
         if !proxy_shutdown {
             self.proxy_owner = None;
         }

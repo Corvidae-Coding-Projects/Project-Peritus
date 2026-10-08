@@ -5,7 +5,8 @@ use peritus_process::{NativeWindowsContainmentIdentity, ProcessTreeIdentity};
 use peritus_types::{ProcessId, Sha256Digest};
 
 use crate::{
-    WindowsError, WindowsErrorKind, WindowsOperation, WindowsPath, WindowsPhase, WindowsRecovery,
+    CleanupFailure, CleanupFailures, WindowsError, WindowsErrorKind, WindowsOperation, WindowsPath,
+    WindowsPhase, WindowsRecovery,
 };
 
 const FAMILY: u16 = 0xC317;
@@ -15,6 +16,7 @@ const SCHEMA_V3: u16 = 3;
 const SCHEMA_V4: u16 = 4;
 const SCHEMA_V5: u16 = 5;
 const SCHEMA_V6: u16 = 6;
+const SCHEMA_V7: u16 = 7;
 const CHECKSUM_BYTES: usize = Sha256Digest::LENGTH;
 const LIMITS: CodecLimits = CodecLimits::PRODUCTION;
 
@@ -442,6 +444,7 @@ pub struct WindowsRecoveryRecord {
     owner_operation_digest: Option<Sha256Digest>,
     service_owner_digest: Option<Sha256Digest>,
     owner_identity: Option<WindowsOwnerIdentity>,
+    cleanup_failures: CleanupFailures,
     canonical: Vec<u8>,
 }
 
@@ -450,7 +453,7 @@ impl WindowsRecoveryRecord {
     #[must_use]
     pub fn prepared(identity: RuntimeIdentity) -> Self {
         let mut value = Self {
-            schema: SCHEMA_V5,
+            schema: SCHEMA_V7,
             identity,
             phase: WindowsPhase::Prepared,
             containment_required: false,
@@ -463,6 +466,7 @@ impl WindowsRecoveryRecord {
             owner_operation_digest: None,
             service_owner_digest: None,
             owner_identity: None,
+            cleanup_failures: CleanupFailures::default(),
             canonical: Vec::new(),
         };
         value.canonical = value.encode().unwrap_or_default();
@@ -482,7 +486,7 @@ impl WindowsRecoveryRecord {
         let complete_transaction = transaction_digest.is_some() == receipt.is_some();
         let complete_owner = owner_operation_digest.is_some() == service_owner_digest.is_some();
         let mut value = Self {
-            schema: if owner_identity.is_some() { SCHEMA_V6 } else { SCHEMA_V5 },
+            schema: SCHEMA_V7,
             identity,
             phase: WindowsPhase::Prepared,
             containment_required,
@@ -495,6 +499,7 @@ impl WindowsRecoveryRecord {
             owner_operation_digest: complete_owner.then_some(owner_operation_digest).flatten(),
             service_owner_digest: complete_owner.then_some(service_owner_digest).flatten(),
             owner_identity,
+            cleanup_failures: CleanupFailures::default(),
             canonical: Vec::new(),
         };
         value.canonical = value.encode().unwrap_or_default();
@@ -524,7 +529,7 @@ impl WindowsRecoveryRecord {
         &mut self,
         containment: NativeWindowsContainmentIdentity,
     ) -> Result<(), WindowsError> {
-        if !matches!(self.schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6)
+        if !matches!(self.schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7)
             || !self.containment_required
         {
             return Err(recovery_error(
@@ -558,7 +563,7 @@ impl WindowsRecoveryRecord {
         &mut self,
         mut files: Vec<SecretFileRecovery>,
     ) -> Result<(), WindowsError> {
-        if !matches!(self.schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6)
+        if !matches!(self.schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7)
             || self.phase != WindowsPhase::Prepared
         {
             return Err(recovery_error(
@@ -604,14 +609,14 @@ impl WindowsRecoveryRecord {
             secret_files_removed,
             helper_reaped,
         );
-        if !matches!(self.schema, SCHEMA_V5 | SCHEMA_V6) && requested_complete {
+        if !matches!(self.schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) && requested_complete {
             cleanup = RecoveryCleanup::legacy(
                 acl_restored,
                 secret_files_removed,
                 helper_reaped,
             );
         }
-        let legacy_partial = !matches!(self.schema, SCHEMA_V5 | SCHEMA_V6)
+        let legacy_partial = !matches!(self.schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7)
             && (acl_restored || secret_files_removed || helper_reaped)
             && !requested_complete;
         if legacy_partial {
@@ -643,6 +648,35 @@ impl WindowsRecoveryRecord {
         let mut cleanup = self.cleanup;
         cleanup.mark(dimension);
         self.update_progress(self.phase, cleanup)
+    }
+
+    pub(crate) fn mark_cleanup_failure(
+        &mut self,
+        dimension: RecoveryCleanupDimension,
+        failure: CleanupFailure,
+    ) -> Result<(), WindowsError> {
+        if !matches!(self.schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
+            return Err(recovery_error(
+                "legacy native recovery schema cannot persist cleanup causes",
+            ));
+        }
+        let previous_schema = self.schema;
+        let previous_failures = self.cleanup_failures.clone();
+        self.schema = SCHEMA_V7;
+        if !self.cleanup_failures.record(dimension, failure) && previous_schema == SCHEMA_V7 {
+            return Ok(());
+        }
+        match self.encode() {
+            Ok(canonical) => {
+                self.canonical = canonical;
+                Ok(())
+            }
+            Err(error) => {
+                self.schema = previous_schema;
+                self.cleanup_failures = previous_failures;
+                Err(error)
+            }
+        }
     }
 
     /// Records complete abort cleanup without inventing activation or termination phases.
@@ -726,7 +760,13 @@ impl WindowsRecoveryRecord {
         if frame.header().family() != FAMILY
             || !matches!(
                 schema,
-                SCHEMA_V1 | SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6
+                SCHEMA_V1
+                    | SCHEMA_V2
+                    | SCHEMA_V3
+                    | SCHEMA_V4
+                    | SCHEMA_V5
+                    | SCHEMA_V6
+                    | SCHEMA_V7
             )
         {
             return Err(recovery_error("native recovery schema is unsupported"));
@@ -746,7 +786,7 @@ impl WindowsRecoveryRecord {
         let acl_restored = reader.read_bool().map_err(codec_failure)?;
         let secret_files_removed = reader.read_bool().map_err(codec_failure)?;
         let helper_reaped = reader.read_bool().map_err(codec_failure)?;
-        let cleanup = if matches!(schema, SCHEMA_V5 | SCHEMA_V6) {
+        let cleanup = if matches!(schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
             RecoveryCleanup::from_facts(
                 reader.read_bool().map_err(codec_failure)?,
                 helper_reaped,
@@ -760,7 +800,7 @@ impl WindowsRecoveryRecord {
         } else {
             RecoveryCleanup::legacy(acl_restored, secret_files_removed, helper_reaped)
         };
-        let containment_required = if matches!(schema, SCHEMA_V5 | SCHEMA_V6) {
+        let containment_required = if matches!(schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
             reader.read_bool().map_err(codec_failure)?
         } else {
             matches!(schema, SCHEMA_V3 | SCHEMA_V4)
@@ -773,7 +813,7 @@ impl WindowsRecoveryRecord {
             service_owner_digest,
         ) = if matches!(
             schema,
-            SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6
+            SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7
         ) {
             let tree = if reader.read_option_tag().map_err(codec_failure)? {
                 let root = reader.read_u32().map_err(codec_failure)?;
@@ -810,7 +850,10 @@ impl WindowsRecoveryRecord {
         } else {
             (None, None, None, None, None)
         };
-        let containment = if matches!(schema, SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6)
+        let containment = if matches!(
+            schema,
+            SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7
+        )
             && reader.read_option_tag().map_err(codec_failure)?
         {
             let job_identity = read_digest(&mut reader)?;
@@ -847,7 +890,7 @@ impl WindowsRecoveryRecord {
         } else {
             None
         };
-        let secret_files = if matches!(schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6) {
+        let secret_files = if matches!(schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
             let count = reader
                 .read_collection_len(4 + 8 + 8 + 16)
                 .map_err(codec_failure)?;
@@ -875,41 +918,68 @@ impl WindowsRecoveryRecord {
         } else {
             Vec::new()
         };
-        let owner_identity = if schema == SCHEMA_V6 {
-            let job = read_optional_digest(&mut reader)?;
-            let helper_channels = read_optional_digest(&mut reader)?;
-            let protected_handles = read_optional_digest(&mut reader)?;
-            let proxy = read_optional_digest(&mut reader)?;
-            let network_filter = read_optional_digest(&mut reader)?;
-            let secret_delivery = read_optional_digest(&mut reader)?;
-            let acl_reversal = read_optional_digest(&mut reader)?;
-            let dispatch = read_digest(&mut reader)?;
-            Some(WindowsOwnerIdentity::new(
-                job,
-                helper_channels,
-                protected_handles,
-                proxy,
-                network_filter,
-                secret_delivery,
-                acl_reversal,
-                dispatch,
-            ))
+        let owner_identity = if matches!(schema, SCHEMA_V6 | SCHEMA_V7) {
+            let present = if schema == SCHEMA_V7 {
+                reader.read_option_tag().map_err(codec_failure)?
+            } else {
+                true
+            };
+            if present {
+                let job = read_optional_digest(&mut reader)?;
+                let helper_channels = read_optional_digest(&mut reader)?;
+                let protected_handles = read_optional_digest(&mut reader)?;
+                let proxy = read_optional_digest(&mut reader)?;
+                let network_filter = read_optional_digest(&mut reader)?;
+                let secret_delivery = read_optional_digest(&mut reader)?;
+                let acl_reversal = read_optional_digest(&mut reader)?;
+                let dispatch = read_digest(&mut reader)?;
+                Some(WindowsOwnerIdentity::new(
+                    job,
+                    helper_channels,
+                    protected_handles,
+                    proxy,
+                    network_filter,
+                    secret_delivery,
+                    acl_reversal,
+                    dispatch,
+                ))
+            } else {
+                None
+            }
         } else {
             None
+        };
+        let cleanup_failures = if schema == SCHEMA_V7 {
+            CleanupFailures::new(
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+                read_optional_cleanup_failure(&mut reader)?,
+            )
+        } else {
+            CleanupFailures::default()
         };
         reader.finish().map_err(codec_failure)?;
         let legacy_any_cleanup = acl_restored || secret_files_removed || helper_reaped;
         let legacy_complete_cleanup = acl_restored && secret_files_removed && helper_reaped;
-        if !matches!(schema, SCHEMA_V5 | SCHEMA_V6)
+        if !matches!(schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7)
             && (phase == WindowsPhase::Released || legacy_any_cleanup)
             && !legacy_complete_cleanup
-            || matches!(schema, SCHEMA_V5 | SCHEMA_V6)
+            || matches!(schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7)
                 && (phase == WindowsPhase::Released && !cleanup.is_complete()
                     || cleanup.handles_closed() && !cleanup.job_closed()
                     || !containment_required && !cleanup.job_closed()
                     || !containment_required && containment.is_some())
             || schema == SCHEMA_V6
                 && owner_identity.is_none_or(|identity| {
+                    !identity.valid_for(cleanup, containment_required)
+                })
+            || schema == SCHEMA_V7
+                && owner_identity.is_some_and(|identity| {
                     !identity.valid_for(cleanup, containment_required)
                 })
         {
@@ -940,6 +1010,7 @@ impl WindowsRecoveryRecord {
             owner_operation_digest,
             service_owner_digest,
             owner_identity,
+            cleanup_failures,
             canonical: bytes.to_vec(),
         };
         if value.encode()? != bytes {
@@ -1009,6 +1080,12 @@ impl WindowsRecoveryRecord {
         self.cleanup.is_complete()
     }
 
+    /// Returns durable first-failure causes for all cleanup dimensions.
+    #[must_use]
+    pub const fn cleanup_failures(&self) -> &CleanupFailures {
+        &self.cleanup_failures
+    }
+
     /// Returns the stable identity of every resource retained by the original live owner.
     #[must_use]
     pub fn owner_identity_digest(&self) -> Option<Sha256Digest> {
@@ -1023,7 +1100,7 @@ impl WindowsRecoveryRecord {
     }
 
     pub(crate) const fn custody_complete(&self) -> bool {
-        self.schema == SCHEMA_V6
+        matches!(self.schema, SCHEMA_V6 | SCHEMA_V7)
             && self.owner_operation_digest.is_some()
             && self.service_owner_digest.is_some()
             && self.acl_transaction_digest.is_some()
@@ -1052,7 +1129,7 @@ impl WindowsRecoveryRecord {
         writer.write_bool(self.cleanup.acl_restored()).map_err(codec_failure)?;
         writer.write_bool(self.cleanup.secret_files_removed()).map_err(codec_failure)?;
         writer.write_bool(self.cleanup.helper_reaped()).map_err(codec_failure)?;
-        if matches!(self.schema, SCHEMA_V5 | SCHEMA_V6) {
+        if matches!(self.schema, SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
             writer.write_bool(self.cleanup.job_closed()).map_err(codec_failure)?;
             writer
                 .write_bool(self.cleanup.secret_delivery_released())
@@ -1066,7 +1143,7 @@ impl WindowsRecoveryRecord {
         }
         if matches!(
             self.schema,
-            SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6
+            SCHEMA_V2 | SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7
         ) {
             writer.write_option_tag(self.tree.is_some()).map_err(codec_failure)?;
             if let Some(tree) = self.tree {
@@ -1104,7 +1181,7 @@ impl WindowsRecoveryRecord {
             }
             if matches!(
                 self.schema,
-                SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6
+                SCHEMA_V3 | SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7
             ) {
                 writer.write_option_tag(self.containment.is_some()).map_err(codec_failure)?;
                 if let Some(containment) = &self.containment {
@@ -1131,7 +1208,7 @@ impl WindowsRecoveryRecord {
                         .map_err(codec_failure)?;
                 }
             }
-            if matches!(self.schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6) {
+            if matches!(self.schema, SCHEMA_V4 | SCHEMA_V5 | SCHEMA_V6 | SCHEMA_V7) {
                 writer
                     .write_collection_len(self.secret_files.len())
                     .map_err(codec_failure)?;
@@ -1143,25 +1220,48 @@ impl WindowsRecoveryRecord {
                 }
             }
         }
-        if self.schema == SCHEMA_V6 {
-            let owner = self.owner_identity.ok_or_else(|| {
-                recovery_error("native recovery owner identity is missing")
-            })?;
-            for value in [
-                owner.job,
-                owner.helper_channels,
-                owner.protected_handles,
-                owner.proxy,
-                owner.network_filter,
-                owner.secret_delivery,
-                owner.acl_reversal,
+        if matches!(self.schema, SCHEMA_V6 | SCHEMA_V7) {
+            if self.schema == SCHEMA_V7 {
+                writer
+                    .write_option_tag(self.owner_identity.is_some())
+                    .map_err(codec_failure)?;
+            }
+            if let Some(owner) = self.owner_identity {
+                for value in [
+                    owner.job,
+                    owner.helper_channels,
+                    owner.protected_handles,
+                    owner.proxy,
+                    owner.network_filter,
+                    owner.secret_delivery,
+                    owner.acl_reversal,
+                ] {
+                    writer.write_option_tag(value.is_some()).map_err(codec_failure)?;
+                    if let Some(value) = value {
+                        writer.write_fixed(value.as_bytes()).map_err(codec_failure)?;
+                    }
+                }
+                writer.write_fixed(owner.dispatch.as_bytes()).map_err(codec_failure)?;
+            } else if self.schema == SCHEMA_V6 {
+                return Err(recovery_error("native recovery owner identity is missing"));
+            }
+        }
+        if self.schema == SCHEMA_V7 {
+            for failure in [
+                self.cleanup_failures.job(),
+                self.cleanup_failures.helper(),
+                self.cleanup_failures.acl(),
+                self.cleanup_failures.secret_files(),
+                self.cleanup_failures.secret_delivery(),
+                self.cleanup_failures.handles(),
+                self.cleanup_failures.proxy(),
+                self.cleanup_failures.filter(),
             ] {
-                writer.write_option_tag(value.is_some()).map_err(codec_failure)?;
-                if let Some(value) = value {
-                    writer.write_fixed(value.as_bytes()).map_err(codec_failure)?;
+                writer.write_option_tag(failure.is_some()).map_err(codec_failure)?;
+                if let Some(failure) = failure {
+                    write_cleanup_failure(&mut writer, failure)?;
                 }
             }
-            writer.write_fixed(owner.dispatch.as_bytes()).map_err(codec_failure)?;
         }
         let mut bytes =
             encode_frame(FAMILY, self.schema, &writer.into_bytes(), LIMITS).map_err(codec_failure)?;
@@ -1228,6 +1328,167 @@ pub fn classify(
 
 fn read_digest(reader: &mut CanonicalReader<'_>) -> Result<Sha256Digest, WindowsError> {
     Ok(Sha256Digest::new(reader.read_fixed().map_err(codec_failure)?))
+}
+
+fn write_cleanup_failure(
+    writer: &mut CanonicalWriter,
+    failure: &CleanupFailure,
+) -> Result<(), WindowsError> {
+    writer.write_u8(windows_error_kind_tag(failure.kind())).map_err(codec_failure)?;
+    writer
+        .write_u8(windows_operation_tag(failure.operation()))
+        .map_err(codec_failure)?;
+    writer
+        .write_u8(windows_recovery_tag(failure.recovery()))
+        .map_err(codec_failure)?;
+    writer.write_str(failure.detail()).map_err(codec_failure)?;
+    writer.write_option_tag(failure.source().is_some()).map_err(codec_failure)?;
+    if let Some(source) = failure.source() {
+        writer.write_str(source).map_err(codec_failure)?;
+    }
+    Ok(())
+}
+
+fn read_optional_cleanup_failure(
+    reader: &mut CanonicalReader<'_>,
+) -> Result<Option<CleanupFailure>, WindowsError> {
+    if !reader.read_option_tag().map_err(codec_failure)? {
+        return Ok(None);
+    }
+    let kind = decode_windows_error_kind(reader.read_u8().map_err(codec_failure)?)?;
+    let operation = decode_windows_operation(reader.read_u8().map_err(codec_failure)?)?;
+    let recovery = decode_windows_recovery(reader.read_u8().map_err(codec_failure)?)?;
+    let detail = reader.read_str().map_err(codec_failure)?.to_owned();
+    let source = if reader.read_option_tag().map_err(codec_failure)? {
+        Some(reader.read_str().map_err(codec_failure)?.to_owned())
+    } else {
+        None
+    };
+    if !CleanupFailure::text_is_bounded(&detail, source.as_deref()) {
+        return Err(recovery_error("native recovery cleanup cause exceeds its bound"));
+    }
+    Ok(Some(CleanupFailure::from_parts(
+        kind, operation, recovery, detail, source,
+    )))
+}
+
+const fn windows_error_kind_tag(value: WindowsErrorKind) -> u8 {
+    match value {
+        WindowsErrorKind::InvalidPlan => 1,
+        WindowsErrorKind::UnsupportedHost => 2,
+        WindowsErrorKind::ProbeFailed => 3,
+        WindowsErrorKind::DescriptorMismatch => 4,
+        WindowsErrorKind::PreparationMismatch => 5,
+        WindowsErrorKind::HelperProtocol => 6,
+        WindowsErrorKind::SandboxDenied => 7,
+        WindowsErrorKind::Path => 8,
+        WindowsErrorKind::Acl => 9,
+        WindowsErrorKind::Token => 10,
+        WindowsErrorKind::AppContainer => 11,
+        WindowsErrorKind::Job => 12,
+        WindowsErrorKind::Handle => 13,
+        WindowsErrorKind::Terminal => 14,
+        WindowsErrorKind::Resource => 15,
+        WindowsErrorKind::Network => 16,
+        WindowsErrorKind::Secret => 17,
+        WindowsErrorKind::Observation => 18,
+        WindowsErrorKind::RecoveryIndeterminate => 19,
+        WindowsErrorKind::Io => 20,
+    }
+}
+
+fn decode_windows_error_kind(tag: u8) -> Result<WindowsErrorKind, WindowsError> {
+    match tag {
+        1 => Ok(WindowsErrorKind::InvalidPlan),
+        2 => Ok(WindowsErrorKind::UnsupportedHost),
+        3 => Ok(WindowsErrorKind::ProbeFailed),
+        4 => Ok(WindowsErrorKind::DescriptorMismatch),
+        5 => Ok(WindowsErrorKind::PreparationMismatch),
+        6 => Ok(WindowsErrorKind::HelperProtocol),
+        7 => Ok(WindowsErrorKind::SandboxDenied),
+        8 => Ok(WindowsErrorKind::Path),
+        9 => Ok(WindowsErrorKind::Acl),
+        10 => Ok(WindowsErrorKind::Token),
+        11 => Ok(WindowsErrorKind::AppContainer),
+        12 => Ok(WindowsErrorKind::Job),
+        13 => Ok(WindowsErrorKind::Handle),
+        14 => Ok(WindowsErrorKind::Terminal),
+        15 => Ok(WindowsErrorKind::Resource),
+        16 => Ok(WindowsErrorKind::Network),
+        17 => Ok(WindowsErrorKind::Secret),
+        18 => Ok(WindowsErrorKind::Observation),
+        19 => Ok(WindowsErrorKind::RecoveryIndeterminate),
+        20 => Ok(WindowsErrorKind::Io),
+        _ => Err(recovery_error("native recovery cleanup failure kind is unknown")),
+    }
+}
+
+const fn windows_operation_tag(value: WindowsOperation) -> u8 {
+    match value {
+        WindowsOperation::Validate => 1,
+        WindowsOperation::Probe => 2,
+        WindowsOperation::ResolvePath => 3,
+        WindowsOperation::CompileAcl => 4,
+        WindowsOperation::InstallAcl => 5,
+        WindowsOperation::RestoreAcl => 6,
+        WindowsOperation::Manifest => 7,
+        WindowsOperation::Prepare => 8,
+        WindowsOperation::Activate => 9,
+        WindowsOperation::Cancel => 10,
+        WindowsOperation::Terminate => 11,
+        WindowsOperation::Release => 12,
+        WindowsOperation::Recover => 13,
+    }
+}
+
+fn decode_windows_operation(tag: u8) -> Result<WindowsOperation, WindowsError> {
+    match tag {
+        1 => Ok(WindowsOperation::Validate),
+        2 => Ok(WindowsOperation::Probe),
+        3 => Ok(WindowsOperation::ResolvePath),
+        4 => Ok(WindowsOperation::CompileAcl),
+        5 => Ok(WindowsOperation::InstallAcl),
+        6 => Ok(WindowsOperation::RestoreAcl),
+        7 => Ok(WindowsOperation::Manifest),
+        8 => Ok(WindowsOperation::Prepare),
+        9 => Ok(WindowsOperation::Activate),
+        10 => Ok(WindowsOperation::Cancel),
+        11 => Ok(WindowsOperation::Terminate),
+        12 => Ok(WindowsOperation::Release),
+        13 => Ok(WindowsOperation::Recover),
+        _ => Err(recovery_error("native recovery cleanup operation is unknown")),
+    }
+}
+
+const fn windows_recovery_tag(value: WindowsRecovery) -> u8 {
+    match value {
+        WindowsRecovery::CorrectRequest => 1,
+        WindowsRecovery::SelectBackend => 2,
+        WindowsRecovery::RepairHelper => 3,
+        WindowsRecovery::ConfigureHost => 4,
+        WindowsRecovery::Reauthorize => 5,
+        WindowsRecovery::Replan => 6,
+        WindowsRecovery::CancelAndReap => 7,
+        WindowsRecovery::RetryCleanup => 8,
+        WindowsRecovery::ReconcileCleanup => 9,
+        WindowsRecovery::Quarantine => 10,
+    }
+}
+
+fn decode_windows_recovery(tag: u8) -> Result<WindowsRecovery, WindowsError> {
+    match tag {
+        1 => Ok(WindowsRecovery::CorrectRequest),
+        2 => Ok(WindowsRecovery::SelectBackend),
+        3 => Ok(WindowsRecovery::RepairHelper),
+        4 => Ok(WindowsRecovery::ConfigureHost),
+        5 => Ok(WindowsRecovery::Reauthorize),
+        6 => Ok(WindowsRecovery::Replan),
+        7 => Ok(WindowsRecovery::CancelAndReap),
+        8 => Ok(WindowsRecovery::RetryCleanup),
+        9 => Ok(WindowsRecovery::ReconcileCleanup),
+        10 => Ok(WindowsRecovery::Quarantine),
+        _ => Err(recovery_error("native recovery cleanup guidance is unknown")),
+    }
 }
 
 fn read_optional_digest(

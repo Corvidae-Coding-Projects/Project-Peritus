@@ -65,10 +65,10 @@ pub use process::{
     TerminalMapping, TokenProfile,
 };
 pub use recovery::{
-    RecoveryClassification, RecoveryCleanup, RecoveryProbe, RuntimeIdentity, WindowsRecoveryRecord,
-    classify,
+    RecoveryClassification, RecoveryCleanup, RecoveryProbe, RuntimeIdentity, WindowsOwnerIdentity,
+    WindowsRecoveryRecord, classify,
 };
-pub use release::{CleanupState, ReleaseProgress, ReleaseReport};
+pub use release::{CleanupFailure, CleanupFailures, CleanupState, ReleaseProgress, ReleaseReport};
 pub use resource::{EnforcementLevel, ResourceControl, ResourceControlPlan};
 pub use runner::{
     HelperExit, ReservedHelperExit, WindowsActivation, WindowsLaunchDescription, activate_manifest,

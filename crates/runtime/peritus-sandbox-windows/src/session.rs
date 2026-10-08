@@ -14,10 +14,11 @@ use peritus_sandbox::{EnforcementObservation, ObservationDisposition, Observatio
 use peritus_secrets::SecretDeliverySession;
 
 use crate::{
-    AclTransaction, CleanupState, ObservationBinding, ObservationStatus, ReleaseProgress,
-    RecoveryClassification, RecoveryCleanup, RecoveryProbe, ReleaseReport, ResourceControlPlan,
-    RuntimeIdentity, WindowsError, WindowsErrorKind, WindowsLaunchDescription, WindowsObservation,
-    WindowsOperation, WindowsOwnerIdentity, WindowsPhase, WindowsRecovery, WindowsRecoveryRecord,
+    AclTransaction, CleanupFailure, CleanupState, ObservationBinding, ObservationStatus,
+    RecoveryClassification, RecoveryCleanup, RecoveryProbe, ReleaseProgress, ReleaseReport,
+    ResourceControlPlan, RuntimeIdentity, WindowsError, WindowsErrorKind, WindowsLaunchDescription,
+    WindowsObservation, WindowsOperation, WindowsOwnerIdentity, WindowsPhase, WindowsRecovery,
+    WindowsRecoveryRecord,
     network_filter::NetworkFilterOwner,
     observation::{WindowsCapability, observation_error, transition_allowed},
     recovery::RecoveryCleanupDimension,
@@ -231,9 +232,21 @@ impl WindowsSession {
 
     /// Returns partial cleanup evidence, including failed retryable dimensions.
     #[must_use]
-    pub const fn release_progress(&self) -> ReleaseProgress {
+    pub fn release_progress(&self) -> ReleaseProgress {
+        let cleanup = self.recovery.cleanup();
+        let failures = self.recovery.cleanup_failures();
+        let acl = if cleanup.acl_restored() {
+            CleanupState::Complete
+        } else if failures
+            .acl()
+            .is_some_and(CleanupFailure::requires_reconciliation)
+        {
+            CleanupState::ReconciliationRequired
+        } else {
+            self.acl.cleanup_state()
+        };
         ReleaseProgress::new(
-            self.acl.cleanup_state(),
+            acl,
             self.job_cleanup,
             self.helper_cleanup,
             self.secret_file_cleanup,
@@ -241,6 +254,7 @@ impl WindowsSession {
             self.handle_cleanup,
             self.proxy_cleanup,
             self.filter_cleanup,
+            failures.clone(),
         )
     }
 
@@ -502,16 +516,26 @@ impl NativeSandboxSession for WindowsSession {
     fn terminated(&mut self, _exit: &OsExitObservation) -> Result<(), ProcessError> {
         self.transition(WindowsPhase::Terminated, ObservationDisposition::Completed)
             .map_err(|error| process_error(&error))?;
-        let result = self
+        match self
             .recovery
             .advance_phase_with_cleanup(WindowsPhase::Terminated, RecoveryCleanupDimension::Helper)
-            .map_err(|error| process_error(&error));
-        self.helper_cleanup = if result.is_ok() {
-            CleanupState::Complete
-        } else {
-            CleanupState::RetryRequired
-        };
-        result
+            .map_err(|error| process_error(&error))
+        {
+            Ok(()) => {
+                self.helper_cleanup = CleanupState::Complete;
+                Ok(())
+            }
+            Err(error) => {
+                self.helper_cleanup = CleanupState::ReconciliationRequired;
+                self.recovery
+                    .mark_cleanup_failure(
+                        RecoveryCleanupDimension::Helper,
+                        CleanupFailure::from_process_error(&error),
+                    )
+                    .map_err(|failure| process_error(&failure))?;
+                Err(error)
+            }
+        }
     }
 
     fn release(&mut self) -> Result<(), ProcessError> {
@@ -855,6 +879,16 @@ pub(crate) fn process_error(error: &WindowsError) -> ProcessError {
             ProcessOperation::Reconcile,
             RecoveryClass::ReopenAndReconcile,
             "Windows preparation cleanup requires exact reconciliation",
+        )
+    } else if matches!(
+        error.recovery(),
+        WindowsRecovery::RetryCleanup | WindowsRecovery::ReconcileCleanup
+    ) {
+        (
+            ErrorCode::Indeterminate,
+            ProcessOperation::Reconcile,
+            RecoveryClass::ReopenAndReconcile,
+            "Windows native cleanup requires retained-owner reconciliation",
         )
     } else {
         match error.kind() {

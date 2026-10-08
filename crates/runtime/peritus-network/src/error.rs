@@ -5,7 +5,7 @@ use core::fmt;
 /// Stable managed-network failure category.
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum NetworkErrorKind {
-    /// A value is malformed or exceeds a fixed bound.
+    /// A value is malformed or cannot be represented.
     InvalidInput,
     /// A request is outside the checked network plan.
     Denied,
@@ -17,7 +17,7 @@ pub enum NetworkErrorKind {
     Proxy,
     /// The upstream connection failed.
     Connect,
-    /// A stream read or write failed.
+    /// A stream or private proxy storage operation failed.
     Io,
     /// A byte, duration, connection, or worker ceiling was crossed.
     Limit,
@@ -64,7 +64,7 @@ pub enum NetworkOperation {
     Proxy,
     /// Connect to an admitted upstream.
     Connect,
-    /// Relay bounded bytes.
+    /// Relay bytes through an owned connection.
     Relay,
     /// Acquire or inject a credential.
     Credential,
@@ -91,17 +91,18 @@ pub enum RecoveryClass {
     Reconcile,
 }
 
-/// Bounded non-payload-bearing network error.
-#[derive(Debug)]
+/// Non-payload-bearing network error with stable static detail.
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
 pub struct NetworkError {
     kind: NetworkErrorKind,
     operation: NetworkOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    storage: bool,
 }
 
 impl NetworkError {
-    /// Creates one stable bounded failure.
+    /// Creates one stable failure.
     #[must_use]
     pub const fn new(
         kind: NetworkErrorKind,
@@ -109,7 +110,34 @@ impl NetworkError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { kind, operation, recovery, detail }
+        Self { kind, operation, recovery, detail, storage: false }
+    }
+    #[must_use]
+    pub(crate) const fn storage(operation: NetworkOperation, detail: &'static str) -> Self {
+        Self {
+            kind: NetworkErrorKind::Io,
+            operation,
+            recovery: RecoveryClass::CancelAndJoin,
+            detail,
+            storage: true,
+        }
+    }
+    #[must_use]
+    pub(crate) const fn storage_after_limit(
+        operation: NetworkOperation,
+        detail: &'static str,
+    ) -> Self {
+        Self {
+            kind: NetworkErrorKind::Limit,
+            operation,
+            recovery: RecoveryClass::CancelAndJoin,
+            detail,
+            storage: true,
+        }
+    }
+    #[must_use]
+    pub(crate) const fn is_storage(&self) -> bool {
+        self.storage
     }
     /// Returns the stable failure category.
     #[must_use]
@@ -126,10 +154,22 @@ impl NetworkError {
     pub const fn recovery(&self) -> RecoveryClass {
         self.recovery
     }
-    /// Returns bounded safe detail.
+    /// Returns static safe detail.
     #[must_use]
     pub const fn detail(&self) -> &'static str {
         self.detail
+    }
+}
+
+impl fmt::Debug for NetworkError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("NetworkError")
+            .field("kind", &self.kind)
+            .field("operation", &self.operation)
+            .field("recovery", &self.recovery)
+            .field("detail", &self.detail)
+            .finish()
     }
 }
 

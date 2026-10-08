@@ -46,6 +46,33 @@ pub struct ProxyShutdown {
     dropped_observations: u64,
 }
 
+/// Stable terminal receipt from reconciling the exact retained proxy owner.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ProxyReconciliation {
+    shutdown: Option<ProxyShutdown>,
+    terminal_failure: Option<NetworkError>,
+}
+
+impl ProxyReconciliation {
+    /// Returns normal terminal accounting when the owner completed without a terminal failure.
+    #[must_use]
+    pub const fn shutdown(self) -> Option<ProxyShutdown> {
+        self.shutdown
+    }
+
+    /// Returns the owner's terminal failure after its listener and workers were proven absent.
+    #[must_use]
+    pub const fn terminal_failure(self) -> Option<NetworkError> {
+        self.terminal_failure
+    }
+}
+
+enum ProxyOwnerState {
+    Running(JoinHandle<Result<ProxyShutdown, NetworkError>>),
+    Reconciled(ProxyReconciliation),
+    ReconciliationRequired(NetworkError),
+}
+
 impl ProxyShutdown {
     /// Returns accepted connections.
     #[must_use]
@@ -80,8 +107,7 @@ pub struct ManagedProxy {
     token: Arc<RoutingToken>,
     cancellation: CancellationToken,
     observations: Arc<Mutex<owner::ObservationLog>>,
-    join: Option<JoinHandle<Result<ProxyShutdown, NetworkError>>>,
-    owner_exit_observed: bool,
+    owner: ProxyOwnerState,
 }
 
 impl ManagedProxy {
@@ -138,8 +164,7 @@ impl ManagedProxy {
             token,
             cancellation,
             observations,
-            join: Some(join),
-            owner_exit_observed: false,
+            owner: ProxyOwnerState::Running(join),
         })
     }
 
@@ -155,11 +180,10 @@ impl ManagedProxy {
         &self.token
     }
 
-    /// Returns a stable identity only while the exact listener owner remains live.
+    /// Returns a stable identity while the exact owner or its unresolved join receipt is retained.
     #[must_use]
     pub fn custody_identity(&self) -> Option<peritus_types::Sha256Digest> {
-        let join = self.join.as_ref()?;
-        if join.is_finished() || self.owner_exit_observed {
+        if matches!(&self.owner, ProxyOwnerState::Reconciled(_)) {
             return None;
         }
         let mut bytes = Vec::from(b"PERITUS-MANAGED-PROXY-OWNER-V1\0".as_slice());
@@ -227,7 +251,13 @@ impl ManagedProxy {
     /// # Errors
     /// Returns a retained owner, storage, policy, panic, or incomplete-join failure.
     pub fn shutdown(mut self) -> Result<ProxyShutdown, NetworkError> {
-        self.join_owner()
+        let receipt = self.reconcile_shutdown()?;
+        if let Some(error) = receipt.terminal_failure() {
+            return Err(error);
+        }
+        receipt
+            .shutdown()
+            .ok_or_else(|| owner::reconciliation_error("proxy shutdown receipt is incomplete"))
     }
 
     /// Cancels the exact retained owner and reconciles its terminal join evidence.
@@ -235,42 +265,49 @@ impl ManagedProxy {
     /// Unlike [`Self::shutdown`], this keeps the owner object available to the caller when the
     /// owner reports a terminal policy, storage, or worker failure. A successful thread join
     /// proves the listener and every owned worker have terminated even when their terminal result
-    /// is an error. The first call returns that typed error; a retry on the same owner confirms the
-    /// already-observed absence without starting or substituting another proxy.
+    /// is an error. The returned receipt retains that terminal cause while repeated calls return
+    /// the same absence proof without starting or substituting another proxy.
     ///
     /// # Errors
-    /// Returns the owner's typed terminal failure on the first observation, or an incomplete
-    /// teardown failure when the owner thread itself panicked and absence cannot be proved.
-    pub fn reconcile_shutdown(&mut self) -> Result<(), NetworkError> {
+    /// Returns an incomplete teardown failure when the owner thread itself panicked and absence
+    /// cannot be proved. That exact reconciliation requirement is stable across repeated calls.
+    pub fn reconcile_shutdown(&mut self) -> Result<ProxyReconciliation, NetworkError> {
         let _ = self.cancellation.cancel();
-        if self.owner_exit_observed {
-            return Ok(());
+        match &self.owner {
+            ProxyOwnerState::Reconciled(receipt) => return Ok(*receipt),
+            ProxyOwnerState::ReconciliationRequired(error) => return Err(*error),
+            ProxyOwnerState::Running(_) => {}
         }
-        let join = self
-            .join
-            .take()
-            .ok_or_else(|| owner::teardown_error("proxy owner termination remains indeterminate"))?;
-        match join.join() {
-            Ok(result) => {
-                self.owner_exit_observed = true;
-                result.map(|_| ())
+        let placeholder = owner::reconciliation_error("proxy owner join remains indeterminate");
+        let ProxyOwnerState::Running(join) =
+            core::mem::replace(&mut self.owner, ProxyOwnerState::ReconciliationRequired(placeholder))
+        else {
+            unreachable!("running proxy state was checked before join extraction");
+        };
+        let next = match join.join() {
+            Ok(Ok(shutdown)) if shutdown.workers_joined() => {
+                ProxyOwnerState::Reconciled(ProxyReconciliation {
+                    shutdown: Some(shutdown),
+                    terminal_failure: None,
+                })
             }
-            Err(_) => Err(owner::teardown_error("proxy owner thread panicked")),
+            Ok(Ok(_)) => ProxyOwnerState::ReconciliationRequired(owner::reconciliation_error(
+                "proxy owner returned incomplete worker accounting",
+            )),
+            Ok(Err(error)) => ProxyOwnerState::Reconciled(ProxyReconciliation {
+                shutdown: None,
+                terminal_failure: Some(error),
+            }),
+            Err(_) => ProxyOwnerState::ReconciliationRequired(owner::reconciliation_error(
+                "proxy owner thread panicked before absence was proved",
+            )),
+        };
+        self.owner = next;
+        match &self.owner {
+            ProxyOwnerState::Reconciled(receipt) => Ok(*receipt),
+            ProxyOwnerState::ReconciliationRequired(error) => Err(*error),
+            ProxyOwnerState::Running(_) => unreachable!("proxy reconciliation produced running state"),
         }
-    }
-
-    fn join_owner(&mut self) -> Result<ProxyShutdown, NetworkError> {
-        let _ = self.cancellation.cancel();
-        let join = self
-            .join
-            .take()
-            .ok_or_else(|| owner::teardown_error("proxy owner was already joined"))?;
-        let result =
-            join.join().map_err(|_| owner::teardown_error("proxy owner thread panicked"))??;
-        if !result.workers_joined() {
-            return Err(owner::teardown_error("proxy worker teardown was incomplete"));
-        }
-        Ok(result)
     }
 }
 
@@ -286,8 +323,8 @@ impl fmt::Debug for ManagedProxy {
 
 impl Drop for ManagedProxy {
     fn drop(&mut self) {
-        if self.join.is_some() {
-            let _ = self.join_owner();
+        if matches!(&self.owner, ProxyOwnerState::Running(_)) {
+            let _ = self.reconcile_shutdown();
         }
     }
 }
