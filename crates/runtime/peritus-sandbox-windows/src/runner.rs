@@ -42,9 +42,10 @@ impl WindowsLaunchDescription {
         manifest: HelperManifest,
         protected_handles: Vec<NativeProtectedHandle>,
     ) -> Result<(Self, NativeLaunchDescription), WindowsError> {
-        let helper_text =
-            helper_path.to_str().ok_or_else(|| helper_error("helper path is not UTF-8"))?;
-        let command = CommandSpec::new(helper_text, std::iter::empty::<String>())
+        let command = CommandSpec::new(
+            helper_path.as_os_str().to_owned(),
+            std::iter::empty::<std::ffi::OsString>(),
+        )
             .map_err(|_| helper_error("helper path is not a valid literal command"))?;
         let native = NativeLaunchDescription::new(
             command.clone(),
@@ -207,7 +208,15 @@ impl ReservedHelperExit {
 /// Returns a typed fail-closed error if any required native control is unavailable or mismatched.
 #[cfg(target_os = "windows")]
 pub fn activate_manifest(manifest: &HelperManifest) -> Result<WindowsActivation, WindowsError> {
-    crate::native::activate(manifest).map(|inner| WindowsActivation { inner })
+    activate_manifest_while(manifest, &mut || true)
+}
+
+#[cfg(target_os = "windows")]
+pub(crate) fn activate_manifest_while(
+    manifest: &HelperManifest,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<WindowsActivation, WindowsError> {
+    crate::native::activate(manifest, should_continue).map(|inner| WindowsActivation { inner })
 }
 
 /// Launches and waits for the literal target under the installed Windows controls.

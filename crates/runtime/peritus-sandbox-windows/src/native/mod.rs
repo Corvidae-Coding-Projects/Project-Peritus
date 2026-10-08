@@ -26,8 +26,11 @@ pub(crate) struct Activation {
     secrets: secret::StagedSecrets,
 }
 
-pub(crate) fn activate(manifest: &HelperManifest) -> Result<Activation, WindowsError> {
-    verify_helper_identity(manifest)?;
+pub(crate) fn activate(
+    manifest: &HelperManifest,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<Activation, WindowsError> {
+    verify_helper_identity(manifest, should_continue)?;
     handle::verify_protected_handles(manifest)?;
     verify_network(manifest)?;
     let token = token::RestrictedToken::create(manifest.token())?;
@@ -56,14 +59,37 @@ pub(crate) fn execute_with_channels(
     launch::launch_and_wait_with_channels(manifest, activation, channels)
 }
 
-fn verify_helper_identity(manifest: &HelperManifest) -> Result<(), WindowsError> {
+fn verify_helper_identity(
+    manifest: &HelperManifest,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), WindowsError> {
     let executable = std::env::current_exe().map_err(|_| {
         crate::error::io(crate::WindowsOperation::Activate, "helper path cannot be inspected")
     })?;
-    let bytes = std::fs::read(executable).map_err(|_| {
-        crate::error::io(crate::WindowsOperation::Activate, "helper image cannot be read")
-    })?;
-    if peritus_codec::sha256(&bytes) != manifest.helper_digest() {
+    let image = match crate::probe::inspect_helper_image(&executable, should_continue) {
+        Ok(image) if image.bytes() != 0 => image,
+        Ok(_) | Err(crate::probe::HelperImageFailure::Unavailable) => {
+            return Err(crate::error::io(
+                crate::WindowsOperation::Activate,
+                "helper image cannot be streamed as one finite regular file",
+            ));
+        }
+        Err(crate::probe::HelperImageFailure::Changed) => {
+            return Err(crate::error::mismatch(
+                crate::WindowsErrorKind::PreparationMismatch,
+                "running helper image length changed during verification",
+            ));
+        }
+        Err(crate::probe::HelperImageFailure::Cancelled) => {
+            return Err(WindowsError::new(
+                crate::WindowsErrorKind::HelperProtocol,
+                crate::WindowsOperation::Activate,
+                crate::WindowsRecovery::CancelAndReap,
+                "running helper verification was cancelled by its retained owner",
+            ));
+        }
+    };
+    if image.digest() != manifest.helper_digest() {
         return Err(crate::error::mismatch(
             crate::WindowsErrorKind::PreparationMismatch,
             "running helper image differs from the probed identity",

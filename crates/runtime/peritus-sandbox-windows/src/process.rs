@@ -72,21 +72,25 @@ pub enum DesktopPolicy {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct JobPlan {
     kill_on_close: bool,
-    active_process_limit: u32,
-    job_memory_bytes: u64,
-    cpu_time_millis: u64,
+    active_process_limit: Option<u32>,
+    job_memory_bytes: Option<u64>,
+    cpu_time_millis: Option<u64>,
 }
 
 impl JobPlan {
     /// Projects process containment and hard resource ceilings.
     #[must_use]
-    pub const fn from_checked_plan(plan: &CheckedSandboxPlan) -> Self {
+    pub fn from_checked_plan(plan: &CheckedSandboxPlan) -> Self {
         let limits = plan.requirements().resources();
         Self {
             kill_on_close: true,
-            active_process_limit: plan.contract().process().maximum_processes(),
-            job_memory_bytes: limits.limit(peritus_sandbox::SandboxResourceKind::Memory).get(),
-            cpu_time_millis: limits.limit(peritus_sandbox::SandboxResourceKind::CpuTime).get(),
+            active_process_limit: plan.contract().process().maximum_process_limit(),
+            job_memory_bytes: limits
+                .selected_limit(peritus_sandbox::SandboxResourceKind::Memory)
+                .map(peritus_types::ResourceQuantity::get),
+            cpu_time_millis: limits
+                .selected_limit(peritus_sandbox::SandboxResourceKind::CpuTime)
+                .map(peritus_types::ResourceQuantity::get),
         }
     }
 
@@ -99,7 +103,31 @@ impl JobPlan {
         if !kill_on_close || active_process_limit == 0 || job_memory_bytes == 0 {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
-                "job policy is incomplete or has a zero hard ceiling",
+                "legacy job policy is incomplete or has a zero hard ceiling",
+            ));
+        }
+        Ok(Self {
+            kill_on_close,
+            active_process_limit: Some(active_process_limit),
+            job_memory_bytes: Some(job_memory_bytes),
+            cpu_time_millis: (cpu_time_millis != 0).then_some(cpu_time_millis),
+        })
+    }
+
+    pub(crate) fn from_native_manifest(
+        kill_on_close: bool,
+        active_process_limit: Option<u32>,
+        job_memory_bytes: Option<u64>,
+        cpu_time_millis: Option<u64>,
+    ) -> Result<Self, WindowsError> {
+        if !kill_on_close
+            || active_process_limit == Some(0)
+            || job_memory_bytes == Some(0)
+            || cpu_time_millis == Some(0)
+        {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "native job policy has an invalid selected ceiling",
             ));
         }
         Ok(Self { kill_on_close, active_process_limit, job_memory_bytes, cpu_time_millis })
@@ -114,18 +142,45 @@ impl JobPlan {
     /// Returns the root-plus-descendants ceiling.
     #[must_use]
     pub const fn active_process_limit(self) -> u32 {
+        match self.active_process_limit {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+
+    /// Returns the selected root-plus-descendants ceiling.
+    #[must_use]
+    pub const fn active_process_limit_option(self) -> Option<u32> {
         self.active_process_limit
     }
 
     /// Returns the Job Object memory ceiling.
     #[must_use]
     pub const fn job_memory_bytes(self) -> u64 {
+        match self.job_memory_bytes {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+
+    /// Returns the selected Job Object memory ceiling.
+    #[must_use]
+    pub const fn job_memory_bytes_option(self) -> Option<u64> {
         self.job_memory_bytes
     }
 
     /// Returns the Job Object CPU-time ceiling.
     #[must_use]
     pub const fn cpu_time_millis(self) -> u64 {
+        match self.cpu_time_millis {
+            Some(value) => value,
+            None => 0,
+        }
+    }
+
+    /// Returns the selected Job Object CPU-time ceiling.
+    #[must_use]
+    pub const fn cpu_time_millis_option(self) -> Option<u64> {
         self.cpu_time_millis
     }
 }
@@ -215,6 +270,7 @@ impl TerminalMapping {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProcessPolicy {
     descendant_limit: u32,
+    unbounded_descendants: bool,
     graceful: bool,
     forced: bool,
     tree_required: bool,
@@ -233,16 +289,41 @@ impl ProcessPolicy {
                 "forced process control requires graceful control",
             ));
         }
-        Ok(Self { descendant_limit, graceful, forced, tree_required })
+        Ok(Self {
+            descendant_limit,
+            unbounded_descendants: false,
+            graceful,
+            forced,
+            tree_required,
+        })
+    }
+
+    pub(crate) fn from_native_manifest(
+        descendant_limit: u32,
+        unbounded_descendants: bool,
+        graceful: bool,
+        forced: bool,
+        tree_required: bool,
+    ) -> Result<Self, WindowsError> {
+        if unbounded_descendants && descendant_limit != 0 {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "unbounded descendant policy also contains a finite ceiling",
+            ));
+        }
+        let mut policy = Self::from_manifest(descendant_limit, graceful, forced, tree_required)?;
+        policy.unbounded_descendants = unbounded_descendants;
+        Ok(policy)
     }
 
     /// Projects exact checked process behavior.
     #[must_use]
     pub fn from_checked_plan(plan: &CheckedSandboxPlan) -> Self {
         let contract = plan.contract().process();
-        let descendant_limit = match contract.descendants() {
-            DescendantPolicy::Denied => 0,
-            DescendantPolicy::Bounded(value) => value,
+        let (descendant_limit, unbounded_descendants) = match contract.descendants() {
+            DescendantPolicy::Denied => (0, false),
+            DescendantPolicy::Bounded(value) => (value, false),
+            DescendantPolicy::Allowed => (0, true),
         };
         let (graceful, forced) = match contract.signals() {
             SignalPolicy::Denied => (false, false),
@@ -251,16 +332,23 @@ impl ProcessPolicy {
         };
         Self {
             descendant_limit,
+            unbounded_descendants,
             graceful,
             forced,
             tree_required: contract.containment() == TreeContainment::Required,
         }
     }
 
-    /// Returns the permitted descendant count.
+    /// Returns the finite descendant count, or zero when denied or explicitly unbounded.
     #[must_use]
     pub const fn descendant_limit(self) -> u32 {
         self.descendant_limit
+    }
+
+    /// Reports whether descendants are allowed without an application-level count ceiling.
+    #[must_use]
+    pub const fn unbounded_descendants(self) -> bool {
+        self.unbounded_descendants
     }
 
     /// Reports graceful-control authority.
@@ -295,10 +383,11 @@ impl InheritedHandlePolicy {
     /// # Errors
     /// Rejects null, duplicate, or excessive handles.
     pub fn new(mut handles: Vec<u64>) -> Result<Self, WindowsError> {
-        if handles.len() > MAX_INHERITED_HANDLES || handles.contains(&0) {
+        Self::validate_count(handles.len())?;
+        if handles.contains(&0) {
             return Err(error::invalid(
                 WindowsOperation::Validate,
-                "inherited handle whitelist is invalid or exceeds its bound",
+                "inherited handle whitelist contains a null handle",
             ));
         }
         handles.sort_unstable();
@@ -314,6 +403,16 @@ impl InheritedHandlePolicy {
         }
         let digest = peritus_codec::sha256(&bytes);
         Ok(Self { handles, digest })
+    }
+
+    pub(crate) fn validate_count(count: usize) -> Result<(), WindowsError> {
+        if count > MAX_INHERITED_HANDLES {
+            return Err(error::invalid(
+                WindowsOperation::Validate,
+                "selected inherited handle count exceeds its native contract",
+            ));
+        }
+        Ok(())
     }
 
     /// Returns the sorted exact handle whitelist.

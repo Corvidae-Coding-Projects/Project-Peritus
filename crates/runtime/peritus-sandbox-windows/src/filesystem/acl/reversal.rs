@@ -158,9 +158,11 @@ type AclReversal = ();
 
 #[cfg(target_os = "windows")]
 fn save_acl(target: &Path, backup: &Path) -> Result<(), WindowsError> {
-    let status = std::process::Command::new("icacls.exe")
+    let status = icacls_command(WindowsOperation::InstallAcl)?
         .arg(target)
-        .args(["/save", backup.to_string_lossy().as_ref(), "/q"])
+        .arg("/save")
+        .arg(backup)
+        .arg("/q")
         .status()
         .map_err(|_| acl_error(WindowsOperation::InstallAcl, "icacls ACL save could not start"))?;
     if status.success() {
@@ -175,7 +177,7 @@ fn apply_entry(target: &Path, principal: &str, entry: &AclEntry) -> Result<(), W
     let switch = if entry.effect == RuleEffect::Allow { "/grant:r" } else { "/deny" };
     let inheritance = if entry.scope == PathScope::Descendants { "(OI)(CI)" } else { "" };
     let grant = format!("{principal}:{inheritance}{}", rights(entry.access));
-    let status = std::process::Command::new("icacls.exe")
+    let status = icacls_command(WindowsOperation::InstallAcl)?
         .arg(target)
         .args([switch, &grant, "/q"])
         .status()
@@ -189,9 +191,11 @@ fn apply_entry(target: &Path, principal: &str, entry: &AclEntry) -> Result<(), W
 
 #[cfg(target_os = "windows")]
 fn restore_acl(reversal: &AclReversal) -> Result<(), WindowsError> {
-    let status = std::process::Command::new("icacls.exe")
+    let status = icacls_command(WindowsOperation::RestoreAcl)?
         .arg(&reversal.parent)
-        .args(["/restore", reversal.backup.to_string_lossy().as_ref(), "/q"])
+        .arg("/restore")
+        .arg(&reversal.backup)
+        .arg("/q")
         .status()
         .map_err(|_| acl_error(WindowsOperation::RestoreAcl, "icacls restore could not start"))?;
     if status.success() {
@@ -200,6 +204,13 @@ fn restore_acl(reversal: &AclReversal) -> Result<(), WindowsError> {
     } else {
         Err(acl_error(WindowsOperation::RestoreAcl, "icacls exact restore failed"))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn icacls_command(operation: WindowsOperation) -> Result<std::process::Command, WindowsError> {
+    crate::native::probe::system_acl_tool()
+        .map(|path| std::process::Command::new(path))
+        .ok_or_else(|| acl_error(operation, "system ACL tool is unavailable"))
 }
 
 #[cfg(target_os = "windows")]

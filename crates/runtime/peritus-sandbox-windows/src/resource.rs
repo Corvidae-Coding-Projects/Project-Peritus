@@ -2,6 +2,8 @@
 
 use peritus_sandbox::{CheckedSandboxPlan, SandboxResourceKind};
 
+use crate::{WindowsError, WindowsOperation};
+
 /// Enforcement owner for one Windows resource dimension.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum EnforcementLevel {
@@ -63,6 +65,12 @@ impl ResourceControl {
         self.ceiling
     }
 
+    /// Reports whether the request selected this resource dimension.
+    #[must_use]
+    pub const fn is_selected(self) -> bool {
+        self.ceiling != 0
+    }
+
     /// Returns the enforcement owner.
     #[must_use]
     pub const fn level(self) -> EnforcementLevel {
@@ -83,9 +91,26 @@ impl ResourceControlPlan {
         let limits = plan.requirements().resources();
         let controls = std::array::from_fn(|index| {
             let kind = RESOURCE_KINDS[index];
-            ResourceControl::new(kind, limits.limit(kind).get(), levels[index])
+            let ceiling = limits.limit(kind).get();
+            let level = if ceiling == 0 { EnforcementLevel::Unsupported } else { levels[index] };
+            ResourceControl::new(kind, ceiling, level)
         });
         Self { controls }
+    }
+
+    pub(crate) fn select_checked_plan(
+        plan: &CheckedSandboxPlan,
+        levels: [EnforcementLevel; 8],
+    ) -> Result<Self, WindowsError> {
+        let selected = Self::from_checked_plan(plan, levels);
+        if selected.is_complete() {
+            Ok(selected)
+        } else {
+            Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "a selected resource ceiling lacks complete native or supervisor enforcement",
+            ))
+        }
     }
 
     pub(crate) const fn from_controls(controls: [ResourceControl; 8]) -> Self {
@@ -108,7 +133,8 @@ impl ResourceControlPlan {
     #[must_use]
     pub fn is_complete(self) -> bool {
         self.controls.iter().all(|control| {
-            matches!(control.level(), EnforcementLevel::Hard | EnforcementLevel::Supervisor)
+            !control.is_selected()
+                || matches!(control.level(), EnforcementLevel::Hard | EnforcementLevel::Supervisor)
         })
     }
 }

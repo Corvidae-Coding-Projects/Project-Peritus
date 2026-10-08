@@ -7,19 +7,34 @@ use peritus_sandbox::{
     AdmissionProfile, BackendAdmission, BackendDescriptor, CheckedSandboxPlan, admit_backend,
 };
 use peritus_types::Sha256Digest;
+use std::sync::Arc;
 
 use crate::{
     EnvironmentEntry, HelperManifest, InheritedHandlePolicy, JobPlan, ObservationBinding,
-    PathPolicy, ProcessPolicy, ResourceControlPlan, RuntimeIdentity, TerminalMapping,
+    PathPolicy, ProcessPolicy, RuntimeIdentity, TerminalMapping,
     WindowsBackendConfig, WindowsBackendDescriptor, WindowsError, WindowsErrorKind,
     WindowsLaunchDescription, WindowsOperation, WindowsProbe, WindowsSession, compile_acl_plan,
 };
 
+mod retained_owner;
+
+pub use retained_owner::RetainedWindowsBackendFactory;
+
 /// Probed Windows backend selected by C2 admission.
-#[derive(Debug)]
 pub struct WindowsBackend {
     config: WindowsBackendConfig,
     descriptor: WindowsBackendDescriptor,
+    preparation_continues: Arc<dyn Fn() -> bool + Send + Sync>,
+}
+
+impl core::fmt::Debug for WindowsBackend {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("WindowsBackend")
+            .field("config", &self.config)
+            .field("descriptor", &self.descriptor)
+            .finish_non_exhaustive()
+    }
 }
 
 impl WindowsBackend {
@@ -28,13 +43,29 @@ impl WindowsBackend {
     /// # Errors
     /// Returns typed probe/descriptor failure.
     pub fn new(config: WindowsBackendConfig) -> Result<Self, WindowsError> {
+        Self::new_cancellable(config, || true)
+    }
+
+    /// Probes the current host while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns typed cancellation, probe, or descriptor failure.
+    pub fn new_cancellable(
+        config: WindowsBackendConfig,
+        should_continue: impl Fn() -> bool + Send + Sync + 'static,
+    ) -> Result<Self, WindowsError> {
+        config.validate_managed_network_identity()?;
         let request = crate::ProbeRequest::new(
             config.helper_path.clone(),
             config.token.clone(),
             config.managed_filter_digest(),
-        )?;
-        let probe = WindowsProbe::run(&request)?;
-        Self::from_probe(config, probe)
+        )?
+        .with_acl_probe_root(config.acl_backup_root.clone())?;
+        let preparation_continues = Arc::new(should_continue);
+        let probe = WindowsProbe::run_cancellable(&request, || preparation_continues())?;
+        let descriptor =
+            WindowsBackendDescriptor::from_probe(probe, config.managed_filter_digest())?;
+        Ok(Self { config, descriptor, preparation_continues })
     }
 
     /// Builds from already validated probe evidence for deterministic conformance tests.
@@ -45,9 +76,10 @@ impl WindowsBackend {
         config: WindowsBackendConfig,
         probe: WindowsProbe,
     ) -> Result<Self, WindowsError> {
+        config.validate_managed_network_identity()?;
         let descriptor =
             WindowsBackendDescriptor::from_probe(probe, config.managed_filter_digest())?;
-        Ok(Self { config, descriptor })
+        Ok(Self { config, descriptor, preparation_continues: Arc::new(|| true) })
     }
 
     /// Returns common C2 descriptor.
@@ -66,6 +98,9 @@ impl WindowsBackend {
     /// # Errors
     /// Returns unsupported for any missing feature.
     pub fn admit(&self, plan: &CheckedSandboxPlan) -> Result<BackendAdmission, WindowsError> {
+        self.descriptor
+            .probe()
+            .selected_controls(plan, &self.config.token)?;
         admit_backend(plan, self.descriptor(), AdmissionProfile::Production).map_err(|_| {
             let _no_effect = crate::verified::unsupported_has_no_effect(false, false, false);
             crate::error::unsupported(
@@ -100,17 +135,17 @@ impl WindowsBackend {
         admission: &BackendAdmission,
         install_native: bool,
     ) -> Result<WindowsSession, WindowsError> {
+        self.ensure_preparation_continues()?;
         self.validate_bindings(execution, sandbox, admission)?;
-        let probe = self.descriptor.probe();
-        if !probe.core_supported() {
-            return Err(crate::error::unsupported(
+        if sandbox.isolation() != peritus_sandbox::IsolationRequirement::Restricted {
+            return Err(crate::error::invalid(
                 WindowsOperation::Prepare,
-                "Windows 11 24H2/Server 2025 native controls are incomplete",
+                "native Windows preparation requires restricted isolation",
             ));
         }
-        let helper_bytes = std::fs::read(&self.config.helper_path)
-            .map_err(|_| crate::error::io(WindowsOperation::Prepare, "helper cannot be read"))?;
-        let helper_digest = peritus_codec::sha256(&helper_bytes);
+        let probe = self.descriptor.probe();
+        let selected = probe.selected_controls(sandbox, &self.config.token)?;
+        let helper_digest = helper_digest(&self.config.helper_path, &self.preparation_continues)?;
         if probe.evidence().helper_digest != Some(helper_digest) {
             return Err(crate::error::mismatch(
                 WindowsErrorKind::PreparationMismatch,
@@ -121,7 +156,8 @@ impl WindowsBackend {
         self.validate_native_paths(execution)?;
         let path_policy =
             PathPolicy::new(self.config.workspace.clone(), self.config.protected_roots.clone())?
-                .with_read_only_inputs(self.config.read_only_inputs.clone())?;
+                .with_read_only_inputs(self.config.read_only_inputs.clone())?
+                .with_writable_inputs(self.config.writable_inputs.clone())?;
         let acl = compile_acl_plan(sandbox, &path_policy, self.config.token.principal_sid())?;
         let environment = execution
             .environment()
@@ -134,16 +170,16 @@ impl WindowsBackend {
             execution,
             sandbox,
             install_native,
-            probe.evidence().managed_network,
+            selected.managed_network(),
         )?;
         let terminal = TerminalMapping::from_checked_plan(sandbox)?;
-        if matches!(terminal, TerminalMapping::ConPty { .. }) && !probe.evidence().conpty {
+        if matches!(terminal, TerminalMapping::ConPty { .. }) && !selected.conpty() {
             return Err(crate::error::unsupported(
                 WindowsOperation::Prepare,
                 "checked terminal requires unavailable ConPTY support",
             ));
         }
-        let resources = ResourceControlPlan::from_checked_plan(sandbox, probe.evidence().resources);
+        let resources = selected.resources();
         let job = JobPlan::from_checked_plan(sandbox);
         let process = ProcessPolicy::from_checked_plan(sandbox);
         let inherited_handles = target_handles(&channels.secrets)?;
@@ -256,6 +292,89 @@ impl WindowsBackend {
         }
     }
 
+    fn ensure_preparation_continues(&self) -> Result<(), WindowsError> {
+        if (self.preparation_continues)() {
+            Ok(())
+        } else {
+            Err(crate::probe::probe_cancelled())
+        }
+    }
+
+    fn validate_selected_capacity(
+        &self,
+        sandbox: &CheckedSandboxPlan,
+    ) -> Result<(), WindowsError> {
+        self.ensure_preparation_continues()?;
+        let selected = self
+            .descriptor
+            .probe()
+            .selected_controls(sandbox, &self.config.token)?;
+        let helper_digest = helper_digest(&self.config.helper_path, &self.preparation_continues)?;
+        if self.descriptor.probe().evidence().helper_digest != Some(helper_digest) {
+            return Err(crate::error::mismatch(
+                WindowsErrorKind::PreparationMismatch,
+                "installed helper identity changed before authority consumption",
+            ));
+        }
+        let network_selected = !sandbox.requirements().network().is_empty();
+        if network_selected != self.config.proxy.is_some()
+            || (network_selected && !self.descriptor.probe().evidence().managed_network)
+        {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "selected network control lacks exact inert preparation or native capacity",
+            ));
+        }
+        let requirements = sandbox.requirements().secrets();
+        if !requirements.is_empty() && !selected.credential_delivery() {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "selected secret delivery lacks qualified credential-store support",
+            ));
+        }
+        match &self.config.secrets {
+            Some(preparation) if preparation.lease_count() == requirements.len() => {}
+            None if requirements.is_empty() => {}
+            Some(_) | None => {
+                return Err(crate::error::mismatch(
+                    WindowsErrorKind::PreparationMismatch,
+                    "selected secret deliveries differ from supplied exact leases",
+                ));
+            }
+        }
+        let inherited_secret_count = requirements
+            .iter()
+            .filter(|requirement| {
+                matches!(
+                    requirement.delivery(),
+                    peritus_sandbox::SecretDelivery::BrokeredHandle(_)
+                )
+            })
+            .count();
+        InheritedHandlePolicy::validate_count(inherited_secret_count)?;
+        if let TerminalMapping::ConPty { columns, rows, .. } =
+            TerminalMapping::from_checked_plan(sandbox)?
+            && (i16::try_from(columns).is_err() || i16::try_from(rows).is_err())
+        {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "selected ConPTY dimensions exceed the native coordinate representation",
+            ));
+        }
+        let _resources = selected.resources();
+        #[cfg(target_os = "windows")]
+        {
+            self.validate_configured_native_paths()?;
+            let mut should_continue = || (self.preparation_continues)();
+            crate::native::probe::validate_selected_capacity(
+                sandbox,
+                &self.config.token,
+                &mut should_continue,
+            )?;
+        }
+        Ok(())
+    }
+
     fn validate_compilation(
         &self,
         execution: &ExecutionPlan,
@@ -304,14 +423,22 @@ impl WindowsBackend {
     #[cfg(target_os = "windows")]
     fn validate_native_paths(&self, execution: &ExecutionPlan) -> Result<(), WindowsError> {
         let working = crate::WindowsPath::from_canonicalized(execution.working_directory().path())?;
-        if working != self.config.workspace {
+        if !working.same_native_path(&self.config.workspace) {
             return Err(crate::error::mismatch(
                 WindowsErrorKind::PreparationMismatch,
                 "working directory changed after authorization",
             ));
         }
+        self.validate_configured_native_paths()
+    }
+
+    #[cfg(target_os = "windows")]
+    fn validate_configured_native_paths(&self) -> Result<(), WindowsError> {
         let workspace = crate::ResolvedWindowsPath::resolve(self.config.workspace.clone())?;
         for input in &self.config.read_only_inputs {
+            crate::ResolvedWindowsPath::resolve(input.clone())?;
+        }
+        for input in &self.config.writable_inputs {
             crate::ResolvedWindowsPath::resolve(input.clone())?;
         }
         for protected in &self.config.protected_roots {
@@ -324,6 +451,25 @@ impl WindowsBackend {
             }
         }
         Ok(())
+    }
+}
+
+fn helper_digest(
+    path: &std::path::Path,
+    should_continue: &impl Fn() -> bool,
+) -> Result<Sha256Digest, WindowsError> {
+    let mut continuation = || should_continue();
+    match crate::probe::inspect_helper_image(path, &mut continuation) {
+        Ok(image) if image.bytes() != 0 => Ok(image.digest()),
+        Ok(_) | Err(crate::probe::HelperImageFailure::Unavailable) => Err(crate::error::io(
+            WindowsOperation::Prepare,
+            "helper image cannot be read as one finite regular file",
+        )),
+        Err(crate::probe::HelperImageFailure::Changed) => Err(crate::error::mismatch(
+            WindowsErrorKind::PreparationMismatch,
+            "helper image length changed during streamed verification",
+        )),
+        Err(crate::probe::HelperImageFailure::Cancelled) => Err(crate::probe::probe_cancelled()),
     }
 }
 
@@ -363,6 +509,22 @@ impl NativeSandboxBackend for WindowsBackend {
 
     fn platform(&self) -> NativePlatform {
         NativePlatform::Windows
+    }
+
+    fn validate_preparation_capacity(
+        &self,
+        sandbox: &CheckedSandboxPlan,
+    ) -> Result<(), ProcessError> {
+        self.validate_selected_capacity(sandbox)
+            .map_err(|error| crate::session::process_error(&error))
+    }
+
+    fn retained_factory_request(
+        &self,
+        sandbox: &CheckedSandboxPlan,
+        admission: &BackendAdmission,
+    ) -> Result<peritus_process::RetainedBackendFactoryRequest, ProcessError> {
+        retained_owner::request(self, sandbox, admission)
     }
 
     fn prepare(

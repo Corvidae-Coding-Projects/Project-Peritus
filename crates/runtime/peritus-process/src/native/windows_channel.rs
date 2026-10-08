@@ -8,11 +8,14 @@
 use std::{
     fs::File,
     io::Write,
-    os::windows::io::{FromRawHandle, RawHandle},
+    os::windows::io::{AsRawHandle, FromRawHandle, RawHandle},
     sync::{Arc, Mutex},
 };
 
-use windows_sys::Win32::{Foundation::HANDLE, System::Pipes::CreatePipe};
+use windows_sys::Win32::{
+    Foundation::HANDLE,
+    System::Pipes::{CreatePipe, PIPE_NOWAIT, PeekNamedPipe, SetNamedPipeHandleState},
+};
 
 use crate::{
     ErrorCode, NativeProtectedHandle, ProcessError, ProcessOperation, RecoveryClass, TerminalSize,
@@ -41,6 +44,7 @@ impl NativeWindowsHelperChannels {
     pub fn new() -> Result<Self, ProcessError> {
         let (status_reader, status_writer) = pipe()?;
         let (control_reader, control_writer) = pipe()?;
+        set_nonblocking(&control_writer)?;
         let status = NativeProtectedHandle::from_file("windows-helper-status-v1", status_writer)?;
         let control =
             NativeProtectedHandle::from_file("windows-terminal-control-v1", control_reader)?;
@@ -95,10 +99,12 @@ impl NativeWindowsHelperChannels {
             .control_writer
             .lock()
             .map_err(|_| channel_error("Windows terminal control channel was poisoned"))?;
-        writer
-            .write_all(frame)
-            .and_then(|()| writer.flush())
-            .map_err(|_| channel_error("Windows terminal resize cannot be delivered"))
+        match writer.write(frame) {
+            Ok(written) if written == frame.len() => Ok(()),
+            Ok(_) | Err(_) => {
+                Err(channel_error("Windows terminal control frame cannot be delivered"))
+            }
+        }
     }
 }
 
@@ -131,6 +137,24 @@ impl NativeWindowsHelperAttachment {
             .map_err(|_| channel_error("Windows target-started record cannot be written"))
     }
 
+    /// Reports whether the C2 owner still retains the paired control endpoint.
+    #[must_use]
+    pub fn owner_connected(&self) -> bool {
+        self.control.as_ref().is_some_and(|control| {
+            // SAFETY: this only queries the live inherited pipe without consuming control bytes.
+            unsafe {
+                PeekNamedPipe(
+                    control.as_raw_handle().cast(),
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                )
+            } != 0
+        })
+    }
+
     /// Transfers the resize reader to the `ConPTY` control loop.
     #[must_use]
     pub const fn take_control_reader(&mut self) -> Option<File> {
@@ -150,6 +174,23 @@ fn pipe() -> Result<(File, File), ProcessError> {
     // SAFETY: paired writer is independently owned and also moves into File.
     let writer = unsafe { File::from_raw_handle(writer.cast()) };
     Ok((reader, writer))
+}
+
+fn set_nonblocking(writer: &File) -> Result<(), ProcessError> {
+    let mode = PIPE_NOWAIT;
+    // SAFETY: the File owns a live pipe endpoint and all optional output-setting pointers are null.
+    if unsafe {
+        SetNamedPipeHandleState(
+            writer.as_raw_handle().cast(),
+            &raw const mode,
+            std::ptr::null(),
+            std::ptr::null(),
+        )
+    } == 0
+    {
+        return Err(channel_error("Windows terminal control channel cannot be made nonblocking"));
+    }
+    Ok(())
 }
 
 fn inherited_file(key: &'static str) -> Result<File, ProcessError> {

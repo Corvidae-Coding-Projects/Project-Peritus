@@ -1,11 +1,15 @@
 //! C2-owned Windows native session lifecycle and teardown.
 
+use std::collections::VecDeque;
+
 use peritus_network::ManagedProxy;
 use peritus_process::{
-    CancellationReason, NativeLaunchDescription, NativeSandboxSession, OsExitObservation,
-    ProcessError, ProcessTreeIdentity,
+    CancellationReason, NATIVE_OBSERVATION_PAGE_RECORDS, NativeLaunchDescription,
+    NativeObservationPage, NativeObservationReceipt, NativeObservationTransport,
+    NativeSandboxSession, OsExitObservation, ProcessError, ProcessTreeIdentity,
+    native_observation_prefix_digest, native_observation_producer_binding,
 };
-use peritus_sandbox::{EnforcementObservation, ObservationDisposition};
+use peritus_sandbox::{EnforcementObservation, ObservationDisposition, ObservationTail};
 use peritus_secrets::SecretDeliverySession;
 
 use crate::{
@@ -20,6 +24,7 @@ use crate::{
 mod teardown;
 
 const RICH_OBSERVATION_LIMIT: usize = 64;
+const COMMON_OBSERVATION_TAIL_LIMIT: usize = 64;
 
 /// Prepared Windows session retained by C2 until release.
 #[derive(Debug)]
@@ -29,8 +34,12 @@ pub struct WindowsSession {
     acl: AclTransaction,
     phase: WindowsPhase,
     binding: ObservationBinding,
-    observations: Vec<EnforcementObservation>,
-    windows_observations: Vec<WindowsObservation>,
+    observations: ObservationTail<EnforcementObservation>,
+    pending_observations: VecDeque<EnforcementObservation>,
+    acknowledged_observations: Option<NativeObservationReceipt>,
+    next_observation_sequence: u64,
+    windows_observations: ObservationTail<WindowsObservation>,
+    next_windows_observation_sequence: u64,
     resources: ResourceControlPlan,
     recovery: WindowsRecoveryRecord,
     proxy: Option<ManagedProxy>,
@@ -53,9 +62,12 @@ impl WindowsSession {
         filter: NetworkFilterOwner,
         secrets: Option<SecretDeliverySession>,
     ) -> Self {
-        let observations =
-            vec![binding.common(1, WindowsPhase::Prepared, ObservationDisposition::Completed)];
-        let mut windows_observations = Vec::new();
+        let prepared = binding.common(1, WindowsPhase::Prepared, ObservationDisposition::Completed);
+        let mut observations = ObservationTail::new(COMMON_OBSERVATION_TAIL_LIMIT);
+        observations.push(prepared);
+        let pending_observations = VecDeque::from([prepared]);
+        let mut windows_observations = ObservationTail::new(RICH_OBSERVATION_LIMIT);
+        let mut next_windows_observation_sequence = 1_u64;
         for capability in [
             WindowsCapability::RestrictedToken,
             WindowsCapability::LowIntegrity,
@@ -68,9 +80,8 @@ impl WindowsSession {
             WindowsCapability::Network,
             WindowsCapability::SecretHandles,
         ] {
-            let sequence = u64::try_from(windows_observations.len() + 1).unwrap_or(u64::MAX);
             windows_observations.push(WindowsObservation::new(
-                sequence,
+                next_windows_observation_sequence,
                 binding,
                 WindowsPhase::Prepared,
                 Some(capability),
@@ -78,11 +89,15 @@ impl WindowsSession {
                 None,
                 ObservationStatus::Verified,
             ));
+            next_windows_observation_sequence =
+                next_windows_observation_sequence.saturating_add(1);
         }
         for control in resources.controls() {
-            let sequence = u64::try_from(windows_observations.len() + 1).unwrap_or(u64::MAX);
+            if !control.is_selected() {
+                continue;
+            }
             windows_observations.push(WindowsObservation::new(
-                sequence,
+                next_windows_observation_sequence,
                 binding,
                 WindowsPhase::Prepared,
                 None,
@@ -90,6 +105,8 @@ impl WindowsSession {
                 Some(control.level()),
                 ObservationStatus::Installed,
             ));
+            next_windows_observation_sequence =
+                next_windows_observation_sequence.saturating_add(1);
         }
         let proxy_cleanup =
             if proxy.is_some() { CleanupState::Pending } else { CleanupState::Complete };
@@ -100,7 +117,11 @@ impl WindowsSession {
             phase: WindowsPhase::Prepared,
             binding,
             observations,
+            pending_observations,
+            acknowledged_observations: None,
+            next_observation_sequence: 2,
             windows_observations,
+            next_windows_observation_sequence,
             resources,
             recovery: WindowsRecoveryRecord::prepared(runtime_identity),
             proxy,
@@ -120,7 +141,12 @@ impl WindowsSession {
     /// Returns rich Windows observations.
     #[must_use]
     pub fn windows_observations(&self) -> &[WindowsObservation] {
-        &self.windows_observations
+        self.windows_observations.as_slice()
+    }
+    /// Returns rich Windows observations omitted before the retained diagnostic tail.
+    #[must_use]
+    pub const fn windows_observations_dropped(&self) -> u64 {
+        self.windows_observations.dropped()
     }
 
     /// Returns dimension-specific resource enforcement.
@@ -155,25 +181,41 @@ impl WindowsSession {
         if !transition_allowed(self.phase, next) {
             return Err(observation_error("Windows lifecycle transition is out of order"));
         }
-        if self.windows_observations.len() >= RICH_OBSERVATION_LIMIT {
-            return Err(observation_error("Windows observation bound is exhausted"));
-        }
-        let common_sequence = u64::try_from(self.observations.len() + 1)
-            .map_err(|_| observation_error("common observation sequence overflowed"))?;
-        self.observations.push(self.binding.common(common_sequence, next, disposition));
-        let rich_sequence = u64::try_from(self.windows_observations.len() + 1)
-            .map_err(|_| observation_error("Windows observation sequence overflowed"))?;
-        self.windows_observations.push(WindowsObservation::new(
-            rich_sequence,
-            self.binding,
-            next,
-            None,
-            None,
-            None,
-            ObservationStatus::Verified,
-        ));
+        self.push_common(next, disposition)?;
+        self.push_rich(next, ObservationStatus::Verified);
         self.phase = next;
         Ok(())
+    }
+
+    fn push_common(
+        &mut self,
+        next: WindowsPhase,
+        disposition: ObservationDisposition,
+    ) -> Result<(), WindowsError> {
+        let sequence = self.next_observation_sequence;
+        self.next_observation_sequence = sequence
+            .checked_add(1)
+            .ok_or_else(|| observation_error("common observation sequence overflowed"))?;
+        let observation = self.binding.common(sequence, next, disposition);
+        self.pending_observations.push_back(observation);
+        self.observations.push(observation);
+        Ok(())
+    }
+
+    fn push_rich(&mut self, phase: WindowsPhase, status: ObservationStatus) {
+        let Some(next) = self.next_windows_observation_sequence.checked_add(1) else {
+            return;
+        };
+        self.windows_observations.push(WindowsObservation::new(
+            self.next_windows_observation_sequence,
+            self.binding,
+            phase,
+            None,
+            None,
+            None,
+            status,
+        ));
+        self.next_windows_observation_sequence = next;
     }
 }
 
@@ -183,7 +225,90 @@ impl NativeSandboxSession for WindowsSession {
     }
 
     fn observations(&self) -> &[EnforcementObservation] {
-        &self.observations
+        self.observations.as_slice()
+    }
+
+    fn observation_tail_dropped(&self) -> u64 {
+        self.observations.dropped()
+    }
+
+    fn acknowledged_observation_receipt(&self) -> Option<NativeObservationReceipt> {
+        self.acknowledged_observations
+    }
+
+    fn observation_transport(&self) -> NativeObservationTransport {
+        NativeObservationTransport::DurableDelta
+    }
+
+    fn observation_page(
+        &self,
+        after_sequence: u64,
+    ) -> Result<NativeObservationPage, ProcessError> {
+        let acknowledged = self
+            .acknowledged_observations
+            .map_or(0, NativeObservationReceipt::through_sequence);
+        if after_sequence != acknowledged {
+            return Err(process_error(&observation_error(
+                "native observation page does not begin at the acknowledged frontier",
+            )));
+        }
+        let page = self
+            .pending_observations
+            .iter()
+            .copied()
+            .take(NATIVE_OBSERVATION_PAGE_RECORDS)
+            .collect();
+        NativeObservationPage::new(self.next_observation_sequence - 1, page)
+    }
+
+    fn acknowledge_observations(
+        &mut self,
+        receipt: NativeObservationReceipt,
+    ) -> Result<(), ProcessError> {
+        if self.acknowledged_observations == Some(receipt) {
+            return Ok(());
+        }
+        let acknowledged = self
+            .acknowledged_observations
+            .map_or(0, NativeObservationReceipt::through_sequence);
+        let count = receipt
+            .through_sequence()
+            .checked_sub(acknowledged)
+            .and_then(|value| usize::try_from(value).ok())
+            .filter(|count| *count > 0 && *count <= self.pending_observations.len())
+            .ok_or_else(|| process_error(&observation_error(
+                "native observation receipt is outside the pending prefix",
+            )))?;
+        let pending_prefix = self
+            .pending_observations
+            .iter()
+            .copied()
+            .take(count)
+            .collect::<Vec<_>>();
+        let producer_binding = native_observation_producer_binding(
+            self.native_launch.manifest_digest(),
+            self.native_launch.preparation_digest(),
+        );
+        let previous_prefix = self
+            .acknowledged_observations
+            .map(NativeObservationReceipt::producer_prefix_digest);
+        if receipt.producer_binding_digest() != producer_binding
+            || receipt.producer_prefix_digest()
+                != native_observation_prefix_digest(
+                    producer_binding,
+                    previous_prefix,
+                    &pending_prefix,
+                )
+            || pending_prefix.last().map(|value| value.sequence())
+            != Some(receipt.through_sequence())
+        {
+            return Err(process_error(&observation_error(
+                "native observation receipt does not match the pending producer prefix",
+            )));
+        }
+        self.pending_observations.drain(..count);
+        self.acknowledged_observations = Some(receipt);
+        Ok(())
     }
 
     fn activated(&mut self, tree: ProcessTreeIdentity) -> Result<(), ProcessError> {
@@ -234,6 +359,11 @@ impl NativeSandboxSession for WindowsSession {
                 .advance(WindowsPhase::Released, true, true, true)
                 .map_err(|error| process_error(&error))?;
         } else {
+            if self.phase == WindowsPhase::Prepared {
+                self.push_common(WindowsPhase::Released, ObservationDisposition::Completed)
+                    .map_err(|error| process_error(&error))?;
+                self.phase = WindowsPhase::Released;
+            }
             self.record_abort_cleanup();
             self.recovery
                 .record_cleanup(true, true, true)
@@ -246,19 +376,7 @@ impl NativeSandboxSession for WindowsSession {
 
 impl WindowsSession {
     fn record_abort_cleanup(&mut self) {
-        if self.windows_observations.len() >= RICH_OBSERVATION_LIMIT {
-            return;
-        }
-        let sequence = u64::try_from(self.windows_observations.len() + 1).unwrap_or(u64::MAX);
-        self.windows_observations.push(WindowsObservation::new(
-            sequence,
-            self.binding,
-            self.phase,
-            None,
-            None,
-            None,
-            ObservationStatus::Incomplete,
-        ));
+        self.push_rich(self.phase, ObservationStatus::Verified);
     }
 }
 

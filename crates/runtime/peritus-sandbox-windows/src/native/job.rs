@@ -24,23 +24,25 @@ impl OwnedJob {
             return Err(job_error("kill-on-close Job Object cannot be created"));
         }
         let job = Self(raw);
-        let memory = usize::try_from(plan.job_memory_bytes())
-            .map_err(|_| job_error("job memory ceiling exceeds this Windows architecture"))?;
-        let cpu_100ns = plan
-            .cpu_time_millis()
-            .checked_mul(10_000)
-            .and_then(|value| i64::try_from(value).ok())
-            .ok_or_else(|| job_error("job CPU ceiling exceeds Windows representation"))?;
         let mut limits = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
-            | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
-            | JOB_OBJECT_LIMIT_JOB_MEMORY;
-        if plan.cpu_time_millis() != 0 {
-            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_TIME;
+        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if let Some(active_process_limit) = plan.active_process_limit_option() {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_ACTIVE_PROCESS;
+            limits.BasicLimitInformation.ActiveProcessLimit = active_process_limit;
         }
-        limits.BasicLimitInformation.ActiveProcessLimit = plan.active_process_limit();
-        limits.BasicLimitInformation.PerJobUserTimeLimit = cpu_100ns;
-        limits.JobMemoryLimit = memory;
+        if let Some(job_memory_bytes) = plan.job_memory_bytes_option() {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_MEMORY;
+            limits.JobMemoryLimit = usize::try_from(job_memory_bytes).map_err(|_| {
+                job_error("job memory ceiling exceeds this Windows architecture")
+            })?;
+        }
+        if let Some(cpu_time_millis) = plan.cpu_time_millis_option() {
+            limits.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_JOB_TIME;
+            limits.BasicLimitInformation.PerJobUserTimeLimit = cpu_time_millis
+                .checked_mul(10_000)
+                .and_then(|value| i64::try_from(value).ok())
+                .ok_or_else(|| job_error("job CPU ceiling exceeds Windows representation"))?;
+        }
         let length = u32::try_from(size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>())
             .map_err(|_| job_error("Job Object limit record size overflowed"))?;
         // SAFETY: the job and immutable correctly-sized limit record remain live for the call.
@@ -62,9 +64,6 @@ impl OwnedJob {
         self.0
     }
 
-    pub(super) fn probe() -> bool {
-        JobPlan::from_manifest(true, 1, 64 * 1_024 * 1_024, 1_000).and_then(Self::create).is_ok()
-    }
 }
 
 impl Drop for OwnedJob {

@@ -31,8 +31,11 @@ fn run() -> Result<i32, ReservedHelperExit> {
         .map_err(|_| ReservedHelperExit::Protocol)?;
     let mut helper_channels = peritus_process::NativeWindowsHelperAttachment::from_environment()
         .map_err(|_| ReservedHelperExit::ProtectedHandle)?;
-    let activation =
-        crate::activate_manifest(&manifest).map_err(|error| classify_activation_error(&error))?;
+    let activation = {
+        let mut owner_connected = || helper_channels.owner_connected();
+        crate::runner::activate_manifest_while(&manifest, &mut owner_connected)
+            .map_err(|error| classify_activation_error(&error))?
+    };
     let activation_record =
         peritus_process::native_activation_record(manifest.digest(), manifest.preparation_digest());
     output
