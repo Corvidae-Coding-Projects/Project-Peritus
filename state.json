@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4045,
-        "tip_oid": "8721128663e9ff55c5790730f59b424dd57fa652",
-        "prefix_sha256": "7f8b1a3ac2694cbd78301259a08b043cd38f8de7dfb51be122ca9da4f32dfb88"
+        "sequence": 4046,
+        "tip_oid": "6a0b5309936c32d6bf84f72f6dc958e107aedb2d",
+        "prefix_sha256": "46bf16a08f39fe9efc29946a1120f8ca97b48349c74f42e973f98f9de2b8b232"
       },
       "NWAR": {
         "sequence": 39,
@@ -21907,12 +21907,13 @@
       "display_id": 145,
       "title": "[L046] In-place scope journal has a lifetime byte ceiling and strict torn-record barrier",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L046.\n\n- `workspace_delivery/scope.rs:14-15,86-102,165-215` limits the append-only scope evidence journal to **64 MiB** and each record to **512 KiB**. Enrollment fails when the next record crosses the total ceiling. A torn/non-newline/oversized record, wrong schema/scope, or duplicate path rejects the whole load.\n- Every paths/enroll/changed-paths/diff query loads that journal; changed paths additionally stamp every enrolled path. There is no journal rotation, chunked state migration, or torn-tail reconciliation in this file. Other recovery implementations are pending before claiming none exist.\n- File previews stop at **16 KiB** and rendered diffs at **512 KiB** (lines 122-153,260-279). Exact hashing streams whole files with an 8,192-byte buffer and has no source byte ceiling in this implementation; a buffer size is not a file limit.\n- Nonempty directories cannot be scope declarations (lines 243-248); effects therefore require explicit file paths rather than directory inventories. New read enrollment can fail for journal/schema corruption before the read tool dispatches (L043).\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.023855996Z",
-      "updated_at": "2026-10-08T04:16:34.512948208Z",
+      "updated_at": "2026-10-08T04:18:17.201154224Z",
+      "closed_at": "2026-10-08T04:18:17.198401144Z",
       "labels": [
         "daily-driving-limiter"
       ],
