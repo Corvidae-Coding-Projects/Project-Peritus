@@ -1,6 +1,6 @@
 //! Actual committed artifact-dependency catalog projection.
 
-use crate::encoding::{put_digest, put_u64};
+use crate::encoding::{Decoder, decode_error, put_digest, put_u64};
 use crate::lifecycle::{invariant, schema};
 use crate::{
     FoldContext, Projection, ProjectionError, ProjectionErrorKind, ProjectionSchema,
@@ -77,6 +77,33 @@ impl ProjectionState for ArtifactReferenceState {
         bytes
     }
 
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut decoder = Decoder::new(payload, b"peritus-artifact-references-v1\0")?;
+        let count = decoder.count(56)?;
+        let mut references = BTreeMap::new();
+        for _ in 0..count {
+            let digest = decoder.digest()?;
+            let first_position = decoder.u64()?;
+            let last_position = decoder.u64()?;
+            let owner_count = decoder.count(32)?;
+            let mut owners = BTreeSet::new();
+            for _ in 0..owner_count {
+                owners.insert(decoder.digest()?);
+            }
+            references.insert(
+                digest,
+                ArtifactReferenceEntry { first_position, last_position, owners },
+            );
+        }
+        decoder.finish()?;
+        let state = Self { references };
+        state.validate()?;
+        if state.encode() != payload {
+            return Err(decode_error("artifact-reference checkpoint is not canonical"));
+        }
+        Ok(state)
+    }
+
     fn validate(&self) -> Result<(), ProjectionError> {
         if self.references.values().any(|entry| {
             entry.first_position == 0
@@ -134,6 +161,22 @@ impl Projection for ArtifactReferenceProjection {
         state: &mut Self::State,
         export: &IntegrityExport,
     ) -> Result<(), ProjectionError> {
+        apply_references(state, export)
+    }
+
+    fn fold_supplement(
+        &self,
+        state: &mut Self::State,
+        export: &IntegrityExport,
+    ) -> Result<(), ProjectionError> {
+        apply_references(state, export)
+    }
+}
+
+fn apply_references(
+    state: &mut ArtifactReferenceState,
+    export: &IntegrityExport,
+) -> Result<(), ProjectionError> {
         let mut previous = None;
         for reference in export.artifact_references() {
             let order = (reference.first_position(), reference.artifact_digest());
@@ -164,7 +207,6 @@ impl Projection for ArtifactReferenceProjection {
             }
         }
         Ok(())
-    }
 }
 
 /// Dedicated pure replay for actual references from the checked journal export.

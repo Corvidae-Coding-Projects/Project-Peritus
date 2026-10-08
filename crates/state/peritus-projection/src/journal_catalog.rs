@@ -1,6 +1,6 @@
 //! Complete aggregate and family catalog projection.
 
-use crate::encoding::{put_digest, put_key, put_u16, put_u64};
+use crate::encoding::{Decoder, decode_error, put_digest, put_key, put_u16, put_u64};
 use crate::lifecycle::{invariant, schema};
 use crate::{FoldContext, Projection, ProjectionError, ProjectionSchema, ProjectionState};
 use peritus_codec::sha256;
@@ -65,6 +65,36 @@ impl ProjectionState for JournalCatalogState {
             put_u64(&mut bytes, *count);
         }
         bytes
+    }
+
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut decoder = Decoder::new(payload, b"peritus-journal-catalog-v1\0")?;
+        let event_count = decoder.u64()?;
+        let aggregate_count = decoder.count(100)?;
+        let mut aggregates = BTreeMap::new();
+        for _ in 0..aggregate_count {
+            let key = decoder.key()?;
+            let entry = JournalCatalogEntry {
+                last_position: decoder.u64()?,
+                sequence: decoder.u64()?,
+                family: decoder.u16()?,
+                event_hash: decoder.digest()?,
+                revision_digest: decoder.digest()?,
+            };
+            aggregates.insert(key, entry);
+        }
+        let family_count = decoder.count(10)?;
+        let mut family_counts = BTreeMap::new();
+        for _ in 0..family_count {
+            family_counts.insert(decoder.u16()?, decoder.u64()?);
+        }
+        decoder.finish()?;
+        let state = Self { aggregates, family_counts, event_count };
+        state.validate()?;
+        if state.encode() != payload {
+            return Err(decode_error("journal catalog checkpoint is not canonical"));
+        }
+        Ok(state)
     }
 
     fn validate(&self) -> Result<(), ProjectionError> {

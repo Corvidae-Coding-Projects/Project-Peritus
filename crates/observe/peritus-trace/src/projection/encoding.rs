@@ -1,11 +1,11 @@
 //! Deterministic projection payload and invariant encoding.
 
-use peritus_codec::sha256;
-use peritus_projection::{ProjectionError, ProjectionErrorKind, ProjectionState};
+use peritus_codec::{CodecLimits, decode_message, sha256};
+use peritus_projection::{ProjectionError, ProjectionErrorKind, ProjectionState, RecoveryClass};
 use peritus_types::Sha256Digest;
 
 use super::{projection_error, state::TraceProjectionState};
-use crate::{SpanId, SpanOutcome};
+use crate::{Observation, SpanId, SpanOutcome};
 
 impl ProjectionState for TraceProjectionState {
     fn encode(&self) -> Vec<u8> {
@@ -38,6 +38,57 @@ impl ProjectionState for TraceProjectionState {
             }
         }
         bytes
+    }
+
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut reader = Reader::new(payload, b"peritus-trace-projection-v1\0")?;
+        let declared_count = reader.u64()?;
+        let declared_last_position = reader.u64()?;
+        let trace_count = reader.count(48)?;
+        let mut observations = Vec::new();
+        for _ in 0..trace_count {
+            reader.skip(16 + 16)?;
+            let span_count = reader.count(67)?;
+            for _ in 0..span_count {
+                reader.skip(8)?;
+                match reader.u8()? {
+                    0 => {}
+                    1 => reader.skip(8)?,
+                    _ => return Err(restore_error("trace checkpoint parent tag is invalid")),
+                }
+                reader.skip(1 + 8 + 8 + 8 + 8 + 8 + 16 + 1)?;
+            }
+            let observation_count = reader.count(48)?;
+            for _ in 0..observation_count {
+                let position = reader.u64()?;
+                let digest = Sha256Digest::new(reader.array()?);
+                let length = usize::try_from(reader.u64()?)
+                    .map_err(|_| restore_error("trace checkpoint frame length overflows"))?;
+                let frame = reader.bytes(length)?.to_vec();
+                if sha256(&frame) != digest {
+                    return Err(restore_error("trace checkpoint frame digest is invalid"));
+                }
+                observations.push((position, frame));
+            }
+        }
+        reader.finish()?;
+        observations.sort_by_key(|(position, _)| *position);
+        let mut state = TraceProjectionState::default();
+        for (position, frame) in observations {
+            let observation = decode_message::<Observation>(&frame, CodecLimits::PRODUCTION)
+                .map_err(|_| restore_error("trace checkpoint observation is invalid"))?;
+            state
+                .apply(observation, position)
+                .map_err(|_| restore_error("trace checkpoint causal state is invalid"))?;
+        }
+        state.validate()?;
+        if state.observation_count != declared_count
+            || state.last_journal_position != declared_last_position
+            || state.encode() != payload
+        {
+            return Err(restore_error("trace checkpoint is not canonical"));
+        }
+        Ok(state)
     }
 
     fn validate(&self) -> Result<(), ProjectionError> {
@@ -83,4 +134,77 @@ fn put_option_span(bytes: &mut Vec<u8>, value: Option<SpanId>) {
         }
         None => bytes.push(0),
     }
+}
+
+struct Reader<'a> {
+    bytes: &'a [u8],
+    offset: usize,
+}
+
+impl<'a> Reader<'a> {
+    fn new(bytes: &'a [u8], prefix: &[u8]) -> Result<Self, ProjectionError> {
+        if !bytes.starts_with(prefix) {
+            return Err(restore_error("trace checkpoint prefix is invalid"));
+        }
+        Ok(Self { bytes, offset: prefix.len() })
+    }
+
+    fn u8(&mut self) -> Result<u8, ProjectionError> {
+        Ok(self.array::<1>()?[0])
+    }
+
+    fn u64(&mut self) -> Result<u64, ProjectionError> {
+        Ok(u64::from_be_bytes(self.array()?))
+    }
+
+    fn count(&mut self, minimum_bytes: usize) -> Result<usize, ProjectionError> {
+        let count = usize::try_from(self.u64()?)
+            .map_err(|_| restore_error("trace checkpoint item count overflows"))?;
+        if minimum_bytes == 0 || count > self.remaining() / minimum_bytes {
+            return Err(restore_error("trace checkpoint item count exceeds its payload"));
+        }
+        Ok(count)
+    }
+
+    fn skip(&mut self, length: usize) -> Result<(), ProjectionError> {
+        self.bytes(length).map(|_| ())
+    }
+
+    fn bytes(&mut self, length: usize) -> Result<&'a [u8], ProjectionError> {
+        let end = self
+            .offset
+            .checked_add(length)
+            .filter(|end| *end <= self.bytes.len())
+            .ok_or_else(|| restore_error("trace checkpoint is truncated"))?;
+        let value = &self.bytes[self.offset..end];
+        self.offset = end;
+        Ok(value)
+    }
+
+    fn array<const N: usize>(&mut self) -> Result<[u8; N], ProjectionError> {
+        self.bytes(N)?
+            .try_into()
+            .map_err(|_| restore_error("trace checkpoint field has an invalid length"))
+    }
+
+    fn remaining(&self) -> usize {
+        self.bytes.len().saturating_sub(self.offset)
+    }
+
+    fn finish(self) -> Result<(), ProjectionError> {
+        if self.offset == self.bytes.len() {
+            Ok(())
+        } else {
+            Err(restore_error("trace checkpoint has trailing bytes"))
+        }
+    }
+}
+
+fn restore_error(detail: &'static str) -> ProjectionError {
+    ProjectionError::fold(
+        ProjectionErrorKind::CorruptCatalog,
+        RecoveryClass::Rebuild,
+        "decode trace projection checkpoint",
+        detail,
+    )
 }

@@ -446,6 +446,9 @@ fn is_cancelled_contention(error: &DaemonError, cancellation: &JournalCancellati
                 .is_some_and(|error| {
                     matches!(error, crate::product_control::ControlStoreError::ContentionCancelled)
                 })
+            || current
+                .downcast_ref::<peritus_projection::ProjectionError>()
+                .is_some_and(|error| error.is_contention() || error.is_cancelled())
         {
             return true;
         }

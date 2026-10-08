@@ -5,7 +5,7 @@
     reason = "the private module deliberately shares schema and error helpers with sibling folds"
 )]
 
-use crate::encoding::{put_digest, put_key, put_u16, put_u64};
+use crate::encoding::{Decoder, decode_error, put_digest, put_key, put_u16, put_u64};
 use crate::{
     FoldContext, Projection, ProjectionError, ProjectionErrorKind, ProjectionIdentity,
     ProjectionName, ProjectionSchema, ProjectionState, ProjectionVersion, RecoveryClass,
@@ -82,6 +82,30 @@ impl ProjectionState for LifecycleState {
             put_digest(&mut bytes, entry.revision_digest);
         }
         bytes
+    }
+
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut decoder = Decoder::new(payload, b"peritus-lifecycle-projection-v1\0")?;
+        let count = decoder.count(100)?;
+        let mut entries = BTreeMap::new();
+        for _ in 0..count {
+            let key = decoder.key()?;
+            let entry = LifecycleEntry {
+                last_position: decoder.u64()?,
+                sequence: decoder.u64()?,
+                event_kind: decoder.u16()?,
+                frame_digest: decoder.digest()?,
+                revision_digest: decoder.digest()?,
+            };
+            entries.insert(key, entry);
+        }
+        decoder.finish()?;
+        let state = Self { entries };
+        state.validate()?;
+        if state.encode() != payload {
+            return Err(decode_error("lifecycle checkpoint is not canonical"));
+        }
+        Ok(state)
     }
 
     fn validate(&self) -> Result<(), ProjectionError> {

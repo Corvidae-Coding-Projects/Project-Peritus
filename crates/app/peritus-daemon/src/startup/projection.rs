@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
-use peritus_journal::{IntegrityExport, JournalCancellation, SqliteJournal};
+use peritus_journal::{JournalCancellation, SqliteJournal};
 use peritus_projection::{
     AgentProjection, ArtifactReferenceProjection, AuthorityProjection, BudgetProjection,
     EvidenceCatalogProjection, JournalCatalogProjection, LifecycleProjection, Projection,
-    ProjectionStore, RepairAction, rebuild_from_genesis,
+    ProjectionStore, resume_or_rebuild,
 };
 use peritus_trace::TraceProjection;
 
@@ -17,44 +17,68 @@ pub fn ensure_current(
     database: &Path,
     cancellation: &JournalCancellation,
 ) -> Result<ProjectionStore, DaemonError> {
-    let export = journal.integrity_export().map_err(|error| {
-        DaemonError::with_source(
-            DaemonErrorCode::CorruptState,
-            DaemonRecovery::ReadOnly,
-            "export journal for projections",
-            error.to_string(),
-            error,
-        )
-    })?;
     let mut store =
         ProjectionStore::open_waiting(database, cancellation).map_err(projection_error)?;
-    ensure(&mut store, &export, &LifecycleProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &BudgetProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &AuthorityProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &JournalCatalogProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &ArtifactReferenceProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &EvidenceCatalogProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &AgentProjection::new().map_err(projection_error)?)?;
-    ensure(&mut store, &export, &TraceProjection::new().map_err(projection_error)?)?;
+    ensure(
+        &mut store,
+        journal,
+        &LifecycleProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &BudgetProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &AuthorityProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &JournalCatalogProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &ArtifactReferenceProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &EvidenceCatalogProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &AgentProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
+    ensure(
+        &mut store,
+        journal,
+        &TraceProjection::new().map_err(projection_error)?,
+        cancellation,
+    )?;
     Ok(store)
 }
 
 fn ensure<P: Projection>(
     store: &mut ProjectionStore,
-    export: &IntegrityExport,
+    journal: &mut SqliteJournal,
     projection: &P,
+    cancellation: &JournalCancellation,
 ) -> Result<(), DaemonError> {
-    match store.plan_startup(projection.schema(), export.report()).map_err(projection_error)? {
-        RepairAction::Reuse(_) => Ok(()),
-        RepairAction::RebuildFromGenesis(_) => {
-            let expected = store
-                .load_active(projection.schema())
-                .map_err(projection_error)?
-                .map(|active| active.generation());
-            let candidate = rebuild_from_genesis(projection, export).map_err(projection_error)?;
-            store.install_shadow(&candidate, expected).map(|_| ()).map_err(projection_error)
-        }
-    }
+    resume_or_rebuild(store, journal, projection, cancellation)
+        .map(|_| ())
+        .map_err(projection_error)
 }
 
 fn projection_error(error: peritus_projection::ProjectionError) -> DaemonError {

@@ -47,17 +47,30 @@ pub struct ActiveGeneration {
     invariant_digest: Sha256Digest,
     record_count: u64,
     payload: Vec<u8>,
+    frontier_digest: Option<Sha256Digest>,
+    frontier_payload: Option<Vec<u8>>,
 }
 
 impl ActiveGeneration {
-    pub(crate) const fn new(
+    pub(crate) fn new(
         generation: CatalogGeneration,
         checkpoint: Checkpoint,
         invariant_digest: Sha256Digest,
         record_count: u64,
         payload: Vec<u8>,
+        frontier: Option<(Sha256Digest, Vec<u8>)>,
     ) -> Self {
-        Self { generation, checkpoint, invariant_digest, record_count, payload }
+        let (frontier_digest, frontier_payload) = frontier
+            .map_or((None, None), |(digest, payload)| (Some(digest), Some(payload)));
+        Self {
+            generation,
+            checkpoint,
+            invariant_digest,
+            record_count,
+            payload,
+            frontier_digest,
+            frontier_payload,
+        }
     }
 
     /// Returns the active generation number.
@@ -95,6 +108,21 @@ impl ActiveGeneration {
     pub fn payload_is_valid(&self) -> bool {
         self.checkpoint.binds_payload(&self.payload)
     }
+
+    /// Borrows the canonical aggregate frontier when this generation predates no migration.
+    #[must_use]
+    pub fn frontier_payload(&self) -> Option<&[u8]> {
+        self.frontier_payload.as_deref()
+    }
+
+    /// Returns whether the optional aggregate frontier is present and digest-bound.
+    #[must_use]
+    pub fn frontier_is_valid(&self) -> bool {
+        match (self.frontier_digest, self.frontier_payload.as_deref()) {
+            (Some(digest), Some(payload)) => sha256(payload) == digest,
+            _ => false,
+        }
+    }
 }
 
 /// Why startup cannot safely reuse an active generation.
@@ -117,6 +145,8 @@ pub enum RepairReason {
 pub enum RepairAction {
     /// The active generation is exactly current.
     Reuse(CatalogGeneration),
+    /// Restore the typed active state and apply only verified records after its accepted frontier.
+    CatchUpFromCheckpoint(CatalogGeneration),
     /// Rebuild a new shadow generation from journal genesis.
     RebuildFromGenesis(RepairReason),
 }
@@ -143,6 +173,12 @@ pub(super) fn plan_repair(
         schema_matches,
     ) {
         RepairAction::Reuse(active.generation())
+    } else if schema_matches
+        && payload_matches
+        && journal_position > checkpoint.last_position()
+        && active.frontier_is_valid()
+    {
+        RepairAction::CatchUpFromCheckpoint(active.generation())
     } else if !schema_matches {
         RepairAction::RebuildFromGenesis(RepairReason::SchemaChanged)
     } else if !payload_matches {

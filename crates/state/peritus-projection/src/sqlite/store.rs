@@ -137,7 +137,7 @@ impl ProjectionStore {
             let raw = self
                 .connection
                 .query_row(
-                    "SELECT g.generation, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, g.record_count, g.payload FROM peritus_projection_catalog AS c JOIN peritus_projection_generations AS g ON g.projection_name = c.projection_name AND g.projection_version = c.projection_version AND g.generation = c.active_generation WHERE c.projection_name = ?1 AND c.projection_version = ?2",
+                    "SELECT g.generation, g.last_position, g.journal_head_digest, g.payload_digest, g.schema_digest, g.invariant_digest, g.record_count, g.payload, f.frontier_digest, f.frontier FROM peritus_projection_catalog AS c JOIN peritus_projection_generations AS g ON g.projection_name = c.projection_name AND g.projection_version = c.projection_version AND g.generation = c.active_generation LEFT JOIN peritus_projection_frontiers AS f ON f.projection_name = g.projection_name AND f.projection_version = g.projection_version AND f.generation = g.generation WHERE c.projection_name = ?1 AND c.projection_version = ?2",
                     params![identity.name().as_str(), u64_to_i64(identity.version().get(), "projection version")?],
                     |row| {
                         Ok(RawGeneration {
@@ -149,6 +149,8 @@ impl ProjectionStore {
                             invariant_digest: row.get(5)?,
                             record_count: row.get(6)?,
                             payload: row.get(7)?,
+                            frontier_digest: row.get(8)?,
+                            frontier_payload: row.get(9)?,
                         })
                     },
                 )
@@ -207,6 +209,8 @@ struct RawGeneration {
     invariant_digest: Vec<u8>,
     record_count: i64,
     payload: Vec<u8>,
+    frontier_digest: Option<Vec<u8>>,
+    frontier_payload: Option<Vec<u8>>,
 }
 
 fn parse_generation(
@@ -225,12 +229,19 @@ fn parse_generation(
         digest(&raw.journal_head, "journal head digest")?,
         digest(&raw.payload_digest, "payload digest")?,
     );
+    let frontier = match (raw.frontier_digest, raw.frontier_payload) {
+        (Some(digest_bytes), Some(payload)) => {
+            digest(&digest_bytes, "frontier digest").ok().map(|digest| (digest, payload))
+        }
+        _ => None,
+    };
     Ok(ActiveGeneration::new(
         generation,
         checkpoint,
         digest(&raw.invariant_digest, "invariant digest")?,
         record_count,
         raw.payload,
+        frontier,
     ))
 }
 

@@ -37,6 +37,6 @@ pub use evidence::{EvidenceCatalogProjection, EvidenceCatalogState, EvidenceEntr
 pub use fold::{FoldContext, Projection, ProjectionState};
 pub use journal_catalog::{JournalCatalogEntry, JournalCatalogProjection, JournalCatalogState};
 pub use lifecycle::{LifecycleEntry, LifecycleProjection, LifecycleState};
-pub use rebuild::{RebuildCandidate, rebuild_from_genesis};
+pub use rebuild::{RebuildCandidate, rebuild_from_genesis, resume_or_rebuild};
 pub use replay::{ReplayOutput, replay_from_genesis};
 pub use sqlite::{ProjectionStore, StoreOptions};

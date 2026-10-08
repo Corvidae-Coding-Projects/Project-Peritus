@@ -1,6 +1,6 @@
 //! Evidence digest catalog projection with no effect on unrelated records.
 
-use crate::encoding::{put_digest, put_u64};
+use crate::encoding::{Decoder, decode_error, put_digest, put_u64};
 use crate::lifecycle::{invalid_frame, invariant, schema};
 use crate::{FoldContext, Projection, ProjectionError, ProjectionSchema, ProjectionState};
 use peritus_codec::{CodecLimits, decode_message, sha256};
@@ -48,6 +48,29 @@ impl ProjectionState for EvidenceCatalogState {
             put_u64(&mut bytes, entry.reference_count);
         }
         bytes
+    }
+
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut decoder = Decoder::new(payload, b"peritus-evidence-catalog-v1\0")?;
+        let count = decoder.count(56)?;
+        let mut entries = BTreeMap::new();
+        for _ in 0..count {
+            entries.insert(
+                decoder.digest()?,
+                EvidenceEntry {
+                    first_position: decoder.u64()?,
+                    last_position: decoder.u64()?,
+                    reference_count: decoder.u64()?,
+                },
+            );
+        }
+        decoder.finish()?;
+        let state = Self { entries };
+        state.validate()?;
+        if state.encode() != payload {
+            return Err(decode_error("evidence checkpoint is not canonical"));
+        }
+        Ok(state)
     }
 
     fn validate(&self) -> Result<(), ProjectionError> {

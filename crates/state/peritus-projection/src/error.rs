@@ -30,6 +30,8 @@ pub enum ProjectionErrorKind {
     CorruptCatalog,
     /// A generation or active-pointer compare-and-swap lost a race.
     Conflict,
+    /// The retained rebuild owner cancelled before the next durable phase boundary.
+    Cancelled,
     /// `SQLite` reported database-level writer contention.
     DatabaseBusy,
     /// `SQLite` reported a locked table or schema object.
@@ -58,7 +60,7 @@ pub struct ProjectionError {
     recovery: RecoveryClass,
     operation: &'static str,
     detail: String,
-    source: Option<rusqlite::Error>,
+    source: Option<Box<dyn Error + Send + Sync>>,
 }
 
 impl ProjectionError {
@@ -100,8 +102,32 @@ impl ProjectionError {
             recovery,
             operation,
             detail: error.to_string(),
-            source: Some(error),
+            source: Some(Box::new(error)),
         }
+    }
+
+    pub(crate) fn journal(operation: &'static str, error: peritus_journal::JournalError) -> Self {
+        let (kind, recovery) = if error.is_contention() {
+            (ProjectionErrorKind::DatabaseBusy, RecoveryClass::Retry)
+        } else {
+            (ProjectionErrorKind::Storage, RecoveryClass::RepairJournal)
+        };
+        Self {
+            kind,
+            recovery,
+            operation,
+            detail: error.to_string(),
+            source: Some(Box::new(error)),
+        }
+    }
+
+    pub(crate) fn cancelled() -> Self {
+        Self::new(
+            ProjectionErrorKind::Cancelled,
+            RecoveryClass::Retry,
+            "resume projection rebuild",
+            "the retained rebuild owner cancelled",
+        )
     }
 
     /// Returns the stable failure kind.
@@ -127,6 +153,12 @@ impl ProjectionError {
     pub const fn is_contention(&self) -> bool {
         matches!(self.kind, ProjectionErrorKind::DatabaseBusy | ProjectionErrorKind::DatabaseLocked)
     }
+
+    /// Returns whether the retained rebuild owner cancelled the operation.
+    #[must_use]
+    pub const fn is_cancelled(&self) -> bool {
+        matches!(self.kind, ProjectionErrorKind::Cancelled)
+    }
 }
 
 impl fmt::Display for ProjectionError {
@@ -137,6 +169,6 @@ impl fmt::Display for ProjectionError {
 
 impl Error for ProjectionError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.source.as_ref().map(|source| source as &dyn Error)
+        self.source.as_deref().map(|source| source as &dyn Error)
     }
 }

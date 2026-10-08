@@ -1,6 +1,6 @@
 //! Latest durable D0 inner-turn observations over canonical agent-event records.
 
-use crate::encoding::{put_digest, put_key, put_u16, put_u64};
+use crate::encoding::{Decoder, decode_error, put_digest, put_key, put_u16, put_u64};
 use crate::lifecycle::{invalid_frame, invariant, schema};
 use crate::{FoldContext, Projection, ProjectionError, ProjectionSchema, ProjectionState};
 use peritus_codec::{CodecLimits, decode_message, sha256};
@@ -99,6 +99,41 @@ impl ProjectionState for AgentState {
             put_counters(&mut bytes, entry.counters);
         }
         bytes
+    }
+
+    fn decode(payload: &[u8]) -> Result<Self, ProjectionError> {
+        let mut decoder = Decoder::new(payload, b"peritus-agent-projection-v1\0")?;
+        let count = decoder.count(192)?;
+        let mut entries = BTreeMap::new();
+        for _ in 0..count {
+            let key = decoder.key()?;
+            let entry = AgentEntry {
+                last_position: decoder.u64()?,
+                sequence: decoder.u64()?,
+                event_kind: decoder.u16()?,
+                phase: read_phase(&mut decoder)?,
+                successor_state_digest: decoder.digest()?,
+                frame_digest: decoder.digest()?,
+                revision_digest: decoder.digest()?,
+                counters: AgentCountersDto::new(
+                    decoder.u64()?,
+                    decoder.u64()?,
+                    decoder.u64()?,
+                    decoder.u64()?,
+                    decoder.u64()?,
+                    decoder.u64()?,
+                    decoder.u64()?,
+                ),
+            };
+            entries.insert(key, entry);
+        }
+        decoder.finish()?;
+        let state = Self { entries };
+        state.validate()?;
+        if state.encode() != payload {
+            return Err(decode_error("agent checkpoint is not canonical"));
+        }
+        Ok(state)
     }
 
     fn validate(&self) -> Result<(), ProjectionError> {
@@ -213,6 +248,34 @@ fn put_phase(bytes: &mut Vec<u8>, phase: AgentPhaseDto) {
             put_u16(bytes, 13);
             put_u16(bytes, 0);
         }
+    }
+}
+
+fn read_phase(decoder: &mut Decoder<'_>) -> Result<AgentPhaseDto, ProjectionError> {
+    let tag = decoder.u16()?;
+    let nested = decoder.u16()?;
+    match (tag, nested) {
+        (1..=8, 0) => read_resumable(tag).map(AgentPhaseDto::Active),
+        (9, 1..=8) => read_resumable(nested).map(AgentPhaseDto::Paused),
+        (10, 0) => Ok(AgentPhaseDto::Cancelling),
+        (11, 0) => Ok(AgentPhaseDto::Completed),
+        (12, 0) => Ok(AgentPhaseDto::Failed),
+        (13, 0) => Ok(AgentPhaseDto::Cancelled),
+        _ => Err(decode_error("agent checkpoint phase is invalid")),
+    }
+}
+
+fn read_resumable(tag: u16) -> Result<AgentResumablePhaseDto, ProjectionError> {
+    match tag {
+        1 => Ok(AgentResumablePhaseDto::PreparingContext),
+        2 => Ok(AgentResumablePhaseDto::RequestingModel),
+        3 => Ok(AgentResumablePhaseDto::StreamingResponse),
+        4 => Ok(AgentResumablePhaseDto::ProposedToolCalls),
+        5 => Ok(AgentResumablePhaseDto::AwaitingAuthorization),
+        6 => Ok(AgentResumablePhaseDto::ExecutingTools),
+        7 => Ok(AgentResumablePhaseDto::RecordingResults),
+        8 => Ok(AgentResumablePhaseDto::ProposedCompletion),
+        _ => Err(decode_error("agent checkpoint resumable phase is invalid")),
     }
 }
 

@@ -45,6 +45,14 @@ impl ProjectionStore {
                     encoded,
                 )?
             {
+                ensure_frontier(
+                    &transaction,
+                    identity.name().as_str(),
+                    version,
+                    current,
+                    candidate,
+                )?;
+                delete_progress(&transaction, identity.name().as_str(), version)?;
                 transaction.commit().map_err(|error| {
                     ProjectionError::sqlite("finish identical projection rebuild", error)
                 })?;
@@ -75,6 +83,7 @@ impl ProjectionStore {
                     params![identity.name().as_str(), version, next_sql],
                 )
                 .map_err(|error| ProjectionError::sqlite("activate projection generation", error))?;
+            delete_progress(&transaction, identity.name().as_str(), version)?;
             transaction
                 .commit()
                 .map_err(|error| ProjectionError::sqlite("commit projection swap", error))?;
@@ -100,6 +109,7 @@ fn validate_candidate<S>(
         record_count: u64_to_i64(candidate.record_count(), "record count")?,
     };
     if sha256(candidate.payload()) != candidate.checkpoint().payload_digest()
+        || sha256(candidate.frontier_payload()) != candidate.frontier_digest()
         || candidate.record_count() != candidate.checkpoint().last_position()
     {
         return Err(ProjectionError::new(
@@ -231,5 +241,75 @@ fn insert_generation<S>(
             ],
         )
         .map_err(|error| ProjectionError::sqlite("insert shadow projection", error))?;
+    transaction
+        .execute(
+            "INSERT INTO peritus_projection_frontiers(projection_name, projection_version, generation, frontier_digest, frontier) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                identity.name().as_str(),
+                encoded.projection_version,
+                generation,
+                candidate.frontier_digest().as_bytes().as_slice(),
+                candidate.frontier_payload(),
+            ],
+        )
+        .map_err(|error| ProjectionError::sqlite("insert projection frontier", error))?;
     Ok(())
+}
+
+fn ensure_frontier<S>(
+    transaction: &Transaction<'_>,
+    name: &str,
+    version: i64,
+    generation: u64,
+    candidate: &RebuildCandidate<S>,
+) -> Result<(), ProjectionError> {
+    let stored: Option<(Vec<u8>, Vec<u8>)> = transaction
+        .query_row(
+            "SELECT frontier_digest, frontier FROM peritus_projection_frontiers WHERE projection_name = ?1 AND projection_version = ?2 AND generation = ?3",
+            params![name, version, u64_to_i64(generation, "generation")?],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|error| ProjectionError::sqlite("load projection frontier", error))?;
+    if let Some((digest, payload)) = stored {
+        if sha256(&payload).as_bytes().as_slice() != digest.as_slice()
+            || digest.as_slice() != candidate.frontier_digest().as_bytes()
+            || payload != candidate.frontier_payload()
+        {
+            return Err(ProjectionError::new(
+                ProjectionErrorKind::FoldInvariant,
+                RecoveryClass::Rebuild,
+                "compare projection frontier",
+                "same journal binding produced a different aggregate frontier",
+            ));
+        }
+        return Ok(());
+    }
+    transaction
+        .execute(
+            "INSERT INTO peritus_projection_frontiers(projection_name, projection_version, generation, frontier_digest, frontier) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![
+                name,
+                version,
+                u64_to_i64(generation, "generation")?,
+                candidate.frontier_digest().as_bytes().as_slice(),
+                candidate.frontier_payload(),
+            ],
+        )
+        .map(|_| ())
+        .map_err(|error| ProjectionError::sqlite("migrate projection frontier", error))
+}
+
+fn delete_progress(
+    transaction: &Transaction<'_>,
+    name: &str,
+    version: i64,
+) -> Result<(), ProjectionError> {
+    transaction
+        .execute(
+            "DELETE FROM peritus_projection_work WHERE projection_name = ?1 AND projection_version = ?2",
+            params![name, version],
+        )
+        .map(|_| ())
+        .map_err(|error| ProjectionError::sqlite("clear installed projection progress", error))
 }

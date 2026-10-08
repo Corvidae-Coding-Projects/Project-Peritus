@@ -46,6 +46,26 @@ pub trait ProjectionState: Eq {
     /// Produces the canonical durable payload for this state.
     fn encode(&self) -> Vec<u8>;
 
+    /// Restores a typed state from its canonical durable payload.
+    ///
+    /// Implementations that do not support durable restoration retain genesis-replay behavior.
+    /// Built-in production projections implement this as a canonical, bounded decoder.
+    ///
+    /// # Errors
+    ///
+    /// Returns a corrupt-catalog error when bytes cannot restore the exact typed state.
+    fn decode(_payload: &[u8]) -> Result<Self, ProjectionError>
+    where
+        Self: Sized,
+    {
+        Err(ProjectionError::fold(
+            crate::ProjectionErrorKind::CorruptCatalog,
+            crate::RecoveryClass::Rebuild,
+            "decode projection checkpoint",
+            "projection state does not support durable typed restoration",
+        ))
+    }
+
     /// Validates whole-state invariants after replay.
     ///
     /// # Errors
@@ -85,6 +105,22 @@ pub trait Projection {
     ///
     /// Returns a typed order or invariant error for an invalid checked supplement.
     fn finish(
+        &self,
+        _state: &mut Self::State,
+        _export: &IntegrityExport,
+    ) -> Result<(), ProjectionError> {
+        Ok(())
+    }
+
+    /// Applies one independently verified immutable command-batch supplement during suffix replay.
+    ///
+    /// This hook represents only projection-owned summary data. It does not restore a native
+    /// application, run, provider, or operating-system context.
+    ///
+    /// # Errors
+    ///
+    /// Returns an order or invariant error when the supplement cannot extend the accepted state.
+    fn fold_supplement(
         &self,
         _state: &mut Self::State,
         _export: &IntegrityExport,
