@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3931,
-        "tip_oid": "cb28772c9a27c55ffb55bbb7c314d85899e7f0ea",
-        "prefix_sha256": "a9b41f941f769322510eddc13e241c1585f174314bf2f0ec1302a47125c1f61c"
+        "sequence": 3932,
+        "tip_oid": "f7d3f3d831dbe6a53fc342b061190c604613f056",
+        "prefix_sha256": "55d9ce19b48dd0d27d1b26fcec717335502019e20420708c754cf758064a1d59"
       },
       "NWAR": {
         "sequence": 39,
@@ -17382,12 +17382,13 @@
       "display_id": 661,
       "title": "[L605] Windows capability gates rely on synchronous and incomplete probe evidence",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L605.\n\n- Evidence: `crates/runtime/peritus-sandbox-windows/src/probe.rs:14,66-87,224-238,256-313`; `src/native/probe.rs:19-65,110-115`; `src/preparation.rs:103-119`; `src/native/mod.rs:59-72`; `src/resource.rs:82-112` in the same crate.\n- Behavior: Windows build 26,100, supported architecture, helper identity, token/ACL/job/path/handle/network facilities form a global support gate; advertised features additionally require an exact AppContainer. Native probing reads the entire helper synchronously, checks only existence of the system ACL tool, unconditionally advertises Credential Manager, and assigns all production resource levels after a small Job Object probe. Preparation and helper activation repeat full helper reads without cancellation or a read-time size bound. Incomplete resource evidence is advertised as a feature unless it is explicitly unsupported, but manifest preparation later rejects incomplete levels and requires support for all eight dimensions.\n- Consequence: Installed-path, host, permission, or resource-evidence failures can reject unrelated selected operations after durable consumption. Slow or unexpectedly large helper reads can block work without a deadline. Probe evidence does not establish every advertised supervisor measurement. Host/platform and integrity constraints are distinct from synthetic run deadlines.\n- Repair direction: Qualify selected native controls with typed evidence, negotiate actual platform capacities before consumption, and stream cancellable helper verification; represent omitted resource budgets independently from required enforcement support.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.236355260Z",
-      "updated_at": "2026-10-08T01:09:03.187351730Z",
+      "updated_at": "2026-10-08T01:10:32.383364095Z",
+      "closed_at": "2026-10-08T01:10:32.380440733Z",
       "labels": [
         "daily-driving-limiter"
       ],
