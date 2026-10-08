@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4059,
-        "tip_oid": "302810ee7d1547777d891fe84e8243e9b4ad55ef",
-        "prefix_sha256": "520fed88ec7ff12c0ce7b88dcf05149c86392dfbb288d487458567e130fee58a"
+        "sequence": 4060,
+        "tip_oid": "cf9a3dcfc5e5ae7eb81dbcfce06086f172e49311",
+        "prefix_sha256": "b31145da824ce50948275838973cb892622d2d1bd0b1995d8cfbd1257b1eab04"
       },
       "NWAR": {
         "sequence": 39,
@@ -4251,12 +4251,13 @@
       "display_id": 540,
       "title": "[L462] C5 archives, events and rate observations add compiled ceilings beyond request bounds",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L462.\n\n- Evidence: `crates/model/peritus-model-protocol/src/message_codec.rs:6-7,17-31,60-72`, `src/event_codec/primitive.rs:5-19`, `src/rate_limit.rs:90-104`, `src/event_codec/decode.rs:220-228` in the same crate.\n- Behavior: a profile-independent message archive has a fixed 64-MiB total ceiling and still applies max_messages. Event envelopes have another fixed 64-MiB total ceiling, collection maximum 1,024 and depth maximum 32. String and byte bounds combine several domain maxima. A rate-limit observation must contain between one and 64 windows; it cannot carry more provider dimensions even if the encoded frame would fit.\n- Consequence: a conversation valid for the 512-MiB canonical-request encoder can exceed the separate 64-MiB archive format. These APIs expose no larger-frame or paged representation. Provider reset values, retry-after values and cache TTLs are inert observations here; they do not expire local sessions or impose a wall-clock timeout. The archive ceiling's installed effect depends on its separately tracked callers.\n- Repair direction: store exact conversation history in authenticated pages and select provider context separately; make transport/observation capacity explicit and avoid converting a storage ceiling into loss of the session. Retain closed-tag and sequence integrity checks. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.658073634Z",
-      "updated_at": "2026-10-08T04:43:30.249574725Z",
+      "updated_at": "2026-10-08T04:45:15.725657129Z",
+      "closed_at": "2026-10-08T04:45:15.722759225Z",
       "labels": [
         "daily-driving-limiter"
       ],
