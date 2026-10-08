@@ -1,8 +1,11 @@
-//! Version-one bounded Windows helper manifest.
+//! Versioned exact-native Windows helper manifest.
 
 mod codec;
 
-use std::io::Read;
+use std::{
+    ffi::{OsStr, OsString},
+    io::{ErrorKind, Read},
+};
 
 use peritus_process::CommandSpec;
 use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
@@ -14,55 +17,102 @@ use crate::{
     WindowsErrorKind, WindowsOperation, WindowsPath, WindowsRecovery, error,
 };
 
-const MAX_MANIFEST_BYTES: usize = 4 * 1_024 * 1_024;
-const MAX_ARGUMENTS: usize = 4_096;
-const MAX_ENVIRONMENT: usize = 4_096;
-
 /// One ordinary environment value copied from the exact C2 execution plan.
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EnvironmentEntry {
-    name: String,
-    value: String,
+    name: OsString,
+    value: OsString,
 }
 
 impl EnvironmentEntry {
-    /// Creates a bounded Windows environment entry.
+    /// Creates a Windows environment entry representable by the protected native wire format.
     ///
     /// # Errors
-    /// Rejects empty/invalid names, NUL values, or over-limit text.
-    pub fn new(name: impl Into<String>, value: impl Into<String>) -> Result<Self, WindowsError> {
+    /// Rejects empty/invalid names or NUL values.
+    pub fn new(
+        name: impl Into<OsString>,
+        value: impl Into<OsString>,
+    ) -> Result<Self, WindowsError> {
         let name = name.into();
         let value = value.into();
+        let name_units = wide_units(&name);
+        let value_units = wide_units(&value);
         if name.is_empty()
-            || name.len() > 32_767
-            || value.len() > 1_048_576
-            || name.contains(['=', '\0'])
-            || value.contains('\0')
+            || name_units.iter().any(|unit| matches!(*unit, 0 | 61))
+            || value_units.contains(&0)
         {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
-                "environment entry is invalid or exceeds its bound",
+                "environment entry has an empty name or contains '=' or NUL",
             ));
         }
         Ok(Self { name, value })
     }
 
+    pub(super) fn new_legacy(name: String, value: String) -> Result<Self, WindowsError> {
+        if name.is_empty()
+            || name.contains(['=', '\0'])
+            || value.contains('\0')
+        {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "environment entry has an empty name or contains '=' or NUL",
+            ));
+        }
+        Ok(Self { name: name.into(), value: value.into() })
+    }
+
     /// Returns the exact case-preserving environment name.
     #[must_use]
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &OsStr {
         &self.name
     }
 
     /// Returns the ordinary non-secret value.
     #[must_use]
-    pub fn value(&self) -> &str {
+    pub fn value(&self) -> &OsStr {
         &self.value
     }
+}
+
+#[cfg(windows)]
+fn wide_units(value: &OsStr) -> Vec<u16> {
+    use std::os::windows::ffi::OsStrExt;
+
+    value.encode_wide().collect()
+}
+
+#[cfg(not(windows))]
+fn wide_units(value: &OsStr) -> Vec<u16> {
+    value.to_string_lossy().encode_utf16().collect()
+}
+
+#[cfg(windows)]
+pub(super) fn windows_name_cmp(left: &OsStr, right: &OsStr) -> std::cmp::Ordering {
+    peritus_process::native_environment_name_cmp(left, right)
+}
+
+#[cfg(not(windows))]
+pub(super) fn windows_name_cmp(left: &OsStr, right: &OsStr) -> std::cmp::Ordering {
+    windows_ordinal_key(left).cmp(&windows_ordinal_key(right))
+}
+
+#[cfg(not(windows))]
+fn windows_ordinal_key(value: &OsStr) -> Vec<u16> {
+    let mut key = Vec::new();
+    for character in value.to_string_lossy().chars() {
+        for folded in character.to_uppercase() {
+            let mut encoded = [0_u16; 2];
+            key.extend_from_slice(folded.encode_utf16(&mut encoded));
+        }
+    }
+    key
 }
 
 /// Complete immutable data accepted by the Windows helper.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HelperManifest {
+    encoding_version: u16,
     process_id: ProcessId,
     plan_digest: Sha256Digest,
     descriptor_digest: Sha256Digest,
@@ -71,8 +121,8 @@ pub struct HelperManifest {
     helper_digest: Sha256Digest,
     acl_digest: Sha256Digest,
     token: TokenProfile,
-    executable: String,
-    arguments: Vec<String>,
+    executable: OsString,
+    arguments: Vec<OsString>,
     working_directory: WindowsPath,
     environment: Vec<EnvironmentEntry>,
     job: JobPlan,
@@ -83,6 +133,7 @@ pub struct HelperManifest {
     secret_handles: Vec<ProtectedSecretHandle>,
     inherited_handles: InheritedHandlePolicy,
     canonical: Vec<u8>,
+    canonical_page_ends: Vec<usize>,
     digest: Sha256Digest,
 }
 
@@ -119,14 +170,12 @@ impl HelperManifest {
         {
             return Err(binding_error("admitted preparation digest is not bound to native facts"));
         }
-        if command.executable() != sandbox.requirements().process().program().as_str() {
+        let authorized = sandbox.native_execution().map_or_else(
+            || OsStr::new(sandbox.requirements().process().program().as_str()),
+            peritus_sandbox::NativeExecutionAuthority::executable,
+        );
+        if command.executable() != authorized {
             return Err(binding_error("literal target executable differs from checked process"));
-        }
-        if command.arguments().len() > MAX_ARGUMENTS || environment.len() > MAX_ENVIRONMENT {
-            return Err(error::invalid(
-                WindowsOperation::Manifest,
-                "target arguments or environment exceed manifest bounds",
-            ));
         }
         if !resources.is_complete() {
             return Err(error::unsupported(
@@ -134,9 +183,9 @@ impl HelperManifest {
                 "one or more resource dimensions have no enforcement owner",
             ));
         }
-        environment.sort();
+        environment.sort_by(|left, right| windows_name_cmp(left.name(), right.name()));
         for pair in environment.windows(2) {
-            if pair[0].name.eq_ignore_ascii_case(&pair[1].name) {
+            if windows_name_cmp(pair[0].name(), pair[1].name()).is_eq() {
                 return Err(error::invalid(
                     WindowsOperation::Manifest,
                     "environment contains a case-fold name alias",
@@ -144,13 +193,8 @@ impl HelperManifest {
             }
         }
         validate_handle_binding(&secret_handles, &inherited_handles)?;
-        let executable = WindowsPath::from_sandbox(
-            &working_directory,
-            sandbox.requirements().process().program(),
-        )?
-        .as_str()
-        .to_owned();
         let mut manifest = Self {
+            encoding_version: codec::SCHEMA,
             process_id,
             plan_digest: sandbox.digest(),
             descriptor_digest: admission.descriptor_digest(),
@@ -159,7 +203,7 @@ impl HelperManifest {
             helper_digest,
             acl_digest: acl.digest(),
             token,
-            executable,
+            executable: command.executable().to_owned(),
             arguments: command.arguments().to_vec(),
             working_directory,
             environment,
@@ -171,9 +215,11 @@ impl HelperManifest {
             secret_handles,
             inherited_handles,
             canonical: Vec::new(),
+            canonical_page_ends: Vec::new(),
             digest: Sha256Digest::new([0; 32]),
         };
         manifest.canonical = codec::encode(&manifest)?;
+        manifest.canonical_page_ends = codec::page_ends(&manifest.canonical)?;
         manifest.digest = peritus_codec::sha256(&manifest.canonical);
         Ok(manifest)
     }
@@ -191,23 +237,45 @@ impl HelperManifest {
     /// # Errors
     /// Rejects I/O failure, zero/excessive length, or an invalid manifest.
     pub fn read_framed(mut reader: impl Read) -> Result<Self, WindowsError> {
-        let mut length = [0_u8; 4];
-        reader
-            .read_exact(&mut length)
-            .map_err(|_| error::io(WindowsOperation::Manifest, "manifest length cannot be read"))?;
-        let length = usize::try_from(u32::from_le_bytes(length)).map_err(|_| {
-            error::invalid(WindowsOperation::Manifest, "manifest frame length overflowed")
-        })?;
-        if length == 0 || length > MAX_MANIFEST_BYTES {
+        Self::read_framed_while(&mut reader, &mut || true)
+    }
+
+    /// Reads a single-frame or paged protected manifest while owner continuation is retained.
+    ///
+    /// # Errors
+    /// Rejects cancellation, I/O failure, an empty/oversized physical page, allocation failure, or
+    /// an invalid manifest.
+    pub fn read_framed_while(
+        mut reader: impl Read,
+        should_continue: &mut dyn FnMut() -> bool,
+    ) -> Result<Self, WindowsError> {
+        let first = read_frame_length(&mut reader, should_continue)?;
+        if first != peritus_process::NATIVE_MANIFEST_STREAM_MARKER {
+            return Self::decode(&read_physical_frame(&mut reader, first, should_continue)?);
+        }
+        let mut bytes = Vec::new();
+        loop {
+            let length = read_frame_length(&mut reader, should_continue)?;
+            if length == 0 {
+                break;
+            }
+            let page = read_physical_frame(&mut reader, length, should_continue)?;
+            bytes.try_reserve(page.len()).map_err(|_| {
+                WindowsError::new(
+                    WindowsErrorKind::HelperProtocol,
+                    WindowsOperation::Manifest,
+                    WindowsRecovery::RepairHelper,
+                    "manifest page-stream allocation is unavailable",
+                )
+            })?;
+            bytes.extend_from_slice(&page);
+        }
+        if bytes.is_empty() {
             return Err(error::invalid(
                 WindowsOperation::Manifest,
-                "manifest frame is empty or exceeds its bound",
+                "manifest page stream is empty",
             ));
         }
-        let mut bytes = vec![0_u8; length];
-        reader
-            .read_exact(&mut bytes)
-            .map_err(|_| error::io(WindowsOperation::Manifest, "manifest frame is truncated"))?;
         Self::decode(&bytes)
     }
 
@@ -253,12 +321,12 @@ impl HelperManifest {
     }
     /// Returns literal target executable.
     #[must_use]
-    pub fn executable(&self) -> &str {
+    pub fn executable(&self) -> &OsStr {
         &self.executable
     }
     /// Returns literal target argv excluding argv zero.
     #[must_use]
-    pub fn arguments(&self) -> &[String] {
+    pub fn arguments(&self) -> &[OsString] {
         &self.arguments
     }
     /// Returns exact working directory.
@@ -311,11 +379,83 @@ impl HelperManifest {
     pub fn canonical_bytes(&self) -> &[u8] {
         &self.canonical
     }
+    pub(crate) fn canonical_pages(&self) -> impl ExactSizeIterator<Item = &[u8]> {
+        let mut start = 0_usize;
+        self.canonical_page_ends.iter().map(move |end| {
+            let page = &self.canonical[start..*end];
+            start = *end;
+            page
+        })
+    }
     /// Returns complete manifest digest.
     #[must_use]
     pub const fn digest(&self) -> Sha256Digest {
         self.digest
     }
+}
+
+fn read_frame_length(
+    reader: &mut impl Read,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<u32, WindowsError> {
+    let mut length = [0_u8; 4];
+    read_exact_while(reader, &mut length, should_continue, "manifest length cannot be read")?;
+    Ok(u32::from_le_bytes(length))
+}
+
+fn read_physical_frame(
+    reader: &mut impl Read,
+    length: u32,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<Vec<u8>, WindowsError> {
+    let length = usize::try_from(length).map_err(|_| {
+        error::invalid(WindowsOperation::Manifest, "manifest frame length is not representable")
+    })?;
+    if length == 0 || length > peritus_process::NATIVE_MANIFEST_FRAME_BYTES {
+        return Err(error::invalid(
+            WindowsOperation::Manifest,
+            "manifest physical frame is empty or exceeds transport capacity",
+        ));
+    }
+    let mut bytes = Vec::new();
+    bytes.try_reserve_exact(length).map_err(|_| {
+        WindowsError::new(
+            WindowsErrorKind::HelperProtocol,
+            WindowsOperation::Manifest,
+            WindowsRecovery::RepairHelper,
+            "manifest physical-frame allocation is unavailable",
+        )
+    })?;
+    bytes.resize(length, 0);
+    read_exact_while(reader, &mut bytes, should_continue, "manifest frame is truncated")?;
+    Ok(bytes)
+}
+
+fn read_exact_while(
+    reader: &mut impl Read,
+    bytes: &mut [u8],
+    should_continue: &mut dyn FnMut() -> bool,
+    failure: &'static str,
+) -> Result<(), WindowsError> {
+    let mut offset = 0_usize;
+    while offset < bytes.len() {
+        if !should_continue() {
+            return Err(WindowsError::new(
+                WindowsErrorKind::HelperProtocol,
+                WindowsOperation::Manifest,
+                WindowsRecovery::CancelAndReap,
+                "manifest read was cancelled by its retained owner",
+            ));
+        }
+        match reader.read(&mut bytes[offset..]) {
+            Ok(0) => return Err(error::io(WindowsOperation::Manifest, failure)),
+            Ok(count) => offset += count,
+            Err(source) if source.kind() == ErrorKind::Interrupted => {}
+            Err(source) if source.kind() == ErrorKind::WouldBlock => std::thread::yield_now(),
+            Err(_) => return Err(error::io(WindowsOperation::Manifest, failure)),
+        }
+    }
+    Ok(())
 }
 
 fn validate_handle_binding(

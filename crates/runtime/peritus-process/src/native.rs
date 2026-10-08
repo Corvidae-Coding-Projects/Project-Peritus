@@ -43,6 +43,10 @@ pub(crate) use observation::{
 };
 
 const MAX_HELPER_IDENTITY_BYTES: usize = 256;
+/// Maximum bytes in one complete native-helper manifest transport frame.
+pub const NATIVE_MANIFEST_FRAME_BYTES: usize = 4 * 1_024 * 1_024;
+/// Length-prefix sentinel introducing a sequence of native-helper manifest frames.
+pub const NATIVE_MANIFEST_STREAM_MARKER: u32 = u32::MAX;
 /// Maximum number of exact observations transferred in one physical page.
 pub const NATIVE_OBSERVATION_PAGE_RECORDS: usize = 256;
 
@@ -347,6 +351,7 @@ pub struct NativeLaunchDescription {
     command: CommandSpec,
     helper_identity: String,
     manifest: Vec<u8>,
+    manifest_page_ends: Vec<usize>,
     manifest_digest: Sha256Digest,
     preparation_digest: Sha256Digest,
     protected_handles: Vec<NativeProtectedHandle>,
@@ -367,6 +372,35 @@ impl NativeLaunchDescription {
         manifest_digest: Sha256Digest,
         preparation_digest: Sha256Digest,
     ) -> Result<Self, ProcessError> {
+        if manifest.is_empty() || manifest.len() > NATIVE_MANIFEST_FRAME_BYTES {
+            return Err(native_mismatch(
+                "native helper manifest frame is empty or exceeds physical transport capacity",
+            ));
+        }
+        Self::new_paged(
+            command,
+            helper_identity,
+            vec![manifest],
+            manifest_digest,
+            preparation_digest,
+        )
+    }
+
+    /// Creates a digest-bound helper launch from complete physical manifest frames.
+    ///
+    /// No aggregate byte or page-count allowance is imposed. Each page must fit the exact physical
+    /// transport frame, and allocation failure is reported without consuming launch authority.
+    ///
+    /// # Errors
+    /// Rejects an invalid helper identity, an empty/oversized page, allocation failure, or a digest
+    /// that does not bind the concatenated canonical pages.
+    pub fn new_paged(
+        command: CommandSpec,
+        helper_identity: impl Into<String>,
+        pages: Vec<Vec<u8>>,
+        manifest_digest: Sha256Digest,
+        preparation_digest: Sha256Digest,
+    ) -> Result<Self, ProcessError> {
         let helper_identity = helper_identity.into();
         if helper_identity.is_empty()
             || helper_identity.len() > MAX_HELPER_IDENTITY_BYTES
@@ -375,10 +409,25 @@ impl NativeLaunchDescription {
         {
             return Err(native_mismatch("native helper identity is invalid or exceeds its bound"));
         }
-        if manifest.is_empty() || u32::try_from(manifest.len()).is_err() {
-            return Err(native_mismatch(
-                "native helper manifest is empty or exceeds protected frame capacity",
-            ));
+        if pages.is_empty() {
+            return Err(native_mismatch("native helper manifest page stream is empty"));
+        }
+        let mut manifest = Vec::new();
+        let mut manifest_page_ends = Vec::new();
+        manifest_page_ends.try_reserve_exact(pages.len()).map_err(|_| {
+            native_mismatch("native helper manifest page index allocation is unavailable")
+        })?;
+        for page in pages {
+            if page.is_empty() || page.len() > NATIVE_MANIFEST_FRAME_BYTES {
+                return Err(native_mismatch(
+                    "native helper manifest page is empty or exceeds physical transport capacity",
+                ));
+            }
+            manifest.try_reserve(page.len()).map_err(|_| {
+                native_mismatch("native helper manifest byte allocation is unavailable")
+            })?;
+            manifest.extend_from_slice(&page);
+            manifest_page_ends.push(manifest.len());
         }
         if peritus_codec::sha256(&manifest) != manifest_digest {
             return Err(native_mismatch("native helper manifest digest does not match its bytes"));
@@ -387,6 +436,7 @@ impl NativeLaunchDescription {
             command,
             helper_identity,
             manifest,
+            manifest_page_ends,
             manifest_digest,
             preparation_digest,
             protected_handles: Vec::new(),
@@ -481,6 +531,16 @@ impl NativeLaunchDescription {
     #[must_use]
     pub fn manifest(&self) -> &[u8] {
         &self.manifest
+    }
+
+    /// Returns complete physical manifest pages in canonical order.
+    pub fn manifest_pages(&self) -> impl ExactSizeIterator<Item = &[u8]> {
+        let mut start = 0_usize;
+        self.manifest_page_ends.iter().map(move |end| {
+            let page = &self.manifest[start..*end];
+            start = *end;
+            page
+        })
     }
 
     /// Returns the digest of the protected-frame helper manifest.

@@ -4,8 +4,6 @@ use crate::{WindowsError, WindowsOperation, error};
 
 use super::{AppContainerProfile, validate_sid};
 
-const MAX_PROFILE_NAME_BYTES: usize = 128;
-
 impl AppContainerProfile {
     /// Creates a checked `AppContainer` name/SID binding.
     ///
@@ -54,14 +52,10 @@ impl AppContainerProfile {
 }
 
 fn validate_profile_name(name: &str) -> Result<(), WindowsError> {
-    if name.is_empty()
-        || name.len() > MAX_PROFILE_NAME_BYTES
-        || !name.is_ascii()
-        || name.bytes().any(|byte| byte.is_ascii_control())
-    {
+    if name.is_empty() || name.contains('\0') {
         return Err(error::invalid(
             WindowsOperation::Validate,
-            "AppContainer name is empty, excessive, or contains controls",
+            "AppContainer name is empty or contains NUL",
         ));
     }
     Ok(())

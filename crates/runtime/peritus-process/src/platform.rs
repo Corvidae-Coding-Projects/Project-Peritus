@@ -101,7 +101,7 @@ impl Write for ProcessInput {
 }
 
 pub(crate) struct NativeHandshake {
-    pub(crate) manifest: Vec<u8>,
+    pub(crate) manifest: Vec<Vec<u8>>,
     pub(crate) ready: Sha256Digest,
     pub(crate) activated: Sha256Digest,
     #[cfg(windows)]
@@ -350,18 +350,47 @@ pub(crate) fn verify_helper_record(
 
 pub(crate) fn write_helper_manifest(
     writer: &mut dyn Write,
-    manifest: &[u8],
+    manifest: &[Vec<u8>],
     should_continue: &mut dyn FnMut() -> bool,
 ) -> Result<(), HandshakeError> {
-    let length = u32::try_from(manifest.len())
-        .map_err(|_| {
-            HandshakeError::Failed(helper_protocol_error(
-                "native helper manifest exceeds framing capacity",
-            ))
-        })?;
-    write_all_while(writer, &length.to_le_bytes(), should_continue)?;
-    write_all_while(writer, manifest, should_continue)?;
+    if manifest.is_empty() {
+        return Err(HandshakeError::Failed(helper_protocol_error(
+            "native helper manifest page stream is empty",
+        )));
+    }
+    if manifest.len() == 1 {
+        write_manifest_page(writer, &manifest[0], should_continue)?;
+        return flush_while(writer, should_continue);
+    }
+    write_all_while(
+        writer,
+        &crate::NATIVE_MANIFEST_STREAM_MARKER.to_le_bytes(),
+        should_continue,
+    )?;
+    for page in manifest {
+        write_manifest_page(writer, page, should_continue)?;
+    }
+    write_all_while(writer, &0_u32.to_le_bytes(), should_continue)?;
     flush_while(writer, should_continue)
+}
+
+fn write_manifest_page(
+    writer: &mut dyn Write,
+    page: &[u8],
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<(), HandshakeError> {
+    if page.is_empty() || page.len() > crate::NATIVE_MANIFEST_FRAME_BYTES {
+        return Err(HandshakeError::Failed(helper_protocol_error(
+            "native helper manifest page exceeds physical transport capacity",
+        )));
+    }
+    let length = u32::try_from(page.len()).map_err(|_| {
+        HandshakeError::Failed(helper_protocol_error(
+            "native helper manifest page length is not representable",
+        ))
+    })?;
+    write_all_while(writer, &length.to_le_bytes(), should_continue)?;
+    write_all_while(writer, page, should_continue)
 }
 
 fn write_all_while(

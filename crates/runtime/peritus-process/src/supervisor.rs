@@ -430,7 +430,7 @@ fn run_owner(
         .map_or_else(|| plan.command(), |value| value.command())
         .clone();
     let handshake = launch_description.map(|value| platform::NativeHandshake {
-        manifest: value.manifest().to_vec(),
+        manifest: value.manifest_pages().map(<[u8]>::to_vec).collect(),
         ready: value.ready_record(),
         activated: value.activation_record(),
         #[cfg(windows)]

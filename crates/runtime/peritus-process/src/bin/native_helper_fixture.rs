@@ -4,7 +4,6 @@ use std::io::{Read, Write};
 
 use peritus_process::{native_activation_record, native_ready_record};
 
-const MAX_MANIFEST_BYTES: usize = 4 * 1_024 * 1_024;
 const PROTECTED_MARKER: &[u8] = b"peritus-native-protected-test-v1\0";
 #[cfg(unix)]
 const PROTECTED_PAYLOAD: &[u8] = b"peritus-protected-test-payload";
@@ -22,14 +21,7 @@ pub fn run() -> Result<(), ()> {
     output.flush().map_err(|_| ())?;
 
     let mut input = std::io::stdin().lock();
-    let mut length = [0_u8; 4];
-    input.read_exact(&mut length).map_err(|_| ())?;
-    let length = usize::try_from(u32::from_le_bytes(length)).map_err(|_| ())?;
-    if length == 0 || length > MAX_MANIFEST_BYTES {
-        return Err(());
-    }
-    let mut manifest = vec![0_u8; length];
-    input.read_exact(&mut manifest).map_err(|_| ())?;
+    let manifest = read_manifest(&mut input)?;
     if manifest.len() < 32 {
         return Err(());
     }
@@ -63,6 +55,42 @@ pub fn run() -> Result<(), ()> {
         let status = command.status().map_err(|_| ())?;
         std::process::exit(status.code().unwrap_or(125));
     }
+}
+
+fn read_manifest(input: &mut impl Read) -> Result<Vec<u8>, ()> {
+    let first = read_length(input)?;
+    if first != peritus_process::NATIVE_MANIFEST_STREAM_MARKER {
+        return read_page(input, first);
+    }
+    let mut manifest = Vec::new();
+    loop {
+        let length = read_length(input)?;
+        if length == 0 {
+            break;
+        }
+        let page = read_page(input, length)?;
+        manifest.try_reserve(page.len()).map_err(|_| ())?;
+        manifest.extend_from_slice(&page);
+    }
+    if manifest.is_empty() { Err(()) } else { Ok(manifest) }
+}
+
+fn read_length(input: &mut impl Read) -> Result<u32, ()> {
+    let mut length = [0_u8; 4];
+    input.read_exact(&mut length).map_err(|_| ())?;
+    Ok(u32::from_le_bytes(length))
+}
+
+fn read_page(input: &mut impl Read, length: u32) -> Result<Vec<u8>, ()> {
+    let length = usize::try_from(length).map_err(|_| ())?;
+    if length == 0 || length > peritus_process::NATIVE_MANIFEST_FRAME_BYTES {
+        return Err(());
+    }
+    let mut page = Vec::new();
+    page.try_reserve_exact(length).map_err(|_| ())?;
+    page.resize(length, 0);
+    input.read_exact(&mut page).map_err(|_| ())?;
+    Ok(page)
 }
 
 #[cfg(unix)]

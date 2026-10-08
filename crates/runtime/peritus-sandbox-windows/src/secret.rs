@@ -7,8 +7,6 @@ use peritus_types::Sha256Digest;
 
 use crate::{WindowsError, WindowsErrorKind, WindowsOperation, WindowsRecovery};
 
-const MAX_SECRET_HANDLES: usize = 64;
-
 /// Nonsensitive destination bound to one protected inherited handle.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SecretHandleDestination {
@@ -80,9 +78,6 @@ impl ProtectedSecretHandle {
 pub fn canonical_handles(
     mut handles: Vec<ProtectedSecretHandle>,
 ) -> Result<Vec<ProtectedSecretHandle>, WindowsError> {
-    if handles.len() > MAX_SECRET_HANDLES {
-        return Err(secret_error("secret handle count exceeds its bound"));
-    }
     handles.sort_by_key(ProtectedSecretHandle::handle);
     if handles.windows(2).any(|pair| pair[0].handle == pair[1].handle) {
         return Err(secret_error("secret handles contain a duplicate native handle"));

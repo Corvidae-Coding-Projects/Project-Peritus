@@ -11,8 +11,6 @@ use crate::{WindowsError, WindowsOperation, error};
 #[path = "process/profile.rs"]
 mod profile;
 
-const MAX_INHERITED_HANDLES: usize = 64;
-
 /// Exact native token isolation selected for a target.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TokenProfile {
@@ -406,12 +404,12 @@ impl InheritedHandlePolicy {
     }
 
     pub(crate) fn validate_count(count: usize) -> Result<(), WindowsError> {
-        if count > MAX_INHERITED_HANDLES {
-            return Err(error::invalid(
+        count.checked_mul(core::mem::size_of::<usize>()).ok_or_else(|| {
+            error::invalid(
                 WindowsOperation::Validate,
-                "selected inherited handle count exceeds its native contract",
-            ));
-        }
+                "selected inherited handle descriptor bytes exceed native representation",
+            )
+        })?;
         Ok(())
     }
 
@@ -429,11 +427,25 @@ impl InheritedHandlePolicy {
 }
 
 fn validate_sid(value: &str) -> Result<(), WindowsError> {
-    let valid = value.len() <= 184
-        && value.starts_with("S-1-")
-        && value.split('-').skip(2).all(|component| {
-            !component.is_empty() && component.bytes().all(|byte| byte.is_ascii_digit())
+    let valid = value.strip_prefix("S-1-").is_some_and(|body| {
+        let mut components = body.split('-');
+        let authority = components.next().is_some_and(|component| {
+            let parsed = component
+                .strip_prefix("0x")
+                .or_else(|| component.strip_prefix("0X"))
+                .map_or_else(
+                    || component.parse::<u64>(),
+                    |hex| u64::from_str_radix(hex, 16),
+                );
+            parsed.is_ok_and(|authority| authority <= 0x0000_FFFF_FFFF_FFFF)
         });
+        let mut subauthority_count = 0_usize;
+        authority
+            && components.all(|component| {
+                subauthority_count += 1;
+                subauthority_count <= 15 && component.parse::<u32>().is_ok()
+            })
+    });
     if valid {
         Ok(())
     } else {

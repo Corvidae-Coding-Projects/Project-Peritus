@@ -109,10 +109,10 @@ impl WindowsSession {
         if self.native_launch.protected_handles().is_empty() {
             return Ok(());
         }
-        let replacement = NativeLaunchDescription::new(
+        let replacement = NativeLaunchDescription::new_paged(
             self.native_launch.command().clone(),
             self.native_launch.helper_identity().to_owned(),
-            self.native_launch.manifest().to_vec(),
+            self.native_launch.manifest_pages().map(<[u8]>::to_vec).collect(),
             self.native_launch.manifest_digest(),
             self.native_launch.preparation_digest(),
         )?;

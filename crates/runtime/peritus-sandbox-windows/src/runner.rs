@@ -47,10 +47,10 @@ impl WindowsLaunchDescription {
             std::iter::empty::<std::ffi::OsString>(),
         )
             .map_err(|_| helper_error("helper path is not a valid literal command"))?;
-        let native = NativeLaunchDescription::new(
+        let native = NativeLaunchDescription::new_paged(
             command.clone(),
             helper_identity.clone(),
-            manifest.canonical_bytes().to_vec(),
+            manifest.canonical_pages().map(<[u8]>::to_vec).collect(),
             manifest.digest(),
             manifest.preparation_digest(),
         )

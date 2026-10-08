@@ -120,6 +120,13 @@ pub enum WindowsRecovery {
 /// secret material, or provider diagnostics.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WindowsErrorSource {
+    /// Canonical manifest representation or physical-frame failure.
+    Codec {
+        /// Underlying canonical codec failure class.
+        kind: peritus_codec::CodecErrorKind,
+        /// Exact bounded dimension, when the failure crossed one.
+        limit: Option<peritus_codec::CodecLimit>,
+    },
     /// Operating-system I/O category.
     Io(std::io::ErrorKind),
     /// Managed-network preparation or teardown failure.
@@ -154,6 +161,13 @@ pub enum WindowsErrorSource {
 impl fmt::Display for WindowsErrorSource {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Codec { kind, limit } => {
+                write!(formatter, "canonical codec {kind:?}")?;
+                if let Some(limit) = limit {
+                    write!(formatter, " in {limit:?}")?;
+                }
+                Ok(())
+            }
             Self::Io(kind) => write!(formatter, "operating-system I/O category {kind:?}"),
             Self::Network { kind, operation, recovery } => {
                 write!(formatter, "network {kind:?} during {operation:?}; recovery {recovery:?}")
@@ -172,6 +186,10 @@ impl std::error::Error for WindowsErrorSource {}
 
 /// Exact resource families whose cleanup could not be proven after preparation failed.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "independent preparation cleanup obligations remain explicit"
+)]
 pub struct PreparationCleanup {
     acl_restore: bool,
     filter_release: bool,
