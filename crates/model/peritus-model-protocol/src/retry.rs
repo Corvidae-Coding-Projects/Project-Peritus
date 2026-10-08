@@ -348,7 +348,10 @@ fn invalid_retry_bounds() -> ProtocolError {
 fn delay(input: RetryFacts) -> u64 {
     let shift = input.attempt.min(63);
     let exponential =
-        input.base_delay_millis.checked_shl(shift).unwrap_or(u64::MAX).min(input.max_delay_millis);
+        input.base_delay_millis
+            .checked_mul(1_u64 << shift)
+            .unwrap_or(u64::MAX)
+            .min(input.max_delay_millis);
     let jitter = exponential
         .saturating_mul(u64::from(input.jitter_millionths))
         .checked_div(1_000_000)
