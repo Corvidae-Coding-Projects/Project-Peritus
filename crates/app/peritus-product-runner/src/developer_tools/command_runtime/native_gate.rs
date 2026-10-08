@@ -310,6 +310,7 @@ pub(super) fn prepare(
         IoMode::Pipes,
         StdinPolicy::Closed,
         WorkspaceAccess::Writable,
+        &[],
         managed_network,
         managed_cache,
     )?;
@@ -355,6 +356,7 @@ pub(super) fn prepare_observational(
         io,
         stdin,
         WorkspaceAccess::ReadOnly,
+        &[],
         None,
         None,
     )?;
@@ -374,6 +376,67 @@ pub(super) fn prepare_observational(
     Ok(PreparedNativeGate { checked, admission, backend })
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "protected-path command confinement binds every authority-relevant process input"
+)]
+pub(super) fn prepare_confined_mutation(
+    ids: &CommandIds,
+    command: &CommandSpec,
+    workspace_root: &Path,
+    working_directory: &Path,
+    environment: &EnvironmentPlan,
+    io: IoMode,
+    stdin: StdinPolicy,
+    resources: ProcessResourcePolicy,
+    protected_paths: &[PathBuf],
+    state_root: &Path,
+    cancellation: &CancellationToken,
+) -> Result<PreparedNativeGate, String> {
+    ensure_not_cancelled(cancellation)?;
+    let checked = checked_plan(
+        ids,
+        command,
+        workspace_root,
+        working_directory,
+        environment,
+        resources,
+        io,
+        stdin,
+        WorkspaceAccess::Writable,
+        protected_paths,
+        None,
+        None,
+    )
+    .map_err(|error| {
+        format!(
+            "protected-path command confinement is unavailable: {error}; dismiss or rebind the exact leave-alone constraint, or use workspace file tools outside that path"
+        )
+    })?;
+    ensure_not_cancelled(cancellation)?;
+    let backend = open_backend(
+        workspace_root,
+        workspace_root,
+        state_root,
+        None,
+        None,
+        cancellation,
+    )
+    .map_err(|error| {
+        format!(
+            "protected-path command confinement is unavailable: {error}; install the reported sandbox capability, dismiss or rebind the exact leave-alone constraint, or use workspace file tools outside that path"
+        )
+    })?;
+    ensure_not_cancelled(cancellation)?;
+    let admission = admit_backend(&checked, backend.descriptor(), AdmissionProfile::Production)
+        .map_err(|error| {
+            format!(
+                "protected-path command confinement is unavailable: {error}; select a backend that can enforce every protected path before retrying this command"
+            )
+        })?;
+    Ok(PreparedNativeGate { checked, admission, backend })
+}
+
 fn checked_plan(
     ids: &CommandIds,
     command: &CommandSpec,
@@ -384,6 +447,7 @@ fn checked_plan(
     io: IoMode,
     stdin: StdinPolicy,
     workspace_access: WorkspaceAccess,
+    protected_paths: &[PathBuf],
     managed_network: Option<&ManagedGateNetworkGrant>,
     managed_cache: Option<&Path>,
 ) -> Result<CheckedSandboxPlan, String> {
@@ -512,6 +576,40 @@ fn checked_plan(
                 ]),
             )
             .map_err(|error| format!("construct gate runtime rule: {error}"))?,
+        );
+    }
+    for relative in protected_paths {
+        if relative.is_absolute()
+            || relative.components().any(|component| {
+                matches!(
+                    component,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
+        {
+            return Err(format!(
+                "protected path {} is not workspace-relative",
+                relative.display(),
+            ));
+        }
+        rules.push(
+            FilesystemRule::new(
+                RuleEffect::Deny,
+                native_path(workspace_root.join(relative).as_os_str(), "protected-path")?,
+                PathScope::Descendants,
+                FileOperationSet::from_operations([
+                    FileOperation::Discover,
+                    FileOperation::Metadata,
+                    FileOperation::Read,
+                    FileOperation::Execute,
+                    FileOperation::Create,
+                    FileOperation::Write,
+                    FileOperation::Remove,
+                ]),
+            )
+            .map_err(|error| format!("construct protected-path confinement rule: {error}"))?,
         );
     }
     let filesystem = FilesystemContract::new(rules)

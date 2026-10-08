@@ -79,6 +79,7 @@ fn exercise_restarted_runtime(direct: bool) {
                     columns: 80,
                     idempotency_key: "failed-start",
                     environment: vec![],
+                    protected_paths: &[],
                 })
                 .is_err()
         );
@@ -106,6 +107,7 @@ fn exercise_restarted_runtime(direct: bool) {
                     "PERITUS_COMMAND_RESTART_FIXTURE".to_owned(),
                     marker.to_owned(),
                 )],
+                protected_paths: &[],
             })
             .expect("execute command across runtime restart");
         assert_eq!(result["success"].as_bool(), Some(true), "{result}");

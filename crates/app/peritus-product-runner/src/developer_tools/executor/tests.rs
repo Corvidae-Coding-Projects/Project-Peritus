@@ -131,7 +131,7 @@ fn command_cwd_rejections_explain_the_workspace_relative_repair() {
 }
 
 #[test]
-fn task_contract_keeps_opaque_implementation_out_of_tool_evidence() {
+fn task_contract_prose_does_not_invent_access_policy() {
     let workspace = tempfile::tempdir().expect("workspace");
     fs::write(workspace.path().join("forward.py"), "A1 = 'hidden'\n").expect("opaque input");
     fs::write(workspace.path().join("notes.txt"), "A1 must stay hidden\n").expect("notes");
@@ -141,28 +141,18 @@ fn task_contract_keeps_opaque_implementation_out_of_tool_evidence() {
 
     let listed = execute(&mut tools, "workspace_list", r#"{"depth":2,"path":""}"#);
     assert!(!listed.is_error);
-    let blocked_read = execute(
+    let read = execute(
         &mut tools,
         "workspace_read",
         r#"{"end_line":20,"path":"forward.py","start_line":1}"#,
     );
-    assert!(blocked_read.is_error);
-    assert!(wire(&blocked_read).contains("opaque query interface"));
+    assert!(!read.is_error, "{}", wire(&read));
 
     let search =
         execute(&mut tools, "workspace_search", r#"{"max_results":10,"path":"","query":"A1"}"#);
     let search_value: Value = serde_json::from_str(&wire(&search)).expect("search JSON");
     let matches = search_value["matches"].as_array().expect("matches");
-    assert_eq!(matches.len(), 1);
-    assert_eq!(matches[0]["path"], "notes.txt");
-
-    let blocked_command = execute(
-        &mut tools,
-        "run_command",
-        r#"{"args":["-c","import forward; print(forward.A1)"],"program":"python3","purpose":"verification"}"#,
-    );
-    assert!(blocked_command.is_error);
-    assert!(wire(&blocked_command).contains("hidden state"));
+    assert_eq!(matches.len(), 2);
 }
 
 #[test]

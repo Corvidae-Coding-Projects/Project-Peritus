@@ -50,6 +50,7 @@ impl WorkspaceDeveloperTools {
             .unwrap_or_default();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
+        let protected_paths = self.command_confinement(command.mode);
         let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
@@ -60,6 +61,7 @@ impl WorkspaceDeveloperTools {
             columns: u16::try_from(DEFAULT_TERMINAL_COLUMNS).expect("bounded terminal columns"),
             idempotency_key: call_id,
             environment,
+            protected_paths: &protected_paths,
         };
         let result =
             self.command_runtime()?.run_selected(request, command.mode, resource_evidence);
@@ -83,6 +85,7 @@ impl WorkspaceDeveloperTools {
         let runtime = self.command_runtime()?.clone();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
+        let protected_paths = self.command_confinement(command.mode);
         let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
@@ -94,6 +97,7 @@ impl WorkspaceDeveloperTools {
                     .expect("bounded terminal columns"),
                 idempotency_key: call_id,
                 environment,
+                protected_paths: &protected_paths,
             };
         let result = runtime.run_selected_async(request, command.mode, resource_evidence).await;
         self.finish_run_command(arguments, result, unowned_before, &command)
@@ -152,6 +156,7 @@ impl WorkspaceDeveloperTools {
             .unwrap_or_default();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
+        let protected_paths = self.command_confinement(command.mode);
         let request = StartCommand {
             program: &command.program,
             arguments: &command.arguments,
@@ -162,6 +167,7 @@ impl WorkspaceDeveloperTools {
             columns: u16::try_from(columns).expect("bounded terminal columns"),
             idempotency_key: call_id,
             environment,
+            protected_paths: &protected_paths,
         };
         let result = self.command_runtime()?.start_selected(
             request,
@@ -194,6 +200,7 @@ impl WorkspaceDeveloperTools {
         let runtime = self.command_runtime()?.clone();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
+        let protected_paths = self.command_confinement(command.mode);
         let request = StartCommand {
                 program: &command.program,
                 arguments: &command.arguments,
@@ -204,6 +211,7 @@ impl WorkspaceDeveloperTools {
                 columns: u16::try_from(columns).expect("bounded terminal columns"),
                 idempotency_key: call_id,
                 environment,
+                protected_paths: &protected_paths,
             };
         let result = runtime
             .start_selected_async(request, command.mode, resource_evidence)

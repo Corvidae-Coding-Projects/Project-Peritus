@@ -129,6 +129,7 @@ fn start_command(command: &PreviewCommand) -> StartCommand<'_> {
         columns: command.columns,
         idempotency_key: &command.idempotency_key,
         environment: command.environment.clone(),
+        protected_paths: &[],
     }
 }
 

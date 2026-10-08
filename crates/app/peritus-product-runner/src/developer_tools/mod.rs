@@ -78,7 +78,7 @@ pub fn merge_rendered(retained: &mut String, incoming: &str) {
 /// This does not grant a reusable read capability; callers must perform their own bounded read.
 ///
 /// # Errors
-/// Rejects protected/opaque targets and paths that escape or traverse links.
+/// Rejects explicitly protected targets and paths that escape or traverse links.
 #[cfg(not(verus_only))]
 pub fn checked_protected_file(
     root: &std::path::Path,
@@ -113,10 +113,10 @@ pub fn checked_protected_file_for_developer(
 pub(crate) fn checked_context_file_for_developer(
     root: &std::path::Path,
     relative: &str,
-    contract: &str,
+    _contract: &str,
     protected: &[std::path::PathBuf],
 ) -> Result<Option<std::path::PathBuf>, peritus_agent::DeveloperLoopError> {
-    let mut policy = access_policy::WorkspaceAccessPolicy::from_transcript(root, contract);
+    let mut policy = access_policy::WorkspaceAccessPolicy::default();
     policy.protect(root, protected);
     if policy
         .authorize("workspace_read", &Value::from_iter([("path", Value::from(relative))]))

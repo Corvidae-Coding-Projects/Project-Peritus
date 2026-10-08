@@ -14,18 +14,11 @@ use super::command_runtime::CommandExecutionMode;
 pub(super) struct WorkspaceAccessPolicy {
     protected_paths: BTreeSet<PathBuf>,
     hard_constraint_paths: BTreeSet<PathBuf>,
-    opaque_paths: BTreeSet<PathBuf>,
-    hidden_identifiers: BTreeSet<String>,
 }
 
 impl WorkspaceDeveloperTools {
     #[must_use]
-    pub(crate) fn with_task_contract(mut self, transcript: &str) -> Self {
-        let protected = std::mem::take(&mut self.access_policy.protected_paths);
-        let hard_constraints = std::mem::take(&mut self.access_policy.hard_constraint_paths);
-        self.access_policy = WorkspaceAccessPolicy::from_transcript(&self.root, transcript);
-        self.access_policy.protected_paths = protected;
-        self.access_policy.hard_constraint_paths = hard_constraints;
+    pub(crate) fn with_task_contract(self, _transcript: &str) -> Self {
         self
     }
 
@@ -52,16 +45,43 @@ impl WorkspaceDeveloperTools {
 
     pub(super) fn observe_request_authority(&mut self, text: &str) {
         self.references.extend_from_task(&self.root, text);
-        self.access_policy.extend_from_transcript(&self.root, text);
+    }
+
+    pub(super) fn command_confinement(&self, mode: CommandExecutionMode) -> Vec<PathBuf> {
+        if mode.is_mutation() {
+            self.access_policy.hard_constraint_paths.iter().cloned().collect()
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub(super) fn authorize_process_control_confinement(
+        &self,
+        tool: &str,
+        arguments: &Value,
+        process_mode: Option<CommandExecutionMode>,
+    ) -> Result<(), String> {
+        if process_mode != Some(CommandExecutionMode::Mutation)
+            || !matches!(tool, "command_stdin" | "command_resize" | "command_signal")
+        {
+            return Ok(());
+        }
+        let handle = arguments
+            .get("handle")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "process control is missing its exact command handle".to_owned())?;
+        let admitted = self
+            .command_runtime
+            .as_ref()
+            .ok_or_else(|| "process controls have no command runtime".to_owned())?
+            .control_confinement(handle)
+            .map_err(|error| error.to_string())?;
+        let Some(admitted) = admitted else { return Ok(()) };
+        self.access_policy.authorize_control_confinement(handle, &admitted)
     }
 }
 
 impl WorkspaceAccessPolicy {
-    pub(super) fn merge_request_evidence(&mut self, other: &Self) {
-        self.opaque_paths.extend(other.opaque_paths.iter().cloned());
-        self.hidden_identifiers.extend(other.hidden_identifiers.iter().cloned());
-    }
-
     pub(super) fn protect(&mut self, root: &Path, paths: &[PathBuf]) {
         for path in paths {
             if let Some(relative) = configured_relative(root, path) {
@@ -74,6 +94,23 @@ impl WorkspaceAccessPolicy {
         self.hard_constraint_paths.clear();
         self.hard_constraint_paths
             .extend(paths.iter().filter_map(|path| configured_relative(root, path)));
+    }
+
+    fn authorize_control_confinement(
+        &self,
+        handle: &str,
+        admitted: &[PathBuf],
+    ) -> Result<(), String> {
+        let missing = self.hard_constraint_paths.iter().find(|required| {
+            !admitted.iter().any(|protected| required.starts_with(protected))
+        });
+        if let Some(missing) = missing {
+            return Err(format!(
+                "process control refused for handle {handle}: its retained sandbox predates the current leave-alone constraint for {}; cancel that exact handle and start a new confined command",
+                missing.display(),
+            ));
+        }
+        Ok(())
     }
 }
 
@@ -91,53 +128,6 @@ fn configured_relative(root: &Path, path: &Path) -> Option<PathBuf> {
 }
 
 impl WorkspaceAccessPolicy {
-    pub(super) fn from_transcript(root: &Path, transcript: &str) -> Self {
-        let lower = transcript.to_ascii_lowercase();
-        let restricted_knowledge = ["do not know", "don't know", "black-box", "black box"]
-            .iter()
-            .any(|marker| lower.contains(marker));
-        if !restricted_knowledge {
-            return Self::default();
-        }
-
-        let mut policy = Self::default();
-        for line in transcript.lines() {
-            let lower_line = line.to_ascii_lowercase();
-            if lower_line.contains("query")
-                && lower_line.contains("import")
-                && lower_line.contains("call")
-            {
-                for span in inline_code_spans(line) {
-                    if let Some(path) = opaque_path(root, span) {
-                        policy.opaque_paths.insert(path);
-                    }
-                }
-            }
-        }
-        for marker in ["do not know", "don't know"] {
-            for offset in match_offsets(&lower, marker) {
-                let start = offset.saturating_add(marker.len());
-                let clause = transcript[start..].split(['.', ';', '\n']).next().unwrap_or_default();
-                policy.hidden_identifiers.extend(
-                    clause
-                        .split(|character: char| {
-                            !character.is_ascii_alphanumeric() && character != '_'
-                        })
-                        .filter(|token| hidden_identifier(token))
-                        .map(str::to_owned),
-                );
-            }
-        }
-        policy
-    }
-
-    fn extend_from_transcript(&mut self, root: &Path, transcript: &str) {
-        let added = Self::from_transcript(root, transcript);
-        self.protected_paths.extend(added.protected_paths);
-        self.opaque_paths.extend(added.opaque_paths);
-        self.hidden_identifiers.extend(added.hidden_identifiers);
-    }
-
     pub(super) fn authorize(&self, tool: &str, arguments: &Value) -> Result<(), String> {
         let inferred_mode = match arguments.get("purpose").and_then(Value::as_str) {
             Some("verification") => Some(CommandExecutionMode::Observational),
@@ -151,7 +141,7 @@ impl WorkspaceAccessPolicy {
         &self,
         tool: &str,
         arguments: &Value,
-        process_mode: Option<CommandExecutionMode>,
+        _process_mode: Option<CommandExecutionMode>,
     ) -> Result<(), String> {
         match tool {
             "workspace_list" | "workspace_search" | "workspace_read" => {
@@ -166,17 +156,14 @@ impl WorkspaceAccessPolicy {
                 }
             }
             "run_command" | "command_start" | "command_stdin" | "command_resize"
-            | "command_signal" => {
-                self.authorize_command(arguments, process_mode)?;
-            }
+            | "command_signal" => {}
             _ => {}
         }
         Ok(())
     }
 
     pub(super) fn permits_search_result(&self, relative: &Path) -> bool {
-        !self.opaque_paths.contains(relative)
-            && !self.protected_paths.iter().any(|path| relative.starts_with(path))
+        !self.protected_paths.iter().any(|path| relative.starts_with(path))
     }
 
     fn authorize_path(&self, raw: &str) -> Result<(), String> {
@@ -185,12 +172,6 @@ impl WorkspaceAccessPolicy {
             return Err(
                 "Peritus private state is not an ordinary workspace file-tool target".to_owned()
             );
-        }
-        if self.opaque_paths.contains(&relative) {
-            return Err(format!(
-                "the task declares {} as an opaque query interface; inspect behavior only through its named public interface",
-                relative.display(),
-            ));
         }
         Ok(())
     }
@@ -206,139 +187,20 @@ impl WorkspaceAccessPolicy {
         Ok(())
     }
 
-    fn authorize_command(
-        &self,
-        arguments: &Value,
-        process_mode: Option<CommandExecutionMode>,
-    ) -> Result<(), String> {
-        if !self.hard_constraint_paths.is_empty()
-            && process_mode != Some(CommandExecutionMode::Observational)
-        {
-            return Err(
-                "process admission refused: the configured command backend cannot confine writes away from protected paths; explicitly revise the constraint or use enforceable file tools"
-                    .to_owned(),
-            );
-        }
-        let values = arguments.get("program").and_then(Value::as_str).into_iter().chain(
-            arguments
-                .get("args")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_str),
-        );
-        for value in values {
-            if let Some(path) = self
-                .opaque_paths
-                .iter()
-                .find(|path| value.contains(path.to_string_lossy().as_ref()))
-            {
-                return Err(format!(
-                    "the task declares {} as an opaque query interface; commands may invoke its public interface but may not inspect the implementation path",
-                    path.display(),
-                ));
-            }
-            if let Some(identifier) = self
-                .hidden_identifiers
-                .iter()
-                .find(|identifier| contains_identifier(value, identifier))
-            {
-                return Err(format!(
-                    "the task declares implementation detail {identifier} unknown; validate through the named public interface instead of inspecting hidden state",
-                ));
-            }
-        }
-        Ok(())
-    }
-}
-
-fn inline_code_spans(line: &str) -> Vec<&str> {
-    line.split('`')
-        .enumerate()
-        .filter_map(|(index, span)| (index % 2 == 1 && !span.is_empty()).then_some(span))
-        .collect()
-}
-
-fn opaque_path(root: &Path, raw: &str) -> Option<PathBuf> {
-    if raw.contains('(') || raw.contains(')') {
-        return None;
-    }
-    let path = Path::new(raw);
-    path.extension()?;
-    let relative = if path.is_absolute() {
-        path.strip_prefix(root).ok()?.to_path_buf()
-    } else {
-        path.to_path_buf()
-    };
-    (!relative.as_os_str().is_empty()
-        && !relative.components().any(|component| {
-            matches!(component, Component::ParentDir | Component::RootDir | Component::Prefix(_))
-        }))
-    .then_some(relative)
 }
 
 fn normalized_relative(raw: &str) -> PathBuf {
     Path::new(raw.strip_prefix("./").unwrap_or(raw)).to_path_buf()
 }
 
-fn match_offsets(text: &str, marker: &str) -> Vec<usize> {
-    text.match_indices(marker).map(|(offset, _)| offset).collect()
-}
-
-fn hidden_identifier(token: &str) -> bool {
-    !token.is_empty()
-        && token.chars().all(|character| character.is_ascii_alphanumeric() || character == '_')
-        && token
-            .chars()
-            .any(|character| character.is_ascii_uppercase() || character.is_ascii_digit())
-}
-
-fn contains_identifier(text: &str, identifier: &str) -> bool {
-    text.split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-        .any(|token| token == identifier)
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn opaque_query_contract_blocks_implementation_reads_and_hidden_state() {
-        let policy = WorkspaceAccessPolicy::from_transcript(
-            Path::new("/app"),
-            "Query the system by importing `forward.py` and calling forward(x). You do not know the shape of A1.",
-        );
-
-        assert!(policy.authorize("workspace_read", &value(r#"{"path":"forward.py"}"#)).is_err());
-        assert!(policy.authorize("workspace_read", &value(r#"{"path":"steal.py"}"#)).is_ok());
-        assert!(
-            policy
-                .authorize(
-                    "run_command",
-                    &value(
-                        r#"{"args":["-c","import forward; print(forward.A1)"],"program":"python3"}"#,
-                    ),
-                )
-                .is_err()
-        );
-        assert!(policy
-            .authorize(
-                "run_command",
-                &value(
-                    r#"{"args":["-c","from forward import forward; print(callable(forward))"],"program":"python3"}"#,
-                ),
-            )
-            .is_ok());
-        assert!(!policy.permits_search_result(Path::new("forward.py")));
-        assert!(policy.permits_search_result(Path::new("steal.py")));
-    }
-
-    #[test]
     fn ordinary_repository_request_keeps_normal_access() {
-        let policy = WorkspaceAccessPolicy::from_transcript(
-            Path::new("/work"),
-            "Inspect src/lib.rs, fix the parser, and run its tests.",
-        );
+        let policy = WorkspaceAccessPolicy::default();
 
         assert!(policy.authorize("workspace_read", &value(r#"{"path":"src/lib.rs"}"#)).is_ok());
         assert!(
@@ -349,7 +211,7 @@ mod tests {
     }
 
     #[test]
-    fn hard_constraint_allows_read_but_blocks_file_and_unconfined_process_writes() {
+    fn hard_constraint_allows_read_and_requires_process_confinement() {
         let mut policy = WorkspaceAccessPolicy::default();
         policy.set_hard_constraints(Path::new("/work"), &[PathBuf::from("src/locked.rs")]);
 
@@ -363,15 +225,11 @@ mod tests {
                 .expect_err("hard path write")
                 .contains("leave-alone")
         );
-        for tool in ["run_command", "command_start", "command_stdin"] {
-            assert!(
-                policy
-                    .authorize(tool, &value(r#"{"args":[],"program":"true"}"#))
-                    .expect_err("unconfined process")
-                    .contains("cannot confine writes"),
-                "{tool} must not bypass a hard path"
-            );
-        }
+        assert!(policy.authorize("run_command", &value(r#"{"args":[],"program":"true"}"#)).is_ok());
+        assert!(policy
+            .authorize_control_confinement("owned", &[PathBuf::from("src/locked.rs")])
+            .is_ok());
+        assert!(policy.authorize_control_confinement("old", &[]).is_err());
         assert!(policy.authorize("workspace_patch", &value(r#"{"path":"src/other.rs"}"#)).is_ok());
     }
 

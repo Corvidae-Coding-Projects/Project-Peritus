@@ -60,6 +60,13 @@ impl WorkspaceDeveloperTools {
         ) {
             return self.denied(call, &arguments, detail);
         }
+        if let Err(detail) = self.authorize_process_control_confinement(
+            call.name().as_str(),
+            &arguments,
+            process_mode,
+        ) {
+            return self.denied(call, &arguments, detail);
+        }
         if self.mode == WorkspaceToolMode::ReadOnly
             && !read_only_role_allows(call.name().as_str(), process_mode)
         {

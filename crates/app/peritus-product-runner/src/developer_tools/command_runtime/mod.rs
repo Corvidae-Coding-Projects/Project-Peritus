@@ -105,6 +105,7 @@ struct StartingCommand {
     started: Instant,
     interactive: bool,
     resource_evidence: Option<Value>,
+    protected_paths: Vec<PathBuf>,
 }
 
 struct ActiveCommand {
@@ -115,6 +116,7 @@ struct ActiveCommand {
     started: Instant,
     interactive: bool,
     resource_evidence: Option<Value>,
+    protected_paths: Vec<PathBuf>,
 }
 
 #[derive(Clone)]
@@ -367,6 +369,7 @@ pub(super) struct StartCommand<'a> {
     pub(super) columns: u16,
     pub(super) idempotency_key: &'a str,
     pub(super) environment: Vec<(String, String)>,
+    pub(super) protected_paths: &'a [PathBuf],
 }
 
 struct OwnedStartCommand {
@@ -379,6 +382,7 @@ struct OwnedStartCommand {
     columns: u16,
     idempotency_key: String,
     environment: Vec<(String, String)>,
+    protected_paths: Vec<PathBuf>,
 }
 
 impl OwnedStartCommand {
@@ -393,6 +397,7 @@ impl OwnedStartCommand {
             columns: request.columns,
             idempotency_key: request.idempotency_key.to_owned(),
             environment: request.environment,
+            protected_paths: request.protected_paths.to_vec(),
         }
     }
 
@@ -407,6 +412,7 @@ impl OwnedStartCommand {
             columns: self.columns,
             idempotency_key: &self.idempotency_key,
             environment: self.environment.clone(),
+            protected_paths: &self.protected_paths,
         }
     }
 }
@@ -748,6 +754,7 @@ impl CommandRuntime {
                 idempotency_key: identity::bounded_key(request.idempotency_key),
                 environment: request.environment,
                 mode,
+                protected_paths: request.protected_paths,
             },
         )
         .map_err(tool)?;
@@ -837,6 +844,7 @@ impl CommandRuntime {
                         started,
                         interactive: request.interactive,
                         resource_evidence: resource_evidence.clone(),
+                        protected_paths: request.protected_paths.to_vec(),
                     });
                 }
                 Entry::Occupied(_) => {
@@ -969,6 +977,7 @@ impl CommandRuntime {
                                 started,
                                 interactive: request.interactive,
                                 resource_evidence: resource_evidence.clone(),
+                                protected_paths: request.protected_paths.to_vec(),
                             },
                         );
                         drop(state);
@@ -1052,6 +1061,7 @@ impl CommandRuntime {
                         started,
                         interactive: request.interactive,
                         resource_evidence: resource_evidence.clone(),
+                        protected_paths: request.protected_paths.to_vec(),
                     },
                 );
                 started_control = control;
@@ -1658,6 +1668,23 @@ impl CommandRuntime {
             return Ok(Some(CommandExecutionMode::from_access(
                 command.plan.working_directory().access(),
             )));
+        }
+        if state.terminal.contains_key(handle) || state.recovered.contains_key(handle) {
+            return Ok(None);
+        }
+        Err(tool("command invocation handle is unknown"))
+    }
+
+    pub(super) fn control_confinement(
+        &self,
+        handle: &str,
+    ) -> Result<Option<Vec<PathBuf>>, DeveloperLoopError> {
+        let state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
+        if let Some(command) = state.starting.get(handle) {
+            return Ok(Some(command.protected_paths.clone()));
+        }
+        if let Some(command) = state.active.get(handle) {
+            return Ok(Some(command.protected_paths.clone()));
         }
         if state.terminal.contains_key(handle) || state.recovered.contains_key(handle) {
             return Ok(None);

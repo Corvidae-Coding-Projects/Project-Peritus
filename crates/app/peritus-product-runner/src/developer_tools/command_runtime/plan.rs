@@ -62,6 +62,7 @@ pub(super) struct CommandRequest<'a> {
     pub(super) idempotency_key: String,
     pub(super) environment: Vec<(String, String)>,
     pub(super) mode: CommandExecutionMode,
+    pub(super) protected_paths: &'a [PathBuf],
 }
 
 #[allow(
@@ -196,16 +197,32 @@ pub(super) fn compile(
             )?,
         ),
         CommandExecutionMode::Mutation => {
-            let (checked, admission) = sandbox::raw_effect(
-                ids,
-                &command,
-                working_directory.path(),
-                &environment,
-                io,
-                stdin,
-                resources,
-            )?;
-            CommandBackend::Raw { checked, admission }
+            if request.protected_paths.is_empty() {
+                let (checked, admission) = sandbox::raw_effect(
+                    ids,
+                    &command,
+                    working_directory.path(),
+                    &environment,
+                    io,
+                    stdin,
+                    resources,
+                )?;
+                CommandBackend::Raw { checked, admission }
+            } else {
+                CommandBackend::Native(native_gate::prepare_confined_mutation(
+                    ids,
+                    &command,
+                    workspace_root,
+                    working_directory.path(),
+                    &environment,
+                    io,
+                    stdin,
+                    resources,
+                    request.protected_paths,
+                    state_root,
+                    cancellation,
+                )?)
+            }
         }
     };
     let (checked, admission) = backend.sandbox();

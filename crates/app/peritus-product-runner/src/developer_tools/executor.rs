@@ -348,7 +348,7 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
     ) -> Result<DeveloperToolObservation, DeveloperLoopError> {
         match self.prepare_dispatch(call)? {
             dispatch::PreparedTool::Observed(observation) => Ok(observation),
-            dispatch::PreparedTool::Ready { arguments, effect, .. } => {
+            dispatch::PreparedTool::Ready { arguments, effect, process_mode } => {
                 if effect
                     && let Err(error) =
                         self.prepare_effect_checkpoint(call.name().as_str(), &arguments)
@@ -362,6 +362,35 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                         false,
                         false,
                     );
+                }
+                if effect {
+                    if let Some(detail) = self.permission_denial(call.name().as_str(), process_mode) {
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call, &arguments, &value, true, false, false,
+                        );
+                    }
+                    self.refresh_hard_constraints();
+                    if let Err(detail) = self.access_policy.authorize_with_process_mode(
+                        call.name().as_str(),
+                        &arguments,
+                        process_mode,
+                    ) {
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call, &arguments, &value, true, false, false,
+                        );
+                    }
+                    if let Err(detail) = self.authorize_process_control_confinement(
+                        call.name().as_str(),
+                        &arguments,
+                        process_mode,
+                    ) {
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call, &arguments, &value, true, false, false,
+                        );
+                    }
                 }
                 self.dispatch_prepared(call, &arguments, effect)
             }
@@ -413,6 +442,21 @@ impl DeveloperToolExecutor for WorkspaceDeveloperTools {
                             process_mode,
                         )
                     {
+                        let value = object(vec![("error", Value::String(detail))]);
+                        return self.finish_observation(
+                            call,
+                            &arguments,
+                            &value,
+                            true,
+                            false,
+                            false,
+                        );
+                    }
+                    if let Err(detail) = self.authorize_process_control_confinement(
+                        call.name().as_str(),
+                        &arguments,
+                        process_mode,
+                    ) {
                         let value = object(vec![("error", Value::String(detail))]);
                         return self.finish_observation(
                             call,
