@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3950,
-        "tip_oid": "a8d1f60b4db134ea8a88dbf13ea179ca3b285dcd",
-        "prefix_sha256": "9882b78c318674799d2f6bca585db400550a03cde6bd89472acf795b3fea8ef6"
+        "sequence": 3951,
+        "tip_oid": "cee38361bc7db9173f8672f61d903a5300545279",
+        "prefix_sha256": "a15c0d7b974ba6465a16772901c319cda04f5c51c39737b2a59fc857e0b9b8b2"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 826,
-  "next_comment_id": 3178,
+  "next_comment_id": 3179,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1214,11 +1214,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:07.966568467Z",
-      "updated_at": "2026-10-06T13:19:07.968695016Z",
+      "updated_at": "2026-10-08T01:39:59.497153498Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "7715768b-7544-4d0b-afb4-1bc2a4ffc463": {
+          "display_id": 3178,
+          "author": "6ME5",
+          "content": "Code complete in commit da36369ff: elapsed horizon remains explicitly caller-selected; route exclusion is confined to the active provider cursor and exact failed-attempt traces retained. New authority evidence can reopen the selected primary route while ambiguous/uncertain effects require reconciliation. Resource-probe failures retain typed unavailable/partial measurements instead of terminating the run, and reviewer recovery settles durable tool evidence before dropping obsolete revision. Tests, builds, lint, formatting and review deferred until all task code and issue closures are complete, per user directive.",
+          "created_at": "2026-10-08T01:39:59.487120474Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAqGCPlhVYrckxmA1AUo55D9oqynpyypGWfH+PyvGF0i70R+f9ZFU3/6NOLjvzIUpSlVcrYm8UV2WoFP85wyBBCg=="
+        },
         "7bbadb8f-0aa8-4c21-8c23-dbc11e77d71f": {
           "display_id": 2204,
           "author": "6ME5",
