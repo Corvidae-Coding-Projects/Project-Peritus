@@ -350,7 +350,7 @@ impl CommandRuntime {
                 .map_err(|_| PrepareFailure::Storage("command runtime is poisoned".to_owned()))?;
             update_ordinal_frontier(&mut state, ordinal);
         }
-        let contract = contract::command_contract(self.inner.run_id, ordinal)
+        let contract = contract::command_contract(self.inner.run_id, ordinal, None)
             .map_err(PrepareFailure::Storage)?;
         let ids = CommandIds::new(self.inner.run_id, ordinal, &contract)
             .map_err(PrepareFailure::Storage)?;
@@ -1262,7 +1262,7 @@ fn attempt_ids(
     run_id: peritus_types::RunId,
     attempt: AttemptSnapshot,
 ) -> Result<CommandIds, String> {
-    let contract = contract::command_contract(run_id, attempt.ordinal)?;
+    let contract = contract::command_contract(run_id, attempt.ordinal, None)?;
     let ids = CommandIds::new(run_id, attempt.ordinal, &contract)?;
     if ids.action.as_bytes() != &attempt.action_id || ids.process.as_bytes() != &attempt.process_id {
         return Err("native gate attempt identities differ from their durable ordinal".to_owned());

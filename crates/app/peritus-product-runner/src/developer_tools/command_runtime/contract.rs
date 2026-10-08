@@ -1,16 +1,21 @@
 //! Minimal checked acceptance contract for one internally authorized product command.
 
-use peritus_codec::sha256;
+use peritus_codec::{CodecLimits, sha256};
+use peritus_protocol::AcceptanceContractDto;
 use peritus_spec::{
     AcceptanceContract, Assumption, CompletionPolicy, ContentReference, ContractDocuments,
     EvidenceRequirement, EvidenceRequirementId, EvidenceSource, Exclusion, ExportClassification,
-    FindingSeverity, GateDefinition, GateExecutionPlan, GateFreshnessScope, GateGraph,
+    FindingSeverity, GateDefinition, GateExecutionPlan, GateFreshnessScope,
     GateSuccessRule, HumanApprovalPolicy, Requirement, RequirementId, ReviewCategory, ReviewPolicy,
     ReviewerIndependence, WaiverPolicy,
 };
 use peritus_types::{AcceptanceSpecId, EnvironmentId, GateId, RunId, Sha256Digest};
 
-pub(super) fn command_contract(run_id: RunId, ordinal: u64) -> Result<AcceptanceContract, String> {
+pub(super) fn command_contract(
+    run_id: RunId,
+    ordinal: u64,
+    timeout_millis: Option<u64>,
+) -> Result<AcceptanceContract, String> {
     let acceptance = AcceptanceSpecId::new(id(run_id, ordinal, "acceptance"))
         .map_err(|error| format!("construct command acceptance identity: {error:?}"))?;
     let environment = EnvironmentId::new(id(run_id, ordinal, "gate-environment"))
@@ -22,13 +27,13 @@ pub(super) fn command_contract(run_id: RunId, ordinal: u64) -> Result<Acceptance
     let category = ReviewCategory::new(digest(run_id, ordinal, "review-category"));
     let gate = GateDefinition::new(
         gate_id,
-        GateExecutionPlan::new(
+        GateExecutionPlan::with_optional_timeout(
             content(run_id, ordinal, "gate-action"),
             environment,
             content(run_id, ordinal, "gate-inputs"),
             content(run_id, ordinal, "gate-parser"),
             GateSuccessRule::ExitCodeZero,
-            1,
+            timeout_millis,
             content(run_id, ordinal, "gate-resources"),
             GateFreshnessScope::ExactRevisionTuple,
         )
@@ -62,9 +67,17 @@ pub(super) fn command_contract(run_id: RunId, ordinal: u64) -> Result<Acceptance
         ),
     ];
     evidence_requirements.sort_by_key(EvidenceRequirement::id);
-    AcceptanceContract::new(
+    let review_policy = ReviewPolicy::new(
+        vec![category],
+        1,
+        ReviewerIndependence::new(true, true, true, true, true, true),
+        FindingSeverity::High,
+    )
+    .map_err(|error| format!("construct command review policy: {error:?}"))?;
+    // Freeze the actual optional declaration under its canonical digest. Previously committed
+    // timed declarations retain their own exact bytes and digest.
+    AcceptanceContractDto::new(
         acceptance,
-        digest(run_id, ordinal, "contract"),
         documents,
         vec![Requirement::new(
             RequirementId::new(digest(run_id, ordinal, "requirement")),
@@ -72,21 +85,17 @@ pub(super) fn command_contract(run_id: RunId, ordinal: u64) -> Result<Acceptance
         )],
         vec![Exclusion::new(content(run_id, ordinal, "exclusion"))],
         vec![Assumption::new(content(run_id, ordinal, "assumption"))],
-        GateGraph::new(vec![gate])
-            .map_err(|error| format!("construct command gate graph: {error:?}"))?,
-        ReviewPolicy::new(
-            vec![category],
-            1,
-            ReviewerIndependence::new(true, true, true, true, true, true),
-            FindingSeverity::High,
-        )
-        .map_err(|error| format!("construct command review policy: {error:?}"))?,
+        vec![(&gate).into()],
+        (&review_policy).into(),
         evidence_requirements,
         CompletionPolicy::new(1, 1)
             .map_err(|error| format!("construct command completion policy: {error:?}"))?,
         HumanApprovalPolicy::NotRequired,
         WaiverPolicy::Forbidden,
+        CodecLimits::PRODUCTION,
     )
+    .map_err(|error| format!("encode command acceptance contract: {error}"))?
+    .try_into_domain(CodecLimits::PRODUCTION)
     .map_err(|error| format!("construct command acceptance contract: {error:?}"))
 }
 

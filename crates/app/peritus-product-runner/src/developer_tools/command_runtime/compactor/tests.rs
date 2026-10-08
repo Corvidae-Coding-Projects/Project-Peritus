@@ -16,7 +16,7 @@ fn compiled_compactor_contract_admits_exact_inputs_only() {
     let weights = root.path().join("weights");
     std::fs::write(&executable, "projection fixture only").unwrap();
     std::fs::write(&weights, "preinstalled fixture weights").unwrap();
-    let contract = contract::command_contract(RunId::new([1; 16]).unwrap(), 1).unwrap();
+    let contract = contract::command_contract(RunId::new([1; 16]).unwrap(), 1, None).unwrap();
     let ids = identity::CommandIds::new(RunId::new([1; 16]).unwrap(), 1, &contract).unwrap();
     let resources = ProcessResourcePolicy::new(
         1000,

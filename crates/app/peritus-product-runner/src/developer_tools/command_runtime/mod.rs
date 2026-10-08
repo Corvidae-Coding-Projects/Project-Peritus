@@ -773,7 +773,8 @@ impl CommandRuntime {
             Err(ordinal::ReserveError::Storage(error)) => return Err(tool(error)),
         };
         ensure_not_cancelled(cancellation)?;
-        let contract = contract::command_contract(self.inner.run_id, ordinal).map_err(tool)?;
+        let contract =
+            contract::command_contract(self.inner.run_id, ordinal, timeout_millis).map_err(tool)?;
         let ids = identity::CommandIds::new(self.inner.run_id, ordinal, &contract).map_err(tool)?;
         {
             let mut state = self

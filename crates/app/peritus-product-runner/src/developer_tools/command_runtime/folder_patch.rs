@@ -20,8 +20,6 @@ use super::{
 };
 use crate::{FolderPatchAuthorityPlanRequest, ProductRunnerError, ProductRunnerErrorKind};
 
-const AUTHORITY_WINDOW_MILLIS: u64 = 60_000;
-
 /// Inert, move-only target binding for one exact registered-folder patch authority commit.
 ///
 /// Planning performs no target filesystem operation and confers no permission by itself.
@@ -118,7 +116,7 @@ impl CommandRuntime {
             state.next_folder_patch_ordinal
         };
         let contract =
-            contract::command_contract(self.inner.run_id, ordinal).map_err(plan_error)?;
+            contract::command_contract(self.inner.run_id, ordinal, None).map_err(plan_error)?;
         let ids = CommandIds::for_folder_patch(
             self.inner.run_id,
             ordinal,
@@ -191,17 +189,16 @@ fn commit(
     let path = directory.join("folder-patch.sqlite3");
     let label = "folder-patch-authority-store";
     let mut store = journal::open(&path, &ids, label)?;
-    let kernel = kernel::commit(
+    let kernel = kernel::commit_authority_only(
         &mut store,
         label,
         &ids,
         &contract,
         &intent,
         &capability_use,
-        AUTHORITY_WINDOW_MILLIS,
     )?;
     let (capability, lease) =
-        lease::commit(&mut store, label, &ids, capability_use, AUTHORITY_WINDOW_MILLIS)?;
+        lease::commit_authority_only(&mut store, label, &ids, capability_use)?;
     let epoch = authority::allocate_epoch(&mut store)?;
     Ok(FolderPatchAuthority {
         intent,

@@ -413,7 +413,8 @@ impl CommandRuntime {
                 self.inner.state.lock().map_err(|_| "local compactor command owner poisoned")?;
             state.next_ordinal = state.next_ordinal.max(ordinal);
         };
-        let contract = contract::command_contract(self.inner.run_id, ordinal)?;
+        let wall = config.wall_timeout_millis();
+        let contract = contract::command_contract(self.inner.run_id, ordinal, wall)?;
         let ids = identity::CommandIds::new(self.inner.run_id, ordinal, &contract)?;
         let directory =
             self.inner.state_root.join("local-compactor").join(identity::action_hex(ids.action));
@@ -443,7 +444,6 @@ impl CommandRuntime {
             cancellation,
         )?;
         ensure_not_cancelled(cancellation)?;
-        let wall = config.wall_timeout_millis();
         let output_segment_bytes = u64::try_from(config.output_segment_bytes())
             .map_err(|_| "local output segment is too large")?;
         let input_bytes = u64::try_from(config.input_page_bytes())
