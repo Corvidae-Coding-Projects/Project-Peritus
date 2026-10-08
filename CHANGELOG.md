@@ -496,6 +496,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   enable/disable commands for automatic checks (#31)
 
 ### Changed
+- [L627] Any journal advance forces an in-memory genesis rebuild rather than incremental continuation (#681)
 - [L048] File ownership can require a new run for deletion (#147)
 - [L462] C5 archives, events and rate observations add compiled ceilings beyond request bounds (#540)
 - [L047] Writer/fixer loop parameters and error-to-budget mapping (#146)
