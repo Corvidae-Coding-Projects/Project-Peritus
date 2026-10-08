@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 3943,
-        "tip_oid": "3312f99f59e66cb56ee4078a3c0bf7a2bf0740e8",
-        "prefix_sha256": "c1273ece324549037a24cf2ca4e39ddb4b1ec5553c9c110508832b57540d97c7"
+        "sequence": 3944,
+        "tip_oid": "33ed82018620f485b46a53d0b9ab2a9b74f6e383",
+        "prefix_sha256": "a21002fef745251112f2891e943db9604d35eea85c13e36be4250861c5f2c8f5"
       },
       "NWAR": {
         "sequence": 39,
@@ -19759,12 +19759,13 @@
       "display_id": 516,
       "title": "[L436] E3 committed-command replay fails after the aggregate advances and binds effect retries to a claim fence",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L436.\n\n- Evidence: `crates/analysis/peritus-eval/src/aggregate/reducer.rs:96-123`, `src/durability/commit.rs:96-119,363-420` in the same crate.\n- Behavior: The pure reducer requires the latest predecessor before deciding a command. C0 commit resolution runs before current-head validation, but resolve_existing still requires the current checkpoint to equal the old command's exact successor. After a later command advances the state, the old committed receipt produces Recovery/Quarantine. Claimed and settlement request digests also include the outbox fence; reclaiming the same message changes the digest for the same command identity.\n- Consequence: An exact successful command can cease to be retryable after unrelated progress, and an effect retry under a new owner fence can conflict unless the caller retains and reconciles the original receipt and identities. This can obstruct reconnection without any actual context expiration. Immediate duplicate retries may work; this finding concerns later-state replay and reclaimed claims.\n- Repair direction: Resolve durable command/effect receipts independently of the current successor checkpoint, then load the latest state. Distinguish logical effect identity from delivery ownership while preserving stale-owner rejection. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.546094129Z",
-      "updated_at": "2026-10-08T01:26:49.133538575Z",
+      "updated_at": "2026-10-08T01:28:20.613535581Z",
+      "closed_at": "2026-10-08T01:28:20.610582160Z",
       "labels": [
         "daily-driving-limiter"
       ],
