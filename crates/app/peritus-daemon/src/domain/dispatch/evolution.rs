@@ -20,8 +20,6 @@ pub(super) fn dispatch_campaign(
         Ok(frame) => frame,
         Err(_) => return malformed(),
     };
-    let replay = peritus_evolution::recover_campaign(journal, frame.campaign_id())
-        .map_err(|error| domain_failure("load evolution campaign", error))?;
     let command = match frame.into_command() {
         Ok(command) => command,
         Err(_) => return semantic_rejection(),
@@ -31,8 +29,17 @@ pub(super) fn dispatch_campaign(
         command.command_id(),
         command.event_id(),
         command.expected_head(),
-    ) || campaign_revision(replay.state(), command.kind()) != Some(submission.revision)
+    ) {
+        return binding_rejection();
+    }
+    if let Some(receipt) = peritus_evolution::resolve_campaign_receipt(journal, &command)
+        .map_err(|error| domain_failure("resolve evolution campaign receipt", error))?
     {
+        return Ok(DomainOutcome::Committed(receipt));
+    }
+    let replay = peritus_evolution::recover_campaign(journal, command.campaign_id())
+        .map_err(|error| domain_failure("load evolution campaign", error))?;
+    if campaign_revision(replay.state(), command.kind()) != Some(submission.revision) {
         return binding_rejection();
     }
     let transition = match peritus_evolution::decide_campaign(replay.state(), &command) {
@@ -55,8 +62,6 @@ pub(super) fn dispatch_pointer(
         Ok(frame) => frame,
         Err(_) => return malformed(),
     };
-    let replay = peritus_evolution::recover_pointer(journal, frame.project_id())
-        .map_err(|error| domain_failure("load production pointer", error))?;
     let command = match frame.into_command() {
         Ok(command) => command,
         Err(_) => return semantic_rejection(),
@@ -66,8 +71,17 @@ pub(super) fn dispatch_pointer(
         command.command_id(),
         command.event_id(),
         command.expected_head(),
-    ) || pointer_revision(replay.state(), command.kind()) != Some(submission.revision)
+    ) {
+        return binding_rejection();
+    }
+    if let Some(receipt) = peritus_evolution::resolve_pointer_receipt(journal, &command)
+        .map_err(|error| domain_failure("resolve production pointer receipt", error))?
     {
+        return Ok(DomainOutcome::Committed(receipt));
+    }
+    let replay = peritus_evolution::recover_pointer(journal, command.project_id())
+        .map_err(|error| domain_failure("load production pointer", error))?;
+    if pointer_revision(replay.state(), command.kind()) != Some(submission.revision) {
         return binding_rejection();
     }
     let transition = match peritus_evolution::decide_pointer(replay.state(), &command) {

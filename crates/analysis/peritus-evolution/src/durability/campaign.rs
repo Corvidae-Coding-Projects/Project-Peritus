@@ -10,7 +10,7 @@ use peritus_types::EventSequence;
 use crate::{
     CampaignCommand, CampaignCommandKind, CampaignState, CampaignTransition, EvolutionError,
     EvolutionErrorKind, EvolutionOperation, EvolutionRecovery, EvolutionStorageLimits,
-    wire::{CampaignCommandFrame, CampaignEventFrame},
+    wire::{CampaignCommandFrame, CampaignEventFrame, CampaignStateFrame},
 };
 
 use super::{
@@ -130,9 +130,13 @@ pub fn resolve_campaign_receipt(
         .map_err(journal_error)?
     {
         CommandResolution::Committed(batch) => {
-            if batch.records().len() != 1 || batch.records()[0].aggregate() != aggregate {
-                return Err(recovery("campaign receipt belongs to another durable effect"));
-            }
+            validate_resolved_receipt(
+                journal,
+                command,
+                aggregate,
+                &campaign_state_key(command.campaign_id()),
+                &batch,
+            )?;
             Ok(Some(batch))
         }
         CommandResolution::Conflict { .. } => {
@@ -258,22 +262,54 @@ fn resolve_existing(
         }
         CommandResolution::DefinitelyAbsent => return Ok(None),
     };
-    let checkpoint = journal
-        .state_record_revision(CAMPAIGN_STATE_NAMESPACE, state_key, state.sequence())
-        .map_err(journal_error)?
-        .ok_or_else(|| recovery("resolved campaign command has no historical checkpoint"))?;
-    if batch.records().len() != 1
-        || batch.records()[0].aggregate() != aggregate
-        || batch.records()[0].frame_bytes() != event_bytes
-    {
+    let observed = validate_resolved_receipt(journal, command, aggregate, state_key, &batch)?;
+    if batch.records()[0].frame_bytes() != event_bytes {
         return Err(recovery("resolved campaign command differs from its event"));
     }
-    let observed = checkpoint::decode_campaign(journal, &checkpoint, command.campaign_id())?;
-    if checkpoint.revision() == state.sequence() && observed.matches_state(state) {
+    if observed.matches_state(state) {
         Ok(Some(batch))
     } else {
         Err(recovery("resolved campaign checkpoint differs from successor"))
     }
+}
+
+fn validate_resolved_receipt(
+    journal: &SqliteJournal,
+    command: &CampaignCommand,
+    aggregate: peritus_journal::AggregateKey,
+    state_key: &[u8],
+    batch: &CommittedBatch,
+) -> Result<CampaignStateFrame, EvolutionError> {
+    let successor_sequence = command
+        .expected_sequence()
+        .checked_add(1)
+        .ok_or_else(|| recovery("resolved campaign sequence overflows"))?;
+    let [record] = batch.records() else {
+        return Err(recovery("campaign receipt belongs to another durable effect"));
+    };
+    if record.aggregate() != aggregate
+        || record.sequence().get() != successor_sequence
+        || record.event_id() != command.event_id()
+        || record.previous_event_id() != command.expected_head()
+    {
+        return Err(recovery("resolved campaign command differs from its event identity"));
+    }
+    let checkpoint = journal
+        .state_record_revision(CAMPAIGN_STATE_NAMESPACE, state_key, successor_sequence)
+        .map_err(journal_error)?
+        .ok_or_else(|| recovery("resolved campaign command has no historical checkpoint"))?;
+    let observed = checkpoint::decode_campaign(journal, &checkpoint, command.campaign_id())?;
+    if checkpoint.producing_position() != batch.last_position()
+        || checkpoint.revision() != successor_sequence
+        || observed.campaign_id() != command.campaign_id()
+        || observed.sequence() != successor_sequence
+        || observed.last_event_id() != command.event_id()
+    {
+        return Err(recovery(
+            "resolved campaign event and historical checkpoint have different origins",
+        ));
+    }
+    Ok(observed)
 }
 
 #[allow(
