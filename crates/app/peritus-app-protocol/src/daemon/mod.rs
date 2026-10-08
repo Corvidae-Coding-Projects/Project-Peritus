@@ -11,4 +11,4 @@ pub use shutdown::{
     RemainingWork, RemainingWorkKind, ShutdownAccepted, ShutdownComplete,
     ShutdownCompletionDisposition, ShutdownPhase, ShutdownProgress, ShutdownRequest, ShutdownState,
 };
-pub use status::{DaemonReadiness, DaemonStatus};
+pub use status::{DaemonHealth, DaemonInstance, DaemonReadiness, DaemonStatus};

@@ -1,6 +1,6 @@
 //! Monotonic daemon startup and readiness state.
 
-use peritus_app_protocol::{DaemonReadiness, DaemonStatus};
+use peritus_app_protocol::{DaemonHealth, DaemonInstance, DaemonReadiness, DaemonStatus};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -43,6 +43,7 @@ pub struct DaemonLifecycle {
     phase: StartupPhase,
     readiness: DaemonReadiness,
     diagnostic: Option<String>,
+    instance: Option<DaemonInstance>,
 }
 
 impl DaemonLifecycle {
@@ -53,6 +54,7 @@ impl DaemonLifecycle {
             phase: StartupPhase::Validate,
             readiness: DaemonReadiness::Starting,
             diagnostic: None,
+            instance: None,
         }
     }
 
@@ -105,6 +107,11 @@ impl DaemonLifecycle {
         self.readiness = DaemonReadiness::Unavailable;
     }
 
+    /// Binds status observations to the exact process owner established during startup.
+    pub const fn bind_instance(&mut self, instance: DaemonInstance) {
+        self.instance = Some(instance);
+    }
+
     /// Builds the bounded public status value.
     ///
     /// # Errors
@@ -121,6 +128,24 @@ impl DaemonLifecycle {
                     error,
                 )
             })
+    }
+
+    /// Builds authenticated readiness for the exact live daemon process.
+    ///
+    /// # Errors
+    ///
+    /// Returns corrupt state when startup did not bind its instance record.
+    pub fn health(&self, maximum_diagnostic_bytes: usize) -> Result<DaemonHealth, DaemonError> {
+        let instance = self.instance.ok_or_else(|| {
+            DaemonError::new(
+                DaemonErrorCode::CorruptState,
+                DaemonRecovery::Operator,
+                "build daemon health",
+                "daemon lifecycle has no exact live instance identity",
+            )
+        })?;
+        self.status(maximum_diagnostic_bytes)
+            .map(|status| DaemonHealth::new(status, instance))
     }
 }
 

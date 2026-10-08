@@ -58,6 +58,12 @@ pub enum LauncherError {
     /// The daemon process could not be started.
     #[error("could not start packaged daemon: {0}")]
     DaemonSpawn(String),
+    /// The active caller cancelled daemon discovery or lifecycle progress.
+    #[error("{operation} was cancelled")]
+    Cancelled {
+        /// Stable operation description.
+        operation: &'static str,
+    },
     /// The daemon exited before publishing readiness.
     #[error("daemon exited before readiness with status {status}; diagnostics: {}", log.display())]
     DaemonExited {

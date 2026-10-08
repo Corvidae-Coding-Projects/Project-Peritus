@@ -290,6 +290,9 @@ impl AppModel {
             AppResponsePayload::DaemonStatus(status) => {
                 self.daemon_status = Some(status.clone());
             }
+            AppResponsePayload::DaemonHealth(health) => {
+                self.daemon_status = Some(health.status().clone());
+            }
             AppResponsePayload::TerminalAttached(binding)
             | AppResponsePayload::TerminalPipeAttached(binding) => {
                 return self.accept_terminal_response(

@@ -69,6 +69,7 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             providers: Option<Vec<ProviderRoute>>,
             product: Option<ProductRunPolicy>,
             context: Option<super::ContextPolicy>,
+            managed_gate_network: Option<Vec<super::ManagedGateNetworkGrantDeclaration>>,
             telemetry: TelemetryExport,
         }
 
@@ -87,8 +88,10 @@ impl<'de> Deserialize<'de> for DaemonConfig {
             providers: representation.providers.unwrap_or_default(),
             product: representation.product.unwrap_or_default(),
             context: representation.context.unwrap_or_default(),
+            managed_gate_network: representation.managed_gate_network.unwrap_or_default(),
             telemetry: representation.telemetry,
             process_crash_watchdog: None,
+            configuration_digest: [0; 32],
         })
     }
 }

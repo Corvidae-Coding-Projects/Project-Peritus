@@ -93,6 +93,8 @@ impl ProtocolFeatureName {
     pub const WORKBENCH_MEMORY: &'static str = "app.workbench-memory";
     /// Version-one graceful shutdown feature name.
     pub const GRACEFUL_SHUTDOWN: &'static str = "app.graceful-shutdown";
+    /// Exact authenticated daemon store, configuration, process, and birth identity.
+    pub const DAEMON_HEALTH: &'static str = "app.daemon-health";
 
     /// Creates a feature name using the foundation capability-name grammar.
     ///
@@ -214,6 +216,8 @@ pub enum WellKnownProtocolFeature {
     WorkbenchMemory,
     /// Graceful daemon shutdown controls.
     GracefulShutdown,
+    /// Exact authenticated daemon instance health.
+    DaemonHealth,
 }
 
 impl WellKnownProtocolFeature {
@@ -267,6 +271,7 @@ impl WellKnownProtocolFeature {
             Self::WorkbenchInit => ProtocolFeatureName::WORKBENCH_INIT,
             Self::WorkbenchMemory => ProtocolFeatureName::WORKBENCH_MEMORY,
             Self::GracefulShutdown => ProtocolFeatureName::GRACEFUL_SHUTDOWN,
+            Self::DaemonHealth => ProtocolFeatureName::DAEMON_HEALTH,
         }
     }
 }

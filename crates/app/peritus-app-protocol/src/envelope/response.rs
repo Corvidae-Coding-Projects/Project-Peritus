@@ -147,6 +147,8 @@ pub enum AppResponsePayload {
     Acknowledged(OperationAcknowledgement),
     /// Current daemon status.
     DaemonStatus(crate::DaemonStatus),
+    /// Current daemon readiness bound to one exact live instance.
+    DaemonHealth(crate::DaemonHealth),
     /// Explicit shutdown-request acceptance.
     ShutdownAccepted(ShutdownAccepted),
     /// Machine-actionable terminal request failure.

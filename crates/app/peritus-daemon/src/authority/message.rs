@@ -2,8 +2,8 @@
 
 use peritus_app_protocol::{
     ArtifactCancellation, ArtifactChunk, ArtifactCompletion, ArtifactMetadata, ArtifactOpenRequest,
-    DaemonStatus, PromptAnswer, PromptBinding, PromptCancellation, PromptCorrelation, RequestId,
-    TransferId,
+    DaemonHealth, DaemonStatus, PromptAnswer, PromptBinding, PromptCancellation, PromptCorrelation,
+    RequestId, TransferId,
 };
 use peritus_journal::{
     ApplicationArtifact, ApplicationCommandAdmission, ApplicationCommandRecord,
@@ -22,6 +22,9 @@ use crate::{DaemonError, PromptTerminalStatus, StartupPhase};
 pub(super) enum AuthorityMessage {
     Status {
         respond: Response<DaemonStatus>,
+    },
+    Health {
+        respond: Response<DaemonHealth>,
     },
     Principal {
         digest: Sha256Digest,

@@ -1,15 +1,54 @@
 //! Canonical daemon status, heartbeat, and shutdown helpers.
 
 use crate::{
-    AppProtocolLimits, CorrelationId, DaemonHeartbeat, DaemonReadiness, DaemonStatus, HeartbeatId,
-    RemainingWork, RemainingWorkKind, RequestId, ShutdownAccepted, ShutdownComplete,
+    AppProtocolLimits, CorrelationId, DaemonHealth, DaemonHeartbeat, DaemonInstance,
+    DaemonReadiness, DaemonStatus, HeartbeatId, RemainingWork, RemainingWorkKind, RequestId,
+    ShutdownAccepted, ShutdownComplete,
     ShutdownCompletionDisposition, ShutdownProgress, ShutdownRequest,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind};
 
 use super::primitive::{
-    invalid, read_id, read_string_option, unknown, write_id, write_string_option,
+    invalid, read_digest, read_id, read_string_option, unknown, write_digest, write_id,
+    write_string_option,
 };
+
+pub(super) fn write_daemon_health(
+    writer: &mut CanonicalWriter,
+    value: &DaemonHealth,
+) -> Result<(), CodecError> {
+    write_daemon_status(writer, value.status())?;
+    let instance = value.instance();
+    write_id(writer, &instance.store_id())?;
+    write_digest(writer, instance.configuration_digest())?;
+    write_digest(writer, instance.executable_digest())?;
+    writer.write_u32(instance.process_id())?;
+    writer.write_u64(instance.start_token())
+}
+
+pub(super) fn read_daemon_health(
+    reader: &mut CanonicalReader<'_>,
+    limits: AppProtocolLimits,
+) -> Result<DaemonHealth, CodecError> {
+    let status = read_daemon_status(reader, limits)?;
+    let offset = reader.offset();
+    let store_id = reader.read_fixed()?;
+    let configuration_digest = read_digest(reader)?;
+    let executable_digest = read_digest(reader)?;
+    let process_id = reader.read_u32()?;
+    let start_token = reader.read_u64()?;
+    let instance = invalid(
+        offset,
+        DaemonInstance::new(
+            store_id,
+            configuration_digest,
+            executable_digest,
+            process_id,
+            start_token,
+        ),
+    )?;
+    Ok(DaemonHealth::new(status, instance))
+}
 
 pub(super) fn write_daemon_status(
     writer: &mut CanonicalWriter,

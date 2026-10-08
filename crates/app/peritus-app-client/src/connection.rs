@@ -22,6 +22,7 @@ pub struct Client {
     pub(crate) timeout: Option<Duration>,
     pub(crate) usable: bool,
     features: ProtocolFeatureSet,
+    server_implementation: String,
 }
 
 impl Client {
@@ -73,6 +74,8 @@ impl Client {
             WellKnownProtocolFeature::HarnessImprovementPages,
             WellKnownProtocolFeature::WorkbenchCheckpointCoverage,
             WellKnownProtocolFeature::WorkbenchCheckpointManifests,
+            WellKnownProtocolFeature::GracefulShutdown,
+            WellKnownProtocolFeature::DaemonHealth,
         ]
         .into_iter()
         .filter(|feature| !required.contains(feature))
@@ -94,6 +97,7 @@ impl Client {
         if server.protocol_id() != protocol_id {
             return Err(ClientError::negotiation("daemon echoed a different protocol identity"));
         }
+        let server_implementation = server.implementation().as_str().to_owned();
         let (version, limits, features) = match server.outcome() {
             NegotiationOutcome::Compatible(protocol) | NegotiationOutcome::Downgraded(protocol) => {
                 if protocol.version() != CURRENT_PROTOCOL_RANGE.preferred()
@@ -133,6 +137,7 @@ impl Client {
             timeout,
             usable: true,
             features,
+            server_implementation,
         })
     }
 
@@ -152,6 +157,12 @@ impl Client {
     #[must_use]
     pub fn supports(&self, feature: WellKnownProtocolFeature) -> bool {
         self.features.as_slice().iter().any(|name| name.as_str() == feature.as_str())
+    }
+
+    /// Borrows the implementation identity authenticated during negotiation.
+    #[must_use]
+    pub fn server_implementation(&self) -> &str {
+        &self.server_implementation
     }
 
     /// Whether the stream has completed every previous frame exchange.

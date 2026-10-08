@@ -12,7 +12,7 @@ use crate::{DaemonError, DaemonErrorCode, DaemonIdentity, DaemonRecovery};
 pub struct InstanceGuard {
     lock: File,
     record_path: PathBuf,
-    record_bytes: Vec<u8>,
+    record: InstanceRecord,
 }
 
 impl InstanceGuard {
@@ -35,13 +35,37 @@ impl InstanceGuard {
         let record = InstanceRecord::current(identity)?;
         let record_path = state_root.join("daemon.instance");
         publish_record(state_root, &record_path, record.bytes())?;
-        Ok(Self { lock, record_path, record_bytes: record.bytes().to_vec() })
+        Ok(Self { lock, record_path, record })
+    }
+
+    pub(crate) fn protocol_identity(
+        &self,
+        store_id: peritus_journal::StoreId,
+        configuration_digest: peritus_types::Sha256Digest,
+        executable_digest: peritus_types::Sha256Digest,
+    ) -> Result<peritus_app_protocol::DaemonInstance, DaemonError> {
+        peritus_app_protocol::DaemonInstance::new(
+            *store_id.as_bytes(),
+            configuration_digest,
+            executable_digest,
+            self.record.pid(),
+            self.record.start_token(),
+        )
+        .map_err(|error| {
+            DaemonError::with_source(
+                DaemonErrorCode::CorruptState,
+                DaemonRecovery::Operator,
+                "bind daemon protocol identity",
+                "live instance record cannot be represented in the application protocol",
+                error,
+            )
+        })
     }
 }
 
 impl Drop for InstanceGuard {
     fn drop(&mut self) {
-        if fs::read(&self.record_path).ok().as_deref() == Some(self.record_bytes.as_slice()) {
+        if fs::read(&self.record_path).ok().as_deref() == Some(self.record.bytes()) {
             let _ = fs::remove_file(&self.record_path);
             if let Some(parent) = self.record_path.parent() {
                 let _ = File::open(parent).and_then(|directory| directory.sync_all());

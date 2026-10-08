@@ -1,6 +1,12 @@
 //! Ordered startup runner for the live ownership bundle.
 
-use std::{fs, path::Path, sync::Arc, time::Duration};
+use std::{
+    fs::{self, File},
+    io::Read as _,
+    path::Path,
+    sync::Arc,
+    time::Duration,
+};
 
 use peritus_app_protocol::AppProtocolLimits;
 use peritus_artifact_store::{
@@ -45,6 +51,7 @@ struct PreparedStartup {
     store_id: StoreId,
     progress: Option<StartupProgress>,
     identity: DaemonIdentity,
+    executable_digest: Sha256Digest,
     instance: InstanceGuard,
     journal: SqliteJournal,
     artifacts: ArtifactStore,
@@ -140,6 +147,7 @@ impl DaemonRuntime {
             store_id: _,
             progress: _,
             identity,
+            executable_digest,
             instance,
             journal,
             artifacts,
@@ -158,6 +166,13 @@ impl DaemonRuntime {
         } = prepared;
         let read_only = diagnostic.is_some();
         let mut lifecycle = lifecycle;
+        lifecycle.bind_instance(
+            instance.protocol_identity(
+                config.store_identity()?,
+                config.configuration_digest(),
+                executable_digest,
+            )?,
+        );
         if let Some(diagnostic) = diagnostic {
             lifecycle.read_only(diagnostic);
         }
@@ -244,6 +259,7 @@ fn prepare_startup_scoped(
         return Ok(None);
     }
     let store_id = config.store_identity()?;
+    let executable_digest = daemon_executable_digest()?;
     let mut progress = StartupProgress::new(store_id);
     let identity = DaemonIdentity::new(store_id);
     prepare_roots(&config)?;
@@ -360,6 +376,7 @@ fn prepare_startup_scoped(
         store_id,
         progress: Some(progress),
         identity,
+        executable_digest,
         instance,
         journal,
         artifacts,
@@ -376,6 +393,45 @@ fn prepare_startup_scoped(
         diagnostic,
         telemetry,
     }))
+}
+
+fn daemon_executable_digest() -> Result<Sha256Digest, DaemonError> {
+    let executable = std::env::current_exe().map_err(|error| {
+        DaemonError::with_source(
+            DaemonErrorCode::Storage,
+            DaemonRecovery::Operator,
+            "resolve daemon executable identity",
+            "running daemon executable path is unavailable",
+            error,
+        )
+    })?;
+    let mut file = File::open(&executable).map_err(|error| {
+        DaemonError::with_source(
+            DaemonErrorCode::Storage,
+            DaemonRecovery::Operator,
+            "open daemon executable identity",
+            "running daemon executable cannot be hashed",
+            error,
+        )
+    })?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1_024];
+    loop {
+        let read = file.read(&mut buffer).map_err(|error| {
+            DaemonError::with_source(
+                DaemonErrorCode::Storage,
+                DaemonRecovery::Operator,
+                "hash daemon executable identity",
+                "running daemon executable cannot be read",
+                error,
+            )
+        })?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+    Ok(Sha256Digest::new(hasher.finalize().into()))
 }
 
 fn finish_startup(

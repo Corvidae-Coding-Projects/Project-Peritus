@@ -203,6 +203,7 @@ fn server_capabilities(client_limits: AppProtocolLimits) -> Result<ServerCapabil
         WellKnownProtocolFeature::WorkbenchPermissions,
         WellKnownProtocolFeature::WorkbenchInit,
         WellKnownProtocolFeature::WorkbenchMemory,
+        WellKnownProtocolFeature::DaemonHealth,
     ]
     .into_iter()
     .map(ProtocolFeatureName::well_known)

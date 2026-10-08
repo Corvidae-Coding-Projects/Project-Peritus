@@ -187,6 +187,11 @@ where
                     authority.status().await?.constrained(limits.max_diagnostic_bytes()),
                 )
             }
+            AppRequestPayload::DaemonHealth => {
+                AppResponsePayload::DaemonHealth(
+                    authority.health().await?.constrained(limits.max_diagnostic_bytes()),
+                )
+            }
             AppRequestPayload::Subscribe(value) => match subscriptions.open(value, limits) {
                 Ok(started) => AppResponsePayload::SubscriptionStarted(started),
                 Err(error) => AppResponsePayload::Error(AppProtocolError::new(

@@ -6,6 +6,7 @@ use std::{
 };
 
 use serde::Deserialize;
+use sha2::{Digest as _, Sha256};
 
 use crate::{DaemonError, DaemonErrorCode, DaemonRecovery};
 
@@ -241,6 +242,7 @@ pub struct DaemonConfig {
     managed_gate_network: Vec<ManagedGateNetworkGrantDeclaration>,
     telemetry: TelemetryExport,
     process_crash_watchdog: Option<PathBuf>,
+    configuration_digest: [u8; 32],
 }
 
 impl DaemonConfig {
@@ -250,7 +252,7 @@ impl DaemonConfig {
     ///
     /// Returns a typed configuration error for malformed, unsupported, or unsafe values.
     pub fn parse(text: &str) -> Result<Self, DaemonError> {
-        let config: Self = toml::from_str(text).map_err(|error| {
+        let mut config: Self = toml::from_str(text).map_err(|error| {
             DaemonError::with_source(
                 DaemonErrorCode::InvalidInput,
                 DaemonRecovery::CorrectRequest,
@@ -259,6 +261,7 @@ impl DaemonConfig {
                 error,
             )
         })?;
+        config.configuration_digest = Sha256::digest(text.as_bytes()).into();
         config.validate()?;
         Ok(config)
     }
@@ -307,6 +310,11 @@ impl DaemonConfig {
     pub fn store_identity(&self) -> Result<peritus_journal::StoreId, DaemonError> {
         let bytes = decode_identifier(&self.store_id, "daemon store identity")?;
         peritus_journal::StoreId::new(bytes).map_err(|_| invalid("daemon store identity is zero"))
+    }
+    /// Returns the digest of the exact strict TOML bytes accepted by [`Self::parse`].
+    #[must_use]
+    pub const fn configuration_digest(&self) -> peritus_types::Sha256Digest {
+        peritus_types::Sha256Digest::new(self.configuration_digest)
     }
     /// Borrows protected paths.
     #[must_use]

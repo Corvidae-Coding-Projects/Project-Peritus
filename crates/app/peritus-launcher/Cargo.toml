@@ -21,6 +21,7 @@ futures-util.workspace = true
 getrandom.workspace = true
 nix = { workspace = true, features = ["process"] }
 peritus-approval = { version = "=0.0.5", path = "../../state/peritus-approval" }
+peritus-app-client = { version = "=0.0.5", path = "../peritus-app-client" }
 peritus-app-protocol = { version = "=0.0.5", path = "../peritus-app-protocol" }
 peritus-daemon = { version = "=0.0.5", path = "../peritus-daemon" }
 peritus-git = { version = "=0.0.5", path = "../../runtime/peritus-git" }
@@ -29,6 +30,7 @@ peritus-model-protocol = { version = "=0.0.5", path = "../../model/peritus-model
 peritus-provider-core = { version = "=0.0.5", path = "../../model/peritus-provider-core" }
 peritus-provider-onboarding = { version = "=0.0.5", path = "../peritus-provider-onboarding" }
 peritus-product-state = { version = "=0.0.5", path = "../peritus-product-state" }
+peritus-process = { version = "=0.0.5", path = "../../runtime/peritus-process" }
 peritus-tui = { version = "=0.0.5", path = "../peritus-tui" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 peritus-workspace = { version = "=0.0.5", path = "../../runtime/peritus-workspace" }
@@ -36,7 +38,7 @@ reqwest.workspace = true
 serde_json.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["process"] }
 toml.workspace = true
 zeroize.workspace = true
 

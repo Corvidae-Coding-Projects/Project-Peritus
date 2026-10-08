@@ -5,7 +5,7 @@ mod artifact;
 mod orchestrator;
 mod prompt;
 
-use peritus_app_protocol::DaemonStatus;
+use peritus_app_protocol::{DaemonHealth, DaemonStatus};
 use peritus_journal::{
     ApplicationPrincipal, ApplicationSession, GlobalEventWindow, OutboxId, OutboxMessage,
 };
@@ -30,6 +30,12 @@ impl AuthorityHandle {
     pub async fn status(&self) -> Result<DaemonStatus, DaemonError> {
         let (respond, receive) = oneshot::channel();
         self.send(AuthorityMessage::Status { respond }, receive).await
+    }
+
+    /// Reads readiness bound to the exact live daemon instance.
+    pub async fn health(&self) -> Result<DaemonHealth, DaemonError> {
+        let (respond, receive) = oneshot::channel();
+        self.send(AuthorityMessage::Health { respond }, receive).await
     }
 
     /// Reads one durable principal binding by authenticated digest.

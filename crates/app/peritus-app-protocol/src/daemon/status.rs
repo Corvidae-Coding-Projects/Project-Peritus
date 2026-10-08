@@ -1,5 +1,7 @@
 //! Distinct readiness and bounded diagnostic status values.
 
+use peritus_types::Sha256Digest;
+
 use super::{DaemonControlError, DaemonControlErrorKind, error::reject};
 
 /// Closed truthful daemon readiness classification.
@@ -36,6 +38,103 @@ impl DaemonReadiness {
 pub struct DaemonStatus {
     readiness: DaemonReadiness,
     diagnostic: Option<String>,
+}
+
+/// Exact non-secret identity of one live daemon process and its configured store.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct DaemonInstance {
+    store_id: [u8; 16],
+    configuration_digest: Sha256Digest,
+    executable_digest: Sha256Digest,
+    process_id: u32,
+    start_token: u64,
+}
+
+impl DaemonInstance {
+    /// Creates one exact store, configuration, process, and operating-system birth identity.
+    ///
+    /// # Errors
+    ///
+    /// Rejects reserved zero store, process, or birth identities.
+    pub const fn new(
+        store_id: [u8; 16],
+        configuration_digest: Sha256Digest,
+        executable_digest: Sha256Digest,
+        process_id: u32,
+        start_token: u64,
+    ) -> Result<Self, DaemonControlError> {
+        if store_id == [0; 16] || process_id == 0 || start_token == 0 {
+            return Err(reject(
+                DaemonControlErrorKind::InvalidInput,
+                "daemon instance identity contains a reserved zero value",
+            ));
+        }
+        Ok(Self {
+            store_id,
+            configuration_digest,
+            executable_digest,
+            process_id,
+            start_token,
+        })
+    }
+
+    /// Returns the exact durable journal store identity.
+    #[must_use]
+    pub const fn store_id(self) -> [u8; 16] {
+        self.store_id
+    }
+    /// Returns the digest of the exact configuration bytes loaded by this process.
+    #[must_use]
+    pub const fn configuration_digest(self) -> Sha256Digest {
+        self.configuration_digest
+    }
+    /// Returns the digest of the exact running daemon executable.
+    #[must_use]
+    pub const fn executable_digest(self) -> Sha256Digest {
+        self.executable_digest
+    }
+    /// Returns the native process identifier.
+    #[must_use]
+    pub const fn process_id(self) -> u32 {
+        self.process_id
+    }
+    /// Returns the platform-native process birth token guarding against PID reuse.
+    #[must_use]
+    pub const fn start_token(self) -> u64 {
+        self.start_token
+    }
+}
+
+/// Authenticated protocol health for one exact live daemon instance.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct DaemonHealth {
+    status: DaemonStatus,
+    instance: DaemonInstance,
+}
+
+impl DaemonHealth {
+    /// Binds truthful readiness to the process and configuration that reported it.
+    #[must_use]
+    pub const fn new(status: DaemonStatus, instance: DaemonInstance) -> Self {
+        Self { status, instance }
+    }
+    /// Borrows truthful bounded daemon readiness.
+    #[must_use]
+    pub const fn status(&self) -> &DaemonStatus {
+        &self.status
+    }
+    /// Returns the exact live daemon instance identity.
+    #[must_use]
+    pub const fn instance(&self) -> DaemonInstance {
+        self.instance
+    }
+
+    /// Constrains optional diagnostic prose without changing identity evidence.
+    #[must_use]
+    pub fn constrained(mut self, maximum_diagnostic_bytes: usize) -> Self {
+        self.status = self.status.constrained(maximum_diagnostic_bytes);
+        self
+    }
 }
 
 impl DaemonStatus {

@@ -1,8 +1,9 @@
 //! End-to-end interactive product launch composition.
 
-use std::path::PathBuf;
+use std::{future::Future, path::PathBuf};
 
 use peritus_product_state::WorkspaceProfile;
+use peritus_provider_core::CancellationToken;
 use peritus_tui::{ExitReason, ProductLaunchContext, ProductProviderOption, TuiConfig};
 use peritus_types::{ProviderProfileId, WorkspaceId};
 
@@ -77,8 +78,13 @@ async fn launch_interactive_target(
     let prepared = ProductBootstrap::new(layout).prepare()?;
     let prepared = workspace_setup::ensure_configured(prepared, repository.as_deref())?;
     let prepared = provider_setup::ensure_configured(prepared).await?;
-    let binaries = SiblingBinaries::discover()?;
-    let supervisor = DaemonSupervisor::without_deadline();
+    let discovery_cancellation = CancellationToken::new();
+    let binaries = interruptible(
+        &discovery_cancellation,
+        SiblingBinaries::discover_cancellable(&discovery_cancellation),
+    )
+    .await?;
+    let mut supervisor = DaemonSupervisor::without_deadline();
     if endpoint.as_deref().is_some_and(|endpoint| endpoint != prepared.endpoint_path()) {
         return Err(LauncherError::Interaction("The selected workspace uses a different daemon endpoint. Reconnect the browser to its configured daemon.".into()));
     }
@@ -90,7 +96,16 @@ async fn launch_interactive_target(
     let mut product = product.with_launcher_report(report).map_err(LauncherError::Tui)?;
     let mut tui_state = peritus_tui::TuiState::default();
     loop {
-        supervisor.ensure_ready(&prepared, &binaries).await?;
+        let readiness_cancellation = CancellationToken::new();
+        interruptible(
+            &readiness_cancellation,
+            supervisor.ensure_ready_cancellable(
+                &prepared,
+                &binaries,
+                &readiness_cancellation,
+            ),
+        )
+        .await?;
         let outcome = peritus_tui::run_with_state(
             TuiConfig::new(prepared.endpoint_path()).with_product(product.clone()),
             &mut tui_state,
@@ -111,6 +126,26 @@ async fn launch_interactive_target(
                     Ok(context) => product = context,
                     Err(error) => tui_state.conversation_open_failed(&error.to_string()),
                 }
+            }
+        }
+    }
+}
+
+async fn interruptible<T>(
+    cancellation: &CancellationToken,
+    operation: impl Future<Output = Result<T, LauncherError>>,
+) -> Result<T, LauncherError> {
+    tokio::pin!(operation);
+    tokio::select! {
+        result = &mut operation => result,
+        signal = tokio::signal::ctrl_c() => {
+            let _ = cancellation.cancel();
+            let result = operation.await;
+            match signal {
+                Ok(()) => result,
+                Err(error) => Err(LauncherError::Interaction(format!(
+                    "cannot observe startup cancellation: {error}",
+                ))),
             }
         }
     }

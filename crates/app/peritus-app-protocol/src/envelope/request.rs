@@ -206,6 +206,8 @@ pub enum AppRequestPayload {
     CancelTerminal(TerminalCancellation),
     /// Requests current read-only daemon status.
     DaemonStatus,
+    /// Requests readiness bound to the exact live store, configuration, and process identity.
+    DaemonHealth,
     /// Requests graceful daemon shutdown without implying acceptance.
     Shutdown(ShutdownRequest),
 }
@@ -229,6 +231,7 @@ impl AppRequestPayload {
                 Some(crate::WellKnownProtocolFeature::WorkbenchPermissions)
             }
             Self::Shutdown(_) => Some(crate::WellKnownProtocolFeature::GracefulShutdown),
+            Self::DaemonHealth => Some(crate::WellKnownProtocolFeature::DaemonHealth),
             Self::PreviewWorkbenchCompaction(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchCompaction)
             }

@@ -40,6 +40,10 @@ pub(super) async fn run(
                 respond,
                 lifecycle.status(AppProtocolLimits::PRODUCTION.max_diagnostic_bytes()),
             ),
+            AuthorityMessage::Health { respond } => reply(
+                respond,
+                lifecycle.health(AppProtocolLimits::PRODUCTION.max_diagnostic_bytes()),
+            ),
             AuthorityMessage::Principal { digest, respond } => {
                 let result = require_diagnostic(&lifecycle)
                     .and_then(|()| journal.application_principal(digest).map_err(journal_error));

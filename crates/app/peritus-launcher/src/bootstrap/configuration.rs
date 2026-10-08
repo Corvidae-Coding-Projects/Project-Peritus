@@ -85,7 +85,18 @@ pub fn ensure_configuration(
             state.generation()
         )));
     }
-    Ok((expected, path))
+    let configuration = if actual == text.as_bytes() {
+        expected
+    } else {
+        let actual = std::str::from_utf8(&actual).map_err(|error| {
+            LauncherError::PlatformPaths(format!(
+                "accepted daemon configuration generation {} is not UTF-8: {error}",
+                state.generation(),
+            ))
+        })?;
+        DaemonConfig::parse(actual)?
+    };
+    Ok((configuration, path))
 }
 
 fn render_configuration(layout: &AppLayout, state: &ProductState) -> Result<String, LauncherError> {
