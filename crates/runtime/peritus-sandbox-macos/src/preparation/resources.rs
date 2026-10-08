@@ -14,7 +14,8 @@ use sha2::{Digest as _, Sha256};
 use crate::{
     MacosError, MacosErrorKind, MacosOperation, ProtectedProxyRoute, ProtectedSecretHandle,
     PreparationCleanup, PreparationProgress, ProxyRoute, RecoveryAction,
-    SecretHandleDestination, error,
+    SecretHandleDestination, error, protected_secret_label,
+    validate_secret_delivery_contract,
 };
 
 pub(super) struct PreparationOwners {
@@ -120,7 +121,7 @@ where
         }
         let destination = SecretHandleDestination::from(requirement.delivery());
         validate_artifact_destination(artifact, requirement.delivery())?;
-        let label = format!("peritus-macos-secret-v1-{index}");
+        let label = protected_secret_label(index)?;
         let secret_index = u32::try_from(index).map_err(|_| {
             error::limited(MacosOperation::Prepare, "secret index is outside progress range")
         })?;
@@ -295,6 +296,7 @@ pub(super) fn validate_secret_file_destinations(
 pub(super) fn preflight_secret_destinations(
     requirements: &[SecretRequirement],
 ) -> Result<(), MacosError> {
+    validate_secret_delivery_contract(requirements)?;
     const RESERVED: [&str; 4] = [
         "PERITUS_NATIVE_PTY_SLAVE_V1",
         "PERITUS_NATIVE_PROXY_ENDPOINT_V1",

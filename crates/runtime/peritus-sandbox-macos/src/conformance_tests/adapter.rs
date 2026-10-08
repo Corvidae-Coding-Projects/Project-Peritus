@@ -85,8 +85,7 @@ impl MacosConformanceSubject {
         let secret_descriptors = protected_secrets
             .iter()
             .map(ProtectedSecretHandle::manifest_descriptor)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| ())?;
+            .collect::<Vec<_>>();
         let (exec_status, exec_status_handle) = crate::exec_status::prepare().map_err(|_| ())?;
         let exec_status_descriptor =
             u32::try_from(exec_status_handle.raw_handle()).map_err(|_| ())?;

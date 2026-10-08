@@ -1,6 +1,10 @@
 //! Canonical manifest field codecs and validation.
 
-use std::path::Path;
+use std::{
+    ffi::{OsStr, OsString},
+    os::unix::ffi::{OsStrExt, OsStringExt},
+    path::Path,
+};
 
 use peritus_sandbox::SandboxResourceKind;
 use peritus_types::Sha256Digest;
@@ -14,7 +18,7 @@ use crate::{
     resource::{resource_from_ordinal, resource_ordinal},
 };
 
-use super::{MAX_ARGUMENTS, PREPARATION_DOMAIN};
+use super::PREPARATION_DOMAIN;
 
 pub(super) fn expected_preparation(
     plan: Sha256Digest,
@@ -28,24 +32,21 @@ pub(super) fn expected_preparation(
     peritus_codec::sha256(&bytes)
 }
 
-pub(super) fn path_text(path: &Path) -> Result<&str, MacosError> {
-    path.to_str()
-        .ok_or_else(|| error::invalid(MacosOperation::Manifest, "manifest path is not valid UTF-8"))
-}
-
 pub(super) fn validate_executable_path(path: &Path) -> Result<(), MacosError> {
-    if !path.is_absolute() || path.as_os_str().is_empty() {
+    if !path.is_absolute()
+        || path.as_os_str().is_empty()
+        || path.as_os_str().as_bytes().contains(&0)
+    {
         return Err(error::invalid(
             MacosOperation::Manifest,
             "native executable path must be absolute",
         ));
     }
-    path_text(path)?;
     Ok(())
 }
 
-pub(super) fn validate_executable_text(value: &str) -> Result<(), MacosError> {
-    if !value.starts_with('/') || value.is_empty() || value.as_bytes().contains(&0) {
+pub(super) fn validate_executable_text(value: &OsStr) -> Result<(), MacosError> {
+    if !Path::new(value).is_absolute() || value.is_empty() || value.as_bytes().contains(&0) {
         return Err(error::invalid(
             MacosOperation::Manifest,
             "target executable must be a literal absolute path",
@@ -55,41 +56,54 @@ pub(super) fn validate_executable_text(value: &str) -> Result<(), MacosError> {
 }
 
 pub(super) fn validate_working_directory(path: &Path) -> Result<(), MacosError> {
-    if !path.is_absolute() {
+    if !path.is_absolute() || path.as_os_str().as_bytes().contains(&0) {
         return Err(error::invalid(
             MacosOperation::Manifest,
             "target working directory must be absolute",
         ));
     }
-    path_text(path)?;
     Ok(())
 }
 
-pub(super) fn encode_strings(writer: &mut Writer, values: &[String]) -> Result<(), MacosError> {
-    if values.len() > MAX_ARGUMENTS {
-        return Err(error::limited(MacosOperation::Manifest, "too many target arguments"));
-    }
-    writer.count(values.len())?;
+pub(super) fn encode_strings(writer: &mut Writer, values: &[OsString]) -> Result<(), MacosError> {
+    writer.native_count(values.len())?;
     for value in values {
-        writer.string(value)?;
+        writer.native_bytes(value.as_bytes())?;
     }
     Ok(())
 }
 
-pub(super) fn decode_strings(reader: &mut Reader<'_>) -> Result<Vec<String>, MacosError> {
+pub(super) fn decode_strings(reader: &mut Reader<'_>) -> Result<Vec<OsString>, MacosError> {
+    let count = reader.native_count()?;
+    (0..count)
+        .map(|_| reader.native_bytes().map(|value| OsString::from_vec(value.to_vec())))
+        .collect()
+}
+
+pub(super) fn decode_strings_legacy(
+    reader: &mut Reader<'_>,
+) -> Result<Vec<OsString>, MacosError> {
     let count = reader.count()?;
-    if count > MAX_ARGUMENTS {
-        return Err(error::limited(MacosOperation::Manifest, "too many target arguments"));
-    }
-    (0..count).map(|_| reader.string()).collect()
+    (0..count).map(|_| reader.string().map(Into::into)).collect()
 }
 
 pub(super) fn decode_environment(
     reader: &mut Reader<'_>,
 ) -> Result<Vec<EnvironmentEntry>, MacosError> {
-    let count = reader.count()?;
+    let count = reader.native_count()?;
     let mut environment =
         (0..count).map(|_| EnvironmentEntry::decode(reader)).collect::<Result<Vec<_>, _>>()?;
+    crate::environment::canonicalize(&mut environment)?;
+    Ok(environment)
+}
+
+pub(super) fn decode_environment_legacy(
+    reader: &mut Reader<'_>,
+) -> Result<Vec<EnvironmentEntry>, MacosError> {
+    let count = reader.count()?;
+    let mut environment = (0..count)
+        .map(|_| EnvironmentEntry::decode_legacy(reader))
+        .collect::<Result<Vec<_>, _>>()?;
     crate::environment::canonicalize(&mut environment)?;
     Ok(environment)
 }
@@ -101,16 +115,16 @@ pub(super) fn validate_control_environment(
 ) -> Result<(), MacosError> {
     const RESERVED: [&str; 2] = ["PERITUS_NATIVE_PTY_SLAVE_V1", "PERITUS_NATIVE_SECRET_HANDLES_V1"];
     let collides = environment.iter().any(|entry| {
-        RESERVED.iter().any(|name| entry.name().eq_ignore_ascii_case(name))
+        RESERVED.iter().any(|name| entry.name() == OsStr::new(name))
             || (proxy.is_some()
                 && ["HTTP_PROXY", "HTTPS_PROXY"]
                     .iter()
-                    .any(|name| entry.name().eq_ignore_ascii_case(name)))
+                    .any(|name| entry.name() == OsStr::new(name)))
             || secrets.iter().any(|secret| {
                 matches!(
                     secret.destination(),
                     crate::SecretHandleDestination::Environment(name)
-                        if entry.name().eq_ignore_ascii_case(name.as_str())
+                        if entry.name() == OsStr::new(name.as_str())
                 )
             })
     });
@@ -191,21 +205,65 @@ pub(super) fn decode_resources(reader: &mut Reader<'_>) -> Result<ResourceContro
 pub(super) fn encode_containment(
     writer: &mut Writer,
     containment: ProcessContainment,
+    version: u16,
 ) -> Result<(), MacosError> {
     writer.boolean(containment.new_process_group())?;
     writer.boolean(containment.tree_required())?;
-    writer.u32(containment.descendant_limit())?;
+    if version <= 2 {
+        if containment.unbounded_descendants() {
+            return Err(error::invalid(
+                MacosOperation::Manifest,
+                "legacy manifest cannot encode unbounded descendants",
+            ));
+        }
+        writer.u32(containment.descendant_limit())?;
+    } else if containment.unbounded_descendants() {
+        writer.u8(3)?;
+    } else if containment.descendant_limit() == 0 {
+        writer.u8(1)?;
+    } else {
+        writer.u8(2)?;
+        writer.u32(containment.descendant_limit())?;
+    }
     writer.boolean(containment.graceful_signal())?;
     writer.boolean(containment.forced_signal())
 }
 
 pub(super) fn decode_containment(
     reader: &mut Reader<'_>,
+    version: u16,
 ) -> Result<ProcessContainment, MacosError> {
-    ProcessContainment::from_manifest(
-        reader.boolean()?,
-        reader.boolean()?,
-        reader.u32()?,
+    let new_process_group = reader.boolean()?;
+    let tree_required = reader.boolean()?;
+    let (descendant_limit, unbounded_descendants) = if version <= 2 {
+        (reader.u32()?, false)
+    } else {
+        match reader.u8()? {
+            1 => (0, false),
+            2 => {
+                let limit = reader.u32()?;
+                if limit == 0 {
+                    return Err(error::invalid(
+                        MacosOperation::Manifest,
+                        "bounded descendant policy has a zero ceiling",
+                    ));
+                }
+                (limit, false)
+            }
+            3 => (0, true),
+            _ => {
+                return Err(error::invalid(
+                    MacosOperation::Manifest,
+                    "unknown descendant policy",
+                ));
+            }
+        }
+    };
+    ProcessContainment::from_native_manifest(
+        new_process_group,
+        tree_required,
+        descendant_limit,
+        unbounded_descendants,
         reader.boolean()?,
         reader.boolean()?,
     )
@@ -273,17 +331,23 @@ pub(super) fn validate_protected_handles(
             "helper exec status descriptor is outside the native range",
         ));
     }
-    if secrets.windows(2).any(|pair| {
-        pair[0].descriptor() >= pair[1].descriptor() || pair[0].label() == pair[1].label()
-    }) {
+    if secrets
+        .windows(2)
+        .any(|pair| pair[0].descriptor() >= pair[1].descriptor())
+    {
         return Err(error::invalid(
             MacosOperation::Manifest,
             "secret handles are duplicated or out of canonical order",
         ));
     }
     for (index, secret) in secrets.iter().enumerate() {
-        if secrets[..index].iter().any(|prior| prior.destination() == secret.destination()) {
-            return Err(error::invalid(MacosOperation::Manifest, "secret destinations duplicate"));
+        if secrets[..index].iter().any(|prior| {
+            prior.label() == secret.label() || prior.destination() == secret.destination()
+        }) {
+            return Err(error::invalid(
+                MacosOperation::Manifest,
+                "secret handle labels or destinations duplicate",
+            ));
         }
     }
     if proxy.is_some_and(|proxy| {

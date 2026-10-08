@@ -320,8 +320,7 @@ impl MacosBackend {
         let secret_descriptors = protected_secrets
             .iter()
             .map(ProtectedSecretHandle::manifest_descriptor)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|error| owners.cleanup(error))?;
+            .collect::<Vec<_>>();
         let manifest = HelperManifest::build(
             execution.identity().process_id(),
             sandbox,
@@ -474,6 +473,17 @@ impl MacosBackend {
                 "macOS credential-store access was not probed",
             ));
         }
+        if self
+            .config
+            .secrets
+            .as_ref()
+            .is_some_and(|preparation| preparation.lease_count() != requirements.len())
+        {
+            return Err(error::mismatch(
+                MacosErrorKind::PreparationMismatch,
+                "secret preparation lease count differs from checked requirements",
+            ));
+        }
         Ok(())
     }
 }
@@ -509,6 +519,8 @@ impl NativeSandboxBackend for MacosBackend {
         sandbox: &CheckedSandboxPlan,
     ) -> Result<(), ProcessError> {
         self.validate_protected_bindings(sandbox)
+            .map_err(|error| process_error(&error))?;
+        crate::validate_secret_delivery_contract(sandbox.requirements().secrets())
             .map_err(|error| process_error(&error))?;
         let capacity = crate::process::preflight_helper_descriptor_capacity(
             self.config.proxy.is_some(),

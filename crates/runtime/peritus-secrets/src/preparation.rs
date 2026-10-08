@@ -11,8 +11,6 @@ use crate::{
     SecretErrorKind, SecretLease, SecretOperation,
 };
 
-const MAX_PREPARED_SECRETS: usize = 128;
-
 /// Inert exact leases and store access consumed only during authorized native preparation.
 ///
 /// This value does not read a store or materialize a destination when constructed. A platform
@@ -30,21 +28,27 @@ impl SecretPreparation {
     ///
     /// # Errors
     ///
-    /// Rejects excessive leases or a relative private-file staging root.
+    /// Rejects a relative private-file staging root.
     pub fn new(
         store: Arc<dyn CredentialStore>,
         leases: Vec<SecretLease>,
         now_epoch_millis: u64,
         staging_root: PathBuf,
     ) -> Result<Self, SecretError> {
-        if leases.len() > MAX_PREPARED_SECRETS || !staging_root.is_absolute() {
+        if !staging_root.is_absolute() {
             return Err(preparation_error(
                 SecretErrorKind::InvalidInput,
                 RecoveryClass::CorrectRequest,
-                "secret preparation lease count or staging root is invalid",
+                "secret preparation staging root is invalid",
             ));
         }
         Ok(Self { store, leases, now_epoch_millis, staging_root })
+    }
+
+    /// Returns the nonsensitive number of supplied exact leases.
+    #[must_use]
+    pub fn lease_count(&self) -> usize {
+        self.leases.len()
     }
 
     /// Resolves and stages exactly the checked requirements under current execution bindings.

@@ -5,19 +5,17 @@ use zeroize::Zeroizing;
 
 use crate::SecretError;
 
-const MAX_SECRET_BYTES: usize = 1024 * 1024;
-
 /// Secret bytes retained only in a zeroizing allocation.
 pub struct SecretMaterial(Zeroizing<Vec<u8>>);
 
 impl SecretMaterial {
-    /// Creates bounded zeroizing secret material.
+    /// Creates nonempty zeroizing secret material.
     ///
     /// # Errors
-    /// Rejects empty or over-limit values.
+    /// Rejects empty values.
     pub fn new(bytes: Vec<u8>) -> Result<Self, SecretError> {
-        if bytes.is_empty() || bytes.len() > MAX_SECRET_BYTES {
-            return Err(crate::error::invalid("secret material is empty or exceeds its bound"));
+        if bytes.is_empty() {
+            return Err(crate::error::invalid("secret material is empty"));
         }
         Ok(Self(Zeroizing::new(bytes)))
     }

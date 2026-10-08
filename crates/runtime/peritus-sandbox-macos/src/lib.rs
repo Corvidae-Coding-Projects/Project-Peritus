@@ -80,4 +80,5 @@ pub use secret::{
     ProtectedSecretHandle, SecretHandleDescriptor, SecretHandleDestination,
     canonical_secret_handles, secret_binding_digest, secret_reference_digest,
 };
+pub(crate) use secret::{protected_secret_label, validate_secret_delivery_contract};
 pub use session::{MacosSession, ReleaseReport, SessionPhase, TerminationReason};

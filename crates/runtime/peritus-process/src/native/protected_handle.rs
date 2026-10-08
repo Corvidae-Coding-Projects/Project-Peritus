@@ -12,7 +12,6 @@ use zeroize::{Zeroize, Zeroizing};
 use crate::{ErrorCode, ProcessError, ProcessOperation, RecoveryClass};
 
 const MAX_LABEL_BYTES: usize = 256;
-const MAX_PAYLOAD_BYTES: usize = 1024 * 1024;
 
 /// One anonymous, read-only-by-convention payload handle retained for a native helper.
 ///
@@ -28,26 +27,26 @@ pub struct NativeProtectedHandle {
 }
 
 impl NativeProtectedHandle {
-    /// Creates an anonymous handle containing bounded protected bytes.
+    /// Creates an anonymous handle containing finite protected bytes.
     ///
     /// The supplied allocation is zeroized after its bytes have been copied into the anonymous
     /// operating-system object. The returned raw handle remains stable until the final clone drops.
     ///
     /// # Errors
     ///
-    /// Rejects empty/oversized payloads, invalid labels, or anonymous-file I/O failures.
+    /// Rejects an empty payload, invalid label, or anonymous-file I/O failures.
     pub fn from_bytes(
         label: impl Into<String>,
         mut payload: Vec<u8>,
     ) -> Result<Self, ProcessError> {
         let label = label.into();
-        if !valid_label(&label) {
+        if !Self::label_is_supported(&label) {
             payload.zeroize();
             return Err(handle_error("native protected handle label is invalid"));
         }
-        if payload.is_empty() || payload.len() > MAX_PAYLOAD_BYTES {
+        if payload.is_empty() {
             payload.zeroize();
-            return Err(handle_error("native protected payload is empty or exceeds its bound"));
+            return Err(handle_error("native protected payload is empty"));
         }
         let payload_len = payload.len();
         let result = (|| {
@@ -85,7 +84,7 @@ impl NativeProtectedHandle {
         mut observe_bytes: impl FnMut(usize),
     ) -> Result<Self, ProcessError> {
         let label = label.into();
-        if !valid_label(&label) {
+        if !Self::label_is_supported(&label) {
             return Err(handle_error("native protected handle label is invalid"));
         }
         let mut file = tempfile::tempfile()
@@ -133,7 +132,7 @@ impl NativeProtectedHandle {
     /// Rejects an invalid manifest label.
     pub fn from_file(label: impl Into<String>, file: File) -> Result<Self, ProcessError> {
         let label = label.into();
-        if !valid_label(&label) {
+        if !Self::label_is_supported(&label) {
             return Err(handle_error("native protected handle label is invalid"));
         }
         Ok(Self {
@@ -147,6 +146,15 @@ impl NativeProtectedHandle {
     #[must_use]
     pub fn label(&self) -> &str {
         &self.label
+    }
+
+    /// Reports whether a nonsensitive label can identify one protected native handle.
+    #[must_use]
+    pub fn label_is_supported(label: &str) -> bool {
+        !label.is_empty()
+            && label.len() <= MAX_LABEL_BYTES
+            && label.is_ascii()
+            && !label.bytes().any(|byte| byte.is_ascii_control())
     }
 
     /// Returns the finite payload length without exposing its bytes.
@@ -196,13 +204,6 @@ impl Drop for ProtectedHandleInner {
             let _ = self.file.set_len(0);
         }
     }
-}
-
-fn valid_label(label: &str) -> bool {
-    !label.is_empty()
-        && label.len() <= MAX_LABEL_BYTES
-        && label.is_ascii()
-        && !label.bytes().any(|byte| byte.is_ascii_control())
 }
 
 const fn handle_error(detail: &'static str) -> ProcessError {

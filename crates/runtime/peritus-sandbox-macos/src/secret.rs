@@ -3,6 +3,7 @@
 use peritus_process::NativeProtectedHandle;
 use peritus_sandbox::{
     BrokeredHandleLabel, EnvironmentName, SandboxPath, SecretDelivery, SecretReference,
+    SecretRequirement,
 };
 use peritus_types::Sha256Digest;
 
@@ -10,9 +11,6 @@ use crate::{
     MacosError, MacosErrorKind, MacosOperation, RecoveryAction,
     canonical::{Reader, Writer},
 };
-
-const MAX_SECRET_HANDLES: usize = 128;
-const MAX_HANDLE_LABEL_BYTES: usize = 256;
 
 /// Nonsensitive destination bound to one protected anonymous payload handle.
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -45,10 +43,7 @@ impl SecretHandleDescriptor {
     ) -> Result<Self, MacosError> {
         if descriptor < 3
             || descriptor > i32::MAX.cast_unsigned()
-            || label.is_empty()
-            || label.len() > MAX_HANDLE_LABEL_BYTES
-            || !label.is_ascii()
-            || label.bytes().any(|byte| byte.is_ascii_control())
+            || !NativeProtectedHandle::label_is_supported(&label)
             || payload_len == 0
             || reference_digest == Sha256Digest::new([0; 32])
         {
@@ -147,8 +142,7 @@ impl From<&SecretDelivery> for SecretHandleDestination {
 #[derive(Clone, Debug)]
 pub struct ProtectedSecretHandle {
     handle: NativeProtectedHandle,
-    reference_digest: Sha256Digest,
-    destination: SecretHandleDestination,
+    metadata: SecretHandleDescriptor,
 }
 
 impl ProtectedSecretHandle {
@@ -161,13 +155,23 @@ impl ProtectedSecretHandle {
         reference: SecretReference,
         destination: SecretHandleDestination,
     ) -> Result<Self, MacosError> {
-        descriptor_number(&handle)?;
-        if handle.payload_len().is_none() {
-            return Err(secret_error(
-                "protected secret handle must contain one finite staged payload",
-            ));
-        }
-        Ok(Self { handle, reference_digest: secret_reference_digest(reference), destination })
+        let descriptor = descriptor_number(&handle)?;
+        let payload_len = handle
+            .payload_len()
+            .and_then(|length| u32::try_from(length).ok())
+            .ok_or_else(|| {
+                secret_error(
+                    "protected secret handle must contain one representable finite payload",
+                )
+            })?;
+        let metadata = SecretHandleDescriptor::new(
+            descriptor,
+            handle.label().to_owned(),
+            payload_len,
+            secret_reference_digest(reference),
+            destination,
+        )?;
+        Ok(Self { handle, metadata })
     }
 
     /// Returns the process-owned protected payload handle.
@@ -179,63 +183,71 @@ impl ProtectedSecretHandle {
     /// Returns the exact nonsensitive secret-reference digest.
     #[must_use]
     pub const fn reference_digest(&self) -> Sha256Digest {
-        self.reference_digest
+        self.metadata.reference_digest()
     }
 
     /// Returns the exact checked delivery destination.
     #[must_use]
     pub const fn destination(&self) -> &SecretHandleDestination {
-        &self.destination
+        self.metadata.destination()
     }
 
-    pub(crate) fn descriptor(&self) -> u32 {
-        // Construction and canonicalization both prove representability.
-        u32::try_from(self.handle.raw_handle()).unwrap_or(u32::MAX)
+    pub(crate) const fn descriptor(&self) -> u32 {
+        self.metadata.descriptor()
     }
 
-    pub(crate) fn payload_len(&self) -> Result<usize, MacosError> {
-        self.handle
-            .payload_len()
-            .ok_or_else(|| secret_error("protected secret handle has no finite payload length"))
+    pub(crate) fn manifest_descriptor(&self) -> SecretHandleDescriptor {
+        self.metadata.clone()
     }
+}
 
-    pub(crate) fn manifest_descriptor(&self) -> Result<SecretHandleDescriptor, MacosError> {
-        SecretHandleDescriptor::new(
-            self.descriptor(),
-            self.handle.label().to_owned(),
-            u32::try_from(self.payload_len()?)
-                .map_err(|_| secret_error("protected secret payload is too large"))?,
-            self.reference_digest,
-            self.destination.clone(),
-        )
+pub(crate) fn protected_secret_label(index: usize) -> Result<String, MacosError> {
+    let index = u32::try_from(index)
+        .map_err(|_| secret_error("protected secret index is outside manifest range"))?;
+    let label = format!("peritus-macos-secret-v1-{index}");
+    if !NativeProtectedHandle::label_is_supported(&label) {
+        return Err(secret_error("protected secret label is outside native range"));
     }
+    Ok(label)
+}
+
+pub(crate) fn validate_secret_delivery_contract(
+    requirements: &[SecretRequirement],
+) -> Result<(), MacosError> {
+    u32::try_from(requirements.len())
+        .map_err(|_| secret_error("protected secret count is outside manifest range"))?;
+    for (index, requirement) in requirements.iter().enumerate() {
+        protected_secret_label(index)?;
+        if requirements[..index]
+            .iter()
+            .any(|prior| prior.delivery() == requirement.delivery())
+        {
+            return Err(secret_error("protected secret destinations collide"));
+        }
+    }
+    Ok(())
 }
 
 /// Canonicalizes protected secret handles and rejects handle, label, or destination collisions.
 ///
 /// # Errors
-/// Rejects an excessive set, duplicate identity, or a native value outside macOS descriptor range.
+/// Rejects duplicate identity or a native value outside macOS descriptor range.
 pub fn canonical_secret_handles(
     mut handles: Vec<ProtectedSecretHandle>,
 ) -> Result<Vec<ProtectedSecretHandle>, MacosError> {
-    if handles.len() > MAX_SECRET_HANDLES {
-        return Err(secret_error("protected secret handle count exceeds its bound"));
-    }
-    handles.sort_by_key(ProtectedSecretHandle::descriptor);
-    for handle in &handles {
-        descriptor_number(handle.handle())?;
-    }
-    if handles.windows(2).any(|pair| {
-        pair[0].descriptor() == pair[1].descriptor()
-            || pair[0].handle.label() == pair[1].handle.label()
-    }) {
-        return Err(secret_error("protected secret handle identities collide"));
-    }
     for (index, handle) in handles.iter().enumerate() {
-        if handles[..index].iter().any(|prior| prior.destination == handle.destination) {
-            return Err(secret_error("protected secret destinations collide"));
+        descriptor_number(handle.handle())?;
+        if handles[..index].iter().any(|prior| {
+            prior.descriptor() == handle.descriptor()
+                || prior.handle.label() == handle.handle.label()
+                || prior.destination() == handle.destination()
+        }) {
+            return Err(secret_error(
+                "protected secret descriptors, labels, or destinations collide",
+            ));
         }
     }
+    handles.sort_by_key(ProtectedSecretHandle::descriptor);
     Ok(handles)
 }
 
@@ -320,7 +332,7 @@ mod tests {
     #[test]
     fn protected_secret_metadata_round_trips_without_payload_bytes() {
         let protected = protected("secret-one", 7);
-        let descriptor = protected.manifest_descriptor().unwrap();
+        let descriptor = protected.manifest_descriptor();
         let mut writer = crate::canonical::Writer::new();
         descriptor.encode(&mut writer).unwrap();
         let bytes = writer.finish();

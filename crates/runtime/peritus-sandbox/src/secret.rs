@@ -108,11 +108,11 @@ impl SecretContract {
     /// # Errors
     /// Returns a limit error for more than 128 grants.
     pub fn new(mut grants: Vec<SecretGrant>) -> Result<Self, SandboxError> {
+        grants.sort();
+        grants.dedup();
         if grants.len() > MAX_GRANTS {
             return Err(crate::error::bound("too many secret grants"));
         }
-        grants.sort();
-        grants.dedup();
         Ok(Self { grants })
     }
     /// Returns no grants.
