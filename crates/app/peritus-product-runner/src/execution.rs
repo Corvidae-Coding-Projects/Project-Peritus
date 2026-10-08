@@ -8,6 +8,7 @@ mod conversation;
 mod cycle;
 mod deadline;
 mod folder;
+mod obligation_store;
 mod obligations;
 mod resume;
 mod review_phase;
@@ -35,7 +36,8 @@ use peritus_run_settlement::{CandidateStage, SettlementCause};
 use crate::{ProductRunnerError, ProductRunnerErrorKind, budget::RunAccounting, review};
 use checkpoint::CheckpointEvidence;
 use cycle::{
-    CycleInspection, GateInspection, apply_fix, create_design, inspect_gates, retained_inspection,
+    CycleInspection, GateInspection, GateInspectionOutcome, apply_fix, create_design,
+    inspect_gates, retained_inspection,
 };
 use state::{ExecutionContext, RunState};
 use summary::completion_summary;
@@ -50,7 +52,7 @@ impl ProductRunner {
         execution: &mut ExecutionContext,
         accounting: &mut RunAccounting,
     ) -> Result<ActiveExit, ProductRunnerError> {
-        let mut workspace_ownership = input.ownership();
+        let mut workspace_ownership = input.ownership()?;
         if let Some((question, revision)) = execution
             .prepare_active_state(input, observe, &mut workspace_ownership, accounting)
             .await?
@@ -59,6 +61,7 @@ impl ProductRunner {
         }
 
         loop {
+            let _ = execution.refresh_obligation_contract(input)?;
             if execution.next_phase == ProductRunPhase::Finalizing {
                 return Ok(ActiveExit::completed());
             }
@@ -69,13 +72,27 @@ impl ProductRunner {
                     "an executable phase has no retained run state",
                 )
             })?;
-            if input.conversation.revision() != state.conversation_revision {
+            if execution.next_phase == ProductRunPhase::Designing
+                || input.conversation.revision() != state.conversation_revision
+            {
                 execution.next_phase = ProductRunPhase::Designing;
+                let candidate = *execution
+                    .recorder
+                    .checkpoint()?
+                    .ok_or_else(|| {
+                        ProductRunnerError::new(
+                            ProductRunnerErrorKind::InternalInvariant,
+                            "restart design phase",
+                            "follow-up design has no retained candidate identity",
+                        )
+                    })?
+                    .identity();
                 state.design = create_design(
                     input,
                     observe,
                     state.coordinator.completed_fixer_cycles() + 2,
                     accounting,
+                    candidate,
                 )
                 .await?;
                 execution.design = Some(state.design.clone());
@@ -140,7 +157,22 @@ impl ProductRunner {
                         accounting,
                         &execution.recorder,
                         &execution.obligations,
-                    )?;
+                    )
+                    .await?;
+                    let checked = match checked {
+                        GateInspectionOutcome::Complete(checked) => checked,
+                        GateInspectionOutcome::Waiting { question, conversation_revision } => {
+                            return Ok(ActiveExit::waiting(
+                                question,
+                                conversation_revision,
+                                execution.next_phase,
+                            ));
+                        }
+                        GateInspectionOutcome::Superseded => {
+                            execution.next_phase = ProductRunPhase::Designing;
+                            continue;
+                        }
+                    };
                     execution.gate_report = Some(checked.gates.clone());
                     execution.evidence = checked.evidence.clone();
                     if checked.conversation_changed {

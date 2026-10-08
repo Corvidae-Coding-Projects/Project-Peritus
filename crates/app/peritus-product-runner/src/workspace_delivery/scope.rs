@@ -33,7 +33,7 @@ pub struct ScopedBaseline {
     revision: u64,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct Entry {
     version: u8,
@@ -274,6 +274,23 @@ impl ScopedBaseline {
             preimage,
         };
         storage::enroll(self, &entry)
+    }
+
+    pub(crate) fn authorize_current_preimage(
+        &self,
+        path: &str,
+    ) -> Result<(), ProductRunnerError> {
+        self.checked_path(path)?;
+        let before = self.stamp(path)?;
+        let preimage = self.retain_preimage(path, &before)?;
+        let entry = Entry {
+            version: 2,
+            scope: self.clone(),
+            path: path.to_owned(),
+            before,
+            preimage,
+        };
+        storage::rebaseline(self, &entry)
     }
 
     pub fn diff(&self, root: &Path) -> Result<String, ProductRunnerError> {

@@ -16,7 +16,6 @@ use super::{
     access_policy::WorkspaceAccessPolicy,
     effect::atomic_write,
     grounding::GroundingEvidence,
-    ownership::WorkspaceOwnership,
     path::{checked, protected_metadata, tool},
 };
 use crate::{ConversationView, WorkspaceMutationKind, file_metadata};
@@ -96,43 +95,49 @@ pub(super) fn recursive(arguments: &Value) -> Result<bool, DeveloperLoopError> {
     }
 }
 
+pub(super) fn explicit_authority(arguments: &Value) -> bool {
+    arguments.get("authority").is_some()
+}
+
+pub(super) fn transactional(arguments: &Value) -> Result<bool, DeveloperLoopError> {
+    recursive(arguments).map(|recursive| recursive || explicit_authority(arguments))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn prepare_recursive(
     root: &Path,
     state_root: &Path,
     transaction: &str,
     grounding: &GroundingEvidence,
-    ownership: &WorkspaceOwnership,
     access_policy: &WorkspaceAccessPolicy,
     view: &dyn ConversationView,
     arguments: &Value,
 ) -> Result<PreparedRemoval, DeveloperLoopError> {
     let relative = removal_path(arguments)?;
     grounding.ensure_recursive_removal_allowed(relative).map_err(tool)?;
-    let authority = recursive_authority(root, relative, view, arguments)?;
+    let authority = removal_authority(root, relative, true, view, arguments)?;
     let path = plan_path(state_root, transaction);
-    if path.exists() {
-        let plan = read_plan(&path)?;
-        let plan_sha256 = plan_digest(&plan)?;
-        validate_plan_identity(&plan, transaction, relative, &authority)?;
-        access_policy
-            .authorize_removal_tree(plan.entries.iter().map(|entry| entry.path.as_str()))
-            .map_err(tool)?;
-        let progress = read_progress(state_root, &plan, &plan_sha256)?;
-        validate_scope(root, &plan, progress.next, true)?;
-        return Ok(PreparedRemoval {
-            state_root: state_root.to_owned(),
-            plan,
-            plan_sha256,
-            checkpoint_required: false,
-        });
+    match fs::symlink_metadata(&path) {
+        Ok(_) => {
+            return reopen_prepared(
+                root,
+                state_root,
+                transaction,
+                relative,
+                &authority,
+                access_policy,
+                &path,
+            );
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(tool(format!("inspect recursive removal plan: {error}"))),
     }
     let target = checked(root, relative, false)?;
     let metadata = fs::symlink_metadata(&target).map_err(|error| tool(error.to_string()))?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
         return Err(tool("recursive workspace_remove requires one ordinary directory"));
     }
-    let entries = enumerate_tree(root, relative, Some(ownership))?;
+    let entries = enumerate_tree(root, relative)?;
     access_policy
         .authorize_removal_tree(entries.iter().map(|entry| entry.path.as_str()))
         .map_err(tool)?;
@@ -150,6 +155,93 @@ pub(super) fn prepare_recursive(
         plan,
         plan_sha256,
         checkpoint_required: true,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn prepare_authorized_file(
+    root: &Path,
+    state_root: &Path,
+    transaction: &str,
+    grounding: &GroundingEvidence,
+    access_policy: &WorkspaceAccessPolicy,
+    view: &dyn ConversationView,
+    arguments: &Value,
+) -> Result<PreparedRemoval, DeveloperLoopError> {
+    let relative = removal_path(arguments)?;
+    grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
+    let authority = removal_authority(root, relative, false, view, arguments)?;
+    let path = plan_path(state_root, transaction);
+    match fs::symlink_metadata(&path) {
+        Ok(_) => {
+            return reopen_prepared(
+                root,
+                state_root,
+                transaction,
+                relative,
+                &authority,
+                access_policy,
+                &path,
+            );
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(tool(format!("inspect authorized removal plan: {error}"))),
+    }
+    let target = checked(root, relative, false)?;
+    let metadata = fs::symlink_metadata(&target).map_err(|error| tool(error.to_string()))?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(tool("authorized single workspace_remove requires one ordinary file"));
+    }
+    let entries = enumerate_tree(root, relative)?;
+    if entries.len() != 1
+        || entries[0].kind != RemovalEntryKind::File
+        || entries[0].path != relative
+    {
+        return Err(tool("authorized single removal did not resolve to one exact file"));
+    }
+    access_policy
+        .authorize_removal_tree(entries.iter().map(|entry| entry.path.as_str()))
+        .map_err(tool)?;
+    let plan = RemovalPlan {
+        version: PLAN_VERSION,
+        transaction: transaction.to_owned(),
+        path: relative.to_owned(),
+        authority_binding: authority.binding,
+        authority_quote_sha256: authority.quote_sha256,
+        entries,
+    };
+    let plan_sha256 = plan_digest(&plan)?;
+    Ok(PreparedRemoval {
+        state_root: state_root.to_owned(),
+        plan,
+        plan_sha256,
+        checkpoint_required: true,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn reopen_prepared(
+    root: &Path,
+    state_root: &Path,
+    transaction: &str,
+    relative: &str,
+    authority: &RecursiveAuthority,
+    access_policy: &WorkspaceAccessPolicy,
+    path: &Path,
+) -> Result<PreparedRemoval, DeveloperLoopError> {
+    let plan = read_plan(path)?;
+    let plan_sha256 = plan_digest(&plan)?;
+    validate_plan_identity(&plan, transaction, relative, authority)?;
+    access_policy
+        .authorize_removal_tree(plan.entries.iter().map(|entry| entry.path.as_str()))
+        .map_err(tool)?;
+    let progress = read_progress(state_root, &plan, &plan_sha256)?;
+    validate_scope(root, &plan, progress.next, true)?;
+    Ok(PreparedRemoval {
+        state_root: state_root.to_owned(),
+        plan,
+        plan_sha256,
+        checkpoint_required: false,
     })
 }
 
@@ -224,9 +316,17 @@ pub(super) fn remove_recursive(
         .filter(|entry| entry.kind == RemovalEntryKind::File)
         .count();
     let directories = prepared.plan.entries.len().saturating_sub(files);
+    let kind = if prepared.plan.entries.len() == 1
+        && prepared.plan.entries[0].kind == RemovalEntryKind::File
+        && prepared.plan.entries[0].path == prepared.plan.path
+    {
+        "file"
+    } else {
+        "directory_tree"
+    };
     Ok(object_result(vec![
         ("path", Value::String(prepared.plan.path.clone())),
-        ("kind", Value::String("directory_tree".to_owned())),
+        ("kind", Value::String(kind.to_owned())),
         ("transaction", Value::String(prepared.plan.transaction.clone())),
         ("scope_sha256", Value::String(prepared.plan_sha256.clone())),
         ("authority_binding", Value::String(prepared.plan.authority_binding.clone())),
@@ -309,41 +409,42 @@ fn removal_path(arguments: &Value) -> Result<&str, DeveloperLoopError> {
     Ok(relative)
 }
 
-fn recursive_authority(
+fn removal_authority(
     root: &Path,
     relative: &str,
+    recursive: bool,
     view: &dyn ConversationView,
     arguments: &Value,
 ) -> Result<RecursiveAuthority, DeveloperLoopError> {
     let authority = arguments
         .get("authority")
         .and_then(Value::as_object)
-        .ok_or_else(|| tool("recursive workspace_remove requires typed user-request authority"))?;
+        .ok_or_else(|| tool("workspace_remove requires typed user-request authority"))?;
     if authority.get("kind").and_then(Value::as_str) != Some("user_request") {
-        return Err(tool("recursive workspace_remove authority must be user_request"));
+        return Err(tool("workspace_remove authority must be user_request"));
     }
     let binding = authority
         .get("binding")
         .and_then(Value::as_str)
-        .ok_or_else(|| tool("recursive workspace_remove authority has no request binding"))?;
+        .ok_or_else(|| tool("workspace_remove authority has no request binding"))?;
     let expected = hex(view.request_source_binding());
     if binding != expected {
         return Err(tool(
-            "recursive workspace_remove authority belongs to another governing user-source set",
+            "workspace_remove authority belongs to another governing user-source set",
         ));
     }
     let quote = authority
         .get("quote")
         .and_then(Value::as_str)
-        .ok_or_else(|| tool("recursive workspace_remove authority has no exact user quote"))?;
+        .ok_or_else(|| tool("workspace_remove authority has no exact user quote"))?;
     if quote.is_empty() || !view.reference_authority_context().contains(quote) {
         return Err(tool(
-            "recursive workspace_remove authority quote is not exact governing user-authored text",
+            "workspace_remove authority quote is not exact governing user-authored text",
         ));
     }
-    if !quote_authorizes_recursive_removal(quote, relative, &root.join(relative)) {
+    if !quote_authorizes_removal(quote, relative, &root.join(relative), recursive) {
         return Err(tool(
-            "the quoted user request does not explicitly authorize recursive deletion of this exact tree",
+            "the quoted user request does not explicitly authorize this exact removal scope",
         ));
     }
     Ok(RecursiveAuthority {
@@ -352,7 +453,12 @@ fn recursive_authority(
     })
 }
 
-fn quote_authorizes_recursive_removal(quote: &str, relative: &str, absolute: &Path) -> bool {
+fn quote_authorizes_removal(
+    quote: &str,
+    relative: &str,
+    absolute: &Path,
+    recursive: bool,
+) -> bool {
     let lower = quote.to_ascii_lowercase();
     if [
         "do not delete",
@@ -376,11 +482,12 @@ fn quote_authorizes_recursive_removal(quote: &str, relative: &str, absolute: &Pa
     let destructive = ["delete", "deleted", "remove", "removed", "erase", "purge"]
         .iter()
         .any(|word| words.contains(word));
-    let recursive = ["recursive", "recursively", "entire", "whole", "contents", "everything"]
-        .iter()
-        .any(|word| words.contains(word));
+    let recursive_scope = !recursive
+        || ["recursive", "recursively", "entire", "whole", "contents", "everything"]
+            .iter()
+            .any(|word| words.contains(word));
     destructive
-        && recursive
+        && recursive_scope
         && (contains_exact_path(quote, relative)
             || absolute.to_str().is_some_and(|path| contains_exact_path(quote, path)))
 }
@@ -388,9 +495,23 @@ fn quote_authorizes_recursive_removal(quote: &str, relative: &str, absolute: &Pa
 fn contains_exact_path(text: &str, path: &str) -> bool {
     text.match_indices(path).any(|(start, matched)| {
         let before = text[..start].chars().next_back();
-        let after = text[start + matched.len()..].chars().next();
-        before.is_none_or(path_boundary) && after.is_none_or(path_boundary)
+        let suffix = &text[start + matched.len()..];
+        before.is_none_or(path_boundary) && trailing_path_boundary(suffix)
     })
+}
+
+fn trailing_path_boundary(suffix: &str) -> bool {
+    let Some(after) = suffix.chars().next() else { return true };
+    if path_boundary(after) {
+        return true;
+    }
+    if after != '.' {
+        return false;
+    }
+    suffix[after.len_utf8()..]
+        .chars()
+        .next()
+        .is_none_or(|character| character.is_whitespace() || path_boundary(character))
 }
 
 fn path_boundary(character: char) -> bool {
@@ -401,7 +522,6 @@ fn path_boundary(character: char) -> bool {
 fn enumerate_tree(
     root: &Path,
     relative: &str,
-    ownership: Option<&WorkspaceOwnership>,
 ) -> Result<Vec<RemovalEntry>, DeveloperLoopError> {
     let mut pending = vec![PathBuf::from(relative)];
     let mut entries = Vec::new();
@@ -423,9 +543,6 @@ fn enumerate_tree(
             )));
         }
         if metadata.is_file() {
-            if let Some(ownership) = ownership {
-                ownership.ensure_removable(&path)?;
-            }
             let (sha256, bytes, identity) = hash_file(&path, &metadata)?;
             entries.push(RemovalEntry {
                 path: relative_text.to_owned(),
@@ -488,7 +605,7 @@ fn validate_scope(
         return Err(tool("recursive removal progress exceeds its exact scope"));
     }
     let current = match fs::symlink_metadata(checked(root, &plan.path, true)?) {
-        Ok(_) => enumerate_tree(root, &plan.path, None)?,
+        Ok(_) => enumerate_tree(root, &plan.path)?,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(error) => return Err(tool(error.to_string())),
     };
@@ -537,7 +654,7 @@ fn validate_scope(
 }
 
 fn validate_entry(root: &Path, expected: &RemovalEntry) -> Result<(), DeveloperLoopError> {
-    let actual = enumerate_tree(root, &expected.path, None)?;
+    let actual = enumerate_tree(root, &expected.path)?;
     let actual = actual
         .into_iter()
         .find(|entry| entry.path == expected.path)

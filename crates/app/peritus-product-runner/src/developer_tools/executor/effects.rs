@@ -249,11 +249,11 @@ impl WorkspaceDeveloperTools {
     }
 
     pub(super) fn remove(&mut self, arguments: &Value) -> Result<Value, DeveloperLoopError> {
-        if removal::recursive(arguments)? {
+        if removal::transactional(arguments)? {
             let prepared = self
                 .prepared_removal
                 .take()
-                .ok_or_else(|| tool("recursive removal has no validated transaction plan"))?;
+                .ok_or_else(|| tool("removal has no validated transaction plan"))?;
             removal::remove_recursive(&self.root, &prepared)
         } else {
             removal::remove(&self.root, &self.grounding, &self.ownership, arguments)

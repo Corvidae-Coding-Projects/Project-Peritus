@@ -92,7 +92,7 @@ impl ActiveCommandLedger {
         }
         if !command.recorded {
             if command.mode.is_mutation() {
-                ownership.record_command_creations(root, &command.unowned_before);
+                ownership.record_command_creations(root, &command.unowned_before)?;
             }
             evidence.record_named(command.tool, &command.request, result);
             command.recorded = true;

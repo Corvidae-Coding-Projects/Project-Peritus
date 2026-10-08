@@ -67,11 +67,12 @@ impl ProductRunInput {
         )
     }
 
-    pub(crate) fn ownership(&self) -> WorkspaceOwnership {
+    pub(crate) fn ownership(&self) -> Result<WorkspaceOwnership, ProductRunnerError> {
         if self.workspace_kind.is_in_place() {
-            WorkspaceOwnership::direct()
+            Ok(WorkspaceOwnership::direct())
         } else {
-            WorkspaceOwnership::capture(&self.workspace_root)
+            WorkspaceOwnership::try_capture(&self.workspace_root)
+                .map_err(|error| crate::turn::developer_error(&error))
         }
     }
 

@@ -88,7 +88,8 @@ pub fn qualify_tool_process_failure(
         crate::CommandRuntime::open(state_root.join("router"), workspace, run_id, process_store)?;
     let mut tools = WorkspaceDeveloperTools::with_ownership(
         workspace.to_path_buf(),
-        WorkspaceOwnership::capture(workspace),
+        WorkspaceOwnership::try_capture(workspace)
+            .map_err(|error| qualification(error.to_string()))?,
         receipt_path.clone(),
         scope,
         Duration::from_secs(30),

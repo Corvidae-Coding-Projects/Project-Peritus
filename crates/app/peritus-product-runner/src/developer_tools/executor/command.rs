@@ -43,11 +43,11 @@ impl WorkspaceDeveloperTools {
         if !command.allowance.starts_execution() {
             return Ok(command.allowance.exhausted_result());
         }
-        let unowned_before = command
-            .mode
-            .is_mutation()
-            .then(|| self.ownership.unowned_files(&self.root))
-            .unwrap_or_default();
+        let unowned_before = if command.mode.is_mutation() {
+            self.ownership.unowned_files(&self.root)?
+        } else {
+            BTreeSet::new()
+        };
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let protected_paths = self.command_confinement(command.mode);
@@ -77,11 +77,11 @@ impl WorkspaceDeveloperTools {
         if !command.allowance.starts_execution() {
             return Ok(command.allowance.exhausted_result());
         }
-        let unowned_before = command
-            .mode
-            .is_mutation()
-            .then(|| self.ownership.unowned_files(&self.root))
-            .unwrap_or_default();
+        let unowned_before = if command.mode.is_mutation() {
+            self.ownership.unowned_files(&self.root)?
+        } else {
+            BTreeSet::new()
+        };
         let runtime = self.command_runtime()?.clone();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
@@ -123,13 +123,13 @@ impl WorkspaceDeveloperTools {
                         command.mode,
                     )?;
                 } else if command.mode.is_mutation() {
-                    self.ownership.record_command_creations(&self.root, &unowned_before);
+                    self.ownership.record_command_creations(&self.root, &unowned_before)?;
                 }
                 annotate_result(self, result, command)
             }
             Err(error) => {
                 if command.mode.is_mutation() {
-                    self.ownership.record_command_creations(&self.root, &unowned_before);
+                    self.ownership.record_command_creations(&self.root, &unowned_before)?;
                 }
                 Err(error)
             }
@@ -149,11 +149,11 @@ impl WorkspaceDeveloperTools {
         let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
         let columns =
             bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
-        let unowned_before = command
-            .mode
-            .is_mutation()
-            .then(|| self.ownership.unowned_files(&self.root))
-            .unwrap_or_default();
+        let unowned_before = if command.mode.is_mutation() {
+            self.ownership.unowned_files(&self.root)?
+        } else {
+            BTreeSet::new()
+        };
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();
         let protected_paths = self.command_confinement(command.mode);
@@ -192,11 +192,11 @@ impl WorkspaceDeveloperTools {
         let rows = bounded_u64(arguments, "rows", DEFAULT_TERMINAL_ROWS, 1, u16::MAX.into());
         let columns =
             bounded_u64(arguments, "columns", DEFAULT_TERMINAL_COLUMNS, 1, u16::MAX.into());
-        let unowned_before = command
-            .mode
-            .is_mutation()
-            .then(|| self.ownership.unowned_files(&self.root))
-            .unwrap_or_default();
+        let unowned_before = if command.mode.is_mutation() {
+            self.ownership.unowned_files(&self.root)?
+        } else {
+            BTreeSet::new()
+        };
         let runtime = self.command_runtime()?.clone();
         let (environment, resource_evidence) =
             CommandResources::observe().select(&command.program, &command.arguments).into_parts();

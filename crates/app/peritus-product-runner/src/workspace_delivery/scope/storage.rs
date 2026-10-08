@@ -178,6 +178,47 @@ pub(super) fn enroll(scope: &ScopedBaseline, entry: &Entry) -> Result<(), Produc
     replace_catalog(scope, &catalog)
 }
 
+pub(super) fn rebaseline(
+    scope: &ScopedBaseline,
+    entry: &Entry,
+) -> Result<(), ProductRunnerError> {
+    let _owner = Ownership::acquire(scope)?;
+    ensure_adopted(scope)?;
+    validate_entry(scope, entry)?;
+    let mut catalog = read_catalog(scope)?;
+    let bucket = bucket(&entry.path);
+    let mut shard = match &catalog.shards[bucket as usize] {
+        Some(reference) => read_shard(scope, bucket, reference)?,
+        None => empty_shard(scope, bucket)?,
+    };
+    let inserted = match shard.entries.get(&entry.path) {
+        Some(existing) => {
+            let retained = load_checkpoint_entry(scope, existing)?;
+            if &retained == entry {
+                return Ok(());
+            }
+            false
+        }
+        None => true,
+    };
+    let checkpoint = persist_segment(scope, entry)?;
+    shard.entries.insert(entry.path.clone(), checkpoint);
+    shard.checksum = shard_checksum(&shard);
+    catalog.shards[bucket as usize] = Some(persist_shard(scope, &shard)?);
+    if inserted {
+        catalog.entries = catalog
+            .entries
+            .checked_add(1)
+            .ok_or_else(|| failure("in-place evidence entry count overflow"))?;
+    }
+    catalog.generation = catalog
+        .generation
+        .checked_add(1)
+        .ok_or_else(|| failure("in-place evidence generation overflow"))?;
+    catalog.checksum = catalog_checksum(&catalog);
+    replace_catalog(scope, &catalog)
+}
+
 pub(super) fn path_count(scope: &ScopedBaseline) -> Result<usize, ProductRunnerError> {
     let _owner = Ownership::acquire(scope)?;
     ensure_adopted(scope)?;

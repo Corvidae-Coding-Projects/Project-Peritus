@@ -18,19 +18,35 @@ pub struct WorkspaceOwnership {
     baseline: BTreeSet<PathBuf>,
     directly_created: BTreeSet<PathBuf>,
     command_created: BTreeSet<PathBuf>,
+    baseline_error: Option<String>,
 }
 
 impl WorkspaceOwnership {
     /// Captures regular files already present when the product run begins.
     #[must_use]
     pub fn capture(root: &Path) -> Self {
-        let baseline = regular_files(root);
-        Self {
+        Self::try_capture(root).unwrap_or_else(|error| Self {
             direct: false,
-            baseline,
+            baseline: BTreeSet::new(),
             directly_created: BTreeSet::new(),
             command_created: BTreeSet::new(),
-        }
+            baseline_error: Some(error.to_string()),
+        })
+    }
+
+    /// Captures a complete regular-file baseline or reports the exact inventory omission.
+    ///
+    /// # Errors
+    /// Returns a tool error when any directory entry or metadata needed for ownership cannot be
+    /// observed. An incomplete inventory must never silently confer ownership later in the run.
+    pub(crate) fn try_capture(root: &Path) -> Result<Self, DeveloperLoopError> {
+        Ok(Self {
+            direct: false,
+            baseline: regular_files(root).map_err(tool)?,
+            directly_created: BTreeSet::new(),
+            command_created: BTreeSet::new(),
+            baseline_error: None,
+        })
     }
 
     /// Tracks only explicitly inspected/created files in an in-place folder; never scans its tree.
@@ -40,6 +56,7 @@ impl WorkspaceOwnership {
             baseline: BTreeSet::new(),
             directly_created: BTreeSet::new(),
             command_created: BTreeSet::new(),
+            baseline_error: None,
         }
     }
 
@@ -54,19 +71,30 @@ impl WorkspaceOwnership {
     /// structured command. A later comparison attributes only files newly produced by that
     /// command, preserving unrelated files that appeared through another actor.
     #[must_use]
-    pub(super) fn unowned_files(&self, root: &Path) -> BTreeSet<PathBuf> {
+    pub(super) fn unowned_files(
+        &self,
+        root: &Path,
+    ) -> Result<BTreeSet<PathBuf>, DeveloperLoopError> {
         if self.direct {
-            return BTreeSet::new();
+            return Ok(BTreeSet::new());
         }
-        untracked_files(root)
-            .unwrap_or_else(|| regular_files(root))
+        if let Some(error) = &self.baseline_error {
+            return Err(tool(format!(
+                "workspace ownership baseline is incomplete: {error}",
+            )));
+        }
+        let observed = match untracked_files(root).map_err(tool)? {
+            Some(files) => files,
+            None => regular_files(root).map_err(tool)?,
+        };
+        Ok(observed
             .into_iter()
             .filter(|path| {
                 !self.baseline.contains(path)
                     && !self.directly_created.contains(path)
                     && !self.command_created.contains(path)
             })
-            .collect()
+            .collect())
     }
 
     /// Records regular files that appeared while one harness-owned command was executing.
@@ -74,10 +102,12 @@ impl WorkspaceOwnership {
         &mut self,
         root: &Path,
         unowned_before: &BTreeSet<PathBuf>,
-    ) {
-        for path in self.unowned_files(root).difference(unowned_before) {
+    ) -> Result<(), DeveloperLoopError> {
+        let unowned_after = self.unowned_files(root)?;
+        for path in unowned_after.difference(unowned_before) {
             self.command_created.insert(path.clone());
         }
+        Ok(())
     }
 
     /// Records a new file created through the explicit text-write tool.
@@ -107,66 +137,99 @@ impl WorkspaceOwnership {
         {
             return Ok(());
         }
+        if let Some(error) = &self.baseline_error {
+            return Err(tool(format!(
+                "refusing removal because the starting workspace ownership inventory was incomplete: {error}",
+            )));
+        }
         Err(tool(
-            "refusing to remove a file that appeared after this product run began; it may be externally produced evidence, so preserve it unless the user starts a new run that explicitly requests its removal",
+            "refusing to remove a file that appeared after this product run began without exact current user-request authority for this path and preimage",
         ))
     }
 }
 
-fn untracked_files(root: &Path) -> Option<BTreeSet<PathBuf>> {
-    let workspace = root.canonicalize().ok()?;
-    let repository = Command::new("git")
+fn untracked_files(root: &Path) -> Result<Option<BTreeSet<PathBuf>>, String> {
+    let workspace = root
+        .canonicalize()
+        .map_err(|error| format!("canonicalize workspace ownership root: {error}"))?;
+    let Ok(repository) = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .current_dir(root)
         .output()
-        .ok()?;
+    else {
+        return Ok(None);
+    };
     if !repository.status.success() {
-        return None;
+        return Ok(None);
     }
-    let repository = std::str::from_utf8(&repository.stdout).ok()?;
-    let repository = Path::new(repository.trim_end_matches(['\r', '\n'])).canonicalize().ok()?;
+    let repository = trim_line_end(&repository.stdout);
+    if repository.is_empty() {
+        return Err("Git returned an empty repository root during ownership inventory".to_owned());
+    }
+    let repository = native_git_path(repository)?
+        .canonicalize()
+        .map_err(|error| format!("canonicalize Git ownership root: {error}"))?;
     if repository != workspace {
-        return None;
+        return Ok(None);
     }
     let output = Command::new("git")
         .args(["ls-files", "--others", "-z"])
         .current_dir(root)
         .output()
-        .ok()?;
+        .map_err(|error| format!("run Git ownership inventory: {error}"))?;
     if !output.status.success() {
-        return None;
+        return Err(format!(
+            "Git ownership inventory failed with status {}",
+            output.status,
+        ));
     }
     let mut files = BTreeSet::new();
     for encoded in output.stdout.split(|byte| *byte == 0).filter(|path| !path.is_empty()) {
-        let Ok(relative) = std::str::from_utf8(encoded) else {
-            continue;
-        };
-        let path = root.join(relative);
-        if path.is_file() {
+        let relative = native_git_path(encoded)?;
+        if relative.is_absolute()
+            || relative.components().any(|component| {
+                matches!(
+                    component,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
+        {
+            return Err("Git ownership inventory returned a path outside the workspace".to_owned());
+        }
+        let path = root.join(&relative);
+        let metadata = fs::symlink_metadata(&path).map_err(|error| {
+            format!("inspect Git ownership entry {}: {error}", relative.display())
+        })?;
+        if metadata.is_file() {
             files.insert(path);
         }
     }
-    Some(files)
+    Ok(Some(files))
 }
 
-fn regular_files(root: &Path) -> BTreeSet<PathBuf> {
+fn regular_files(root: &Path) -> Result<BTreeSet<PathBuf>, String> {
     let mut files = BTreeSet::new();
     let mut pending = vec![root.to_path_buf()];
     while let Some(directory) = pending.pop() {
-        let Ok(children) = fs::read_dir(directory) else {
-            continue;
-        };
-        for child in children.flatten() {
+        let children = fs::read_dir(&directory).map_err(|error| {
+            format!("read ownership directory {}: {error}", directory.display())
+        })?;
+        for child in children {
+            let child = child.map_err(|error| {
+                format!("read ownership entry below {}: {error}", directory.display())
+            })?;
             let path = child.path();
-            let Ok(relative) = path.strip_prefix(root) else {
-                continue;
-            };
+            let relative = path.strip_prefix(root).map_err(|_| {
+                format!("ownership entry escaped workspace root: {}", path.display())
+            })?;
             if protected_metadata(relative) {
                 continue;
             }
-            let Ok(kind) = child.file_type() else {
-                continue;
-            };
+            let kind = child.file_type().map_err(|error| {
+                format!("inspect ownership entry {}: {error}", path.display())
+            })?;
             if kind.is_dir() {
                 pending.push(path);
             } else if kind.is_file() {
@@ -174,7 +237,28 @@ fn regular_files(root: &Path) -> BTreeSet<PathBuf> {
             }
         }
     }
-    files
+    Ok(files)
+}
+
+fn trim_line_end(mut bytes: &[u8]) -> &[u8] {
+    while bytes.last().is_some_and(|byte| matches!(*byte, b'\r' | b'\n')) {
+        bytes = &bytes[..bytes.len() - 1];
+    }
+    bytes
+}
+
+#[cfg(unix)]
+fn native_git_path(encoded: &[u8]) -> Result<PathBuf, String> {
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt as _};
+
+    Ok(PathBuf::from(OsString::from_vec(encoded.to_vec())))
+}
+
+#[cfg(not(unix))]
+fn native_git_path(encoded: &[u8]) -> Result<PathBuf, String> {
+    String::from_utf8(encoded.to_vec())
+        .map(PathBuf::from)
+        .map_err(|_| "Git ownership inventory returned a path that is not native text".to_owned())
 }
 
 #[cfg(test)]
@@ -206,10 +290,12 @@ mod tests {
         ownership.record_direct_creation(&direct, false);
         assert!(ownership.ensure_removable(&direct).is_ok());
 
-        let unowned_before = ownership.unowned_files(workspace.path());
+        let unowned_before = ownership.unowned_files(workspace.path()).expect("pre-command scan");
         let command_output = workspace.path().join("generated-report.txt");
         fs::write(&command_output, "result\n").expect("command output");
-        ownership.record_command_creations(workspace.path(), &unowned_before);
+        ownership
+            .record_command_creations(workspace.path(), &unowned_before)
+            .expect("post-command scan");
         assert!(ownership.ensure_removable(&command_output).is_ok());
         assert!(ownership.ensure_removable(&external).is_err());
 
@@ -230,10 +316,12 @@ mod tests {
         let mut ownership = WorkspaceOwnership::capture(&workspace);
         let external = workspace.join("late-external.log");
         fs::write(&external, "preserve\n").expect("external evidence");
-        let unowned_before = ownership.unowned_files(&workspace);
+        let unowned_before = ownership.unowned_files(&workspace).expect("pre-command scan");
         let command_output = workspace.join("generated-report.txt");
         fs::write(&command_output, "result\n").expect("command output");
-        ownership.record_command_creations(&workspace, &unowned_before);
+        ownership
+            .record_command_creations(&workspace, &unowned_before)
+            .expect("post-command scan");
 
         assert!(ownership.ensure_removable(&command_output).is_ok());
         assert!(ownership.ensure_removable(&external).is_err());

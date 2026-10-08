@@ -117,11 +117,11 @@ impl WorkspaceDeveloperTools {
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
                     Err(error) => return Err(tool(error.to_string())),
                 }
-                if result.get("kind").and_then(Value::as_str) == Some("directory_tree") {
+                if result.get("transaction").and_then(Value::as_str).is_some() {
                     let state_root = self
                         .removal_transactions
                         .as_deref()
-                        .ok_or_else(|| tool("writable tools have no recursive removal state"))?;
+                        .ok_or_else(|| tool("writable tools have no durable removal state"))?;
                     for (path, kind) in removal::recovery_checkpoints(state_root, result)? {
                         self.prepared_mutations.push(PreparedMutation {
                             path,
@@ -260,12 +260,18 @@ impl WorkspaceDeveloperTools {
                 state_root,
                 &transaction,
                 &self.grounding,
-                &self.ownership,
                 &self.access_policy,
                 view,
                 arguments,
             )?;
             let checkpoints = prepared.checkpoints();
+            if let Some(scope) = &self.in_place_scope {
+                for (path, _) in &checkpoints {
+                    scope
+                        .authorize_current_preimage(path)
+                        .map_err(|error| tool(error.to_string()))?;
+                }
+            }
             for (path, kind) in checkpoints {
                 if prepared.checkpoint_required() {
                     self.checkpoint_before_mutation(&path, kind);
@@ -310,6 +316,51 @@ impl WorkspaceDeveloperTools {
             return Err(tool("workspace_remove requires one regular file or empty directory"));
         }
         self.grounding.ensure_mutation_allowed(relative, true).map_err(tool)?;
+        if removal::explicit_authority(arguments) {
+            let transaction = self
+                .receipts
+                .as_mut()
+                .ok_or_else(|| tool("writable tools have no effect receipt ledger"))?
+                .pending_effect_identity()?;
+            let state_root = self
+                .removal_transactions
+                .as_deref()
+                .ok_or_else(|| tool("writable tools have no authorized removal state"))?;
+            let view = self
+                .protection_view
+                .as_deref()
+                .ok_or_else(|| tool("workspace_remove has no live user authority"))?;
+            let prepared = removal::prepare_authorized_file(
+                &self.root,
+                state_root,
+                &transaction,
+                &self.grounding,
+                &self.access_policy,
+                view,
+                arguments,
+            )?;
+            let checkpoints = prepared.checkpoints();
+            if let Some(scope) = &self.in_place_scope {
+                for (path, _) in &checkpoints {
+                    scope
+                        .authorize_current_preimage(path)
+                        .map_err(|error| tool(error.to_string()))?;
+                }
+            }
+            for (path, kind) in checkpoints {
+                if prepared.checkpoint_required() {
+                    self.checkpoint_before_mutation(&path, kind);
+                }
+                self.prepared_mutations.push(PreparedMutation {
+                    path,
+                    kind,
+                    owned_postchange: CheckpointFileVersion::Absent,
+                    baseline: None,
+                });
+            }
+            self.prepared_removal = Some(prepared);
+            return Ok(());
+        }
         self.ownership.ensure_removable(&path)?;
         self.checkpoint_before_mutation(relative, WorkspaceMutationKind::File);
         self.prepared_mutations.push(PreparedMutation {
