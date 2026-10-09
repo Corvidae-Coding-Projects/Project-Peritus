@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4232,
-        "tip_oid": "13b03ae5d7212f63e2ee42dffacc905d52a002c1",
-        "prefix_sha256": "4daf8b889825252c0c6e57cc1443a6834a0c94523611ebb128a651a7d9dd0ef6"
+        "sequence": 4233,
+        "tip_oid": "35f4cb421c780aaace6f6162c6f2413bfabf0033",
+        "prefix_sha256": "387263404acd49c43972439936987b59d222250db93005b5e26efa19d46a536a"
       },
       "NWAR": {
         "sequence": 39,
@@ -26285,12 +26285,13 @@
       "display_id": 189,
       "title": "[L090] Output retention is a finite prefix, and its displayed tail freezes after quota exhaustion",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L090.\n\n- `supervisor/io.rs:244-259` limits accepted output by both each stream's remaining bytes and the **shared aggregate spool allowance**. `output.rs:96-107` counts the remainder as dropped; only accepted bytes enter spools, events, and the retained window.\n- For L083's ContinueIncomplete policy, the command keeps running after its **8 MiB shared output prefix** is full. Its **512 KiB displayed window** is a tail of that accepted prefix, not a continually updated tail of all observed output (`output/window.rs:27-48`). Late build/test errors can therefore disappear from both retained artifacts and the current view.\n- The **16,384-event caller window** evicts oldest events (`events.rs:155-160`). Resource sample events share this window with output/lifecycle events. Eviction itself does not stop execution, and a caller-selected event-wait duration only ends an observation wait (`control.rs:155-171`). Event sequence/counters saturate at u64 representation limits.\n- Spool publication retains terminal accounting on failure and supports explicit retry (`supervisor/artifact.rs:17-52`), but collapses underlying archive/quota errors into generic publication errors (`80-96`). Its 16-KiB copy/hash buffers are streaming buffers, not total-byte limits.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:19:08.215834636Z",
-      "updated_at": "2026-10-09T01:41:58.920663547Z",
+      "updated_at": "2026-10-09T05:48:09.621553542Z",
+      "closed_at": "2026-10-09T05:48:09.618416300Z",
       "labels": [
         "daily-driving-limiter"
       ],
