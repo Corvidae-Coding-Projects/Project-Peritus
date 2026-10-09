@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4266,
-        "tip_oid": "650e382606b1ae6d3dd29fe993381c7bedba2cbd",
-        "prefix_sha256": "95037c724facf1efd2a77445ed432c0230f65c6cddee99abade9f64bc214af95"
+        "sequence": 4267,
+        "tip_oid": "248698973ad1c49dd42da56b55cfcbec3a7c8d64",
+        "prefix_sha256": "e1c6255ca98adee7a5bc9a4c3f30a82f7caf7d4461a995c3e16c4b1558599d56"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3348,
+  "next_comment_id": 3349,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T09:30:06.539510577Z",
+      "updated_at": "2026-10-09T09:33:00.831836330Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42917,6 +42917,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAgd0WCOzyWkjQAIznJldsXNT1hV8CNiK6daG/El4lD8G8ShCmeqLeZ6TgKF/XeThJ6/30pDJye5EC+UbAL0NSBw=="
+        },
+        "fbfdf8ef-d8ba-44d1-b8b3-8355987c7a47": {
+          "display_id": 3348,
+          "author": "6ME5",
+          "content": "[action] Published signed A10 2d8ad67ededf9273e89d09264fc6919d0c561570 and I10 90ff9494c9e62cf6195f95d47691b1f219290258; exact reviewed C11 source, actual ACTOR11 approval,132freshgates/nativepair/H0/Foundation194 complete. Both phase exact-base verify-trust/all and independent fulltree/signature/history audits PASS. Main tracked-clean,194untracked byte/mode preserved; no merge. PR115 open draft baseauthorization/pcr-0010. Atomic reopen/basePATCH produced stale09:28 workflow payload despite liveAPIcurrentbase; actualbootstrap caughtI9base,9staleruns captured+forcecancelled,neverpassed. StableA/Iclose/reopen09:31:19 triggered ONLY finalIDs37911810026dist/10034GateA/10087browser/10004Foundation/10085bug/10121product/10116H0. Freshmergec055238 exactparentsA/I tree680504f. Waiting rawbootstrapenvA/policy and all562jobs expected fullfanout inclProduct162. No observed finalfailures. All30selectedissuesclosed;599L529partialopen103parentopen157obligationsinprogress.",
+          "created_at": "2026-10-09T09:33:00.822097237Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA7x1MYQZoa/AbFzNAvtyGjPq5VJMt8pl8q943iqqKymyR0r32AnPn6Pk4N9zYZsx4ndq2C4VSEk33Uc3PsPh2Ag=="
         },
         "fe2bc865-1a50-485e-ac4d-7cad1cdb91d5": {
           "display_id": 2147,
