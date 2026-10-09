@@ -13,6 +13,13 @@ use peritus_types::{
 };
 
 pub fn checked_plan(extra_rules: Vec<FilesystemRule>) -> CheckedSandboxPlan {
+    checked_plan_with_limits(extra_rules, limits(100))
+}
+
+pub fn checked_plan_with_limits(
+    extra_rules: Vec<FilesystemRule>,
+    resources: ResourceLimits,
+) -> CheckedSandboxPlan {
     let mut rules = extra_rules;
     rules.push(
         FilesystemRule::new(
@@ -39,7 +46,6 @@ pub fn checked_plan(extra_rules: Vec<FilesystemRule>) -> CheckedSandboxPlan {
         )
         .unwrap(),
     );
-    let resources = limits(100);
     let terminal_limits =
         TerminalLimits::new(None, ResourceQuantity::new(32), ResourceQuantity::new(100)).unwrap();
     let contract = SandboxContract::new(

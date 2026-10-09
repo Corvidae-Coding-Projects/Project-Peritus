@@ -81,7 +81,6 @@ pub fn publish_claimed_report(
             "publication state, claim, artifact, report, or journal position differs",
         ));
     }
-    artifact_store.verify(artifact.artifact_digest()).map_err(artifact_error)?;
     let evidence_id = report_evidence_id(report)?;
     let causes = report.report().supersedes().into_iter().collect::<Vec<_>>();
     let draft = EvidenceDraft::new(
@@ -95,8 +94,13 @@ pub fn publish_claimed_report(
         causes,
     )
     .map_err(evidence_error)?;
-    let export = journal.integrity_export().map_err(journal_error)?;
-    let evidence = evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?;
+    let evidence =
+        if let Some(committed) = evidence_store.committed_retry(&draft).map_err(evidence_error)? {
+            committed
+        } else {
+            let export = journal.integrity_export().map_err(journal_error)?;
+            evidence_store.admit(draft, &export, artifact_store).map_err(evidence_error)?
+        };
     let publication = PublicationRecord::new(
         report.id(),
         artifact.artifact_digest().sha256(),
@@ -138,14 +142,6 @@ fn binding(detail: &'static str) -> DebuggerError {
         DebuggerOperation::PublishEvidence,
         DebuggerRecovery::Quarantine,
         detail,
-    )
-}
-fn artifact_error(error: impl core::fmt::Display) -> DebuggerError {
-    DebuggerError::new(
-        DebuggerErrorKind::Artifact,
-        DebuggerOperation::PublishArtifact,
-        DebuggerRecovery::Reconcile,
-        error.to_string(),
     )
 }
 fn evidence_error(error: impl core::fmt::Display) -> DebuggerError {

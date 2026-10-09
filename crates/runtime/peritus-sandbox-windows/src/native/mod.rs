@@ -60,10 +60,10 @@ fn verify_helper_identity(manifest: &HelperManifest) -> Result<(), WindowsError>
     let executable = std::env::current_exe().map_err(|_| {
         crate::error::io(crate::WindowsOperation::Activate, "helper path cannot be inspected")
     })?;
-    let bytes = std::fs::read(executable).map_err(|_| {
-        crate::error::io(crate::WindowsOperation::Activate, "helper image cannot be read")
+    let image = crate::probe::inspect_helper_image(&executable, &mut || true).map_err(|_| {
+        crate::error::io(crate::WindowsOperation::Activate, "helper image cannot be verified")
     })?;
-    if peritus_codec::sha256(&bytes) != manifest.helper_digest() {
+    if image.digest() != manifest.helper_digest() {
         return Err(crate::error::mismatch(
             crate::WindowsErrorKind::PreparationMismatch,
             "running helper image differs from the probed identity",

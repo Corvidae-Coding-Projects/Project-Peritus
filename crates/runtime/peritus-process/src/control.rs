@@ -240,31 +240,7 @@ impl ProcessControl {
         offset: u64,
         maximum_bytes: usize,
     ) -> Result<(u64, Vec<u8>), ProcessError> {
-        let name = match stream {
-            crate::OutputStream::Stdout => "stdout.spool",
-            crate::OutputStream::Stderr => "stderr.spool",
-            crate::OutputStream::Terminal => "terminal.spool",
-        };
-        let path = self.spool_directory.join(name);
-        let mut file =
-            File::open(&path).map_err(|_| output_error("process output spool cannot be opened"))?;
-        let total = file
-            .metadata()
-            .map_err(|_| output_error("process output spool metadata cannot be read"))?
-            .len();
-        if offset > total {
-            return Err(output_error("process output range begins past the retained stream"));
-        }
-        file.seek(SeekFrom::Start(offset))
-            .map_err(|_| output_error("process output spool range cannot be positioned"))?;
-        let remaining = total - offset;
-        let count =
-            usize::try_from(remaining.min(u64::try_from(maximum_bytes).unwrap_or(u64::MAX)))
-                .map_err(|_| output_error("process output range size cannot be represented"))?;
-        let mut bytes = vec![0; count];
-        file.read_exact(&mut bytes)
-            .map_err(|_| output_error("process output spool range cannot be read"))?;
-        Ok((total, bytes))
+        read_spool_range(&self.spool_directory, stream, offset, maximum_bytes)
     }
 
     /// Returns the terminal result after publication.
@@ -298,6 +274,38 @@ impl ProcessControl {
             ),
         })
     }
+}
+
+pub(crate) fn read_spool_range(
+    directory: &std::path::Path,
+    stream: crate::OutputStream,
+    offset: u64,
+    maximum_bytes: usize,
+) -> Result<(u64, Vec<u8>), ProcessError> {
+    let name = match stream {
+        crate::OutputStream::Stdout => "stdout.spool",
+        crate::OutputStream::Stderr => "stderr.spool",
+        crate::OutputStream::Terminal => "terminal.spool",
+    };
+    let path = directory.join(name);
+    let mut file =
+        File::open(&path).map_err(|_| output_error("process output spool cannot be opened"))?;
+    let total = file
+        .metadata()
+        .map_err(|_| output_error("process output spool metadata cannot be read"))?
+        .len();
+    if offset > total {
+        return Err(output_error("process output range begins past the retained stream"));
+    }
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|_| output_error("process output spool range cannot be positioned"))?;
+    let remaining = total - offset;
+    let count = usize::try_from(remaining.min(u64::try_from(maximum_bytes).unwrap_or(u64::MAX)))
+        .map_err(|_| output_error("process output range size cannot be represented"))?;
+    let mut bytes = vec![0; count];
+    file.read_exact(&mut bytes)
+        .map_err(|_| output_error("process output spool range cannot be read"))?;
+    Ok((total, bytes))
 }
 
 const fn output_error(detail: &'static str) -> ProcessError {

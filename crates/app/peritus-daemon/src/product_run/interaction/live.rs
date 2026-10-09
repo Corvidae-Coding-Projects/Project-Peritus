@@ -235,6 +235,22 @@ impl DeveloperInteraction for LiveConversation {
                 .unwrap_or_else(|| "the previous persistence operation failed".to_owned());
             return Err(port_internal("read the governing conversation", &detail));
         }
+        let start = record.interaction.workbench.clone();
+        let provider = record.request.providers().writer();
+        let model = record.interaction.models.writer().clone();
+        drop(records);
+        self.service
+            .refresh_request_files(&start, provider, &model)
+            .map_err(|error| port_error("capture selected source snapshot", error))?;
+        let records = self.service.inner.records.read().map_err(|_| {
+            port_internal(
+                "read the governing conversation",
+                "the product-run record lock was poisoned",
+            )
+        })?;
+        let record = records.get(&self.run_id).ok_or_else(|| {
+            port_internal("read the governing conversation", "the product-run record was not found")
+        })?;
         self.service
             .record_input(record)
             .map_err(|error| port_error("read the governing conversation", error))

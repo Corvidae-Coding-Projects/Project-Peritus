@@ -1,13 +1,17 @@
 //! Deterministic Windows capability probe and support intersection.
 
-use std::path::{Path, PathBuf};
+use std::{
+    io::Read as _,
+    path::{Path, PathBuf},
+};
 
-use peritus_sandbox::{FeatureSet, SandboxFeature};
+use peritus_sandbox::{CheckedSandboxPlan, FeatureSet, SandboxFeature};
 use peritus_types::Sha256Digest;
+use sha2::{Digest as _, Sha256};
 
 use crate::{
-    EnforcementLevel, TokenProfile, WindowsError, WindowsErrorKind, WindowsOperation,
-    WindowsRecovery,
+    EnforcementLevel, ResourceControlPlan, TokenProfile, WindowsError, WindowsErrorKind,
+    WindowsOperation, WindowsRecovery,
 };
 
 /// Minimum supported Windows build for 11 24H2 and Server 2025.
@@ -118,6 +122,7 @@ impl ProbeEvidence {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProbeRequest {
     helper_path: PathBuf,
+    acl_probe_root: Option<PathBuf>,
     token_profile: TokenProfile,
     managed_filter_digest: Option<Sha256Digest>,
 }
@@ -138,13 +143,30 @@ impl ProbeRequest {
         if managed_filter_digest == Some(Sha256Digest::new([0; 32])) {
             return Err(probe_error("managed network filter digest cannot be zero"));
         }
-        Ok(Self { helper_path, token_profile, managed_filter_digest })
+        Ok(Self { helper_path, acl_probe_root: None, token_profile, managed_filter_digest })
+    }
+
+    /// Selects a private absolute root for a reversible ACL save/grant/restore qualification.
+    ///
+    /// # Errors
+    /// Rejects a relative probe root.
+    pub fn with_acl_probe_root(mut self, acl_probe_root: PathBuf) -> Result<Self, WindowsError> {
+        if !acl_probe_root.is_absolute() {
+            return Err(probe_error("ACL capability probe root must be absolute"));
+        }
+        self.acl_probe_root = Some(acl_probe_root);
+        Ok(self)
     }
 
     /// Returns the helper path.
     #[must_use]
     pub fn helper_path(&self) -> &Path {
         &self.helper_path
+    }
+
+    #[cfg(target_os = "windows")]
+    pub(crate) fn acl_probe_root(&self) -> Option<&Path> {
+        self.acl_probe_root.as_deref()
     }
 
     /// Returns exact token/AppContainer configuration.
@@ -177,7 +199,11 @@ impl WindowsProbe {
         if evidence.helper_digest.is_some() != evidence.helper
             || (evidence.app_container_sid_exact && !evidence.app_container)
             || (evidence.kill_on_close && !evidence.job_object)
+            || (evidence.deny_network && !evidence.app_container_sid_exact)
             || (evidence.managed_network && !evidence.deny_network)
+            || [1_usize, 2, 6].into_iter().any(|index| {
+                evidence.resources[index] == EnforcementLevel::Hard && !evidence.job_object
+            })
         {
             return Err(probe_error("Windows probe evidence is internally inconsistent"));
         }
@@ -191,12 +217,27 @@ impl WindowsProbe {
     /// # Errors
     /// Returns a typed error only for inconsistent native observations.
     pub fn run(request: &ProbeRequest) -> Result<Self, WindowsError> {
+        Self::run_cancellable(request, || true)
+    }
+
+    /// Executes native probes while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns a typed error for cancellation or inconsistent native observations.
+    pub fn run_cancellable(
+        request: &ProbeRequest,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<Self, WindowsError> {
         #[cfg(target_os = "windows")]
-        let evidence = crate::native::probe::run(request)?;
+        let evidence = crate::native::probe::run(request, &mut should_continue)?;
         #[cfg(not(target_os = "windows"))]
         let evidence = {
             let _ = request;
-            ProbeEvidence::unsupported()
+            if should_continue() {
+                ProbeEvidence::unsupported()
+            } else {
+                return Err(probe_cancelled());
+            }
         };
         Self::from_evidence(evidence)
     }
@@ -224,17 +265,161 @@ impl WindowsProbe {
     pub fn core_supported(&self) -> bool {
         let evidence = &self.evidence;
         evidence.platform
-            && evidence.architecture
             && evidence.os_build.is_some_and(|build| build >= MINIMUM_WINDOWS_BUILD)
+            && evidence.architecture
             && evidence.helper
+            && evidence.helper_digest.is_some()
             && evidence.restricted_token
             && evidence.low_integrity
-            && evidence.job_object
-            && evidence.kill_on_close
-            && evidence.acl
-            && evidence.reparse
-            && evidence.inherited_handle_list
-            && evidence.deny_network
+    }
+
+    pub(crate) fn selected_controls(
+        &self,
+        plan: &CheckedSandboxPlan,
+        profile: &TokenProfile,
+    ) -> Result<SelectedNativeControls, WindowsError> {
+        if !self.core_supported() {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "Windows platform, architecture, helper, token, or low-integrity evidence is unavailable",
+            ));
+        }
+        let missing = plan.required_features().missing_from(self.supported_features());
+        if missing.iter().next().is_some() {
+            return Err(WindowsError::new(
+                WindowsErrorKind::UnsupportedHost,
+                WindowsOperation::Prepare,
+                WindowsRecovery::ConfigureHost,
+                format!(
+                    "selected Windows controls unavailable: {:?}",
+                    missing.iter().collect::<Vec<_>>()
+                ),
+            ));
+        }
+        if plan.required_features().contains(SandboxFeature::NetworkDeny)
+            && !profile.is_app_container()
+        {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "selected network denial requires an exact AppContainer identity",
+            ));
+        }
+        let resources = ResourceControlPlan::select_checked_plan(plan, self.evidence.resources)?;
+        let network = if plan.requirements().network().is_empty() {
+            SelectedNetworkControl::DenyAll
+        } else {
+            SelectedNetworkControl::ManagedWfp
+        };
+        let terminal = if plan.required_features().contains(SandboxFeature::Pty) {
+            SelectedTerminalControl::ConPty
+        } else {
+            SelectedTerminalControl::Pipes
+        };
+        Ok(SelectedNativeControls {
+            network,
+            terminal,
+            credential_delivery: !plan.requirements().secrets().is_empty(),
+            resources,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct SelectedNativeControls {
+    network: SelectedNetworkControl,
+    terminal: SelectedTerminalControl,
+    credential_delivery: bool,
+    resources: ResourceControlPlan,
+}
+
+impl SelectedNativeControls {
+    pub(crate) const fn managed_network(self) -> bool {
+        matches!(self.network, SelectedNetworkControl::ManagedWfp)
+    }
+
+    pub(crate) const fn conpty(self) -> bool {
+        matches!(self.terminal, SelectedTerminalControl::ConPty)
+    }
+
+    pub(crate) const fn credential_delivery(self) -> bool {
+        self.credential_delivery
+    }
+
+    pub(crate) const fn resources(self) -> ResourceControlPlan {
+        self.resources
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SelectedNetworkControl {
+    DenyAll,
+    ManagedWfp,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SelectedTerminalControl {
+    Pipes,
+    ConPty,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct HelperImageEvidence {
+    digest: Sha256Digest,
+    bytes: u64,
+}
+
+impl HelperImageEvidence {
+    pub(crate) const fn digest(self) -> Sha256Digest {
+        self.digest
+    }
+
+    pub(crate) const fn bytes(self) -> u64 {
+        self.bytes
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum HelperImageFailure {
+    Cancelled,
+    Unavailable,
+    Changed,
+}
+
+pub(crate) fn inspect_helper_image(
+    path: &Path,
+    should_continue: &mut dyn FnMut() -> bool,
+) -> Result<HelperImageEvidence, HelperImageFailure> {
+    let mut file = std::fs::File::open(path).map_err(|_| HelperImageFailure::Unavailable)?;
+    let metadata = file.metadata().map_err(|_| HelperImageFailure::Unavailable)?;
+    let expected = metadata.len();
+    if !metadata.is_file() || expected == 0 {
+        return Err(HelperImageFailure::Unavailable);
+    }
+    let mut digest = Sha256::new();
+    let mut bytes = 0_u64;
+    let mut buffer = vec![0_u8; 64 * 1_024];
+    loop {
+        if !should_continue() {
+            return Err(HelperImageFailure::Cancelled);
+        }
+        let count = file.read(&mut buffer).map_err(|_| HelperImageFailure::Unavailable)?;
+        if count == 0 {
+            let final_length = file.metadata().map_err(|_| HelperImageFailure::Unavailable)?.len();
+            if bytes != expected || final_length != expected {
+                return Err(HelperImageFailure::Changed);
+            }
+            return Ok(HelperImageEvidence {
+                digest: Sha256Digest::new(digest.finalize().into()),
+                bytes,
+            });
+        }
+        bytes = bytes
+            .checked_add(u64::try_from(count).map_err(|_| HelperImageFailure::Changed)?)
+            .ok_or(HelperImageFailure::Changed)?;
+        if bytes > expected {
+            return Err(HelperImageFailure::Changed);
+        }
+        digest.update(&buffer[..count]);
     }
 }
 
@@ -256,56 +441,69 @@ pub const fn production_resource_levels() -> [EnforcementLevel; 8] {
 fn supported_features(evidence: &ProbeEvidence) -> FeatureSet {
     let mut features = FeatureSet::empty();
     let baseline = evidence.platform
-        && evidence.architecture
         && evidence.os_build.is_some_and(|build| build >= MINIMUM_WINDOWS_BUILD)
+        && evidence.architecture
         && evidence.helper
+        && evidence.helper_digest.is_some()
         && evidence.restricted_token
-        && evidence.low_integrity
-        && evidence.app_container
-        && evidence.app_container_sid_exact
-        && evidence.job_object
-        && evidence.kill_on_close
-        && evidence.acl
-        && evidence.reparse
-        && evidence.inherited_handle_list
-        && evidence.deny_network;
+        && evidence.low_integrity;
     if !baseline {
         return features;
     }
-    for feature in [
-        SandboxFeature::FilesystemDiscover,
-        SandboxFeature::FilesystemMetadata,
-        SandboxFeature::FilesystemRead,
-        SandboxFeature::FilesystemExecute,
-        SandboxFeature::FilesystemCreate,
-        SandboxFeature::FilesystemWrite,
-        SandboxFeature::FilesystemRemove,
-        SandboxFeature::ProcessRoot,
-        SandboxFeature::ProcessDescendants,
-        SandboxFeature::ProcessSignals,
-        SandboxFeature::ProcessTree,
-        SandboxFeature::EnvironmentClear,
-        SandboxFeature::EnvironmentAllowList,
-        SandboxFeature::NetworkDeny,
-        SandboxFeature::Pipes,
-        SandboxFeature::Stdin,
-    ] {
-        features.insert(feature);
-    }
-    for (index, feature) in RESOURCE_FEATURES.into_iter().enumerate() {
-        if evidence.resources[index] != EnforcementLevel::Unsupported {
+    if evidence.acl && evidence.reparse {
+        for feature in [
+            SandboxFeature::FilesystemDiscover,
+            SandboxFeature::FilesystemMetadata,
+            SandboxFeature::FilesystemRead,
+            SandboxFeature::FilesystemExecute,
+            SandboxFeature::FilesystemCreate,
+            SandboxFeature::FilesystemWrite,
+            SandboxFeature::FilesystemRemove,
+        ] {
             features.insert(feature);
         }
     }
-    if evidence.conpty {
+    if evidence.job_object && evidence.kill_on_close && evidence.inherited_handle_list {
+        for feature in [
+            SandboxFeature::ProcessRoot,
+            SandboxFeature::ProcessDescendants,
+            SandboxFeature::ProcessSignals,
+            SandboxFeature::ProcessTree,
+        ] {
+            features.insert(feature);
+        }
+    }
+    for feature in [SandboxFeature::EnvironmentClear, SandboxFeature::EnvironmentAllowList] {
+        features.insert(feature);
+    }
+    if evidence.inherited_handle_list {
+        features.insert(SandboxFeature::Pipes);
+        features.insert(SandboxFeature::Stdin);
+    }
+    if evidence.app_container && evidence.app_container_sid_exact && evidence.deny_network {
+        features.insert(SandboxFeature::NetworkDeny);
+    }
+    for (index, feature) in RESOURCE_FEATURES.into_iter().enumerate() {
+        if matches!(
+            evidence.resources[index],
+            EnforcementLevel::Hard | EnforcementLevel::Supervisor
+        ) {
+            features.insert(feature);
+        }
+    }
+    if evidence.conpty && evidence.inherited_handle_list {
         features.insert(SandboxFeature::Pty);
         features.insert(SandboxFeature::TerminalResize);
         features.insert(SandboxFeature::TerminalSignals);
     }
-    if evidence.managed_network {
+    if evidence.managed_network
+        && evidence.app_container
+        && evidence.app_container_sid_exact
+        && evidence.deny_network
+    {
         features.insert(SandboxFeature::NetworkEgress);
     }
-    if evidence.credential_manager {
+    if evidence.credential_manager && evidence.inherited_handle_list {
         features.insert(SandboxFeature::SecretEnvironment);
         features.insert(SandboxFeature::SecretFile);
         features.insert(SandboxFeature::SecretHandle);
@@ -361,4 +559,43 @@ fn probe_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::ConfigureHost,
         detail,
     )
+}
+
+pub(crate) fn probe_cancelled() -> WindowsError {
+    probe_error("native capability probe was cancelled by its caller")
+}
+
+#[cfg(test)]
+mod stream_tests {
+    use super::{HelperImageFailure, inspect_helper_image};
+    #[test]
+    fn helper_stream_matches_digest_and_stops_for_cancellation_or_growth() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("helper");
+        let bytes = vec![0x35; 200_003];
+        std::fs::write(&path, &bytes).unwrap();
+        let evidence = inspect_helper_image(&path, &mut || true).unwrap();
+        assert_eq!(evidence.digest(), peritus_codec::sha256(&bytes));
+        assert_eq!(evidence.bytes(), 200_003);
+        let mut calls = 0;
+        assert_eq!(
+            inspect_helper_image(&path, &mut || {
+                calls += 1;
+                calls < 3
+            }),
+            Err(HelperImageFailure::Cancelled)
+        );
+        assert_eq!(calls, 3);
+        let mut altered = false;
+        assert_eq!(
+            inspect_helper_image(&path, &mut || {
+                if !altered {
+                    std::fs::write(&path, vec![0x35; 200_004]).unwrap();
+                    altered = true;
+                }
+                true
+            }),
+            Err(HelperImageFailure::Changed)
+        );
+    }
 }

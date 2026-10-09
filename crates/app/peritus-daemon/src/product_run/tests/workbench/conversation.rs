@@ -201,9 +201,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             service
                 .continue_workbench_execution(
                     ActorId::new([99; 16]).expect("actor"),
-                    peritus_app_protocol::WorkbenchContinuation::new(
+                    peritus_app_protocol::WorkbenchContinuation::bound(
                         query(workspace),
-                        ProductInteractionMode::Plan
+                        ProductInteractionMode::Plan,
+                        input.operation()
                     )
                 )
                 .await,
@@ -212,9 +213,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
         let continued = service
             .continue_workbench_execution(
                 actor(),
-                peritus_app_protocol::WorkbenchContinuation::new(
+                peritus_app_protocol::WorkbenchContinuation::bound(
                     query(workspace),
                     ProductInteractionMode::Plan,
+                    input.operation(),
                 ),
             )
             .await;
@@ -224,9 +226,10 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
             service
                 .continue_workbench_execution(
                     actor(),
-                    peritus_app_protocol::WorkbenchContinuation::new(
+                    peritus_app_protocol::WorkbenchContinuation::bound(
                         query(workspace),
-                        ProductInteractionMode::Plan
+                        ProductInteractionMode::Plan,
+                        input.operation()
                     )
                 )
                 .await,
@@ -282,6 +285,64 @@ fn selected_conversation_continues_receipted_input_without_legacy_admission() {
                 .phase(),
             ProductRunPhase::Cancelled
         );
+        assert!(
+            matches!(
+                service
+                    .continue_workbench_execution(
+                        actor(),
+                        peritus_app_protocol::WorkbenchContinuation::bound(
+                            query(workspace),
+                            ProductInteractionMode::Build,
+                            input.operation()
+                        )
+                    )
+                    .await,
+                AppResponsePayload::Error(_)
+            ),
+            "same operation cannot authorize a different launch mode"
+        );
+        assert_eq!(
+            service.inner.records.read().expect("records")[&run].message_launches,
+            vec![(input.operation().into_bytes(), ProductInteractionMode::Plan.tag())]
+        );
         service.shutdown(Duration::from_secs(5)).await;
+        drop(service);
+        let recovered = super::service(
+            state.path(),
+            repository.path(),
+            workspace,
+            [&writer, &reviewer, &fixer],
+        );
+        let controls = crate::product_control::ControlStore::open(
+            &state.path().join("workbench-v1"),
+            peritus_journal::StoreId::new([0x7f; 16]).expect("store"),
+        )
+        .expect("reopen controls");
+        let records = crate::product_run::persistence::load_workbench_records(
+            &state.path().join("workbench-v1"),
+            Some(&controls),
+        )
+        .expect("recover run projections");
+        *recovered.inner.controls.lock().expect("controls") = Some(controls);
+        *recovered.inner.records.write().expect("records") = records;
+        assert_eq!(
+            recovered.inner.records.read().expect("recovered records")[&run].message_launches,
+            vec![(input.operation().into_bytes(), ProductInteractionMode::Plan.tag())]
+        );
+        let replayed = recovered
+            .continue_workbench_execution(
+                actor(),
+                peritus_app_protocol::WorkbenchContinuation::bound(
+                    query(workspace),
+                    ProductInteractionMode::Plan,
+                    input.operation(),
+                ),
+            )
+            .await;
+        assert!(matches!(replayed, AppResponsePayload::Interaction(_)), "{replayed:?}");
+        assert_eq!(writer.requests.lock().expect("requests").len(), 2);
+        recovered.shutdown(Duration::from_secs(5)).await;
     });
 }
+
+mod bound;

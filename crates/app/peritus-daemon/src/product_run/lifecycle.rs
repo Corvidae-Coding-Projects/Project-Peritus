@@ -123,6 +123,15 @@ impl ProductRunService {
         run_id: RunId,
         goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
     ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
+        self.retry_bound(run_id, goal_resume, None).await
+    }
+
+    pub(super) async fn retry_bound(
+        &self,
+        run_id: RunId,
+        goal_resume: Option<&peritus_product_runner::control::ControlOperation>,
+        message: Option<([u8; 16], u16)>,
+    ) -> Result<ProductRunSnapshot, ProductRunServiceError> {
         let (request, root, providers, cancelled, token, finding_state, resume, snapshot) = {
             let mut records =
                 self.inner.records.write().map_err(|_| ProductRunServiceError::Unavailable)?;
@@ -132,6 +141,31 @@ impl ProductRunService {
                 .request
                 .workspace_id();
             let record = records.get(&run_id).expect("checked product run exists");
+            if let Some((id, mode)) = message
+                && let Some((_, original_mode)) =
+                    record.message_launches.iter().find(|(original, _)| *original == id)
+            {
+                if *original_mode != mode {
+                    return Err(ProductRunServiceError::InvalidMessage);
+                }
+                return Ok(record.snapshot.clone());
+            }
+            // Record selection and the durable queue must stay unchanged until the launch
+            // marker is persisted. Other paths already take these locks in record -> control order.
+            let message_controls = if let Some((id, mode)) = message {
+                if goal_resume.is_some() || record.interaction.mode.tag() != mode {
+                    return Err(ProductRunServiceError::InvalidState);
+                }
+                let controls =
+                    self.inner.controls.lock().map_err(|_| ProductRunServiceError::Unavailable)?;
+                let store = controls.as_ref().ok_or(ProductRunServiceError::NotFound)?;
+                if !Self::bound_message_pending(store, &record.interaction.workbench, id)? {
+                    return Err(ProductRunServiceError::InvalidState);
+                }
+                Some(controls)
+            } else {
+                None
+            };
             let explicit_goal = if let Some(operation) = goal_resume {
                 if !self.goal_resume_pending(record, operation)? {
                     return Ok(record.snapshot.clone());
@@ -151,7 +185,7 @@ impl ProductRunService {
             let record = records.get_mut(&run_id).expect("checked product run exists");
             let pending_chat = (record.snapshot.phase() == ProductRunPhase::WaitingForUser
                 || record.snapshot.phase() == ProductRunPhase::Complete)
-                && self.pending_record_input(record)?;
+                && (message_controls.is_some() || self.pending_record_input(record)?);
             let explicit_idle = explicit_goal
                 && matches!(
                     record.snapshot.phase(),
@@ -175,6 +209,9 @@ impl ProductRunService {
             if let Some(operation) = goal_resume {
                 record.goal_resume = Some(operation.id());
             }
+            if let Some(message) = message {
+                record.message_launches.push(message);
+            }
             record.cancelled = Arc::clone(&cancelled);
             record.user_cancelled = false;
             record.provider_cancellation = token.clone();
@@ -187,6 +224,7 @@ impl ProductRunService {
                 *record = previous;
                 return Err(error);
             }
+            drop(message_controls);
             (
                 record.request.clone(),
                 root,

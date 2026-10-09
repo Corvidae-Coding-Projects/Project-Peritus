@@ -31,6 +31,185 @@ impl CommandRuntime {
         Ok(PreviewLaunch { handle: started.handle, process_id: started.process_id })
     }
 
+    /// Persists the exact owner binding through the caller before any native launch effect.
+    ///
+    /// # Errors
+    /// Rejects admission or registration failures without launching an unregistered process.
+    pub fn launch_preview_registered(
+        &self,
+        command: &PreviewCommand,
+        register: &mut dyn FnMut(crate::PreviewOwner) -> Result<(), String>,
+    ) -> Result<PreviewLaunch, ProductRunnerError> {
+        let mut registration = |owner: super::NativeCommandOwner| {
+            register(crate::PreviewOwner::new(
+                owner.source_run,
+                owner.execution_run,
+                owner.action,
+                owner.process,
+            ))
+            .map_err(super::tool)
+        };
+        let mut request = start_command(command);
+        request.owner_registered = Some(&mut registration);
+        let started =
+            self.start_owned(request).map_err(|error| preview_error(error.to_string()))?;
+        Ok(PreviewLaunch { handle: started.handle, process_id: started.process_id })
+    }
+
+    /// Reconnects a saved binding without replaying its launch or claiming missing terminal evidence.
+    ///
+    /// # Errors
+    /// Rejects mismatched runtime identity, conflicting ownership, or unreadable native evidence.
+    pub fn reconnect_preview(
+        &self,
+        owner: crate::PreviewOwner,
+    ) -> Result<PreviewLaunch, ProductRunnerError> {
+        let native = super::NativeCommandOwner {
+            source_run: owner.source_run(),
+            execution_run: owner.execution_run(),
+            action: owner.action(),
+            process: owner.process(),
+        };
+        self.attach_native_owner(native).map_err(|error| preview_error(error.to_string()))?;
+        Ok(PreviewLaunch {
+            handle: super::identity::action_hex(owner.action()),
+            process_id: owner.process(),
+        })
+    }
+
+    /// Observes exact native completion independently from optional artifact publication.
+    ///
+    /// Output is read separately from the durable spool. A publication failure is retained as
+    /// progress information and cannot erase verified process exit, cleanup, or spool facts.
+    ///
+    /// # Errors
+    /// Rejects mismatched owners or unreadable native ownership evidence.
+    pub fn observe_retained_preview(
+        &self,
+        owner: crate::PreviewOwner,
+    ) -> Result<PreviewObservation, ProductRunnerError> {
+        use peritus_process::{
+            OsExitObservation, RecoveryDisposition, TerminalDisposition, TerminalRecovery,
+        };
+        if owner.source_run() != self.inner.run_id {
+            return Err(preview_error("preview belongs to another runtime"));
+        }
+        let handle = super::identity::action_hex(owner.action());
+        let active_owner = {
+            let state = self
+                .inner
+                .state
+                .lock()
+                .map_err(|_| preview_error("command runtime is poisoned"))?;
+            state.active.get(&handle).map(|active| active.plan.identity()).map(|identity| {
+                identity.run_id() == owner.execution_run()
+                    && identity.action_id() == owner.action()
+                    && identity.process_id() == owner.process()
+            })
+        };
+        if active_owner == Some(false) {
+            return Err(preview_error("preview differs from the active native owner"));
+        }
+        // Polling joins the original C4 owner when it finishes. Its artifact publication policy
+        // is independent of this spool-backed observer, so preserve that diagnostic separately.
+        let mut probe = peritus_process::NativeProcessProbe::new();
+        let mut exact = self
+            .inner
+            .process_store
+            .observe_exact(owner.execution_run(), owner.action(), owner.process(), &mut probe)
+            .map_err(|error| preview_error(error.to_string()))?;
+        let mut observation = PreviewObservation {
+            state: PreviewProcessState::Indeterminate,
+            stdout: String::new(),
+            stderr: String::new(),
+            exit_code: None,
+            progress: Vec::new(),
+        };
+        let mut draining = false;
+        if active_owner == Some(true) {
+            match self.poll(&handle) {
+                Ok(value) => {
+                    draining = value.get("state").and_then(Value::as_str) == Some("running");
+                }
+                Err(error) => observation
+                    .progress
+                    .push(format!("Command projection requires recovery: {error}")),
+            }
+            exact = self
+                .inner
+                .process_store
+                .observe_exact(owner.execution_run(), owner.action(), owner.process(), &mut probe)
+                .map_err(|error| preview_error(error.to_string()))?;
+        }
+        match exact.disposition() {
+            RecoveryDisposition::LiveOwned => observation.state = PreviewProcessState::Running,
+            RecoveryDisposition::Terminal => {
+                let terminal = self
+                    .inner
+                    .process_store
+                    .terminal_result(owner.process())
+                    .map_err(|error| preview_error(error.to_string()))?;
+                if let OsExitObservation::Code(code) = terminal.os_exit() {
+                    observation.exit_code = Some(i64::from(*code));
+                }
+                if terminal.tree_cleanup_complete()
+                    && terminal.support_tasks_joined()
+                    && terminal.recovery() != TerminalRecovery::Indeterminate
+                {
+                    observation.state = match terminal.disposition() {
+                        TerminalDisposition::Exited if observation.exit_code == Some(0) => {
+                            PreviewProcessState::Succeeded
+                        }
+                        TerminalDisposition::Cancelled => PreviewProcessState::Cancelled,
+                        TerminalDisposition::TimedOut => PreviewProcessState::TimedOut,
+                        TerminalDisposition::RecoveryIndeterminate => {
+                            PreviewProcessState::Indeterminate
+                        }
+                        _ => PreviewProcessState::Failed,
+                    };
+                }
+                if !terminal.artifact_publication_complete() {
+                    observation.progress.push("Artifact publication incomplete; exact output remains in the retained process spool".into());
+                }
+            }
+            RecoveryDisposition::AbsentUnobserved | RecoveryDisposition::Indeterminate => {
+                if draining {
+                    observation.state = PreviewProcessState::Running;
+                }
+            }
+        }
+        Ok(observation)
+    }
+
+    /// Reads exact retained spool bytes even when the observing application has restarted.
+    ///
+    /// # Errors
+    /// Rejects changed bindings, missing spools, or a range outside the observed stream.
+    pub fn retained_preview_range(
+        &self,
+        owner: crate::PreviewOwner,
+        stream: OutputStream,
+        offset: u64,
+        maximum_bytes: usize,
+    ) -> Result<crate::PreviewOutputRange, ProductRunnerError> {
+        if owner.source_run() != self.inner.run_id {
+            return Err(preview_error("preview belongs to another runtime"));
+        }
+        let (total_bytes, bytes) = self
+            .inner
+            .process_store
+            .spooled_stream_range_exact(
+                owner.execution_run(),
+                owner.action(),
+                owner.process(),
+                stream,
+                offset,
+                maximum_bytes,
+            )
+            .map_err(|error| preview_error(error.to_string()))?;
+        Ok(crate::PreviewOutputRange { total_bytes, digest: None, bytes })
+    }
+
     /// Polls the exact preview without transferring ownership or starting another process.
     ///
     /// # Errors
@@ -357,10 +536,6 @@ mod tests {
             );
             thread::sleep(Duration::from_millis(10));
         };
-        // Raw Windows previews use pipes; Unix previews own a PTY terminal stream.
-        #[cfg(windows)]
-        let stream = OutputStream::Stdout;
-        #[cfg(not(windows))]
         let stream = if interactive { OutputStream::Terminal } else { OutputStream::Stdout };
         let live_range = runtime
             .preview_output_range(launch.process_id(), stream, readiness_offset, 9)
@@ -392,8 +567,9 @@ mod tests {
                 .expect("live miss")
         );
         if interactive {
+            let input = if cfg!(windows) { b"MOVE_RIGHT\r\n".as_slice() } else { b"MOVE_RIGHT\n" };
             let observation =
-                runtime.interact_preview(&launch, b"MOVE_RIGHT\n".to_vec()).expect("interaction");
+                runtime.interact_preview(&launch, input.to_vec()).expect("interaction");
             assert_eq!(observation.state(), PreviewProcessState::Running);
             // Observe the child's response even when interact_preview consumed the acknowledgement.
             wait_for_output(&runtime, &launch, "OBSERVED MOVE_RIGHT state=1");

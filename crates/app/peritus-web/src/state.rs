@@ -3,7 +3,6 @@
 use crate::{
     config::{Options, Preferences},
     error::{Result, problem},
-    terminal::Terminal,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -50,6 +49,10 @@ pub struct Workspace {
     pub(crate) projects: Vec<Project>,
     pub(crate) sessions: Vec<Session>,
     pub(crate) operations: BTreeMap<String, Operation>,
+    #[serde(default)]
+    pub(crate) commands: BTreeMap<String, crate::processes::SavedCommand>,
+    #[serde(default)]
+    pub(crate) consoles: BTreeMap<String, crate::consoles::SavedConsole>,
     pub(crate) attachments: BTreeMap<String, crate::files::attachments::Attachment>,
 }
 pub struct App {
@@ -57,7 +60,9 @@ pub struct App {
     pub(crate) port: u16,
     pub(crate) token: String,
     pub(crate) workspace: Mutex<Workspace>,
-    pub(crate) terminals: Mutex<BTreeMap<String, Arc<Terminal>>>,
+    pub(crate) directories: crate::files::DirectoryCache,
+    pub(crate) processes: Mutex<BTreeMap<String, Arc<crate::processes::ManagedCommand>>>,
+    pub(crate) owned_operations: Arc<Mutex<std::collections::BTreeSet<String>>>,
     locks: Mutex<BTreeMap<String, Weak<tokio::sync::Mutex<()>>>>,
 }
 pub fn hex(bytes: &[u8]) -> String {
@@ -116,7 +121,9 @@ impl App {
             port,
             token: id()?,
             workspace: Mutex::new(workspace),
-            terminals: Mutex::new(BTreeMap::new()),
+            directories: crate::files::DirectoryCache::default(),
+            processes: Mutex::new(BTreeMap::new()),
+            owned_operations: Arc::default(),
             locks: Mutex::new(BTreeMap::new()),
         };
         if app.snapshot()?.projects.is_empty() {
@@ -352,3 +359,25 @@ fn quarantine_malformed_state(path: &Path) {
 
 #[cfg(test)]
 mod tests;
+
+/// Keeps a detached HTTP mutation observable while prelaunch queries are still running.
+pub struct OperationOwner {
+    operations: Arc<Mutex<std::collections::BTreeSet<String>>>,
+    id: String,
+}
+impl OperationOwner {
+    pub(crate) fn new(app: &App, id: &str) -> Result<Self> {
+        let operations = Arc::clone(&app.owned_operations);
+        if !operations.lock().map_err(problem)?.insert(id.to_owned()) {
+            return Err(problem("Operation already has a live execution owner"));
+        }
+        Ok(Self { operations, id: id.to_owned() })
+    }
+}
+impl Drop for OperationOwner {
+    fn drop(&mut self) {
+        if let Ok(mut operations) = self.operations.lock() {
+            operations.remove(&self.id);
+        }
+    }
+}

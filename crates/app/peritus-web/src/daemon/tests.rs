@@ -10,8 +10,7 @@ use peritus_app_protocol::{
     ProductInteractionSnapshot, ProductRunControlAction, ProductRunLegalControls,
     ProductRunOperation, ProductRunOperationKind, ProductRunOperationState, ProductRunPhase,
     ServerCapabilities, WorkbenchCommand, WorkbenchExecutionState, WorkbenchIntent,
-    WorkbenchQueueIntent, WorkbenchReceipt, WorkbenchSnapshot, decode_app_message,
-    encode_app_message, negotiate,
+    WorkbenchReceipt, WorkbenchSnapshot, decode_app_message, encode_app_message, negotiate,
 };
 use peritus_codec::HEADER_LEN;
 use peritus_types::SessionId;
@@ -111,7 +110,8 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
     )
     .unwrap();
     let session = app.snapshot().unwrap().sessions[0].clone();
-    std::fs::write(root.join("attached.txt"), "Immutable attachment snapshot").unwrap();
+    std::fs::write(root.join("attached.txt"), "Immutable attachment snapshot λ界\n".repeat(12_000))
+        .unwrap();
     let attachment=crate::files::attachments::stage(&app,&json!({"session":session.id,"project":app.snapshot().unwrap().projects[0].id,"path":"attached.txt"})).unwrap();
     std::fs::write(root.join("attached.txt"), "Later disk edits must not leak into this message")
         .unwrap();
@@ -132,9 +132,18 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
     );
     let server = tokio::spawn(async move {
         let mut execution_queries = 0;
+        let mut imported = Vec::new();
         loop {
             let (mut stream, envelope) = receive_request(&listener).await;
             let payload = match envelope.payload() {
+                AppRequestPayload::BeginWorkbenchFileUpload(_) => {
+                    imported = receive_snapshot_batch(&mut stream, envelope, 2).await;
+                    assert!(imported[0].1.starts_with(b"Fixture message"));
+                    assert!(imported[0].1.len() > 300_000);
+                    assert!(imported[1].1.starts_with(b"Immutable attachment snapshot"));
+                    assert!(imported[1].1.len() > 300_000);
+                    continue;
+                }
                 AppRequestPayload::DaemonStatus => AppResponsePayload::DaemonStatus(
                     peritus_app_protocol::DaemonStatus::new(
                         peritus_app_protocol::DaemonReadiness::ReadyReadWrite,
@@ -199,15 +208,11 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
                             assert_eq!(command.expected_revision(), 0);
                             1
                         }
-                        WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input)) => {
+                        WorkbenchIntent::EnqueueMessageBundle { text, message, attachments } => {
                             assert_eq!(command.expected_revision(), 1);
-                            assert!(
-                                input.text().as_str().starts_with("Fixture message — unchanged")
-                            );
-                            assert!(
-                                input.text().as_str().contains("Immutable attachment snapshot")
-                            );
-                            assert!(!input.text().as_str().contains("Later disk edits"));
+                            assert!(text.as_str().contains("user_message"));
+                            assert_eq!(message.as_ref(), Some(&imported[0].0));
+                            assert_eq!(attachments, &vec![imported[1].0.clone()]);
                             2
                         }
                         WorkbenchIntent::StartExecution(settings) => {
@@ -294,7 +299,7 @@ async fn native_message_uses_durable_conversation_queue_and_execution_receipts()
     });
     let operation = crate::state::id().unwrap();
     let input = json!({
-        "operation":operation,"session":session.id, "text":"Fixture message — unchanged", "mode":"build",
+        "operation":operation,"session":session.id, "text":format!("Fixture message — unchanged {}", "λ界 exact instructions\n".repeat(20_000)), "mode":"build",
         "attachments":[attachment["id"].clone()],
         "providers":{"writer":"","reviewer":hex(reviewer.as_bytes()),"fixer":""},
         "models":{
@@ -382,4 +387,67 @@ async fn read_only_or_draining_connection_is_not_mutation_ready() {
         assert_eq!(observed["ready"], false);
         server.await.unwrap();
     }
+}
+
+async fn receive_snapshot_batch(
+    stream: &mut UnixStream,
+    mut request: peritus_app_protocol::AppRequestEnvelope,
+    count: usize,
+) -> Vec<(peritus_app_protocol::WorkbenchFileImportPreview, Vec<u8>)> {
+    let mut snapshots = Vec::new();
+    let mut bytes = Vec::new();
+    loop {
+        let payload = match request.payload() {
+            AppRequestPayload::BeginWorkbenchFileUpload(_) => {
+                bytes.clear();
+                AppResponsePayload::Acknowledged(
+                    peritus_app_protocol::OperationAcknowledgement::new(request.request_id()),
+                )
+            }
+            AppRequestPayload::UploadArtifactChunk(chunk) => {
+                assert_eq!(chunk.offset(), bytes.len() as u64);
+                bytes.extend_from_slice(chunk.bytes());
+                AppResponsePayload::Acknowledged(
+                    peritus_app_protocol::OperationAcknowledgement::new(request.request_id()),
+                )
+            }
+            AppRequestPayload::CompleteArtifactUpload(_) => AppResponsePayload::Acknowledged(
+                peritus_app_protocol::OperationAcknowledgement::new(request.request_id()),
+            ),
+            AppRequestPayload::PreviewWorkbenchFileImport(selected) => {
+                assert_eq!(selected.file().bytes(), bytes.len() as u64);
+                assert_eq!(
+                    selected.file().digest().as_bytes(),
+                    &<[u8; 32]>::from(Sha256::digest(&bytes))
+                );
+                let preview = peritus_app_protocol::WorkbenchFileImportPreview::new(
+                    selected.clone(),
+                    1,
+                    "fixture-writer".into(),
+                )
+                .unwrap();
+                snapshots.push((preview.clone(), bytes.clone()));
+                AppResponsePayload::WorkbenchFileImportPreview(preview)
+            }
+            other => panic!("unexpected transfer payload {other:?}"),
+        };
+        write_message(
+            stream,
+            AppMessage::Response(AppResponseEnvelope::new(
+                request.context(),
+                request.request_id(),
+                request.correlation_id(),
+                payload,
+            )),
+        )
+        .await;
+        if snapshots.len() == count {
+            break;
+        }
+        let AppMessage::Request(next) = read_message(stream).await else {
+            panic!("upload request")
+        };
+        request = next;
+    }
+    snapshots
 }

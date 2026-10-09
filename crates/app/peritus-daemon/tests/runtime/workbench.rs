@@ -59,6 +59,10 @@ async fn connect(
                 .expect("brief feature"),
             ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchImages)
                 .expect("images feature"),
+            ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchReferencedText)
+                .expect("referenced messages"),
+            ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchQueueMoves)
+                .expect("queue moves"),
             ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchFiles)
                 .expect("files feature"),
         ]

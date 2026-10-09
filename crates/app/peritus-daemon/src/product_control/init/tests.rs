@@ -1,6 +1,6 @@
 use super::*;
 
-fn request() -> InitDiscoveryRequest {
+pub(super) fn request() -> InitDiscoveryRequest {
     InitDiscoveryRequest::new(
         peritus_app_protocol::WorkbenchQuery::new(
             peritus_app_protocol::ConversationId::new([0x31; 16]).expect("conversation"),
@@ -99,4 +99,25 @@ fn decline_and_prepare_are_no_effects_and_an_intervening_edit_rejects_without_ov
         b"independent user edit\n"
     );
     assert!(!root.path().join("provider-or-script-invoked").exists());
+}
+
+#[test]
+fn fixed_source_discovery_and_prepare_enforce_the_current_read_policy() {
+    let root = tempfile::tempdir().expect("workspace");
+    let original = write_fixture(root.path());
+    let proposal = discover_init(root.path(), request()).expect("initial unrestricted inspection");
+    let policy = |path: &str| path != "AGENTS.md";
+    let error = discover_init_checked(root.path(), request(), &policy).expect_err("denied read");
+    assert_eq!(error.code(), AppErrorCode::ReadOnly);
+    let error = prepare_init_patch_checked(
+        root.path(),
+        request().query().workspace(),
+        Generation::first(),
+        RevisionNumber::first(),
+        &proposal,
+        &policy,
+    )
+    .expect_err("no reuse of inspection under a now-denied policy");
+    assert_eq!(error.code(), AppErrorCode::ReadOnly);
+    assert_eq!(fs::read(root.path().join("AGENTS.md")).expect("unchanged"), original);
 }

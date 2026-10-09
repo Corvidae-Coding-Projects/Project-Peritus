@@ -3,8 +3,7 @@
 use super::primitive::{invalid, read_digest, unknown, write_digest};
 use crate::{
     InitCommand, InitCommandKind, InitCommandVerification, InitDiscoveryRequest, InitFileMode,
-    InitInstructionPatch, InitProposal, InitSourceKind, InitSourceObservation, MAX_INIT_DIFF_BYTES,
-    MAX_INIT_INSTRUCTION_BYTES,
+    InitInstructionPatch, InitProposal, InitSourceKind, InitSourceObservation,
 };
 use peritus_codec::{CanonicalReader, CanonicalWriter, CodecError, CodecErrorKind, CodecLimits};
 
@@ -121,11 +120,8 @@ fn write_patch(
 fn read_patch(reader: &mut CanonicalReader<'_>) -> Result<InitInstructionPatch, CodecError> {
     let offset = reader.offset();
     let path = bounded_string(reader, 4096, offset)?;
-    let original_content = if reader.read_option_tag()? {
-        Some(bounded_string(reader, MAX_INIT_INSTRUCTION_BYTES, offset)?)
-    } else {
-        None
-    };
+    let original_content =
+        if reader.read_option_tag()? { Some(reader.read_str()?.to_owned()) } else { None };
     let precondition_digest =
         if reader.read_option_tag()? { Some(read_digest(reader)?) } else { None };
     let precondition_bytes = reader.read_u64()?;
@@ -134,8 +130,8 @@ fn read_patch(reader: &mut CanonicalReader<'_>) -> Result<InitInstructionPatch, 
         2 => InitFileMode::Executable,
         _ => return unknown(offset),
     };
-    let proposed_content = bounded_string(reader, MAX_INIT_INSTRUCTION_BYTES, offset)?;
-    let diff = bounded_string(reader, MAX_INIT_DIFF_BYTES, offset)?;
+    let proposed_content = reader.read_str()?.to_owned();
+    let diff = reader.read_str()?.to_owned();
     invalid(
         offset,
         InitInstructionPatch::new(

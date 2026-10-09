@@ -16,18 +16,41 @@ pub struct Console {
     pub title: String,
     pub suggestion: String,
 }
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SavedConsole {
+    pub(crate) console: Console,
+    pub(crate) closed: bool,
+}
 pub fn list(app: &App) -> Result<Value> {
-    let terminals = app.terminals.lock().map_err(problem)?;
+    crate::processes::reap(app)?;
+    let consoles = app.snapshot()?.consoles;
     Ok(json!(
-        terminals
+        consoles
             .values()
-            .map(|terminal| {
-                let mut value = serde_json::to_value(&terminal.console)?;
-                value["ended"] = json!(terminal.finished()?);
+            .filter(|saved| !saved.closed)
+            .map(|saved| {
+                let mut value = serde_json::to_value(&saved.console)?;
+                match Terminal::get(app, &saved.console.id).and_then(|terminal| terminal.finished())
+                {
+                    Ok(ended) => value["ended"] = json!(ended),
+                    Err(error) => {
+                        value["ended"] = json!(false);
+                        value["error"] = json!(error.to_string());
+                    }
+                }
                 Ok(value)
             })
             .collect::<Result<Vec<_>>>()?
     ))
+}
+pub fn close(app: &App, id: &str) -> Result<Value> {
+    let terminal = Terminal::get(app, id)?;
+    terminal.close()?;
+    app.update(|state| {
+        state.consoles.get_mut(id).ok_or_else(|| problem("Console not found"))?.closed = true;
+        Ok(())
+    })?;
+    Ok(json!({"closed":true}))
 }
 pub fn start(app: &App, input: &Value) -> Result<Value> {
     let project = input["project"].as_str().ok_or_else(|| problem("Choose a project"))?;
@@ -54,7 +77,9 @@ pub fn start(app: &App, input: &Value) -> Result<Value> {
         id: id()?,
         project: project.into(),
         session: None,
-        title: input["title"].as_str().unwrap_or("CLI command").chars().take(120).collect(),
+        title: crate::sessions::title(input["title"].as_str().unwrap_or("CLI command"))?
+            .as_str()
+            .to_owned(),
         suggestion: String::new(),
     };
     Terminal::start(app, console.clone(), args)?;
@@ -80,7 +105,7 @@ pub fn workbench(app: &App, input: &Value) -> Result<Value> {
         id: id()?,
         project: project.id,
         session: Some(session.id),
-        title: format!("Harness · {}", session.title),
+        title: crate::sessions::title(&session.title)?.as_str().to_owned(),
         suggestion: suggestion.into(),
     };
     Terminal::start(app, console.clone(), args)?;

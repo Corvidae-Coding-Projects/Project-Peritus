@@ -125,10 +125,16 @@ fn brief_fixtures_roundtrip_every_field_and_require_the_independent_feature() {
             case.payload
         );
         if let AppMessage::Request(request) = message {
-            assert_eq!(
-                request.payload().required_workbench_feature(),
-                Some(WellKnownProtocolFeature::WorkbenchBrief)
-            );
+            let feature = if matches!(
+                request.payload(),
+                AppRequestPayload::QueryWorkbenchBriefPage(_)
+                    | AppRequestPayload::QueryWorkbenchBriefProposal(_)
+            ) {
+                WellKnownProtocolFeature::WorkbenchBriefPages
+            } else {
+                WellKnownProtocolFeature::WorkbenchBrief
+            };
+            assert_eq!(request.payload().required_workbench_feature(), Some(feature));
             if let AppRequestPayload::WorkbenchCommand(command) = request.payload() {
                 assert_eq!(
                     AppRequestPayload::QueryWorkbenchReceipt(command.clone())
@@ -139,5 +145,5 @@ fn brief_fixtures_roundtrip_every_field_and_require_the_independent_feature() {
         }
         count += 1;
     }
-    assert_eq!(count, 6);
+    assert_eq!(count, 10);
 }

@@ -1131,12 +1131,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
+name = "futures"
+version = "0.3.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a31d2a3fbaaeb2af2368bbdd904aa8e812d3c04a1ee10d3171f52d556e5d0a3"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1f9e3d69d39e4862ffed03ed071a76f9a13ba1d9109d355b0f0aa6b15e393c4"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -1144,6 +1160,17 @@ name = "futures-core"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92d699e522242e69e3003b94ecc1f960f3a5e015aa7c5d7486e65ad01dd94f5e"
+
+[[package]]
+name = "futures-executor"
+version = "0.3.34"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "031b47cf1a3c6cc8bc2fc76cd437f521619387907d469316e7c0bc278f1f5432"
+dependencies = [
+ "futures-core",
+ "futures-task",
+ "futures-util",
+]
 
 [[package]]
 name = "futures-io"
@@ -1193,6 +1220,7 @@ version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
+ "futures-channel",
  "futures-core",
  "futures-io",
  "futures-macro",
@@ -2542,6 +2570,7 @@ dependencies = [
 name = "peritus-evidence"
 version = "0.0.5"
 dependencies = [
+ "fs4",
  "peritus-artifact-store",
  "peritus-codec",
  "peritus-journal",
@@ -2714,6 +2743,7 @@ dependencies = [
  "peritus-tui",
  "peritus-types",
  "peritus-workspace",
+ "process-wrap",
  "reqwest",
  "serde_json",
  "sha2 0.11.0",
@@ -2721,6 +2751,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tokio",
  "toml",
+ "windows-sys 0.61.2",
  "zeroize",
 ]
 
@@ -3354,6 +3385,7 @@ dependencies = [
  "peritus-sandbox",
  "peritus-secrets",
  "peritus-types",
+ "sha2 0.11.0",
  "tempfile",
  "vstd",
  "windows-sys 0.61.2",
@@ -3632,8 +3664,9 @@ dependencies = [
  "peritus-app-protocol",
  "peritus-codec",
  "peritus-local-socket",
+ "peritus-process",
+ "peritus-product-runner",
  "peritus-types",
- "portable-pty",
  "serde",
  "serde_json",
  "sha2 0.11.0",
@@ -3830,8 +3863,10 @@ version = "9.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e842efad9119158434d193c6682e2ebee4b44d6ad801d7b349623b3f57cdf55"
 dependencies = [
+ "futures",
  "indexmap",
  "nix 0.31.3",
+ "tokio",
  "windows",
 ]
 

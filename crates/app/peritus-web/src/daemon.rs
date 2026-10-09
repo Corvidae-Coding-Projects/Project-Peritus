@@ -115,6 +115,7 @@ pub fn facts(app: &App, project: &Project) -> Result<Value> {
 }
 
 mod chat;
+mod chat_upload;
 mod conversation;
 pub mod improvements;
 mod readiness;
@@ -132,6 +133,7 @@ struct PreparedChat {
     mode: ProductInteractionMode,
     models: ProductRoleModels,
     text: String,
+    attachments: Vec<crate::files::attachments::Attachment>,
 }
 
 async fn request(app: &App, payload: AppRequestPayload) -> Result<AppResponsePayload> {
@@ -211,7 +213,8 @@ impl PreparedChat {
             },
             "mode":format!("{:?}",self.mode).to_lowercase(),
             "models":model_values(&self.models),
-            "text":self.text
+            "text":self.text,
+            "attachments":self.attachments
         })
     }
     fn from_retained(value: &Value) -> Result<Self> {
@@ -259,6 +262,11 @@ impl PreparedChat {
                     .ok_or_else(|| problem("Incomplete prepared message mode"))?,
             )?,
             models: role_models(&value["models"])?,
+            attachments: value
+                .get("attachments")
+                .map(|value| serde_json::from_value(value.clone()))
+                .transpose()?
+                .unwrap_or_default(),
             text: value["text"]
                 .as_str()
                 .ok_or_else(|| problem("Incomplete prepared message text"))?
@@ -315,7 +323,7 @@ fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
             workspace,
         ),
         run: RunId::new(bytes(&session.run)?).map_err(|e| problem(format!("{e:?}")))?,
-        title: ConversationTitle::new(session.title).map_err(problem)?,
+        title: crate::sessions::title(&session.title)?,
         providers: ProductProviderSelection::new(
             provider("writer")?,
             provider("reviewer")?,
@@ -324,6 +332,7 @@ fn prepare(app: &App, input: &Value) -> Result<PreparedChat> {
         mode,
         models: role_models(&input["models"])?,
         text: input["text"].as_str().unwrap_or("").to_owned(),
+        attachments: crate::files::attachments::selected(app, &input)?,
     })
 }
 pub async fn send(app: &App, input: &Value) -> Result<Value> {
@@ -374,24 +383,21 @@ pub async fn models(app: &App, profile: &str) -> Result<Value> {
         _ => Err(problem("Unexpected model catalog response")),
     }
 }
-pub async fn runs(app: &App) -> Result<Value> {
-    let mut values = Vec::new();
-    loop {
-        let offset = u64::try_from(values.len()).map_err(|_| problem("Run offset overflowed"))?;
-        match request(
-            app,
-            AppRequestPayload::QueryProductRunObservations(ProductRunQuery::page(offset)),
-        )
-        .await?
-        {
-            AppResponsePayload::ProductRunObservations(runs) => {
-                let complete = runs.len() < peritus_app_protocol::MAX_PRODUCT_RUN_PAGE;
-                values.extend(runs.iter().map(|run| snapshot(run.snapshot())));
-                if complete {
-                    return Ok(json!(values));
-                }
-            }
-            _ => return Err(problem("Unexpected runs response")),
+pub async fn runs(app: &App, offset: u64) -> Result<Value> {
+    match request(
+        app,
+        AppRequestPayload::QueryProductRunObservations(ProductRunQuery::page(offset)),
+    )
+    .await?
+    {
+        AppResponsePayload::ProductRunObservations(runs) => {
+            let next = (runs.len() == peritus_app_protocol::MAX_PRODUCT_RUN_PAGE)
+                .then(|| offset.checked_add(u64::try_from(runs.len()).unwrap_or(u64::MAX)))
+                .flatten();
+            Ok(
+                json!({"runs":runs.iter().map(|run| snapshot(run.snapshot())).collect::<Vec<_>>(), "next":next}),
+            )
         }
+        _ => Err(problem("Unexpected runs response")),
     }
 }

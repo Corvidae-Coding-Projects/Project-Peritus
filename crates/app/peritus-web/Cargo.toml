@@ -17,11 +17,12 @@ tower = { version = "=0.5.3", features = ["util"] }
 tower-http = { version = "=0.6.11", features = ["fs"] }
 peritus-app-client = { version = "=0.0.5", path = "../peritus-app-client" }
 peritus-app-protocol = { version = "=0.0.5", path = "../peritus-app-protocol" }
+peritus-process = { version = "=0.0.5", path = "../../runtime/peritus-process" }
+peritus-product-runner = { version = "=0.0.5", path = "../peritus-product-runner" }
 peritus-types = { version = "=0.0.5", path = "../../foundation/peritus-types" }
 peritus-local-socket = { version = "=0.0.5", path = "../../runtime/peritus-local-socket" }
 base64.workspace = true
 getrandom.workspace = true
-portable-pty.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

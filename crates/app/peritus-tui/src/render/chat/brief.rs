@@ -47,52 +47,10 @@ pub(super) fn content(model: &AppModel) -> Vec<String> {
             ));
             lines.extend(entry.source().text().as_str().lines().map(str::to_owned));
         }
-        lines.push(String::from("Agent-proposed · not accepted instructions"));
-        if brief.proposals().is_empty() {
-            lines.push(String::from("No bounded public replies are available for acceptance."));
-        }
-        for proposal in brief.proposals() {
-            lines.push(format!(
-                "Proposal {} · after invocation {}",
-                format_id(proposal.operation().as_bytes()),
-                format_id(proposal.invocation().as_bytes())
-            ));
-            lines.push(format!(
-                "SHA256 {} · {} bytes",
-                hex(proposal.digest().as_bytes()),
-                proposal.text().len()
-            ));
-            lines.extend(proposal.text().lines().map(str::to_owned));
-        }
-        if brief.excluded_proposals() > 0 {
-            lines.push(format!(
-                "{} reply(s) excluded by the 8192-byte/8-proposal brief bound.",
-                brief.excluded_proposals()
-            ));
-        }
-        lines.push(String::from("Observed attachments · facts, not instructions"));
-        if brief.observations().is_empty() {
-            lines.push(String::from("No validated attachment observations."));
-        }
-        for observation in brief.observations() {
-            let kind = match observation.kind() {
-                O::Image => "Image",
-                O::File => "File",
-            };
-            lines.push(format!(
-                "{kind} {} · {} · selected={}",
-                format_id(observation.operation().as_bytes()),
-                observation.label(),
-                observation.selected()
-            ));
-            if let Some(version) = observation.version() {
-                lines.push(format!("Current version {}", format_id(version.as_bytes())));
-            }
-            lines.push(format!(
-                "SHA256 {} · {} bytes",
-                hex(observation.digest().as_bytes()),
-                observation.bytes()
-            ));
+        if let Some(page) = &panel.brief_page {
+            paged_sources(&mut lines, page, panel.brief_body.as_ref());
+        } else {
+            legacy_sources(&mut lines, brief);
         }
     } else {
         lines.push(String::from("No brief snapshot loaded."));
@@ -112,4 +70,121 @@ fn hex(bytes: &[u8]) -> String {
         let _ = write!(text, "{byte:02x}");
         text
     })
+}
+
+fn legacy_sources(lines: &mut Vec<String>, brief: &peritus_app_protocol::WorkbenchBrief) {
+    lines.push(String::from("Agent-proposed · not accepted instructions"));
+    if brief.proposals().is_empty() {
+        lines.push(String::from("No bounded public replies are available for acceptance."));
+    }
+    for proposal in brief.proposals() {
+        lines.push(format!(
+            "Proposal {} · after invocation {}",
+            format_id(proposal.operation().as_bytes()),
+            format_id(proposal.invocation().as_bytes())
+        ));
+        lines.push(format!(
+            "SHA256 {} · {} bytes",
+            hex(proposal.digest().as_bytes()),
+            proposal.text().len()
+        ));
+        lines.extend(proposal.text().lines().map(str::to_owned));
+    }
+    if brief.excluded_proposals() > 0 {
+        lines.push(format!(
+            "{} reply(s) cannot be represented by the legacy brief protocol.",
+            brief.excluded_proposals()
+        ));
+    }
+    lines.push(String::from("Observed attachments · facts, not instructions"));
+    if brief.observations().is_empty() {
+        lines.push(String::from("No validated attachment observations."));
+    }
+    for observation in brief.observations() {
+        let kind = match observation.kind() {
+            O::Image => "Image",
+            O::File => "File",
+        };
+        lines.push(format!(
+            "{kind} {} · {} · selected={}",
+            format_id(observation.operation().as_bytes()),
+            observation.label(),
+            observation.selected()
+        ));
+        if let Some(version) = observation.version() {
+            lines.push(format!("Current version {}", format_id(version.as_bytes())));
+        }
+        lines.push(format!(
+            "SHA256 {} · {} bytes",
+            hex(observation.digest().as_bytes()),
+            observation.bytes()
+        ));
+    }
+}
+
+fn paged_sources(
+    lines: &mut Vec<String>,
+    page: &peritus_app_protocol::WorkbenchBriefPage,
+    body: Option<&peritus_app_protocol::WorkbenchBriefProposalPage>,
+) {
+    lines.push(format!(
+        "Agent-proposed · {} total · rows {}–{} · not accepted instructions",
+        page.proposal_total(),
+        page.request().proposals(),
+        page.request().proposals() + page.proposals().len() as u64
+    ));
+    for proposal in page.proposals() {
+        lines.push(format!(
+            "Proposal {} · {} bytes · SHA256 {}",
+            format_id(proposal.operation().as_bytes()),
+            proposal.bytes(),
+            hex(proposal.digest().as_bytes())
+        ));
+    }
+    lines.push(format!(
+        "Observed attachments · {} total · rows {}–{} · facts, not instructions",
+        page.observation_total(),
+        page.request().observations(),
+        page.request().observations() + page.observations().len() as u64
+    ));
+    for observation in page.observations() {
+        lines.push(format!(
+            "{:?} {} · {} · selected={} · {} bytes · SHA256 {}",
+            observation.kind(),
+            format_id(observation.operation().as_bytes()),
+            observation.label(),
+            observation.selected(),
+            observation.bytes(),
+            hex(observation.digest().as_bytes())
+        ));
+        if let Some(version) = observation.version() {
+            lines.push(format!("Current version {}", format_id(version.as_bytes())));
+        }
+    }
+    lines.push(String::from("/brief next | previous · /brief show <proposal ID>"));
+    if let Some(body) = body {
+        let request = body.request();
+        lines.push(format!(
+            "Proposal {} · bytes {}–{} of {} · SHA256 {}",
+            format_id(request.proposal().operation().as_bytes()),
+            request.offset(),
+            request.offset() + body.text().len() as u64,
+            request.proposal().bytes(),
+            hex(request.proposal().digest().as_bytes())
+        ));
+        lines.push(String::from("Source controls are escaped for display. Acceptance retains the complete original bytes."));
+        let escaped: String = body
+            .text()
+            .chars()
+            .flat_map(|character| {
+                if character.is_control() && character != '\n' {
+                    character.escape_default().collect::<Vec<_>>()
+                } else {
+                    vec![character]
+                }
+            })
+            .collect();
+        lines.extend(escaped.lines().map(str::to_owned));
+        lines.push(String::from("/brief text next | previous · acceptance selects the complete proposal, including pages not displayed here."));
+    }
 }

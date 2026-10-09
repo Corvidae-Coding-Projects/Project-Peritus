@@ -1,6 +1,6 @@
 //! Branch and remote workflows preserve Git's ordinary dirty-worktree protections.
 
-use super::{run, run_effect};
+use super::{run, run_effect_owned};
 use crate::error::{Result, problem};
 use serde_json::{Value, json};
 use std::path::Path;
@@ -85,7 +85,12 @@ fn remote_url(url: &str) -> Result<String> {
     Ok(url.into())
 }
 
-pub(super) async fn action(root: &Path, kind: &str, input: &Value) -> Result<String> {
+pub(super) async fn action(
+    root: &Path,
+    kind: &str,
+    input: &Value,
+    app: Option<&crate::state::App>,
+) -> Result<String> {
     let field = |key: &str| input[key].as_str().unwrap_or("");
     let args = match kind {
         "branch-create" => {
@@ -182,7 +187,7 @@ pub(super) async fn action(root: &Path, kind: &str, input: &Value) -> Result<Str
         }
         _ => return Err(problem("Unknown Git workflow or missing removal confirmation")),
     };
-    run_effect(root, &args).await
+    run_effect_owned(root, &args, app, input["operation"].as_str().unwrap_or("")).await
 }
 
 #[cfg(test)]

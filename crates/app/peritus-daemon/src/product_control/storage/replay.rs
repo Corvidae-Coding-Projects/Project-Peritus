@@ -87,7 +87,11 @@ impl ControlStore {
         }
         if matches!(
             operation.intent(),
-            ControlIntent::AttachFile { .. } | ControlIntent::RefreshFile { .. }
+            ControlIntent::AttachFile { .. }
+                | ControlIntent::RefreshFile { .. }
+                | ControlIntent::SubmitMessage { .. }
+                | ControlIntent::AcceptBriefProposal { .. }
+                | ControlIntent::RefreshFiles { .. }
         ) {
             return self.verify_file_archive(operation, position);
         }

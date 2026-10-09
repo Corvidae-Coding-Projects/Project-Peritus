@@ -16,6 +16,7 @@ use portable_pty::{Child, CommandBuilder, MasterPty, NativePtySystem, PtySize, P
 #[cfg(unix)]
 use process_wrap::std::{ChildWrapper, CommandWrap, ProcessSession};
 
+#[cfg(unix)]
 use crate::{
     CommandSpec, ErrorCode, ExecutionPlan, ProcessError, ProcessOperation, RecoveryClass,
     TerminalSize,
@@ -23,6 +24,7 @@ use crate::{
 #[cfg(unix)]
 use crate::{GracefulAction, OutputStream, StdinPolicy};
 
+#[cfg(unix)]
 use super::PlatformProcess;
 #[cfg(unix)]
 use super::{
@@ -30,19 +32,10 @@ use super::{
 };
 
 #[cfg(windows)]
-pub(super) fn launch(
-    _plan: &ExecutionPlan,
-    _command: &CommandSpec,
-    _handshake: Option<super::NativeHandshake<'_>>,
-    _size: TerminalSize,
-) -> Result<Box<dyn PlatformProcess>, ProcessError> {
-    Err(ProcessError::new(
-        ErrorCode::Unsupported,
-        ProcessOperation::Spawn,
-        RecoveryClass::SelectBackend,
-        "C2 local Windows PTY cannot provide complete descendant job containment",
-    ))
-}
+#[path = "pty/windows.rs"]
+mod windows;
+#[cfg(windows)]
+pub(super) use windows::launch;
 
 #[cfg(unix)]
 pub(super) fn launch(

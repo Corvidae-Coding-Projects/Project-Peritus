@@ -34,6 +34,7 @@ fn descriptor_drift_never_calls_prepare_or_consumes_authority() {
         probe: drift_probe.clone(),
         helper: native_helper_binary(),
         fail_prepare: false,
+        fail_preflight: false,
         fail_release: false,
         invalidate_prepared_observation: false,
         limit_on_poll: false,
@@ -63,6 +64,50 @@ fn descriptor_drift_never_calls_prepare_or_consumes_authority() {
         .expect("terminal");
     assert_eq!(terminal.disposition(), TerminalDisposition::Exited);
     assert_eq!(exact_probe.prepare_calls(), 1);
+}
+
+#[test]
+fn selected_capacity_rejection_preserves_the_exact_one_use_authority() {
+    let root = TestRoot::new();
+    let ids = Ids::new(212);
+    let (execution, sandbox, admission) =
+        native_plan(&root, &ids, options(Vec::new(), StdinPolicy::Closed)).unwrap();
+    let action = intent(&ids, &execution);
+    let mut journal = open_journal(&root);
+    let receipts = commit_authority(
+        &mut journal,
+        &ids,
+        &action,
+        execution.resource_policy().wall_millis().unwrap(),
+    );
+    let gateway =
+        ExecutionGateway::new(ProcessStore::open(root.registry(), root.workspace()).unwrap());
+    let request = request(&ids, &execution, &action, &receipts);
+    let probe = LifecycleProbe::new();
+    let mut backend = TestBackend::admitted(&admission, probe.clone());
+    backend.fail_preflight = true;
+    let error = launch_error(gateway.launch_with_backend(
+        &request,
+        execution.clone(),
+        &sandbox,
+        &admission,
+        backend,
+    ));
+    assert_eq!(error.code(), ErrorCode::Unsupported);
+    assert_eq!(probe.prepare_calls(), 0);
+    let terminal = gateway
+        .launch_with_backend(
+            &request,
+            execution,
+            &sandbox,
+            &admission,
+            TestBackend::admitted(&admission, probe.clone()),
+        )
+        .unwrap()
+        .wait()
+        .unwrap();
+    assert_eq!(terminal.disposition(), TerminalDisposition::Exited);
+    assert_eq!(probe.prepare_calls(), 1);
 }
 
 #[test]

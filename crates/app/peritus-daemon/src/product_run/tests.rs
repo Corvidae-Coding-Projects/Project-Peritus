@@ -236,6 +236,9 @@ fn service(
             command_recoveries: std::sync::Mutex::new(std::collections::BTreeSet::new()),
             model_catalogs: super::catalog::ModelCatalogs::default(),
             image_decodes: Arc::new(tokio::sync::Semaphore::new(2)),
+            file_reads: Arc::new(tokio::sync::Semaphore::new(2)),
+            file_previews: std::sync::Mutex::new(BTreeMap::new()),
+            file_refreshes: std::sync::Mutex::new(BTreeMap::new()),
             preview_processes: std::sync::Mutex::new(BTreeMap::new()),
             preview_capture: super::PreviewCaptureHost::discover(),
             host_permissions: super::permissions::HostPermissionCatalog::managed(

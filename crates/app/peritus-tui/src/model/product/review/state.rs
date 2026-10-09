@@ -32,7 +32,7 @@ pub struct DiffReviewUi {
     pub file: usize,
     pub hunk: usize,
     pub comment: usize,
-    pub scroll: u16,
+    pub scroll: usize,
     pub message: String,
 }
 

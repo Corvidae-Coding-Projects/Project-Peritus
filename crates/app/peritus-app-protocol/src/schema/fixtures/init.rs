@@ -86,5 +86,67 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         &request(AppRequestPayload::WorkbenchCommand(command)),
         limits,
     )?);
+    artifact_cases(&mut cases, discovery, limits)?;
     Ok(cases)
+}
+
+fn artifact_cases(
+    cases: &mut Vec<GeneratedFixtureCase>,
+    discovery: InitDiscoveryRequest,
+    limits: CodecLimits,
+) -> Result<(), CodecError> {
+    use crate::{
+        InitArtifactDiscovery, InitArtifactPage, InitArtifactPageRequest, InitArtifactProposal,
+        InitContentReference, InitSourceSelection,
+    };
+    let reference = InitContentReference::new(peritus_codec::sha256(b"manifest"), 8);
+    let review = InitContentReference::new(peritus_codec::sha256(b"review"), 6);
+    let proposal = InitArtifactProposal::new(discovery, reference, review);
+    let selected = InitArtifactDiscovery::new(
+        discovery,
+        Some(reference),
+        Some(
+            InitSourceSelection::new("tools/package.json".to_owned(), InitSourceKind::Manifest)
+                .expect("source"),
+        ),
+        None,
+    )
+    .expect("selection");
+    let page_request = InitArtifactPageRequest::new(proposal, 0, 6).expect("page request");
+    for (name, payload) in [
+        ("realistic-init-artifact-discovery", AppRequestPayload::DiscoverInitArtifacts(selected)),
+        (
+            "minimal-init-artifact-page-request",
+            AppRequestPayload::QueryInitArtifactPage(page_request),
+        ),
+        (
+            "realistic-init-artifact-apply",
+            AppRequestPayload::WorkbenchCommand(WorkbenchCommand::new(
+                id(97, ControlOperationId::new),
+                discovery.query(),
+                discovery.revision(),
+                WorkbenchIntent::ApplyInitArtifact(proposal),
+            )),
+        ),
+    ] {
+        cases.push(encoded(name, FixtureClass::Realistic, &request(payload), limits)?);
+    }
+    for (name, payload) in [
+        ("minimal-init-artifact-proposal", AppResponsePayload::InitArtifactProposal(proposal)),
+        (
+            "minimal-init-artifact-page",
+            AppResponsePayload::InitArtifactPage(
+                InitArtifactPage::new(page_request, b"review".to_vec()).expect("page"),
+            ),
+        ),
+    ] {
+        let response = AppResponseEnvelope::new(
+            context(),
+            id(94, crate::RequestId::new),
+            id(95, crate::CorrelationId::new),
+            payload,
+        );
+        cases.push(encoded(name, FixtureClass::Realistic, &response, limits)?);
+    }
+    Ok(())
 }

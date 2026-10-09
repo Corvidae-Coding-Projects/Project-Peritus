@@ -10,6 +10,8 @@ use peritus_types::Sha256Digest;
 
 #[cfg(target_os = "windows")]
 use super::{AclAccess, AclEntry, AclPlan};
+#[cfg(target_os = "windows")]
+use crate::ResolvedWindowsPath;
 use crate::WindowsError;
 #[cfg(target_os = "windows")]
 use crate::{WindowsErrorKind, WindowsOperation, WindowsRecovery};
@@ -20,11 +22,20 @@ pub struct AclTransaction {
     reversals: Vec<AclReversal>,
     state: AclState,
     restore_failed: bool,
+    #[cfg(target_os = "windows")]
+    backup_directory: Option<PathBuf>,
 }
 
 impl AclTransaction {
-    pub(super) const fn planned(digest: Sha256Digest) -> Self {
-        Self { digest, reversals: Vec::new(), state: AclState::Planned, restore_failed: false }
+    pub(crate) const fn planned(digest: Sha256Digest) -> Self {
+        Self {
+            digest,
+            reversals: Vec::new(),
+            state: AclState::Planned,
+            restore_failed: false,
+            #[cfg(target_os = "windows")]
+            backup_directory: None,
+        }
     }
 
     #[cfg(target_os = "windows")]
@@ -34,26 +45,49 @@ impl AclTransaction {
         })?;
         let mut transaction = Self::planned(plan.digest);
         transaction.state = AclState::Applied;
-        for (index, entry) in plan.entries.iter().enumerate() {
-            let native = entry.path.to_path_buf();
-            if !native.exists() {
-                let _ = transaction.restore();
-                return Err(acl_error(
-                    WindowsOperation::InstallAcl,
-                    "exact ACL target does not exist",
-                ));
+        let private_backup = reserve_backup_directory(backup_root)?;
+        transaction.backup_directory = Some(private_backup.clone());
+        let mut index = 0;
+        while index < plan.entries.len() {
+            let entry = &plan.entries[index];
+            let mut end = index + 1;
+            while end < plan.entries.len() && plan.entries[end].path == entry.path {
+                end += 1;
             }
-            let backup = backup_root.join(format!("{}-{index}.acl", hex(plan.digest.as_bytes())));
-            if let Err(error) = save_acl(&native, &backup) {
-                let _ = transaction.restore();
-                return Err(error);
-            }
+            let group = &plan.entries[index..end];
+            let (native, created) = match prepare_target(group) {
+                Ok(prepared) => prepared,
+                Err(error) => return Err(rollback_install(&mut transaction, error)),
+            };
+            let backup = private_backup.join(format!("{index}.acl"));
             let parent = native.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
-            transaction.reversals.push(AclReversal { parent, backup });
-            if let Err(error) = apply_entry(&native, &plan.principal_sid, entry) {
-                let _ = transaction.restore();
-                return Err(error);
+            transaction.reversals.push(AclReversal {
+                parent,
+                target: native.clone(),
+                backup: None,
+                discard_backup: Some(backup.clone()),
+                remove_created: created,
+            });
+            if let Err(error) = save_acl(&native, &backup) {
+                // No ACL mutation has occurred yet. A failed save may have left partial bytes.
+                return Err(rollback_install(&mut transaction, error));
             }
+            if let Some(reversal) = transaction.reversals.last_mut() {
+                reversal.discard_backup = None;
+                reversal.backup = Some(backup);
+            }
+            let mut has_allow_entry = false;
+            for entry in group {
+                let replace_grants = entry.effect == RuleEffect::Allow && !has_allow_entry;
+                if entry.effect == RuleEffect::Allow {
+                    has_allow_entry = true;
+                }
+                if let Err(error) = apply_entry(&native, &plan.principal_sid, entry, replace_grants)
+                {
+                    return Err(rollback_install(&mut transaction, error));
+                }
+            }
+            index = end;
         }
         Ok(transaction)
     }
@@ -99,8 +133,8 @@ impl AclTransaction {
         #[cfg(target_os = "windows")]
         {
             let mut failed = Vec::new();
-            for reversal in core::mem::take(&mut self.reversals).into_iter().rev() {
-                if restore_acl(&reversal).is_err() {
+            for mut reversal in core::mem::take(&mut self.reversals).into_iter().rev() {
+                if restore_acl(&mut reversal).is_err() {
                     failed.push(reversal);
                 }
             }
@@ -113,6 +147,19 @@ impl AclTransaction {
                     "one or more exact ACL backups could not be restored",
                 ));
             }
+        }
+        #[cfg(target_os = "windows")]
+        if let Some(directory) = self.backup_directory.as_ref() {
+            if let Err(source) = std::fs::remove_dir(directory)
+                && source.kind() != std::io::ErrorKind::NotFound
+            {
+                self.restore_failed = true;
+                return Err(acl_error(
+                    WindowsOperation::RestoreAcl,
+                    "owned ACL backup directory could not be removed",
+                ));
+            }
+            self.backup_directory = None;
         }
         self.reversals.clear();
         self.state = AclState::Restored;
@@ -129,7 +176,7 @@ impl fmt::Debug for AclTransaction {
             .field("reversal_count", &self.reversals.len())
             .field("state", &self.state)
             .field("restore_failed", &self.restore_failed)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -150,17 +197,36 @@ enum AclState {
 #[cfg(target_os = "windows")]
 struct AclReversal {
     parent: PathBuf,
-    backup: PathBuf,
+    target: PathBuf,
+    backup: Option<PathBuf>,
+    discard_backup: Option<PathBuf>,
+    remove_created: bool,
 }
 
 #[cfg(not(target_os = "windows"))]
 type AclReversal = ();
 
 #[cfg(target_os = "windows")]
+fn rollback_install(transaction: &mut AclTransaction, original: WindowsError) -> WindowsError {
+    let incomplete = transaction.restore().is_err() || !transaction.restored();
+    let original =
+        original.with_cleanup(crate::PreparationCleanup::new([incomplete, false, false, false]));
+    if incomplete {
+        let digest = transaction.digest();
+        let owned = core::mem::replace(transaction, AclTransaction::planned(digest));
+        original.retain_cleanup(crate::error::CleanupOwner::Acl(owned))
+    } else {
+        original
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn save_acl(target: &Path, backup: &Path) -> Result<(), WindowsError> {
-    let status = std::process::Command::new("icacls.exe")
+    let status = icacls_command(WindowsOperation::InstallAcl)?
         .arg(target)
-        .args(["/save", backup.to_string_lossy().as_ref(), "/q"])
+        .arg("/save")
+        .arg(backup)
+        .arg("/q")
         .status()
         .map_err(|_| acl_error(WindowsOperation::InstallAcl, "icacls ACL save could not start"))?;
     if status.success() {
@@ -171,11 +237,91 @@ fn save_acl(target: &Path, backup: &Path) -> Result<(), WindowsError> {
 }
 
 #[cfg(target_os = "windows")]
-fn apply_entry(target: &Path, principal: &str, entry: &AclEntry) -> Result<(), WindowsError> {
-    let switch = if entry.effect == RuleEffect::Allow { "/grant:r" } else { "/deny" };
+fn prepare_target(entries: &[AclEntry]) -> Result<(PathBuf, bool), WindowsError> {
+    let entry = entries
+        .first()
+        .ok_or_else(|| acl_error(WindowsOperation::InstallAcl, "ACL target group is empty"))?;
+    if entries.iter().any(|candidate| {
+        candidate.path != entry.path || candidate.authority_root != entry.authority_root
+    }) {
+        return Err(acl_error(
+            WindowsOperation::InstallAcl,
+            "ACL target group has inconsistent native authority",
+        ));
+    }
+    let authority = ResolvedWindowsPath::resolve(entry.authority_root.clone())?;
+    let (anchor, exists) = ResolvedWindowsPath::resolve_existing_or_parent(entry.path.clone())?;
+    if authority.evidence().volume_serial() != anchor.evidence().volume_serial() {
+        return Err(acl_error(
+            WindowsOperation::InstallAcl,
+            "ACL target differs from its authorized root volume",
+        ));
+    }
+    let native = entry.path.to_path_buf();
+    if exists {
+        return Ok((native, false));
+    }
+    if !entries.iter().any(AclEntry::creates_deny_directory) {
+        return Err(acl_error(
+            WindowsOperation::InstallAcl,
+            "absent ACL target has no checked deny-anchor creation authority",
+        ));
+    }
+    let created = match std::fs::create_dir(&native) {
+        Ok(()) => true,
+        Err(source) if source.kind() == std::io::ErrorKind::AlreadyExists => false,
+        Err(_) => {
+            return Err(acl_error(
+                WindowsOperation::InstallAcl,
+                "temporary ACL deny directory cannot be created",
+            ));
+        }
+    };
+    let resolved = match ResolvedWindowsPath::resolve(entry.path.clone()) {
+        Ok(resolved) => resolved,
+        Err(error) => {
+            return Err(if created { release_created_target(native, error) } else { error });
+        }
+    };
+    if authority.evidence().volume_serial() != resolved.evidence().volume_serial() {
+        let error = acl_error(
+            WindowsOperation::InstallAcl,
+            "created ACL target differs from its authorized root volume",
+        );
+        return Err(if created { release_created_target(native, error) } else { error });
+    }
+    Ok((native, created))
+}
+
+#[cfg(target_os = "windows")]
+fn release_created_target(target: PathBuf, original: WindowsError) -> WindowsError {
+    let mut owner = AclTransaction::planned(Sha256Digest::new([0; 32]));
+    owner.state = AclState::Applied;
+    owner.reversals.push(AclReversal {
+        parent: target.parent().unwrap_or_else(|| Path::new(".")).to_path_buf(),
+        target,
+        backup: None,
+        discard_backup: None,
+        remove_created: true,
+    });
+    rollback_install(&mut owner, original)
+}
+
+#[cfg(target_os = "windows")]
+fn apply_entry(
+    target: &Path,
+    principal: &str,
+    entry: &AclEntry,
+    replace_grants: bool,
+) -> Result<(), WindowsError> {
+    let switch = match (entry.effect, replace_grants) {
+        (RuleEffect::Allow, true) => "/grant:r",
+        (RuleEffect::Allow, false) => "/grant",
+        (RuleEffect::Deny, _) => "/deny",
+    };
     let inheritance = if entry.scope == PathScope::Descendants { "(OI)(CI)" } else { "" };
-    let grant = format!("{principal}:{inheritance}{}", rights(entry.access));
-    let status = std::process::Command::new("icacls.exe")
+    let grant = format!("*{principal}:{inheritance}{}", rights(entry.access));
+    let status = icacls_command(WindowsOperation::InstallAcl)?
         .arg(target)
         .args([switch, &grant, "/q"])
         .status()
@@ -188,18 +334,61 @@ fn apply_entry(target: &Path, principal: &str, entry: &AclEntry) -> Result<(), W
 }
 
 #[cfg(target_os = "windows")]
-fn restore_acl(reversal: &AclReversal) -> Result<(), WindowsError> {
-    let status = std::process::Command::new("icacls.exe")
-        .arg(&reversal.parent)
-        .args(["/restore", reversal.backup.to_string_lossy().as_ref(), "/q"])
-        .status()
-        .map_err(|_| acl_error(WindowsOperation::RestoreAcl, "icacls restore could not start"))?;
-    if status.success() {
-        let _ = std::fs::remove_file(&reversal.backup);
-        Ok(())
-    } else {
-        Err(acl_error(WindowsOperation::RestoreAcl, "icacls exact restore failed"))
+fn restore_acl(reversal: &mut AclReversal) -> Result<(), WindowsError> {
+    if let Some(partial) = reversal.discard_backup.as_ref() {
+        remove_backup(partial)?;
+        reversal.discard_backup = None;
     }
+    if let Some(backup) = reversal.backup.as_ref() {
+        let status = icacls_command(WindowsOperation::RestoreAcl)?
+            .arg(&reversal.parent)
+            .arg("/restore")
+            .arg(backup)
+            .arg("/q")
+            .status()
+            .map_err(|_| {
+                acl_error(WindowsOperation::RestoreAcl, "icacls restore could not start")
+            })?;
+        if !status.success() {
+            return Err(acl_error(WindowsOperation::RestoreAcl, "icacls exact restore failed"));
+        }
+        remove_backup(backup)?;
+        reversal.backup = None;
+    }
+    if reversal.remove_created {
+        match std::fs::remove_dir(&reversal.target) {
+            Ok(()) => reversal.remove_created = false,
+            Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
+                reversal.remove_created = false;
+            }
+            Err(_) => {
+                return Err(acl_error(
+                    WindowsOperation::RestoreAcl,
+                    "temporary ACL deny directory cannot be removed",
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn remove_backup(path: &Path) -> Result<(), WindowsError> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(_) => Err(acl_error(
+            WindowsOperation::RestoreAcl,
+            "owned ACL backup file could not be removed",
+        )),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn icacls_command(operation: WindowsOperation) -> Result<std::process::Command, WindowsError> {
+    crate::native::probe::system_acl_tool()
+        .map(std::process::Command::new)
+        .ok_or_else(|| acl_error(operation, "system ACL tool is unavailable"))
 }
 
 #[cfg(target_os = "windows")]
@@ -208,7 +397,7 @@ fn rights(access: AclAccess) -> String {
     for (operation, text) in [
         (FileOperation::Discover, "RD"),
         (FileOperation::Metadata, "RA"),
-        (FileOperation::Read, "REA"),
+        (FileOperation::Read, "RD"),
         (FileOperation::Execute, "X"),
         (FileOperation::Create, "AD"),
         (FileOperation::Write, "WD"),
@@ -227,12 +416,21 @@ fn acl_error(operation: WindowsOperation, detail: &'static str) -> WindowsError 
 }
 
 #[cfg(target_os = "windows")]
-fn hex(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut result = String::with_capacity(bytes.len() * 2);
-    for byte in bytes {
-        result.push(char::from(HEX[usize::from(byte >> 4)]));
-        result.push(char::from(HEX[usize::from(byte & 0x0f)]));
+fn reserve_backup_directory(root: &Path) -> Result<PathBuf, WindowsError> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    loop {
+        let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let directory = root.join(format!("transaction-{}-{sequence}", std::process::id()));
+        match std::fs::create_dir(&directory) {
+            Ok(()) => return Ok(directory),
+            Err(source) if source.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(_) => {
+                return Err(acl_error(
+                    WindowsOperation::InstallAcl,
+                    "private ACL backup directory cannot be reserved",
+                ));
+            }
+        }
     }
-    result
 }

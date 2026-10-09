@@ -47,12 +47,27 @@ impl WorkbenchExecutionState {
 pub struct WorkbenchContinuation {
     query: crate::WorkbenchQuery,
     mode: crate::ProductInteractionMode,
+    operation: Option<crate::ControlOperationId>,
 }
 impl WorkbenchContinuation {
     /// Chooses the mode for the next execution without inventing an input.
     #[must_use]
     pub const fn new(query: crate::WorkbenchQuery, mode: crate::ProductInteractionMode) -> Self {
-        Self { query, mode }
+        Self { query, mode, operation: None }
+    }
+    /// Binds continuation to the original accepted message admission operation.
+    #[must_use]
+    pub const fn bound(
+        query: crate::WorkbenchQuery,
+        mode: crate::ProductInteractionMode,
+        operation: crate::ControlOperationId,
+    ) -> Self {
+        Self { query, mode, operation: Some(operation) }
+    }
+    /// Returns the original message admission identity when domain-bound.
+    #[must_use]
+    pub const fn operation(self) -> Option<crate::ControlOperationId> {
+        self.operation
     }
     /// Exact authorized conversation scope.
     #[must_use]

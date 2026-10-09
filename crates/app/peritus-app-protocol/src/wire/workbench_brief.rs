@@ -60,19 +60,7 @@ pub(super) fn write_brief(
             .map_err(|_| CodecError::at(CodecErrorKind::LimitExceeded, w.len()))?,
     )?;
     for observation in brief.observations() {
-        w.write_u16(match observation.kind() {
-            WorkbenchBriefObservationKind::Image => 1,
-            WorkbenchBriefObservationKind::File => 2,
-        })?;
-        super::primitive::write_id(w, observation.operation().as_bytes())?;
-        w.write_bool(observation.version().is_some())?;
-        if let Some(version) = observation.version() {
-            super::primitive::write_id(w, version.as_bytes())?;
-        }
-        w.write_str(observation.label())?;
-        w.write_fixed(observation.digest().as_bytes())?;
-        w.write_u64(observation.bytes())?;
-        w.write_bool(observation.selected())?;
+        write_observation(w, observation)?;
     }
     w.write_u32(brief.excluded_proposals())?;
     Ok(())
@@ -106,31 +94,55 @@ pub(super) fn read_brief(r: &mut CanonicalReader<'_>) -> Result<WorkbenchBrief, 
     let observation_count = usize::from(r.read_u16()?);
     let mut observations = Vec::with_capacity(observation_count);
     for _ in 0..observation_count {
-        let kind = match r.read_u16()? {
-            1 => WorkbenchBriefObservationKind::Image,
-            2 => WorkbenchBriefObservationKind::File,
-            _ => return unknown(offset),
-        };
-        let operation = super::primitive::read_id(r, crate::ControlOperationId::new)?;
-        let version = if r.read_bool()? {
-            Some(super::primitive::read_id(r, crate::ControlOperationId::new)?)
-        } else {
-            None
-        };
-        let label = r.read_str()?.to_owned();
-        let digest = peritus_types::Sha256Digest::new(r.read_fixed()?);
-        let bytes = r.read_u64()?;
-        let selected = r.read_bool()?;
-        observations.push(invalid(
-            offset,
-            WorkbenchBriefObservation::new(
-                kind, operation, version, label, digest, bytes, selected,
-            ),
-        )?);
+        observations.push(read_observation(r)?);
     }
     let excluded = r.read_u32()?;
     invalid(
         offset,
         WorkbenchBrief::with_sources(query, revision, entries, proposals, observations, excluded),
+    )
+}
+
+pub(super) fn write_observation(
+    w: &mut CanonicalWriter,
+    observation: &WorkbenchBriefObservation,
+) -> Result<(), CodecError> {
+    w.write_u16(match observation.kind() {
+        WorkbenchBriefObservationKind::Image => 1,
+        WorkbenchBriefObservationKind::File => 2,
+    })?;
+    super::primitive::write_id(w, observation.operation().as_bytes())?;
+    w.write_bool(observation.version().is_some())?;
+    if let Some(version) = observation.version() {
+        super::primitive::write_id(w, version.as_bytes())?;
+    }
+    w.write_str(observation.label())?;
+    w.write_fixed(observation.digest().as_bytes())?;
+    w.write_u64(observation.bytes())?;
+    w.write_bool(observation.selected())?;
+    Ok(())
+}
+pub(super) fn read_observation(
+    r: &mut CanonicalReader<'_>,
+) -> Result<WorkbenchBriefObservation, CodecError> {
+    let offset = r.offset();
+    let kind = match r.read_u16()? {
+        1 => WorkbenchBriefObservationKind::Image,
+        2 => WorkbenchBriefObservationKind::File,
+        _ => return unknown(offset),
+    };
+    let operation = super::primitive::read_id(r, crate::ControlOperationId::new)?;
+    let version = if r.read_bool()? {
+        Some(super::primitive::read_id(r, crate::ControlOperationId::new)?)
+    } else {
+        None
+    };
+    let label = r.read_str()?.to_owned();
+    let digest = peritus_types::Sha256Digest::new(r.read_fixed()?);
+    let bytes = r.read_u64()?;
+    let selected = r.read_bool()?;
+    invalid(
+        offset,
+        WorkbenchBriefObservation::new(kind, operation, version, label, digest, bytes, selected),
     )
 }

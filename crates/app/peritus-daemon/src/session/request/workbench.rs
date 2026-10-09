@@ -76,6 +76,7 @@ pub(super) async fn respond(
         } else if matches!(
             command.intent(),
             peritus_app_protocol::WorkbenchIntent::ApplyInitDiff(_)
+                | peritus_app_protocol::WorkbenchIntent::ApplyInitArtifact(_)
                 | peritus_app_protocol::WorkbenchIntent::ApplyRewind(_)
         ) {
             product_runs
@@ -89,6 +90,8 @@ pub(super) async fn respond(
         } else if matches!(
             command.intent(),
             peritus_app_protocol::WorkbenchIntent::AttachFileImport { .. }
+                | peritus_app_protocol::WorkbenchIntent::EnqueueMessage { .. }
+                | peritus_app_protocol::WorkbenchIntent::EnqueueMessageBundle { .. }
         ) {
             product_runs.confirm_workbench_file_import(authority, actor_id, command).await
         } else if matches!(

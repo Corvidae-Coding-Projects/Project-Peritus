@@ -1,5 +1,7 @@
 //! User-confirmed brief fixtures cover every field and all eligible latest-source lifecycles.
 
+mod pages;
+
 use super::{
     FixtureClass, GeneratedFixtureCase,
     values::{context, encoded, id, request},
@@ -80,5 +82,6 @@ pub(super) fn cases(limits: CodecLimits) -> Result<Vec<GeneratedFixtureCase>, Co
         AppResponsePayload::WorkbenchBrief(brief),
     );
     cases.push(encoded("realistic-workbench-brief", FixtureClass::Realistic, &response, limits)?);
+    cases.extend(pages::cases(limits)?);
     Ok(cases)
 }
