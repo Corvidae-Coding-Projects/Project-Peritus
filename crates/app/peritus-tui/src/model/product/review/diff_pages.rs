@@ -73,8 +73,11 @@ impl AppModel {
             review.page = Some(page);
             review.pending = None;
             review.diff_page = None;
+            review.pending_diff = None;
             review.pending_raw = None;
             review.raw_line = None;
+            review.raw_stream = false;
+            review.raw_total_bytes = None;
             review.raw_lines.clear();
             review.diff_history.clear();
         }
@@ -124,15 +127,18 @@ impl AppModel {
     ) -> Vec<Effect> {
         let Some(product) = &mut self.product else { return Vec::new() };
         let review = &mut product.review;
-        if review.pending_diff != Some(requested)
-            || review.page.as_ref().is_none_or(|comments| {
-                comments.query().query() != requested.query()
-                    || comments.query().run() != requested.run()
-                    || comments.query().revision() != requested.revision()
-                    || comments.candidate_digest() != page.candidate_digest()
-            })
-            || page.query() != requested
+        if review.pending_diff != Some(requested) {
+            return Vec::new();
+        }
+        if review.page.as_ref().is_none_or(|comments| {
+            comments.query().query() != requested.query()
+                || comments.query().run() != requested.run()
+                || comments.query().revision() != requested.revision()
+                || comments.candidate_digest() != page.candidate_digest()
+                || comments.diff_digest() != page.diff_digest()
+        }) || page.query() != requested
         {
+            review.pending_diff = None;
             return Vec::new();
         }
         review.pending_diff = None;
@@ -187,12 +193,62 @@ impl AppModel {
         vec![effect]
     }
 
+    pub(in crate::model) fn request_raw_stream_location(&mut self, offset: u32) -> Vec<Effect> {
+        let Some(review) = self.product.as_ref().map(|product| &product.review) else {
+            return Vec::new();
+        };
+        let Some(page) = review.page.as_ref() else { return Vec::new() };
+        let maximum = review
+            .raw_total_bytes
+            .map_or(32 * 1024, |total| total.saturating_sub(offset).min(32 * 1024));
+        if maximum == 0 || offset > review.raw_total_bytes.unwrap_or(u32::MAX) {
+            return Vec::new();
+        }
+        self.request_review_diff_bytes(WorkbenchReviewDiffBytesQuery::new(
+            page.query().query(),
+            page.query().run(),
+            page.query().revision(),
+            page.candidate_digest(),
+            page.diff_digest(),
+            offset,
+            maximum,
+        ))
+    }
+
     pub(in crate::model) fn accept_review_diff_bytes(
         &mut self,
         requested: WorkbenchReviewDiffBytesQuery,
         bytes: &WorkbenchReviewDiffBytes,
     ) {
         let Some(product) = &mut self.product else { return };
+        if product.review.raw_stream {
+            let page = product.review.page.as_ref();
+            if product.review.pending_raw != Some(requested)
+                || bytes.query() != requested
+                || page.is_none_or(|page| {
+                    page.query().query() != requested.query()
+                        || page.query().run() != requested.run()
+                        || page.query().revision() != requested.revision()
+                        || page.candidate_digest() != requested.candidate_digest()
+                        || page.diff_digest() != requested.diff_digest()
+                })
+                || product.review.raw_total_bytes.is_some_and(|total| total != bytes.total_bytes())
+            {
+                return;
+            }
+            product.review.pending_raw = None;
+            product.review.raw_total_bytes = Some(bytes.total_bytes());
+            product.review.raw_line = Some((requested.offset(), bytes.bytes().to_vec()));
+            product.review.message = format!(
+                "Raw diff bytes {}..{} of {}",
+                requested.offset(),
+                requested
+                    .offset()
+                    .saturating_add(u32::try_from(bytes.bytes().len()).unwrap_or(u32::MAX)),
+                bytes.total_bytes(),
+            );
+            return;
+        }
         let page = product.review.diff_page.as_ref();
         if product.review.pending_raw != Some(requested)
             || bytes.query() != requested
@@ -259,6 +315,21 @@ impl AppModel {
         };
         if review.pending_raw.is_some() {
             return Vec::new();
+        }
+        if review.raw_stream {
+            let Some((chunk_offset, chunk)) = review.raw_line.as_ref() else {
+                return self.request_raw_stream_location(0);
+            };
+            let total = review.raw_total_bytes.unwrap_or(0);
+            let next = chunk_offset.saturating_add(u32::try_from(chunk.len()).unwrap_or(u32::MAX));
+            let target = if forward {
+                (next < total).then_some(next)
+            } else if *chunk_offset > 0 {
+                Some(chunk_offset.saturating_sub(32 * 1024))
+            } else {
+                None
+            };
+            return target.map_or_else(Vec::new, |offset| self.request_raw_stream_location(offset));
         }
         let Some((chunk_offset, chunk)) = review.raw_line.as_ref() else { return Vec::new() };
         let index = review.raw_index;

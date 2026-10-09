@@ -24,6 +24,7 @@ mod goal;
 pub use goal::{
     GoalAdmission, GoalCriterion, GoalCriterionKind, GoalCriterionState, GoalPauseMode, GoalRecord,
     GoalRole, GoalRoleUsage, GoalSettlement, GoalState, GoalUsage, GoalUsageReport,
+    GraphicalOutputEvidence,
 };
 mod inputs;
 mod permissions;

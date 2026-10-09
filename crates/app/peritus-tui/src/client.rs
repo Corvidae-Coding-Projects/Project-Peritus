@@ -268,6 +268,8 @@ fn client_hello(
         WellKnownProtocolFeature::WorkbenchFiles,
         WellKnownProtocolFeature::WorkbenchGoals,
         WellKnownProtocolFeature::WorkbenchReview,
+        WellKnownProtocolFeature::WorkbenchReviewPages,
+        WellKnownProtocolFeature::WorkbenchReviewSummary,
         WellKnownProtocolFeature::WorkbenchPreview,
         WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,

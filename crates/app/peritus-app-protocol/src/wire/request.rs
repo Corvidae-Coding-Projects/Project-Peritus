@@ -76,6 +76,7 @@ fn write_payload(
         | AppRequestPayload::QueryWorkbenchPreview(_)
         | AppRequestPayload::QueryWorkbenchPreviewOutput(_)
         | AppRequestPayload::QueryWorkbenchReview(_)
+        | AppRequestPayload::QueryWorkbenchReviewSummary(_)
         | AppRequestPayload::QueryWorkbenchReviewDiff(_)
         | AppRequestPayload::QueryWorkbenchReviewDiffBytes(_)
         | AppRequestPayload::QueryConversationLibrary(_)
@@ -153,6 +154,7 @@ fn payload_tag(payload: &AppRequestPayload) -> u16 {
         AppRequestPayload::QueryWorkbenchPreview(_) => 101,
         AppRequestPayload::QueryWorkbenchPreviewOutput(_) => 103,
         AppRequestPayload::QueryWorkbenchReview(_) => 80,
+        AppRequestPayload::QueryWorkbenchReviewSummary(_) => 109,
         AppRequestPayload::QueryWorkbenchReviewDiff(_) => 105,
         AppRequestPayload::QueryWorkbenchReviewDiffBytes(_) => 107,
         AppRequestPayload::QueryConversationLibrary(_) => 140,
@@ -242,6 +244,9 @@ fn read_payload(
             AppRequestPayload::QueryWorkbenchResult(super::workbench_launch::read_query(reader)?)
         }
         80 => AppRequestPayload::QueryWorkbenchReview(super::workbench_review::read_query(reader)?),
+        109 => AppRequestPayload::QueryWorkbenchReviewSummary(super::workbench_review::read_query(
+            reader,
+        )?),
         105 => AppRequestPayload::QueryWorkbenchReviewDiff(
             super::workbench_review::read_diff_query(reader)?,
         ),

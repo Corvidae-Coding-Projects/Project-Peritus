@@ -178,6 +178,9 @@ impl AppModel {
                         | PendingRequest::WorkbenchFileUpload { .. }
                         | PendingRequest::WorkbenchFiles(_)
                         | PendingRequest::WorkbenchReview(_)
+                        | PendingRequest::WorkbenchReviewSummary(_)
+                        | PendingRequest::WorkbenchReviewDiff(_)
+                        | PendingRequest::WorkbenchReviewDiffBytes(_)
                         | PendingRequest::WorkbenchImageUpload { .. }
                         | PendingRequest::WorkbenchContext(_)
                         | PendingRequest::WorkbenchCompaction(_)

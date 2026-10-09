@@ -13,6 +13,7 @@ mod lifecycle;
 mod operation;
 mod permissions;
 mod persistence;
+mod preview_evidence;
 mod progress;
 mod recovery;
 mod request;
@@ -108,12 +109,13 @@ struct PreviewAggregate {
     truncated: BTreeSet<ControlOperationId>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct PreviewOperationRecord {
     fingerprint: peritus_types::Sha256Digest,
     accepted_revision: u64,
     result_sequence: u64,
     completed_sequence: u64,
+    behavior_evidence: Option<preview_evidence::PreviewBehaviorEvidence>,
 }
 
 #[derive(Clone)]

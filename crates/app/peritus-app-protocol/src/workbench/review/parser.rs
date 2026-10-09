@@ -2,11 +2,38 @@
 
 use super::{
     WorkbenchDiffFile, WorkbenchDiffHunk, WorkbenchDiffLine, WorkbenchDiffLineKind,
-    WorkbenchReviewAnchor, WorkbenchReviewRange, WorkbenchReviewTarget, malformed, validate_path,
+    WorkbenchReviewAnchor, WorkbenchReviewDiffPage, WorkbenchReviewDiffQuery, WorkbenchReviewRange,
+    WorkbenchReviewTarget, malformed, validate_path,
 };
 use crate::AppProtocolError;
 use peritus_codec::sha256;
 use peritus_types::{RunId, Sha256Digest, WorkspaceId};
+
+/// Parses and projects one structured page with bounded retained content.
+///
+/// # Errors
+/// Rejects malformed diff sections and cursors outside the exact retained diff.
+pub fn parse_workbench_diff_page(
+    query: WorkbenchReviewDiffQuery,
+    candidate_digest: Sha256Digest,
+    raw: &str,
+) -> Result<WorkbenchReviewDiffPage, AppProtocolError> {
+    super::page_parser::parse_page(query, candidate_digest, raw, &[]).map(|(page, _)| page)
+}
+
+/// Parses one bounded page and tests exact file/hunk anchors during the same streaming pass.
+///
+/// # Errors
+/// Rejects malformed diff sections, unsafe paths, invalid hunk metadata, and
+/// cursors outside the exact retained diff.
+pub fn parse_workbench_diff_page_with_anchors(
+    query: WorkbenchReviewDiffQuery,
+    candidate_digest: Sha256Digest,
+    raw: &str,
+    anchors: &[WorkbenchReviewAnchor],
+) -> Result<(WorkbenchReviewDiffPage, Vec<bool>), AppProtocolError> {
+    super::page_parser::parse_page(query, candidate_digest, raw, anchors)
+}
 
 /// Deterministically parses one retained unified diff into content-bound feedback targets.
 /// Metadata before the first `diff --git` section remains available in the raw toggle only.
@@ -35,13 +62,18 @@ pub fn parse_workbench_diff(
             source_offset = source_offset.saturating_add(raw_length);
             continue;
         }
-        let Some(file) = current.as_mut() else { continue };
-        if let Some(path) = line.strip_prefix("+++ ").and_then(diff_path) {
-            file.path = path;
-        } else if file.path.is_empty()
-            && let Some(path) = line.strip_prefix("--- ").and_then(diff_path)
-        {
-            file.path = path;
+        let Some(file) = current.as_mut() else {
+            source_offset = source_offset.saturating_add(raw_length);
+            continue;
+        };
+        if file.hunk.is_none() {
+            if let Some(path) = line.strip_prefix("+++ ").and_then(diff_path) {
+                file.path = path;
+            } else if file.path.is_empty()
+                && let Some(path) = line.strip_prefix("--- ").and_then(diff_path)
+            {
+                file.path = path;
+            }
         }
         if line.starts_with("@@ ") {
             file.start_hunk(line)?;
@@ -207,7 +239,7 @@ impl HunkBuilder {
     }
 }
 
-fn parse_hunk_range(header: &str) -> Result<WorkbenchReviewRange, AppProtocolError> {
+pub(super) fn parse_hunk_range(header: &str) -> Result<WorkbenchReviewRange, AppProtocolError> {
     let body = header
         .strip_prefix("@@ ")
         .and_then(|value| value.split_once(" @@"))
@@ -229,7 +261,7 @@ fn parse_range(value: &str) -> Result<(u32, u32), AppProtocolError> {
     Ok((start.parse().map_err(|_| malformed())?, count.parse().map_err(|_| malformed())?))
 }
 
-fn path_from_header(header: &str) -> Result<String, AppProtocolError> {
+pub(super) fn path_from_header(header: &str) -> Result<String, AppProtocolError> {
     let (source, remainder) = take_path_token(header)?;
     let (target, remainder) = take_path_token(remainder.trim_start())?;
     if !remainder.trim().is_empty() {
@@ -244,7 +276,7 @@ fn path_from_header(header: &str) -> Result<String, AppProtocolError> {
     if path.is_empty() { Err(malformed()) } else { Ok(path) }
 }
 
-fn diff_path(value: &str) -> Option<String> {
+pub(super) fn diff_path(value: &str) -> Option<String> {
     let value = value.trim();
     let value = if value.starts_with('"') {
         let (token, _) = take_path_token(value).ok()?;

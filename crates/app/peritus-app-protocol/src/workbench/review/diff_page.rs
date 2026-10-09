@@ -7,122 +7,6 @@ use super::{
 use crate::{AppProtocolError, WorkbenchQuery};
 use peritus_types::{RunId, Sha256Digest};
 
-/// Maximum exact raw-diff bytes returned by one request.
-pub const MAX_WORKBENCH_REVIEW_DIFF_BYTES: usize = 32 * 1024;
-
-/// Request for one exact byte range from a retained raw diff.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct WorkbenchReviewDiffBytesQuery {
-    query: WorkbenchQuery,
-    run: RunId,
-    revision: u64,
-    candidate_digest: Sha256Digest,
-    diff_digest: Sha256Digest,
-    offset: u32,
-    maximum_bytes: u32,
-}
-
-/// One exact bounded byte range from an authorized raw diff.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct WorkbenchReviewDiffBytes {
-    query: WorkbenchReviewDiffBytesQuery,
-    total_bytes: u32,
-    bytes: Vec<u8>,
-}
-
-impl WorkbenchReviewDiffBytes {
-    /// Constructs a range after validating its request binding and exact bounds.
-    ///
-    /// # Errors
-    /// Rejects oversized, empty, or out-of-range content.
-    pub fn new(
-        query: WorkbenchReviewDiffBytesQuery,
-        total_bytes: u32,
-        bytes: Vec<u8>,
-    ) -> Result<Self, AppProtocolError> {
-        let end = query
-            .offset()
-            .checked_add(u32::try_from(bytes.len()).map_err(|_| malformed())?)
-            .ok_or_else(malformed)?;
-        if query.revision() == 0
-            || query.maximum_bytes() == 0
-            || query.maximum_bytes() as usize > MAX_WORKBENCH_REVIEW_DIFF_BYTES
-            || bytes.len() > query.maximum_bytes() as usize
-            || end > total_bytes
-            || (query.offset() < total_bytes && bytes.is_empty())
-        {
-            return Err(malformed());
-        }
-        Ok(Self { query, total_bytes, bytes })
-    }
-    /// Returns the exact range request.
-    #[must_use]
-    pub const fn query(&self) -> WorkbenchReviewDiffBytesQuery {
-        self.query
-    }
-    /// Returns the full raw diff length.
-    #[must_use]
-    pub const fn total_bytes(&self) -> u32 {
-        self.total_bytes
-    }
-    /// Returns the exact requested bytes.
-    #[must_use]
-    pub fn bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-}
-
-impl WorkbenchReviewDiffBytesQuery {
-    /// Creates a query for one bounded range of an immutable, digest-bound diff.
-    #[must_use]
-    pub const fn new(
-        query: WorkbenchQuery,
-        run: RunId,
-        revision: u64,
-        candidate_digest: Sha256Digest,
-        diff_digest: Sha256Digest,
-        offset: u32,
-        maximum_bytes: u32,
-    ) -> Self {
-        Self { query, run, revision, candidate_digest, diff_digest, offset, maximum_bytes }
-    }
-    /// Returns the workspace query scope.
-    #[must_use]
-    pub const fn query(self) -> WorkbenchQuery {
-        self.query
-    }
-    /// Returns the bound run.
-    #[must_use]
-    pub const fn run(self) -> RunId {
-        self.run
-    }
-    /// Returns the bound conversation revision.
-    #[must_use]
-    pub const fn revision(self) -> u64 {
-        self.revision
-    }
-    /// Returns the candidate digest.
-    #[must_use]
-    pub const fn candidate_digest(self) -> Sha256Digest {
-        self.candidate_digest
-    }
-    /// Returns the raw diff digest.
-    #[must_use]
-    pub const fn diff_digest(self) -> Sha256Digest {
-        self.diff_digest
-    }
-    /// Returns the requested byte offset.
-    #[must_use]
-    pub const fn offset(self) -> u32 {
-        self.offset
-    }
-    /// Returns the requested maximum byte count.
-    #[must_use]
-    pub const fn maximum_bytes(self) -> u32 {
-        self.maximum_bytes
-    }
-}
-
 /// Cursor for one exact diff view in a conversation/run/revision.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WorkbenchReviewDiffQuery {
@@ -198,7 +82,9 @@ impl WorkbenchReviewDiffLine {
         raw_length: u32,
         truncated: bool,
     ) -> Result<Self, AppProtocolError> {
-        if preview.len() > 1025 || raw_offset.checked_add(raw_length).is_none() {
+        // safe_preview retains up to 1024 source bytes and appends a three-byte
+        // UTF-8 ellipsis when it truncates.
+        if preview.len() > 1027 || raw_offset.checked_add(raw_length).is_none() {
             return Err(malformed());
         }
         Ok(Self { kind, preview, raw_offset, raw_length, truncated })
@@ -312,13 +198,6 @@ impl WorkbenchReviewDiffPage {
         }
         let file_index = usize::try_from(query.file_offset()).map_err(|_| malformed())?;
         let file = files.get(file_index).ok_or_else(malformed)?;
-        if file.anchor().run() != query.run()
-            || file.anchor().workspace() != query.query().workspace()
-            || file.anchor().candidate_digest() != candidate_digest
-            || file.anchor().diff_digest() != diff_digest
-        {
-            return Err(malformed());
-        }
         let total_files = u32::try_from(files.len()).map_err(|_| malformed())?;
         let total_hunks =
             files.iter().map(|item| u64::try_from(item.hunks().len()).unwrap_or(u64::MAX)).sum();
@@ -327,6 +206,46 @@ impl WorkbenchReviewDiffPage {
             .flat_map(WorkbenchDiffFile::hunks)
             .map(|hunk| u64::try_from(hunk.lines().len()).unwrap_or(u64::MAX))
             .sum();
+        Self::project_selected(
+            query,
+            candidate_digest,
+            diff_digest,
+            file,
+            total_files,
+            total_hunks,
+            total_lines,
+            file_index + 1 < files.len(),
+        )
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "selected-file projection receives the exact cursor, totals, and continuation state"
+    )]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one bounded cursor projection computes line, hunk, and file continuation"
+    )]
+    pub(crate) fn project_selected(
+        query: WorkbenchReviewDiffQuery,
+        candidate_digest: Sha256Digest,
+        diff_digest: Sha256Digest,
+        file: &WorkbenchDiffFile,
+        total_files: u32,
+        total_hunks: u64,
+        total_lines: u64,
+        has_more_files: bool,
+    ) -> Result<Self, AppProtocolError> {
+        if query.revision() == 0 || total_files == 0 || query.file_offset() >= total_files {
+            return Err(malformed());
+        }
+        if file.anchor().run() != query.run()
+            || file.anchor().workspace() != query.query().workspace()
+            || file.anchor().candidate_digest() != candidate_digest
+            || file.anchor().diff_digest() != diff_digest
+        {
+            return Err(malformed());
+        }
         let hunk_index = usize::try_from(query.hunk_offset()).map_err(|_| malformed())?;
         let hunk = file.hunks().get(hunk_index);
         let selected_hunk = if file.hunks().is_empty() {
@@ -380,7 +299,7 @@ impl WorkbenchReviewDiffPage {
                     query.hunk_offset() + 1,
                     0,
                 ));
-            } else if file_index + 1 < files.len() {
+            } else if has_more_files {
                 next = Some(WorkbenchReviewDiffQuery::new(
                     query.query(),
                     query.run(),
@@ -396,7 +315,7 @@ impl WorkbenchReviewDiffPage {
                 hunk.lines()[start..end].to_vec(),
             )?)
         } else {
-            if file_index + 1 < files.len() {
+            if has_more_files {
                 next = Some(WorkbenchReviewDiffQuery::new(
                     query.query(),
                     query.run(),
@@ -441,6 +360,16 @@ impl WorkbenchReviewDiffPage {
     #[must_use]
     pub const fn file_anchor(&self) -> &WorkbenchReviewAnchor {
         &self.file_anchor
+    }
+    /// Returns the checked file container for the lines included in this page.
+    ///
+    /// The file anchor remains bound to the complete retained file even when the hunk lines are
+    /// only a bounded preview.
+    ///
+    /// # Errors
+    /// Returns an error if the page's selected hunk cannot form a checked file projection.
+    pub fn file_preview(&self) -> Result<WorkbenchDiffFile, AppProtocolError> {
+        WorkbenchDiffFile::new(self.file_anchor.clone(), self.hunk.iter().cloned().collect())
     }
     /// Returns the selected hunk with only this page's lines.
     #[must_use]

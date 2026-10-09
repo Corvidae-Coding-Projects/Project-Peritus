@@ -192,6 +192,7 @@ enum PendingRequest {
     WorkbenchFilePreview(peritus_app_protocol::WorkbenchFileRequest),
     WorkbenchFiles(peritus_app_protocol::WorkbenchFileQuery),
     WorkbenchReview(peritus_app_protocol::WorkbenchReviewQuery),
+    WorkbenchReviewSummary(peritus_app_protocol::WorkbenchReviewQuery),
     WorkbenchReviewDiff(peritus_app_protocol::WorkbenchReviewDiffQuery),
     WorkbenchReviewDiffBytes(peritus_app_protocol::WorkbenchReviewDiffBytesQuery),
     WorkbenchImageUpload {

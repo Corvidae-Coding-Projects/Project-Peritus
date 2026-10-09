@@ -67,6 +67,73 @@ impl AppModel {
         self.request_review_page(query, run.run_id(), 0, offset)
     }
 
+    pub(in crate::model) fn accept_review_summary(
+        &mut self,
+        requested: WorkbenchReviewQuery,
+        summary: &peritus_app_protocol::WorkbenchReviewSummary,
+    ) -> Vec<Effect> {
+        let query = summary.query();
+        let pending_matches =
+            self.product.as_ref().and_then(|product| product.review.pending).is_some_and(
+                |pending| {
+                    pending == requested
+                        && requested.query() == query.query()
+                        && requested.run() == query.run()
+                        && requested.offset() == query.offset()
+                        && (requested.revision() == 0 || requested.revision() == query.revision())
+                },
+            );
+        if !pending_matches {
+            return Vec::new();
+        }
+        let Ok(page) = peritus_app_protocol::WorkbenchReviewPage::new(
+            query,
+            summary.candidate_digest(),
+            summary.diff_digest(),
+            Vec::new(),
+            summary.comments().to_vec(),
+            summary.total_comments(),
+            summary.evidence().to_vec(),
+        ) else {
+            return Vec::new();
+        };
+        if summary.structured_available() {
+            if let Some(product) = &mut self.product {
+                product.review.pending = None;
+            }
+            return self.accept_review_page(requested, page);
+        }
+        if self.chat.workbench.selected != Some(query.query())
+            || self
+                .product
+                .as_ref()
+                .and_then(ProductUi::selected_run)
+                .map(peritus_app_protocol::ProductRunSnapshot::run_id)
+                != Some(query.run())
+        {
+            return Vec::new();
+        }
+        if let Some(product) = &mut self.product {
+            product.review.page = Some(page);
+            product.review.pending = None;
+            product.review.diff_page = None;
+            product.review.pending_diff = None;
+            product.review.pending_raw = None;
+            product.review.raw_line = None;
+            product.review.raw_stream = true;
+            product.review.raw_total_bytes = None;
+            product.review.raw_lines.clear();
+            product.review.raw_index = 0;
+            product.review.diff_history.clear();
+            product.review.file = 0;
+            product.review.hunk = 0;
+            product.review.comment = 0;
+            product.review.message =
+                "Structured diff unavailable; raw diff remains available.".into();
+        }
+        self.request_raw_stream_location(0)
+    }
+
     fn request_review_page(
         &mut self,
         query: peritus_app_protocol::WorkbenchQuery,
@@ -83,10 +150,21 @@ impl AppModel {
         }) {
             return Vec::new();
         }
-        let Some(effect) = self.request(
-            AppRequestPayload::QueryWorkbenchReview(request),
-            PendingRequest::WorkbenchReview(request),
-        ) else {
+        let summary = self.features.iter().any(|feature| {
+            feature.as_str() == WellKnownProtocolFeature::WorkbenchReviewSummary.as_str()
+        });
+        let (payload, pending) = if summary {
+            (
+                AppRequestPayload::QueryWorkbenchReviewSummary(request),
+                PendingRequest::WorkbenchReviewSummary(request),
+            )
+        } else {
+            (
+                AppRequestPayload::QueryWorkbenchReview(request),
+                PendingRequest::WorkbenchReview(request),
+            )
+        };
+        let Some(effect) = self.request(payload, pending) else {
             return Vec::new();
         };
         if let Some(product) = &mut self.product {
@@ -102,6 +180,36 @@ impl AppModel {
         });
         match key.code {
             KeyCode::Char('t') => {
+                let summary_negotiated = self.features.iter().any(|feature| {
+                    feature.as_str() == WellKnownProtocolFeature::WorkbenchReviewSummary.as_str()
+                });
+                let summary_review_ready = summary_negotiated
+                    && self.product.as_ref().is_some_and(|product| {
+                        product.review.page.is_some() && product.review.diff_page.is_some()
+                    });
+                if summary_negotiated
+                    && self.product.as_ref().is_some_and(|product| product.review.page.is_some())
+                {
+                    if !summary_review_ready {
+                        return Some(Vec::new());
+                    }
+                    let leaving_raw_stream =
+                        self.product.as_ref().is_some_and(|product| product.review.raw_stream);
+                    if let Some(product) = &mut self.product {
+                        product.inspection_scroll = 0;
+                        product.review.pending_raw = None;
+                        product.review.raw_line = None;
+                        product.review.raw_total_bytes = None;
+                        product.review.raw_index = 0;
+                        product.review.raw_stream = !leaving_raw_stream;
+                        product.review.raw = !leaving_raw_stream;
+                    }
+                    return Some(if leaving_raw_stream {
+                        Vec::new()
+                    } else {
+                        self.request_raw_stream_location(0)
+                    });
+                }
                 if let Some(product) = &mut self.product {
                     product.review.raw = !product.review.raw;
                     product.inspection_scroll = 0;

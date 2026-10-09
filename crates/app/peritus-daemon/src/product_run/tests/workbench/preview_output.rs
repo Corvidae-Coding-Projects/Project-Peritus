@@ -4,6 +4,7 @@ use peritus_app_protocol::{
     WorkbenchInputText, WorkbenchLaunchState, WorkbenchPreviewOutputQuery,
     WorkbenchPreviewOutputStream, WorkbenchPreviewSnapshot, WorkbenchResultQuery,
 };
+mod evidence;
 mod terminal;
 
 #[test]
@@ -108,6 +109,19 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             revision,
             "unchanged polling must not mutate result state"
         );
+        let live_check = command(
+            workspace,
+            0x7a,
+            snapshot.revision(),
+            WorkbenchIntent::CheckPreviewBehavior {
+                launch: launch.operation(),
+                observed: text("EARLY_SIGNAL"),
+                note: WorkbenchInputText::new("NAME?".to_owned()).expect("note"),
+            },
+        );
+        let live_receipt = running.workbench_command(actor(), &live_check).await;
+        assert!(matches!(live_receipt, AppResponsePayload::WorkbenchReceipt(_)));
+        evidence::assert_retained(&running, run, &live_check, false);
         let terminal_attachment = terminal::attach_and_reconnect(&running, &live);
         terminal_attachment.check_permission_changes(&running, workspace).await;
         let input = command(
@@ -144,6 +158,8 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
         *restarted.inner.controls.lock().expect("controls") = Some(controls);
         *restarted.inner.records.write().expect("records") = records;
+        assert_eq!(restarted.workbench_command(actor(), &live_check).await, live_receipt);
+        evidence::assert_retained(&restarted, run, &live_check, false);
         let restored = observe(&restarted, result_query);
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
@@ -184,6 +200,8 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             restarted.workbench_command(actor(), &check).await,
             AppResponsePayload::WorkbenchReceipt(_)
         ));
+        evidence::assert_retained(&restarted, run, &check, true);
+        evidence::reject_corrupt_and_preserve_legacy(&restarted, run, &check);
         assert_eq!(restarted.workbench_receipt(actor(), &launch), result);
         restarted.shutdown(Duration::from_secs(5)).await;
     });

@@ -66,6 +66,7 @@ impl PersistedRecord {
                     accepted_revision: value.accepted_revision,
                     result_sequence: value.result_sequence,
                     completed_sequence: value.completed_sequence,
+                    behavior_evidence: value.behavior_evidence.clone(),
                 })
                 .collect(),
             preview_outputs: record

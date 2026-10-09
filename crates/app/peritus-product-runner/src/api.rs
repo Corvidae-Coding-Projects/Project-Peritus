@@ -16,7 +16,8 @@ pub use crate::developer_tools::{
 };
 pub use crate::developer_tools::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    PreviewOutputRange, PreviewProcessState,
+    PreviewOutputMatch, PreviewOutputMatchSource, PreviewOutputRange, PreviewOutputStream,
+    PreviewProcessState,
 };
 pub use crate::discard_recovery::DiscardTransactionState;
 pub use crate::error::{ProductRunnerError, ProductRunnerErrorKind};

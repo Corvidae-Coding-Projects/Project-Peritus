@@ -99,6 +99,8 @@ pub enum AppResponsePayload {
     WorkbenchPreviewOutput(crate::WorkbenchPreviewOutputRange),
     /// Structured candidate diff, anchored feedback, and mapped qualification evidence.
     WorkbenchReview(crate::WorkbenchReviewPage),
+    /// Complete review metadata used with structured diff pagination.
+    WorkbenchReviewSummary(crate::WorkbenchReviewSummary),
     /// Bounded digest-bound page of structured review diff content.
     WorkbenchReviewDiff(crate::WorkbenchReviewDiffPage),
     /// Exact bounded byte range from the retained raw review diff.

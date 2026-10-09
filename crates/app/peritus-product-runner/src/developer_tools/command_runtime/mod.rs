@@ -216,6 +216,7 @@ impl CommandRuntime {
             .map(|timeout| u64::try_from(timeout.as_millis()))
             .transpose()
             .map_err(|_| tool("command timeout is not representable in milliseconds"))?;
+        let tool_budget_millis = timeout_millis.unwrap_or(0);
         let mut state = self.inner.state.lock().map_err(|_| tool("command runtime is poisoned"))?;
         let ordinal =
             ordinal::reserve(&self.inner.state_root, self.inner.run_id, state.next_ordinal)
@@ -246,7 +247,7 @@ impl CommandRuntime {
             &ids,
             &contract,
             &command.prepared,
-            timeout_millis.unwrap_or(0),
+            tool_budget_millis,
         )
         .map_err(tool)?;
         let process_authority = authority::commit_process(

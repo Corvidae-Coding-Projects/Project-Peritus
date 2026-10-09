@@ -232,19 +232,26 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
     #[cfg(target_os = "linux")]
     assert!(discover_json.contains(&STANDARD.encode(invalid_name)), "{discover_json}");
     assert!(discover_json.contains(&STANDARD.encode(b"linked.txt")), "{discover_json}");
+    #[cfg(target_os = "linux")]
     assert!(discover_json.contains("unsupported_name"), "{discover_json}");
     assert!(discover_json.contains("unsupported_type"), "{discover_json}");
     let discovery_page = RenderedOutput::discover_page(&discovered, 0, 1, 64 * 1024)
         .expect("first discovery omission page");
     let first_page =
         std::str::from_utf8(discovery_page.structured().canonical_bytes()).expect("JSON");
+    #[cfg(target_os = "linux")]
     assert!(first_page.contains("\"next_omission_offset\":1"), "{first_page}");
+    #[cfg(not(target_os = "linux"))]
+    assert!(first_page.contains("\"next_omission_offset\":null"), "{first_page}");
     let next_discover = service
         .discover(
             &DiscoverInput::new(None, 4, 100).expect("next discovery").with_omission_offset(1),
         )
         .expect("next diagnostic page");
+    #[cfg(target_os = "linux")]
     assert_eq!(next_discover.omissions().len(), 1);
+    #[cfg(not(target_os = "linux"))]
+    assert!(next_discover.omissions().is_empty());
 
     let search_input =
         SearchInput::new(None, "needle".to_owned(), true, 4, 1024, 100).expect("search");
@@ -256,6 +263,7 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
     #[cfg(target_os = "linux")]
     assert!(search_json.contains(&STANDARD.encode(invalid_name)), "{search_json}");
     assert!(search_json.contains(&STANDARD.encode(b"linked.txt")), "{search_json}");
+    #[cfg(target_os = "linux")]
     assert!(search_json.contains("unsupported_name"), "{search_json}");
     assert!(search_json.contains("unsupported_type"), "{search_json}");
 
@@ -263,7 +271,10 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
         .expect("first search omission page");
     let first_search_page =
         std::str::from_utf8(first_search_page.structured().canonical_bytes()).expect("JSON");
+    #[cfg(target_os = "linux")]
     assert!(first_search_page.contains("\"next_omission_offset\":1"), "{first_search_page}");
+    #[cfg(not(target_os = "linux"))]
+    assert!(first_search_page.contains("\"next_omission_offset\":null"), "{first_search_page}");
     let next_search = service
         .search(
             &SearchInput::page(None, "needle".to_owned(), true, 4, 1024, 1)
@@ -271,7 +282,10 @@ fn discovery_and_search_render_exact_native_paths_and_causes_for_unsupported_chi
                 .with_continuation_offsets(0, 1),
         )
         .expect("next search diagnostic page");
+    #[cfg(target_os = "linux")]
     assert_eq!(next_search.omissions().len(), 1);
+    #[cfg(not(target_os = "linux"))]
+    assert!(next_search.omissions().is_empty());
 }
 
 #[cfg(unix)]

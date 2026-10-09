@@ -95,6 +95,9 @@ where
             AppRequestPayload::QueryWorkbenchReview(query) => {
                 product_runs.workbench_review(actor_id, *query)
             }
+            AppRequestPayload::QueryWorkbenchReviewSummary(query) => {
+                product_runs.workbench_review_summary(actor_id, *query)
+            }
             AppRequestPayload::QueryWorkbenchReviewDiff(query) => {
                 product_runs.workbench_review_diff(actor_id, *query)
             }

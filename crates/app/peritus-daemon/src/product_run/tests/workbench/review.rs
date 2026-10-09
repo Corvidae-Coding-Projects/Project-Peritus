@@ -2,6 +2,8 @@
 
 use super::*;
 
+mod oversized;
+
 #[test]
 fn selected_feedback_produces_a_read_only_reply_or_a_new_qualified_candidate() {
     interaction::block_on(async {
@@ -119,6 +121,7 @@ async fn selected_explanation_produces_a_reviewer_reply_without_writer_work() {
         activity.kind() == peritus_app_protocol::ProductActivityKind::Assistant
             && activity.text().contains("selected hunk defines the public answer")
     }));
+
     service.shutdown(Duration::from_secs(5)).await;
 }
 

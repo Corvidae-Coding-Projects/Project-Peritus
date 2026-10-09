@@ -10,9 +10,10 @@ use peritus_workspace::WorkspaceAuthorizationRequest;
 use crate::{
     AttachmentReadRequest, AttachmentReadResponse, CommandRuntime, ConversationView,
     FolderPatchAuthority, FolderPatchAuthorityPlan, FolderPatchAuthorityPlanRequest,
-    LocalContextConfig, PreviewCommand, PreviewLaunch, PreviewObservation, PreviewProcessState,
-    ProductRunResume, ProductRunnerError, UncertainEffect, UncertainEffectState,
-    WorkspaceMutationKind, acknowledge_uncertain_effect, checked_protected_file, uncertain_effects,
+    LocalContextConfig, PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputMatch,
+    PreviewOutputMatchSource, PreviewProcessState, ProductRunResume, ProductRunnerError,
+    UncertainEffect, UncertainEffectState, WorkspaceMutationKind, acknowledge_uncertain_effect,
+    checked_protected_file, uncertain_effects,
 };
 
 #[allow(dead_code, clippy::too_many_arguments)]
@@ -72,11 +73,40 @@ fn command_effects(
     );
     let _: Result<bool, ProductRunnerError> =
         runtime.preview_output_contains(launch.process_id(), "ready");
+    let _: Result<Option<PreviewOutputMatch>, ProductRunnerError> =
+        runtime.preview_output_match(launch.process_id(), "ready");
+    let evidence = runtime.preview_output_match(launch.process_id(), "ready");
+    let _ = evidence.and_then(|evidence| {
+        evidence.map_or(Ok(()), |value| runtime.verify_preview_output_match(value, "ready"))
+    });
     let _: Result<crate::PreviewTerminal, ProductRunnerError> = runtime.preview_terminal(launch);
     let _: Result<PreviewObservation, ProductRunnerError> =
         runtime.interact_preview(launch, Vec::new());
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.stop_preview(launch);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.run_preview_helper(command);
+}
+
+#[allow(dead_code)]
+fn preview_output_match(value: PreviewOutputMatch, process_id: ProcessId) {
+    let _: crate::PreviewOutputStream = value.stream();
+    let _: u64 = value.start_byte();
+    let _: u64 = value.end_byte();
+    let _: u64 = value.observed_stream_bytes();
+    let _: [u8; 32] = value.matched_bytes_digest();
+    let _: [u8; 16] = value.process_id_bytes();
+    let _: Option<[u8; 32]> = value.artifact_digest();
+    let _: [u8; 32] = value.observed_source_digest();
+    let _: Result<(), &'static str> = value.validate();
+    let _: Result<(), &'static str> = value.validate_for_needle(process_id, "needle");
+    let source = value.source();
+    match source {
+        PreviewOutputMatchSource::LiveSpool { process_id, .. } => {
+            let _ = process_id;
+        }
+        PreviewOutputMatchSource::FinalizedArtifact { process_id, artifact_digest } => {
+            let _ = (process_id, artifact_digest);
+        }
+    }
 }
 
 #[allow(dead_code)]

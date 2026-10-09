@@ -22,6 +22,8 @@ pub struct DiffReviewUi {
     pub pending_diff: Option<WorkbenchReviewDiffQuery>,
     pub pending_raw: Option<WorkbenchReviewDiffBytesQuery>,
     pub raw_line: Option<(u32, Vec<u8>)>,
+    pub raw_stream: bool,
+    pub raw_total_bytes: Option<u32>,
     pub raw_lines: Vec<(u32, u32)>,
     pub raw_index: usize,
     pub diff_history: Vec<WorkbenchReviewDiffQuery>,
@@ -42,6 +44,8 @@ impl DiffReviewUi {
         self.pending_diff = None;
         self.pending_raw = None;
         self.raw_line = None;
+        self.raw_stream = false;
+        self.raw_total_bytes = None;
         self.raw_lines.clear();
         self.raw_index = 0;
         self.diff_history.clear();

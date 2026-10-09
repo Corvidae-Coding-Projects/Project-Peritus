@@ -12,7 +12,7 @@ use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    ProductRunnerError, ProductRunnerErrorKind,
+    PreviewOutputMatch, ProductRunnerError, ProductRunnerErrorKind,
 };
 
 /// Verification-only command runtime. No safe constructor can create this effect owner.
@@ -199,6 +199,24 @@ impl CommandRuntime {
         _process_id: ProcessId,
         _needle: &str,
     ) -> Result<bool, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects exact output match evidence; this verification-only effect owner is uninhabited.
+    pub fn preview_output_match(
+        &self,
+        _process_id: ProcessId,
+        _needle: &str,
+    ) -> Result<Option<crate::PreviewOutputMatch>, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects retained-source evidence verification; this effect owner is uninhabited.
+    pub fn verify_preview_output_match(
+        &self,
+        _evidence: PreviewOutputMatch,
+        _needle: &str,
+    ) -> Result<(), ProductRunnerError> {
         match self.unavailable {}
     }
 

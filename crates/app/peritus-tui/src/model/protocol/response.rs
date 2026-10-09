@@ -128,6 +128,13 @@ impl AppModel {
     fn review_request_error(&mut self, pending: Option<&PendingRequest>) {
         let Some(product) = &mut self.product else { return };
         match pending {
+            Some(PendingRequest::WorkbenchReviewSummary(query))
+                if product.review.pending == Some(*query) =>
+            {
+                product.review.pending = None;
+                "Review summary failed; press r to refresh."
+                    .clone_into(&mut product.review.message);
+            }
             Some(PendingRequest::WorkbenchReviewDiff(query))
                 if product.review.pending_diff == Some(*query) =>
             {
@@ -205,6 +212,7 @@ impl AppModel {
             | AppResponsePayload::WorkbenchMemory(_)
             | AppResponsePayload::WorkbenchCompactionPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
             | AppResponsePayload::WorkbenchImages(_)
             | AppResponsePayload::WorkbenchFiles(_)
             | AppResponsePayload::WorkbenchFilePreview(_)
@@ -403,6 +411,7 @@ const fn is_control_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::WorkbenchBrief(_)
             | AppResponsePayload::WorkbenchGoal(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
             | AppResponsePayload::WorkbenchResult(_)
             | AppResponsePayload::WorkbenchPreview(_)
             | AppResponsePayload::WorkbenchPreviewOutput(_)

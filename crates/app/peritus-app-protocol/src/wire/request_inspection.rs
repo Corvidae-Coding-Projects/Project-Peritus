@@ -32,7 +32,8 @@ pub(super) fn write(
         AppRequestPayload::QueryWorkbenchPreviewOutput(value) => {
             super::super::workbench_launch::write_output_query(writer, *value)
         }
-        AppRequestPayload::QueryWorkbenchReview(value) => {
+        AppRequestPayload::QueryWorkbenchReview(value)
+        | AppRequestPayload::QueryWorkbenchReviewSummary(value) => {
             super::super::workbench_review::write_query(writer, *value)
         }
         AppRequestPayload::QueryWorkbenchReviewDiff(value) => {

@@ -126,6 +126,8 @@ pub enum AppRequestPayload {
     QueryWorkbenchPreviewOutput(crate::WorkbenchPreviewOutputQuery),
     /// Inspects the exact structured candidate diff, anchored comments, and evidence freshness.
     QueryWorkbenchReview(crate::WorkbenchReviewQuery),
+    /// Opens bounded review metadata before requesting structured diff pages.
+    QueryWorkbenchReviewSummary(crate::WorkbenchReviewQuery),
     /// Reads one bounded structured-diff page bound to a review revision and exact digest.
     QueryWorkbenchReviewDiff(crate::WorkbenchReviewDiffQuery),
     /// Reads one exact safe byte range from the digest-bound retained raw diff.
@@ -237,6 +239,9 @@ impl AppRequestPayload {
             Self::QueryWorkbenchReview(_) => Some(crate::WellKnownProtocolFeature::WorkbenchReview),
             Self::QueryWorkbenchReviewDiff(_) | Self::QueryWorkbenchReviewDiffBytes(_) => {
                 Some(crate::WellKnownProtocolFeature::WorkbenchReviewPages)
+            }
+            Self::QueryWorkbenchReviewSummary(_) => {
+                Some(crate::WellKnownProtocolFeature::WorkbenchReviewSummary)
             }
             Self::QueryConversationLibrary(_) => {
                 Some(crate::WellKnownProtocolFeature::ConversationLibrary)

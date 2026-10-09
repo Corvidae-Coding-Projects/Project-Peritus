@@ -151,24 +151,6 @@ fn durable_output(
     Ok((stdout, stderr))
 }
 
-pub(super) fn durable_output_contains(
-    terminal: &TerminalResult,
-    artifact_config: &StoreConfig,
-    needle: &str,
-) -> Result<bool, String> {
-    let store = ArtifactStore::open(artifact_config.clone())
-        .map_err(|error| format!("reopen command artifact store: {error}"))?;
-    for artifact in terminal.artifacts() {
-        let bytes = store
-            .read(ArtifactDigest::from_sha256(artifact.digest()), artifact.size())
-            .map_err(|error| format!("read command output artifact: {error}"))?;
-        if String::from_utf8_lossy(&bytes).contains(needle) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
 fn durable_status(terminal: &TerminalResult) -> &'static str {
     if !terminal.tree_cleanup_complete()
         || !terminal.support_tasks_joined()

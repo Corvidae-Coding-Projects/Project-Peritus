@@ -173,6 +173,8 @@ fn server_capabilities() -> Result<ServerCapabilities, DaemonError> {
         WellKnownProtocolFeature::WorkbenchFiles,
         WellKnownProtocolFeature::WorkbenchGoals,
         WellKnownProtocolFeature::WorkbenchReview,
+        WellKnownProtocolFeature::WorkbenchReviewPages,
+        WellKnownProtocolFeature::WorkbenchReviewSummary,
         WellKnownProtocolFeature::WorkbenchPreview,
         WellKnownProtocolFeature::WorkbenchPreviewOutput,
         WellKnownProtocolFeature::WorkbenchCheckpoints,

@@ -47,11 +47,61 @@ fn command_poll_attachment_fixture() {
 }
 
 #[test]
+fn no_deadline_execution_fixture() {
+    let Ok(marker) = std::env::var("PERITUS_NO_DEADLINE_FIXTURE_MARKER") else { return };
+    std::thread::sleep(Duration::from_millis(50));
+    std::fs::write(marker, b"completed without wall deadline\n").expect("write fixture marker");
+    println!("no-deadline-fixture-completed");
+}
+
+#[test]
 fn idempotency_keys_are_stable_and_fixed_width() {
     let first = bounded_key("provider-call-17");
     assert_eq!(first, bounded_key("provider-call-17"));
     assert_ne!(first, bounded_key("provider-call-18"));
     assert_eq!(first.len(), 64);
+}
+
+#[test]
+fn command_without_wall_deadline_has_complete_execution_authority() {
+    let executable = std::env::current_exe().expect("current executable");
+    let workspace = tempfile::tempdir().expect("workspace");
+    let runtime = CommandRuntime::open_for_test(
+        workspace.path(),
+        RunId::new([19; 16]).expect("run identity"),
+    );
+    let marker = workspace.path().join("no-deadline-completed.txt");
+    let result = runtime
+        .run(StartCommand {
+            program: executable.to_str().expect("executable path"),
+            arguments: &[
+                "--exact".to_owned(),
+                "developer_tools::command_runtime::tests::no_deadline_execution_fixture".to_owned(),
+                "--nocapture".to_owned(),
+            ],
+            cwd: workspace.path(),
+            timeout: None,
+            interactive: false,
+            rows: 24,
+            columns: 80,
+            idempotency_key: "without-deadline",
+            environment: vec![(
+                "PERITUS_NO_DEADLINE_FIXTURE_MARKER".to_owned(),
+                marker.to_string_lossy().into_owned(),
+            )],
+            owner_registered: None,
+        })
+        .expect("run command without a wall deadline");
+    assert_eq!(result["success"].as_bool(), Some(true), "{result}");
+    assert_eq!(
+        std::fs::read(&marker).expect("no-deadline fixture ran"),
+        b"completed without wall deadline\n"
+    );
+    assert!(
+        result["stdout"]
+            .as_str()
+            .is_some_and(|output| output.contains("no-deadline-fixture-completed"))
+    );
 }
 
 #[test]

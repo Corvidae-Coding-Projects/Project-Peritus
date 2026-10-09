@@ -12,15 +12,24 @@ pub(super) use native::{find_window, start_xvfb, test_authority};
 #[test]
 #[ignore = "requires Xvfb, xdotool, ImageMagick import, and Python Tk"]
 fn daemon_preview_evidence_satisfies_only_the_graphical_goal_criterion() {
-    interaction::block_on(async {
-        let repository = repository();
-        let state = tempfile::tempdir().expect("state");
-        let (mut xvfb, display) = start_xvfb();
-        let preview_path = repository.path().join("preview.py");
-        fs::write(
-            &preview_path,
-            format!(
-                r#"import os, sys, threading, tkinter as tk
+    interaction::block_on(graphical_restart_fixture(false));
+}
+
+#[test]
+#[ignore = "requires Xvfb, xdotool, ImageMagick import, and Python Tk"]
+fn daemon_preview_evidence_does_not_retarget_a_changed_goal_after_restart() {
+    interaction::block_on(graphical_restart_fixture(true));
+}
+
+async fn graphical_restart_fixture(change_goal: bool) {
+    let repository = repository();
+    let state = tempfile::tempdir().expect("state");
+    let (mut xvfb, display) = start_xvfb();
+    let preview_path = repository.path().join("preview.py");
+    fs::write(
+        &preview_path,
+        format!(
+            r#"import os, sys, threading, tkinter as tk
 os.environ["DISPLAY"] = {display:?}
 root = tk.Tk()
 root.title("Peritus Controlled Preview")
@@ -40,266 +49,308 @@ def reader():
 threading.Thread(target=reader, daemon=True).start()
 root.mainloop()
 "#
-            ),
-        )
-        .expect("controlled preview source");
-        let writer = scripted(0xb1, "writer", complete_writer(CORRECT));
-        let reviewer = scripted(0xb2, "reviewer", clean_review());
-        let fixer = scripted(0xb3, "fixer", Vec::new());
-        let workspace = WorkspaceId::new([0xb4; 16]).expect("workspace");
-        let run = RunId::new([0xb5; 16]).expect("run");
-        let mut service =
-            service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
-        Arc::get_mut(&mut service.inner)
-            .expect("exclusive service before launch")
-            .preview_capture = super::super::super::PreviewCaptureHost {
+        ),
+    )
+    .expect("controlled preview source");
+    let writer = scripted(0xb1, "writer", complete_writer(CORRECT));
+    let reviewer = scripted(0xb2, "reviewer", clean_review());
+    let fixer = scripted(0xb3, "fixer", Vec::new());
+    let workspace = WorkspaceId::new([0xb4; 16]).expect("workspace");
+    let run = RunId::new([0xb5; 16]).expect("run");
+    let mut service =
+        service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+    Arc::get_mut(&mut service.inner).expect("exclusive service before launch").preview_capture =
+        super::super::super::PreviewCaptureHost {
             display: Some(display.clone()),
             program: Some(std::path::PathBuf::from("/usr/bin/import")),
         };
-        let session = SessionId::new([0xba; 16]).expect("session");
-        let (authority, authority_task) = test_authority(state.path(), session);
-        queue(&service, workspace).await;
-        let objective = WorkbenchInputText::new("Ship the playable native preview.".to_owned())
-            .expect("objective");
-        let brief = command(
-            workspace,
-            0xbd,
-            3,
-            WorkbenchIntent::SetBrief {
-                field: WorkbenchBriefField::Objective,
-                text: objective.clone(),
-            },
-        );
-        assert!(matches!(
-            service.workbench_command(actor(), &brief).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        let settings = WorkbenchExecutionSettings::new(
-            run,
-            ProductProviderSelection::new(
-                writer.profile.profile_id(),
-                reviewer.profile.profile_id(),
-                fixer.profile.profile_id(),
+    let session = SessionId::new([0xba; 16]).expect("session");
+    let (authority, authority_task) = test_authority(state.path(), session);
+    queue(&service, workspace).await;
+    let objective =
+        WorkbenchInputText::new("Ship the playable native preview.".to_owned()).expect("objective");
+    let brief = command(
+        workspace,
+        0xbd,
+        3,
+        WorkbenchIntent::SetBrief {
+            field: WorkbenchBriefField::Objective,
+            text: objective.clone(),
+        },
+    );
+    assert!(matches!(
+        service.workbench_command(actor(), &brief).await,
+        AppResponsePayload::WorkbenchReceipt(_)
+    ));
+    let settings = WorkbenchExecutionSettings::new(
+        run,
+        ProductProviderSelection::new(
+            writer.profile.profile_id(),
+            reviewer.profile.profile_id(),
+            fixer.profile.profile_id(),
+        ),
+        ProductInteractionMode::Build,
+        ProductRoleModels::default(),
+    );
+    let definition = WorkbenchGoalDefinition::new(
+        objective,
+        vec![
+            WorkbenchGoalCriterionDefinition::new(
+                WorkbenchGoalCriterionKind::RunnerAcceptance,
+                WorkbenchInputText::new("Strict runner acceptance".to_owned())
+                    .expect("runner criterion"),
+                true,
             ),
-            ProductInteractionMode::Build,
-            ProductRoleModels::default(),
-        );
-        let definition = WorkbenchGoalDefinition::new(
-            objective,
-            vec![
-                WorkbenchGoalCriterionDefinition::new(
-                    WorkbenchGoalCriterionKind::RunnerAcceptance,
-                    WorkbenchInputText::new("Strict runner acceptance".to_owned())
-                        .expect("runner criterion"),
-                    true,
-                ),
-                WorkbenchGoalCriterionDefinition::new(
-                    WorkbenchGoalCriterionKind::GraphicalPlaytest,
-                    WorkbenchInputText::new("Native selected-window playtest".to_owned())
-                        .expect("graphical criterion"),
-                    true,
-                ),
-            ],
-        )
-        .expect("goal definition");
-        let start =
-            command(workspace, 0xbe, 4, WorkbenchIntent::StartGoal { definition, settings });
-        assert!(matches!(
-            service.workbench_command(actor(), &start).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        let terminal = wait_for_terminal(&service, run).await;
-        assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
+            WorkbenchGoalCriterionDefinition::new(
+                WorkbenchGoalCriterionKind::GraphicalPlaytest,
+                WorkbenchInputText::new("OBSERVED MOVE_RIGHT state=1".to_owned())
+                    .expect("graphical criterion"),
+                true,
+            ),
+        ],
+    )
+    .expect("goal definition");
+    let start = command(workspace, 0xbe, 4, WorkbenchIntent::StartGoal { definition, settings });
+    assert!(matches!(
+        service.workbench_command(actor(), &start).await,
+        AppResponsePayload::WorkbenchReceipt(_)
+    ));
+    let terminal = wait_for_terminal(&service, run).await;
+    assert_eq!(terminal.phase(), ProductRunPhase::Complete, "{}", terminal.summary());
 
-        let before = goal_snapshot(&service, workspace);
-        assert_eq!(before.state(), WorkbenchGoalState::WaitingForUser);
-        assert_criterion(
-            &before,
-            WorkbenchGoalCriterionKind::RunnerAcceptance,
-            WorkbenchGoalCriterionState::Satisfied,
-        );
-        assert_criterion(
-            &before,
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Unavailable,
-        );
+    let before = goal_snapshot(&service, workspace);
+    assert_eq!(before.state(), WorkbenchGoalState::WaitingForUser);
+    assert_criterion(
+        &before,
+        WorkbenchGoalCriterionKind::RunnerAcceptance,
+        WorkbenchGoalCriterionState::Satisfied,
+    );
+    assert_criterion(
+        &before,
+        WorkbenchGoalCriterionKind::GraphicalPlaytest,
+        WorkbenchGoalCriterionState::Unavailable,
+    );
 
-        let current = match service.workbench_query(actor(), query(workspace)) {
-            AppResponsePayload::Workbench(value) => value.revision(),
-            value => panic!("workbench snapshot: {value:?}"),
-        };
-        let text = |value: &str| WorkbenchLaunchText::new(value.to_owned()).expect("launch text");
-        let preview_digest = peritus_codec::sha256(
-            &fs::read(&preview_path).expect("read exact preview build identity"),
-        );
-        let profile = WorkbenchLaunchProfile::new(
-            run,
-            text("python3"),
-            vec![text("preview.py")],
+    let current = match service.workbench_query(actor(), query(workspace)) {
+        AppResponsePayload::Workbench(value) => value.revision(),
+        value => panic!("workbench snapshot: {value:?}"),
+    };
+    let text = |value: &str| WorkbenchLaunchText::new(value.to_owned()).expect("launch text");
+    let preview_digest =
+        peritus_codec::sha256(&fs::read(&preview_path).expect("read exact preview build identity"));
+    let profile = WorkbenchLaunchProfile::new(
+        run,
+        text("python3"),
+        vec![text("preview.py")],
+        text("."),
+        Vec::new(),
+        WorkbenchLaunchSource::new(
+            WorkbenchLaunchSourceKind::ManagedCandidate,
             text("."),
-            Vec::new(),
-            WorkbenchLaunchSource::new(
-                WorkbenchLaunchSourceKind::ManagedCandidate,
-                text("."),
-                peritus_product_runner::ProductRunner::candidate_digest(repository.path())
-                    .expect("candidate digest"),
-            ),
-            Some(WorkbenchBuildIdentity::new(text("preview.py"), preview_digest)),
-            Some(2_000),
-            Some(20_000),
-            true,
+            peritus_product_runner::ProductRunner::candidate_digest(repository.path())
+                .expect("candidate digest"),
+        ),
+        Some(WorkbenchBuildIdentity::new(text("preview.py"), preview_digest)),
+        Some(2_000),
+        Some(20_000),
+        true,
+    )
+    .expect("launch profile");
+    let launch = command(workspace, 0xb6, current, WorkbenchIntent::StartPreview(profile));
+    assert!(matches!(
+        preview_command(&service, &authority, session, &launch).await,
+        AppResponsePayload::WorkbenchReceipt(_)
+    ));
+    let window = find_window(&display, "Peritus Controlled Preview");
+    let interaction = command(
+        workspace,
+        0xb7,
+        current,
+        WorkbenchIntent::InteractPreview {
+            launch: launch.operation(),
+            input: peritus_app_protocol::WorkbenchPreviewInput::new(b"MOVE_RIGHT\n".to_vec())
+                .expect("input"),
+        },
+    );
+    assert!(matches!(
+        preview_command(&service, &authority, session, &interaction).await,
+        AppResponsePayload::WorkbenchReceipt(_)
+    ));
+    std::thread::sleep(Duration::from_millis(100));
+    let capture = command(
+        workspace,
+        0xb8,
+        current,
+        WorkbenchIntent::CapturePreview(WorkbenchCaptureRequest::new(
+            launch.operation(),
+            WorkbenchCaptureTarget::x11_window(window).expect("selected window"),
+            WorkbenchCaptureConsent::Granted,
+        )),
+    );
+    let captured = preview_command(&service, &authority, session, &capture).await;
+    assert!(matches!(captured, AppResponsePayload::WorkbenchReceipt(_)), "{captured:?}");
+    assert_criterion(
+        &goal_snapshot(&service, workspace),
+        WorkbenchGoalCriterionKind::GraphicalPlaytest,
+        WorkbenchGoalCriterionState::Unavailable,
+    );
+    let behavior = command(
+        workspace,
+        0xbb,
+        current,
+        WorkbenchIntent::CheckPreviewBehavior {
+            launch: launch.operation(),
+            observed: text("OBSERVED MOVE_RIGHT state=1"),
+            note: WorkbenchInputText::new("OBSERVED MOVE_RIGHT state=1".to_owned()).expect("note"),
+        },
+    );
+    let unrelated = command(
+        workspace,
+        0xbc,
+        current,
+        WorkbenchIntent::CheckPreviewBehavior {
+            launch: launch.operation(),
+            observed: text("OBSERVED MOVE_RIGHT state=1"),
+            note: WorkbenchInputText::new("Unrelated criterion".to_owned()).unwrap(),
+        },
+    );
+    assert!(matches!(
+        preview_command(&service, &authority, session, &unrelated).await,
+        AppResponsePayload::WorkbenchReceipt(_)
+    ));
+    assert_criterion(
+        &goal_snapshot(&service, workspace),
+        WorkbenchGoalCriterionKind::GraphicalPlaytest,
+        WorkbenchGoalCriterionState::Unavailable,
+    );
+    let original = fs::read(&preview_path).expect("exact preview source");
+    fs::write(&preview_path, b"stale source and build\n").unwrap();
+    let refused = preview_command(&service, &authority, session, &behavior).await;
+    assert!(matches!(refused, AppResponsePayload::Error(error)
+            if error.code() == peritus_app_protocol::AppErrorCode::StaleRevision));
+    fs::write(&preview_path, original).unwrap();
+    // Stop at the durable-admission boundary: no goal-control event has been published.
+    let admitted = service
+        .admit_preview_behavior(
+            run,
+            &behavior,
+            launch.operation(),
+            &text("OBSERVED MOVE_RIGHT state=1"),
         )
-        .expect("launch profile");
-        let launch = command(workspace, 0xb6, current, WorkbenchIntent::StartPreview(profile));
-        assert!(matches!(
-            preview_command(&service, &authority, session, &launch).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        let window = find_window(&display, "Peritus Controlled Preview");
-        let interaction = command(
-            workspace,
-            0xb7,
-            current,
-            WorkbenchIntent::InteractPreview {
-                launch: launch.operation(),
-                input: peritus_app_protocol::WorkbenchPreviewInput::new(b"MOVE_RIGHT\n".to_vec())
-                    .expect("input"),
-            },
+        .expect("durable behavior observation");
+    assert_criterion(
+        &goal_snapshot(&service, workspace),
+        WorkbenchGoalCriterionKind::GraphicalPlaytest,
+        WorkbenchGoalCriterionState::Unavailable,
+    );
+    {
+        let records = service.inner.records.read().unwrap();
+        super::super::super::persistence::test_behavior_evidence(
+            records.get(&run).unwrap(),
+            behavior.operation(),
         );
-        assert!(matches!(
-            preview_command(&service, &authority, session, &interaction).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        std::thread::sleep(Duration::from_millis(100));
-        let capture = command(
-            workspace,
-            0xb8,
-            current,
-            WorkbenchIntent::CapturePreview(WorkbenchCaptureRequest::new(
-                launch.operation(),
-                WorkbenchCaptureTarget::x11_window(window).expect("selected window"),
-                WorkbenchCaptureConsent::Granted,
-            )),
-        );
-        assert!(matches!(
-            preview_command(&service, &authority, session, &capture).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        assert_criterion(
-            &goal_snapshot(&service, workspace),
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Unavailable,
-        );
-        let stop = command(
-            workspace,
-            0xb9,
-            current,
-            WorkbenchIntent::StopPreview { launch: launch.operation() },
-        );
-        assert!(matches!(
-            preview_command(&service, &authority, session, &stop).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        let refused = |id, note: &str| {
-            command(
-                workspace,
-                id,
-                current,
-                WorkbenchIntent::CheckPreviewBehavior {
-                    launch: launch.operation(),
-                    observed: text("OBSERVED MOVE_RIGHT state=1"),
-                    note: WorkbenchInputText::new(note.to_owned()).unwrap(),
-                },
-            )
-        };
-        let wrong = refused(0xba, "Unrelated criterion");
-        assert!(matches!(
-            preview_command(&service, &authority, session, &wrong).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        assert_criterion(
-            &goal_snapshot(&service, workspace),
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Unavailable,
-        );
-        let owned =
-            service.inner.preview_processes.lock().unwrap().remove(&launch.operation()).unwrap();
-        let foreign = refused(0xbc, "Native selected-window playtest");
-        assert!(matches!(
-            preview_command(&service, &authority, session, &foreign).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        assert_criterion(
-            &goal_snapshot(&service, workspace),
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Unavailable,
-        );
-        service.inner.preview_processes.lock().unwrap().insert(launch.operation(), owned);
-        let original = fs::read(&preview_path).unwrap();
-        fs::write(&preview_path, b"stale source and build\n").unwrap();
-        let outdated = refused(0xbd, "Native selected-window playtest");
-        assert!(matches!(
-            preview_command(&service, &authority, session, &outdated).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-        assert_criterion(
-            &goal_snapshot(&service, workspace),
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Unavailable,
-        );
-        fs::write(&preview_path, original).unwrap();
-        let behavior = command(
-            workspace,
-            0xbb,
-            current,
-            WorkbenchIntent::CheckPreviewBehavior {
-                launch: launch.operation(),
-                observed: text("OBSERVED MOVE_RIGHT state=1"),
-                note: WorkbenchInputText::new("Native selected-window playtest".to_owned())
-                    .expect("behavior note"),
-            },
-        );
-        assert!(matches!(
-            preview_command(&service, &authority, session, &behavior).await,
-            AppResponsePayload::WorkbenchReceipt(_)
-        ));
-
-        let after = goal_snapshot(&service, workspace);
-        assert_criterion(
-            &after,
-            WorkbenchGoalCriterionKind::RunnerAcceptance,
-            WorkbenchGoalCriterionState::Satisfied,
-        );
-        assert_criterion(
-            &after,
-            WorkbenchGoalCriterionKind::GraphicalPlaytest,
-            WorkbenchGoalCriterionState::Satisfied,
-        );
-        assert_eq!(after.state(), WorkbenchGoalState::Achieved);
-
-        let page = service
+    }
+    let owned =
+        service.inner.preview_processes.lock().unwrap().remove(&launch.operation()).unwrap();
+    // Reap the real process without projecting a terminal launch state, as after host loss.
+    owned.runtime.stop_preview(&owned.launch).expect("reap fixture");
+    drop(owned);
+    service.shutdown(Duration::from_secs(5)).await;
+    drop(service);
+    let controls = crate::product_control::ControlStore::open(
+        &state.path().join("workbench-v1"),
+        peritus_journal::StoreId::new([0x7f; 16]).unwrap(),
+    )
+    .expect("restart controls");
+    let restored = crate::product_run::persistence::load_workbench_records(
+        &state.path().join("workbench-v1"),
+        Some(&controls),
+    )
+    .expect("restore exact evidence");
+    let service =
+        super::service(state.path(), repository.path(), workspace, [&writer, &reviewer, &fixer]);
+    *service.inner.controls.lock().unwrap() = Some(controls);
+    *service.inner.records.write().unwrap() = restored;
+    assert_eq!(
+        service
             .result_page(actor(), WorkbenchResultQuery::new(query(workspace), run))
-            .expect("result page");
-        let result = &page.launches()[0];
-        assert_eq!(result.state(), WorkbenchLaunchState::Stopped);
-        assert!(result.process().is_some());
-        assert!(result.ready());
-        assert_eq!(result.behavior_checks(), 4);
-        assert_eq!(result.captures()[0].state(), WorkbenchCaptureState::Captured);
-        let artifact = result.captures()[0].artifact().expect("published artifact");
-        let scope = crate::artifact::ArtifactScope::new(actor(), query(workspace));
-        let (catalog, bytes) = authority
-            .read_scoped_artifact(scope, artifact, 16 * 1_024 * 1_024)
-            .await
-            .expect("published capture bytes");
-        assert_eq!(catalog.digest(), result.captures()[0].image_digest().expect("digest"));
-        assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
-        service.shutdown(Duration::from_secs(5)).await;
-        authority.stop().await.expect("stop authority");
-        authority_task.await.expect("authority task").expect("authority shutdown");
-        xvfb.kill().expect("stop Xvfb");
-        let _ = xvfb.wait();
-    });
+            .unwrap()
+            .launches()[0]
+            .state(),
+        WorkbenchLaunchState::Failed
+    );
+    // Hide retained output from the runtime path: retry must consume the accepted fact.
+    fs::rename(
+        state.path().join("workbench-v1/previews/commands"),
+        state.path().join("workbench-v1/previews/retained-commands"),
+    )
+    .expect("retain inaccessible output");
+    if change_goal {
+        let AppResponsePayload::Workbench(current) =
+            service.workbench_query(actor(), query(workspace))
+        else {
+            panic!("current workbench")
+        };
+        let pause = command(
+            workspace,
+            0xbf,
+            current.revision(),
+            WorkbenchIntent::PauseGoal {
+                goal: goal_snapshot(&service, workspace).goal(),
+                mode: WorkbenchGoalPauseMode::Now,
+            },
+        );
+        assert!(matches!(
+            service.workbench_command(actor(), &pause).await,
+            AppResponsePayload::WorkbenchReceipt(_)
+        ));
+    }
+    let expected = AppResponsePayload::WorkbenchReceipt(admitted);
+    assert_eq!(preview_command(&service, &authority, session, &behavior).await, expected);
+    assert_eq!(preview_command(&service, &authority, session, &behavior).await, expected);
+
+    let after = goal_snapshot(&service, workspace);
+    assert_criterion(
+        &after,
+        WorkbenchGoalCriterionKind::RunnerAcceptance,
+        WorkbenchGoalCriterionState::Satisfied,
+    );
+    assert_criterion(
+        &after,
+        WorkbenchGoalCriterionKind::GraphicalPlaytest,
+        if change_goal {
+            WorkbenchGoalCriterionState::Unavailable
+        } else {
+            WorkbenchGoalCriterionState::Satisfied
+        },
+    );
+    assert_eq!(
+        after.state(),
+        if change_goal { WorkbenchGoalState::Paused } else { WorkbenchGoalState::Achieved }
+    );
+
+    let page = service
+        .result_page(actor(), WorkbenchResultQuery::new(query(workspace), run))
+        .expect("result page");
+    let result = &page.launches()[0];
+    assert_eq!(result.state(), WorkbenchLaunchState::Failed);
+    assert!(result.process().is_some());
+    assert!(result.ready());
+    assert_eq!(result.behavior_checks(), 2);
+    assert_eq!(result.captures()[0].state(), WorkbenchCaptureState::Captured);
+    let artifact = result.captures()[0].artifact().expect("published artifact");
+    let scope = crate::artifact::ArtifactScope::new(actor(), query(workspace));
+    let (catalog, bytes) = authority
+        .read_scoped_artifact(scope, artifact, 16 * 1_024 * 1_024)
+        .await
+        .expect("published capture bytes");
+    assert_eq!(catalog.digest(), result.captures()[0].image_digest().expect("digest"));
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
+    service.shutdown(Duration::from_secs(5)).await;
+    authority.stop().await.expect("stop authority");
+    authority_task.await.expect("authority task").expect("authority shutdown");
+    xvfb.kill().expect("stop Xvfb");
+    let _ = xvfb.wait();
 }
 
 pub(super) fn goal_snapshot(

@@ -58,7 +58,7 @@ impl WorkbenchDiffLine {
         raw_length: u32,
         truncated: bool,
     ) -> Result<Self, AppProtocolError> {
-        if text.len() > 1025
+        if text.len() > 1027
             || text.chars().any(|ch| ch.is_control() && ch != '\t')
             || raw_offset.checked_add(raw_length).is_none()
             || (truncated && !text.ends_with('…'))
@@ -123,14 +123,15 @@ impl WorkbenchDiffLine {
 fn safe_preview(value: &str) -> (String, bool) {
     const PREVIEW_BYTES: usize = 1024;
     let mut preview = String::new();
+    let mut truncated = false;
     for character in value.chars() {
         let character = if character.is_control() && character != '\t' { '�' } else { character };
         if preview.len().saturating_add(character.len_utf8()) > PREVIEW_BYTES {
+            truncated = true;
             break;
         }
         preview.push(character);
     }
-    let truncated = preview.len() < value.len();
     if truncated {
         preview.push('…');
     }

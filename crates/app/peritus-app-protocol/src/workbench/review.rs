@@ -20,12 +20,19 @@ mod anchor;
 pub use anchor::*;
 mod diff;
 pub use diff::*;
+mod diff_bytes;
+pub use diff_bytes::*;
 mod diff_page;
 pub use diff_page::*;
 mod page;
 pub use page::*;
+mod page_parser;
 mod parser;
-pub use parser::parse_workbench_diff;
+pub use parser::{
+    parse_workbench_diff, parse_workbench_diff_page, parse_workbench_diff_page_with_anchors,
+};
+mod summary;
+pub use summary::WorkbenchReviewSummary;
 
 fn validate_path(value: &str) -> Result<(), AppProtocolError> {
     let path = Path::new(value);

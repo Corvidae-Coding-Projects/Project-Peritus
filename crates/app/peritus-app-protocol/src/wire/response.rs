@@ -93,6 +93,9 @@ fn write_payload(
         AppResponsePayload::WorkbenchReview(value) => {
             super::workbench_review::write_page(writer, value)
         }
+        AppResponsePayload::WorkbenchReviewSummary(value) => {
+            super::workbench_review::write_summary(writer, value)
+        }
         AppResponsePayload::WorkbenchReviewDiff(value) => {
             super::workbench_review::write_diff_page(writer, value)
         }
@@ -173,6 +176,7 @@ fn payload_tag(payload: &AppResponsePayload) -> u16 {
         AppResponsePayload::WorkbenchPreview(_) => 101,
         AppResponsePayload::WorkbenchPreviewOutput(_) => 104,
         AppResponsePayload::WorkbenchReview(_) => 80,
+        AppResponsePayload::WorkbenchReviewSummary(_) => 110,
         AppResponsePayload::WorkbenchReviewDiff(_) => 106,
         AppResponsePayload::WorkbenchReviewDiffBytes(_) => 108,
         AppResponsePayload::ConversationLibrary(_) => 140,
@@ -239,6 +243,9 @@ pub(super) fn read_response(
         ),
         100 => AppResponsePayload::WorkbenchResult(super::workbench_launch::read_page(reader)?),
         80 => AppResponsePayload::WorkbenchReview(super::workbench_review::read_page(reader)?),
+        110 => AppResponsePayload::WorkbenchReviewSummary(super::workbench_review::read_summary(
+            reader,
+        )?),
         106 => AppResponsePayload::WorkbenchReviewDiff(super::workbench_review::read_diff_page(
             reader,
         )?),

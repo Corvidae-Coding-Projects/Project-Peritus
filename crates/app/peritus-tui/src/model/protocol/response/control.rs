@@ -99,6 +99,16 @@ fn project_setup(
             Some(PendingRequest::WorkbenchReview(query)),
         ) => return model.accept_review_page(query, page.clone()),
         (
+            AppResponsePayload::WorkbenchReviewSummary(summary),
+            Some(PendingRequest::WorkbenchReviewSummary(query)),
+        ) if summary.query().query() == query.query()
+            && summary.query().run() == query.run()
+            && summary.query().offset() == query.offset()
+            && (query.revision() == 0 || query.revision() == summary.query().revision()) =>
+        {
+            return model.accept_review_summary(query, summary);
+        }
+        (
             AppResponsePayload::WorkbenchReviewDiff(page),
             Some(PendingRequest::WorkbenchReviewDiff(query)),
         ) => return model.accept_review_diff_page(query, page.clone()),
@@ -216,6 +226,7 @@ const fn is_setup_payload(payload: &AppResponsePayload) -> bool {
             | AppResponsePayload::ConversationLibrary(_)
             | AppResponsePayload::WorkbenchFileImportPreview(_)
             | AppResponsePayload::WorkbenchReview(_)
+            | AppResponsePayload::WorkbenchReviewSummary(_)
             | AppResponsePayload::WorkbenchReviewDiff(_)
             | AppResponsePayload::WorkbenchReviewDiffBytes(_)
     )

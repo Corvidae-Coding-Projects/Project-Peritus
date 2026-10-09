@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Negotiate lightweight review summaries and stream contiguous structured/raw diff pages with exact current-source navigation and safe control-character previews.
+- Persist preview behavior checks with exact command, byte offsets, stream identities, and source digests; replay goal evidence after restart without rescanning or counting a duplicate check.
 - Keep attachment range types and preview output methods consistent across ordinary and Verus builds.
 - Keep filesystem diagnostics unique and bounded across directory pages; stabilize Git history against shared replacement, shallow, graft, and encoding settings; retain subjects beyond the former 4 KiB limit.
 - Record only successfully spooled process bytes after output I/O failures, search live preview streams according to their actual I/O mode, and align environment-name projections and native platform fixtures.
