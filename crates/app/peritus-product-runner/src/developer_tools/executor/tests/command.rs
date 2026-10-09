@@ -48,10 +48,15 @@ fn active_commands_accept_terminal_input_and_reach_a_stable_result() {
     assert!(!recovered.is_error, "{}", wire(&recovered));
     let recovered: Value = serde_json::from_str(&wire(&recovered)).expect("recovery result");
     assert_eq!(recovered["handle"], handle);
+    #[cfg(windows)]
+    let input_text = "hello from peritus\r";
+    #[cfg(not(windows))]
+    let input_text = "hello from peritus\n";
+    let input_text = serde_json::to_string(input_text).expect("terminal input text");
     let input = execute(
         &mut tools,
         "command_stdin",
-        &format!(r#"{{"handle":"{handle}","text":"hello from peritus\n"}}"#),
+        &format!(r#"{{"handle":"{handle}","text":{input_text}}}"#),
     );
     assert!(!input.is_error, "{}", wire(&input));
     let terminal = poll_terminal(&mut tools, handle);

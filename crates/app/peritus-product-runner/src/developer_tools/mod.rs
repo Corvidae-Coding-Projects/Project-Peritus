@@ -80,7 +80,8 @@ pub const DEFAULT_INSPECTION_PAGE_BYTES: usize = 16 * 1024;
 pub use ownership::WorkspaceOwnership;
 pub use preview::{
     PreviewCommand, PreviewLaunch, PreviewObservation, PreviewOutputMatch,
-    PreviewOutputMatchSource, PreviewOutputRange, PreviewOutputStream, PreviewProcessState,
+    PreviewOutputMatchSource, PreviewOutputRange, PreviewOutputStream, PreviewOwner,
+    PreviewProcessState,
 };
 #[cfg(not(verus_only))]
 pub use receipt::{

@@ -1,5 +1,7 @@
 //! Authenticated, read-only task-brief projection from the authoritative input ledger.
 
+mod pages;
+
 use super::{ProductRunService, error_response, inputs::project_row};
 use peritus_app_protocol::{
     AppResponsePayload, ControlOperationId, WorkbenchBrief, WorkbenchBriefEntry,

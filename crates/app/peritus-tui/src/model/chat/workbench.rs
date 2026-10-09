@@ -47,6 +47,9 @@ pub struct WorkbenchUi {
     pub(crate) compaction_request: Option<peritus_app_protocol::WorkbenchCompactionRequest>,
     pub(crate) compaction_preview: Option<peritus_app_protocol::WorkbenchCompactionPreview>,
     pub(crate) brief: Option<peritus_app_protocol::WorkbenchBrief>,
+    pub(crate) brief_page: Option<peritus_app_protocol::WorkbenchBriefPage>,
+    pub(crate) brief_body: Option<peritus_app_protocol::WorkbenchBriefProposalPage>,
+    pub(crate) brief_body_history: Vec<u64>,
     pub(crate) goal_mode: bool,
     pub(crate) goal: Option<peritus_app_protocol::WorkbenchGoalSnapshot>,
     pub(crate) goal_draft: Option<goal::GoalDraft>,
@@ -69,6 +72,8 @@ pub struct WorkbenchUi {
     pub(crate) restore_summary: Option<peritus_app_protocol::WorkbenchRestoreSummary>,
     pub(crate) permissions: Option<peritus_app_protocol::WorkbenchPermissions>,
     pub(crate) init: Option<peritus_app_protocol::InitProposal>,
+    pub(crate) init_artifact: Option<peritus_app_protocol::InitArtifactProposal>,
+    pub(crate) init_artifact_page: Option<peritus_app_protocol::InitArtifactPage>,
     pub(crate) memory: Option<peritus_app_protocol::WorkbenchMemory>,
     memory_view: WorkbenchMemoryView,
     pub(crate) unresolved: Option<(WorkbenchCommand, String)>,
@@ -219,6 +224,9 @@ impl AppModel {
                 self.rewind_confirmation_binding(*confirmation, workspace)
             }
             WorkbenchIntent::SetPermissions(_) => self.permission_command_binding(workspace),
+            WorkbenchIntent::ApplyInitArtifact(proposal) => {
+                self.init_artifact_binding(*proposal, workspace)
+            }
             WorkbenchIntent::ApplyInitDiff(proposal) => {
                 self.init_command_binding(proposal, workspace)
             }

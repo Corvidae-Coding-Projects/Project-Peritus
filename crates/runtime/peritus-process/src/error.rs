@@ -136,6 +136,8 @@ pub struct ProcessError {
     operation: ProcessOperation,
     recovery: RecoveryClass,
     detail: &'static str,
+    preparation_cleanup: Option<bool>,
+    source: Option<Box<dyn std::error::Error + Send + Sync>>,
 }
 
 impl ProcessError {
@@ -147,7 +149,27 @@ impl ProcessError {
         recovery: RecoveryClass,
         detail: &'static str,
     ) -> Self {
-        Self { code, operation, recovery, detail }
+        Self { code, operation, recovery, detail, preparation_cleanup: None, source: None }
+    }
+
+    /// Retains a typed underlying failure and its owned recovery resources.
+    #[must_use]
+    pub fn with_source(mut self, source: impl std::error::Error + Send + Sync + 'static) -> Self {
+        self.source = Some(Box::new(source));
+        self
+    }
+
+    /// Attaches explicit native preparation cleanup evidence.
+    #[must_use]
+    pub const fn with_preparation_cleanup(mut self, complete: bool) -> Self {
+        self.preparation_cleanup = Some(complete);
+        self
+    }
+
+    /// Returns cleanup evidence, absent when a backend could not establish it.
+    #[must_use]
+    pub const fn preparation_cleanup(&self) -> Option<bool> {
+        self.preparation_cleanup
     }
 
     /// Returns the stable error category.
@@ -181,7 +203,11 @@ impl fmt::Display for ProcessError {
     }
 }
 
-impl std::error::Error for ProcessError {}
+impl std::error::Error for ProcessError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_deref().map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
 
 pub(crate) const fn invalid(detail: &'static str) -> ProcessError {
     ProcessError::new(

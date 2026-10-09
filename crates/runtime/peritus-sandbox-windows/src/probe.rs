@@ -2,13 +2,21 @@
 
 use std::path::{Path, PathBuf};
 
-use peritus_sandbox::{FeatureSet, SandboxFeature};
+use peritus_sandbox::{CheckedSandboxPlan, FeatureSet, SandboxFeature};
 use peritus_types::Sha256Digest;
 
 use crate::{
-    EnforcementLevel, TokenProfile, WindowsError, WindowsErrorKind, WindowsOperation,
-    WindowsRecovery,
+    EnforcementLevel, ResourceControlPlan, TokenProfile, WindowsError, WindowsErrorKind,
+    WindowsOperation, WindowsRecovery,
 };
+
+mod features;
+mod helper;
+pub use features::production_resource_levels;
+use features::supported_features;
+#[cfg(target_os = "windows")]
+pub(crate) use helper::HelperImageEvidence;
+pub(crate) use helper::{HelperImageFailure, inspect_helper_image};
 
 /// Minimum supported Windows build for 11 24H2 and Server 2025.
 pub const MINIMUM_WINDOWS_BUILD: u32 = 26_100;
@@ -118,6 +126,7 @@ impl ProbeEvidence {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProbeRequest {
     helper_path: PathBuf,
+    acl_probe_root: Option<PathBuf>,
     token_profile: TokenProfile,
     managed_filter_digest: Option<Sha256Digest>,
 }
@@ -138,13 +147,30 @@ impl ProbeRequest {
         if managed_filter_digest == Some(Sha256Digest::new([0; 32])) {
             return Err(probe_error("managed network filter digest cannot be zero"));
         }
-        Ok(Self { helper_path, token_profile, managed_filter_digest })
+        Ok(Self { helper_path, acl_probe_root: None, token_profile, managed_filter_digest })
+    }
+
+    /// Selects a private absolute root for a reversible ACL save/grant/restore qualification.
+    ///
+    /// # Errors
+    /// Rejects a relative probe root.
+    pub fn with_acl_probe_root(mut self, acl_probe_root: PathBuf) -> Result<Self, WindowsError> {
+        if !acl_probe_root.is_absolute() {
+            return Err(probe_error("ACL capability probe root must be absolute"));
+        }
+        self.acl_probe_root = Some(acl_probe_root);
+        Ok(self)
     }
 
     /// Returns the helper path.
     #[must_use]
     pub fn helper_path(&self) -> &Path {
         &self.helper_path
+    }
+
+    #[cfg(target_os = "windows")]
+    pub(crate) fn acl_probe_root(&self) -> Option<&Path> {
+        self.acl_probe_root.as_deref()
     }
 
     /// Returns exact token/AppContainer configuration.
@@ -177,7 +203,11 @@ impl WindowsProbe {
         if evidence.helper_digest.is_some() != evidence.helper
             || (evidence.app_container_sid_exact && !evidence.app_container)
             || (evidence.kill_on_close && !evidence.job_object)
+            || (evidence.deny_network && !evidence.app_container_sid_exact)
             || (evidence.managed_network && !evidence.deny_network)
+            || [1_usize, 2, 6].into_iter().any(|index| {
+                evidence.resources[index] == EnforcementLevel::Hard && !evidence.job_object
+            })
         {
             return Err(probe_error("Windows probe evidence is internally inconsistent"));
         }
@@ -191,12 +221,27 @@ impl WindowsProbe {
     /// # Errors
     /// Returns a typed error only for inconsistent native observations.
     pub fn run(request: &ProbeRequest) -> Result<Self, WindowsError> {
+        Self::run_cancellable(request, || true)
+    }
+
+    /// Executes native probes while the caller retains cancellation ownership.
+    ///
+    /// # Errors
+    /// Returns a typed error for cancellation or inconsistent native observations.
+    pub fn run_cancellable(
+        request: &ProbeRequest,
+        mut should_continue: impl FnMut() -> bool,
+    ) -> Result<Self, WindowsError> {
         #[cfg(target_os = "windows")]
-        let evidence = crate::native::probe::run(request)?;
+        let evidence = crate::native::probe::run(request, &mut should_continue)?;
         #[cfg(not(target_os = "windows"))]
         let evidence = {
             let _ = request;
-            ProbeEvidence::unsupported()
+            if should_continue() {
+                ProbeEvidence::unsupported()
+            } else {
+                return Err(probe_cancelled());
+            }
         };
         Self::from_evidence(evidence)
     }
@@ -224,105 +269,102 @@ impl WindowsProbe {
     pub fn core_supported(&self) -> bool {
         let evidence = &self.evidence;
         evidence.platform
-            && evidence.architecture
             && evidence.os_build.is_some_and(|build| build >= MINIMUM_WINDOWS_BUILD)
+            && evidence.architecture
             && evidence.helper
+            && evidence.helper_digest.is_some()
             && evidence.restricted_token
             && evidence.low_integrity
-            && evidence.job_object
-            && evidence.kill_on_close
-            && evidence.acl
-            && evidence.reparse
-            && evidence.inherited_handle_list
-            && evidence.deny_network
     }
-}
 
-/// Expected Windows split between Job Object and C2 supervisor enforcement.
-#[must_use]
-pub const fn production_resource_levels() -> [EnforcementLevel; 8] {
-    [
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Supervisor,
-    ]
-}
-
-fn supported_features(evidence: &ProbeEvidence) -> FeatureSet {
-    let mut features = FeatureSet::empty();
-    let baseline = evidence.platform
-        && evidence.architecture
-        && evidence.os_build.is_some_and(|build| build >= MINIMUM_WINDOWS_BUILD)
-        && evidence.helper
-        && evidence.restricted_token
-        && evidence.low_integrity
-        && evidence.app_container
-        && evidence.app_container_sid_exact
-        && evidence.job_object
-        && evidence.kill_on_close
-        && evidence.acl
-        && evidence.reparse
-        && evidence.inherited_handle_list
-        && evidence.deny_network;
-    if !baseline {
-        return features;
-    }
-    for feature in [
-        SandboxFeature::FilesystemDiscover,
-        SandboxFeature::FilesystemMetadata,
-        SandboxFeature::FilesystemRead,
-        SandboxFeature::FilesystemExecute,
-        SandboxFeature::FilesystemCreate,
-        SandboxFeature::FilesystemWrite,
-        SandboxFeature::FilesystemRemove,
-        SandboxFeature::ProcessRoot,
-        SandboxFeature::ProcessDescendants,
-        SandboxFeature::ProcessSignals,
-        SandboxFeature::ProcessTree,
-        SandboxFeature::EnvironmentClear,
-        SandboxFeature::EnvironmentAllowList,
-        SandboxFeature::NetworkDeny,
-        SandboxFeature::Pipes,
-        SandboxFeature::Stdin,
-    ] {
-        features.insert(feature);
-    }
-    for (index, feature) in RESOURCE_FEATURES.into_iter().enumerate() {
-        if evidence.resources[index] != EnforcementLevel::Unsupported {
-            features.insert(feature);
+    pub(crate) fn selected_controls(
+        &self,
+        plan: &CheckedSandboxPlan,
+        profile: &TokenProfile,
+    ) -> Result<SelectedNativeControls, WindowsError> {
+        if !self.core_supported() {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "Windows platform, architecture, helper, token, or low-integrity evidence is unavailable",
+            ));
         }
+        let missing = plan.required_features().missing_from(self.supported_features());
+        if missing.iter().next().is_some() {
+            return Err(WindowsError::new(
+                WindowsErrorKind::UnsupportedHost,
+                WindowsOperation::Prepare,
+                WindowsRecovery::ConfigureHost,
+                format!(
+                    "selected Windows controls unavailable: {:?}",
+                    missing.iter().collect::<Vec<_>>()
+                ),
+            ));
+        }
+        if plan.required_features().contains(SandboxFeature::NetworkDeny)
+            && !profile.is_app_container()
+        {
+            return Err(crate::error::unsupported(
+                WindowsOperation::Prepare,
+                "selected network denial requires an exact AppContainer identity",
+            ));
+        }
+        let resources = ResourceControlPlan::select_checked_plan(plan, self.evidence.resources)?;
+        let network = if plan.requirements().network().is_empty() {
+            SelectedNetworkControl::DenyAll
+        } else {
+            SelectedNetworkControl::ManagedWfp
+        };
+        let terminal = if plan.required_features().contains(SandboxFeature::Pty) {
+            SelectedTerminalControl::ConPty
+        } else {
+            SelectedTerminalControl::Pipes
+        };
+        Ok(SelectedNativeControls {
+            network,
+            terminal,
+            credential_delivery: !plan.requirements().secrets().is_empty(),
+            resources,
+        })
     }
-    if evidence.conpty {
-        features.insert(SandboxFeature::Pty);
-        features.insert(SandboxFeature::TerminalResize);
-        features.insert(SandboxFeature::TerminalSignals);
-    }
-    if evidence.managed_network {
-        features.insert(SandboxFeature::NetworkEgress);
-    }
-    if evidence.credential_manager {
-        features.insert(SandboxFeature::SecretEnvironment);
-        features.insert(SandboxFeature::SecretFile);
-        features.insert(SandboxFeature::SecretHandle);
-    }
-    features
 }
 
-const RESOURCE_FEATURES: [SandboxFeature; 8] = [
-    SandboxFeature::WallTime,
-    SandboxFeature::CpuTime,
-    SandboxFeature::Memory,
-    SandboxFeature::Disk,
-    SandboxFeature::Output,
-    SandboxFeature::OpenHandles,
-    SandboxFeature::ProcessCount,
-    SandboxFeature::Concurrency,
-];
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct SelectedNativeControls {
+    network: SelectedNetworkControl,
+    terminal: SelectedTerminalControl,
+    credential_delivery: bool,
+    resources: ResourceControlPlan,
+}
+
+impl SelectedNativeControls {
+    pub(crate) const fn managed_network(self) -> bool {
+        matches!(self.network, SelectedNetworkControl::ManagedWfp)
+    }
+
+    pub(crate) const fn conpty(self) -> bool {
+        matches!(self.terminal, SelectedTerminalControl::ConPty)
+    }
+
+    pub(crate) const fn credential_delivery(self) -> bool {
+        self.credential_delivery
+    }
+
+    pub(crate) const fn resources(self) -> ResourceControlPlan {
+        self.resources
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SelectedNetworkControl {
+    DenyAll,
+    ManagedWfp,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SelectedTerminalControl {
+    Pipes,
+    ConPty,
+}
 
 fn probe_bytes(evidence: &ProbeEvidence) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(128);
@@ -361,4 +403,8 @@ fn probe_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::ConfigureHost,
         detail,
     )
+}
+
+pub(crate) fn probe_cancelled() -> WindowsError {
+    probe_error("native capability probe was cancelled by its caller")
 }

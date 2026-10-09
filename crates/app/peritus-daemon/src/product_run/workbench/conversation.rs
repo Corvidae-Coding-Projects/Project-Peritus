@@ -94,6 +94,23 @@ impl ProductRunService {
         let Some(run) = state.run() else {
             return error_response(ControlError::NotFound.into());
         };
+        let message = continuation
+            .operation()
+            .map(|operation| (operation.into_bytes(), continuation.mode().tag()));
+        if let Some((operation, mode)) = message {
+            match self.message_continuation_pending(actor, query, run, operation, mode) {
+                Ok(true) => {}
+                Ok(false) => {
+                    return self
+                        .query_interaction(peritus_app_protocol::ProductInteractionQuery::new(run))
+                        .map_or_else(
+                            crate::product_run::ProductRunServiceError::response,
+                            AppResponsePayload::Interaction,
+                        );
+                }
+                Err(error) => return error.response(),
+            }
+        }
         let should_resume = (|| {
             let records = self
                 .inner
@@ -112,7 +129,7 @@ impl ProductRunService {
                 if let Err(error) = self.prepare_conversation_mode(run, continuation.mode()).await {
                     return error.response();
                 }
-                if let Err(error) = self.retry(run).await {
+                if let Err(error) = self.retry_bound(run, None, message).await {
                     return error.response();
                 }
             }
@@ -127,7 +144,7 @@ impl ProductRunService {
 }
 
 impl ProductRunService {
-    async fn prepare_conversation_mode(
+    pub(in crate::product_run) async fn prepare_conversation_mode(
         &self,
         run: RunId,
         mode: peritus_app_protocol::ProductInteractionMode,
@@ -171,5 +188,79 @@ impl ProductRunService {
             return Err(error);
         }
         Ok(())
+    }
+}
+
+impl ProductRunService {
+    fn message_continuation_pending(
+        &self,
+        actor: ActorId,
+        query: WorkbenchQuery,
+        run: RunId,
+        id: [u8; 16],
+        mode: u16,
+    ) -> Result<bool, crate::product_run::ProductRunServiceError> {
+        use crate::product_run::ProductRunServiceError as Error;
+        let records = self.inner.records.read().map_err(|_| Error::Unavailable)?;
+        let record = records.get(&run).ok_or(Error::NotFound)?;
+        let start = &record.interaction.workbench;
+        if start.actor_bytes() != actor.as_bytes()
+            || start.workspace_bytes() != query.workspace().as_bytes()
+            || start.conversation().as_bytes() != query.conversation().as_bytes()
+        {
+            return Err(crate::product_control::ControlStoreError::from(
+                ControlError::ScopeMismatch,
+            )
+            .into());
+        }
+        let pending =
+            self.with_controls(false, |store| Self::bound_message_pending(store, start, id))?;
+        if let Some((_, original_mode)) =
+            record.message_launches.iter().find(|(original, _)| *original == id)
+        {
+            if *original_mode != mode {
+                return Err(Error::InvalidMessage);
+            }
+            return Ok(false);
+        }
+        Ok(pending)
+    }
+}
+
+impl ProductRunService {
+    /// The caller owns the control-store lock through launch admission when using this as authority.
+    pub(in crate::product_run) fn bound_message_pending(
+        store: &crate::product_control::ControlStore,
+        start: &peritus_product_runner::control::ControlOperation,
+        id: [u8; 16],
+    ) -> Result<bool, crate::product_control::ControlStoreError> {
+        use peritus_product_runner::control::{
+            ControlIntent, InputId, InputSelection, InputState, OperationId, QueueIntent,
+        };
+        let operation = store
+            .operation(start.conversation(), OperationId::new(id)?)?
+            .ok_or(ControlError::NotFound)?;
+        if operation.actor_bytes() != start.actor_bytes()
+            || operation.workspace_bytes() != start.workspace_bytes()
+            || store.resolve(&operation)?.is_none()
+        {
+            return Err(ControlError::ScopeMismatch.into());
+        }
+        let input = match operation.intent() {
+            ControlIntent::Queue(QueueIntent::Enqueue { id, .. }) => *id,
+            ControlIntent::SubmitMessage { .. } => InputId::new(id)?,
+            _ => return Err(ControlError::InvalidInput.into()),
+        };
+        let selected = InputSelection::new(input, 1)?;
+        let current = store.execution_record(start)?;
+        if current.archived()
+            || current.goal().is_some()
+            || current.inputs().latest(input).is_none_or(|input| {
+                input.selection() != selected || input.state() != InputState::Queued
+            })
+        {
+            return Ok(false);
+        }
+        Ok(store.capture_execution(start)?.inputs().pending().contains(&selected))
     }
 }

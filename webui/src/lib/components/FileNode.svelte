@@ -6,7 +6,8 @@
   import FileNode from './FileNode.svelte';
   let { entry, project, depth=0, onmenu }: {entry:Entry;project:string;depth?:number;onmenu:(entry:Entry,event:MouseEvent|KeyboardEvent)=>void}=$props();
   let expanded=$state(false),loading=$state(false),children=$state<Entry[]>([]),next=$state<number|null>(null);
-  async function load(offset=0){loading=true;try{const page=await query<Directory>('files',{project,path:entry.path,offset});children=offset?[...children,...page.entries]:page.entries;next=page.next;}catch(error){notify(String(error),true);}finally{loading=false;}}
+  let inventory=$state('');
+  async function load(offset=0){loading=true;try{const page=await query<Directory>('files',{project,path:entry.path,offset,inventory:offset?inventory:''});children=offset?[...children,...page.entries]:page.entries;next=page.next;inventory=page.inventory;}catch(error){notify(String(error),true);}finally{loading=false;}}
   async function activate(){if(entry.directory){expanded=!expanded;if(expanded&&!children.length)await load();}else openFile(entry.path);}
   let icon=$derived(entry.directory?'folder':/\.(png|jpe?g|webp|svg|gif|avif)$/i.test(entry.name)?'image':/\.(mp3|ogg|wav|flac|opus)$/i.test(entry.name)?'audio':/\.(rs|py|js|ts|tsx|json|toml)$/i.test(entry.name)?'code':'file');
 </script>

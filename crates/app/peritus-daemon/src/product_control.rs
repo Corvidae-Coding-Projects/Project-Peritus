@@ -10,7 +10,10 @@ mod inputs;
 mod replies;
 mod storage;
 
-pub use init::{discover_init, prepare_init_patch};
+pub use init::{
+    discover_init_artifacts_checked, discover_init_checked, init_artifact_page_checked,
+    prepare_init_artifact_patch_checked, prepare_init_patch_checked,
+};
 
 pub use error::ControlStoreError;
 pub use storage::ControlStore;

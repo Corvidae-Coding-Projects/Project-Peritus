@@ -124,13 +124,17 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         let observed_start = evidence::assert_retained(&running, run, &live_check, false);
         let terminal_attachment = terminal::attach_and_reconnect(&running, &live).await;
         terminal_attachment.check_permission_changes(&running, workspace).await;
+        #[cfg(windows)]
+        let input_bytes = b"da\r".as_slice();
+        #[cfg(not(windows))]
+        let input_bytes = b"da\n".as_slice();
         let input = command(
             workspace,
             0x77,
             snapshot.revision(),
             WorkbenchIntent::InteractPreview {
                 launch: launch.operation(),
-                input: peritus_app_protocol::WorkbenchPreviewInput::new(b"da\n".to_vec())
+                input: peritus_app_protocol::WorkbenchPreviewInput::new(input_bytes.to_vec())
                     .expect("input"),
             },
         );
@@ -164,9 +168,6 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
         assert!(!restored.outputs()[0].stdout().contains("EARLY_SIGNAL"));
-        #[cfg(windows)]
-        let output_stream = WorkbenchPreviewOutputStream::Stdout;
-        #[cfg(not(windows))]
         let output_stream = WorkbenchPreviewOutputStream::Terminal;
         let range_query = WorkbenchPreviewOutputQuery::new(
             query(workspace),
@@ -234,5 +235,10 @@ async fn wait_for_output(
         }
     })
     .await
-    .expect("expected output before deadline")
+    .unwrap_or_else(|_| {
+        panic!(
+            "expected {expected:?} (terminal={terminal}) before deadline; latest: {:?}",
+            observe(service, query)
+        )
+    })
 }

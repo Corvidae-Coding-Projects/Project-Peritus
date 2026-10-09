@@ -110,6 +110,21 @@ impl JobPlan {
         })
     }
 
+    #[cfg(target_os = "windows")]
+    pub(crate) fn from_probe_limits(
+        processes: Option<u32>,
+        memory: Option<u64>,
+        cpu: Option<u64>,
+    ) -> Self {
+        // Zero is used only by isolated probe jobs to omit that dimension.
+        Self {
+            kill_on_close: true,
+            active_process_limit: processes.unwrap_or(0),
+            job_memory_bytes: memory.unwrap_or(0),
+            cpu_time_millis: cpu,
+        }
+    }
+
     /// Reports kill-on-close ownership.
     #[must_use]
     pub const fn kill_on_close(self) -> bool {

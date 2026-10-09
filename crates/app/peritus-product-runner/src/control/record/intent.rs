@@ -246,6 +246,31 @@ pub enum ControlIntent {
         /// User-confirmed caption, governed by the ordinary queue lifecycle.
         text: crate::control::ControlText<8192>,
     },
+    /// Atomically publishes a user message and all of its immutable text references. Host-only.
+    SubmitMessage {
+        /// Exact inline text or a host-generated reference to the full user-authored text.
+        text: crate::control::ControlText<8192>,
+        /// Sources sharing this operation's single durable queue input identity.
+        files: Vec<crate::control::FileAttachment>,
+    },
+    /// Accepts an exact model-authored proposal into a user-confirmed brief field. Host-only.
+    AcceptBriefProposal {
+        /// Explicitly selected field.
+        field: crate::control::BriefField,
+        /// Original immutable model authorship and source digest.
+        reply: crate::control::PublicReplyReference,
+        /// Exact bytes and user acceptance proof installed atomically with the brief edit.
+        version: crate::control::FileVersion,
+    },
+    /// Appends one coherent set of request-boundary file observations. Host-only.
+    RefreshFiles {
+        /// Exact attachment, predecessor, and immutable successor for each changed source.
+        versions: Vec<(
+            crate::control::OperationId,
+            crate::control::OperationId,
+            crate::control::FileVersion,
+        )>,
+    },
     /// Revises future file inclusion without modifying any historical request.
     SelectFile {
         /// Original reference operation, independent of refresh versions.

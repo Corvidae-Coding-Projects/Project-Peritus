@@ -198,6 +198,30 @@ fn resume_marker_valid(
     start: &peritus_product_runner::control::ControlOperation,
     record: &RunRecord,
 ) -> bool {
+    let mut seen = std::collections::BTreeSet::new();
+    for (id, mode) in &record.message_launches {
+        let Ok(id) = peritus_product_runner::control::OperationId::new(*id) else { return false };
+        if !seen.insert(id)
+            || peritus_app_protocol::ProductInteractionMode::from_tag(*mode).is_none()
+        {
+            return false;
+        }
+        if !controls.operation(start.conversation(), id).is_ok_and(|operation| {
+            operation.is_some_and(|operation| {
+                operation.actor_bytes() == start.actor_bytes()
+                    && operation.workspace_bytes() == start.workspace_bytes()
+                    && matches!(
+                        operation.intent(),
+                        peritus_product_runner::control::ControlIntent::Queue(
+                            peritus_product_runner::control::QueueIntent::Enqueue { .. }
+                        ) | peritus_product_runner::control::ControlIntent::SubmitMessage { .. }
+                    )
+                    && controls.resolve(&operation).is_ok_and(|receipt| receipt.is_some())
+            })
+        }) {
+            return false;
+        }
+    }
     let Some(marker) = record.goal_resume else { return true };
     controls.operation(start.conversation(), marker).is_ok_and(|operation| {
         operation.is_some_and(|operation| {

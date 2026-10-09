@@ -73,6 +73,21 @@ pub(super) fn preparation(
             workbench_files::write_preview(writer, preview)?;
             writer.write_str(text.as_str())
         }
+        WorkbenchIntent::EnqueueMessageBundle { text, message, attachments } => {
+            writer.write_str(text.as_str())?;
+            writer.write_bool(message.is_some())?;
+            if let Some(message) = message {
+                workbench_files::write_import_preview(writer, message)?;
+            }
+            writer.write_u64(attachments.len() as u64)?;
+            for attachment in attachments {
+                workbench_files::write_import_preview(writer, attachment)?;
+            }
+            Ok(())
+        }
+        WorkbenchIntent::EnqueueMessage { preview } => {
+            workbench_files::write_import_preview(writer, preview)
+        }
         WorkbenchIntent::AttachFileImport { preview, text } => {
             workbench_files::write_import_preview(writer, preview)?;
             writer.write_str(text.as_str())
@@ -181,6 +196,9 @@ pub(super) fn policy(
             workbench_memory::write_scope_change(writer, *change)
         }
         WorkbenchIntent::ForgetGuidance(change) => workbench_memory::write_forget(writer, change),
+        WorkbenchIntent::ApplyInitArtifact(proposal) => {
+            crate::wire::workbench_init_artifacts::write_proposal(writer, *proposal)
+        }
         WorkbenchIntent::ApplyInitDiff(proposal) => {
             workbench_init::write_proposal(writer, proposal)
         }

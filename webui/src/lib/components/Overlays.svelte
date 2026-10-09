@@ -1,6 +1,6 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import { ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun,runInspection } from '../workspace.svelte';
+  import { loadRuns, ui,project,session,attempt,openProject,editSession,selectSession,dispatch,notify,refresh,openRun,runInspection } from '../workspace.svelte';
   import { action } from '../api';
   import { parseSlash } from '../commands/slash';
   import Icon from './Icon.svelte';
@@ -26,7 +26,7 @@
       <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll long inspection output.) -->
       <pre class="report-text" role="region" aria-label="Inspection output" tabindex="0">{ui.reportText||'No detail is available yet.'}</pre>
     {:else if ui.overlay==='session'}
-      <form class="session-form" onsubmit={(event)=>{event.preventDefault();void attempt(async()=>{await editSession(ui.sessionId,{title:sessionTitle,parent:parent||null});ui.overlay='';notify('Session organization saved.');});}}><label>Session title<input bind:value={sessionTitle} required maxlength="256"/></label><label>Nest beneath<select bind:value={parent}><option value="">Top-level session</option>{#each ui.workspace.sessions.filter(s=>s.project===ui.projectId&&s.id!==ui.sessionId&&!s.closed) as item}<option value={item.id}>{item.title}</option>{/each}</select></label><p class="setting-note">Only this project’s sessions are listed. Cycles and cross-project nesting are rejected by the server.</p><div class="dialog-actions"><button class="key primary">Save session</button></div></form>
+      <form class="session-form" onsubmit={(event)=>{event.preventDefault();void attempt(async()=>{await editSession(ui.sessionId,{title:sessionTitle,parent:parent||null});ui.overlay='';notify('Session organization saved.');});}}><label>Session title<input bind:value={sessionTitle} required aria-describedby="session-title-unit"/></label><span id="session-title-unit" class="setting-note">Up to 256 UTF-8 bytes; no control characters.</span><label>Nest beneath<select bind:value={parent}><option value="">Top-level session</option>{#each ui.workspace.sessions.filter(s=>s.project===ui.projectId&&s.id!==ui.sessionId&&!s.closed) as item}<option value={item.id}>{item.title}</option>{/each}</select></label><p class="setting-note">Only this project’s sessions are listed. Cycles and cross-project nesting are rejected by the server.</p><div class="dialog-actions"><button class="key primary">Save session</button></div></form>
     {:else if ui.overlay==='sessions'}
       <p class="dialog-description">Closing a tab keeps its conversation and running work. Reopen a session here.</p><input class="library-filter" aria-label="Find a session" bind:value={sessionFilter} placeholder="Find a session…"/>
       <div class="session-library">{#each ui.workspace.sessions.filter(s=>s.title.toLowerCase().includes(sessionFilter.toLowerCase())) as item}<div class="library-row"><Icon name={item.parent?'branch':'chat'}/><span><strong>{item.title}</strong><small>{ui.workspace.projects.find(p=>p.id===item.project)?.name} · {item.closed?'Tab closed':'Open'}{item.parent?' · Nested':''}</small></span><button class="key small" onclick={()=>void attempt(async()=>{await editSession(item.id,{closed:false});selectSession(item.id);ui.overlay='';})}>Open</button></div>{/each}</div>
@@ -34,6 +34,7 @@
     {:else if ui.overlay==='runs'}
       <p class="dialog-description">Actual observations from the daemon, including runs started by other clients.</p>
       {#each ui.runs as run}<div class="library-row"><Icon name="layers"/><span><strong>{run.task}</strong><small>{run.operation.state} · {run.id.slice(0,8)}</small></span><button class="key small" onclick={()=>void attempt(()=>openRun(run.id))}>Open conversation</button><button class="key small" onclick={()=>{ui.reportTitle=run.task;ui.reportText=runInspection(run);ui.overlay='report';}}>Inspect</button></div>{/each}
+      {#if ui.runsNext!==null}<button class="key" onclick={()=>void attempt(()=>loadRuns(ui.runsNext!))}>Load more runs</button>{/if}
       {#if !ui.runs.length}<div class="small-empty">No daemon-owned runs have been observed yet. Start a conversation to begin.</div>{/if}
     {:else if ui.overlay==='console'}
       <div class="console-tabs">{#each ui.consoles.filter(c=>c.project===ui.projectId) as console}<button class:active={console.id===ui.consoleId} onclick={()=>ui.consoleId=console.id}>{console.title}{console.ended?' · exited':''}</button>{/each}</div>

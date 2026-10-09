@@ -214,3 +214,23 @@ fn request_capture_excludes_held_dependencies_and_tracks_every_mutation() {
     assert_eq!(next.generation(), 5);
     assert_eq!(next.conversation().matches("User: ").count(), 3);
 }
+
+#[test]
+fn incremental_move_uses_exact_identity_and_preserves_dependencies() {
+    let ledger = enqueue(&InputLedger::default(), 1, Vec::new());
+    let ledger = enqueue(&ledger, 2, vec![id(1)]);
+    let ledger = enqueue(&ledger, 3, Vec::new());
+    let moved =
+        apply(&ledger, &QueueIntent::Move { selected: selected(3, 1), before: Some(id(1)) })
+            .expect("move exact item before first");
+    assert_eq!(moved.order(), &[id(3), id(1), id(2)]);
+    assert!(
+        apply(&moved, &QueueIntent::Move { selected: selected(2, 1), before: Some(id(1)) })
+            .is_err()
+    );
+    assert!(apply(&moved, &QueueIntent::Move { selected: selected(3, 2), before: None }).is_err());
+    let restored = apply(&moved, &QueueIntent::Move { selected: selected(3, 1), before: None })
+        .expect("move to end");
+    assert_eq!(restored.order(), ledger.order());
+    assert_eq!(restored.revisions(), ledger.revisions());
+}

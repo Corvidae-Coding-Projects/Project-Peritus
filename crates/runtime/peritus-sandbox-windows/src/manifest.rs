@@ -119,9 +119,22 @@ impl HelperManifest {
                 "one or more resource dimensions have no enforcement owner",
             ));
         }
-        environment.sort();
+        if working_directory.as_os_str().to_str().is_none() {
+            return Err(error::invalid(
+                WindowsOperation::Manifest,
+                "version-one helper manifest cannot encode non-Unicode native paths",
+            ));
+        }
+        environment.sort_by(|left, right| {
+            windows_name_cmp(std::ffi::OsStr::new(&left.name), std::ffi::OsStr::new(&right.name))
+        });
         for pair in environment.windows(2) {
-            if pair[0].name.eq_ignore_ascii_case(&pair[1].name) {
+            if windows_name_cmp(
+                std::ffi::OsStr::new(&pair[0].name),
+                std::ffi::OsStr::new(&pair[1].name),
+            )
+            .is_eq()
+            {
                 return Err(error::invalid(
                     WindowsOperation::Manifest,
                     "environment contains a case-fold name alias",
@@ -335,4 +348,18 @@ fn binding_error(detail: &'static str) -> WindowsError {
         WindowsRecovery::Replan,
         detail,
     )
+}
+
+pub(crate) fn windows_name_cmp(
+    left: &std::ffi::OsStr,
+    right: &std::ffi::OsStr,
+) -> core::cmp::Ordering {
+    #[cfg(target_os = "windows")]
+    {
+        crate::native::path::compare_names(left, right)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        left.to_string_lossy().to_uppercase().cmp(&right.to_string_lossy().to_uppercase())
+    }
 }

@@ -33,6 +33,31 @@ pub enum Freshness {
     Invalidated(EvidenceInvalidation),
 }
 
+/// Freshness required for one record's role in a portable bundle.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum FreshnessRequirement {
+    /// The record is asserted as present authority and must match the selected revision exactly.
+    PresentAuthority,
+    /// The record is retained only to prove causal provenance across revision history.
+    HistoricalProvenance,
+}
+
+impl Freshness {
+    /// Returns whether this observation permits the requested bundle role.
+    ///
+    /// Revision drift is valid only for historical provenance. Durable invalidation retires a
+    /// record from both roles.
+    #[must_use]
+    pub const fn satisfies(self, requirement: FreshnessRequirement) -> bool {
+        match (self, requirement) {
+            (Self::Current, _)
+            | (Self::RevisionStale(_), FreshnessRequirement::HistoricalProvenance) => true,
+            (Self::RevisionStale(_), FreshnessRequirement::PresentAuthority)
+            | (Self::Invalidated(_), _) => false,
+        }
+    }
+}
+
 /// Evaluates exact currentness without effects.
 #[must_use]
 pub fn evaluate_freshness(

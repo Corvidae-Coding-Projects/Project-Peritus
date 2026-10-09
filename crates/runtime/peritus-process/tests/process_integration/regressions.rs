@@ -17,8 +17,15 @@ use peritus_types::EventId;
 
 use super::support::{Ids, PlanOptions, TestRoot, commit_authority, intent, open_journal, plan};
 
+#[cfg(windows)]
+#[path = "regressions/windows_pty.rs"]
+mod windows_pty;
+
 #[path = "regressions/process_lifecycle.rs"]
 mod process_lifecycle;
+
+#[path = "regressions/spool_startup.rs"]
+mod spool_startup;
 
 #[cfg(unix)]
 #[test]

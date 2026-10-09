@@ -138,7 +138,13 @@ impl FileVersion {
             }
             FileRange::Lines { .. } => start < end,
         };
-        if self.artifact == [0; 16] || !range_matches {
+        if self.artifact == [0; 16]
+            || !range_matches
+            || source.proposal().is_some_and(|reply| {
+                reply.digest() != self.observation.digest()
+                    || reply.bytes() != self.observation.bytes()
+            })
+        {
             return Err(ControlError::InvalidInput);
         }
         Ok(())

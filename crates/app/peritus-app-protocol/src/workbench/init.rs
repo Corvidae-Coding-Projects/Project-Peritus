@@ -16,13 +16,6 @@ mod tests;
 
 /// The sole instruction file managed by the first initialization flow.
 pub const INIT_INSTRUCTION_PATH: &str = "AGENTS.md";
-/// Maximum bytes read from any one selected initialization source.
-pub const MAX_INIT_SOURCE_BYTES: usize = 256 * 1024;
-const MAX_INIT_SOURCE_BYTES_U64: u64 = 256 * 1024;
-/// Maximum exact instruction-file bytes retained in a proposal.
-pub const MAX_INIT_INSTRUCTION_BYTES: usize = 256 * 1024;
-/// Maximum exact rendered diff bytes retained in a proposal.
-pub const MAX_INIT_DIFF_BYTES: usize = 768 * 1024;
 /// Opening marker for the replaceable Peritus-owned instruction section.
 pub const INIT_SECTION_START: &str = "<!-- peritus:init:v1:start -->";
 /// Closing marker for the replaceable Peritus-owned instruction section.
@@ -64,7 +57,7 @@ impl InitDiscoveryRequest {
     }
 }
 
-/// Closed category for a bounded locally observed discovery source.
+/// Closed category for a locally observed discovery source.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum InitSourceKind {
     /// A language or package manifest.
@@ -87,17 +80,17 @@ pub struct InitSourceObservation {
 }
 
 impl InitSourceObservation {
-    /// Constructs one bounded source observation without granting future read authority.
+    /// Constructs one exact source observation without granting future read authority.
     ///
     /// # Errors
-    /// Rejects a noncanonical path or a source over the discovery ceiling.
+    /// Rejects a noncanonical path.
     pub fn new(
         path: String,
         kind: InitSourceKind,
         digest: Sha256Digest,
         bytes: u64,
     ) -> Result<Self, AppProtocolError> {
-        if !valid_relative_path(&path) || bytes > MAX_INIT_SOURCE_BYTES_U64 {
+        if !valid_relative_path(&path) {
             return Err(invalid());
         }
         Ok(Self { path, kind, digest, bytes })
@@ -249,7 +242,7 @@ impl InitInstructionPatch {
     /// Validates an exact whole-file proposal and its deterministic review diff.
     ///
     /// # Errors
-    /// Rejects a non-`AGENTS.md` target, inconsistent precondition, oversized content, no-op,
+    /// Rejects a non-`AGENTS.md` target, inconsistent precondition, no-op,
     /// or a diff that does not exactly describe the retained original and proposed bytes.
     #[allow(clippy::too_many_arguments, reason = "all exact patch bindings are independent")]
     pub fn new(
@@ -264,16 +257,13 @@ impl InitInstructionPatch {
         let original_valid = match (&original_content, precondition_digest) {
             (None, None) => precondition_bytes == 0 && mode == InitFileMode::Regular,
             (Some(original), Some(digest)) => {
-                original.len() <= MAX_INIT_INSTRUCTION_BYTES
-                    && u64::try_from(original.len()).ok() == Some(precondition_bytes)
+                u64::try_from(original.len()).ok() == Some(precondition_bytes)
                     && peritus_codec::sha256(original.as_bytes()) == digest
             }
             _ => false,
         };
         if path != INIT_INSTRUCTION_PATH
             || !original_valid
-            || proposed_content.len() > MAX_INIT_INSTRUCTION_BYTES
-            || diff.len() > MAX_INIT_DIFF_BYTES
             || original_content.as_deref() == Some(proposed_content.as_str())
             || diff != render_exact_diff(&path, original_content.as_deref(), &proposed_content)
         {
@@ -335,3 +325,6 @@ impl InitInstructionPatch {
 
 mod proposal;
 pub use proposal::InitProposal;
+
+mod artifacts;
+pub use artifacts::*;

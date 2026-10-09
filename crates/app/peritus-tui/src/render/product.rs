@@ -93,17 +93,21 @@ pub(super) fn dashboard(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             product.confirmation.as_ref().map(|value| value.warning.as_str()),
         )
     });
-    let maximum = detail_scroll_limit(&detail, areas.detail);
+    let detail =
+        super::chat::wrapped_lines(detail.lines, usize::from(areas.detail.width.saturating_sub(2)));
+    let maximum = content_scroll_limit(detail.len(), areas.detail);
     let controls = product.selected_run().map_or_else(|| "Progress".to_owned(), control_title);
     frame.render_widget(
-        Paragraph::new(detail)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!(" {controls} · PgUp/PgDn · Home/End · i inspect ")),
-            )
-            .wrap(Wrap { trim: false })
-            .scroll((product.detail_scroll.min(maximum), 0)),
+        Paragraph::new(super::viewport(
+            &detail,
+            product.detail_scroll.min(maximum),
+            areas.detail.height.saturating_sub(2),
+        ))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(format!(" {controls} · PgUp/PgDn · Home/End · i inspect ")),
+        ),
         areas.detail,
     );
     frame.render_widget(
@@ -171,10 +175,10 @@ fn dashboard_areas(area: Rect) -> DashboardAreas {
     }
 }
 
-fn detail_scroll_limit(detail: &Text<'_>, area: Rect) -> u16 {
-    let lines = Paragraph::new(detail.clone())
-        .wrap(Wrap { trim: false })
-        .line_count(area.width.saturating_sub(2));
+fn detail_scroll_limit(detail: &Text<'static>, area: Rect) -> usize {
+    let lines =
+        super::chat::wrapped_lines(detail.lines.clone(), usize::from(area.width.saturating_sub(2)))
+            .len();
     content_scroll_limit(lines, area)
 }
 
@@ -215,7 +219,7 @@ pub(super) fn preview(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     preview::render(frame, area, model);
 }
 
-pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
+pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> usize {
     if model.view == crate::model::View::Diff
         && model.product.as_ref().is_some_and(|product| product.review.raw_stream)
     {
@@ -254,13 +258,12 @@ pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
     content_scroll_limit(lines.len(), area)
 }
 
-pub(super) fn scroll_page(area: Rect) -> u16 {
-    dashboard_areas(area).detail.height.saturating_sub(2).max(1)
+pub(super) fn scroll_page(area: Rect) -> usize {
+    usize::from(dashboard_areas(area).detail.height.saturating_sub(2).max(1))
 }
 
-fn content_scroll_limit(lines: usize, area: Rect) -> u16 {
-    u16::try_from(lines.saturating_sub(usize::from(area.height.saturating_sub(2))))
-        .unwrap_or(u16::MAX)
+fn content_scroll_limit(lines: usize, area: Rect) -> usize {
+    lines.saturating_sub(usize::from(area.height.saturating_sub(2)))
 }
 
 #[cfg(test)]

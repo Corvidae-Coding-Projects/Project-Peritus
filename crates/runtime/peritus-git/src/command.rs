@@ -93,6 +93,8 @@ impl GitRunner {
             .arg("-c")
             .arg("core.untrackedCache=false")
             .arg("-c")
+            .arg("submodule.recurse=false")
+            .arg("-c")
             .arg("core.autocrlf=false")
             .arg("-c")
             .arg("i18n.logOutputEncoding=UTF-8")

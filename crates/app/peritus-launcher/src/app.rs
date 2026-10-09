@@ -71,6 +71,7 @@ async fn launch_interactive_target(
 ) -> Result<ExitReason, LauncherError> {
     let _title = crate::terminal::product_title()?;
     let layout = AppLayout::discover()?.prepare()?;
+    let _discovery = update::start_discovery(&layout);
     if update::offer_on_startup(&layout).await? {
         return Ok(ExitReason::UserQuit);
     }

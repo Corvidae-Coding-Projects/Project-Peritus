@@ -112,3 +112,5 @@ fn accepting_an_exact_public_reply_creates_a_user_confirmed_brief_revision() {
         reply_text
     );
 }
+
+mod proposal;

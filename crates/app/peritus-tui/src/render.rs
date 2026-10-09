@@ -62,7 +62,7 @@ pub fn draw(frame: &mut Frame<'_>, model: &AppModel) {
     }
 }
 
-pub fn inspection_scroll_limit(model: &AppModel) -> u16 {
+pub fn inspection_scroll_limit(model: &AppModel) -> usize {
     let area = model.chat.viewport.unwrap_or(Rect::new(0, 0, 80, 24));
     let regions =
         Layout::vertical([Constraint::Length(3), Constraint::Min(4), Constraint::Length(1)])
@@ -74,7 +74,7 @@ pub fn inspection_scroll_limit(model: &AppModel) -> u16 {
     }
 }
 
-pub fn inspection_scroll_page(model: &AppModel) -> u16 {
+pub fn inspection_scroll_page(model: &AppModel) -> usize {
     if model.view != View::Runs {
         return 12;
     }
@@ -221,8 +221,7 @@ fn render_terminal(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
             " Line input · Enter sends "
         };
         frame.render_widget(
-            Paragraph::new(draft.lines.clone())
-                .scroll((u16::try_from(offset).unwrap_or(u16::MAX), 0))
+            Paragraph::new(viewport(&draft.lines, offset, input_area.height.saturating_sub(2)))
                 .block(Block::default().borders(Borders::ALL).title(title)),
             input_area,
         );
@@ -243,13 +242,11 @@ fn render_terminal(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
 fn render_help(frame: &mut Frame<'_>, area: Rect, model: &AppModel) {
     let lines = crate::help::lines(area.width.saturating_sub(2));
     let maximum = lines.len().saturating_sub(usize::from(area.height.saturating_sub(2)).max(1));
-    let scroll = usize::from(model.help_scroll).min(maximum);
+    let scroll = model.help_scroll.min(maximum);
     frame.render_widget(
-        Paragraph::new(lines)
-            .block(
-                Block::default().borders(Borders::ALL).title(" Keys · ↑/↓ · PgUp/PgDn · Home/End "),
-            )
-            .scroll((u16::try_from(scroll).unwrap_or(u16::MAX), 0)),
+        Paragraph::new(viewport(&lines, scroll, area.height.saturating_sub(2))).block(
+            Block::default().borders(Borders::ALL).title(" Keys · ↑/↓ · PgUp/PgDn · Home/End "),
+        ),
         area,
     );
 }
@@ -271,4 +268,13 @@ fn short_text(text: &str, maximum: usize) -> String {
     } else {
         format!("{}…", &text[..text.floor_char_boundary(maximum)])
     }
+}
+
+/// Selects logical rows before handing content to Ratatui's terminal-sized coordinates.
+fn viewport<'a>(lines: &[Line<'a>], offset: usize, height: u16) -> Vec<Line<'a>> {
+    lines.iter().skip(offset).take(usize::from(height)).cloned().collect()
+}
+
+pub fn wrapped_lines(lines: Vec<Line<'static>>, width: usize) -> Vec<Line<'static>> {
+    chat::wrapped_lines(lines, width)
 }

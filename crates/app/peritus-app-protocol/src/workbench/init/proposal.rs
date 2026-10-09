@@ -31,8 +31,6 @@ impl InitProposal {
         commands: Vec<InitCommand>,
     ) -> Result<Self, AppProtocolError> {
         if revision == 0
-            || u16::try_from(sources.len()).is_err()
-            || u16::try_from(commands.len()).is_err()
             || !strictly_sorted(&sources)
             || !strictly_sorted(&commands)
             || commands.iter().any(|command| {

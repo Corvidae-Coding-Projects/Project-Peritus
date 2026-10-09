@@ -177,6 +177,13 @@ pub enum QueueIntent {
     Withdraw(InputSelection),
     /// Reorders the complete current pending identity set without violating dependencies.
     Reorder(Vec<InputId>),
+    /// Moves one exact pending revision before an identity without sending the entire order.
+    Move {
+        /// Exact inspected content revision.
+        selected: InputSelection,
+        /// Pending destination identity, or none for the end.
+        before: Option<InputId>,
+    },
     /// Host transaction captures exact inputs and marks incorporation together.
     Incorporate {
         /// Unique request invocation identity.

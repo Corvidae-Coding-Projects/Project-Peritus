@@ -6,6 +6,12 @@ pub(super) fn write(
     payload: &AppRequestPayload,
 ) -> Option<Result<(), CodecError>> {
     Some(match payload {
+        AppRequestPayload::QueryWorkbenchBriefPage(value) => {
+            crate::wire::workbench_brief_pages::write_request(writer, *value)
+        }
+        AppRequestPayload::QueryWorkbenchBriefProposal(value) => {
+            crate::wire::workbench_brief_pages::write_proposal_request(writer, *value)
+        }
         AppRequestPayload::PreviewWorkbenchRewind(value)
         | AppRequestPayload::InspectWorkbenchCheckpoint(value) => {
             super::super::workbench_checkpoints::write_request(writer, *value)
@@ -18,6 +24,12 @@ pub(super) fn write(
         }
         AppRequestPayload::QueryWorkbenchMemory(value) => {
             super::super::workbench_memory::write_query(writer, *value)
+        }
+        AppRequestPayload::DiscoverInitArtifacts(value) => {
+            crate::wire::workbench_init_artifacts::write_discovery(writer, value)
+        }
+        AppRequestPayload::QueryInitArtifactPage(value) => {
+            crate::wire::workbench_init_artifacts::write_page_request(writer, *value)
         }
         AppRequestPayload::DiscoverInit(value) => {
             super::super::workbench_init::write_discovery_request(writer, *value)

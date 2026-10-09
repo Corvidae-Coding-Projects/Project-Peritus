@@ -2,6 +2,16 @@
 
 use core::fmt;
 
+use peritus_network::{
+    NetworkError, NetworkErrorKind, NetworkOperation, RecoveryClass as NetworkRecovery,
+};
+use peritus_process::{
+    ErrorCode as ProcessErrorCode, ProcessError, ProcessOperation, RecoveryClass as ProcessRecovery,
+};
+use peritus_secrets::{
+    RecoveryClass as SecretRecovery, SecretError, SecretErrorKind, SecretOperation,
+};
+
 const MAX_DETAIL_BYTES: usize = 512;
 
 /// Stable Windows backend failure category.
@@ -103,6 +113,112 @@ pub enum WindowsRecovery {
     Quarantine,
 }
 
+/// Stable typed cause retained beneath one Windows backend failure.
+///
+/// These snapshots contain only machine-readable categories and never paths, resource names,
+/// secret material, or provider diagnostics.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WindowsErrorSource {
+    /// Operating-system I/O category.
+    Io(std::io::ErrorKind),
+    /// Managed-network preparation or teardown failure.
+    Network {
+        /// Underlying network category.
+        kind: NetworkErrorKind,
+        /// Underlying network operation.
+        operation: NetworkOperation,
+        /// Underlying network recovery requirement.
+        recovery: NetworkRecovery,
+    },
+    /// Secret lookup, delivery, or cleanup failure.
+    Secret {
+        /// Underlying secret category.
+        kind: SecretErrorKind,
+        /// Underlying secret operation.
+        operation: SecretOperation,
+        /// Underlying secret recovery requirement.
+        recovery: SecretRecovery,
+    },
+    /// Protected-handle or process integration failure.
+    Process {
+        /// Underlying process category.
+        code: ProcessErrorCode,
+        /// Underlying process operation.
+        operation: ProcessOperation,
+        /// Underlying process recovery requirement.
+        recovery: ProcessRecovery,
+    },
+}
+
+impl fmt::Display for WindowsErrorSource {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Io(kind) => write!(formatter, "operating-system I/O category {kind:?}"),
+            Self::Network { kind, operation, recovery } => {
+                write!(formatter, "network {kind:?} during {operation:?}; recovery {recovery:?}")
+            }
+            Self::Secret { kind, operation, recovery } => {
+                write!(formatter, "secret {kind:?} during {operation:?}; recovery {recovery:?}")
+            }
+            Self::Process { code, operation, recovery } => {
+                write!(formatter, "process {code:?} during {operation:?}; recovery {recovery:?}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for WindowsErrorSource {}
+
+/// Exact resource families whose cleanup could not be proven after preparation failed.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct PreparationCleanup {
+    pending: [bool; 4],
+}
+
+impl PreparationCleanup {
+    pub(crate) const fn new(pending: [bool; 4]) -> Self {
+        Self { pending }
+    }
+    pub(crate) const fn merge(self, other: Self) -> Self {
+        Self::new([
+            self.pending[0] || other.pending[0],
+            self.pending[1] || other.pending[1],
+            self.pending[2] || other.pending[2],
+            self.pending[3] || other.pending[3],
+        ])
+    }
+
+    /// Reports whether temporary ACL restoration still requires reconciliation.
+    #[must_use]
+    pub const fn acl_restore(self) -> bool {
+        self.pending[0]
+    }
+
+    /// Reports whether dynamic WFP policy release still requires reconciliation.
+    #[must_use]
+    pub const fn filter_release(self) -> bool {
+        self.pending[1]
+    }
+
+    /// Reports whether managed-proxy shutdown still requires reconciliation.
+    #[must_use]
+    pub const fn proxy_shutdown(self) -> bool {
+        self.pending[2]
+    }
+
+    /// Reports whether exact secret delivery cleanup still requires reconciliation.
+    #[must_use]
+    pub const fn secret_release(self) -> bool {
+        self.pending[3]
+    }
+
+    /// Reports whether preparation proved every started resource family clean.
+    #[must_use]
+    pub const fn is_complete(self) -> bool {
+        !self.pending[0] && !self.pending[1] && !self.pending[2] && !self.pending[3]
+    }
+}
+
 /// Typed Windows backend error with bounded nonsensitive detail.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WindowsError {
@@ -110,6 +226,9 @@ pub struct WindowsError {
     operation: WindowsOperation,
     recovery: WindowsRecovery,
     detail: String,
+    source: Option<WindowsErrorSource>,
+    cleanup: PreparationCleanup,
+    retained: RetainedCleanup,
 }
 
 impl WindowsError {
@@ -122,7 +241,57 @@ impl WindowsError {
         detail: impl Into<String>,
     ) -> Self {
         let detail = bounded_detail(detail.into());
-        Self { kind, operation, recovery, detail }
+        Self {
+            kind,
+            operation,
+            recovery,
+            detail,
+            source: None,
+            cleanup: PreparationCleanup::new([false, false, false, false]),
+            retained: RetainedCleanup::default(),
+        }
+    }
+
+    pub(crate) const fn with_source(mut self, source: WindowsErrorSource) -> Self {
+        self.source = Some(source);
+        self
+    }
+
+    pub(crate) const fn with_cleanup(mut self, cleanup: PreparationCleanup) -> Self {
+        self.cleanup = self.cleanup.merge(cleanup);
+        self
+    }
+
+    #[cfg(target_os = "windows")]
+    pub(crate) fn during_acl_install(mut self, incomplete: bool) -> Self {
+        if self.kind == WindowsErrorKind::Acl {
+            self.operation = WindowsOperation::InstallAcl;
+            self.recovery = if incomplete {
+                WindowsRecovery::RetryCleanup
+            } else if matches!(
+                self.recovery,
+                WindowsRecovery::Replan | WindowsRecovery::ConfigureHost
+            ) {
+                self.recovery
+            } else {
+                WindowsRecovery::CorrectRequest
+            };
+        }
+        self
+    }
+
+    pub(crate) fn retain_cleanup(self, owner: CleanupOwner) -> Self {
+        self.retained.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(owner);
+        self
+    }
+
+    /// Retries exact retained native cleanup without discarding the original failure cause.
+    /// Returns true only when every retained owner has completed cleanup.
+    #[must_use]
+    pub fn retry_cleanup(&self) -> bool {
+        let mut owners = self.retained.0.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        owners.retain_mut(|owner| !owner.release());
+        owners.is_empty()
     }
 
     /// Returns the stable category.
@@ -148,6 +317,18 @@ impl WindowsError {
     pub fn detail(&self) -> &str {
         &self.detail
     }
+
+    /// Returns the stable typed underlying failure, when one was available.
+    #[must_use]
+    pub const fn cause(&self) -> Option<WindowsErrorSource> {
+        self.source
+    }
+
+    /// Returns exact incomplete resource-family cleanup after preparation failure.
+    #[must_use]
+    pub const fn preparation_cleanup(&self) -> PreparationCleanup {
+        self.cleanup
+    }
 }
 
 impl fmt::Display for WindowsError {
@@ -156,7 +337,35 @@ impl fmt::Display for WindowsError {
     }
 }
 
-impl std::error::Error for WindowsError {}
+impl std::error::Error for WindowsError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.source.as_ref().map(|source| source as &(dyn std::error::Error + 'static))
+    }
+}
+
+pub(crate) const fn network_source(error: &NetworkError) -> WindowsErrorSource {
+    WindowsErrorSource::Network {
+        kind: error.kind(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
+
+pub(crate) const fn secret_source(error: &SecretError) -> WindowsErrorSource {
+    WindowsErrorSource::Secret {
+        kind: error.kind(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
+
+pub(crate) const fn process_source(error: &ProcessError) -> WindowsErrorSource {
+    WindowsErrorSource::Process {
+        code: error.code(),
+        operation: error.operation(),
+        recovery: error.recovery(),
+    }
+}
 
 pub(crate) fn invalid(operation: WindowsOperation, detail: &'static str) -> WindowsError {
     WindowsError::new(
@@ -194,4 +403,43 @@ fn bounded_detail(mut detail: String) -> String {
     }
     detail.truncate(end);
     detail
+}
+
+#[derive(Clone, Debug, Default)]
+struct RetainedCleanup(std::sync::Arc<std::sync::Mutex<Vec<CleanupOwner>>>);
+impl PartialEq for RetainedCleanup {
+    fn eq(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl Eq for RetainedCleanup {}
+
+#[derive(Debug)]
+pub(crate) enum CleanupOwner {
+    Acl(Box<crate::AclTransaction>),
+    Channels(Box<crate::channels::PreparedChannels>),
+}
+impl CleanupOwner {
+    fn release(&mut self) -> bool {
+        match self {
+            Self::Acl(owner) => owner.restore().is_ok() && owner.restored(),
+            Self::Channels(owner) => {
+                owner.handles.clear();
+                let secrets =
+                    owner.secret_owner.as_mut().is_none_or(|secret| secret.release().is_ok());
+                if secrets {
+                    owner.secret_owner = None;
+                }
+                let filter = owner.filter_owner.release().is_ok();
+                let proxy = owner
+                    .proxy_owner
+                    .as_mut()
+                    .is_none_or(|proxy| proxy.reconcile_shutdown().is_ok());
+                if proxy {
+                    owner.proxy_owner = None;
+                }
+                secrets && filter && proxy
+            }
+        }
+    }
 }

@@ -1,7 +1,6 @@
-//! Canonical snapshot identities, manifests, reference CAS, and filesystem scans.
+//! Canonical snapshot identities, manifests, and reference compare-and-swap.
 
 use std::ffi::OsString;
-use std::path::Path;
 
 use peritus_types::{SnapshotId, WorkspaceId};
 
@@ -12,6 +11,10 @@ use crate::{
 };
 
 use super::{CandidateSnapshot, CandidateTree, SnapshotRef};
+
+mod inventory;
+pub use inventory::inspect_nested_git_metadata;
+pub(super) use inventory::{clean_inventory, cleanup_inventory, inventory_path};
 
 pub(super) fn validate_candidate_binding(
     repository: &GitRepository,
@@ -355,86 +358,6 @@ pub(super) fn identifier_hex(bytes: &[u8; 16]) -> String {
         result.push(char::from(HEX[usize::from(byte & 0x0f)]));
     }
     result
-}
-
-pub(super) fn reject_nested_git_metadata(
-    repository: &GitRepository,
-    worktree: &RegisteredWorktree,
-    root: &Path,
-    operation: Operation,
-) -> Result<(), GitError> {
-    let mut directories = vec![root.to_owned()];
-    while let Some(directory) = directories.pop() {
-        for entry in std::fs::read_dir(&directory).map_err(|source| {
-            GitError::io(operation, RecoveryClass::Reconcile, "scan worktree entries", source)
-        })? {
-            let entry = entry.map_err(|source| {
-                GitError::io(operation, RecoveryClass::Reconcile, "read worktree entry", source)
-            })?;
-            let path = entry.path();
-            let metadata = std::fs::symlink_metadata(&path).map_err(|source| {
-                GitError::io(operation, RecoveryClass::Reconcile, "inspect worktree entry", source)
-            })?;
-            let is_root_git = directory == root && entry.file_name() == ".git";
-            if entry.file_name() == ".git" && !is_root_git {
-                return Err(GitError::new(
-                    ErrorKind::WorktreeConflict,
-                    operation,
-                    RecoveryClass::CorrectRequest,
-                    "nested Git repository or worktree metadata is not supported",
-                ));
-            }
-            if metadata.is_dir()
-                && !is_root_git
-                && !is_ignored(repository, worktree, root, &path, operation)?
-            {
-                directories.push(path);
-            }
-        }
-    }
-    Ok(())
-}
-
-fn is_ignored(
-    repository: &GitRepository,
-    worktree: &RegisteredWorktree,
-    root: &Path,
-    path: &Path,
-    operation: Operation,
-) -> Result<bool, GitError> {
-    let relative = path.strip_prefix(root).map_err(|_| {
-        GitError::new(
-            ErrorKind::WorktreeConflict,
-            operation,
-            RecoveryClass::Reconcile,
-            "worktree child escaped its registered root during candidate inspection",
-        )
-    })?;
-    let arguments = vec![
-        OsString::from("check-ignore"),
-        OsString::from("--quiet"),
-        OsString::from("--no-index"),
-        OsString::from("--"),
-        relative.as_os_str().to_owned(),
-    ];
-    let output = repository.runner.observe(
-        root,
-        Some(GitRepository::worktree_location(worktree.root(), worktree.git_dir())),
-        CommandAccess::ReadWithoutLiteralPathspecs,
-        operation,
-        &arguments,
-        None,
-    )?;
-    match output.status.code() {
-        Some(0) => Ok(true),
-        Some(1) => Ok(false),
-        _ => Err(GitError::new(
-            ErrorKind::WorktreeConflict,
-            operation,
-            RecoveryClass::Reconcile,
-            "Git could not classify candidate directory ownership",
-        )),
-    }
 }
 
 pub(super) fn object_mismatch(operation: Operation, detail: &'static str) -> GitError {

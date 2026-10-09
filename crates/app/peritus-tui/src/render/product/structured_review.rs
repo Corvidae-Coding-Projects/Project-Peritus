@@ -55,29 +55,35 @@ pub(super) fn render_raw_stream(frame: &mut Frame<'_>, area: Rect, model: &AppMo
     );
     let total = review.raw_total_bytes.unwrap_or(0);
     let offset = review.raw_line.as_ref().map_or(0, |(offset, _)| *offset);
+    let lines = raw_lines(&content, area);
+    let maximum = super::content_scroll_limit(lines.len(), area);
     frame.render_widget(
-        Paragraph::new(safe(&content))
-            .wrap(Wrap { trim: false })
-            .block(Block::default().borders(Borders::ALL).title(format!(
-                " Raw diff · bytes {offset} / {total} · [ ] page ranges · t structured "
-            )))
-            .scroll((review.scroll, 0)),
+        Paragraph::new(crate::render::viewport(
+            &lines,
+            review.scroll.min(maximum),
+            area.height.saturating_sub(2),
+        ))
+        .block(Block::default().borders(Borders::ALL).title(format!(
+            " Raw diff · bytes {offset} / {total} · [ ] page ranges · t structured "
+        ))),
         area,
     );
 }
 
-pub(super) fn raw_stream_scroll_limit(model: &AppModel, area: Rect) -> u16 {
+pub(super) fn raw_stream_scroll_limit(model: &AppModel, area: Rect) -> usize {
     let Some(review) = model.product.as_ref().map(|product| &product.review) else { return 0 };
     let content = review.raw_line.as_ref().map_or_else(
         || "Loading exact raw diff range…".to_owned(),
         |(offset, bytes)| format!("[{}..] {}", offset, raw_byte_preview(bytes)),
     );
-    let [_, _, hunk, _, _] = regions(area);
-    let lines = crate::render::chat::wrapped_lines(
-        vec![Line::from(safe(&content))],
-        usize::from(hunk.width.saturating_sub(2)),
-    );
-    super::content_scroll_limit(lines.len(), hunk)
+    super::content_scroll_limit(raw_lines(&content, area).len(), area)
+}
+
+fn raw_lines(content: &str, area: Rect) -> Vec<Line<'static>> {
+    crate::render::chat::wrapped_lines(
+        safe(content).lines().map(|line| Line::from(line.to_owned())).collect(),
+        usize::from(area.width.saturating_sub(2)),
+    )
 }
 
 fn raw_byte_preview(bytes: &[u8]) -> String {
@@ -117,7 +123,7 @@ fn regions(area: Rect) -> [Rect; 5] {
     [vertical[0], columns[0], right[0], lower[0], lower[1]]
 }
 
-pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> u16 {
+pub(super) fn scroll_limit(model: &AppModel, area: Rect) -> usize {
     let Some(product) = &model.product else { return 0 };
     let review = &product.review;
     let [_, _, hunk, comments, _] = regions(area);
@@ -254,7 +260,7 @@ fn render_hunk(
     file: Option<&WorkbenchDiffFile>,
     selected_hunk: usize,
     focus: ReviewFocus,
-    scroll: u16,
+    scroll: usize,
 ) {
     let source_lines = page.map_or_else(
         || selected_hunk_lines(file, selected_hunk),
@@ -265,16 +271,19 @@ fn render_hunk(
     let maximum = super::content_scroll_limit(lines.len(), area);
     let target = if focus == ReviewFocus::File { "file" } else { "hunk" };
     frame.render_widget(
-        Paragraph::new(lines)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(focus_style(focus == ReviewFocus::Hunk))
-                    .title(format!(
-                        " Target: {target} · e explain · v revise · K keep behavior · l leave alone "
-                    )),
-            )
-            .scroll((scroll.min(maximum), 0)),
+        Paragraph::new(crate::render::viewport(
+            &lines,
+            scroll.min(maximum),
+            area.height.saturating_sub(2),
+        ))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(focus_style(focus == ReviewFocus::Hunk))
+                .title(format!(
+                    " Target: {target} · e explain · v revise · K keep behavior · l leave alone "
+                )),
+        ),
         area,
     );
 }
@@ -318,7 +327,7 @@ fn render_comments(
     page: &WorkbenchReviewPage,
     selected: usize,
     focus: ReviewFocus,
-    scroll: u16,
+    scroll: usize,
 ) {
     let lines = crate::render::chat::wrapped_lines(
         comment_lines(page.comments().get(selected)),
@@ -327,17 +336,20 @@ fn render_comments(
     let maximum = super::content_scroll_limit(lines.len(), area);
     let number = if page.comments().is_empty() { 0 } else { selected + 1 };
     frame.render_widget(
-        Paragraph::new(lines)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .border_style(focus_style(focus == ReviewFocus::Comment))
-                    .title(format!(
-                        " Comment {number}/{} · ↑↓ select · d dismiss · b rebind ",
-                        page.comments().len()
-                    )),
-            )
-            .scroll((scroll.min(maximum), 0)),
+        Paragraph::new(crate::render::viewport(
+            &lines,
+            scroll.min(maximum),
+            area.height.saturating_sub(2),
+        ))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(focus_style(focus == ReviewFocus::Comment))
+                .title(format!(
+                    " Comment {number}/{} · ↑↓ select · d dismiss · b rebind ",
+                    page.comments().len()
+                )),
+        ),
         area,
     );
 }

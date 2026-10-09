@@ -213,3 +213,35 @@ fn exact_input_detail_reaches_text_beyond_the_compact_list_and_old_scroll_ceilin
     assert!(text.contains("TAIL_EXACT_MARKER"), "{text}");
     assert!(text.contains("Esc back"));
 }
+
+#[test]
+fn incremental_move_keeps_the_inspected_queue_revision_and_exact_row_identity() {
+    let mut model = opened();
+    model.features.push(
+        ProtocolFeatureName::well_known(WellKnownProtocolFeature::WorkbenchQueueMoves).unwrap(),
+    );
+    inspect(&mut model);
+    let query = model.chat.workbench.queue.as_ref().unwrap().query().query();
+    model.chat.workbench.snapshot = Some(
+        WorkbenchSnapshot::new(
+            query,
+            99,
+            ConversationTitle::new("Unrelated newer metadata".to_owned()).unwrap(),
+            false,
+            false,
+        )
+        .unwrap(),
+    );
+    key(&mut model, KeyCode::Esc);
+    model.chat.buffer = "/queue move 1 end".to_owned();
+    let sent = request(&key(&mut model, KeyCode::Enter));
+    let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("bound move") };
+    assert_eq!(command.expected_revision(), 5, "must not silently freshen the inspected order");
+    assert!(
+        matches!(command.intent(), WorkbenchIntent::Queue(WorkbenchQueueIntent::Move { selected, before: None })
+        if *selected == row(WorkbenchInputState::Queued).selected())
+    );
+    assert_eq!(model.chat.buffer, "/queue move 1 end");
+    respond(&mut model, &sent, receipt(command));
+    assert!(model.chat.buffer.is_empty());
+}

@@ -336,6 +336,7 @@ fn candidate_record(repository: &TempDir) -> crate::product_run::RunRecord {
             workspace_id,
         ),
         goal_resume: None,
+        message_launches: Vec::new(),
         request,
         snapshot,
         cancelled: Arc::new(AtomicBool::new(false)),

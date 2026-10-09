@@ -12,12 +12,18 @@ use peritus_app_protocol::{
 };
 use peritus_types::RunId;
 
+mod message;
+
 #[derive(Debug)]
 pub(super) struct Submission {
-    input: WorkbenchNewInput,
+    input: Option<WorkbenchNewInput>,
+    message: Option<String>,
+    upload: Option<message::MessageUpload>,
+    queue_only: bool,
     draft: String,
     settings: WorkbenchExecutionSettings,
     queued: bool,
+    queue_operation: Option<peritus_app_protocol::ControlOperationId>,
     stopped: bool,
 }
 
@@ -53,6 +59,14 @@ impl AppModel {
     }
 
     pub(in crate::model::chat) fn send_workbench_chat(&mut self, text: String) -> Vec<Effect> {
+        self.send_workbench_text(text, false)
+    }
+
+    pub(in crate::model::chat::workbench) fn send_workbench_text(
+        &mut self,
+        text: String,
+        queue_only: bool,
+    ) -> Vec<Effect> {
         if !self.workbench_conversation_available() {
             self.notice(NoticeLevel::Warning, "This daemon cannot send chat through the selected durable session. Upgrade/reconnect; draft retained.");
             return Vec::new();
@@ -67,31 +81,51 @@ impl AppModel {
             );
             return Vec::new();
         }
-        let Ok(text) = WorkbenchInputText::new(text) else {
+        if text.trim().is_empty()
+            || text.chars().any(|ch| ch.is_control() && !matches!(ch, '\n' | '\t'))
+        {
             self.notice(
                 NoticeLevel::Warning,
-                "Input must be 1–8192 bytes without terminal controls; draft retained.",
+                "Input must contain text without terminal controls; draft retained.",
             );
             return Vec::new();
-        };
+        }
+        let referenced = text.len() > peritus_app_protocol::MAX_WORKBENCH_INPUT_BYTES;
+        if referenced && !self.referenced_messages_available() {
+            self.notice(NoticeLevel::Warning, "This daemon does not support staged messages. Upgrade/reconnect to send this draft; draft retained.");
+            return Vec::new();
+        }
         let Some(providers) = self.chat_providers() else { return Vec::new() };
         let Some(run) = self.ids.run() else { return Vec::new() };
         let Ok(id) = WorkbenchInputId::new(self.ids.bytes(b"workbench-chat-input")) else {
             return Vec::new();
         };
-        let creation = self.prepare_chat_conversation(text.as_str());
+        let creation = self.prepare_chat_conversation(&text);
         if self.chat.workbench.selected.is_none() {
             return Vec::new();
         }
-        let input = WorkbenchNewInput::new(
-            id,
-            text,
-            WorkbenchInputOrder::new(Vec::new()).expect("empty order"),
-        )
-        .expect("validated input");
+        let (input, message) = if referenced {
+            (None, Some(text))
+        } else {
+            let text = WorkbenchInputText::new(text).expect("validated inline text");
+            (
+                Some(
+                    WorkbenchNewInput::new(
+                        id,
+                        text,
+                        WorkbenchInputOrder::new(Vec::new()).expect("empty order"),
+                    )
+                    .expect("validated input"),
+                ),
+                None,
+            )
+        };
         self.chat.workbench.submission = Some(Submission {
             draft: self.chat.buffer.clone(),
             input,
+            message,
+            upload: None,
+            queue_only,
             settings: WorkbenchExecutionSettings::new(
                 run,
                 providers,
@@ -99,6 +133,7 @@ impl AppModel {
                 self.chat.models.clone(),
             ),
             queued: false,
+            queue_operation: None,
             stopped: false,
         });
         self.chat.selection_anchor = None;
@@ -119,8 +154,13 @@ impl AppModel {
         }
         let workspace = self.product.as_ref()?.launch.workspace_id();
         let (query, _) = self.new_conversation_binding(workspace)?;
-        let title =
-            text.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(64).collect();
+        let title = text
+            .split_whitespace()
+            .flat_map(|word| word.chars().chain(std::iter::once(' ')))
+            .take(64)
+            .collect::<String>()
+            .trim_end()
+            .to_owned();
         let title = peritus_app_protocol::ConversationTitle::new(title).ok()?;
         self.select_workbench_conversation(Some(query));
         Some((query, title))
@@ -169,13 +209,23 @@ impl AppModel {
                 return Vec::new();
             }
             if !submission.queued {
-                let intent =
-                    WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(submission.input.clone()));
+                let Some(input) = &submission.input else {
+                    return self.begin_message_upload(state.snapshot());
+                };
+                let intent = WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input.clone()));
                 return self.submit_workbench_chat_intent(
                     intent,
                     query,
                     state.snapshot().revision(),
                 );
+            }
+            if submission.queue_only {
+                self.chat.workbench.submission = None;
+                self.notice(
+                    NoticeLevel::Info,
+                    "Input durably saved in the queue; no execution requested.",
+                );
+                return self.refresh_queue(0, 0, false);
             }
             if state.run().is_none() {
                 let intent = WorkbenchIntent::StartExecution(submission.settings.clone());
@@ -233,11 +283,23 @@ impl AppModel {
         match command.intent() {
             WorkbenchIntent::CreateConversation(_) => Some(self.discover_workbench_execution()),
             WorkbenchIntent::Queue(WorkbenchQueueIntent::Enqueue(input))
-                if input == &submission.input =>
+                if Some(input) == submission.input.as_ref() =>
             {
                 submission.queued = true;
+                submission.queue_operation = Some(command.operation());
                 "Input durably saved to this session; checking execution."
                     .clone_into(&mut self.chat.workbench.message);
+                self.chat.workbench.open = false;
+                Some(self.discover_workbench_execution())
+            }
+            WorkbenchIntent::EnqueueMessage { preview }
+                if submission
+                    .upload
+                    .as_ref()
+                    .is_some_and(|upload| &upload.request == preview.request()) =>
+            {
+                submission.queued = true;
+                submission.queue_operation = Some(command.operation());
                 self.chat.workbench.open = false;
                 Some(self.discover_workbench_execution())
             }
@@ -286,10 +348,23 @@ impl AppModel {
         let operation = self.chat.snapshot.as_ref().map(|snapshot| snapshot.snapshot().operation());
         if operation.is_some_and(peritus_app_protocol::ProductRunOperation::may_start_execution) {
             let Some(query) = self.chat.workbench.selected else { return Vec::new() };
+            let Some(original) = self
+                .chat
+                .workbench
+                .submission
+                .as_ref()
+                .and_then(|submission| submission.queue_operation)
+            else {
+                return Vec::new();
+            };
+            if !self.referenced_messages_available() {
+                self.notice(NoticeLevel::Warning, "Message saved; reconnect to an updated daemon before continuing this exact operation.");
+                return Vec::new();
+            }
             return self
                 .request(
                     AppRequestPayload::ContinueWorkbenchExecution(
-                        peritus_app_protocol::WorkbenchContinuation::new(query, mode),
+                        peritus_app_protocol::WorkbenchContinuation::bound(query, mode, original),
                     ),
                     PendingRequest::WorkbenchChatStarted { run },
                 )

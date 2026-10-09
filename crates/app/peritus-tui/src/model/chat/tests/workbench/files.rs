@@ -327,3 +327,43 @@ fn file_panel_and_inert_editor_preserve_composer_at_required_sizes() {
         .retain(|feature| feature.as_str() != WellKnownProtocolFeature::WorkbenchFiles.as_str());
     assert!(key(&mut model, KeyCode::Char('p')).is_empty());
 }
+
+#[test]
+fn caption_and_cursor_edits_preserve_exact_preview_but_source_edits_invalidate_it() {
+    let mut model = opened();
+    let exact = preview(&mut model);
+    key(&mut model, KeyCode::Char('t'));
+    model.update(Action::TerminalEvent(Event::Paste("\nwith\ttabs".to_owned())));
+    key(&mut model, KeyCode::Left);
+    key(&mut model, KeyCode::Enter);
+    assert_eq!(model.chat.workbench.files.preview.as_ref(), Some(&exact));
+    let sent = request(&key(&mut model, KeyCode::Char('c')));
+    let AppRequestPayload::WorkbenchCommand(command) = sent.payload() else { panic!("confirm") };
+    assert!(matches!(command.intent(), WorkbenchIntent::AttachFile { preview, text }
+        if preview == &exact && text.as_str() == "Use the selected line\nwith\ttabs"));
+
+    let mut model = opened();
+    let exact = preview(&mut model);
+    key(&mut model, KeyCode::Char('i'));
+    key(&mut model, KeyCode::Left);
+    assert_eq!(model.chat.workbench.files.preview.as_ref(), Some(&exact));
+    key(&mut model, KeyCode::Char('x'));
+    assert!(model.chat.workbench.files.preview.is_none());
+}
+
+#[test]
+fn returning_file_preview_rejects_changed_range_mode_revision_or_closed_panel() {
+    for change in 0..4 {
+        let mut model = opened();
+        let exact = preview(&mut model);
+        model.chat.workbench.files.preview = None;
+        match change {
+            0 => model.chat.workbench.files.range = "all".to_owned(),
+            1 => model.chat.workbench.files.refresh = true,
+            2 => model.chat.workbench.snapshot = None,
+            _ => model.chat.workbench.open = false,
+        }
+        model.accept_file_preview(exact.request(), exact.clone());
+        assert!(model.chat.workbench.files.preview.is_none());
+    }
+}

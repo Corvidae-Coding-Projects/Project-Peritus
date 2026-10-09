@@ -228,6 +228,15 @@ impl AppModel {
         let file = &mut self.chat.workbench.files;
         if file.import_request.as_ref() != Some(request)
             || preview.request() != request
+            || !self.chat.workbench.open
+            || self
+                .chat
+                .workbench
+                .snapshot
+                .as_ref()
+                .is_none_or(|snapshot| snapshot.revision() != request.selection().revision())
+            || super::parse_range(&file.range) != Some(request.selection().range())
+            || file.refresh
             || self.chat.workbench.selected != Some(request.selection().query())
             || active_provider != Some(request.selection().provider())
             || self.chat.models.writer() != request.selection().model()

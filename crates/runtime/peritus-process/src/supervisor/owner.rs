@@ -30,10 +30,12 @@ pub(super) struct SpawnedOwner {
     plan: ExecutionPlan,
     shared: Arc<SharedObservation>,
     control_rx: mpsc::Receiver<ControlCommand>,
+    // Drop output delivery before the process: native terminal shutdown can flush output, and
+    // disconnecting this receiver lets reader tasks release backpressure during unwinding.
+    output_rx: mpsc::Receiver<super::io::ReaderMessage>,
     process: Box<dyn PlatformProcess>,
     tree: ProcessTreeIdentity,
     input: Option<Box<dyn std::io::Write + Send>>,
-    output_rx: mpsc::Receiver<super::io::ReaderMessage>,
     reader_tasks: Vec<thread::JoinHandle<()>>,
     reader_count: usize,
     spools: SpoolSet,
