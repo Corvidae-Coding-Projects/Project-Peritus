@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4282,
-        "tip_oid": "404c3f96156c3d069cf0daebd77dcd26cbc84e8a",
-        "prefix_sha256": "60d3e4cab495ebd49bf0f5e9c1e06332de6b2ca9103e380a944ddeb7edfebe65"
+        "sequence": 4283,
+        "tip_oid": "58741e97c4766612d4451e0ec0bf58d3694399e6",
+        "prefix_sha256": "c0a47d07a2f8c893a53b3e26ac485f483b2b0c9737943ae87fef9f32103f1280"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3364,
+  "next_comment_id": 3365,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T20:30:08.078783801Z",
+      "updated_at": "2026-10-09T20:57:00.295155627Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42395,6 +42395,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABACOV1vI1mIRqb0JArbEpZ4nelJaQrQzIAfGHKKYpdVPfPUhQWYUhBNj8YehLBgNUfWo7A6SaU9r3JhzQ8cLSZAg=="
+        },
+        "1ca2eb94-1f73-4c34-9b32-685bff11675b": {
+          "display_id": 3364,
+          "author": "6ME5",
+          "content": "Committed and pushed 5a6bb9528231a1f0425325c4968ee3ea212b9159: fix: preserve inherited ACL checks and startup output reads. Six independently reviewed files replace inherited-omitting ACL decoding with bounded raw enumeration and independent protected-ID file/directory regressions, prepare output spools before publishing control, and wait for actual WebUI mutation custody release. Exact client/WebUI tests pass 41 plus one fixture ignored; process suite passes including 28 integration tests; strict Linux and joint GNU Windows lint, formatting, diff checks, and integrated xtask all pass. Fresh native and full final proof campaign remain pending; no qualification or obligation-status claim. Existing PR113 remains draft against develop; unrelated untracked files preserved.",
+          "created_at": "2026-10-09T20:57:00.273951958Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZyHBL+GNWZ3qtlusyhIFgSLBGvFKrJoNKpKk1F8SoeMWXEOppAE6pP0sCmUm/8HKKIF/p7arhGi/bZDLyRGoDA=="
         },
         "1e046d93-a4ba-4d44-99cd-fc2448cc6461": {
           "display_id": 2159,
