@@ -12,7 +12,7 @@ use peritus_workspace::WorkspaceAuthorizationRequest;
 
 use crate::{
     FolderPatchAuthorityPlanRequest, PreviewCommand, PreviewLaunch, PreviewObservation,
-    PreviewOutputMatch, ProductRunnerError, ProductRunnerErrorKind,
+    PreviewOutputMatch, PreviewOutputRange, ProductRunnerError, ProductRunnerErrorKind,
 };
 
 /// Verification-only command runtime. No safe constructor can create this effect owner.
@@ -189,7 +189,7 @@ impl CommandRuntime {
         _stream: peritus_process::OutputStream,
         _offset: u64,
         _maximum_bytes: usize,
-    ) -> Result<crate::PreviewOutputRange, ProductRunnerError> {
+    ) -> Result<PreviewOutputRange, ProductRunnerError> {
         match self.unavailable {}
     }
 
@@ -207,7 +207,7 @@ impl CommandRuntime {
         &self,
         _process_id: ProcessId,
         _needle: &str,
-    ) -> Result<Option<crate::PreviewOutputMatch>, ProductRunnerError> {
+    ) -> Result<Option<PreviewOutputMatch>, ProductRunnerError> {
         match self.unavailable {}
     }
 
