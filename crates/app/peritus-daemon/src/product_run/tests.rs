@@ -33,6 +33,10 @@ use support::{
     CORRECT, ScriptedProvider, clean_review, complete_writer, repository, scripted, stalled,
 };
 
+// This integration test waits for real Cargo gates on its generated fixture; this is an
+// observation watchdog for test completion, not a product-run deadline.
+const PRODUCT_RUN_TERMINAL_WAIT: Duration = Duration::from_mins(2);
+
 #[test]
 fn candidate_retry_resumes_review_without_repeating_design_or_writing() {
     tokio::runtime::Builder::new_current_thread()
@@ -139,6 +143,62 @@ async fn candidate_cancellation_scenario() {
     service.shutdown(Duration::from_secs(5)).await;
 }
 
+#[test]
+fn terminal_wait_timeout_preserves_the_latest_nonterminal_snapshot() {
+    interaction::block_on(async {
+        let repository = repository();
+        let state = tempfile::tempdir().expect("state");
+        let writer = stalled(0x86, "writer");
+        let reviewer = scripted(0x87, "reviewer", Vec::new());
+        let fixer = scripted(0x88, "fixer", Vec::new());
+        let workspace_id = WorkspaceId::new([0x89; 16]).expect("workspace");
+        let run_id = RunId::new([0x8a; 16]).expect("run");
+        let service =
+            service(state.path(), repository.path(), workspace_id, [&writer, &reviewer, &fixer]);
+        service
+            .start(
+                ProductRunRequest::new(
+                    run_id,
+                    workspace_id,
+                    ProductProviderSelection::new(
+                        writer.profile.profile_id(),
+                        reviewer.profile.profile_id(),
+                        fixer.profile.profile_id(),
+                    ),
+                    "Add a tested answer function that returns 42.".to_owned(),
+                )
+                .expect("request"),
+            )
+            .await
+            .expect("start run");
+        tokio::time::timeout(Duration::from_secs(5), writer.wait_for_stalled_response())
+            .await
+            .expect("writer did not start its deliberately stalled response");
+
+        let snapshot = tokio::time::timeout(
+            Duration::from_secs(5),
+            wait_for_terminal_with_timeout(&service, run_id, Duration::from_millis(25)),
+        )
+        .await
+        .expect("short terminal observation budget should return promptly")
+        .expect_err("stalled provider must leave the run nonterminal");
+        assert_eq!(snapshot.phase(), ProductRunPhase::Designing);
+        let diagnostic = terminal_wait_timeout_diagnostic(&snapshot, Duration::from_millis(25));
+        assert!(diagnostic.contains(&format!("phase={:?}", snapshot.phase())));
+        assert!(diagnostic.contains(&format!("status={:?}", snapshot.status())));
+        assert!(diagnostic.contains(&format!("gates={:?}", snapshot.gates())));
+        assert!(diagnostic.contains(&format!("summary={:?}", snapshot.summary())));
+
+        service.cancel(run_id).expect("cancel stalled run");
+        let cancelled =
+            tokio::time::timeout(Duration::from_secs(5), wait_for_terminal(&service, run_id))
+                .await
+                .expect("cancellation must remain prompt with the longer observation budget");
+        assert_eq!(cancelled.phase(), ProductRunPhase::Cancelled);
+        service.shutdown(Duration::from_secs(5)).await;
+    });
+}
+
 fn service(
     state: &std::path::Path,
     workspace: &std::path::Path,
@@ -190,7 +250,20 @@ async fn wait_for_terminal(
     service: &ProductRunService,
     run_id: RunId,
 ) -> peritus_app_protocol::ProductRunSnapshot {
-    for _ in 0..400 {
+    wait_for_terminal_with_timeout(service, run_id, PRODUCT_RUN_TERMINAL_WAIT).await.unwrap_or_else(
+        |snapshot| {
+            panic!("{}", terminal_wait_timeout_diagnostic(&snapshot, PRODUCT_RUN_TERMINAL_WAIT))
+        },
+    )
+}
+
+async fn wait_for_terminal_with_timeout(
+    service: &ProductRunService,
+    run_id: RunId,
+    timeout: Duration,
+) -> Result<peritus_app_protocol::ProductRunSnapshot, peritus_app_protocol::ProductRunSnapshot> {
+    let deadline = tokio::time::Instant::now() + timeout;
+    loop {
         let snapshot = service
             .query(ProductRunQuery::exact(run_id))
             .expect("query run")
@@ -198,11 +271,27 @@ async fn wait_for_terminal(
             .next()
             .expect("run snapshot");
         if snapshot.phase().terminal() {
-            return snapshot;
+            return Ok(snapshot);
         }
-        tokio::time::sleep(Duration::from_millis(25)).await;
+        let now = tokio::time::Instant::now();
+        if now >= deadline {
+            return Err(snapshot);
+        }
+        tokio::time::sleep_until((now + Duration::from_millis(25)).min(deadline)).await;
     }
-    panic!("product run did not settle within ten seconds")
+}
+
+fn terminal_wait_timeout_diagnostic(
+    snapshot: &peritus_app_protocol::ProductRunSnapshot,
+    timeout: Duration,
+) -> String {
+    format!(
+        "product run did not settle within {timeout:?}; phase={:?}, status={:?}, gates={:?}, summary={:?}",
+        snapshot.phase(),
+        snapshot.status(),
+        snapshot.gates(),
+        snapshot.summary(),
+    )
 }
 
 async fn wait_for_review_stall(
