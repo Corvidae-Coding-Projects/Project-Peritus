@@ -11,8 +11,7 @@ use windows_sys::Win32::{
         Authorization::{SE_FILE_OBJECT, SetSecurityInfo},
         DACL_SECURITY_INFORMATION, GetKernelObjectSecurity, GetSecurityDescriptorControl,
         GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_AUTO_INHERIT_REQ,
-        SE_DACL_AUTO_INHERITED, SE_DACL_PROTECTED, SetKernelObjectSecurity,
-        SetSecurityDescriptorControl, UNPROTECTED_DACL_SECURITY_INFORMATION,
+        SE_DACL_AUTO_INHERITED, SetKernelObjectSecurity, SetSecurityDescriptorControl,
     },
 };
 
@@ -87,14 +86,6 @@ impl Dacl {
         Ok(control)
     }
 
-    fn protection(&self) -> Result<u32, WindowsError> {
-        Ok(if self.control()? & SE_DACL_PROTECTED == 0 {
-            UNPROTECTED_DACL_SECURITY_INFORMATION
-        } else {
-            PROTECTED_DACL_SECURITY_INFORMATION
-        })
-    }
-
     pub(super) fn restore_inheritance(&self, file: &File) -> Result<(), WindowsError> {
         let mut present = 0;
         let mut defaulted = 0;
@@ -111,13 +102,19 @@ impl Dacl {
         {
             return Err(error("saved DACL cannot be decoded"));
         }
+        // Propagate only the saved ACL. Unprotecting here merges the current ancestor ACL
+        // before propagation, contaminating new children beneath a legacy parent whose saved
+        // ACL intentionally lacked those entries. The later exact replay restores the original
+        // protection/control bits on every captured object and verifies the immutable backup.
+        // https://learn.microsoft.com/en-us/windows/win32/secauthz/security-information
+        // https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-setsecurityinfo
         // SAFETY: the retained exact object handle has WRITE_DAC; the optional ACL is borrowed
         // from the saved descriptor. Owner, group, and SACL are deliberately not requested.
         if unsafe {
             SetSecurityInfo(
                 file.as_raw_handle(),
                 SE_FILE_OBJECT,
-                DACL_SECURITY_INFORMATION | self.protection()?,
+                DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
                 ptr::null_mut(),
                 ptr::null_mut(),
                 acl,

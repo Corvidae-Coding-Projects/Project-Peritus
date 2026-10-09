@@ -31,6 +31,9 @@ impl Tree {
         std::fs::create_dir(workspace.join("workspace/protected")).unwrap();
         std::fs::write(workspace.join("workspace/inherited/existing"), b"existing").unwrap();
         std::fs::write(workspace.join("workspace/protected/custom"), b"protected").unwrap();
+        // The outer parent intentionally contributes distinct BU rights which the legacy
+        // inner parent does not inherit. Cleanup must never merge these into new children.
+        fixture::set(&workspace, "D:P(A;OICI;FA;;;WD)(A;OICI;0x1200a9;;;BU)");
         fixture::set(&workspace.join("workspace"), "D:(A;OICI;FA;;;WD)");
         fixture::set(&workspace.join("workspace/inherited"), "D:ARAI(A;OICIID;FA;;;WD)");
         fixture::set(&workspace.join("workspace/protected"), "D:P(A;OICI;FA;;;WD)");
