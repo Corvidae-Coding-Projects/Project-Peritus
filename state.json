@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4217,
-        "tip_oid": "8153f120458fc8144b41189afeb4176651a69e1b",
-        "prefix_sha256": "7ddcdda7069029be7bec0f13a1fda1af6bdddd36e279917730b923ecb6183872"
+        "sequence": 4218,
+        "tip_oid": "480aea192c6532cef370cb87a9d5cc17ba96403b",
+        "prefix_sha256": "0383b05d2050ab2d324b74d356403f6408052f83db08fe13c40eb41283309cbc"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3325,
+  "next_comment_id": 3326,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -1671,7 +1671,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.169462043Z",
-      "updated_at": "2026-10-06T13:27:50.171556519Z",
+      "updated_at": "2026-10-09T02:25:04.977334030Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -1682,6 +1682,15 @@
           "content": "Systemic repair plan for L261: External file ranges still require reading a complete source capped at 64 MiB.\n\nOwning contract and implementation boundary: crates/app/peritus-tui/src/file_import.rs; image_import.rs. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nStream exact external source hashing and selected ranges with stable source identity and resumable offsets. Remove complete-source byte admission from a small-range request, while validating before/after identity and the actual displayed span. Preserve explicit external-reference authority and do not silently convert protected or unreadable data into an empty successful read.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "e72b30f8-2100-47d4-8db3-8ec97b4df2e7": {
+          "display_id": 3325,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Streamed full-source hashes while retaining only selected text ranges; removed source/range/image import admission ceilings. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:25:04.967666102Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYNXk1MXcJ3WVSrUTijV02Cfdui7AdClzukNkpd7rWlWWqtXMC+i3Ix3GTyL8+ptisZt6guqdcTPONgtSVKIxCg=="
         }
       }
     },
