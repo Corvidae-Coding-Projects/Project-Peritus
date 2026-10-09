@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4262,
-        "tip_oid": "33bafec9bf853aecd7bc47292776154551d0cf61",
-        "prefix_sha256": "d33e2bedf6b20080028c1227fff8d805f8d4485ee5a114866cfbbdd4831b7fda"
+        "sequence": 4263,
+        "tip_oid": "7e944258b68ac2225d29e00376d1f5c61de5278d",
+        "prefix_sha256": "5c36e1cd1f51945b02961b45cda148025bd79ae3beeba2c9f2dccd23f28949bf"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3344,
+  "next_comment_id": 3345,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T07:17:17.319223521Z",
+      "updated_at": "2026-10-09T07:19:11.839126430Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42746,6 +42746,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAsXgxsAn6OXoM0MavKHElKzlqeWW6dcIj6t9axMbNJaG7n2XDsqReovO5lPmmVIBnfl2fFtYsbC9IZH6Ka5yEDg=="
+        },
+        "a1893711-6fc7-4e94-b077-13adff3531d6": {
+          "display_id": 3344,
+          "author": "6ME5",
+          "content": "[action] C11 e5c4ec47414daa75ecd2e3b2d17a279ee38d7132 signed/pushed on fix/command-ordinal-contention PR115 over I9c80; combines ordinal transaction fix and test-only daemon monotonic120s wait after new Windows review timeout113700207417. Focused regression/review3/strictLinuxWinGNUClippy/fmt/layout passed. NativeC10 Windowsordinal364pass5ignored precursor only. FreshC11 reconciliation4transitions3993sources66packages132gates752historicalartifacts157in-progress; fresh132campaign started and nativeCI running. A10 unpublishedparent updatedC11 with wholeindex exactI9baseline and4restorepaths. SameACTOR11 independent reviewer. C10 campaign stopped18passed diagnostic-only. NoPCR10approvalartifacts yet; no merge.",
+          "created_at": "2026-10-09T07:19:11.828500501Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAYDGEfGqrZGPOfXCWjrgytjZYtjDcCkMtJjrp3RsMNPrnIYHWVB4mmynZv4VfeizulyGWyr2jFjBNhXuzudtQDA=="
         },
         "a1b63618-9bff-4d22-98a9-db8390f5fa20": {
           "display_id": 3089,
