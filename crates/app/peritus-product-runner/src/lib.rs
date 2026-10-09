@@ -4,6 +4,7 @@
 //! already-resolved provider and workspace capabilities.
 mod accounting;
 pub mod attachment;
+mod attachment_read;
 #[cfg(not(verus_only))]
 mod budget;
 #[cfg(not(verus_only))]

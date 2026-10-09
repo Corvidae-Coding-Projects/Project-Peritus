@@ -60,7 +60,8 @@ impl FsReadService<'_> {
                     .map_err(|error| inspection_error(operation, &error))?;
                 let Some(page) = page else { return Ok(false) };
                 let (children, page_diagnostics, cursor) = page.into_parts();
-                if !visit_diagnostics(directory.as_ref(), &page_diagnostics, cancelled, &mut visit) {
+                if !visit_diagnostics(directory.as_ref(), &page_diagnostics, cancelled, &mut visit)
+                {
                     return Ok(false);
                 }
                 let Some(frame) = stack.last_mut() else {
@@ -88,7 +89,12 @@ impl FsReadService<'_> {
                         .map_err(|error| inspection_error(operation, &error))?;
                     let Some(children) = children else { return Ok(false) };
                     let (children, page_diagnostics, cursor) = children.into_parts();
-                    if !visit_diagnostics(Some(&metadata.path), &page_diagnostics, cancelled, &mut visit) {
+                    if !visit_diagnostics(
+                        Some(&metadata.path),
+                        &page_diagnostics,
+                        cancelled,
+                        &mut visit,
+                    ) {
                         return Ok(false);
                     }
                     stack.push(Frame {

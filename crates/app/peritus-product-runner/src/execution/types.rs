@@ -6,7 +6,7 @@ use std::{
     time::Duration,
 };
 
-use super::{AttachmentReadRequest, AttachmentReadResponse};
+use crate::{AttachmentReadRequest, AttachmentReadResponse};
 use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};

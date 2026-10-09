@@ -64,6 +64,14 @@ fn command_effects(
         runtime.commit_folder_patch_authority(plan, Vec::new());
     let _: Result<PreviewLaunch, ProductRunnerError> = runtime.launch_preview(command);
     let _: Result<PreviewObservation, ProductRunnerError> = runtime.observe_preview(launch);
+    let _: Result<crate::PreviewOutputRange, ProductRunnerError> = runtime.preview_output_range(
+        launch.process_id(),
+        peritus_process::OutputStream::Stdout,
+        0,
+        1024,
+    );
+    let _: Result<bool, ProductRunnerError> =
+        runtime.preview_output_contains(launch.process_id(), "ready");
     let _: Result<crate::PreviewTerminal, ProductRunnerError> = runtime.preview_terminal(launch);
     let _: Result<PreviewObservation, ProductRunnerError> =
         runtime.interact_preview(launch, Vec::new());
@@ -112,6 +120,7 @@ fn preview_values(
 #[allow(dead_code)]
 fn conversation(view: &dyn ConversationView, request: AttachmentReadRequest) {
     let _: bool = view.uses_explicit_media();
+    let _: bool = view.has_selected_file_attachments();
     let _: Result<AttachmentReadResponse, String> = view.read_attachment_range(request);
     let _: u64 = view.revision();
     let _: u64 = view.incorporated_revision();

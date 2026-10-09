@@ -148,15 +148,15 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
         assert!(!restored.outputs()[0].stdout().contains("EARLY_SIGNAL"));
+        #[cfg(windows)]
+        let output_stream = WorkbenchPreviewOutputStream::Stdout;
+        #[cfg(not(windows))]
+        let output_stream = WorkbenchPreviewOutputStream::Terminal;
         let range_query = WorkbenchPreviewOutputQuery::new(
             query(workspace),
             run,
             launch.operation(),
-            if cfg!(windows) {
-                WorkbenchPreviewOutputStream::Stdout
-            } else {
-                WorkbenchPreviewOutputStream::Terminal
-            },
+            output_stream,
             0,
             64,
         )

@@ -4,9 +4,9 @@
 
 ### Fixed
 
+- Keep attachment range types and preview output methods consistent across ordinary and Verus builds.
 - Keep filesystem diagnostics unique and bounded across directory pages; stabilize Git history against shared replacement, shallow, graft, and encoding settings; retain subjects beyond the former 4 KiB limit.
 - Record only successfully spooled process bytes after output I/O failures, search live preview streams according to their actual I/O mode, and align environment-name projections and native platform fixtures.
-
 - Retain large original attachments, stream selected file ranges, and expose exact version-bound attachment reads without independent host size or history-count ceilings. Bind previews and confirmation to the active conversation's writer provider and model (L126, L128, L142, L162, L261, L707–L710, L736, L798).
 - Preserve full process output and native command/environment representations; carry absent preview deadlines and resource quotas through execution, recovery records, and exact output-range reads (L090, L095, L096, L169, L193, L206).
 - Retain request archives and capture retry bytes above the former serialization limits; budget reviewer context against provider capacity and make all original review evidence available through digest-bound byte pages (L127, L170, L180, L192).

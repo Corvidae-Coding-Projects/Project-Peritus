@@ -147,7 +147,10 @@ fn paged_listing_bounds_and_reports_each_unsupported_child_once() {
         }
     }
     assert_eq!(supported, 261);
-    let expected_diagnostics = if cfg!(target_os = "macos") { 260 } else { 261 };
+    #[cfg(target_os = "macos")]
+    let expected_diagnostics = 260;
+    #[cfg(not(target_os = "macos"))]
+    let expected_diagnostics = 261;
     assert_eq!(names.len(), expected_diagnostics);
     assert_eq!(pages, 5);
     #[cfg(not(target_os = "macos"))]

@@ -14,7 +14,9 @@ use peritus_provider_core::{CancellationToken, ModelProvider};
 use peritus_run_settlement::{CandidateCheckpoint, RunSettlement};
 use peritus_types::{RunId, WorkspaceId};
 
-use crate::{ProductRunnerError, control::HostPermissions};
+use crate::{
+    AttachmentReadRequest, AttachmentReadResponse, ProductRunnerError, control::HostPermissions,
+};
 
 mod command_runtime;
 mod effect_stubs;
@@ -87,18 +89,14 @@ pub enum WorkspaceMutationKind {
     EmptyDirectory,
 }
 
-/// Exact immutable file-version slice requested by a read-only developer tool.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct AttachmentReadRequest;
-
-/// Bounded UTF-8 page read from a user-confirmed immutable file version.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AttachmentReadResponse;
-
 /// Live daemon-owned conversation supplied to model turns.
 pub trait ConversationView: Send + Sync {
     /// Whether media is supplied only through the revisioned input port.
     fn uses_explicit_media(&self) -> bool {
+        false
+    }
+    /// Whether the authenticated current input contains a selected immutable file attachment.
+    fn has_selected_file_attachments(&self) -> bool {
         false
     }
     /// Reads a bounded page from an exact selected immutable attachment version.

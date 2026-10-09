@@ -365,11 +365,10 @@ mod tests {
             thread::sleep(Duration::from_millis(10));
         };
         // Raw Windows previews use pipes; Unix previews own a PTY terminal stream.
-        let stream = if cfg!(windows) || !interactive {
-            OutputStream::Stdout
-        } else {
-            OutputStream::Terminal
-        };
+        #[cfg(windows)]
+        let stream = OutputStream::Stdout;
+        #[cfg(not(windows))]
+        let stream = if interactive { OutputStream::Terminal } else { OutputStream::Stdout };
         let live_range = runtime
             .preview_output_range(launch.process_id(), stream, readiness_offset, 9)
             .expect("live range");

@@ -182,6 +182,26 @@ impl CommandRuntime {
         Err(unavailable("observe preview process"))
     }
 
+    /// Projects a bounded output read; this verification-only effect owner is uninhabited.
+    pub fn preview_output_range(
+        &self,
+        _process_id: ProcessId,
+        _stream: peritus_process::OutputStream,
+        _offset: u64,
+        _maximum_bytes: usize,
+    ) -> Result<crate::PreviewOutputRange, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
+    /// Projects an output evidence search; this verification-only effect owner is uninhabited.
+    pub fn preview_output_contains(
+        &self,
+        _process_id: ProcessId,
+        _needle: &str,
+    ) -> Result<bool, ProductRunnerError> {
+        match self.unavailable {}
+    }
+
     /// Verification-only builds cannot interact with a preview process.
     pub fn interact_preview(
         &self,
