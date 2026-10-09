@@ -75,7 +75,7 @@ pub fn definitions_for_attachments(
         ),
         (
             "command_stdin",
-            "Write non-empty UTF-8 text to an active interactive command handle, then return its latest state.",
+            "Write exact non-empty UTF-8 bytes to an active interactive command handle, then return its latest state. No newline is appended. Include a carriage return (\\r) to press terminal Enter.",
             r#"{"additionalProperties":false,"properties":{"handle":{"type":"string"},"text":{"maxLength":65536,"minLength":1,"type":"string"}},"required":["handle","text"],"type":"object"}"#,
         ),
         (

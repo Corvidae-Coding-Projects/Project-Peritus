@@ -91,7 +91,8 @@ mod support;
 #[cfg(target_os = "windows")]
 #[test]
 fn native_acl_creates_and_reverses_only_the_missing_deny_anchor() {
-    use peritus_sandbox_windows::{PathPolicy, WindowsPath, compile_acl_plan};
+    use peritus_sandbox::{PathScope, RuleEffect};
+    use peritus_sandbox_windows::{AclAccess, PathPolicy, WindowsPath, compile_acl_plan};
     let root = tempfile::tempdir().unwrap();
     let workspace = root.path().join("workspace");
     std::fs::create_dir_all(workspace.join("bin")).unwrap();
@@ -99,10 +100,16 @@ fn native_acl_creates_and_reverses_only_the_missing_deny_anchor() {
     std::fs::write(workspace.join("bin/tool"), b"fixture").unwrap();
     let workspace_path =
         WindowsPath::from_canonicalized(&std::fs::canonicalize(&workspace).unwrap()).unwrap();
+    let workspace = workspace_path.to_path_buf();
     let protected_native = workspace.join("workspace/private");
     let protected = WindowsPath::from_os_str(protected_native.as_os_str()).unwrap();
-    let policy = PathPolicy::new(workspace_path, vec![protected]).unwrap();
+    let policy = PathPolicy::new(workspace_path, vec![protected.clone()]).unwrap();
     let plan = compile_acl_plan(&support::checked_plan(Vec::new()), &policy, "S-1-1-0").unwrap();
+    let deny = plan.entries().iter().find(|entry| entry.path() == &protected).unwrap();
+    assert_eq!(deny.effect(), RuleEffect::Deny);
+    assert_eq!(deny.scope(), PathScope::Descendants);
+    assert_eq!(deny.access(), AclAccess::all());
+    assert!(deny.creates_deny_directory());
     let snapshot = |target: &std::path::Path, label: &str| {
         let output = root.path().join(format!("{label}.acl"));
         assert!(
@@ -119,8 +126,15 @@ fn native_acl_creates_and_reverses_only_the_missing_deny_anchor() {
     };
     let original = snapshot(&workspace.join("workspace"), "before");
     let mut transaction = plan.install(&root.path().join("backup")).unwrap();
-    assert!(protected_native.is_dir());
-    assert!(transaction.pending_reversal_count() >= 3);
+    // Inspect the allowed parent: the child's explicit Metadata deny prevents ordinary stat.
+    let anchor = std::fs::read_dir(workspace.join("workspace"))
+        .unwrap()
+        .map(Result::unwrap)
+        .find(|entry| entry.file_name() == "private")
+        .expect("the projected deny must create its exact missing anchor");
+    assert!(anchor.file_type().unwrap().is_dir());
+    assert_explicit_everyone_deny(&snapshot(&protected_native, "installed"));
+    assert_eq!(transaction.pending_reversal_count(), 3);
     transaction.restore().unwrap();
     assert!(!protected_native.exists());
     assert!(workspace.join("bin/tool").is_file());
@@ -128,4 +142,24 @@ fn native_acl_creates_and_reverses_only_the_missing_deny_anchor() {
     assert!(transaction.restored());
     assert_eq!(original, snapshot(&workspace.join("workspace"), "after"));
     transaction.restore().unwrap();
+}
+
+#[cfg(target_os = "windows")]
+fn assert_explicit_everyone_deny(snapshot: &[u8]) {
+    assert_eq!(snapshot.len() % 2, 0, "icacls must save UTF-16LE");
+    let units = snapshot.chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]]));
+    let sddl = String::from_utf16(&units.collect::<Vec<_>>()).unwrap();
+    let exact_deny = sddl.split('(').skip(1).any(|ace| {
+        let fields = ace.split(')').next().unwrap().split(';').collect::<Vec<_>>();
+        fields.len() == 6
+            && fields[0] == "D"
+            && matches!(fields[1], "OICI" | "CIOI")
+            // List/read, write, append/create, execute, attributes, and delete.
+            && fields[2].strip_prefix("0x").and_then(|mask| u32::from_str_radix(mask, 16).ok())
+                == Some(0x0001_00a7)
+            && fields[3].is_empty()
+            && fields[4].is_empty()
+            && matches!(fields[5], "WD" | "S-1-1-0")
+    });
+    assert!(exact_deny, "missing exact explicit inheritable Everyone deny: {sddl}");
 }

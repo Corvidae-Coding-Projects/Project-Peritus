@@ -99,7 +99,11 @@ fn session() -> SessionId {
 }
 
 fn finish(control: &ProcessControl) {
-    control.write_stdin(b"finish\n".to_vec()).expect("finish input");
+    #[cfg(windows)]
+    let input = b"finish\r".as_slice();
+    #[cfg(not(windows))]
+    let input = b"finish\n".as_slice();
+    control.write_stdin(input.to_vec()).expect("finish input");
     wait_for_completion(control);
 }
 

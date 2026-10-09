@@ -10,6 +10,9 @@ use peritus_sandbox::{BackendAdmission, CheckedSandboxPlan};
 use peritus_types::Sha256Digest;
 use std::sync::Arc;
 
+#[cfg(all(test, target_os = "windows"))]
+mod native_paths_tests;
+
 impl WindowsBackend {
     #[allow(
         clippy::too_many_lines,
@@ -290,6 +293,9 @@ impl WindowsBackend {
         }
         for input in &self.config.writable_inputs {
             crate::ResolvedWindowsPath::resolve(input.clone())?;
+        }
+        for protected in &self.config.protected_roots {
+            crate::ResolvedWindowsPath::resolve_existing_or_parent(protected.clone())?;
         }
         Ok(())
     }

@@ -23,7 +23,7 @@ struct Inventory {
     entries: Vec<Entry>,
 }
 #[derive(Default)]
-pub struct DirectoryCache(Mutex<BTreeMap<PathBuf, Arc<Inventory>>>);
+pub struct DirectoryCache(Mutex<BTreeMap<(PathBuf, PathBuf), Arc<Inventory>>>);
 
 impl DirectoryCache {
     pub(crate) fn page(
@@ -33,7 +33,9 @@ impl DirectoryCache {
         offset: usize,
         identity: &str,
     ) -> Result<Value> {
-        let directory = super::resolve(root, relative)?;
+        let root = root.canonicalize()?;
+        let directory = super::resolve(&root, relative)?;
+        let key = (root.clone(), directory.clone());
         let inventory = if identity.is_empty() && offset == 0 {
             let mut entries = Vec::new();
             for entry in std::fs::read_dir(&directory)? {
@@ -41,7 +43,7 @@ impl DirectoryCache {
                 let metadata = entry.metadata()?;
                 let path = entry
                     .path()
-                    .strip_prefix(root)
+                    .strip_prefix(&root)
                     .map_err(problem)?
                     .to_string_lossy()
                     .into_owned();
@@ -60,11 +62,11 @@ impl DirectoryCache {
                     .then(a.name.cmp(&b.name))
             });
             let inventory = Arc::new(Inventory { id: crate::state::id()?, entries });
-            self.0.lock().map_err(problem)?.insert(directory, Arc::clone(&inventory));
+            self.0.lock().map_err(problem)?.insert(key, Arc::clone(&inventory));
             inventory
         } else {
             let inventory =
-                self.0.lock().map_err(problem)?.get(&directory).cloned().ok_or_else(|| {
+                self.0.lock().map_err(problem)?.get(&key).cloned().ok_or_else(|| {
                     problem("Directory inventory expired; refresh this directory")
                 })?;
             if inventory.id != identity {
@@ -103,5 +105,58 @@ mod tests {
         cache.page(root.path(), "", 0, "").expect("refresh");
         assert!(cache.page(root.path(), "", 500, identity).is_err());
         assert!(cache.page(root.path(), "..", 0, "").is_err());
+    }
+
+    #[test]
+    fn equivalent_root_aliases_share_exact_relative_paths_and_inventory() {
+        let holder = tempfile::tempdir().expect("holder");
+        let root = holder.path().join("project");
+        let anchor = holder.path().join("anchor");
+        std::fs::create_dir(&root).expect("project");
+        std::fs::create_dir(&anchor).expect("alias anchor");
+        let alias = anchor.join("..").join("project");
+        for index in 0..251 {
+            std::fs::write(root.join(format!("entry-{index:04}")), "").expect("entry");
+        }
+        let cache = DirectoryCache::default();
+        let first = cache.page(&alias, "", 0, "").expect("noncanonical root");
+        assert_eq!(first["entries"][0]["path"], "entry-0000");
+        let identity = first["inventory"].as_str().expect("inventory");
+        let canonical = root.canonicalize().expect("canonical project");
+        let next = cache.page(&canonical, "", 250, identity).expect("equivalent alias");
+        assert_eq!(next["entries"][0]["path"], "entry-0250");
+        assert_eq!(next["inventory"], identity);
+        assert!(cache.page(&alias, "../anchor", 0, "").is_err(), "retain project confinement");
+    }
+
+    #[test]
+    fn nested_project_inventories_keep_their_own_relative_path_base() {
+        let root = tempfile::tempdir().expect("project");
+        let nested = root.path().join("nested");
+        std::fs::create_dir(&nested).expect("nested project");
+        std::fs::write(nested.join("file.txt"), "file").expect("entry");
+        let cache = DirectoryCache::default();
+        let parent_page = cache.page(root.path(), "nested", 0, "").expect("parent project");
+        let parent_id = parent_page["inventory"].as_str().expect("parent inventory");
+        let nested_page = cache.page(&nested, "", 0, "").expect("nested project");
+        let nested_id = nested_page["inventory"].as_str().expect("nested inventory");
+        assert_eq!(
+            parent_page["entries"][0]["path"],
+            Path::new("nested").join("file.txt").to_string_lossy().as_ref()
+        );
+        assert_eq!(nested_page["entries"][0]["path"], "file.txt");
+        assert_eq!(
+            cache.page(root.path(), "nested", 0, parent_id).expect("parent snapshot retained"),
+            parent_page
+        );
+        assert_eq!(
+            cache.page(&nested, "", 0, nested_id).expect("nested snapshot retained"),
+            nested_page
+        );
+        assert!(cache.page(&nested, "", 0, parent_id).is_err(), "other root cannot borrow cursor");
+        assert!(
+            cache.page(root.path(), "nested", 0, nested_id).is_err(),
+            "nested cursor stays scoped"
+        );
     }
 }
