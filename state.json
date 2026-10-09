@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4215,
-        "tip_oid": "af22ff2d29e41a3a384eb0526c42ad74c7b70004",
-        "prefix_sha256": "8e0497c47aec4f84d561132fadcf98ecaa59eb87220aebe19611616b3c0256f9"
+        "sequence": 4216,
+        "tip_oid": "7f9d9be4865bc3230bbb9ad4d4e0708e4d61e7e9",
+        "prefix_sha256": "7d1f8feb1dfdedb422d0fca2310d461dea20d3ac9216553cbed7add2f460ca40"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3323,
+  "next_comment_id": 3324,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -21929,7 +21929,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.152126210Z",
-      "updated_at": "2026-10-06T13:27:50.154177193Z",
+      "updated_at": "2026-10-09T02:21:49.204536695Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -21940,6 +21940,15 @@
           "content": "Systemic repair plan for L254: Structured diff is a whole bounded object, while only comments are paginated.\n\nOwning contract and implementation boundary: crates/app/peritus-app-protocol/src/workbench/review.rs:7-15,26-36; workbench/review/page.rs:254-290. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRepresent structured diff as a digest-bound changed-path index with paged per-file/hunk content and comments bound to stable anchors. A bounded page is independent of total candidate size. Preserve exact review/candidate provenance and provide retrievable full content for large changes rather than rejecting the whole diff object.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "7f5cb5f2-b833-49e2-a507-dda86c07c03f": {
+          "display_id": 3323,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Added separately negotiated digest-bound structured diff and raw-byte paging while preserving legacy wire tags. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:21:49.194738134Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABADo2qIvGuw7ImA5QzvPdipzXMZ5tqPLZNcsmUQ1gjorlyM3zmt68kPsSiEdPquivBqQ9V9w5o2JNhdFwGv7IqCw=="
         }
       }
     },
