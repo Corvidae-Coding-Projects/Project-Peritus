@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4255,
-        "tip_oid": "a4dd715b54713b7971452d524faeecad8f9de19a",
-        "prefix_sha256": "ac3b46baae465aa659eaad060e4b5c8026a02355f4bf779a181686d4cd8a0d65"
+        "sequence": 4256,
+        "tip_oid": "23d0594cd704ac5b126466854acd89688a2e5845",
+        "prefix_sha256": "2d22e9ef914236923171385910e16e6327e55cd725dab38889d80f8433d34a95"
       },
       "NWAR": {
         "sequence": 39,
@@ -38367,12 +38367,13 @@
       "display_id": 742,
       "title": "[L710] Raster admission has fixed encoded, geometry, frame and format gates",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L710.\n\n- Evidence: `crates/app/peritus-app-protocol/src/workbench/images.rs:17-20,67-78`; `src/workbench/images/metadata.rs:6-17,45-64`; `src/workbench/images/tests.rs:31-65`; `src/wire/workbench_images.rs:80-95` in the same crate.\n- Behavior: Original image must be 1..4 MiB, dimensions each 1..8,192, canvas at most 16,777,216 pixels and frame count 1..64. Only PNG/JPEG/GIF/WebP are represented. Labels are 1,024 bytes. The DTO validates metadata shape; it explicitly does not prove actual decoding or selected-provider support. Tests admit exactly 4 MiB/4096x4096/64 frames and reject stated excesses; no conversion/scalable alternative is present in these files.\n- Consequence: Ordinary high-resolution screenshots or animations can fail irrespective of the configured provider's actual supported capacity. Decoder resource containment is legitimate, but fixed original-media retention and provider-input policies are currently coupled.\n- Repair direction: Retain immutable originals as artifacts and offer explicit derived previews/input transformations according to actual decoder/provider capability, preserving exact consent and provenance. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.614306407Z",
-      "updated_at": "2026-10-09T02:34:43.656634423Z",
+      "updated_at": "2026-10-09T06:23:19.878611259Z",
+      "closed_at": "2026-10-09T06:23:19.875533191Z",
       "labels": [
         "daily-driving-limiter"
       ],
