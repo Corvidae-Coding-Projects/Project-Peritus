@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4204,
-        "tip_oid": "91a8f72de4b0f41b0a577a69943fb1929a1f8255",
-        "prefix_sha256": "afa7d166378463628f583dbaa0342f4425b16d64c53c4f44e704955691d4e1f1"
+        "sequence": 4205,
+        "tip_oid": "7b570fde8016ed08b35a3eef54cf5c134cc8c24a",
+        "prefix_sha256": "e9c5c4007d839a2774e1d96897cadd2a0ed5cf2559e42cde531b3ae087088384"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3312,
+  "next_comment_id": 3313,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -23119,11 +23119,20 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.825003097Z",
-      "updated_at": "2026-10-06T13:21:37.827096958Z",
+      "updated_at": "2026-10-09T01:53:28.864927509Z",
       "labels": [
         "daily-driving-limiter"
       ],
       "comments": {
+        "2bbd03a5-fe5e-41b4-b436-e0cd012034f8": {
+          "display_id": 3312,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate 0e6736b0a64ca81fb73c6071f98b39f24288c993 (PR #113). Removed attachment history/count quotas and made pin/exclusion/release behavior consistent. Independent source review and affected-package/focused checks passed. Exact-candidate 132-gate proof qualification and native CI are still running; final qualification/closure remains pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T01:53:28.854653883Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAY8FW/2p+9ZeeB0LK8YJM6AzS/+/u2z3asJmhO+Pfj3EhJr0u3LzflbYIORdmegJiOA+onm7vPqaKAlYw56IrDw=="
+        },
         "44975572-1e11-4211-96ee-fe386bbd7c01": {
           "display_id": 2330,
           "author": "6ME5",
