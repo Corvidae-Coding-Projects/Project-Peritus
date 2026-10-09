@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4223,
-        "tip_oid": "b22d9cf6c3a9b258f64b18a59720e11b6f9247ce",
-        "prefix_sha256": "5ebc3c1e49412d1e74871d53392d4455b497edc394da4c5ce82d20023b70af36"
+        "sequence": 4224,
+        "tip_oid": "d2ad27ba269ffc17149c16f199bafcca086bc020",
+        "prefix_sha256": "6904ba3d0eebf4dd300d3234cd2e26855d3d84beb6c0d9c877ca98a2943f58ec"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3331,
+  "next_comment_id": 3332,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -38342,7 +38342,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.614306407Z",
-      "updated_at": "2026-10-06T13:27:51.616299450Z",
+      "updated_at": "2026-10-09T02:34:43.656634423Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -38353,6 +38353,15 @@
           "content": "Systemic repair plan for L710: Raster admission has fixed encoded, geometry, frame and format gates.\n\nOwning contract and implementation boundary: crates/app/peritus-app-protocol/src/workbench/images.rs:17-20,67-78; src/workbench/images/metadata.rs:6-17,45-64; src/workbench/images/tests.rs:31-65; src/wire/workbench_images.rs:80-95. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nRetain immutable originals as artifacts and offer explicit derived previews/input transformations according to actual decoder/provider capability, preserving exact consent and provenance. No tests run.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "9c1c5cd7-28b0-46f2-9a1d-74bc8105a52d": {
+          "display_id": 3331,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Removed synthetic original image size/geometry/frame metadata ceilings and preserved full decoding and exact source verification. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:34:43.646375081Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAydwk79IaWe+qS5EDQyN1GZQvBfVZf67Mt1475H7Vz72AR0NzQnelFKhkgqBfwPeKqgLqoI53Ag8ozApA/qdnDg=="
         }
       }
     },
