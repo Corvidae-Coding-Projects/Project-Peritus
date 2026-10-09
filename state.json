@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4269,
-        "tip_oid": "a237fc89b5c3a8266d861acc0094a8a24c211877",
-        "prefix_sha256": "1b86f2b7db6be795b2f46e06b6cc4e15e594a4438606491faf7018e1d0287a7e"
+        "sequence": 4270,
+        "tip_oid": "f497f682dad4f0eee1abc1b6d7b39290d4bc4eeb",
+        "prefix_sha256": "565486974ea03856bcc3ef8b506fb6fa0abfa65bb8fa8e05241948cd460fef7e"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3351,
+  "next_comment_id": 3352,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T11:38:19.935958321Z",
+      "updated_at": "2026-10-09T13:27:53.420991518Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42620,6 +42620,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAOKmOUOYgIs0V7fa/vwWXO83ZqUyCs09QSnPJfo7sW2T3z2Hal8Dcub/Q10JVbYsdafEKnchXDqXZeXoYoK20DA=="
+        },
+        "6e0064de-4d80-4fc2-89db-2d530ddab907": {
+          "display_id": 3351,
+          "author": "6ME5",
+          "content": "PR delivery correction in progress: the prior completion statement covered PR115 only and left original PR113 failing. User requested reconciliation. Original fix/minimum-repair fast-forwarded from c80a26dce to exact reviewed I10 90ff9494c; PR113 base changed to A10 authorization/pcr-0010 after GitHub rejected the pre-fast-forward empty comparison. Signed source-unchanged publication commit 96eec678dc49b7ac4c62b39bf57c00c5b0b70d5b pushed to original branch, parent I10, exact tree 680504fbe3a666fe3fa0bc0af462f0fedd00f2af. Exact-base verify-trust and xtask all pass. PR114/115 closed as superseded without merging or deleting refs; PR113 is sole open delivery PR. No close/reopen of PR113. Eight intermediate CI runs captured and retired; fresh seven-workflow campaign at 13:24:15Z on 96eec678d now running: Gate A 37936585938 Foundation 37936585897 Product 37936585957 H0 37936585885 Browser 37936586109 Distribution 37936585916 Bug 37936586017. Actual bootstrap 113840049629 proves A10 env and synthetic merge 77b6aff09e7e188d9928de0f4c086dfb4eefb00a with exact A10/publication parents and same reviewed tree. RawSHA d33403f4d2e5106313afa2bcc25df4f10d043574eb061d25499aebc1e430f827. Full final PR113 checks remain pending; do not claim task complete from prior PR115 run. No source edits or merges; all prior artifacts/history retained.",
+          "created_at": "2026-10-09T13:27:53.408753790Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABABO+9Q5RL79NXlZWBGKojnwYTlEaP44ZX+gqHx6llwIqkX30kCNoaCHa1NGf34GpuUP9iHZkboGZbpi6Ixfa9Cg=="
         },
         "6f46b9d7-655f-43d8-b1ca-3e78456c1291": {
           "display_id": 3314,
