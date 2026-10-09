@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4267,
-        "tip_oid": "248698973ad1c49dd42da56b55cfcbec3a7c8d64",
-        "prefix_sha256": "e1c6255ca98adee7a5bc9a4c3f30a82f7caf7d4461a995c3e16c4b1558599d56"
+        "sequence": 4268,
+        "tip_oid": "c3f4b472236df8bf421aa90dd8399e4eabd7d279",
+        "prefix_sha256": "30db3f93e6c45223ba9a855efed9ca0951a154ba3f4ef1808fbd488546525652"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3349,
+  "next_comment_id": 3350,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T09:33:00.831836330Z",
+      "updated_at": "2026-10-09T11:36:00.951487036Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42665,6 +42665,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAFG1Af7/DiE+0UDMfkPC93v9Kiou8cpG5idvB83IdFBvEIfB5j0H3DLg0oxBYqb6VxQ9nIzUo8t4y0rP79xymAQ=="
+        },
+        "79a59176-03b6-485b-b8c7-f513ccd96618": {
+          "display_id": 3349,
+          "author": "6ME5",
+          "content": "Final delivery qualification PASS for signed authorization 2d8ad67ededf9273e89d09264fc6919d0c561570 and implementation 90ff9494c9e62cf6195f95d47691b1f219290258 (Fix durable ordinal allocation and Windows integration test waits). Both are pushed; PR115 https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/115 remains open draft on exact authorization base, unmerged.\n\nAll seven final 09:31:19 UTC workflows succeeded: Gate A 37911810034 215/215; Foundation 37911810004 194/194; Native product 37911810121 162/162; H0 37911810116 3/3; Browser 37911810087 1/1; Distribution 37911810026 2/2; Bug discovery 37911810085 one success plus exactly context-canary/fuzz/mutation source-configured skips. Total 581 globally unique jobs: 578 success, three expected skips, zero failures/cancellations/pending. Complete pagination totals, identities, conclusions, and source-derived matrix sizes verified independently by root and reviewer. Root/independent terminal JSON SHA256 9a3a6622bd122ce6e3a0576e7bc60455bb12ba072df9cbd8625d390adda85f0e.\n\nRaw bootstrap/policy proves exact A10 authorization base and checked synthetic merge 9fa8cadbd481ac498ddbc394aabfd7b9e35cef3f with exact I10 tree 680504fbe3a666fe3fa0bc0af462f0fedd00f2af, I10 parent, and A10 ancestry. Earlier stale/provisional runs were captured and retired to free macOS capacity; their cancellations are not passes. Hosted runners completed the final campaign. Both original Windows failures and macOS equivalents passed on final source; ordinal rollback/concurrency and terminal-wait diagnostics remain covered.\n\nIndependent final verdict PASS: /tmp/peritus-ordinal/final-independent-verdict-pcr-0010.txt SHA256 c7160591f1de2fe2566cc102e575a64ae2757545eb03547865fc355a899f4096. H0 artifact audit passed 42 cases/six required native sandbox executions. All 108 H2 scenario reports across six targets passed canonical evidence, raw observation, cleanup-zero and manifest-reference integrity; binary/prepared package contents were not independently downloaded/rehashed. Signed phase source/tree/history audits, 132 fresh gates and candidate native evidence remain unchanged.\n\nPR113/114/115 descriptions and /tmp/peritus-batch3/final-report.md now record final qualification. Tracked working tree clean; all 62 noncache baseline untracked files byte/mode preserved; Crosslink refreshed its generated caches. All 30 selected third-batch issues remain closed; L529/#599 partial and parent #103 remain open; all 157 formal obligations remain in progress. No merge and no formal obligation discharge.\n",
+          "created_at": "2026-10-09T11:36:00.941946451Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAONjtPEeBjNTU+5gDR2lWhVWVuLglR/C0uOyZ/bfHhwT5MvKffcFuKlnkTe+W7dYMO4e7c+gndY0G0KFBd62EAA=="
         },
         "7bf29e00-d685-4d23-b6a1-4f9dc38d85c1": {
           "display_id": 3092,
