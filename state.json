@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4240,
-        "tip_oid": "231de15e0159459005b190e66c88a9958e9cbbb5",
-        "prefix_sha256": "9b32b1c99587d398b176dafa7c98a6a2f95a923927796c67d68e8501b7696e56"
+        "sequence": 4241,
+        "tip_oid": "cbc58996a517a8a9e7e359baa754b60a914f7441",
+        "prefix_sha256": "f52dc0ab8cc08d37658997ab63dcf63f6477010e08fdbdd12c981481fd3fb109"
       },
       "NWAR": {
         "sequence": 39,
@@ -2789,12 +2789,13 @@
       "display_id": 265,
       "title": "[L169] Preview admission permits untimed operation but retains payload bounds and a narrower downstream process contract",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L169.\n\n- Source: `crates/app/peritus-product-runner/src/developer_tools/preview.rs:9-11,43-71,157-165`.\n- The constructor supports `None` timeout. A selected timeout must be positive and representable as u64 milliseconds; it has no ten-minute or other fixed duration ceiling. The included tests explicitly accept 601 seconds and collections above the former 256-argument/64-environment limits.\n- Admission still limits executable text to **4,096 bytes**, individual arguments/environment values to **64 KiB**, collection lengths to **65,535**, idempotency keys to **512 bytes**, and terminal dimensions to nonzero u16 values. Environment names use an ASCII identifier grammar; no length ceiling is enforced here.\n- This constructor is broader than the C2 launch contract already read in L096 (**4,096 arguments**, **1,024 environment entries**, and aggregate payload bounds). Acceptance here does not establish executable downstream admission. The error groups all failures as Apply/invalid launch profile. **Source-confirmed bounds and contract mismatch; actual preview host inputs remain to be traced.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.855531849Z",
-      "updated_at": "2026-10-09T02:10:13.005526805Z",
+      "updated_at": "2026-10-09T06:00:14.233712254Z",
+      "closed_at": "2026-10-09T06:00:14.229818096Z",
       "labels": [
         "daily-driving-limiter"
       ],
