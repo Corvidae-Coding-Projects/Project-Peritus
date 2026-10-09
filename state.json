@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4249,
-        "tip_oid": "48ca68e53416d1b651f21845aced55c393b72814",
-        "prefix_sha256": "bcfed6a1562602ea883dec7dda99cd5f9e58d53cacde0c4c26d0358f5b7e8175"
+        "sequence": 4250,
+        "tip_oid": "515a144935130e0ab00dd3dffeeddcb7d5469aab",
+        "prefix_sha256": "977cf3b3ac390d31b2a75f655f54ab9e6527e907df076ee3db880a075acafbcb"
       },
       "NWAR": {
         "sequence": 39,
@@ -1666,12 +1666,13 @@
       "display_id": 434,
       "title": "[L261] External file ranges still require reading a complete source capped at 64 MiB",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L261.\n\n- Source: `crates/app/peritus-tui/src/file_import.rs`; `image_import.rs`; attachment host bounds already recorded in L126/L154/L162.\n- Text import rejects an entire source above **64 MiB before range selection**, then reads the whole source into memory and hashes it. A small selected range from a larger log/data file is therefore unavailable. Selected text is limited to **256 KiB** and exact UTF-8 without binary controls; basename labels are **1..1024 bytes**. Line coordinates are u32 and the full source is scanned even for early ranges.\n- Image import requires a nonempty regular file at most **4 MiB**. The client checks bytes/size only; host image decoding/dimensions and aggregate attachment limits remain additional gates (L126/L162). These are transfer/source bounds, not inference/session time budgets.\n- Imports require an absolute path with no ParentDir component and perform no shell/path expansion. They reject a final symlink; Windows rejects device namespace and final reparse points; unsupported operating systems fail explicitly. Source/current-size checks and exact digests should remain, but selected-range access must not inherit an unrelated whole-file memory cap. **Both entire files and inline tests read; tests not run.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.169462043Z",
-      "updated_at": "2026-10-09T02:25:04.977334030Z",
+      "updated_at": "2026-10-09T06:14:00.244317705Z",
+      "closed_at": "2026-10-09T06:14:00.241161643Z",
       "labels": [
         "daily-driving-limiter"
       ],
