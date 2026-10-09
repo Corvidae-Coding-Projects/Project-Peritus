@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4251,
-        "tip_oid": "60b4f3f56e5a099f472b13e0eefa04051561fbde",
-        "prefix_sha256": "792509e76e1e127067905c15392ce92ef7565f9bb4006996e95ba682104dad01"
+        "sequence": 4252,
+        "tip_oid": "86ac245c9727c1178ef0cda5b0e35733f5151df3",
+        "prefix_sha256": "fc75c8da5a065929ebda4bcc2e1991c9d22c828ebf91bc4a4372a1a01b9f87da"
       },
       "NWAR": {
         "sequence": 39,
@@ -34018,12 +34018,13 @@
       "display_id": 691,
       "title": "[L645] Registered Git merge is permanently unsupported; errors do not provide progress or retry detail",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L645.\n\n- Evidence: `crates/tools/peritus-tools-git/src/catalog.rs:29-54,119-132`; `src/dispatcher.rs:145-150,185-233`; `src/read.rs:195-225`; `src/dispatch_support.rs:65-117`; `src/error.rs:1-121`.\n- Behavior: The catalog advertises `git.merge` as lease-required history mutation, but both dispatcher and read implementation return Unsupported. That failure is Infrastructure/Workspace with NewAction and no recovery route. Workspace failures are broadly collapsed into reconciliation guidance; read retry guidance becomes reobservation. The catalog timeout is None and synchronous execution declares no controls or progress, recording the pre-execution authority instant as completion.\n- Consequence: A planner can repeatedly select an advertised operation that cannot run or retry without useful causal detail. Long synchronous work has no local progress/control surface. These are capability/error-contract blockers; there is no Git descriptor execution deadline left to remove.\n- Repair direction: Publish only supported operations or implement merge with durable authority and result recovery. Preserve actionable error/retry distinctions and report actual timing/progress for long observations.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.381787676Z",
-      "updated_at": "2026-10-09T02:28:24.617969613Z",
+      "updated_at": "2026-10-09T06:17:07.306362765Z",
+      "closed_at": "2026-10-09T06:17:07.303295478Z",
       "labels": [
         "daily-driving-limiter"
       ],
