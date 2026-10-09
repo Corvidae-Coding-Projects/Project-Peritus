@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4279,
-        "tip_oid": "37733e06b42bff1b1d4d532bf13fa4d40e7964c2",
-        "prefix_sha256": "506e2ccba8b1d7616c778dac3ce1e0f925caed2f50978022a77d6cb6a8c825b6"
+        "sequence": 4280,
+        "tip_oid": "de887275c913b1ca97e64fce1b36b2a8499a8bb7",
+        "prefix_sha256": "9b4a945efb13728a4262cf6046281774899eefe3d02f0824df2ee9ec9187dc6b"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3361,
+  "next_comment_id": 3362,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T19:55:09.680067480Z",
+      "updated_at": "2026-10-09T20:08:26.711244882Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42944,6 +42944,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA12JEY8K6qafutcEoy+maDyRf//NJxr7SztemjiNfBzX56r0sHpQs9cb4+VVpTzariemDZEbiAWz7iQYAsg4HAw=="
+        },
+        "d63aa142-2c0e-422c-9a67-89153a807765": {
+          "display_id": 3361,
+          "author": "6ME5",
+          "content": "Committed and pushed 5810c84b1881a3b8193220ec63a980e530b4eba3: preserve inherited ACL control during exact restoration. Eight-file source set independently cleared; integrated xtask all, Linux sandbox tests, strict Linux and GNU Windows linting, fmt and diff checks passed. Fresh canonical 132-command and hosted native campaigns are running for this exact candidate. Previous c532 campaign is diagnostic after native failures; no evidence imported and no formal approval or protected-base authority asserted.",
+          "created_at": "2026-10-09T20:08:26.706831594Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAoZbJp4KRCCFDLRcNSsyd6AjKDqsgaG/jgyNbeelSqudksu2oCEC/8JqCII97AfPE1nLPVkszzMH7mgN+DTKlAw=="
         },
         "e2128c88-e940-4cf9-a1c7-870d436aade7": {
           "display_id": 2163,
