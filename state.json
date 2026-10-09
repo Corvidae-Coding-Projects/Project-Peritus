@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4238,
-        "tip_oid": "b90f65b85a8fcec3e1e7b368bbbb05cd3d4d7893",
-        "prefix_sha256": "7b0a21194a3d015cad25bf1475501d8c1498b4db97b705c4789086cc7bd72e36"
+        "sequence": 4239,
+        "tip_oid": "e6dab4efaceafdde658b8a1ae1f7c0bcc169de7b",
+        "prefix_sha256": "178903c1389de825d4bc914820dce163a010f8796741e089ae49bc6b700f3bb4"
       },
       "NWAR": {
         "sequence": 39,
@@ -43149,12 +43149,13 @@
       "display_id": 239,
       "title": "[L142] Managed workspace image discovery silently drops candidates and can stop the whole traversal on depth",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L142.\n\n- **Source:** `crates/app/peritus-product-runner/src/workspace_media.rs:17-21,53-69,103-139,150-180,258-282`; caller `workspace_delivery.rs:83-100`.\n- **Limits/enforcement:** Discovery retains at most 1,024 image paths, selects only the first 16 sorted matches, excludes six named directory components, and limits traversal depth to 16. Encountering any pending directory deeper than 16 uses `break`, ending the entire traversal rather than skipping that directory. Directory entries are collected and sorted before the image limit helps; there is no directory-entry bound or cancellation inside this synchronous walk.\n- **Failure/recovery:** Each candidate must be nonempty, at most 4 MiB or the provider's lower inline limit, with at most 12 MiB aggregate bytes. Oversized candidates silently disappear from the attachment manifest; if every candidate is rejected, the entire operation fails with a Provider error. A content/extension signature mismatch or any directory/read error fails discovery. A visual request with a provider lacking image support is refused. Supported discovery types are PNG, JPEG, GIF, and WebP, selected through fixed phrase/path heuristics. Explicit-media hosts bypass this legacy discovery.\n- **Classification:** Product-selected discovery/attachment ceilings and truncation, separate from provider capacity and integrity checks. No paging, resizing, or continuation is implemented here. The explicit in-place child is now fully read: it accepts only explicit tokens that pass protected-file checks, silently discards invalid paths/errors, and takes 16 candidates BEFORE deduplication; repeated early references can therefore consume the entire selection allowance. Its tests and the managed discovery tests are fully read, not executed. This is source-confirmed behavior, not evidence that it caused the current live run to stall.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.740336462Z",
-      "updated_at": "2026-10-09T01:51:45.747141419Z",
+      "updated_at": "2026-10-09T05:57:13.373147451Z",
+      "closed_at": "2026-10-09T05:57:13.369805259Z",
       "labels": [
         "daily-driving-limiter"
       ],
