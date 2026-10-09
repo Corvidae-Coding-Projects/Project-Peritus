@@ -121,7 +121,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         );
         let live_receipt = running.workbench_command(actor(), &live_check).await;
         assert!(matches!(live_receipt, AppResponsePayload::WorkbenchReceipt(_)));
-        evidence::assert_retained(&running, run, &live_check, false);
+        let observed_start = evidence::assert_retained(&running, run, &live_check, false);
         let terminal_attachment = terminal::attach_and_reconnect(&running, &live);
         terminal_attachment.check_permission_changes(&running, workspace).await;
         let input = command(
@@ -159,7 +159,7 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         *restarted.inner.controls.lock().expect("controls") = Some(controls);
         *restarted.inner.records.write().expect("records") = records;
         assert_eq!(restarted.workbench_command(actor(), &live_check).await, live_receipt);
-        evidence::assert_retained(&restarted, run, &live_check, false);
+        assert_eq!(evidence::assert_retained(&restarted, run, &live_check, false), observed_start);
         let restored = observe(&restarted, result_query);
         assert_eq!(restored.outputs(), terminal.outputs());
         assert_eq!(restored.result().launches()[0].state(), WorkbenchLaunchState::Exited);
@@ -173,8 +173,8 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
             run,
             launch.operation(),
             output_stream,
-            0,
-            64,
+            observed_start,
+            12,
         )
         .expect("full output range query");
         let AppResponsePayload::WorkbenchPreviewOutput(range) =
@@ -184,7 +184,8 @@ fn preview_prompt_is_visible_before_input_and_retained_after_restart() {
         };
         assert!(range.total_bytes() > 128 * 1024);
         assert!(range.artifact_digest().is_some());
-        assert!(String::from_utf8_lossy(range.bytes()).contains("EARLY_SIGNAL"));
+        assert_eq!(range.offset(), observed_start);
+        assert_eq!(range.bytes(), b"EARLY_SIGNAL");
         let check = command(
             workspace,
             0x79,
