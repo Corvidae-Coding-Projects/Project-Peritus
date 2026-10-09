@@ -10,8 +10,9 @@ use windows_sys::Win32::{
         ACL,
         Authorization::{SE_FILE_OBJECT, SetSecurityInfo},
         DACL_SECURITY_INFORMATION, GetKernelObjectSecurity, GetSecurityDescriptorControl,
-        GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_PROTECTED,
-        SetKernelObjectSecurity, UNPROTECTED_DACL_SECURITY_INFORMATION,
+        GetSecurityDescriptorDacl, PROTECTED_DACL_SECURITY_INFORMATION, SE_DACL_AUTO_INHERIT_REQ,
+        SE_DACL_AUTO_INHERITED, SE_DACL_PROTECTED, SetKernelObjectSecurity,
+        SetSecurityDescriptorControl, UNPROTECTED_DACL_SECURITY_INFORMATION,
     },
 };
 
@@ -69,7 +70,7 @@ impl Dacl {
         Ok(Self { words, length })
     }
 
-    fn protection(&self) -> Result<u32, WindowsError> {
+    fn control(&self) -> Result<u16, WindowsError> {
         let mut control = 0;
         let mut revision = 0;
         // SAFETY: words contains the complete aligned descriptor returned by Windows.
@@ -83,7 +84,11 @@ impl Dacl {
         {
             return Err(error("saved DACL control cannot be read"));
         }
-        Ok(if control & SE_DACL_PROTECTED == 0 {
+        Ok(control)
+    }
+
+    fn protection(&self) -> Result<u32, WindowsError> {
+        Ok(if self.control()? & SE_DACL_PROTECTED == 0 {
             UNPROTECTED_DACL_SECURITY_INFORMATION
         } else {
             PROTECTED_DACL_SECURITY_INFORMATION
@@ -126,6 +131,25 @@ impl Dacl {
     }
 
     pub(super) fn restore_exact(&self, file: &File) -> Result<(), WindowsError> {
+        let mut replay = self.words.clone();
+        if self.control()? & SE_DACL_AUTO_INHERITED != 0 {
+            // AI is observed state; the low-level setter also requires the set-only AR command
+            // to preserve it. Prepare a private copy, never alter the immutable equality oracle.
+            // See https://learn.microsoft.com/en-us/windows-hardware/drivers/ifs/security-descriptor-control
+            // Independent backup replay implementation (prepare_security_descriptor_for_set_operation):
+            // https://kernel.googlesource.com/pub/scm/utils/pciutils/pciutils/+/8eee6d9732e26a089c0749346441fd141ebea9c3/lib/win32-helpers.c
+            // SAFETY: replay is an aligned, complete, private self-relative descriptor copy.
+            if unsafe {
+                SetSecurityDescriptorControl(
+                    replay.as_mut_ptr().cast(),
+                    SE_DACL_AUTO_INHERIT_REQ,
+                    SE_DACL_AUTO_INHERIT_REQ,
+                )
+            } == 0
+            {
+                return Err(error("exact DACL replay control cannot be prepared"));
+            }
+        }
         // SetSecurityInfo imposes current inheritance semantics on the subtree and can change a
         // legacy DACL, including null-versus-empty semantics. This second phase deliberately uses
         // the documented filesystem backup/restore exception for retained BACKUP_SEMANTICS handles:
@@ -138,13 +162,17 @@ impl Dacl {
         if unsafe {
             SetKernelObjectSecurity(
                 file.as_raw_handle(),
-                DACL_SECURITY_INFORMATION | self.protection()?,
-                self.words.as_ptr().cast_mut().cast(),
+                DACL_SECURITY_INFORMATION,
+                replay.as_mut_ptr().cast(),
             )
         } == 0
         {
             return Err(error("exact original DACL cannot be restored"));
         }
+        self.verify_exact(file)
+    }
+
+    pub(super) fn verify_exact(&self, file: &File) -> Result<(), WindowsError> {
         if &Self::read(file)? != self {
             return Err(error("restored DACL bytes or control differ from the exact backup"));
         }

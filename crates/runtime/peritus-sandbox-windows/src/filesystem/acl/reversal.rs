@@ -178,23 +178,21 @@ impl AclTransaction {
         }
         #[cfg(target_os = "windows")]
         {
-            let mut failed = false;
+            let mut failure = None;
             for reversal in self.reversals.iter_mut().rev() {
-                failed |= restore_acl(reversal, &self.originals).is_err();
+                record_failure(&mut failure, restore_acl(reversal, &self.originals));
             }
             // A later inheritance retry could change earlier exact restorations. Keep every
             // original and backup until both phases finish and verify as one transaction.
             if self.mutated {
-                failed |= self.originals.restore_descendant_inheritance().is_err();
-                failed |= self.originals.restore_exact().is_err();
-                failed |= self.originals.verify_new_descendants().is_err();
+                record_failure(&mut failure, self.originals.restore_descendant_inheritance());
+                record_failure(&mut failure, self.originals.restore_exact());
+                record_failure(&mut failure, self.originals.verify_exact());
+                record_failure(&mut failure, self.originals.verify_new_descendants());
             }
-            if failed {
+            if let Some(error) = failure {
                 self.restore_failed = true;
-                return Err(acl_error(
-                    WindowsOperation::RestoreAcl,
-                    "one or more exact ACL backups could not be restored",
-                ));
+                return Err(error);
             }
             for reversal in &mut self.reversals {
                 if let Some(backup) = reversal.backup.as_ref() {
@@ -370,10 +368,10 @@ fn restore_acl(
     reversal: &mut AclReversal,
     originals: &snapshots::Snapshots,
 ) -> Result<(), WindowsError> {
-    let mut failed = false;
+    let mut failure = None;
     if let Some(partial) = reversal.discard_backup.as_ref() {
-        if remove_backup(partial).is_err() {
-            failed = true;
+        if let Err(error) = remove_backup(partial) {
+            record_failure(&mut failure, Err(error));
         } else {
             reversal.discard_backup = None;
         }
@@ -382,8 +380,8 @@ fn restore_acl(
         if let Some(original) = reversal.original
             && reversal.mutation_started
         {
-            if originals.get(original).restore_inheritance().is_err() {
-                failed = true;
+            if let Err(error) = originals.get(original).restore_inheritance() {
+                record_failure(&mut failure, Err(error));
             } else {
                 reversal.inheritance_restored = true;
             }
@@ -392,16 +390,19 @@ fn restore_acl(
         }
     }
     if let Some(handle) = reversal.created_handle.as_ref() {
-        if crate::native::acl::remove_created_directory(handle).is_err() {
-            failed = true;
+        if let Err(error) = crate::native::acl::remove_created_directory(handle) {
+            record_failure(&mut failure, Err(error));
         } else {
             reversal.created_handle = None;
         }
     }
-    if failed {
-        Err(acl_error(WindowsOperation::RestoreAcl, "ACL reversal retains incomplete cleanup"))
-    } else {
-        Ok(())
+    failure.map_or(Ok(()), Err)
+}
+
+#[cfg(target_os = "windows")]
+fn record_failure(first: &mut Option<WindowsError>, result: Result<(), WindowsError>) {
+    if let Err(error) = result {
+        first.get_or_insert(error);
     }
 }
 

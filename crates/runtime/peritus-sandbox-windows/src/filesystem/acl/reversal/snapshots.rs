@@ -1,6 +1,6 @@
 //! Pristine DACL and retained-object inventory for the exact planned target subtrees.
 
-use super::acl_error;
+use super::{acl_error, record_failure};
 use crate::{
     ResolvedWindowsPath, WindowsError, WindowsOperation, WindowsPath,
     native::acl::{AclObject, ObjectId, VolumeReservations},
@@ -169,43 +169,41 @@ impl Snapshots {
     }
 
     pub(super) fn restore_exact(&self) -> Result<(), WindowsError> {
-        let mut failed = false;
+        let mut failure = None;
         for (index, object) in self.objects.iter().enumerate() {
             if !self.created.contains(&index) {
-                failed |= object.restore_exact().is_err();
+                record_failure(&mut failure, object.restore_exact());
             }
         }
-        if failed {
-            Err(acl_error(
-                WindowsOperation::RestoreAcl,
-                "one or more original DACLs failed exact restoration or verification",
-            ))
-        } else {
-            Ok(())
+        failure.map_or(Ok(()), Err)
+    }
+
+    pub(super) fn verify_exact(&self) -> Result<(), WindowsError> {
+        let mut failure = None;
+        // Read every original only after all replay writes. A later parent write must never
+        // invalidate an earlier child's equality check without retaining the cleanup owner.
+        for (index, object) in self.objects.iter().enumerate() {
+            if !self.created.contains(&index) {
+                record_failure(&mut failure, object.verify_exact());
+            }
         }
+        failure.map_or(Ok(()), Err)
     }
 
     pub(super) fn restore_descendant_inheritance(&self) -> Result<(), WindowsError> {
-        let mut failed = false;
+        let mut failure = None;
         // A preexisting directory may have moved during execution; its retained handle still
         // owns restoration of inherited temporary ACEs on children created below that object.
         for (index, object) in self.objects.iter().enumerate() {
             if object.is_directory() && !self.created.contains(&index) {
                 match object.delete_pending() {
-                    Ok(false) => failed |= object.restore_inheritance().is_err(),
+                    Ok(false) => record_failure(&mut failure, object.restore_inheritance()),
                     Ok(true) => {}
-                    Err(_) => failed = true,
+                    Err(error) => record_failure(&mut failure, Err(error)),
                 }
             }
         }
-        if failed {
-            Err(acl_error(
-                WindowsOperation::RestoreAcl,
-                "descendant inheritance restoration remains incomplete",
-            ))
-        } else {
-            Ok(())
-        }
+        failure.map_or(Ok(()), Err)
     }
 
     pub(super) fn verify_new_descendants(&self) -> Result<(), WindowsError> {

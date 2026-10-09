@@ -249,6 +249,10 @@ impl AclObject {
         Ok(())
     }
 
+    pub(crate) fn verify_exact(&self) -> Result<(), WindowsError> {
+        self.original.verify_exact(&self.file)
+    }
+
     #[cfg(test)]
     pub(crate) fn fail_next_verification(&self) {
         self.fail_verification_once.set(true);

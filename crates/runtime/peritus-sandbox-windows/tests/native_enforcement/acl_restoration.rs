@@ -29,7 +29,7 @@ impl Tree {
         std::fs::write(workspace.join("workspace/inherited/existing"), b"existing").unwrap();
         std::fs::write(workspace.join("workspace/protected/custom"), b"protected").unwrap();
         fixture::set(&workspace.join("workspace"), "D:(A;OICI;FA;;;WD)");
-        fixture::set(&workspace.join("workspace/inherited"), "D:AI(A;OICIID;FA;;;WD)");
+        fixture::set(&workspace.join("workspace/inherited"), "D:ARAI(A;OICIID;FA;;;WD)");
         fixture::set(&workspace.join("workspace/protected"), "D:P(A;OICI;FA;;;WD)");
         let backup = base.join("backup");
         Self { _root: root, base, workspace, backup }
@@ -210,11 +210,46 @@ fn native_acl_deleted_original_directory_completes_cleanup_and_releases_last_han
     let tree = Tree::new();
     let deleted = tree.workspace.join("workspace/deleted-empty");
     std::fs::create_dir(&deleted).unwrap();
+    let originals = tree.originals();
+    let before = originals.iter().map(|path| fixture::snapshot(path)).collect::<Vec<_>>();
     let mut transaction = tree.plan().install(&tree.backup).unwrap();
     std::fs::remove_dir(&deleted).unwrap();
-    transaction.restore().unwrap();
+    let outcome = transaction.restore();
+    let mismatches = originals
+        .iter()
+        .zip(&before)
+        .filter_map(|(path, expected)| {
+            let actual = fixture::snapshot(path);
+            (actual != *expected).then_some((path, expected, actual))
+        })
+        .collect::<Vec<_>>();
+    assert!(outcome.is_ok(), "cleanup {outcome:?}; surviving descriptor mismatches {mismatches:?}");
+    assert!(mismatches.is_empty(), "surviving descriptor mismatches {mismatches:?}");
     assert!(transaction.restored());
     assert!(!deleted.exists());
     std::fs::create_dir(&deleted).unwrap();
+    assert_eq!(std::fs::read_dir(&tree.backup).unwrap().count(), 0);
+}
+
+#[test]
+fn native_acl_final_verification_preserves_modern_parent_and_distinct_legacy_child() {
+    let _serial = fixture::serial();
+    let tree = Tree::new();
+    let parent = tree.workspace.join("workspace/inherited");
+    let child = parent.join("nested");
+    fixture::set(&parent, "D:ARAI(A;OICI;FA;;;WD)(A;OICI;FR;;;AU)");
+    fixture::set(&child, "D:(A;OICI;FA;;;WD)(A;;FR;;;BA)");
+    let before = [fixture::snapshot(&parent), fixture::snapshot(&child)];
+    assert_ne!(fixture::control(&before[0]) & 0x0400, 0);
+    assert_eq!(fixture::control(&before[1]) & 0x1400, 0);
+    assert_ne!(before[0], before[1]);
+    // Tree::plan supplies the nested child rule before the checked plan's outer workspace
+    // rule. The intermediate parent is discovered later than the explicit child target.
+    let mut transaction = tree.plan().install(&tree.backup).unwrap();
+    let outcome = transaction.restore();
+    let after = [fixture::snapshot(&parent), fixture::snapshot(&child)];
+    assert!(outcome.is_ok(), "cleanup {outcome:?}; original {before:?}; final {after:?}");
+    assert_eq!(after, before, "a later parent replay changed a previously restored child");
+    assert!(transaction.restored());
     assert_eq!(std::fs::read_dir(&tree.backup).unwrap().count(), 0);
 }

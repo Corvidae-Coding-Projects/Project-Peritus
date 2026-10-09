@@ -15,7 +15,7 @@ fn plan(workspace: &Path, target: &Path, sid: &str, descendants: bool) -> AclPla
     let input = WindowsPath::from_os_str(target.as_os_str()).unwrap();
     let extra = FilesystemRule::new(
         RuleEffect::Allow,
-        SandboxPath::new(input.to_path_buf().to_str().unwrap()).unwrap(),
+        SandboxPath::new(input.as_str()).unwrap(),
         if descendants { PathScope::Descendants } else { PathScope::Exact },
         FileOperationSet::from_operations([FileOperation::Read]),
     )

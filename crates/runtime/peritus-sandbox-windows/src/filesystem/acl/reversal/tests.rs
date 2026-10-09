@@ -37,7 +37,8 @@ fn failed_exact_verification_retains_all_backups_and_originals_for_retry() {
     assert_eq!(backup_count, transaction.pending_reversal_count());
     transaction.originals.get(0).fail_next_verification();
     transaction.originals.get(0).fail_next_inheritance();
-    assert!(transaction.restore().is_err());
+    let failure = transaction.restore().unwrap_err();
+    assert_eq!(failure.detail(), "injected inheritance restore failure");
     assert_eq!(transaction.cleanup_state(), CleanupState::RetryRequired);
     assert!(!transaction.restored());
     assert_eq!(
