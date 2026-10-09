@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4196,
-        "tip_oid": "1cd02cbd95026068dd8485715d5cca19239047f0",
-        "prefix_sha256": "3a14c2ec2aaf2722fa83a42e096d3823a592bcf5fc8ee568a7b7f12392dc9d9c"
+        "sequence": 4197,
+        "tip_oid": "b40225bd718f6449296b3fcaf46ec3d73deeaa49",
+        "prefix_sha256": "6a8bfe9fca9ee32e0ba0032ac714d6964e497a0b5d09f683d4d451e1b009e7cc"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3304,
+  "next_comment_id": 3305,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -41974,7 +41974,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T01:26:18.320395607Z",
+      "updated_at": "2026-10-09T01:39:21.075470569Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42407,6 +42407,15 @@
           "kind": "note",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvDawmEsVfIrkbq3mdRDJsnk6ZcFrSDxfXEW3s/8WMzAvMKwBRWZlyxIuamswPNZIouRl4S5FcIZZ7jhw2GCBBA=="
+        },
+        "a1f32567-8a01-4eb0-bef5-2bb10336e638": {
+          "display_id": 3304,
+          "author": "6ME5",
+          "content": "Committed and pushed test-only correction 0e6736b0a (test: make preview and filesystem fixtures runner-independent). Serial daemon preview regression and both Unix filesystem fixture variants pass; strict Linux/Windows GNU Clippy, fmt and source layout pass. Independent reviewer source-clear. Full 132-gate formal campaign and native CI restarting on exact replacement candidate; previous failing campaign retained only as diagnostic evidence.",
+          "created_at": "2026-10-09T01:39:21.064531340Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAetYhmQOQQtrOravxuKQcXd/AKWGSZtG4y2Mou9yxNOrm3nmwsGbo1BTA7pOaWEKnZHJ7Gp8NXh5h8JVqvD8UDg=="
         },
         "a8e8af08-99b0-40f8-ad9b-f770cef48d63": {
           "display_id": 2136,
