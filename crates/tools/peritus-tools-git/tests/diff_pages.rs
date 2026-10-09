@@ -8,9 +8,16 @@ use peritus_test_support::FixturePath;
 use peritus_tools_git::{DiffInput, GitReadService, RenderedOutput};
 use peritus_types::Sha256Digest;
 
-#[test]
-fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
-    let fixture = support::git_fixture_with("diff-pages", |source| {
+#[allow(
+    clippy::too_many_lines,
+    reason = "Keep real diff pagination and exact path/patch reconstruction in one regression."
+)]
+fn assert_diff_paths_and_patch_reconstruct(label: &str, include_native_name: bool) {
+    #[cfg(not(target_os = "linux"))]
+    let _ = include_native_name;
+    #[cfg(unix)]
+    let long_relative_path = format!("{}/long.txt", vec!["p".repeat(200); 2].join("/"));
+    let fixture = support::git_fixture_with(label, |source| {
         for index in 0..530 {
             source
                 .write_text(
@@ -21,16 +28,20 @@ fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
         }
         #[cfg(unix)]
         {
+            #[cfg(target_os = "linux")]
             use std::os::unix::ffi::OsStrExt;
-            let long_path = format!("{}/long.txt", vec!["p".repeat(200); 12].join("/"));
-            let long_path = source.root().join(long_path);
+            // Keep the complete path below macOS PATH_MAX while still forcing a byte-page split.
+            let long_path = source.root().join(&long_relative_path);
             std::fs::create_dir_all(long_path.parent().expect("parent")).expect("long directory");
             std::fs::write(long_path, b"long path\n").expect("long path file");
-            std::fs::write(
-                source.root().join(std::ffi::OsStr::from_bytes(b"native-\xff")),
-                b"native\n",
-            )
-            .expect("native path");
+            #[cfg(target_os = "linux")]
+            if include_native_name {
+                std::fs::write(
+                    source.root().join(std::ffi::OsStr::from_bytes(b"native-\xff")),
+                    b"native\n",
+                )
+                .expect("native path");
+            }
         }
     });
     let complete =
@@ -38,11 +49,19 @@ fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
     let expected_paths =
         complete.entries().iter().map(|entry| entry.path_bytes().to_vec()).collect::<Vec<_>>();
     assert!(expected_paths.len() > 500);
+    #[cfg(unix)]
+    let long_path_index = expected_paths
+        .iter()
+        .position(|path| path == long_relative_path.as_bytes())
+        .expect("the long relative path is present in the diff");
     let service = GitReadService::new(&fixture.workspace);
     let mut cursor = DiffCursor::default();
     let mut paths: Vec<Vec<u8>> = Vec::new();
     let mut patch = Vec::new();
+    #[cfg(unix)]
     let mut continued_path = false;
+    #[cfg(not(unix))]
+    let continued_path = false;
     for _ in 0..2000 {
         let page = service
             .diff(
@@ -51,8 +70,8 @@ fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
                     .with_cursor(cursor, complete.digest()),
             )
             .expect("page");
-        let rendered = RenderedOutput::diff_with_budget(&page, 4096).expect("encoded page");
-        assert!(rendered.structured().canonical_bytes().len() <= 4096);
+        let rendered = RenderedOutput::diff_with_budget(&page, 1024).expect("encoded page");
+        assert!(rendered.structured().canonical_bytes().len() <= 1024);
         let json: serde_json::Value =
             serde_json::from_slice(rendered.structured().canonical_bytes()).expect("JSON");
         for entry in json["entries"].as_array().expect("paths") {
@@ -80,7 +99,12 @@ fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
         if next_entry.is_none() && next_patch.is_none() {
             break;
         }
-        continued_path |= json["next_path_byte_offset"].as_u64().expect("path offset") != 0;
+        #[cfg(unix)]
+        {
+            continued_path |= json["next_entry_offset"].as_u64()
+                == Some(u64::try_from(long_path_index).expect("path index"))
+                && json["next_path_byte_offset"].as_u64().expect("path offset") != 0;
+        }
         let next = DiffCursor {
             entry_offset: next_entry.unwrap_or_else(|| complete.total_entries()),
             patch_offset: next_patch.unwrap_or_else(|| complete.total_patch_bytes()),
@@ -104,6 +128,24 @@ fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
             )
             .is_err()
     );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn diff_paths_and_patch_reconstruct_through_small_encoded_pages_without_native_name() {
+    assert_diff_paths_and_patch_reconstruct("diff-pages-base", false);
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn diff_paths_and_patch_reconstruct_through_small_encoded_pages_with_native_name() {
+    assert_diff_paths_and_patch_reconstruct("diff-pages-native-name", true);
+}
+
+#[cfg(not(target_os = "linux"))]
+#[test]
+fn diff_paths_and_patch_reconstruct_through_small_encoded_pages() {
+    assert_diff_paths_and_patch_reconstruct("diff-pages", false);
 }
 
 #[test]
