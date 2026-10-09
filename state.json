@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4214,
-        "tip_oid": "75faa337e01272820067ac8a5b726bc26a92aa15",
-        "prefix_sha256": "055f88fc0033fa19f67267865ebf4a9a36dc0a70d6e5cba8765dc7f88a8bd690"
+        "sequence": 4215,
+        "tip_oid": "af22ff2d29e41a3a384eb0526c42ad74c7b70004",
+        "prefix_sha256": "8e0497c47aec4f84d561132fadcf98ecaa59eb87220aebe19611616b3c0256f9"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3322,
+  "next_comment_id": 3323,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -43133,7 +43133,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.134911202Z",
-      "updated_at": "2026-10-06T13:27:50.137202249Z",
+      "updated_at": "2026-10-09T02:20:10.243839381Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -43144,6 +43144,15 @@
           "content": "Systemic repair plan for L249: Structured-review navigation stays on the loaded page and repeat refresh has no in-flight guard.\n\nOwning contract and implementation boundary: crates/app/peritus-tui/src/model/product/review.rs:31-68,115-217,266-295; product/review/editor.rs; product/review/state.rs. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nUse cursor-based structured-review navigation over the complete changed-path/comment index and preserve selected anchors outside the loaded page. Coalesce refreshes under one in-flight request with an exact revision and a retryable completion state. Stale results cannot overwrite newer navigation, and pagination cannot make later defects undiscoverable.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "e3a211eb-826f-415b-bd64-af3b7bb8823c": {
+          "display_id": 3322,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Added next/previous diff navigation, raw chunk navigation, in-flight coalescing, legacy feature fallback, and exact displayed-page editor anchors. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:20:10.233817435Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA+xBy+UIQzFFXgvmObxXxbvxSOhwF//PcfwiHfX2B1X80o/nhQHa8xfZUXq0O8oZ5vnujLRDQEgH+M9PGM00CDA=="
         }
       }
     },
