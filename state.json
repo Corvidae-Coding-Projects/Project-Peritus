@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4248,
-        "tip_oid": "2852255c274fd1b745e947d8fa1eea493173ce3e",
-        "prefix_sha256": "ce6448326136d16e029b33b8896027228720ab5c65a50a01236f58c62c6fce17"
+        "sequence": 4249,
+        "tip_oid": "48ca68e53416d1b651f21845aced55c393b72814",
+        "prefix_sha256": "bcfed6a1562602ea883dec7dda99cd5f9e58d53cacde0c4c26d0358f5b7e8175"
       },
       "NWAR": {
         "sequence": 39,
@@ -20829,12 +20829,13 @@
       "display_id": 271,
       "title": "[L255] Valid Git quoted paths and long source lines can disable the entire structured diff",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L255.\n\n- Source: `crates/app/peritus-app-protocol/src/workbench/review/parser.rs:30-69,202-238`; `workbench/review/diff.rs:58-63,88-101`; `workbench/review/anchor.rs`.\n- A diff header is accepted only by finding the literal delimiter ` b/`; +++/--- paths require an unquoted a/ or b/ prefix. There is no Git C-quoted path decoder. A valid quoted Git header (for example a path containing a tab or a non-ASCII filename under default Git quoting) can therefore fail the entire structured parse rather than remain accessible through a decoded exact anchor.\n- Each line and hunk header uses MAX_PRODUCT_DETAIL_BYTES (**64 KiB**) and each line rejects controls other than tab. A single larger minified/source line rejects the whole structured object. Hunk start/count fields are **u32** and reject a positive count at line zero or an entirely empty range. These are syntax/display representation gates, not elapsed deadlines.\n- Source tests cover ordinary unquoted paths, digest changes, traversal, and a small wire roundtrip; they do not demonstrate large-line, quoted-path or collection-bound behavior. A repair should preserve exact path/content identity while providing decoding and page/range access. **All six review source/test files fully read; no test executed.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.882632668Z",
-      "updated_at": "2026-10-09T02:23:25.500675446Z",
+      "updated_at": "2026-10-09T06:12:30.424754835Z",
+      "closed_at": "2026-10-09T06:12:30.421720071Z",
       "labels": [
         "daily-driving-limiter"
       ],
