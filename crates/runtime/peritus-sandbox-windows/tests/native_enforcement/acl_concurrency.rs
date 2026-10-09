@@ -1,19 +1,28 @@
 //! Real competing processes exercise shared input, inheritance, retry, and movable ownership.
+#![allow(unsafe_code, reason = "read-only native token membership preconditions")]
 
 use super::acl_fixture as fixture;
+use core::ptr;
 use peritus_sandbox::{
     FileOperation, FileOperationSet, FilesystemRule, PathScope, RuleEffect, SandboxPath,
 };
 use peritus_sandbox_windows::{
     AclPlan, PathPolicy, WindowsOperation, WindowsPath, WindowsRecovery, compile_acl_plan,
 };
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+};
+use windows_sys::Win32::{
+    Foundation::LocalFree,
+    Security::{Authorization::ConvertStringSidToSidW, CheckTokenMembership},
+};
 
 const CHILD: &str = "PERITUS_ACL_CONCURRENCY_FIXTURE";
-// Deliberately unrelated domain principals: the supervising host must retain its independent
-// authority to create fixtures while the sandbox principal has a real read-only deny.
-const FIRST_SID: &str = "S-1-5-21-424242421-424242422-424242423-1001";
-const SECOND_SID: &str = "S-1-5-21-424242421-424242422-424242423-1002";
+// Recognized Windows principals outside the supervising host token. Native preconditions
+// below check membership before applying the sandbox principal's real read-only deny.
+const FIRST_SID: &str = "S-1-5-32-546"; // Builtin Guests
+const SECOND_SID: &str = "S-1-5-7"; // Anonymous Logon
 
 fn plan(workspace: &Path, target: &Path, sid: &str, descendants: bool) -> AclPlan {
     let input = WindowsPath::from_os_str(target.as_os_str()).unwrap();
@@ -41,11 +50,15 @@ fn workspace(base: &Path, name: &str) -> PathBuf {
 }
 
 fn child(base: &Path, target: &Path, mode: &str) {
+    static INVOCATION: AtomicU64 = AtomicU64::new(0);
+    let ordinal = INVOCATION.fetch_add(1, Ordering::Relaxed);
+    let backup = base.join(format!("child-backup-{ordinal}"));
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .args(["--exact", "acl_concurrency::native_acl_cross_process_child", "--nocapture"])
         .env(CHILD, base)
         .env("PERITUS_ACL_TARGET", target)
         .env("PERITUS_ACL_MODE", mode)
+        .env("PERITUS_ACL_BACKUP", backup)
         .output()
         .unwrap();
     assert!(
@@ -75,8 +88,9 @@ fn native_acl_cross_process_child() {
     let base = PathBuf::from(base);
     let target = PathBuf::from(std::env::var_os("PERITUS_ACL_TARGET").unwrap());
     let mode = std::env::var("PERITUS_ACL_MODE").unwrap();
+    assert_host_nonmember(SECOND_SID);
     let plan = plan(&base.join("second"), &target, SECOND_SID, target.is_dir());
-    let backup = base.join("second-backup");
+    let backup = PathBuf::from(std::env::var_os("PERITUS_ACL_BACKUP").unwrap());
     if mode == "busy" {
         assert_busy(&plan, &backup, &target);
     } else if mode == "release" {
@@ -107,6 +121,8 @@ fn native_acl_cross_process_child() {
 #[test]
 fn native_acl_volume_exclusion_precedes_snapshot_and_survives_retry_and_thread_moves() {
     let _serial = fixture::serial();
+    assert_host_nonmember(FIRST_SID);
+    assert_host_nonmember(SECOND_SID);
     let root = tempfile::tempdir().unwrap();
     let base = WindowsPath::from_canonicalized(&std::fs::canonicalize(root.path()).unwrap())
         .unwrap()
@@ -147,4 +163,19 @@ fn native_acl_volume_exclusion_precedes_snapshot_and_survives_retry_and_thread_m
     child(&base, &model, "release");
     child(&base, &shared, "quarantine");
     child(&base, &model, "release");
+}
+
+/// The fixture host must not acquire the read-only principal's deny ACEs through membership.
+fn assert_host_nonmember(principal: &str) {
+    let text = principal.encode_utf16().chain([0]).collect::<Vec<_>>();
+    let mut sid = ptr::null_mut();
+    let mut member = 0;
+    // SAFETY: terminated text, initialized outputs, and the returned SID remain live below.
+    assert_ne!(unsafe { ConvertStringSidToSidW(text.as_ptr(), &raw mut sid) }, 0);
+    // SAFETY: null token requests the calling thread's effective token; sid is valid.
+    let result = unsafe { CheckTokenMembership(ptr::null_mut(), sid, &raw mut member) };
+    // SAFETY: conversion transferred this LocalAlloc allocation to this helper.
+    unsafe { LocalFree(sid) };
+    assert_ne!(result, 0, "host token membership query failed");
+    assert_eq!(member, 0, "fixture principal is a host token member: {principal}");
 }
