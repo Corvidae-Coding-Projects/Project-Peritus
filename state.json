@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4275,
-        "tip_oid": "9df90d313e411b5380a86d2c64572db86f801f54",
-        "prefix_sha256": "11047a358d2de41a7afdfb11d97925067bdb778bd7441c1376aeac0abd3d0ff2"
+        "sequence": 4276,
+        "tip_oid": "a3f8b68d2ef8ac3d75455b5962efe722038d00cc",
+        "prefix_sha256": "17cf92a096ca747adda27906dd1612e74f7b567bb9eb7e761939ca5f253f368f"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3357,
+  "next_comment_id": 3358,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T18:12:13.234506478Z",
+      "updated_at": "2026-10-09T18:19:56.553545386Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42539,6 +42539,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnOnItDUGJ1fDM03BeHSK5/Qx0s8UO96/bP2a5Z3cjF4+96HgK9ymJew6ezmFdizec7EuRlrL5biTEd3Di/xaDw=="
+        },
+        "4dfb9778-e9f4-4579-ba2a-22840a47ffe8": {
+          "display_id": 3357,
+          "author": "6ME5",
+          "content": "Committed d4d8978402b77165e3b4d36648ca60e15544eb3a: test: compare native Windows ACL permission masks semantically. Exact deny mask preserved; native symbolic SDDL replay and negative regressions pass (2 tests); strict Linux and GNU Windows Clippy, fmt, source-layout pass; independent Sol review clear. Fresh complete132 campaign running. Commit remains local while hosted63 finishes failure inventory; replacement native replay and authority bootstrap remain pending.",
+          "created_at": "2026-10-09T18:19:56.542678810Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA9wvcDOTiDZGiFEzq44Ly3Qm2QV4kCwYuZU1II01RORxcAqCVFJdoYgi7PRQk65JUqz4As/oha3UxbVae+tmyCA=="
         },
         "53f0b35a-151a-4bd5-a09d-1e73121b6580": {
           "display_id": 2156,
