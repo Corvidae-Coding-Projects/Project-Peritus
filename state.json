@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4241,
-        "tip_oid": "cbc58996a517a8a9e7e359baa754b60a914f7441",
-        "prefix_sha256": "f52dc0ab8cc08d37658997ab63dcf63f6477010e08fdbdd12c981481fd3fb109"
+        "sequence": 4242,
+        "tip_oid": "6f217327dd7c509b49e5386f3236c2ff2ea6dfc7",
+        "prefix_sha256": "c7ec57d937f684dcea600ee93127631e01114c2446459b5cd7c4cd5e8b8cacb0"
       },
       "NWAR": {
         "sequence": 39,
@@ -16018,12 +16018,13 @@
       "display_id": 306,
       "title": "[L170] Independent review receives a rolling, truncated command-observation window",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L170.\n\n- Source: `crates/app/peritus-product-runner/src/developer_tools/evidence.rs:7-9,41-77,90-117`.\n- Command observations retain at most **32 records** and **128 KiB** of stored record text. Each request is previewed to **4 KiB** and its result to **12 KiB**; a truncation marker and framing are added outside those preview allowances. Older records are evicted when either aggregate ceiling is exceeded. Rendering adds labels outside the stored-byte accounting; cross-invocation merging keeps the last 128 KiB plus its omission marker.\n- Full JSON is serialized before taking the preview. Successful commands explicitly marked external_effect or verification are preserved in a separate unbounded vector, but that vector retains command text and purpose rather than the full observed output. Acceptance evidence therefore survives the rolling window while detailed output available to review can disappear.\n- This is an information-loss limiter, not a command timeout. Review evidence should retain durable result references and provide retrieval instead of relying on a lossy window. **Complete implementation and all inline tests read; tests not run and review-consumer retrieval still pending.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.682297535Z",
-      "updated_at": "2026-10-09T02:11:53.774267266Z",
+      "updated_at": "2026-10-09T06:01:46.905002395Z",
+      "closed_at": "2026-10-09T06:01:46.901888794Z",
       "labels": [
         "daily-driving-limiter"
       ],
