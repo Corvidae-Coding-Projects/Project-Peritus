@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4247,
-        "tip_oid": "170ebe2168872cb55ff5246909809919d92689a3",
-        "prefix_sha256": "428f25868a3b2586f3a2e24af27a94f408bdbaea6590f7d92c1f2aec97d2e357"
+        "sequence": 4248,
+        "tip_oid": "2852255c274fd1b745e947d8fa1eea493173ce3e",
+        "prefix_sha256": "ce6448326136d16e029b33b8896027228720ab5c65a50a01236f58c62c6fce17"
       },
       "NWAR": {
         "sequence": 39,
@@ -21965,12 +21965,13 @@
       "display_id": 430,
       "title": "[L254] Structured diff is a whole bounded object, while only comments are paginated",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L254.\n\n- Source: `crates/app/peritus-app-protocol/src/workbench/review.rs:7-15,26-36`; `workbench/review/page.rs:254-290`; TUI navigation in L249.\n- A page includes the complete structured diff with at most **512 files**, **4096 hunks**, and **32768 visible lines**, plus **256 comments** and **two evidence entries**. The constructor rejects exceeded collections with MalformedFrame rather than exposing a recoverable diff continuation. This can block structured review for larger changes even when comment paging would otherwise work.\n- Paths must be nonempty, at most **4096 bytes**, relative normal components and outside leading .git. Exact run/workspace/candidate/diff identities and positive response revision are necessary consistency checks. Comments carry 8192-byte WorkbenchInputText and a u32 total_comments count; the client first-page-only navigation is separate from these wire/schema capacities.\n- The complete parser returns LimitExceeded when the file/hunk/line ceilings are reached; it does not truncate into a paged continuation. Raw-diff fallback and server page selection remain to be traced before claiming exactly how an oversized repository change appears to the user. **Review root, page, parser, diff, anchor and tests fully read; tests not run; server callers pending.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:50.152126210Z",
-      "updated_at": "2026-10-09T02:21:49.204536695Z",
+      "updated_at": "2026-10-09T06:10:56.053082489Z",
+      "closed_at": "2026-10-09T06:10:56.050012349Z",
       "labels": [
         "daily-driving-limiter"
       ],
