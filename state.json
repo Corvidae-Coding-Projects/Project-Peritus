@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4219,
-        "tip_oid": "79cf4e9e618d9f7c4886e31e4be9ccfa2c02a00f",
-        "prefix_sha256": "37806232f455ba7884c9530f6135b8e7d6fa4e8cdac675eb828fc6c538efecae"
+        "sequence": 4220,
+        "tip_oid": "48a85555232886a1766ad1a34d38e7d07f03b6cd",
+        "prefix_sha256": "3b6ef07d3d620d120a1b1e6324df7be58a642ed9290ddc90680fdc2b5f773d42"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3327,
+  "next_comment_id": 3328,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -33980,7 +33980,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.381787676Z",
-      "updated_at": "2026-10-06T13:27:51.384136107Z",
+      "updated_at": "2026-10-09T02:28:24.617969613Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -33991,6 +33991,15 @@
           "content": "Systemic repair plan for L645: Registered Git merge is permanently unsupported; errors do not provide progress or retry detail.\n\nOwning contract and implementation boundary: crates/tools/peritus-tools-git/src/catalog.rs:29-54,119-132; src/dispatcher.rs:145-150,185-233; src/read.rs:195-225; src/dispatch_support.rs:65-117; src/error.rs:1-121. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nPublish only supported operations or implement merge with durable authority and result recovery. Preserve actionable error/retry distinctions and report actual timing/progress for long observations.\n\nPreserve: canonical digest and schema identity, shared writer/reader admissibility, malformed-input rejection before allocation, exact causal ordering, actual provider/OS capability boundaries and preserved accepted historical evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: valid boundary values and values just beyond each synthetic cap, final wrapper/receipt growth, non-ASCII strings, arbitrarily split frames/pages, malformed or conflicting data, mixed-version decode and save/reopen round trips. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:27:49.900Z",
           "kind": "decision"
+        },
+        "dad3c05b-f66d-422a-ad7b-6f0bc083727a": {
+          "display_id": 3327,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Removed unsupported merge advertisement, preserved lower-layer recovery/error detail, and made Git commands owned, cancellable and joined. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:28:24.608715119Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA45nVoXht6lPgHHYnYY0LoyCMSTOyNpvq7iKiayjRrkcBikx3URX/K1LBQcVyEOfxS2r+XnMf9PSLtYEKnV2UBQ=="
         }
       }
     },
