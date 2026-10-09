@@ -19,7 +19,7 @@ pub(crate) const TARGETS: [&str; 4] = ["sse", "ndjson", "working_state", "provid
 pub(crate) const NIGHTLY: &str = "nightly-2026-08-09";
 const FUZZ_VERSION: &str = "cargo-fuzz 0.13.2";
 const MUTANTS_VERSION: &str = "cargo-mutants 27.1.0";
-const POSIX_LIFECYCLE_IMAGE: &str = "docker.io/library/alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce";
+const POSIX_LIFECYCLE_IMAGE: &str = "public.ecr.aws/docker/library/alpine:3.22@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Operation {
