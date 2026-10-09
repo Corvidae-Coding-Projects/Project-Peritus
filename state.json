@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4256,
-        "tip_oid": "23d0594cd704ac5b126466854acd89688a2e5845",
-        "prefix_sha256": "2d22e9ef914236923171385910e16e6327e55cd725dab38889d80f8433d34a95"
+        "sequence": 4257,
+        "tip_oid": "7fb500d010aedfa81521ae99a0a307e279f4cecd",
+        "prefix_sha256": "1fd784fb8036ff0074be4916d7bef9544ac283dce6833ce75b524b0cab7d9945"
       },
       "NWAR": {
         "sequence": 39,
@@ -15548,12 +15548,13 @@
       "display_id": 761,
       "title": "[L734] Production tool composition has a hard configured-count gate and closed route catalog",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L734.\n\n- Evidence: `crates/app/peritus-daemon/src/component/tools/registry.rs:21,83-124,227-311,314-354`; `src/component/tools/catalog.rs:22-110`; `src/component/tools/error.rs:7,63-77,113-123`; `src/component/tools/tests.rs:1-63` in the same crate.\n- Behavior: build rejects more than 256 configured names, selects a fixed compiled catalog, and creates a fresh ToolRouter; an empty allowlist creates no router. Unknown/duplicate names and mismatched descriptor/implementation digests are rejected. git.merge is explicitly absent because the workspace layer lacks the effect. Diagnostic construction truncates detail at 4,096 UTF-8 bytes.\n- Consequence: the configured-count ceiling is independent of routing resource policy, although the current smaller closed catalog makes most oversized unique configurations invalid anyway. Fresh router construction is not native execution recovery. Closed capabilities and exact digest checks are deliberate authority/implementation boundaries, not elapsed expiry; exposing a nonexistent merge handler would not repair them.\n- Repair direction: distinguish configured admission/resource pressure from unsupported implementations and integrity checks; support durable router ownership through lower-layer receipts. Retain explicit capability selection and record diagnostic truncation so recovery causes remain retrievable. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.697528414Z",
-      "updated_at": "2026-10-09T02:36:11.517833275Z",
+      "updated_at": "2026-10-09T06:24:51.452994163Z",
+      "closed_at": "2026-10-09T06:24:51.449593776Z",
       "labels": [
         "daily-driving-limiter"
       ],
