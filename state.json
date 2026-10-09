@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4243,
-        "tip_oid": "cbbfc1edc89bc7b3326c12700b7e6631afebfeb3",
-        "prefix_sha256": "1f414caa34932890fc5cb4f2e34853c82b16a3f540c075b464aa0ac616f898fd"
+        "sequence": 4244,
+        "tip_oid": "86208ba927dcece85659bb35a14f12cadc46c27d",
+        "prefix_sha256": "77792bc08ff0d4d798f0230430628c6095de5ff7b96b51beae2fe5fcdb5b28ea"
       },
       "NWAR": {
         "sequence": 39,
@@ -29483,12 +29483,13 @@
       "display_id": 327,
       "title": "[L192] Preview capture has a 16 MiB PNG ceiling and only an X11/ImageMagick backend",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L192.\n\n- Source: `crates/app/peritus-daemon/src/product_run/workbench/launch.rs:47`; `launch/capture.rs:74-139,154-172,271-302,321-344`.\n- Capture requires DISPLAY, a PATH-discovered ImageMagick import executable, an exact preview runtime and an explicitly consented X11 window target. Other native capture surfaces are unavailable in this implementation. The helper is untimed; it executes synchronously through the owned command runtime before the async publication stage.\n- A resulting PNG must be nonempty, regular and at most **16 MiB**. It is then fully loaded and decoded without the product attachment module's explicit dimension/frame/decoded-memory guard. Rejected oversize/helper-failure paths do not reach the temporary-file cleanup. This cap is synthetic capture admission, not session expiration.\n- Upload metadata prefers **64 KiB chunks** or the negotiated smaller maximum; actual chunk iteration uses the negotiated maximum. Ordinal/offset overflow is checked. Consent, exact target and artifact actor/session/scope remain necessary authority boundaries.\n- Failed artifact publication is ignored by the Ok-only branch after admission; the retained capture stays Failed/unobserved and exact retry only replays admission/qualification. **Complete capture source read; protocol capture bounds, artifact limits and backend failure tests pending.**\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.781261832Z",
-      "updated_at": "2026-10-09T02:15:13.679135276Z",
+      "updated_at": "2026-10-09T06:04:47.973353598Z",
+      "closed_at": "2026-10-09T06:04:47.970199336Z",
       "labels": [
         "daily-driving-limiter"
       ],
