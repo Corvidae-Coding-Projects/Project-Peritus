@@ -2,6 +2,9 @@
 
 use super::acl_fixture as fixture;
 
+#[path = "acl_inheritance_probe.rs"]
+mod inheritance_probe;
+
 use peritus_sandbox::{
     FileOperation, FileOperationSet, FilesystemRule, PathScope, RuleEffect, SandboxPath,
 };
@@ -198,7 +201,13 @@ fn native_acl_protected_new_children_retain_conflict_without_losing_custom_aces(
     fixture::set(&file, "D:P(A;;FR;;;BU)(A;;FA;;;WD)(A;;FR;;;AU)");
     fixture::set(&directory, "D:P(A;OICI;FR;;;BU)(A;OICI;FA;;;WD)(A;OICI;FR;;;AU)");
     let resolved = [fixture::snapshot(&file), fixture::snapshot(&directory)];
-    transaction.restore().unwrap();
+    let outcome = transaction.restore();
+    assert!(
+        outcome.is_ok(),
+        "retry {outcome:?}; file {}; directory {}",
+        inheritance_probe::inspect(&parent, &file, false, "S-1-5-32-545"),
+        inheritance_probe::inspect(&parent, &directory, true, "S-1-5-32-545")
+    );
     assert!(transaction.restored());
     assert_eq!(fixture::snapshot(&file), resolved[0]);
     assert_eq!(fixture::snapshot(&directory), resolved[1]);

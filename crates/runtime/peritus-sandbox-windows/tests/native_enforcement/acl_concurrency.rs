@@ -10,6 +10,10 @@ use peritus_sandbox_windows::{
 use std::path::{Path, PathBuf};
 
 const CHILD: &str = "PERITUS_ACL_CONCURRENCY_FIXTURE";
+// Deliberately unrelated domain principals: the supervising host must retain its independent
+// authority to create fixtures while the sandbox principal has a real read-only deny.
+const FIRST_SID: &str = "S-1-5-21-424242421-424242422-424242423-1001";
+const SECOND_SID: &str = "S-1-5-21-424242421-424242422-424242423-1002";
 
 fn plan(workspace: &Path, target: &Path, sid: &str, descendants: bool) -> AclPlan {
     let input = WindowsPath::from_os_str(target.as_os_str()).unwrap();
@@ -71,7 +75,7 @@ fn native_acl_cross_process_child() {
     let base = PathBuf::from(base);
     let target = PathBuf::from(std::env::var_os("PERITUS_ACL_TARGET").unwrap());
     let mode = std::env::var("PERITUS_ACL_MODE").unwrap();
-    let plan = plan(&base.join("second"), &target, "S-1-5-11", target.is_dir());
+    let plan = plan(&base.join("second"), &target, SECOND_SID, target.is_dir());
     let backup = base.join("second-backup");
     if mode == "busy" {
         assert_busy(&plan, &backup, &target);
@@ -86,7 +90,7 @@ fn native_acl_cross_process_child() {
         let mut transaction = plan.install(&backup).unwrap();
         let protected = target.join("protected-residue");
         std::fs::write(&protected, b"new").unwrap();
-        fixture::set(&protected, "D:P(A;;FR;;;AU)(A;;FA;;;WD)");
+        fixture::set(&protected, &format!("D:P(A;;FR;;;{SECOND_SID})(A;;FA;;;WD)"));
         assert!(transaction.restore().is_err());
         std::thread::spawn(move || drop(transaction)).join().unwrap();
         let live = fixture::snapshot(&target);
@@ -119,7 +123,7 @@ fn native_acl_volume_exclusion_precedes_snapshot_and_survives_retry_and_thread_m
     let originals = [&shared, &executable, &model];
     let before = originals.map(|path| fixture::snapshot(path));
     let mut transaction =
-        plan(&first, &shared, "S-1-5-32-545", true).install(&base.join("first-backup")).unwrap();
+        plan(&first, &shared, FIRST_SID, true).install(&base.join("first-backup")).unwrap();
     let live = originals.map(|path| fixture::snapshot(path));
     for target in [&executable, &model, &shared] {
         child(&base, target, "busy");
@@ -128,7 +132,7 @@ fn native_acl_volume_exclusion_precedes_snapshot_and_survives_retry_and_thread_m
     std::fs::write(&dynamic, b"new child").unwrap();
     child(&base, &dynamic, "busy");
     assert_eq!(originals.map(|path| fixture::snapshot(path)), live);
-    fixture::set(&dynamic, "D:P(A;;FR;;;BU)(A;;FA;;;WD)");
+    fixture::set(&dynamic, &format!("D:P(A;;FR;;;{FIRST_SID})(A;;FA;;;WD)"));
     assert!(transaction.restore().is_err());
     assert_eq!(transaction.cleanup_state(), peritus_sandbox_windows::CleanupState::RetryRequired);
     child(&base, &model, "busy");
