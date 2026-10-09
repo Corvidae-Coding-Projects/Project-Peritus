@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4281,
-        "tip_oid": "8996362c1ee820ea441fe983172e0ef81b2c957f",
-        "prefix_sha256": "b73380b8166211277464bae81fff427a95c69072411ac5fef35affad4819cc58"
+        "sequence": 4282,
+        "tip_oid": "404c3f96156c3d069cf0daebd77dcd26cbc84e8a",
+        "prefix_sha256": "60d3e4cab495ebd49bf0f5e9c1e06332de6b2ca9103e380a944ddeb7edfebe65"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3363,
+  "next_comment_id": 3364,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T20:19:17.598566024Z",
+      "updated_at": "2026-10-09T20:30:08.078783801Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42845,6 +42845,15 @@
           "kind": "result",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAwY0XnyY0O3muA3aX0NtQoDQD48Bg9tjPGGmbKjoRpKAYGrCUOik/tGSsuWQPqF4Qeg7J9qiYFkg5N7DuNtCWCw=="
+        },
+        "9bf13255-bcf4-48d4-ac1d-28cab84d74ef": {
+          "display_id": 3363,
+          "author": "6ME5",
+          "content": "Committed and pushed diagnostic f2305204fe450f5dc98cf59441c78dde0f56a513: compare raw and decoded native ACL inheritance. Exact two-file test-only diff independently reviewed; integrated xtask all, strict GNU Windows/Linux linting, fmt and diff checks pass. Production comparison unchanged; no full132 campaign yet. Native matrix distinguishes raw inherited ACEs from explicit-entry decoding and incomplete-descriptor hypotheses. Corrected recognized non-host fixture principals and isolated each child backup while preserving quarantine evidence. Existing PR113/develop retained; no authority action.",
+          "created_at": "2026-10-09T20:30:08.074797391Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAeIfOGXPv1jlvl2ujxwcBaA8z1kmO2HVbpBa4uBkSr0j+6zWgjzoxgRPtemdgf6RftnIj/B2gCPtZrl2XYAB+Aw=="
         },
         "9eb7252c-5eea-48f3-82bb-92912792ff42": {
           "display_id": 2149,
