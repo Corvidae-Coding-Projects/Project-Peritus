@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4253,
-        "tip_oid": "c03880dd13e07df6da7f8a4383acaf139eb3fb5e",
-        "prefix_sha256": "31d15165e21891ba6b0246567c8fcb3cb32d702a7fbb44996e06d12385486eed"
+        "sequence": 4254,
+        "tip_oid": "871875b5d054a668ac1e011ba7abb0c9ee439148",
+        "prefix_sha256": "9fa0433104a38a5c21a94589d5ed5d52e400e306450ce3f3c2e27fb270d27d43"
       },
       "NWAR": {
         "sequence": 39,
@@ -1758,12 +1758,13 @@
       "display_id": 740,
       "title": "[L708] File and image history pages impose a 256-retained-reference ceiling",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L708.\n\n- Evidence: `crates/app/peritus-app-protocol/src/workbench/files/page.rs:18-26,126-137`; `src/workbench/images/page.rs:24-32,144-162,169-172`; `src/wire/workbench_files/page.rs:44-74`; `src/workbench/images/tests/page.rs:19-32`; `src/wire/workbench_image_page/tests.rs:26-38` in the same crate.\n- Behavior: File/image page offsets cannot exceed 256 and total retained references cannot exceed 256, even though each response is already paginated to 32 rows. Image totals explicitly include excluded references and file page documentation retains immutable history. File queries require positive revisions even at page zero; image queries allow current revision zero only for the first request, with responses requiring a committed revision. Tests explicitly reject a 257-reference image page/offset.\n- Consequence: Long-lived conversations can become impossible to represent once retained attachment history exceeds this synthetic total cap; deselection is not deletion. This is not merely a per-frame memory bound. Host admission/retention behavior still needs caller tracing.\n- Repair direction: Remove total-history/offset policy ceilings, retain durable indexed history, and keep exact revision-fenced bounded pages and explicit user selection. No tests run.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:27:51.605570972Z",
-      "updated_at": "2026-10-09T02:31:42.949756458Z",
+      "updated_at": "2026-10-09T06:20:11.481655477Z",
+      "closed_at": "2026-10-09T06:20:11.478537733Z",
       "labels": [
         "daily-driving-limiter"
       ],
