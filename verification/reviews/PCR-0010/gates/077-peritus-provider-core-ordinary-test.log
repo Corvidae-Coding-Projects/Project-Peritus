@@ -1,0 +1,136 @@
+{"candidate_commit": "e5c4ec47414daa75ecd2e3b2d17a279ee38d7132", "candidate_tree": "dab27248c3f671224a9d480abcdce2a5edad7174", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-provider-core --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-provider-core", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "077-peritus-provider-core-ordinary-test.log", "owning_crate": "peritus-provider-core", "started_at": "2026-10-09T07:50:57.920548Z"}, "plan_sha256": "0747aeadb65ca3bffa3cb1033b156e056fb5b4a16a3e9a1c8898faf12bcd9118"}
+
+   Compiling peritus-provider-core v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/model/peritus-provider-core)
+    Finished `test` profile [unoptimized] target(s) in 9.65s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_provider_core-00f576e940ec053e)
+
+running 10 tests
+test endpoint::tests::literal_loopback_does_not_trust_dns_names_or_remote_addresses ... ok
+test healing::tests::nested_arrays_keep_literal_values_and_valid_fragment_bytes ... ok
+test healing::tests::private_preludes_are_bounded_audited_and_never_enabled_for_other_payloads ... ok
+test healing::tests::rejects_truncation_ambiguity_duplicate_keys_types_and_invented_values ... ok
+test healing::tests::repairs_complete_formatting_and_keeps_original_provenance ... ok
+test healing::tests::tool_events_are_audited_before_valid_arguments_and_invalid_utf8_rejects ... ok
+test healing::tests::valid_json_and_opaque_string_contents_are_never_rewritten ... ok
+test hosted::catalog::tests::new_models_use_live_metadata_and_unknown_protocols_remain_unknown ... ok
+test process::tests::environment_name_accepts_native_text_but_rejects_delimiters ... ok
+test process::tests::process_request_defers_argv_and_environment_size_to_native_spawn ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/account_catalog.rs (/home/doll/Project-Peritus/target/debug/deps/account_catalog-7802f0a2d7eb8062)
+
+running 3 tests
+test claude_metadata_uses_control_initialization_without_a_user_prompt ... ok
+test codex_metadata_initializes_and_lists_without_starting_a_thread_or_turn ... ok
+test unavailable_runtime_and_presend_cancellation_do_not_invent_models ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/framing.rs (/home/doll/Project-Peritus/target/debug/deps/framing-6a4ec10c01209dc4)
+
+running 4 tests
+test framing_limits_unterminated_lines_and_disallows_use_after_finish ... ok
+test ndjson_handles_crlf_empty_lines_utf8_fragments_and_final_record ... ok
+test sse_dispatches_final_unterminated_event_and_rejects_invalid_utf8 ... ok
+test sse_handles_fragmented_utf8_multiline_data_comments_and_done ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/framing_partitions.rs (/home/doll/Project-Peritus/target/debug/deps/framing_partitions-8c3d64daa301edc4)
+
+running 5 tests
+test carriage_return_allowance_does_not_widen_buffer_limit ... ok
+test final_carriage_return_is_trimmed_consistently ... ok
+test ndjson_exact_limit_crlf_survives_every_split ... ok
+test pending_carriage_return_does_not_admit_over_limit_content ... ok
+test sse_exact_limit_crlf_survives_every_split ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/model_catalog.rs (/home/doll/Project-Peritus/target/debug/deps/model_catalog-f0ee3f4ea5726d11)
+
+running 7 tests
+test anthropic_pagination_keeps_origin_and_preserves_exact_ids ... ok
+test fireworks_uses_documented_metadata_and_pagination_and_together_uses_an_array ... ok
+test google_pagination_preserves_explicit_generation_metadata ... ok
+test hosted_catalog_failure_returns_no_bundled_model_and_metadata_failure_keeps_unknowns ... ok
+test hosted_discovery_never_sends_credentials_to_opencode_metadata_or_adds_unlisted_models ... ok
+test repeated_pagination_and_conflicting_duplicates_are_rejected ... ok
+test unavailable_or_malformed_catalogs_never_return_a_fallback_or_leak_bodies ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/process_transport.rs (/home/doll/Project-Peritus/target/debug/deps/process_transport-f51439a372e793b0)
+
+running 5 tests
+test output_limit_and_cancellation_terminate_and_observe_the_child ... ok
+test process_transport_helper ... ok
+test public_fake_seam_observes_owned_values_without_tokio_types ... ok
+test request_validation_rejects_duplicates_and_invalid_limits ... ok
+test tokio_transport_applies_argv_stdin_cwd_and_environment_removals ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/provider_interface.rs (/home/doll/Project-Peritus/target/debug/deps/provider_interface-d5781d84b48525bb)
+
+running 6 tests
+test adapter_boundary_rejects_profile_revision_drift ... ok
+test early_eof_fails_closed_and_drop_cancels_live_work ... ok
+test model_selection_is_immutable_deterministic_and_does_not_transfer_probe_evidence ... ok
+test owned_stream_requires_and_remembers_a_normalized_terminal ... ok
+test provider_default_continuation_restore_is_explicitly_unsupported ... ok
+test provider_default_response_cancellation_performs_no_effect ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/qualification_recovery.rs (/home/doll/Project-Peritus/target/debug/deps/qualification_recovery-c1135b1962746854)
+
+running 4 tests
+test image_role_selects_only_an_authorized_capable_available_fallback ... ok
+test real_minimal_canary_requires_usable_text_before_completion ... ok
+test terminals_keep_distinct_causes_and_safe_next_actions ... ok
+test unavailable_or_small_context_routes_fail_before_invocation ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reqwest_transport.rs (/home/doll/Project-Peritus/target/debug/deps/reqwest_transport-993b5b28c3b1f364)
+
+running 7 tests
+test default_transport_classifies_connection_refusal_before_submission ... ok
+test default_transport_does_not_follow_redirects_and_streams_owned_bytes ... ok
+test default_transport_honors_pre_send_cancellation ... ok
+test default_transport_interrupts_a_pending_body_read ... ok
+test default_transport_rejects_oversized_content_length_before_body_reads ... ok
+test transport_bounds_idle_response_body_reads ... ok
+test transport_bounds_response_header_waits ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.56s
+
+     Running tests/transport_retry.rs (/home/doll/Project-Peritus/target/debug/deps/transport_retry-d02eeefb0a5fae23)
+
+running 7 tests
+test cancellation_is_idempotent_and_wakes_registered_waiters ... ok
+test checked_backoff_is_cancellation_aware ... ok
+test response_wrapper_enforces_chunk_and_cumulative_body_bounds ... ok
+test retry_bounds_exhaustion_retry_after_and_jitter_are_checked ... ok
+test retry_table_covers_every_submission_failure_and_protection_combination ... ok
+test retry_table_distinguishes_safe_transient_and_terminal_failures ... ok
+test retry_table_never_blindly_replays_ambiguous_or_partial_work ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validation.rs (/home/doll/Project-Peritus/target/debug/deps/validation-8103461530988dd9)
+
+running 6 tests
+test adapter_error_factories_preserve_static_categories ... ok
+test credential_source_and_diagnostics_do_not_format_sensitive_values ... ok
+test endpoint_accepts_safe_http_and_https_urls ... ok
+test endpoint_rejects_credentials_fragments_traversal_and_secret_queries ... ok
+test headers_and_bodies_are_checked_and_debug_redacted ... ok
+test status_and_http_limit_boundaries_are_checked ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-provider-core --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 10.403, "exit_code": 0, "finished_at": "2026-10-09T07:51:08.325083Z", "invocation": ["cargo", "test", "--package", "peritus-provider-core", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "077-peritus-provider-core-ordinary-test.log", "owning_crate": "peritus-provider-core", "result": "passed", "started_at": "2026-10-09T07:50:57.920548Z"}

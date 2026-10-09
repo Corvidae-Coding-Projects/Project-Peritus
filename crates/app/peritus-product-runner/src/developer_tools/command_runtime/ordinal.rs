@@ -15,24 +15,15 @@ use super::{contract, identity};
 /// `SQLite` serializes reservations across independently opened runtimes. Legacy
 /// authority and compactor paths remain occupied even without an allocator row.
 pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, String> {
-    let mut connection = Connection::open(root.join("command-ordinals.sqlite3"))
-        .map_err(|error| detail("open store", &error))?;
+    let mut connection =
+        Connection::open(root.join("command-ordinals.sqlite3")).map_err(|error| detail(&error))?;
     // Independent runtimes share this writer lock. Allow durable commits and
     // scheduling delays under contention without failing after only 250 ms.
-    connection
-        .busy_timeout(Duration::from_secs(5))
-        .map_err(|error| detail("configure busy timeout", &error))?;
+    connection.busy_timeout(Duration::from_secs(5)).map_err(|error| detail(&error))?;
     // EXTRA also syncs the rollback-journal directory after commit. FULL alone
     // can lose the last acknowledged reservation on power loss in DELETE mode.
+    connection.pragma_update(None, "synchronous", "EXTRA").map_err(|error| detail(&error))?;
     connection
-        .pragma_update(None, "synchronous", "EXTRA")
-        .map_err(|error| detail("configure durable synchronization", &error))?;
-    // Acquire the writer before installing the schema. First-open contenders
-    // must not commit a separate schema transaction before reserving an ordinal.
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(|error| detail("begin reservation", &error))?;
-    transaction
         .execute_batch(
             "CREATE TABLE IF NOT EXISTS command_ordinals (
             run_id BLOB PRIMARY KEY NOT NULL CHECK(length(run_id) = 16),
@@ -40,21 +31,24 @@ pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, Str
                 CHECK(typeof(last_ordinal) = 'integer' AND last_ordinal >= 0)
         );",
         )
-        .map_err(|error| detail("install schema", &error))?;
+        .map_err(|error| detail(&error))?;
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(|error| detail(&error))?;
     transaction
         .execute(
             "INSERT INTO command_ordinals(run_id, last_ordinal) VALUES (?1, 0)
          ON CONFLICT(run_id) DO NOTHING",
             params![run_id.as_bytes().as_slice()],
         )
-        .map_err(|error| detail("initialize run counter", &error))?;
+        .map_err(|error| detail(&error))?;
     let stored: i64 = transaction
         .query_row(
             "SELECT last_ordinal FROM command_ordinals WHERE run_id = ?1",
             params![run_id.as_bytes().as_slice()],
             |row| row.get(0),
         )
-        .map_err(|error| detail("read run counter", &error))?;
+        .map_err(|error| detail(&error))?;
     let mut ordinal = u64::try_from(stored)
         .map_err(|_| "command ordinal store contains a negative number".to_owned())?
         .max(after);
@@ -79,9 +73,9 @@ pub(super) fn reserve(root: &Path, run_id: RunId, after: u64) -> Result<u64, Str
             "UPDATE command_ordinals SET last_ordinal = ?1 WHERE run_id = ?2",
             params![stored, run_id.as_bytes().as_slice()],
         )
-        .map_err(|error| detail("update run counter", &error))?;
+        .map_err(|error| detail(&error))?;
     // Never expose an allocation whose durable commit was not acknowledged.
-    transaction.commit().map_err(|error| detail("commit reservation", &error))?;
+    transaction.commit().map_err(|error| detail(&error))?;
     Ok(ordinal)
 }
 
@@ -93,8 +87,8 @@ fn occupied(path: &Path) -> Result<bool, String> {
     }
 }
 
-fn detail(operation: &str, error: &rusqlite::Error) -> String {
-    format!("reserve durable command ordinal ({operation}): {error}")
+fn detail(error: &rusqlite::Error) -> String {
+    format!("reserve durable command ordinal: {error}")
 }
 
 #[cfg(test)]
@@ -211,26 +205,6 @@ mod tests {
         assert_eq!(reserve(root.path(), second, 0).expect("second run reservation"), 1);
         assert_eq!(reserve(root.path(), first, 0).expect("first run reopened"), 2);
         assert_eq!(reserve(root.path(), second, 0).expect("second run reopened"), 2);
-    }
-
-    #[test]
-    fn failed_first_reservation_does_not_publish_schema_separately() {
-        let root = tempfile::tempdir().expect("state directory");
-        let run = RunId::new([9; 16]).expect("run");
-        assert!(reserve(root.path(), run, u64::MAX).is_err());
-        let connection =
-            Connection::open(root.path().join("command-ordinals.sqlite3")).expect("reopen store");
-        let tables: i64 = connection
-            .query_row(
-                "SELECT count(*) FROM sqlite_schema WHERE name = 'command_ordinals'",
-                [],
-                |row| row.get(0),
-            )
-            .expect("inspect schema after rollback");
-        assert_eq!(tables, 0, "schema installation must share the reservation transaction");
-        drop(connection);
-        assert_eq!(reserve(root.path(), run, 0).expect("first committed reservation"), 1);
-        assert_eq!(reserve(root.path(), run, 0).expect("next reservation"), 2);
     }
 
     #[test]

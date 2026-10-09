@@ -1,0 +1,60 @@
+{"candidate_commit": "e5c4ec47414daa75ecd2e3b2d17a279ee38d7132", "candidate_tree": "dab27248c3f671224a9d480abcdce2a5edad7174", "environment": {"CARGO_BUILD_JOBS": "1", "CCACHE_DISABLE": "1", "RUST_TEST_THREADS": "1"}, "gate": {"command": "cargo test --package peritus-git --all-targets --all-features --locked", "invocation": ["cargo", "test", "--package", "peritus-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "029-peritus-git-ordinary-test.log", "owning_crate": "peritus-git", "started_at": "2026-10-09T07:45:11.491591Z"}, "plan_sha256": "0747aeadb65ca3bffa3cb1033b156e056fb5b4a16a3e9a1c8898faf12bcd9118"}
+
+   Compiling peritus-git v0.0.5 (/home/doll/Project-Peritus-proof-ordinal-e5c4ec474/crates/runtime/peritus-git)
+    Finished `test` profile [unoptimized] target(s) in 2.32s
+     Running unittests src/lib.rs (/home/doll/Project-Peritus/target/debug/deps/peritus_git-baed1747b8fbcfa6)
+
+running 11 tests
+test command::execution::tests::cancellation_before_spawn_does_not_start_the_selected_program ... ok
+test command::execution::tests::cancellation_joins_a_running_git_helper_and_inherited_pipe_readers ... ok
+test name::tests::validates_portable_names ... ok
+test object_id::tests::accepts_exact_sha1_and_sha256 ... ok
+test object_id::tests::rejects_wrong_algorithm_length_and_uppercase ... ok
+test reconcile::tests::reason_encoding_is_order_sensitive_and_total ... ok
+test status::porcelain::tests::does_not_impose_status_entry_or_output_size_quotas ... ok
+test status::porcelain::tests::parses_headers_and_all_simple_record_classes ... ok
+test status::porcelain::tests::rejects_unterminated_and_malformed_records ... ok
+test status::porcelain::tests::represents_unborn_head_and_preserves_native_path_bytes ... ok
+test status::tests::committed_head_status_digest_preserves_v1_encoding ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/git_lifecycle.rs (/home/doll/Project-Peritus/target/debug/deps/git_lifecycle-821306a7c462a95d)
+
+running 6 tests
+test candidate_snapshot_restart_and_restore_preserve_head_and_history ... ok
+test opens_resolves_and_manages_an_exact_detached_worktree ... ok
+test opens_sha256_repository_when_supported_by_git ... ok
+test parses_real_unmerged_index_as_indeterminate_reconciliation ... ok
+test parses_tracked_untracked_ignored_and_renamed_status ... ok
+test recovers_trusted_worktree_at_advanced_detached_head_without_losing_changes ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.47s
+
+     Running tests/git_safety.rs (/home/doll/Project-Peritus/target/debug/deps/git_safety-80b03a320df90f87)
+
+running 5 tests
+test attached_head_at_same_commit_is_not_accepted_as_managed_topology ... ok
+test candidate_scan_prunes_ignored_trees_but_still_rejects_owned_nested_metadata ... ok
+test configured_external_filter_is_rejected_before_execution_or_staging ... ok
+test recovers_existing_exact_worktree_after_interrupted_registration ... ok
+test status_overrides_local_submodule_ignore_configuration ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.69s
+
+     Running tests/history_identity.rs (/home/doll/Project-Peritus/target/debug/deps/history_identity-aa1ae4c4e4a31ddd)
+
+running 1 test
+test shared_history_metadata_cannot_rewrite_immutable_observations ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+     Running tests/snapshot_quarantine.rs (/home/doll/Project-Peritus/target/debug/deps/snapshot_quarantine-b18db5f3761f21ea)
+
+running 1 test
+test divergent_snapshot_reference_is_atomically_quarantined ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+
+GATE DRIVER RESULT: {"command": "cargo test --package peritus-git --all-targets --all-features --locked", "command_exit_code": 0, "elapsed_seconds": 10.053, "exit_code": 0, "finished_at": "2026-10-09T07:45:21.545353Z", "invocation": ["cargo", "test", "--package", "peritus-git", "--all-targets", "--all-features", "--locked"], "kind": "ordinary-test", "output": "029-peritus-git-ordinary-test.log", "owning_crate": "peritus-git", "result": "passed", "started_at": "2026-10-09T07:45:11.491591Z"}
