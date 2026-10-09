@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4231,
-        "tip_oid": "a6b6f7fe15b65cd8b0a99ba6012f0d3cacb6cc5a",
-        "prefix_sha256": "94ee9a2dec79c6fef0548ae5ae8c94cbcb34b7121af4283e97d452e253694fba"
+        "sequence": 4232,
+        "tip_oid": "13b03ae5d7212f63e2ee42dffacc905d52a002c1",
+        "prefix_sha256": "4daf8b889825252c0c6e57cc1443a6834a0c94523611ebb128a651a7d9dd0ef6"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3339,
+  "next_comment_id": 3340,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42199,7 +42199,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T05:43:29.336259518Z",
+      "updated_at": "2026-10-09T05:46:28.826666569Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42722,6 +42722,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABALBR6sMANXnWTPAWkCyBPh58qk57V7n9gRl2tfnY0s60ORGx/ZvwYzttmBJLFIYbW7s+U5QpCcszdMsZL3/hyAg=="
+        },
+        "c79b4ec0-4cad-4406-aea4-a059376e5ed7": {
+          "display_id": 3339,
+          "author": "6ME5",
+          "content": "Committed c80a26dce6f4de1bfd7d3fe7da62f48190fd9639: fix: apply PCR-0009 reviewed minimum repairs. Implementation trust checks against signed authorization eaa4b8f009a566be6619382755cadfd59d015f1a and xtask all passed. Root and independent ACTOR-0010 whole-commit audits passed exact C-to-A-to-I ancestry, both signatures, 626 restored implementation paths, 24 retained checker/design paths, 190 unchanged review files and exact final candidate-plus-approved-manifest tree b46e45d456e6e2776844c14ee4aa021142709fcc. All 132 package gates and 194 Foundation checks passed the exact reviewed source. Main repair branch fast-forwarded with all 194 untracked files preserved byte-for-byte. PR114 is authorization; PR113 remains draft implementation. All 157 formal obligations remain in progress; L529/#599 remains open. Selected issue closure reconciliation follows.",
+          "created_at": "2026-10-09T05:46:28.816818673Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAnd+7DusI+mvgt4ix+W9MX/TxWObFj+5IzYLmheGNCOAe+3GyRDHuDJlBxok6x80jzUCiLlOgI1kXzDsucfJBBg=="
         },
         "c9fd2462-1ee7-4b46-a137-43beb4574a6f": {
           "display_id": 3132,
