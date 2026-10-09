@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4260,
-        "tip_oid": "260817366d9c450c6d1fc026a6d34a51ae49e9f3",
-        "prefix_sha256": "2a52a66090f05bc593125487f457b822fe054d0da45a05f11929ce5fdd80882e"
+        "sequence": 4261,
+        "tip_oid": "f1cc4dd0e187db8b3c288216565ccca016e6c97b",
+        "prefix_sha256": "f191c85e152b71564e857fe8775cd16e5365e12f4940365b418c189922bb8cbc"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3342,
+  "next_comment_id": 3343,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T06:48:16.128122870Z",
+      "updated_at": "2026-10-09T06:50:12.676608477Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42530,6 +42530,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAZ6vupj0yLjG1OSQAhV2Fbcq3NCMnWV8D7go9jbmlz4PmvY1qVqTkLAfZgH1Ba/sQ5qBa12zIR14c/DNDRckCDA=="
+        },
+        "5efe843c-e0e3-4394-a6c7-56379c3c8f73": {
+          "display_id": 3342,
+          "author": "6ME5",
+          "content": "[action] Supplemental ordinal candidate C10=cfe3db127c41478d274ef333e204d0bda128170b signed/pushed on fix/command-ordinal-contention, draftPR115 basec80. Original I9 freshWindows Foundation job113699069050 failed SQLite BUSY. Atomic schema+reservation repair and stage errors now pass red/green regression,527package tests,strictLinux/WindowsGNUClippy. Fresh actual Sol ACTOR0011 independently reviewed source and byte-identical reconciliation (3transitions,66packages132gates,752oldartifacts,157in-progress). ExactC10 132campaign running; nativehosted queued. ExistingA9PR114/I9PR113 preserved,30selectedissuesclosed,599/103open. A10 provisionalworktree restores exactc80tree; noPCR10approvalartifacts until gates/native/reviewer complete. No merge.",
+          "created_at": "2026-10-09T06:50:12.665575888Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABA5FMmkGOeOlNzUQV5RyYOTC/noeDZkanMb8J0TOseGM75S90Na67Z2353tqCn4CxNAywuhf1+tT2St5MRGxhvAw=="
         },
         "5f1b8581-903d-4643-a8a6-4f2bfcbac216": {
           "display_id": 3114,
