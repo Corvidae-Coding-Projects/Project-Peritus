@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4195,
-        "tip_oid": "c17710f88ac71e586fc1b933d21c85a4134c8e1f",
-        "prefix_sha256": "8e833539929e617430d419600e103f7e3615eb5d1d8dfc51750e1a9634d1f36b"
+        "sequence": 4196,
+        "tip_oid": "1cd02cbd95026068dd8485715d5cca19239047f0",
+        "prefix_sha256": "3a14c2ec2aaf2722fa83a42e096d3823a592bcf5fc8ee568a7b7f12392dc9d9c"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3303,
+  "next_comment_id": 3304,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -41974,7 +41974,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-08T23:16:38.258410720Z",
+      "updated_at": "2026-10-09T01:26:18.320395607Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42011,6 +42011,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAC+BL8ZfGdgMnddtmS1ygqAHdNKrfVZ9qaXZDwJvPP2XVFb1h2QsWcSVkugKS7RGzRmu8PiBDlNsHCGfHg4b7DA=="
+        },
+        "04b922e5-6291-4a84-ae9c-b56fbd19f5fd": {
+          "display_id": 3303,
+          "author": "6ME5",
+          "content": "Committed and pushed the 30-repair third batch and independent-review corrections through signed candidate fbc52be98e05428283b3d8bcefc20d230d65b336 (tree 161851c47773cec862848aa31bf3d6e411b99d26). Local verification: 1,397 affected-package tests and two native graphical restart cases passed, strict Clippy and Windows GNU all-target compilation passed, and xtask all/fmt passed. The final import-only Verus API correction passed ordinary and strict app-runner Verus qualification. Current-candidate native H0 security qualification passed on Linux, macOS, and Windows. Fresh 132-gate formal campaign and complete native CI remain in progress; no PCR approval or invariant discharge is claimed. L529 remains partial/open; L798 supplies the thirtieth completed repair. PR: https://github.com/Corvidae-Coding-Projects/Project-Peritus/pull/113",
+          "created_at": "2026-10-09T01:26:18.281740711Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAAGPzRt7hVHZ+rBNAdz5/fHocRg9iJEKHC9ybyBQ4r38d/Q/ROTij0wrvTjl+V/6nAJvEhIYur/kWNwT5gjbuBA=="
         },
         "05cae6ed-c85b-49cc-a6c5-2d3dc51adc7f": {
           "display_id": 2144,
