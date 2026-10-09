@@ -1,5 +1,8 @@
 //! Non-ignored Windows-native probe coverage.
 
+#[path = "native_enforcement/acl_snapshot.rs"]
+mod acl_snapshot;
+
 #[cfg(target_os = "windows")]
 #[test]
 fn native_probe_reports_real_helper_platform_and_architecture() {
@@ -149,17 +152,6 @@ fn assert_explicit_everyone_deny(snapshot: &[u8]) {
     assert_eq!(snapshot.len() % 2, 0, "icacls must save UTF-16LE");
     let units = snapshot.chunks_exact(2).map(|pair| u16::from_le_bytes([pair[0], pair[1]]));
     let sddl = String::from_utf16(&units.collect::<Vec<_>>()).unwrap();
-    let exact_deny = sddl.split('(').skip(1).any(|ace| {
-        let fields = ace.split(')').next().unwrap().split(';').collect::<Vec<_>>();
-        fields.len() == 6
-            && fields[0] == "D"
-            && matches!(fields[1], "OICI" | "CIOI")
-            // List/read, write, append/create, execute, attributes, and delete.
-            && fields[2].strip_prefix("0x").and_then(|mask| u32::from_str_radix(mask, 16).ok())
-                == Some(0x0001_00a7)
-            && fields[3].is_empty()
-            && fields[4].is_empty()
-            && matches!(fields[5], "WD" | "S-1-1-0")
-    });
+    let exact_deny = acl_snapshot::has_exact_everyone_deny(&sddl);
     assert!(exact_deny, "missing exact explicit inheritable Everyone deny: {sddl}");
 }
