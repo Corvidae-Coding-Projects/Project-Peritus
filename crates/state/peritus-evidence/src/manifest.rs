@@ -8,6 +8,9 @@ use peritus_types::{EventId, RevisionTuple, Sha256Digest};
 use sha2::{Digest, Sha256};
 use std::convert::Infallible;
 
+mod decode;
+use decode::{decode_artifacts, decode_authority, decode_journal, decode_records};
+
 const PREFIX_V1: &[u8] = b"peritus-evidence-manifest-v1\0";
 const PREFIX_V2: &[u8] = b"peritus-evidence-manifest-v2\0";
 const PREFIX_V3: &[u8] = b"peritus-evidence-manifest-v3\0";
@@ -420,85 +423,6 @@ fn validate_entries(
     }
 }
 
-fn decode_records(
-    reader: &mut Reader<'_>,
-    legacy: bool,
-) -> Result<Vec<RecordManifestEntry>, EvidenceError> {
-    let value = reader.u64()?;
-    let count = count(reader, value, 48, legacy)?;
-    let mut values = Vec::new();
-    values.try_reserve_exact(count).map_err(|_| invalid("manifest record allocation failed"))?;
-    for _ in 0..count {
-        values.push(RecordManifestEntry::new(reader.evidence_id()?, reader.digest()?));
-    }
-    Ok(values)
-}
-fn decode_journal(
-    reader: &mut Reader<'_>,
-    legacy: bool,
-) -> Result<Vec<JournalManifestEntry>, EvidenceError> {
-    let value = reader.u64()?;
-    let count = count(reader, value, 128, legacy)?;
-    let mut values = Vec::new();
-    values.try_reserve_exact(count).map_err(|_| invalid("manifest journal allocation failed"))?;
-    for _ in 0..count {
-        values.push(JournalManifestEntry::new(
-            reader.u64()?,
-            reader.event_id()?,
-            reader.digest()?,
-            reader.digest()?,
-            reader.digest()?,
-            reader.u64()?,
-        ));
-    }
-    Ok(values)
-}
-fn decode_artifacts(
-    reader: &mut Reader<'_>,
-    legacy: bool,
-) -> Result<Vec<ArtifactManifestEntry>, EvidenceError> {
-    let value = reader.u64()?;
-    let count = count(reader, value, 40, legacy)?;
-    let mut values = Vec::new();
-    values.try_reserve_exact(count).map_err(|_| invalid("manifest artifact allocation failed"))?;
-    for _ in 0..count {
-        values.push(ArtifactManifestEntry::new(
-            ArtifactDigest::from_sha256(reader.digest()?),
-            reader.u64()?,
-        ));
-    }
-    Ok(values)
-}
-fn decode_authority(reader: &mut Reader<'_>) -> Result<Vec<EvidenceId>, EvidenceError> {
-    let value = reader.u64()?;
-    let count = count(reader, value, 16, false)?;
-    let mut values = Vec::new();
-    values.try_reserve_exact(count).map_err(|_| invalid("manifest authority allocation failed"))?;
-    for _ in 0..count {
-        values.push(reader.evidence_id()?);
-    }
-    Ok(values)
-}
-fn count(
-    reader: &Reader<'_>,
-    value: u64,
-    entry_bytes: u64,
-    legacy: bool,
-) -> Result<usize, EvidenceError> {
-    let count = usize::try_from(value).map_err(|_| invalid("manifest count overflows"))?;
-    if legacy && count > LEGACY_MAX_MANIFEST_ENTRIES {
-        return Err(invalid("legacy manifest count exceeds bound"));
-    }
-    let required = value
-        .checked_mul(entry_bytes)
-        .ok_or_else(|| invalid("manifest collection size overflows"))?;
-    let remaining = u64::try_from(reader.remaining())
-        .map_err(|_| invalid("manifest remaining bytes exceed u64"))?;
-    if required > remaining {
-        return Err(invalid("manifest count exceeds remaining bytes"));
-    }
-    Ok(count)
-}
 fn represented_bytes(count: usize, entry_bytes: u64) -> Result<u64, EvidenceError> {
     u64::try_from(count)
         .ok()

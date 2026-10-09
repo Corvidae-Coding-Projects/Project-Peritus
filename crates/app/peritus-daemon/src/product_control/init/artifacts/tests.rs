@@ -1,5 +1,8 @@
 //! Real files, immutable chunk objects, independent preimages, and restart replay.
 use super::*;
+use peritus_app_protocol::InitDiscoveryRequest;
+use peritus_artifact_store::ArtifactDigest;
+use std::fs;
 fn request() -> InitDiscoveryRequest {
     super::super::tests::request()
 }

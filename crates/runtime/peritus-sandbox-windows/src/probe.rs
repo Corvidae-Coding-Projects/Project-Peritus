@@ -1,18 +1,22 @@
 //! Deterministic Windows capability probe and support intersection.
 
-use std::{
-    io::Read as _,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use peritus_sandbox::{CheckedSandboxPlan, FeatureSet, SandboxFeature};
 use peritus_types::Sha256Digest;
-use sha2::{Digest as _, Sha256};
 
 use crate::{
     EnforcementLevel, ResourceControlPlan, TokenProfile, WindowsError, WindowsErrorKind,
     WindowsOperation, WindowsRecovery,
 };
+
+mod features;
+mod helper;
+pub use features::production_resource_levels;
+use features::supported_features;
+#[cfg(target_os = "windows")]
+pub(crate) use helper::HelperImageEvidence;
+pub(crate) use helper::{HelperImageFailure, inspect_helper_image};
 
 /// Minimum supported Windows build for 11 24H2 and Server 2025.
 pub const MINIMUM_WINDOWS_BUILD: u32 = 26_100;
@@ -362,166 +366,6 @@ enum SelectedTerminalControl {
     ConPty,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) struct HelperImageEvidence {
-    digest: Sha256Digest,
-    bytes: u64,
-}
-
-impl HelperImageEvidence {
-    pub(crate) const fn digest(self) -> Sha256Digest {
-        self.digest
-    }
-
-    pub(crate) const fn bytes(self) -> u64 {
-        self.bytes
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum HelperImageFailure {
-    Cancelled,
-    Unavailable,
-    Changed,
-}
-
-pub(crate) fn inspect_helper_image(
-    path: &Path,
-    should_continue: &mut dyn FnMut() -> bool,
-) -> Result<HelperImageEvidence, HelperImageFailure> {
-    let mut file = std::fs::File::open(path).map_err(|_| HelperImageFailure::Unavailable)?;
-    let metadata = file.metadata().map_err(|_| HelperImageFailure::Unavailable)?;
-    let expected = metadata.len();
-    if !metadata.is_file() || expected == 0 {
-        return Err(HelperImageFailure::Unavailable);
-    }
-    let mut digest = Sha256::new();
-    let mut bytes = 0_u64;
-    let mut buffer = vec![0_u8; 64 * 1_024];
-    loop {
-        if !should_continue() {
-            return Err(HelperImageFailure::Cancelled);
-        }
-        let count = file.read(&mut buffer).map_err(|_| HelperImageFailure::Unavailable)?;
-        if count == 0 {
-            let final_length = file.metadata().map_err(|_| HelperImageFailure::Unavailable)?.len();
-            if bytes != expected || final_length != expected {
-                return Err(HelperImageFailure::Changed);
-            }
-            return Ok(HelperImageEvidence {
-                digest: Sha256Digest::new(digest.finalize().into()),
-                bytes,
-            });
-        }
-        bytes = bytes
-            .checked_add(u64::try_from(count).map_err(|_| HelperImageFailure::Changed)?)
-            .ok_or(HelperImageFailure::Changed)?;
-        if bytes > expected {
-            return Err(HelperImageFailure::Changed);
-        }
-        digest.update(&buffer[..count]);
-    }
-}
-
-/// Expected Windows split between Job Object and C2 supervisor enforcement.
-#[must_use]
-pub const fn production_resource_levels() -> [EnforcementLevel; 8] {
-    [
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Supervisor,
-        EnforcementLevel::Hard,
-        EnforcementLevel::Supervisor,
-    ]
-}
-
-fn supported_features(evidence: &ProbeEvidence) -> FeatureSet {
-    let mut features = FeatureSet::empty();
-    let baseline = evidence.platform
-        && evidence.os_build.is_some_and(|build| build >= MINIMUM_WINDOWS_BUILD)
-        && evidence.architecture
-        && evidence.helper
-        && evidence.helper_digest.is_some()
-        && evidence.restricted_token
-        && evidence.low_integrity;
-    if !baseline {
-        return features;
-    }
-    if evidence.acl && evidence.reparse {
-        for feature in [
-            SandboxFeature::FilesystemDiscover,
-            SandboxFeature::FilesystemMetadata,
-            SandboxFeature::FilesystemRead,
-            SandboxFeature::FilesystemExecute,
-            SandboxFeature::FilesystemCreate,
-            SandboxFeature::FilesystemWrite,
-            SandboxFeature::FilesystemRemove,
-        ] {
-            features.insert(feature);
-        }
-    }
-    if evidence.job_object && evidence.kill_on_close && evidence.inherited_handle_list {
-        for feature in [
-            SandboxFeature::ProcessRoot,
-            SandboxFeature::ProcessDescendants,
-            SandboxFeature::ProcessSignals,
-            SandboxFeature::ProcessTree,
-        ] {
-            features.insert(feature);
-        }
-    }
-    for feature in [SandboxFeature::EnvironmentClear, SandboxFeature::EnvironmentAllowList] {
-        features.insert(feature);
-    }
-    if evidence.inherited_handle_list {
-        features.insert(SandboxFeature::Pipes);
-        features.insert(SandboxFeature::Stdin);
-    }
-    if evidence.app_container && evidence.app_container_sid_exact && evidence.deny_network {
-        features.insert(SandboxFeature::NetworkDeny);
-    }
-    for (index, feature) in RESOURCE_FEATURES.into_iter().enumerate() {
-        if matches!(
-            evidence.resources[index],
-            EnforcementLevel::Hard | EnforcementLevel::Supervisor
-        ) {
-            features.insert(feature);
-        }
-    }
-    if evidence.conpty && evidence.inherited_handle_list {
-        features.insert(SandboxFeature::Pty);
-        features.insert(SandboxFeature::TerminalResize);
-        features.insert(SandboxFeature::TerminalSignals);
-    }
-    if evidence.managed_network
-        && evidence.app_container
-        && evidence.app_container_sid_exact
-        && evidence.deny_network
-    {
-        features.insert(SandboxFeature::NetworkEgress);
-    }
-    if evidence.credential_manager && evidence.inherited_handle_list {
-        features.insert(SandboxFeature::SecretEnvironment);
-        features.insert(SandboxFeature::SecretFile);
-        features.insert(SandboxFeature::SecretHandle);
-    }
-    features
-}
-
-const RESOURCE_FEATURES: [SandboxFeature; 8] = [
-    SandboxFeature::WallTime,
-    SandboxFeature::CpuTime,
-    SandboxFeature::Memory,
-    SandboxFeature::Disk,
-    SandboxFeature::Output,
-    SandboxFeature::OpenHandles,
-    SandboxFeature::ProcessCount,
-    SandboxFeature::Concurrency,
-];
-
 fn probe_bytes(evidence: &ProbeEvidence) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(128);
     bytes.extend_from_slice(b"PERITUS-WINDOWS-PROBE-V1\0");
@@ -563,39 +407,4 @@ fn probe_error(detail: &'static str) -> WindowsError {
 
 pub(crate) fn probe_cancelled() -> WindowsError {
     probe_error("native capability probe was cancelled by its caller")
-}
-
-#[cfg(test)]
-mod stream_tests {
-    use super::{HelperImageFailure, inspect_helper_image};
-    #[test]
-    fn helper_stream_matches_digest_and_stops_for_cancellation_or_growth() {
-        let root = tempfile::tempdir().unwrap();
-        let path = root.path().join("helper");
-        let bytes = vec![0x35; 200_003];
-        std::fs::write(&path, &bytes).unwrap();
-        let evidence = inspect_helper_image(&path, &mut || true).unwrap();
-        assert_eq!(evidence.digest(), peritus_codec::sha256(&bytes));
-        assert_eq!(evidence.bytes(), 200_003);
-        let mut calls = 0;
-        assert_eq!(
-            inspect_helper_image(&path, &mut || {
-                calls += 1;
-                calls < 3
-            }),
-            Err(HelperImageFailure::Cancelled)
-        );
-        assert_eq!(calls, 3);
-        let mut altered = false;
-        assert_eq!(
-            inspect_helper_image(&path, &mut || {
-                if !altered {
-                    std::fs::write(&path, vec![0x35; 200_004]).unwrap();
-                    altered = true;
-                }
-                true
-            }),
-            Err(HelperImageFailure::Changed)
-        );
-    }
 }
