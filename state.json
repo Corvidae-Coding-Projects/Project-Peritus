@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4209,
-        "tip_oid": "3f39e87d63e691a948790156f9822aba2e620edb",
-        "prefix_sha256": "399a119d01137e676c23673c0695858b50a75ad13ec194326d568f8c48a1e24f"
+        "sequence": 4210,
+        "tip_oid": "a57459c2b7eac2dbb0656a2a24e9cd4289ef872d",
+        "prefix_sha256": "08621d969d400945f620a7d10bb2e44d696d549ab2283262bcb14066e8eba5d1"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3317,
+  "next_comment_id": 3318,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -15976,7 +15976,7 @@
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:24:48.682297535Z",
-      "updated_at": "2026-10-06T13:24:48.686562826Z",
+      "updated_at": "2026-10-09T02:11:53.774267266Z",
       "labels": [
         "daily-driving-limiter"
       ],
@@ -15987,6 +15987,15 @@
           "content": "Systemic repair plan for L170: Independent review receives a rolling, truncated command-observation window.\n\nOwning contract and implementation boundary: crates/app/peritus-product-runner/src/developer_tools/evidence.rs:7-9,41-77,90-117. Apply the change through the constructors, live callers, durable writer and restart reader for this boundary, not as an isolated constant increase.\n\nKeep exact command-result artifacts and indexed purpose/provenance receipts beyond the rolling review preview. Reviewer packets carry retrieval handles and explicit observed coverage, so every command relevant to acceptance can be inspected after window eviction. Stream preview construction and separate rendering bytes from durable evidence retention.\n\nPreserve: exact candidate revision and artifact binding, complete finding/provenance conservation, independent reviewer evidence, truthful gate outcomes, protected user constraints and acceptance fail-closed on invalid evidence. Separate a physical allocation/page limit and a genuine authority or integrity check from a cumulative work allowance. Keep transient contention/capacity observable and recoverable under the existing logical task; do not discard accepted state or substitute a fresh session to get around it.\n\nCompatibility/migration: retain decoders and exact receipts for previously accepted records. If representation or lifecycle semantics change, introduce a versioned migration under exclusive ownership; verify a complete replacement frontier before atomic publication and keep the old recovery root until adoption is durable. Rebuild derived projections from authoritative evidence. Update all producers, consumers and invariants together; a rejected new operation must leave the predecessor usable and already owned effects reconcilable.\n\nAcceptance and nonregression: large and multi-file candidates, repeated valid repair cycles, changed candidate facts, delayed reviews, local/offline verification, restart mid-gate and cancellation, proving correct repair handoff without accepting a failed candidate or rereading unchanged evidence forever. Exercise the precise source-described failure path and the relevant byte/count/elapsed boundaries listed in this finding, plus ordinary small inputs. Check that legitimate work progresses after the former blocker while malformed input, conflicting identity, stale preimages and unauthorized scope still reject. Add fault injection at the affected acceptance/publication/recovery boundary and run the affected integration and formal checks on the final implementation. Source-derived risks remain distinct from executed reproductions; completion requires this evidence, not a promise that a plan alone cannot break anything.",
           "created_at": "2026-10-06T13:24:48.544Z",
           "kind": "decision"
+        },
+        "f04901eb-8ad3-436c-94a5-5f7494941ac8": {
+          "display_id": 3317,
+          "author": "6ME5",
+          "content": "Source repair committed and pushed through signed candidate a265625ecbc956010362bee4d0b4e3108cb48ade (PR #113). Retained complete structured command evidence and added exact reviewer byte-page retrieval with source length/digest, including immutable transcript/diff/gates/prior/correction sections rather than substituting current workspace state. Independent source review and affected-package/focused checks passed. Final native/formal qualification and closure remain pending. Evidence: /tmp/peritus-batch3/final-report.md and review-final-results.json.",
+          "created_at": "2026-10-09T02:11:53.763707581Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAj30Ee3KfUU/bYZOSQV77aodWLxhQkYd1q9+0H4+LsxqQnTcjQeyOTB/xUO7/azEzjmGe1P3BEMCvyxw6dJzsBg=="
         }
       }
     },
