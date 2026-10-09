@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4264,
-        "tip_oid": "c278db0a82b5818e9bdbdb498a4fe9077edeacc8",
-        "prefix_sha256": "c031c2effe644b52fb0fe39f34dd2f5c623479bbafcb98daf0bbda86314300b7"
+        "sequence": 4265,
+        "tip_oid": "bde6e5a137e04a2ee68ac38da5908f4d816d8319",
+        "prefix_sha256": "6d7a3e7d48b1560f3dc9e689d5c949a8f7698540342972d5efae44132709ba00"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3346,
+  "next_comment_id": 3347,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42223,7 +42223,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T08:36:20.327483983Z",
+      "updated_at": "2026-10-09T09:24:05.040990161Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42503,6 +42503,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAvQV8BLM4AKf50VsAtvxBP69feoxweEfQn17Fiwz9sj7Y0RLuLqXdKjk0TwWRhD/kdRpRb7MI1REeJ0gf5ZZrDQ=="
+        },
+        "55745daa-4d12-4df1-b15f-4fbdc392aa84": {
+          "display_id": 3346,
+          "author": "6ME5",
+          "content": "Signed authorization commit 2d8ad67ededf9273e89d09264fc6919d0c561570 is pushed at origin/authorization/pcr-0010. PCR-0010 retains actual ACTOR-0011 approval of exact candidate e5c4ec474 and all 132 fresh ordinary/Verus gate logs. Authorization restores exact I9 source, preserves all 752 historical review artifacts and all 157 in-progress obligations. Whole-index audit, exact-I9-base verify-trust (4957 files), aggregate xtask all, generated hash/schema checks, and commit signature pass. One original raw log trailing space is preserved under its reviewed hash; all other staged whitespace checks pass. Separate implementation phase and final hosted qualification remain pending; no merge or protected authority claimed.",
+          "created_at": "2026-10-09T09:24:05.031670756Z",
+          "kind": "result",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAHIqt+Z/XT7dHVkphXPmqdKg926V/hcU/bxurOn2Yt+RLcifq9rdq98yRY+F/VgJ5e7Kr9xXlmHsLJaQdhCy2Aw=="
         },
         "562da393-6205-459e-b444-542533d8b7e4": {
           "display_id": 3060,
