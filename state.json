@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4226,
-        "tip_oid": "827d9adb85ead694bbc89226f1a468953f79136a",
-        "prefix_sha256": "c30182073b635665de68653593925037aa7055466fe5621b2bbfd44c84f1ce82"
+        "sequence": 4227,
+        "tip_oid": "37dd32e35dab4500d9a4389015110d3bbd8d54fb",
+        "prefix_sha256": "a3a36dfa38035c29855d72c52cea5418865cab18e9d96b2d9b868fa83589b9a6"
       },
       "NWAR": {
         "sequence": 39,
@@ -65,7 +65,7 @@
     }
   },
   "next_display_id": 827,
-  "next_comment_id": 3334,
+  "next_comment_id": 3335,
   "display_id_map": {
     "006c4fee-9275-57c3-b485-c14cd8a5f41c": 737,
     "009aa021-26d4-5296-90cc-0d189d15d1d9": 395,
@@ -42199,7 +42199,7 @@
       "priority": "high",
       "created_by": "6ME5",
       "created_at": "2026-10-05T14:30:16.158065741Z",
-      "updated_at": "2026-10-09T02:07:27.736528625Z",
+      "updated_at": "2026-10-09T02:40:52.973745863Z",
       "comments": {
         "00ee329b-8712-4dd0-bad8-532dd75aa546": {
           "display_id": 2146,
@@ -42632,6 +42632,15 @@
           "kind": "handoff",
           "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
           "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABANgXMKXVtS3i508Qg6HEdgw1Safe7qMy7KpY+iglkYgOGXgVKlQkUUZ/eV9XY9SykbUIbYqAda7KfLvdU32TbBA=="
+        },
+        "9756ea8d-737c-4cf0-8015-7409543f0b62": {
+          "display_id": 3334,
+          "author": "6ME5",
+          "content": "[action] Signed and pushed candidate a265625ec; exact-candidate H0 Linux/macOS/Windows and Foundation runtime-tools macOS tests pass. All 26 open selected repair issues now have source-result updates; closures remain pending. Native test matrices still running without reported failures; full fresh 132-gate proof campaign will start after native qualification. Independent reviewer holds approval; provisional authorization baseline verified unchanged, no final proof artifacts published.",
+          "created_at": "2026-10-09T02:40:52.963300218Z",
+          "kind": "note",
+          "signed_by": "SHA256:eV8eZPaZxut5mrkihmvsOTrGWClwD+B/HR//do+oIeI",
+          "signature": "U1NIU0lHAAAAAQAAADMAAAALc3NoLWVkMjU1MTkAAAAgQq5MtA3gDv1stiLN1YhgJ9dMhoOBjZhbEednuPkV+1IAAAARY3Jvc3NsaW5rLWNvbW1lbnQAAAAAAAAABnNoYTUxMgAAAFMAAAALc3NoLWVkMjU1MTkAAABAy1KswH8ziiYni6A1oRPLtv/30wYFpr6q91qCkwQ89fxzaPJEEfxs8qCZt08Qmc/mKmuZK4vQ8HewOX1Lz4GoDQ=="
         },
         "9eb7252c-5eea-48f3-82bb-92912792ff42": {
           "display_id": 2149,
