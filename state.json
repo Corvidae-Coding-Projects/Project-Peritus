@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4236,
-        "tip_oid": "a7a44b857532ad663f87bab976204fe9158b9038",
-        "prefix_sha256": "cd56a3d645fe6bb81655447b17b1846e132324c0152ed714ee732c85cda64ce4"
+        "sequence": 4237,
+        "tip_oid": "dee04031ab88c17102590fdefdb47344f8061204",
+        "prefix_sha256": "8bed7afb083748e9f88a5181ac3031ad019e1ff8136fda5865e0223cf13830b4"
       },
       "NWAR": {
         "sequence": 39,
@@ -24994,12 +24994,13 @@
       "display_id": 226,
       "title": "[L127] Initial reviewer evidence is capped independently of available provider context",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L127.\n\n- `peritus-product-runner/src/turn/evidence.rs:7-16,51-77` budgets initial evidence at the smaller of **50% of model input tokens**, space below a **75% request target** after framing, and **384 KiB**, using an estimate of **three bytes per token**. Weighted section shares start at 64/144/48/80/32/16 KiB for conversation/diff/gates/developer evidence/prior findings/correction; spare bytes are redistributed in fixed priority order.\n- `turn/reviewer_prompt.rs:33-69` rejects review before provider invocation when system/prompt/tool framing reaches that 75% target, even if the provider's full context limit has not been reached. Oversized individual evidence sections keep a head and tail with a SHA-256 omission marker; very small allocations can contain only a partial marker (`evidence.rs:79-95`). This projection also applies to the authoritative conversation and prior findings, not only diagnostic output.\n- Daily-driving effect: large-context providers still receive at most 384 KiB of this initial packet; important middle clauses or prior defects can be omitted. The reviewer is instructed to recover exact current file details through fresh read-only tools, but this file does not provide a corresponding tool for the omitted conversation clauses. Full history remains in host state; omission is not proof of history deletion. Tests explicitly expect an 8,000-token profile to fail framing admission; they have been read, not rerun.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.683031654Z",
-      "updated_at": "2026-10-09T01:48:26.875148461Z",
+      "updated_at": "2026-10-09T05:54:12.914139326Z",
+      "closed_at": "2026-10-09T05:54:12.910996292Z",
       "labels": [
         "daily-driving-limiter"
       ],
