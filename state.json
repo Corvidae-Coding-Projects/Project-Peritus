@@ -8,9 +8,9 @@
         "prefix_sha256": "5562b50800913836ed4acd985af571efa4d327e34f2824d66d4e44b21ce128e9"
       },
       "6ME5": {
-        "sequence": 4239,
-        "tip_oid": "e6dab4efaceafdde658b8a1ae1f7c0bcc169de7b",
-        "prefix_sha256": "178903c1389de825d4bc914820dce163a010f8796741e089ae49bc6b700f3bb4"
+        "sequence": 4240,
+        "tip_oid": "231de15e0159459005b190e66c88a9958e9cbbb5",
+        "prefix_sha256": "9b32b1c99587d398b176dafa7c98a6a2f95a923927796c67d68e8501b7696e56"
       },
       "NWAR": {
         "sequence": 39,
@@ -23205,12 +23205,13 @@
       "display_id": 258,
       "title": "[L162] Attachment count limits can block releasing held inputs, while pin overrides use a different selection path",
       "description": "Source finding: docs/daily-driving-limiters-audit.md — L162.\n\n- **Source:** `crates/app/peritus-product-runner/src/control/images.rs:193-208,249-315`; `control/images/metadata.rs:22-41`; `control/images/tests.rs:69-131`; file equivalent `control/files/ledger.rs:152-177`; effective selection `control/record/projection.rs:79-116`; related L126/L128/L154.\n- **Limits/enforcement:** Whole-record image validation counts every selected attachment whose caption is incorporated or eligible pending, capped at 16 images / 12 MiB aggregate, with 4 MiB encoded / 8,192 side / 16 Mi pixels / 64 frames per image. A user can attach another image while an earlier caption is Held, but releasing that caption is then refused Capacity. File selections analogously cap 32 references / 512 KiB; these checks run on unrelated whole-record transitions too. Deselected/held history remains archived rather than freeing retained-record bytes.\n- **Selection mismatch:** The lower image/file ledger counts only `selected=true`. Conversation-level effective selection can additionally include `selected=false` sources when explicitly Pinned and omit Excluded sources. The record's attachment-size validation uses the lower ledger, not that effective selection. Thus pin overrides can admit an effective set beyond the ledger's checked selection, while excluded-but-selected sources can still consume its allowance. Final host/provider admission handling remains pending; this is a confirmed discrepancy, not a claimed unchecked provider request.\n- **Classification:** Product-selected admission ceilings and inconsistent preference accounting, separate from image decoding integrity and actual provider capacity. Tests above are fully read, not executed. Synthetic limits can obstruct queue lifecycle even with durable history intact.\n\nScope: implement and verify the systemic repair recorded in the decision comment. Source-derived behavior remains distinct from a reproduced live incident.",
-      "status": "open",
+      "status": "closed",
       "priority": "high",
       "parent_uuid": "f89861db-18b8-4237-83e6-344f4e472dd4",
       "created_by": "6ME5",
       "created_at": "2026-10-06T13:21:37.825003097Z",
-      "updated_at": "2026-10-09T01:53:28.864927509Z",
+      "updated_at": "2026-10-09T05:58:45.345119036Z",
+      "closed_at": "2026-10-09T05:58:45.342179501Z",
       "labels": [
         "daily-driving-limiter"
       ],
